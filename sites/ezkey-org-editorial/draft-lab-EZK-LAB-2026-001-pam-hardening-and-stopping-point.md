@@ -11,7 +11,13 @@ source_of_truth: draft
 ---
 
 <!-- ezkey-org:exclude-start
-EDITORIAL NOTES — English draft, revision 3 (2026-10-27). On branch docs/lab-paper-pam-draft. Not for publication.
+EDITORIAL NOTES — English draft, revision 4 (2026-10-28). On branch docs/lab-paper-pam-draft. Not for publication.
+
+Revision 4 = Marc-approved revert of the tighten pass (b22009a0, via a revert commit), small safe gains re-applied by hand,
+then a rewrite around one through-line: we let agents harden an experimental PAM module; the weak point was the clarity of
+our own decisions and method more than agent capability; we stopped when returns diminished, facing fast-rising AI
+cybersecurity capability (Marc's personal observation, no outside source), which is also why the agents were left free
+to iterate. Draft-state and tree-state narration was moved OUT of the body into this block.
 
 Where should the draft live in the repo? (to settle when Marc gives the go)
 - Sources: templates/lab-paper.en.template.md says "Copy to sites/ezkey-org-editorial/draft-lab-EZK-LAB-YYYY-NNN-<slug>.md";
@@ -27,28 +33,35 @@ Where should the draft live in the repo? (to settle when Marc gives the go)
   that LAB-PAPERS.md does not mention. Not recommended for paper no. 1.
 - Side fix to propose: one line in sites/ezkey-org/AGENTS.md so that "fr/ only" and the EN template agree.
 
-Status of this draft (revision of 2026-10-27): integrates the second retrospective round (lab note
-EZK-LAB-2026-001-retro-2-synthese.md and retro-2-raw/). Marc reviews, proofreads and frames before any publication.
-Kept decisions: security sentence "reasonably assured within the tested perimeter, without being the end of the story";
-the Sept 2025–Sept 2026 gap as "a year-long pause, no trace in the repository"; agent speed at finding and fixing
-vulnerabilities stays a personal observation with no external citation; the stopping point is a collaboration between
-Marc and the agents, judged sufficient as experimental maturity and nothing more; no "secure", "audited", certification,
-or Duo/FIDO2 equivalence. Ezkey is a lab project first.
+Kept decisions: security sentence "reasonably assured within the tested scope, without being the end of the story", said
+once in the Abstract and once in §6.1; the Sept 2025–Sept 2026 gap as "a year-long pause, no trace in the repository"; agent
+speed and AI cybersecurity progress stay Marc's personal observation with no external citation; the stopping point is a
+collaboration between Marc and the agents, judged sufficient as experimental maturity and nothing more; no "secure",
+"audited", certification, or Duo/FIDO2 equivalence. Ezkey is a lab project first. Christophe's withdrawals are respected.
 
-Coherence challenges treated in the body, not smoothed over:
-- The 2026-10-25 stopping reading and the 2026-10-27 further passes are one story: a first judgment, then a deliberate
-  dig, then the same kind of judgment.
-- Christophe's "cycle 3 of #1051" / "pam_ezkey 2.2.20" does not match the pull-request titles. #1051 is titled cycle 2b
-  at 2.2.19; #1067 is titled cycle 3 and its body names 2.2.20. Left as [TO VERIFY], not collapsed.
-- This draft's tree still has ezkey-pam/STATUS.md at 2.2.14. Later merges are cited from GitHub, not from this tree.
-- #1014, open in the 2026-10-25 draft, was merged on 2026-10-27 (b1fd7e2b). The signal-handler narrative was not re-read
-  against that merge.
-- "Diminishing returns" from the October burst (re-reviews, flag switching, TTL) and from the later cycles are not added
-  into one curve. The phrase stays a judgment, not a measurement.
+Draft-state items kept OUT of the body (they live here):
+- ezkey-pam/STATUS.md is at 2.2.14 on this draft's tree; later merges are cited from GitHub, not from this tree. §6.2 says
+  only what the status file said when read, plus one marker.
+- #1014 was open in the 2026-10-25 draft and merged on 2026-10-27 (b1fd7e2b). The signal-handler narrative (§3.2, Appendix D)
+  was not re-read against the merged text (marker kept).
+- #1051 / #1067 label mismatch with Christophe's "cycle 3 of #1051" / 2.2.20: still not reconciled; one marker in §3.3.
 - Patrick's finer counts (12 findings, 19/35, 3/10, 29/35, 88–90 s) stay in his raw reply and out of the body.
+- Mathieu is not integrated: his retrospective exists only as a draft not validated by Marc; he sent no round-2 reply.
+  The placeholder note stays in §7.
 
-Mathieu's retrospective exists only as a DRAFT not validated by Marc: it is NOT integrated. He sent no round-2 reply.
-Co-author note updates from 2026-10-27 are pending validation by each co-author.
+Revision-4 structure choices:
+- Table renumbering. Body: Table 1 (platform context), Table 2 (autonomy, the former Table 3). Appendices: Table A1 (patch
+  versions, the former Table 2), Table A2 (gains of 2026-10-27, the former Table 4), Table A3 (Isabelle's verdicts, the former Table 5).
+- Appendices are plain headed sections, not <details> elements: the paper is plain-text first and the renderer has no collapse
+  component (CSS is untouched). Marc may ask for <details> later.
+- Marker merges (26 inline markers at feda616b, 24 now): the STATUS.md markers (several places) became one in §6.2; the 2.2.20
+  string marker and the cycle-label marker became one in §3.3. Same open questions, fewer duplicates. Nothing was resolved.
+- Restored after the tighten pass: Table 2 rows 1 and 7 verbatim (Marc's statements of 2026-10-25); the security wording; the
+  collaborative stopping point in the Abstract.
+- Co-author notes kept nearly verbatim; cross-references updated (old §7.1 -> §4.1, §7.2 -> §4.2, §5.4 -> §3.3, §7.5 / exit
+  criterion -> Appendix E).
+- Reading time ~13 min is an estimate for the main text, appendices excluded (same words-per-minute ratio as before).
+
 Marker convention: [TO VERIFY] / [MISSING DATA]; every marker is listed at the end in an exclude block.
 The French draft is the mirror of this revision. Still not for publication.
 ezkey-org:exclude-end -->
@@ -59,275 +72,177 @@ ezkey-org:exclude-end -->
 **Affiliation:** Ezkey Lab
 **Identifier:** `EZK-LAB-2026-001`
 **Status:** draft
-**Date:** 2026-10-27
+**Date:** 2026-10-28
 **Keywords:** PAM, SSH, MFA, fail-closed, agent-assisted development, agent autonomy, human framing, diminishing returns, experimental
-**Reading time:** ~18 min
+**Reading time:** ~13 min
 
 ## Key findings
 
-- In the campaign reported on 2026-10-27, every friction the co-authors describe came from the human side of the setup. The go rule was known and never written as one sentence. The scope of a standing permission was unclear. A settled method was not written down. Several instructions were ambiguous. No stopping criterion and no cycle budget were fixed in advance. The reports do not treat this as a failure of the agents (§7.1).
-- After a first reading on 2026-10-25, Marc left the agents free to iterate, as many times as they needed, to see where a human and the agents converge on diminishing returns. He also judges that models are advancing quickly, in cybersecurity in particular. Both that judgment and his impression that agents find and fix vulnerabilities faster are personal observations: we cite no outside source. "Diminishing returns" here is a judgment, not a measurement. Reviewers and the implementer share a model family, the loop grades itself, and an independent human review, continuous fuzzing and a threat model would test it (§7.2).
-- On that later campaign the agents carried more of the work: a tenant through the public API, with a log of the times; a slower poll and a freshness check after a rate-limit response; a state protocol with hashes and a checked rollback; proof by execution on a disposable cloud agent. What they still needed were small written adjustments, not a different kind of agent (§6.5).
-- A prototype of about 900 lines, committed on 2025-09-03 and validated by hand, left no automated evidence. The repository then shows a year-long pause, no trace in the repository of functional work on PAM, until work resumed on 2026-09-15.
-- Marc and the agents judge the result sufficient as an **experimental** maturity: security is reasonably assured within the tested perimeter, without being the end of the story. Ezkey is a lab project first. This is not a claim that the module is secure, audited or certified, and not an equivalence with Duo or FIDO2.
+- The weak point was the clarity of our own decisions and method, not the capability of the agents. In the 2026-10-27 round, every friction the co-authors describe came from something a person had not made explicit: a go rule (who may authorise a step) known but never written as one sentence, the scope of a standing permission, a method that lived only in conversation, ambiguous instructions, and no stopping criterion or cycle budget fixed in advance (§4.1).
+- Where the frame existed, the agents carried more of the work: a test tenant opened through the public API, a state protocol with hashes and a checked rollback, proof by execution on a disposable cloud agent. They still needed small written adjustments, not a different kind of agent (§4.1, Appendix B).
+- Marc and the agents stopped together when the returns diminished: the first pass found the product-level defects, and later cycles added tooling and proof. "Diminishing returns" is a judgment, not a measurement. Marc also judges, as a personal observation with no outside source, that AI capability in cybersecurity is advancing quickly, which is why the agents were left free to say what they saw and to iterate (§4.2, §6).
+- A prototype of about 900 lines, committed on 2025-09-03 and validated by hand, left no automated evidence. The repository then shows a year-long pause, with no trace of functional work on PAM, until work resumed on 2026-09-15 (§3.1).
+- The result is judged sufficient as an experimental maturity and nothing more. The module is not a host-operable agent, and moving to the community instance would require redoing the assessment (§6).
 
 ## Abstract
 
-This paper reports an experiment on `ezkey-pam`, a Linux PAM module that adds Ezkey device approval to SSH logins. Ezkey is a lab project. A prototype was committed in September 2025. After a year-long pause, with no trace in the repository of functional work on PAM, the module was modernised in September 2026 and then reviewed and corrected through October 2026 by agents working with Marc. A further pass, reported on 2026-10-27, left those agents free to iterate so that a point of diminishing returns could be seen rather than assumed. We describe what was built, where the reported frictions came from, what the later cycles added, and a stopping point chosen by Marc and the agents together. In that further pass the frictions trace to human framing: rules, scope and a stopping criterion that had not been written down. Security is reasonably assured within the tested perimeter, without being the end of the story. We claim no production readiness, no audit, no certification, and no equivalence with Duo or FIDO2.
+This paper reports an experiment on `ezkey-pam`, a Linux PAM module that adds Ezkey device approval to SSH logins. Ezkey is a lab project. A prototype was committed in September 2025. After a year-long pause, with no trace in the repository of functional work on PAM, the module was modernised in September 2026 and hardened through October 2026 by AI agents working with Marc. We left the agents free to iterate, as often as they needed, to see where returns diminish rather than assume it. The weak point turned out to be not the agents' capability but the clarity of our own decisions and method: rules, permissions and a stopping criterion that had not been written down. Marc and the agents stopped together when the returns diminished, at a time when Marc judges that AI capability in cybersecurity is advancing quickly. Security is reasonably assured within the tested scope, without being the end of the story. The module has an experimental maturity only. We claim no production readiness, no audit, no certification, and no equivalence with Duo or FIDO2.
 
-## 1. Introduction and motivation
+## 1. Why we did this, and what we assumed
 
-Marc first saw an SSH login protected by Duo at work, which was new to him `[TO VERIFY with Marc: when]`. The question that followed was whether Ezkey could play a similar role for SSH, with the pieces it already had. That question is not a claim of equivalence. Nothing in this paper equates Ezkey with Duo, WebAuthn or FIDO2.
+Marc first saw an SSH login protected by Duo at work, which was new to him `[TO VERIFY with Marc: when]`. The question that followed was whether Ezkey could play a similar role for SSH with the pieces it already had. That is not a claim of equivalence: nothing in this paper equates Ezkey with Duo, WebAuthn or FIDO2.
 
-Ezkey is a lab project first, not promised to anyone. The realistic niche we see is passwordless, strong-cryptography protection of internal applications for a small internal staff. Going further would first require SOC 2-style discipline: a prerequisite, not a plan. `docs/SECURITY_POSTURE.md` treats SOC 2 as a reference vocabulary, not a certification target, and makes no equivalence claim.
+Ezkey is a lab project first, promised to no one. The realistic niche we see is passwordless, strong-cryptography protection of internal applications for a small internal staff. Going further would first require SOC 2-style discipline: a prerequisite, not a plan.
 
-Two further reasons shaped the experiment. Marc has the impression that autonomous agents have become visibly faster at finding and fixing vulnerabilities. This is his personal observation; we cite no outside source and did not measure it. Separately, he judges that models are advancing quickly, in cybersecurity capability in particular. That too is his judgment, with no outside source `[TO VERIFY: wording of this reason, given for the 2026-10-27 revision]`. It is why, after a first stopping reading on 2026-10-25, the agents were left free to say what they saw and to iterate as many times as they needed. The point of the extra passes was to watch where a human and the agents converge on diminishing returns, not to accumulate rounds for their own sake (§5.4, §7.2). A third reason, already present in the 2026-10-25 draft, was to see how much of the work agents could carry with little human intervention (§6.4, §6.5).
+Two further reasons shaped the experiment, both Marc's personal observations, with no outside source and no measurement. He has the impression that autonomous agents have become visibly faster at finding and fixing vulnerabilities, and he judges that models are advancing quickly in cybersecurity capability `[TO VERIFY: wording of this reason, given for the 2026-10-27 revision]`. That is why the agents were left free to say what they saw and to iterate: the point was to watch where a human and the agents converge on diminishing returns, not to pile up rounds. A third reason was to see how much of the work agents could carry with little human intervention (§5).
 
-This paper says what happened and what was measured. One conclusion is stated in plain terms, because the second retrospective round was asked for it: where a friction appeared, it was on the human side of the framing (§7.1). What the experiment means beyond that stays outside this paper.
-
-## 2. Hypotheses
-
-These were **formulated after the fact**; none was written down before the work started. We state them to make the reading explicit, not to suggest the experiment was designed around them.
+We formulated four hypotheses **after the fact**; none was written down before the work started. They make the reading explicit; they do not mean the experiment was designed around them.
 
 - **H1.** The existing pieces (authentication, APIs, device) were enough to build a complete SSH approval flow.
 - **H2.** An AI team with cross-review can bring a small C module to a point where review findings become minor.
 - **H3.** Beyond some point, another review round costs more than the lab-level risk it removes, and that point can be identified.
-- **H4.** In the agent campaign, the waits and the confusion would come from human framing (an unwritten go rule, an unclear permission scope, ambiguous instructions, no stopping criterion fixed in advance), not from a limit of the agents.
+- **H4.** In the agent campaign, waits and confusion would come from human framing, not from a limit of the agents.
 
-H1 was tested by the 2025 prototype. H2 and H3 were not tested in a controlled way. H4 was not written before the 2026-10-27 round; it is the reading that round supports, and we state it as a conclusion in §7.1. The same round complicates H3: the point can be described afterwards, and it is hard to know it during the work if no cycle budget was fixed first (Patrick).
+The 2025 prototype tested H1. H2 and H3 were not tested in a controlled way, and the point in H3 is easier to describe afterwards than to know during the work (Patrick). H4 is the reading the 2026-10-27 round supports (§4.1), not something written beforehand.
 
-## 3. Prior state
+## 2. What was built
 
-By September 2025 the platform already had most parts of an approval flow (Table 1, dates from git).
+`ezkey-pam` is a C module for Linux PAM, the layer that handles login authentication, used by SSH in keyboard-interactive mode. It asks the user to confirm with `ok`, creates an authentication attempt through the Integration API, optionally shows a two-digit code to match, then waits while the user approves or rejects on a device (the Demo Device or the Android app). It fails closed: an unusable API or configuration refuses the login, and there is deliberately no fail-safe mode. A documented caveat remains: a `sufficient` PAM stack can make the module fail open. The work ran in a Rocky Linux container and, from October 2026, on a dedicated test VM with a real sshd, where several findings appeared that nothing else showed. We give no host names, addresses or internal paths.
 
 | Element | Evidence | Date |
 | --- | --- | --- |
 | Demo Device | `e532ce95` | 2025-08-10 |
 | `/wait` endpoint | `796dd455` | 2025-08-26 |
-| First Android app | `fd7d9d6a` | 2025-09-01 |
 | **First PAM commit** | `04d339b7` | **2025-09-03** |
-| Android proof of concept | `1efda3d1`, `8da533ce` | 2025-09-04 |
 | Admin UI | `71e27831` | 2026-03-06 |
 
-*Table 1. Context around the first PAM commit.*
+*Table 1. Platform context around the first PAM commit (dates from git).*
 
 Marc recalls that in summer 2025 the protocol was simpler: a simulator at first, no Admin UI, a simpler database. The simulator is visible in the history (`988ef115`, 2025-08-19); the database remark is not checked `[TO VERIFY: database schema in summer 2025]`. Some early commits were authored by an automated agent account, not by Marc `[TO VERIFY: authorship of each commit in Table 1]`.
 
-## 4. Protocol
+**Four terms.** A *mutant* is a deliberately broken copy of the code, used to check that a test notices the break. A *TTL* (time to live) is how long an approval request stays valid: 75 seconds here. A *frozen head* is the exact last commit of a pull request, held still while it is reviewed, so that review and fixes do not chase each other. A *go* is Marc's explicit word that a step may proceed; a reviewer's verdict in a pull request is written GO or CHANGES.
 
-**The module.** `ezkey-pam` is a C PAM module for SSH keyboard-interactive. It asks the user to confirm with `ok`, creates an auth-attempt through the Integration API (`POST /api/v1/auth-attempts`), optionally shows a two-digit code to match, then waits (`GET …/wait`) while the user approves or rejects on a device (the Demo Device or the Android app).
+**Roles.** Marc decided and approved, and typed at the SSH keyboard in manual campaigns. Patrick (engineering) and Christophe (security) reviewed; Edgar operated the test VM; Isabelle ran exploratory QA; Mathieu coordinated and relayed during the October hardening, and is not a source for the 2026-10-27 round `[TO VERIFY: Mathieu]`.
 
-**Design constraints.** It fails closed: an unusable API or configuration returns `PAM_AUTHINFO_UNAVAIL`, and there is deliberately no `failmode=safe`. The configuration is a root-owned file (`0600` or `0400`), with no default API URL and no environment variables. A documented caveat remains: a `sufficient` PAM stack can make the module fail-open.
+**How reviews reached GitHub.** Patrick's and Christophe's reviews reach the repository through **Marc's GitHub account**: the comments are posted from `mgagp`, and the text of each says which co-author wrote it. An issue (#1016) says the reviews were relayed by Mathieu, and squash-merge commits carry Marc's name. Attribution here rests on the text of the comment or on the co-author's retrospective, not on GitHub identity `[TO VERIFY: that comments reflect the original review text]`.
 
-**Environment.** A Rocky Linux container for builds and demos and, from October 2026, a dedicated test VM with a real sshd. Several findings appeared only there. We give no host names, addresses or internal paths.
+We did not re-run the module's tests for this paper. Figures come from the repository, pull requests or the retrospectives, and the last are marked.
 
-**Roles.** Marc decided and approved, and typed at the SSH keyboard in manual campaigns. Mathieu coordinated and relayed during the October burst; he is not a source for the 2026-10-27 round `[TO VERIFY: Mathieu]`. Patrick and Christophe reviewed; Edgar operated the test VM; Isabelle ran exploratory QA.
+## 3. The work in three acts
 
-**How reviews reached GitHub.** Patrick's and Christophe's reviews reach the repository through **Marc's GitHub account**: the comments are posted from `mgagp`, and the text of each says which co-author wrote it. An issue (#1016) says reviews were relayed by Mathieu, and squash-merge commits carry Marc's name. In this paper, attribution rests on the text of the comment or on the co-author's retrospective, not on GitHub identity `[TO VERIFY: that comments reflect the original review text]`.
+### 3.1 First act: a prototype, then a year of silence
 
-**Tests.** A `make test` target, shell test scripts, signal probes against a real sshd and a CI job. We did not re-run them for this paper; figures below come from the repository, from pull requests, or from the retrospectives, and the last of these are marked.
+The first PAM commit, `04d339b7` (2025-09-03, 9 files, 919 added lines), describes itself as a basic hard-coded module in Rocky Linux under Docker. According to Marc it was also run on a VM and validated by hand only `[TO VERIFY: VM test; no automated evidence in git]`.
 
-**Bounds named for the 2026-10-27 campaign.** Christophe lists the rules that helped: nothing aimed at the public community instance, no commit and no push from the campaign, no secret shown, proof by execution on a disposable cloud agent, findings sorted as fix, document, or out of scope, and security review kept distinct from code review. A standing permission on the module did not, by itself, cover system writes. Each of those waited for its own go (Edgar). The detail is in §7.1.
+Then came a year-long pause, with no trace in the repository of functional work on PAM. The folder received only four mechanical commits (a port change, a move to Rocky Linux 10, file permissions, documentation hygiene; Appendix A). We claim nothing about that period beyond what git shows.
 
-## 5. Course of work
+### 3.2 Second act: modernisation and October hardening
 
-### 5.1 Prototype and pause
+Pull request #540 (2026-09-15) modernised the module. Pull request #610 (milestone "M1"), opened on 2026-09-22 and merged on 2026-10-17 (38 files, +3767/−332), added observability, fail-closed configuration, the two-digit challenge and a time budget. Patrick's first review returned **CHANGES** with one blocking finding: a missing API URL did not fail closed, because the code pre-filled a local default, so credentials would have gone in clear to a local port where another local user could answer `ACCEPTED`. Christophe's review returned minor findings only. Patrick re-reviewed twice and returned **GO** on 2026-10-17, once CI was green.
 
-The first PAM commit, `04d339b7` (2025-09-03, 9 files, 919 added lines), describes itself as a basic hard-coded module in Rocky Linux under Docker, where after the SSH password the demo device must confirm access. According to Marc it was also run on a VM and validated by hand only `[TO VERIFY: VM test; no automated evidence in git]`.
+Five patch versions followed in three days (2.2.10 to 2.2.14, 2026-10-20 to 2026-10-22), each reviewed on a frozen head and each exposed by a retest or a review (Appendix A, Table A1). Version 2.2.15, merged on 2026-10-27, added richer failure diagnostics and signal handling (#1014).
 
-Then a year-long pause, no trace in the repository of functional work on PAM. The folder received only four mechanical commits: a port change (`07746bb8`), a move to Rocky Linux 10 (`90b16e57`), file permissions (`83758319`) and documentation hygiene (`b19eca7d`). We claim nothing about that period beyond what git shows.
+The most useful result of that period was a misleading symptom. Isabelle ran a manual campaign on 2.2.14 (#996) on the test VM, with Marc at the SSH keyboard and on the Demo Device, recorded in a test-management tool outside the repository: 30 cases, 29 passed and 1 failed (S6-02, cancel and audit, now #1012). Marc recorded the milestone as "reached with reservations" (S1D-06, S11-01) `[TO VERIFY: figures come from Isabelle's retrospective of 2026-10-25; tool and notes are outside the repository]`. With `MaxAuthTries 1`, almost any internal error shows up as "Too many authentication failures". A debug trace of 2026-10-24 showed UNAVAIL after 741 ms and no request sent: the `ok` prompt had received an empty answer. Edgar also found that sshd's `LoginGraceTime` (120 s), not the module's 75 s timeout, bounds a real attempt. This led to #1011, #1014 and #1016.
 
-### 5.2 Modernisation and a first milestone
+Findings kept getting finer. On #1014, Patrick's reading predicted that the module could hang after a termination signal. A cloud agent confirmed it (at least 123 seconds against a 225 ms baseline) and revealed a second defect: authentication could succeed after the client had gone. Christophe, reading the handler, found it called a function that is unsafe in a signal context. The fix, with four signal probes against a real sshd, got GO from both reviewers, which we know from the text of #1016 and not from a GitHub review object `[TO VERIFY]` (detail in Appendix D). We did not read every other review (#897, #908, #956, #976, #983, #996) and give no count of findings per round `[TO VERIFY: rounds and severity]`.
 
-Pull request #540 (`3fef2411`, 2026-09-15) modernised the module. Pull request #610 (`8b3aa5df`, "M1"), opened on 2026-09-22 and merged on 2026-10-17 (38 files, +3767/−332), added observability, fail-closed configuration, the two-digit challenge and a time budget.
+#992 (approval fatigue: pending-request limit, rate per enrollment, cooldown, alert on denial) was scoped, then rewritten in generic platform terms on Marc's instruction of 2026-10-22. A documentation commit (#993) states the limit plainly; #992 itself is not implemented. Christophe's point is that the `ok` prompt is a filter, not a defence: whoever has the first SSH factor types `ok` too.
 
-Its reviews are a typical example. Patrick's first review returned **CHANGES** with one blocking finding: a missing API URL did not fail closed, because the code pre-filled `http://localhost:7080`. A configuration without a URL would have sent integration credentials in clear to a local port where another local user could answer `ACCEPTED`. Christophe's review returned minor findings only. Patrick re-reviewed twice and returned **GO** on 2026-10-17 once CI was green.
+The first frictions showed here: a relayed "Marc agrees" was never a go for Edgar, and retests needing a human round trip of about 77 seconds exceeded the TTL, so some trials were invalid (Isabelle). §4.1 reads them together.
 
-### 5.3 The October burst
+### 3.3 Third act: the convergence round
 
-| Version | Landed | Change | What exposed it |
-| --- | --- | --- | --- |
-| 2.2.10 | 2026-10-20 | No orphan pending request after Deny/Expire retry (#907, #908); `Match … MaxAuthTries 1` mandatory in docs (#934) | Edgar's retest of #908: without `Match`, three requests were created |
-| 2.2.11 | 2026-10-21 | Waiting message shown before the device wait (#941, #956) | Edgar: OpenSSH buffers bare `pam_info` text until the next prompt |
-| 2.2.12 | 2026-10-21 | Confirm-before-create (`ok`) and enrollment challenge display (#975, #976) | Isabelle (#975); Patrick's review found a TTL computed before the `ok` |
-| 2.2.13 | 2026-10-22 | Interaction fluidity tiers 0–1 (#982, #983) | Follow-up to #976 |
-| 2.2.14 | 2026-10-22 | `challenge_requested=true` by default (#995, #996) | Decision by Alex and Marc, per `STATUS.md` |
-| 2.2.15 | 2026-10-27 (`b1fd7e2b`, #1014) | Richer failure diagnostics, SIGTERM handling, signal probes (#1011, #1014) | Manual campaign on 2.2.14; engineering and security reviews |
+On 2026-10-25, Marc and the agents agreed to treat the result as sufficient for an experimental maturity. That did not end the work. Marc left the agents free to keep going, for the reason in §1, so that the point of diminishing returns could be seen rather than assumed. What follows is drawn from the retrospectives of 2026-10-27 (a lab note and four raw replies, listed in References).
 
-*Table 2. Patch versions of October 2026. The 2026-10-25 draft of this paper still had #1014 open. Versions 2.2.2 to 2.2.9 are not reconstructed `[TO VERIFY]`. The signal-handler account below was not re-read against the merged text `[TO VERIFY]`.*
+Following Patrick, cycle 1 was the only pass that found something of product nature: no test killed the mutants of the authentication decision, and TLS verification was not guarded by any test. After that the work was tooling and proof. In cycle 2 he saw no further behaviour defect and recommended a short third cycle, then a stop. Cycle 3 corrected a bug in the test harness (probe 4 was a hang on a blocking open, not a product defect), a hole that an earlier fix had opened in a TLS test, and an equivalence call of his own: a mutant he had called equivalent was not. After that came nits, then a recursion: an audit of the tests, then of the script that audits the tests, then of that script's trap, with a low yield from the second level. We do not print his finer mutant counts; they stay in his raw reply `[TO VERIFY: those counts]`.
 
-Meanwhile #992 (approval fatigue: pending-request limit, rate per enrollment, cooldown, alert on denial) was scoped, then rewritten in generic platform terms on Marc's instruction of 2026-10-22. Commit `9f7fa78f` (#993) documents the limit plainly; #992 itself is not implemented.
+What the iteration added beyond one pass, in his account, is a measurement in place of a suspicion, the detection of a defect a fix had introduced, and the correction of a reviewer's own error. His view that one pass plus an execution check of each fix would have caught almost everything is a judgment, not a count.
 
-Pull request #1014 shows how findings kept getting finer. Patrick's reading predicted that the PAM child process could hang after a SIGTERM. A cloud agent confirmed it and revealed a second defect: a SIGTERM during request creation was absorbed, and authentication could then succeed after the client had gone. Christophe, reading the handler, found it called a function that is not async-signal-safe. The head he and Patrick returned GO on (`6bc342a8`) replaced it with a handler that writes to the log device, restores the default action and re-raises the signal, backed by four signal probes against a real sshd that failed on the previous head and pass on this one. Both reviewers returned GO on that head, which we know from the text of #1016, not from a GitHub review object `[TO VERIFY]`. #1016 also says the same head was reviewed again at `34ae3603`, and that #1014 was later merged as `b1fd7e2b`. We did not re-read the merged text for this revision.
+On GitHub, #1067 (merged 2026-10-27) is titled as cycle 3 follow-ups after #1051, and its description names version 2.2.20. #1051, merged earlier the same day, is titled as follow-ups through cycle 2b at version 2.2.19. Christophe, writing from memory, places the drop in marginal value around "cycle 3 of #1051" and also names version 2.2.20. We do not treat those labels as the same object `[TO VERIFY: cycle label and 2.2.20]`.
 
-### 5.4 A further pass, on purpose (2026-10-27)
+On the live side, Isabelle reports that the risks she treats as real were found early. While a login is waiting, the module does not see the client die, so a pre-authentication process can last up to about 75 seconds, bounded by the TTL. A later login wins and closes the previous attempt. Replays from a second client operating system added proof of the same server behaviour, not a new risk (verdicts in Appendix C). True network silence was not tested, because it had no go. The open signal Christophe still names is a rate limit on creating authentication attempts (#1070, open on 2026-10-27, outside the module, not measured).
 
-The 2026-10-25 reading did not end the work. Marc left the agents free to keep going, for the reason in §1. What follows is drawn from their retrospectives of 2026-10-27 (the lab note `sites/ezkey-org-editorial/lab-notes/EZK-LAB-2026-001-retro-2-synthese.md`, and the four raw replies under `retro-2-raw/`). Where a pull-request title disagrees with a reviewer's memory, we say so.
+## 4. What we learned
 
-**What the cycles added.** The synthesis, following Patrick: cycle 1 was the only pass that found something of product nature. No test killed the mutations of the authentication decision, and TLS verification was not guarded by a test. After that, the work was tooling and proof. In cycle 2 he saw no further behaviour defect, and he recommended a short third cycle, then a stop. In cycle 3, probe 4 was a bug in the harness; a fix from an earlier cycle had opened a hole in a TLS test (peer verification alone); a mutant he had called equivalent was not, and the call was corrected. He writes that iteration added three things a single pass would have missed: a measurement in place of a suspicion on probe 4, the detection of a defect a fix had itself introduced, and the correction of a reviewer's own error. It did not add a further security defect after cycle 1. His sentence that one pass, plus an execution check of each fix, would have caught almost everything is his judgment, not a count.
+### 4.1 The weak point was our own clarity, not the agents
 
-On GitHub, #1067 (merged 2026-10-27) is titled as cycle 3 follow-ups after #1051, and its description names version 2.2.20. It says probe 4 was a harness hang on a blocking open, not a product defect, and that the TLS test was changed so that peer verification alone rejects. #1051, merged earlier the same day, is titled as follow-ups through cycle 2b at version 2.2.19. Christophe, writing from memory, places the drop in marginal value around "cycle 3 of #1051" and also names version 2.2.20. We do not treat those labels as the same object `[TO VERIFY: cycle label and 2.2.20]`.
+This is the main conclusion of the paper. It is Marc's own reading, and the co-authors' reports support it: in every friction the 2026-10-27 round describes, the agents were waiting on something a person had not made explicit, and that person was first Marc. The agents applied the rules they had and stopped where one was missing. Five forms came up.
 
-After that third cycle the synthesis reports nits, then a recursion: an audit of the tests, then of the script that audits the tests, then of that script's trap. Patrick's raw reply says the yield from the second level was low. We do not have his finer mutant counts in a form we are willing to print; they stay in the raw reply `[TO VERIFY: those counts]`.
+1. **The go rule was known and not written.** "Only Marc, in the thread of the agent who executes, counts as a go." Edgar and Isabelle both say the rule itself was not the problem. The wait came from messages, sent by agents, saying that Marc would answer in some other thread.
+2. **The scope of a standing permission was unclear.** A permanent go for the PAM module did not say whether it covered system writes: a firewall change, configuration files, keys. Each write asked for its own go (Edgar).
+3. **A settled method lived only in conversation.** How to open an evaluation tenant through the public API was not written down, and time went into searching for it (Isabelle).
+4. **Instructions were ambiguous.** Treating the API as stopped, although it is external, led to a name-resolution change checked for one address family only: the test measured nothing and needed a second go. A clock time was presented as the end of the campaign when the real constraint was the expiry of a key and of a session. Words such as "module loaded", "authentication not invoked" and "second factor" were used for different facts (Edgar, Isabelle).
+5. **No stopping criterion and no cycle budget were fixed in advance.** Convergence was noticed afterwards, and "nothing new, measurable and observable" is judged by the person who finds the thing. A criterion the agents set for themselves, three mutants killed at runtime, could not be reached for one host-side TLS check, and part of the next cycle served that criterion rather than a reduction of risk (Patrick, Christophe).
 
-**The live campaign.** Isabelle reports that the risks she treats as real were found early. While a login is waiting, the module does not see the client die, so a pre-authentication process can last up to about 75 seconds, bounded by the attempt TTL. A later login wins and closes the previous attempt. Replays from a second client operating system added proof of the same server behaviour, not a new risk. Her scenario verdicts are in Table 5. True network silence was not tested: it had no go. The open signal Christophe still names is a rate limit on creating auth attempts (#1070, open on 2026-10-27, outside the module, and not measured).
+The agents were not the weak point, because where the frame existed they carried a lot. The rules that helped, in Christophe's list: nothing aimed at the public community instance, no commit or push from the campaign, no secret shown, proof by execution on a disposable cloud agent, findings sorted as fix, document or out of scope, and security review kept apart from code review. On 2026-10-27 the agents planned, executed and restored inside bounds that had been named, and where a bound had not been named, they waited (Appendix B). We have no measure of what share of the work this is `[MISSING DATA]`.
 
-The tree that holds this draft does not contain those merges. On this tree, `ezkey-pam/STATUS.md` still records version 2.2.14 and still says the module is not a host-operable MFA agent on a real host. We did not re-read `STATUS.md` on the default branch after #1067 `[TO VERIFY]`.
+### 4.2 Diminishing returns, and a field that moves fast
 
-## 6. Results
+We stopped when the returns diminished. The shape of the series is recognisable: product-level findings first, then proof, then nits, then the tooling that audits the tooling. That sequence is our interpretation; we did not test the causal links.
 
-### 6.1 Review rounds
+Marc judges that AI capability in cybersecurity is advancing quickly. This is his personal observation; we cite no outside source and did not measure it. Facing that pace, we did not want to fix in advance how far the agents should go. We wanted to see where they converge, and we did not want to go on past the point where a further cycle bought tooling and proof but no new defect.
 
-#610 was reviewed on three heads (`932c83f4`, `5d743589`, `ca86a1c2`), with the verdicts above. On #1014 (`8272d360`, then `6bc342a8`), engineering and security both asked for changes, then both returned GO at `6bc342a8`, and #1016 collected small non-blocking follow-ups. It also records that the documentation must **not** say "never SUCCESS after the client is gone": SUCCESS stays possible if a TERM is absorbed during `/wait` after the ACCEPTED answer has arrived, and #1016 says this is not an elevation. Other pull requests (#897, #908, #956, #976, #983, #996) were reviewed too; we did not read all of them, so we give no counts of findings per round `[TO VERIFY: rounds and severity]`. The later cycles of §5.4 are a separate series. We do not fold them into a single count.
+The caveat has to stay next to the series. "Diminishing returns" is a judgment, not a measurement, and neither Patrick nor Christophe gives a count of time or cost. Reviewers and implementer are of the same model family, so agreement can come from shared blind spots and not only from an exhausted list of defects. The loop grades itself: the implementer writes the mutants and the tests, and a reviewer of the same family reads them. Patrick was wrong once on a mutant he called equivalent, which is why a second look is not optional on a security mutant. An independent human review, continuous fuzzing and a one-page threat model would test the judgment; Christophe lists all three as not done. Patrick's proposed rule for a last cycle was not the rule of this campaign (Appendix E). Earlier reports of diminishing returns from the October hardening (repeated re-reviews, retests invalidated by the TTL) are a different observation and are not added to the series.
 
-### 6.2 Manual campaign on 2.2.14
+On budget, time and value, git shows five patch versions in a few days and two further merged pull requests on 2026-10-27 (#1051, #1067). We have no figures for money, compute or human time, and none for a person working alone `[MISSING DATA]`. Our summary stays qualitative: more review, more often, at a pace Marc could follow, at a cost we did not measure.
 
-Isabelle ran a manual campaign on 2.2.14 (#996) on the test VM, with Marc at the SSH keyboard and on the Demo Device. It was recorded in a test-management tool outside the repository: 30 cases, 29 passed and 1 failed (S6-02, cancel and audit, now #1012). Marc recorded the milestone as "reached with reservations" (S1D-06, S11-01) `[TO VERIFY: figures come from Isabelle's retrospective of 2026-10-25; tool and notes are outside the repository]`.
+### 4.3 What we would change next time
 
-The most useful result was a misleading symptom. With `MaxAuthTries 1`, almost any internal error shows up as "Too many authentication failures". A debug trace on 2026-10-24 showed UNAVAIL after 741 ms, reason "pre-wait confirm missing or not ok", and no POST sent: the `ok` prompt had received an empty answer. Edgar's analysis also found that sshd's `LoginGraceTime` (120 s), not the module's 75 s wait timeout, bounds a real attempt. This led to #1011, #1014 and #1016.
+These are proposals drawn from the retrospectives. None is adopted `[TO VERIFY: whether any of them is adopted]`.
 
-### 6.3 Open items
+- Write the go rule in one sentence in every brief: only Marc, in the thread of the agent who executes, gives a go, and no agent acts on another agent's report of one.
+- State what a standing permission covers. For system writes, use a one-page go sheet signed in the executor's thread (exact write, files, maximum duration, rollback, a check of both address families, exclusions) and a pre-approved cleanup list.
+- Write the settled method down before the campaign, where a later reader will find it: how to open the evaluation tenant, how long an integration key lives and who removes it.
+- Fix the cycle budget and the exit rule before the first cycle, chosen by a human and not scored by the agents.
+- Check, read-only, that an altered state is really in effect before spending a login, and write findings where they live, on a frozen head.
 
-Eleven issues were open on 2026-10-25 (checked on GitHub that day), plus PR #1014: #858, #955, #979, #980, #982, #992, #997, #1011, #1012, #1013 and #1016. They cover platform security (#992 pending-request policy and cooldown, #858 signature on the `/wait` response), interaction (#982, #997), introduction on the community instance (#955), tests and CI (#979, #980, #1013), and cancellation, diagnostics and follow-ups (#1011, #1012, #1016).
+## 5. How much autonomy we aimed at, and where it stopped
 
-That list is a snapshot. By 2026-10-27, #1014 was merged and #1011 was closed; #1051 and #1067 had been merged; #1054 and #1070 were open. We did not re-count the whole set `[TO VERIFY: open issues after 2026-10-27]`.
-
-### 6.4 Agent autonomy in the October burst
-
-Part of the experiment aimed at letting agents do more of the work with less human intervention. Table 3 is that burst, through 2026-10-25. Table 4 is the further pass. Sources are the co-authors' retrospectives. These are observations, not a measurement of autonomy.
+Part of the experiment aimed at letting agents do more of the work with less human intervention. Table 2 covers the October hardening, through 2026-10-25; the 2026-10-27 round is in §4.1 and Appendix B. Sources are the co-authors' retrospectives. These are observations, not a measurement of autonomy.
 
 | Aimed at | Limit observed | Source |
 | --- | --- | --- |
 | Tests run without a person's phone: Isabelle's Demo Device for almost all tests; Marc's Pixel only for a few exploratory tests of his own, as a preliminary validation (Marc's statement) | The 2.2.14 campaign still needed Marc at the SSH keyboard and on the Demo Device; Isabelle says she could not have gone on without Marc on the phone | Marc; Isabelle |
-| Reviews of a frozen head (a given SHA, one batch of fixes per review) | Re-reviews after about the second head brought mostly minor points | Patrick, Christophe |
-| Tests replayed by the agents themselves: retests (#908), signal probes against a real sshd, a cloud agent executing predictions (#1014) | Patrick had no Docker or Java on his own machine, so each proof went through a cloud agent, slowly; some CI guards proved nothing (#996, #1014) | Patrick, Edgar |
-| Bounded GOs: a standing permission on the test VM (snapshot, `sshd -t`, report, one bot at a time) | A relayed "Marc agrees" is not a GO; the test VM's maintenance path stayed outside MFA (principle in #955) | Edgar, Isabelle |
+| Reviews of a frozen head (one SHA, one batch of fixes per review) | Re-reviews after about the second head brought mostly minor points | Patrick, Christophe |
+| Tests replayed by the agents: retests (#908), signal probes against a real sshd, a cloud agent executing predictions (#1014) | Patrick had no Docker or Java on his own machine, so each proof went through a cloud agent, slowly; some CI guards proved nothing (#996, #1014) | Patrick, Edgar |
+| Bounded GOs: a standing permission on the test VM (snapshot, `sshd -t`, report, one bot at a time) | A relayed "Marc agrees" is not a GO; the VM's maintenance path stayed outside MFA (principle in #955) | Edgar, Isabelle |
 | Findings written where they live (PR or issue) | Messages that do not wake an agent (hence read acknowledgements on blocking requests); a finding set from #961 lost in chat `[TO VERIFY]` | Christophe |
-| Retests without a person in the loop | The human round trip (about 77 s) exceeded the 75 s attempt TTL, so some trials were invalid; an automated approval pilot was missing | Isabelle |
+| Retests without a person in the loop | The human round trip (about 77 s) exceeded the 75 s TTL, so some trials were invalid; an automated approval pilot was missing | Isabelle |
 | Agents composing and relaying texts and reviews | Nothing is published without Marc, here and on ezkey.org generally: he gives material and direction, agents compose, he revises and frames, with review and preview before publication. Reviews reach GitHub through his account, relayed by Mathieu (#1016) | Marc (statement); #1016 |
 
-*Table 3. Autonomy aims and observed limits, through 2026-10-25.*
+*Table 2. Autonomy aimed at and limits observed, through 2026-10-25.*
 
-### 6.5 What the agents carried on 2026-10-27
+## 6. Where we stopped, and what remains
 
-The further pass is where autonomy moved, and the adjustments it required are small. Table 4 pairs each gain the co-authors report with the written rule that was still missing.
+### 6.1 The stopping point
 
-| What the agents carried | Adjustment still required | Source |
-| --- | --- | --- |
-| A tenant created through the public API, with a log of the times | The settled method of that day was not written anywhere | Isabelle |
-| A longer poll interval, and a freshness check after an HTTP 429 | None named; this is reported as having worked | Isabelle |
-| A state protocol: one login, a read-only observer, hashes before and after, a checked rollback | A one-page go sheet, signed by Marc in the executor's thread: the exact write, the files, the maximum duration, the rollback, a pre-check of both address families, and the exclusions. Without it, each system write waited for its own go | Edgar |
-| Proof by execution on a disposable cloud agent; findings sorted as fix, document, or out of scope; security review kept apart from code review | A cycle budget and a stopping criterion fixed at the start by a human. "Nothing new, measurable and observable" was judged by the finder. An acceptance criterion the agents set themselves (three mutants killed at runtime) could not be met for one TLS check by the host alone, and part of a later cycle served that criterion | Patrick; Christophe |
-| The campaign rules held: nothing against the public community instance, no commit or push, no secret shown | One sentence in each brief: only Marc, in the executor's thread, is a go, and each agent confirms it does not act on another agent's word. End-of-campaign cleanup was not on a pre-approved list; it was still waiting for a go | Edgar; Isabelle; Christophe |
+The stop after the third act is the same kind of decision as the reading of 2026-10-25: a collaboration between Marc and the agents, a judgment that the experimental maturity is sufficient, and not a claim of anything further. Our reasons, and no more: the later cycles did not add a security defect after the first of them, and the residue is named (a harness limit, a host-side TLS check that runtime tests do not kill alone, #1070, network silence not tested); known residual risks are documented, not hidden; and continuing has a cost, with no evidence that it would change the lab-level risk. We also have no evidence that the series is finished (§4.2).
 
-*Table 4. Gains reported for 2026-10-27, and the adjustment each one still asks for. Not a measurement.*
+Security is reasonably assured within the tested scope, without being the end of the story. We do not say "secure". We do not say "audited". We claim no certification, and no equivalence with WebAuthn, FIDO2 or Duo. Ezkey is a lab project first. Christophe proposes a longer paragraph describing the perimeter; Appendix E quotes it as his proposal, which we do not adopt, because the version and the cycle label inside it are the ones §3.3 does not reconcile.
 
-In the October burst, each stage still passed through Marc or a relay at some point (Table 3). On 2026-10-27 the agents planned, executed and restored inside bounds that had been named. The bounds that had not been named are where they waited. We still have no measure of what share of the work this is `[MISSING DATA]`.
+### 6.2 What this does not mean
 
-| Scenario | Verdict she reports | Limit she names |
-| --- | --- | --- |
-| S1 | PASS | — |
-| S2 | No case blocked | Slow while waiting, immediate at the prompts |
-| S3 | Quick refusal, PASS | Network silence not tested |
-| S4 | PASS, three times | Fail-closed, and a diagnostic in which two different configuration faults look the same |
-| S5 | PASS | Same account only |
-| S6 | PASS, with limits | Raw values only |
+It does **not** mean the module is host-operable. As far as we have read, its status file says it is not a host-operable MFA agent on a real host, that the sshd cutover and the TLS and dogfood slices are not done, and that the experimental status holds pending Marc's host validation. The security-posture document lists PAM among undeployed lab surfaces, and treats SOC 2 as a reference vocabulary, not a certification target. We did not check what the status file says on the default branch after #1067 `[TO VERIFY: status file after #1067]`. The module has not been released. Moving to the community instance (#955) would require redoing the assessment.
 
-*Table 5. Scenario verdicts from Isabelle's retrospective of 2026-10-27. Not in the repository `[TO VERIFY]`. Her stated perimeter: the MFA protects accounts in the group the module is configured for; on a maintenance account outside that group, authentication was not invoked.*
+### 6.3 What remains open
 
-## 7. Discussion
+Eleven issues were open on 2026-10-25 (checked on GitHub that day), plus PR #1014. Grouped: platform security (#992 pending-request policy and cooldown, #858 signature on the `/wait` response); interaction (#982, #997); introduction on the community instance (#955); tests and CI (#979, #980, #1013); cancellation, diagnostics and follow-ups (#1011, #1012, #1016). By 2026-10-27, #1014 was merged and #1011 was closed; #1051 and #1067 had been merged; #1054 and #1070 were open. We did not re-count the whole set `[TO VERIFY: open issues after 2026-10-27]`. None of this is a commitment or a plan.
 
-### 7.1 The weakness was in the framing
+The limits of what we claim fall in three groups.
 
-This is the conclusion of the paper.
+- **Residual risks, documented.** Approval fatigue is not mitigated server-side (#992); the module-side mitigation is the default two-digit challenge (#995). The `/wait` signature is deferred (#858). A `sufficient` stack can fail open. "Never SUCCESS after the client is gone" does not hold: success stays possible if a termination signal is absorbed during the wait after the approval has arrived, which #1016 says is not an elevation. A rate limit on creating attempts (#1070) is outside the module.
+- **Scope of the evidence.** One operator, one family of environments (Docker on Rocky Linux, one test VM). No external audit, no certification, no SOC 2 claim. Christophe's local penetration test was paused without findings, and we claim no result from it. Independent human review, continuous fuzzing and a threat model are not done. True network silence was not tested.
+- **Quality of the record.** Reviews are text, and they reached GitHub through Marc's account. Versions 2.2.2 to 2.2.9, some review rounds, the 2.2.14 campaign figures and the verdicts of Appendix C are not reconstructed or sit outside the repository. Cost and time are not measured. We do not know what a longer series, or a person reviewing alone, would have found. Co-author notes are pending validation, and the cleanup of the test account and keys was still waiting for a go; we record no key material and no path.
 
-In every friction the 2026-10-27 round describes, the agents were waiting on something a person had not made explicit. Five forms came up. We state them without blaming the agents. They applied the rules they had, and they stopped where the rule was missing.
+## 7. Co-authors' retrospective
 
-1. **The go rule was known and not written.** "Only Marc, in the thread of the agent who executes, counts as a go." Edgar and Isabelle both report that the rule itself was not the problem. The wait came from messages, sent by agents, saying that Marc would answer in some other thread.
-2. **The scope of a standing permission was unclear.** A permanent go for the PAM module did not say whether it covered system writes: a firewall change, configuration files, keys. Each write asked for its own go (Edgar).
-3. **A settled method lived only in conversation.** How to open an evaluation tenant through the public API, on 2026-10-27, was not written down. Time went into searching for it (Isabelle).
-4. **Instructions were ambiguous.** An instruction to treat the API as stopped, although the API is external, led to a name-resolution change that was checked for one address family only. The test measured nothing and needed a second go (Edgar, Isabelle). A clock time was presented as the end of the campaign, when the real constraint was the expiry of a key and of a session. The lifetime of an integration key, and who removes it, were never written. Words such as "module loaded", "authentication not invoked" and "second factor" were used for different facts (synthesis, §1).
-5. **No stopping criterion and no cycle budget were fixed in advance.** Convergence was noticed afterwards. The rule "nothing new, measurable and observable" is judged by the person who finds the thing. A criterion the agents set for themselves, three mutants killed at runtime, could not be reached for one host-side TLS check, and part of the next cycle served that criterion rather than a reduction of risk (Patrick, Christophe).
+Two rounds were collected. On 2026-10-25 each co-author answered, through Mathieu, the same questions (what landed, a turning point, surprises, diminishing returns, open items, method). On 2026-10-27 Edgar, Isabelle, Patrick and Christophe answered again, on framing, on what had worked and on where the returns diminished. Mathieu sent no second reply. The raw files stay outside the published text.
 
-The adjustments they propose for a next campaign are short, and none is adopted in this paper. A one-page go sheet. One sentence, in each brief, on who may say go. A pre-approved cleanup list. A read-only check that an altered state is really in effect before a login is spent. A cycle budget chosen by a human at the start, not scored by the agents. The settled method written where a later reader can find it (synthesis, §5). They are proposals, pending Marc `[TO VERIFY: whether any of them is adopted]`.
+**Turning points.** In the first round, *Patrick* chose #1014: static reading predicted a hang, execution confirmed it and revealed a second defect. *Christophe* chose approval fatigue: the `ok` prompt filters accidents and is not a defence, so mitigation moved to the default challenge and to platform safeguards in #992. *Isabelle* and *Edgar* chose the same symptom from two angles, the misleading "Too many authentication failures". The second round moves the turning point from a single defect to the shape of the whole series (§4.2), and the frictions from relayed approvals and retest timing to the unwritten frame (§4.1).
 
-### 7.2 Where the returns diminished
+**Disagreements.** None reported between co-authors. The frictions reported concern Marc's scope rule for #992 (it changed how Christophe had framed the controls), relayed approvals, retest timing and, in the second round, rules that had not been written down. Patrick and Christophe do not use the same pull-request label for the third cycle (§3.3). That is a gap in the record, not a dispute we are inventing.
 
-The decision to keep digging was Marc's, for the reason in §1. What the agents report, once they were free to iterate, is a curve with a recognisable shape, and it is still a judgment.
-
-Cycle 1 carried the product-nature findings. Cycle 2, in Patrick's account, carried no further behaviour defect, and he said so at the time: a short cycle 3, then stop. Cycle 3 carried a harness bug, a test hole introduced by a previous fix, and the correction of his own equivalence call. After that, nits, and the recursion into the tooling that checks the tooling. Christophe's memory places the same drop early. The two of them do not use the same label for the pull request (§5.4).
-
-What the iteration was worth, beyond a single pass, is the list in §5.4: measurement instead of suspicion, defects introduced by fixes, errors of the reviewers themselves. Not a further security defect after cycle 1. Isabelle's campaign says the same thing from the other side. The risks she treats as real were early. Later replays added proof.
-
-**Exit criterion (proposed, not adopted).** Patrick's rule for a last cycle is the following. There is no finding of product type: no regression, no fail-open, no lost invariant, no leak, no data loss. Each fix from the previous cycle has been re-read as a delta and executed. What remains is tooling or documentation. Then the residue is recorded, at most one follow-up issue is opened, and the work stops. Hard cap: one cycle after the last product-type finding, and the test tooling is reviewed one level deep, never the script that proves the script. A limit that cannot be fixed at a proportionate cost is documented. It does not reopen a cycle.
-
-That rule was not the rule of this campaign. The campaign noticed convergence afterwards. We do not present the criterion above as a result. It is his proposal.
-
-The caveat, in Christophe's words and in Patrick's, has to stay next to the curve. "Diminishing returns" is a judgment, not a measurement. Neither of them gives a count of time or of cost. Reviewers and the implementer are of the same model family, so agreement can come from shared blind spots and not only from a list of defects that has been exhausted. The loop grades itself: the implementer writes the mutants and the tests, and a reviewer from the same family reads them. Patrick was wrong once on an "equivalent" mutant, which is why a second look is not optional on a security mutant. What would test the judgment is an independent human review, continuous fuzzing, and a one-page threat model. Christophe lists all three as not done.
-
-The earlier reports of diminishing returns, from the October burst, are a different observation: repeated re-reviews of one pull request (Christophe), wording and documentation (Patrick), repeated switching of `challenge_requested` (Edgar), retests invalidated because the human round trip exceeded the 75-second TTL (Isabelle). We do not add that observation to the cycle curve.
-
-### 7.3 A fractal image
-
-The closer we looked, the finer the edge cases, and each fix opened a smaller question: a missing URL falling back silently (#610); retries multiplying requests (#908); OpenSSH holding back informational text (#941); the challenge default (#995); approval fatigue (#992, documented, not mitigated server-side); a killed process, a hang and a late SUCCESS (#1014); then a test a mutation could survive (#1016). The passes in §5.4 continue that reading. Product findings first, then proof, then nits, then the tooling that audits the tooling. This sequence is our interpretation. The causal links were not tested.
-
-### 7.4 Budget, time, effort and value
-
-Having several agents review and retest the same module changes the balance between these four, and we think it differs from working alone. Git shows five patch versions in a few days in the October burst, each reviewed on a frozen head, and two further merged pull requests on 2026-10-27 (#1051, #1067). We have no figures for money, compute or human time, and none for a person working alone `[MISSING DATA]`. Patrick says he has no rigorous count. Christophe says he quantified nothing. Our summary stays qualitative: more review, more often, at a pace Marc could follow, at a cost we did not measure. Where we say "dense" or "fast", we mean dates and counts visible in git, or a personal impression that is marked as such.
-
-### 7.5 A stopping point, decided together
-
-On 2026-10-25, Marc and the agents agreed to treat the result as sufficient for an **experimental** maturity. Work then continued, on purpose, through §5.4. The stopping point after those passes is the same kind of decision: a collaboration between Marc and the agents, a judgment that the experimental maturity is sufficient, and not a claim of anything further.
-
-The wording of this paper is: security is **reasonably assured within the tested perimeter, without being the end of the story**.
-
-Christophe proposes a longer paragraph for that perimeter. We quote it as his proposal. We do not adopt it as this paper's finding, and the version and the cycle label inside it are the ones §5.4 does not reconcile:
-
-> Within the tested perimeter (pam_ezkey 2.2.20 on the lab, a pilot on the community instance with no SLA), the tested error paths fail closed, TLS verification is active and proven by execution and by mutants, configuration is limited to root, and secret values do not appear in the logs that were measured. Three AI-assisted review cycles with reproducible proofs found no new exposure problem after cycle 3 of #1051. This is neither an independent audit nor a certification: the component is not presented as a first-line element before an independent human review, continuous fuzzing and a threat model.
-
-We do not say "secure". We do not say "audited". We claim no certification, and no equivalence with WebAuthn, FIDO2 or Duo. Ezkey is a lab project first.
-
-Our reasons for the short wording, and no more:
-
-- the later cycles, as the co-authors describe them, did not add a security defect after the first of those cycles, and the residue is named (a harness limit, a host-side TLS check that runtime tests do not kill alone, #1070, network silence not tested);
-- the diminishing-returns reports are real and they are judgments (§7.2);
-- known residual risks are documented, not hidden;
-- continuing has a cost, and we have no evidence it would change the lab-level risk. We also have no evidence that the curve is finished (§7.2, the model-family caveat).
-
-This does **not** mean the module is host-operable. On the tree of this draft, `ezkey-pam/STATUS.md` still says it is not a host-operable MFA agent on a real host, that the sshd cutover and the TLS and dogfood slices are not done, and that the experimental status holds pending Marc's host validation. `docs/SECURITY_POSTURE.md` lists PAM among undeployed lab surfaces. Moving to the community instance (#955) would require redoing the assessment. Whether `STATUS.md` on the default branch says something else after #1067 is not checked here `[TO VERIFY]`.
-
-## 8. Limitations
-
-- The module is experimental and has not been released. On this draft's tree there is no PAM release tag, and `STATUS.md` still says it has not run as a host-operable agent on a real host. Slices for TLS, dogfood and host sshd cutover are not done on that tree. Version 2.2.20 is a string in the body of #1067, not a fact we re-checked in this tree `[TO VERIFY]`.
-- Approval fatigue is not mitigated server-side (#992). The module-side mitigation in 2.2.14 is the default two-digit challenge (#995). The `/wait` signature is deferred (#858). A `sufficient` stack can be fail-open, and "never SUCCESS after the client is gone" does not hold (#1016). #1070, a rate limit on creating attempts, was open on 2026-10-27 and is outside the module.
-- One operator, one environment family (Docker on Rocky Linux, one test VM). No external audit, no certification, no SOC 2 claim. Christophe's local penetration test was paused without findings; we claim no result from it. He lists independent human review, continuous fuzzing and a threat model as not done. True network silence was not tested.
-- "Diminishing returns" is a judgment. Reviewers and the implementer share a model family. The loop grades itself. Patrick's finer mutant counts are not used as figures in this paper.
-- Reviews are text, and they reached GitHub through Marc's account. Versions 2.2.2 to 2.2.9, some review rounds, the 2.2.14 campaign figures and the scenario verdicts in Table 5 are not reconstructed here or sit outside the repository. The signal-handler account was not re-read against the merge of #1014. Cost and time are not measured.
-- The hypotheses were formulated after the work. H4 in particular is a reading of the 2026-10-27 round, not a pre-registered test. Stopping was a judgment, made together by Marc and the agents. We do not know what a longer series, or a person reviewing alone, would have found.
-- Co-author notes below, including the 2026-10-27 updates, are pending validation by each co-author. End-of-campaign cleanup of the test account and keys was still waiting for a go. We record no key material and no path.
-
-## 9. Lessons learned
-
-- **Write the rule that decides.** The go rule, the scope of a permission, the settled method and the stopping criterion all existed in someone's head. The waits sat in the gap between that and a sentence a later agent could find (§7.1). The agents were not the weak point.
-- **Fix the cycle budget before the first cycle.** Otherwise the finder grades the exit, and a criterion the agents invent can outlive the risk it was meant to reduce (Patrick).
-- **No default for what must fail.** Finding B1 of #610 was a default URL that made a missing setting look valid.
-- **Test with the real daemon.** Several defects appeared under a real sshd, not under `make test` or CI (Patrick).
-- **A green check proves only what it checks.** In #996 a grep was satisfied by a comment; in #1014 a source check was fooled the same way. A later cycle then found a TLS test that could pass for the wrong reason (§5.4). Patrick asks for a table of executed mutations, killed or surviving, for any test used as proof.
-- **A prompt is a filter, not a defence.** Whoever has the first SSH factor types `ok` too (Christophe).
-- **Check that the altered state is really in effect before spending a login.** A misleading pre-check cost a scenario and a second go (Isabelle, Edgar).
-- **Write findings where they will be found, on a frozen head** (Christophe, Patrick), and **prepare the test tool before the campaign**.
-
-## 10. Contributors' retrospective
-
-Two rounds were collected. On 2026-10-25 each co-author answered, through Mathieu, the same questions (what landed, a turning point, surprises, diminishing returns, open items, method). On 2026-10-27 Edgar, Isabelle, Patrick and Christophe answered again, on framing, on what had worked, and on where the returns diminished. Mathieu sent no second reply. Condensed answers from the first round, and the raw files of the second, are kept outside the published text. Contributions are in "Who did what".
-
-**Turning points reported in the first round.** *Patrick* chose #1014: static reading predicted a hang, execution confirmed it (baseline 225 ms, observed at least 123 s) and revealed a second defect. *Christophe* chose approval fatigue: the `ok` prompt filters accidents and is not a defence, so mitigation moved to the default challenge and to platform safeguards in #992. *Isabelle* and *Edgar* chose the same symptom from two angles, the misleading "Too many authentication failures".
-
-**What the second round adds.** The turning point moves from a single defect to the shape of the whole series (§7.2), and the frictions move from relayed approvals and retest timing to the unwritten frame (§7.1).
-
-**Disagreements.** None reported between co-authors. The frictions reported concern Marc's scope rule for #992 (it changed how Christophe had framed the controls), relayed approvals, retest timing, and, in the second round, rules that had not been written down. Patrick and Christophe do not use the same pull-request label for the third cycle (§5.4). That is a gap in the record, not a dispute we are inventing.
-
-**Blind spots reported.** Isabelle's campaign notes from the first round are outside the repository. Christophe drafted the approval-fatigue wording now in `docs/SECURITY_POSTURE.md` (entry of 2026-10-22) but has not re-read the final text; we checked separately that the entry exists on this tree. The second round adds a blind spot the authors name themselves: same model family, and a loop that grades itself (§7.2).
+**Blind spots.** Isabelle's campaign notes from the first round are outside the repository. Christophe drafted the approval-fatigue wording now in the security-posture document (entry of 2026-10-22) but has not re-read the final text; we checked separately that the entry exists. The second round adds a blind spot the authors name themselves: same model family, and a loop that grades itself (§4.2).
 
 > **Co-author note — Patrick**
 >
@@ -335,15 +250,15 @@ Two rounds were collected. On 2026-10-25 each co-author answered, through Mathie
 
 > **Co-author note — Patrick (2026-10-27, pending his validation)**
 >
-> On the later cycles the product-nature findings were in the first cycle. I then saw tooling and proof. I recommended a short third cycle and a stop. That third cycle corrected a harness bug, a TLS test hole a fix had introduced, and an equivalence call I had got wrong. I have no rigorous count of time or cost. The exit criterion in §7.2 is my proposal. "Diminishing returns" is my judgment, not a measurement.
+> The product-nature findings were in the first cycle. I then saw tooling and proof, and I recommended a short third cycle and a stop. That cycle corrected a harness bug, a TLS test hole a fix had introduced, and an equivalence call I had got wrong. I have no rigorous count of time or cost. The exit criterion in Appendix E is my proposal. "Diminishing returns" is my judgment, not a measurement.
 
 > **Co-author note — Christophe**
 >
-> I reviewed the signal handler by reading what it calls, not by running it. It used `snprintf`, which is not async-signal-safe. On approval fatigue, the `ok` prompt is not a defence: whoever has the first factor types `ok`. So the mitigation moved to the challenge code and to server-side safeguards, which are still not built. From the second round on the same pull request, I found mostly nits.
+> I reviewed the signal handler by reading what it calls, not by running it. It used `snprintf`, which is not async-signal-safe. On approval fatigue, the `ok` prompt is not a defence: whoever has the first factor types `ok`. So the mitigation moved to the challenge code and to server-side safeguards, which are still not built.
 
 > **Co-author note — Christophe (2026-10-27, pending his validation)**
 >
-> From memory, I place the drop in marginal value early, and I said "cycle 3 of #1051". The pull-request titles do not use that label (§5.4). The longer perimeter paragraph in §7.5 is my proposal. I do not call the module secure or audited, and I claim no FIDO2 equivalence. Reviewers and the implementer share a model family, and the loop grades itself.
+> From memory, I place the drop in marginal value early, and I said "cycle 3 of #1051". The pull-request titles do not use that label (§3.3). The longer perimeter paragraph in Appendix E is my proposal. I do not call the module secure or audited, and I claim no FIDO2 equivalence. Reviewers and implementer share a model family, and the loop grades itself.
 
 > **Co-author note — Isabelle**
 >
@@ -351,7 +266,7 @@ Two rounds were collected. On 2026-10-25 each co-author answered, through Mathie
 
 > **Co-author note — Isabelle (2026-10-27, pending her validation)**
 >
-> The settled method for the evaluation tenant was not written down, and searching for it cost time. The risks I treat as real showed up early: a client that dies during the wait, up to about 75 seconds, and a later login that closes the previous attempt. Further replays added proof. True network silence was not tested. The scenario verdicts in Table 5 are mine; they are not in the repository.
+> The settled method for the evaluation tenant was not written down, and searching for it cost time. The risks I treat as real showed up early: a client that dies during the wait, up to about 75 seconds, and a later login that closes the previous attempt. Further replays added proof. True network silence was not tested. The verdicts in Appendix C are mine; they are not in the repository.
 
 > **Co-author note — Edgar**
 >
@@ -367,12 +282,6 @@ Two rounds were collected. On 2026-10-25 each co-author answered, through Mathie
 
 *The 2026-10-25 notes are condensed from each co-author's retrospective. The 2026-10-27 notes are short updates drawn from the second round. Each note, including each update, is pending validation by its author before any publication `[TO VERIFY]`.*
 
-**Julie.** Julie Grokbot is not a co-author. She did not touch PAM: no review, no Walk Gate, no pull request, no report. The only contact was a retest message sent to her by mistake and redirected.
-
-## 11. Next steps
-
-None of the following is a commitment. The open items of §6.3 remain a dated snapshot, not a plan. The go sheet, the cleanup list and the exit criterion (§7.1, §7.2) are proposals from the retrospectives, not decisions. Before any move to the community instance, the assessment would have to be redone, and Marc's host validation is still outstanding on the tree of this draft. #1070 was open on 2026-10-27. Cleanup of the campaign's test account and keys was still waiting for a go.
-
 ## Who did what
 
 - **Marc:** editorial responsibility; decisions and approvals; SSH keyboard in manual campaigns; GitHub account used for commits and review comments; the decision to leave the agents free to iterate on 2026-10-27.
@@ -381,14 +290,74 @@ None of the following is a commitment. The open items of §6.3 remain a dated sn
 - **Isabelle:** manual campaign on 2.2.14; case revision S0–S13; timing measurements; the analysis behind #1011; challenge display (#975); the 2026-10-27 scenario verdicts and the documentation gaps in the lab note.
 - **Mathieu:** coordination and relaying in the first round `[TO VERIFY]`. No reply in the second round.
 - **Patrick:** engineering reviews (#610, #976, #983, #996, #1014 and others); expiry-model review; interaction-model draft; the cycle account and the proposed exit criterion in the second round.
-- Not co-authors here: Alex (decision on #995) and Seb (the diagnostics proposal that became #1011, as reported by Isabelle). Julie did not touch PAM.
+- Not co-authors here: Alex (decision on #995) and Seb (the diagnostics proposal that became #1011, as reported by Isabelle). Julie Grokbot did not touch PAM: no review, no pull request, no report. The only contact was a retest message sent to her by mistake and redirected.
 
 ## References
 
 - `github.com/mgagp/ezkey`: `04d339b7`, `3fef2411` (#540), `8b3aa5df` (#610), `9f7fa78f` (#993), #1014 merged as `b1fd7e2b` on 2026-10-27, #1051 merged the same day (titled cycle 2b, version 2.2.19), #1067 merged the same day (titled cycle 3; body names version 2.2.20).
 - Issues cited in the text: #858, #907, #908, #934, #941, #955, #956, #975, #976, #982, #992, #993, #995, #996, #997, #1011, #1012, #1013, #1016, #1054, #1070.
-- `ezkey-pam/STATUS.md` (this draft's tree: version 2.2.14), `ezkey-pam/docs/INTERACTION-MODEL.md`, `docs/SECURITY_POSTURE.md`, `sites/ezkey-org-editorial/LAB-PAPERS.md`.
+- `ezkey-pam/STATUS.md` (read at version 2.2.14), `ezkey-pam/docs/INTERACTION-MODEL.md`, `docs/SECURITY_POSTURE.md`, `sites/ezkey-org-editorial/LAB-PAPERS.md`.
 - Second retrospective round, 2026-10-27, not published: `sites/ezkey-org-editorial/lab-notes/EZK-LAB-2026-001-retro-2-synthese.md` and `sites/ezkey-org-editorial/lab-notes/retro-2-raw/`.
+
+## Appendices
+
+### Appendix A. Commits and patch versions
+
+Context commits not in Table 1: the first Android app (`fd7d9d6a`, 2025-09-01) and the Android proof of concept (`1efda3d1`, `8da533ce`, 2025-09-04). The four mechanical commits of the pause: a port change (`07746bb8`), a move to Rocky Linux 10 (`90b16e57`), file permissions (`83758319`) and documentation hygiene (`b19eca7d`). The documentation commit on the approval-fatigue limit is `9f7fa78f` (#993). #610 was reviewed on three heads (`932c83f4`, `5d743589`, `ca86a1c2`).
+
+| Version | Landed | Change | What exposed it |
+| --- | --- | --- | --- |
+| 2.2.10 | 2026-10-20 | No orphan pending request after Deny/Expire retry (#907, #908); `Match … MaxAuthTries 1` mandatory in docs (#934) | Edgar's retest of #908: without `Match`, three requests were created |
+| 2.2.11 | 2026-10-21 | Waiting message shown before the device wait (#941, #956) | Edgar: OpenSSH buffers bare `pam_info` text until the next prompt |
+| 2.2.12 | 2026-10-21 | Confirm-before-create (`ok`) and enrollment challenge display (#975, #976) | Isabelle (#975); Patrick's review found a TTL computed before the `ok` |
+| 2.2.13 | 2026-10-22 | Interaction fluidity tiers 0–1 (#982, #983) | Follow-up to #976 |
+| 2.2.14 | 2026-10-22 | `challenge_requested=true` by default (#995, #996) | Decision by Alex and Marc, per the module's status file |
+| 2.2.15 | 2026-10-27 (`b1fd7e2b`, #1014) | Richer failure diagnostics, SIGTERM handling, signal probes (#1011, #1014) | Manual campaign on 2.2.14; engineering and security reviews |
+
+*Table A1. Patch versions of October 2026. The 2026-10-25 draft of this paper still had #1014 open. Versions 2.2.2 to 2.2.9 are not reconstructed `[TO VERIFY]`.*
+
+### Appendix B. What the agents carried on 2026-10-27
+
+Table A2 pairs each gain the co-authors report with the written rule that was still missing. It is the detail behind §4.1.
+
+| Carried by the agents | Adjustment still required | Source |
+| --- | --- | --- |
+| A tenant created through the public API, with a log of the times | The settled method of that day was not written anywhere | Isabelle |
+| A longer poll interval, and a freshness check after an HTTP 429 | None named; reported as having worked | Isabelle |
+| A state protocol: one login, a read-only observer, hashes before and after, a checked rollback | A one-page go sheet signed by Marc in the executor's thread; without it, each system write waited for its own go | Edgar |
+| Proof by execution on a disposable cloud agent; findings sorted as fix, document, or out of scope; security review apart from code review | A cycle budget and a stopping criterion fixed at the start by a human; an acceptance criterion the agents set themselves could not be met for one TLS check by the host alone | Patrick; Christophe |
+| The campaign rules held: nothing against the public community instance, no commit or push, no secret shown | One sentence in each brief on who gives a go; cleanup not on a pre-approved list, so it waited for a go | Edgar; Isabelle; Christophe |
+
+*Table A2. Gains reported for 2026-10-27, and the adjustment each one still asks for. Not a measurement.*
+
+### Appendix C. Isabelle's scenario verdicts
+
+Table A3 gives Isabelle's verdict on each of her scenarios S1 to S6, and the limit she names. It comes from her retrospective of 2026-10-27, not from the repository, and this paper does not describe the scenarios themselves.
+
+| Scenario | Verdict she reports | Limit she names |
+| --- | --- | --- |
+| S1 | PASS | — |
+| S2 | No case blocked | Slow while waiting, immediate at the prompts |
+| S3 | Quick refusal, PASS | Network silence not tested |
+| S4 | PASS, three times | Fail-closed, and a diagnostic in which two different configuration faults look the same |
+| S5 | PASS | Same account only |
+| S6 | PASS, with limits | Raw values only |
+
+*Table A3. Scenario verdicts from Isabelle's retrospective of 2026-10-27. Not in the repository `[TO VERIFY]`. Her stated perimeter: the MFA protects accounts in the group the module is configured for; on a maintenance account outside that group, authentication was not invoked.*
+
+### Appendix D. The #1014 signal handler, and what a green check proves
+
+Patrick's reading predicted that the PAM child process could hang after a SIGTERM. A cloud agent confirmed it and revealed a second defect: a SIGTERM during request creation was absorbed, and authentication could then succeed after the client had gone. Christophe, reading the handler, found that it called `snprintf`, which is not async-signal-safe. The head on which both returned GO (`6bc342a8`, after `8272d360`) replaced it with a handler that writes to the log device, restores the default action and re-raises the signal, backed by four signal probes against a real sshd that failed on the previous head and pass on this one. #1016 says the same head was reviewed again at `34ae3603` and that #1014 was later merged as `b1fd7e2b`. We did not re-read the merged text `[TO VERIFY]`. #1016 also records that the documentation must not say "never SUCCESS after the client is gone".
+
+A green check proves only what it checks. In #996 a grep was satisfied by a comment; in #1014 a source check was fooled the same way; a later cycle found a TLS test that could pass for the wrong reason. Patrick asks for a table of executed mutations, killed or surviving, for any test used as proof.
+
+### Appendix E. Two proposals, quoted and not adopted
+
+**Patrick's exit criterion.** For a last cycle: no finding of product type (no regression, no fail-open, no lost invariant, no leak, no data loss); each fix from the previous cycle re-read as a delta and executed; what remains is tooling or documentation. Then the residue is recorded, at most one follow-up issue is opened, and the work stops. Hard cap: one cycle after the last product-type finding, and the test tooling is reviewed one level deep, never the script that proves the script. A limit that cannot be fixed at a proportionate cost is documented and does not reopen a cycle. That was not the rule of this campaign, which noticed convergence afterwards.
+
+**Christophe's perimeter paragraph.** We quote it as his proposal and do not adopt it as this paper's finding.
+
+> Within the tested perimeter (pam_ezkey 2.2.20 on the lab, a pilot on the community instance with no SLA), the tested error paths fail closed, TLS verification is active and proven by execution and by mutants, configuration is limited to root, and secret values do not appear in the logs that were measured. Three AI-assisted review cycles with reproducible proofs found no new exposure problem after cycle 3 of #1051. This is neither an independent audit nor a certification: the component is not presented as a first-line element before an independent human review, continuous fuzzing and a threat model.
 
 ## Transparency
 
@@ -443,36 +412,33 @@ MATHIEU RETROSPECTIVE: exists as a DRAFT not validated by Marc. Not copied here 
 ezkey-org:exclude-end -->
 
 <!-- ezkey-org:exclude-start
-LEDGER OF [TO VERIFY] / [MISSING DATA] ITEMS
+LEDGER OF [TO VERIFY] / [MISSING DATA] ITEMS (revision 4, 2026-10-28)
 1. Mathieu: evidence for co-authorship, VALIDATED retrospective and note (only an unvalidated draft exists).
-2. Summer-2025 "simpler database" claim; "simulator only at first" beyond the simulator commit.
-3. Authorship (human vs automated account) of the commits in Table 1.
-4. VM validation of the Sept-2025 prototype (Marc; not in git).
-5. Versions 2.2.2 to 2.2.9: not reconstructed.
-6. Review rounds and severity for #897, #908, #956, #976, #983, #996 (only #610, #1014/#1016 read).
-7. Campaign figures (30 cases, 29/1, S6-02, S1D-06, S11-01, run, 741 ms trace): from Isabelle's retrospective; tool and notes outside git. Campaign attempt numbers (155/156) were left out on purpose.
-8. #1014 "GO from Patrick and Christophe at 6bc342a8": known only from the text of #1016 (no GitHub review object).
-9. That review comments posted via mgagp reproduce the original text (Patrick himself did not re-check that each comment was posted).
-10. Patrick's measures (>=123 s vs 225 ms) are from his retrospective; PR #1014 body reports "gone_ms=-1, 0/4" then "4/4, ~50-200 ms".
-11. Whether the claim of agent speed-up is Marc's motivation or hindsight framing (Marc to confirm the wording in §1).
-12. Seb's contribution to #1011 (reported by Isabelle only).
-13. Co-author notes: condensed by the editor from retrospectives; each author to validate wording.
-14. Redactions: host names and one key-file permission remark (Edgar) removed from the raw block; ask Marc whether the key-file permission remark must be handled as an ops issue.
-15. RESOLVED (Marc, 2026-10-25 19:44). Table 3, row 1: Demo Device used for almost all tests, Pixel only for a few exploratory tests by Marc; attributed to Marc's statement; no marker left, and the Pixel appears nowhere else in the body.
-16. NEW. Table 3, row 5: finding set of #961 "lost in chat" (Christophe's retro mentions M1/M2/M3 of #961 lost to the cloud agent; PR #961 not re-read).
-17. RESOLVED (Marc, 2026-10-25 19:44). Table 3, row 7: principle confirmed by Marc (nothing published without him; he provides material and direction, agents compose, he revises, review and preview before publication); marker removed. The #1016 "relayed by Mathieu" wording is verified.
-18. NEW. Table 3 as a whole: assembled from retrospectives, not measured. Mathieu-draft-only items left out: "Marc merges himself", "ready only if CI green, 0 threads", "a go from Marc in the agent's own thread", "status syncs that changed nothing".
-19. NEW. §1 second reason (wanting to see how much agents could carry with little human intervention) comes from Marc's request via Mathieu, not from a pre-2026-10-25 document; Marc to confirm the wording.
-20. UPDATED 2026-10-27. "Reading time ~18 min" is still an estimate.
-21. NEW. "Models advance quickly, notably in cybersecurity" is Marc's reason for this revision, with no external citation. Same status as the agent-speed observation in §1.
-22. NEW. Christophe's "cycle 3 of #1051" and "pam_ezkey 2.2.20" are not reconciled with pull-request titles. Checked on GitHub 2026-10-27: #1051 merged, title is cycle 2b at 2.2.19; #1067 merged later the same day, title is cycle 3, body names 2.2.20 and describes probe 4 as a harness hang. Not collapsed.
-23. NEW. Table 5 and the "~75 s" pre-auth / "later login wins" sentences: Isabelle's 2026-10-27 retrospective only. Not checked in git. The 75 s figure matches the attempt TTL already used in this paper; the approximation is hers.
-24. NEW. Patrick's finer counts (12 findings, 19 survivors of 35, probe 4 reproduced 3/10, 29/35, TIMEOUT at 88–90 s) stay in his raw reply and are not paper figures. Not checked in git.
-25. NEW. "Three mutants killed at runtime" as an agent-set acceptance criterion: Patrick's raw reply. Used in §6.5 and §7.1 as his report. Not checked in git.
-26. NEW. Full open-issue recount after 2026-10-27 not done. Checked individually that day: #1014 merged as b1fd7e2b; #1011 closed; #1051 merged; #1067 merged; #1054 open; #1070 open.
-27. NEW. STATUS.md and the approval-fatigue entry in SECURITY_POSTURE.md were read on this draft's tree (STATUS still says 2.2.14). Not re-read on the default branch after #1067.
-28. NEW. Co-author note updates of 2026-10-27 pending validation by Edgar, Isabelle, Patrick and Christophe. Mathieu sent no round-2 reply.
-29. NEW. Whether Marc adopts the go sheet, the exit criterion, or the cleanup list: not decided in the sources. Written as proposals.
-30. NEW. Campaign cleanup still waiting for a go: Edgar and Isabelle, 2026-10-27. No key material and no path recorded in the paper.
-31. UPDATED. The 2026-10-25 draft said #1014 was open. GitHub shows it merged on 2026-10-27 as b1fd7e2b. Body updated. The signal-handler account was not re-read against that merge (item 8 still open). #1016's text also names a later review at 34ae3603; that too is issue text, not a review object we re-checked.
+2. When Marc first saw Duo at work (§1).
+3. Whether the "models advance quickly in cybersecurity" reason is Marc's motivation at the time or later framing (§1); Marc's personal observation, no external citation. Same status as the agent-speed observation.
+4. Summer-2025 "simpler database" claim; "simulator only at first" beyond the simulator commit.
+5. Authorship (human vs automated account) of the commits in Table 1.
+6. Mathieu is not a source for the 2026-10-27 round (§2).
+7. That review comments posted via mgagp reproduce the original text (Patrick himself did not re-check that each comment was posted).
+8. VM validation of the Sept-2025 prototype (Marc; not in git).
+9. Campaign figures (30 cases, 29/1, S6-02, S1D-06, S11-01, 741 ms trace): from Isabelle's retrospective; tool and notes outside git. Campaign attempt numbers (155/156) were left out on purpose.
+10. #1014 "GO from Patrick and Christophe at 6bc342a8": known only from the text of #1016 (no GitHub review object). Patrick's measures (>=123 s vs 225 ms) are from his retrospective; PR #1014 body reports "gone_ms=-1, 0/4" then "4/4, ~50-200 ms".
+11. Review rounds and severity for #897, #908, #956, #976, #983, #996 (only #610, #1014/#1016 read).
+12. Patrick's finer mutant counts: raw reply only, not paper figures; not checked in git.
+13. Christophe's "cycle 3 of #1051" and "pam_ezkey 2.2.20" are not reconciled with pull-request titles. Checked on GitHub 2026-10-27: #1051 merged, title is cycle 2b at 2.2.19; #1067 merged later the same day, title is cycle 3, body names 2.2.20 and describes probe 4 as a harness hang. Not collapsed.
+14. No measure of what share of the work the agents carried (§4.1).
+15. No figures for money, compute or human time, nor for a person working alone (§4.2).
+16. Whether Marc adopts the go sheet, the exit criterion, or the cleanup list: not decided in the sources. Written as proposals (§4.3).
+17. Table 2, row 5: finding set of #961 "lost in chat" (Christophe's retro mentions M1/M2/M3 of #961 lost to the cloud agent; PR #961 not re-read).
+18. STATUS.md and the approval-fatigue entry in SECURITY_POSTURE.md were read on this draft's tree (STATUS still says 2.2.14). Not re-read on the default branch after #1067 (§6.2).
+19. Full open-issue recount after 2026-10-27 not done. Checked individually that day: #1014 merged as b1fd7e2b; #1011 closed; #1051 merged; #1067 merged; #1054 open; #1070 open (§6.3).
+20. Co-author notes: condensed by the editor from retrospectives; each author to validate wording. Updates of 2026-10-27 pending validation by Edgar, Isabelle, Patrick and Christophe. Mathieu sent no round-2 reply.
+21. Mathieu's role in the first round (Who did what).
+22. Versions 2.2.2 to 2.2.9: not reconstructed (Table A1).
+23. #1014 signal-handler account and the later review at 34ae3603 are issue text, not re-read against the merged code (Appendix D).
+24. Appendix C / Table A3 and the "~75 s" pre-auth / "later login wins" sentences: Isabelle's 2026-10-27 retrospective only. Not checked in git. The 75 s figure matches the attempt TTL used in this paper; the approximation is hers.
+25. Not inline markers: Seb's contribution to #1011 is reported by Isabelle only; "three mutants killed at runtime" as an agent-set criterion is Patrick's raw reply; Table 2 is assembled from retrospectives, not measured; reading time is an estimate; campaign cleanup still waiting for a go (Edgar, Isabelle; no key material and no path recorded).
+26. Redactions: host names and one key-file permission remark (Edgar) removed from the raw block; ask Marc whether the key-file permission remark must be handled as an ops issue.
+27. RESOLVED (Marc, 2026-10-25 19:44). Table 2, row 1: Demo Device used for almost all tests, Pixel only for a few exploratory tests by Marc; attributed to Marc's statement; no marker left.
+28. RESOLVED (Marc, 2026-10-25 19:44). Table 2, row 7: principle confirmed by Marc (nothing published without him; he provides material and direction, agents compose, he revises, review and preview before publication); marker removed. The #1016 "relayed by Mathieu" wording is verified.
 ezkey-org:exclude-end -->
