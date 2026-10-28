@@ -95,6 +95,17 @@ mvn test -pl ezkey-demo-device -Dtest=EnrollmentStoreRecordJsonRoundtripTest
 - Generated package: `org.ezkey.demodevice.generated.dto`.
 - Hand-written HTTP: `AuthApiService` (WebClient + generated DTOs).
 
+## Fidelity vs Auth API and mobile FSM (#943)
+
+Draft target fidelity (pragmatic lab phone — not full mobile complexity), gap inventory
+(Auth/Integration HTTP outcomes, wait role split, mobile FSM confront), fix vs accept/omit, and
+agent-runnable verification notes:
+
+[`docs/analysis/943-demo-device-api-mobile-fidelity.md`](../docs/analysis/943-demo-device-api-mobile-fidelity.md)
+
+Normative client rules that also apply here: [`docs/CLIENT_BEHAVIOUR_CONTRACT.md`](../docs/CLIENT_BEHAVIOUR_CONTRACT.md).
+Canonical mobile FSM (reference app): [`ezkey_mobile/docs/MOBILE_APP_STATE_MACHINE.md`](../ezkey_mobile/docs/MOBILE_APP_STATE_MACHINE.md).
+
 ## Agent-assisted Admin UI login (clean-start)
 
 When an agent (Cursor MCP browser or similar) must approve passwordless Admin UI login for the
