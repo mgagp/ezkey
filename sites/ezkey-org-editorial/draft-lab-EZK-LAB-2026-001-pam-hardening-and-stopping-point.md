@@ -60,7 +60,8 @@ Revision-4 structure choices:
   collaborative stopping point in the Abstract.
 - Co-author notes kept nearly verbatim; cross-references updated (old §7.1 -> §4.1, §7.2 -> §4.2, §5.4 -> §3.3, §7.5 / exit
   criterion -> Appendix E).
-- Reading time ~13 min is an estimate for the main text, appendices excluded (same words-per-minute ratio as before).
+- Reading time ~12 min is an estimate for the main text (about 5,450 words), appendices excluded (same words-per-minute ratio as before, ~440 words/min).
+- Revision 5 (trim of redundancy, same through-line, no decision changed): Key findings and §1 shortened where they repeated §4; the "first frictions" paragraph of §3.2 cut (it duplicated §4.1 and Table 2); §3.2 #1014 paragraph shortened (detail stays in Appendix D); §4.2 no longer repeats Marc's observation at length and drops the sentence about earlier re-review reports (Table 2 carries them); §6.3 limits no longer repeat items already in the grouped list, §3.3 or §2 (#858, #1070, `sufficient`, network silence stay stated elsewhere); §7 turning points and co-author notes no longer repeat the body (#1014 figures, cycle 3 detail, Isabelle's live risks, the shared-model-family sentence kept in Blind spots and §4.2). Appendix C and D introductions shortened. No marker removed (24), no SHA or issue number removed, security sentence still exactly twice, Table 2 rows 1 and 7 unchanged.
 
 Marker convention: [TO VERIFY] / [MISSING DATA]; every marker is listed at the end in an exclude block.
 The French draft is the mirror of this revision. Still not for publication.
@@ -74,13 +75,13 @@ ezkey-org:exclude-end -->
 **Status:** draft
 **Date:** 2026-10-28
 **Keywords:** PAM, SSH, MFA, fail-closed, agent-assisted development, agent autonomy, human framing, diminishing returns, experimental
-**Reading time:** ~13 min
+**Reading time:** ~12 min
 
 ## Key findings
 
-- The weak point was the clarity of our own decisions and method, not the capability of the agents. In the 2026-10-27 round, every friction the co-authors describe came from something a person had not made explicit: a go rule (who may authorise a step) known but never written as one sentence, the scope of a standing permission, a method that lived only in conversation, ambiguous instructions, and no stopping criterion or cycle budget fixed in advance (§4.1).
-- Where the frame existed, the agents carried more of the work: a test tenant opened through the public API, a state protocol with hashes and a checked rollback, proof by execution on a disposable cloud agent. They still needed small written adjustments, not a different kind of agent (§4.1, Appendix B).
-- Marc and the agents stopped together when the returns diminished: the first pass found the product-level defects, and later cycles added tooling and proof. "Diminishing returns" is a judgment, not a measurement. Marc also judges, as a personal observation with no outside source, that AI capability in cybersecurity is advancing quickly, which is why the agents were left free to say what they saw and to iterate (§4.2, §6).
+- The weak point was the clarity of our own decisions and method, not the capability of the agents. In the 2026-10-27 round, every friction the co-authors describe came from something a person had not made explicit: a go rule, the scope of a permission, a method kept in conversation, ambiguous instructions, no stopping criterion fixed in advance (§4.1).
+- Where the frame existed, the agents carried much of the work: a test tenant opened through the public API, a state protocol with a checked rollback, proof by execution on a disposable cloud agent (§4.1, Appendix B).
+- Marc and the agents stopped together when the returns diminished: the first pass found the product-level defects, and later cycles added tooling and proof. "Diminishing returns" is a judgment, not a measurement. It was made while, in Marc's personal observation (no outside source), AI capability in cybersecurity advances quickly, which is why the agents were left free to iterate (§4.2, §6).
 - A prototype of about 900 lines, committed on 2025-09-03 and validated by hand, left no automated evidence. The repository then shows a year-long pause, with no trace of functional work on PAM, until work resumed on 2026-09-15 (§3.1).
 - The result is judged sufficient as an experimental maturity and nothing more. The module is not a host-operable agent, and moving to the community instance would require redoing the assessment (§6).
 
@@ -94,7 +95,7 @@ Marc first saw an SSH login protected by Duo at work, which was new to him `[TO 
 
 Ezkey is a lab project first, promised to no one. The realistic niche we see is passwordless, strong-cryptography protection of internal applications for a small internal staff. Going further would first require SOC 2-style discipline: a prerequisite, not a plan.
 
-Two further reasons shaped the experiment, both Marc's personal observations, with no outside source and no measurement. He has the impression that autonomous agents have become visibly faster at finding and fixing vulnerabilities, and he judges that models are advancing quickly in cybersecurity capability `[TO VERIFY: wording of this reason, given for the 2026-10-27 revision]`. That is why the agents were left free to say what they saw and to iterate: the point was to watch where a human and the agents converge on diminishing returns, not to pile up rounds. A third reason was to see how much of the work agents could carry with little human intervention (§5).
+Two further reasons shaped the experiment. The first is a personal observation of Marc's, with no outside source and no measurement: autonomous agents seem visibly faster at finding and fixing vulnerabilities, and AI capability in cybersecurity is advancing quickly `[TO VERIFY: wording of this reason, given for the 2026-10-27 revision]`. That is why the agents were left free to say what they saw and to iterate, to watch where a human and the agents converge on diminishing returns. The second was to see how much of the work agents could carry with little human intervention (§5).
 
 We formulated four hypotheses **after the fact**; none was written down before the work started. They make the reading explicit; they do not mean the experiment was designed around them.
 
@@ -144,23 +145,21 @@ Five patch versions followed in three days (2.2.10 to 2.2.14, 2026-10-20 to 2026
 
 The most useful result of that period was a misleading symptom. Isabelle ran a manual campaign on 2.2.14 (#996) on the test VM, with Marc at the SSH keyboard and on the Demo Device, recorded in a test-management tool outside the repository: 30 cases, 29 passed and 1 failed (S6-02, cancel and audit, now #1012). Marc recorded the milestone as "reached with reservations" (S1D-06, S11-01) `[TO VERIFY: figures come from Isabelle's retrospective of 2026-10-25; tool and notes are outside the repository]`. With `MaxAuthTries 1`, almost any internal error shows up as "Too many authentication failures". A debug trace of 2026-10-24 showed UNAVAIL after 741 ms and no request sent: the `ok` prompt had received an empty answer. Edgar also found that sshd's `LoginGraceTime` (120 s), not the module's 75 s timeout, bounds a real attempt. This led to #1011, #1014 and #1016.
 
-Findings kept getting finer. On #1014, Patrick's reading predicted that the module could hang after a termination signal. A cloud agent confirmed it (at least 123 seconds against a 225 ms baseline) and revealed a second defect: authentication could succeed after the client had gone. Christophe, reading the handler, found it called a function that is unsafe in a signal context. The fix, with four signal probes against a real sshd, got GO from both reviewers, which we know from the text of #1016 and not from a GitHub review object `[TO VERIFY]` (detail in Appendix D). We did not read every other review (#897, #908, #956, #976, #983, #996) and give no count of findings per round `[TO VERIFY: rounds and severity]`.
+Findings kept getting finer. On #1014, Patrick's reading predicted that the module could hang after a termination signal; a cloud agent confirmed it (at least 123 seconds against a 225 ms baseline) and revealed a second defect, an authentication that could succeed after the client had gone; Christophe found an unsafe call in the signal handler. Both reviewers returned GO on the fixed head, which we know from the text of #1016 and not from a GitHub review object `[TO VERIFY]` (detail in Appendix D). We did not read every other review (#897, #908, #956, #976, #983, #996) and give no count of findings per round `[TO VERIFY: rounds and severity]`.
 
 #992 (approval fatigue: pending-request limit, rate per enrollment, cooldown, alert on denial) was scoped, then rewritten in generic platform terms on Marc's instruction of 2026-10-22. A documentation commit (#993) states the limit plainly; #992 itself is not implemented. Christophe's point is that the `ok` prompt is a filter, not a defence: whoever has the first SSH factor types `ok` too.
-
-The first frictions showed here: a relayed "Marc agrees" was never a go for Edgar, and retests needing a human round trip of about 77 seconds exceeded the TTL, so some trials were invalid (Isabelle). §4.1 reads them together.
 
 ### 3.3 Third act: the convergence round
 
 On 2026-10-25, Marc and the agents agreed to treat the result as sufficient for an experimental maturity. That did not end the work. Marc left the agents free to keep going, for the reason in §1, so that the point of diminishing returns could be seen rather than assumed. What follows is drawn from the retrospectives of 2026-10-27 (a lab note and four raw replies, listed in References).
 
-Following Patrick, cycle 1 was the only pass that found something of product nature: no test killed the mutants of the authentication decision, and TLS verification was not guarded by any test. After that the work was tooling and proof. In cycle 2 he saw no further behaviour defect and recommended a short third cycle, then a stop. Cycle 3 corrected a bug in the test harness (probe 4 was a hang on a blocking open, not a product defect), a hole that an earlier fix had opened in a TLS test, and an equivalence call of his own: a mutant he had called equivalent was not. After that came nits, then a recursion: an audit of the tests, then of the script that audits the tests, then of that script's trap, with a low yield from the second level. We do not print his finer mutant counts; they stay in his raw reply `[TO VERIFY: those counts]`.
+Following Patrick, cycle 1 was the only pass that found something of product nature: no test killed the mutants of the authentication decision, and TLS verification was not guarded by any test. After that the work was tooling and proof. In cycle 2 he saw no further behaviour defect and recommended a short third cycle, then a stop. Cycle 3 corrected a bug in the test harness (probe 4 was a hang on a blocking open, not a product defect), a hole that an earlier fix had opened in a TLS test, and an equivalence call of his own: a mutant he had called equivalent was not. After that came nits, then a recursion: an audit of the tests, then of the script that audits the tests, with a low yield from the second level. We do not print his finer mutant counts; they stay in his raw reply `[TO VERIFY: those counts]`.
 
-What the iteration added beyond one pass, in his account, is a measurement in place of a suspicion, the detection of a defect a fix had introduced, and the correction of a reviewer's own error. His view that one pass plus an execution check of each fix would have caught almost everything is a judgment, not a count.
+What the iteration added beyond one pass, in his account, is a measurement in place of a suspicion, the detection of a defect a fix had introduced, and the correction of a reviewer's own error. That one pass plus an execution check of each fix would have caught almost everything is his judgment, not a count.
 
 On GitHub, #1067 (merged 2026-10-27) is titled as cycle 3 follow-ups after #1051, and its description names version 2.2.20. #1051, merged earlier the same day, is titled as follow-ups through cycle 2b at version 2.2.19. Christophe, writing from memory, places the drop in marginal value around "cycle 3 of #1051" and also names version 2.2.20. We do not treat those labels as the same object `[TO VERIFY: cycle label and 2.2.20]`.
 
-On the live side, Isabelle reports that the risks she treats as real were found early. While a login is waiting, the module does not see the client die, so a pre-authentication process can last up to about 75 seconds, bounded by the TTL. A later login wins and closes the previous attempt. Replays from a second client operating system added proof of the same server behaviour, not a new risk (verdicts in Appendix C). True network silence was not tested, because it had no go. The open signal Christophe still names is a rate limit on creating authentication attempts (#1070, open on 2026-10-27, outside the module, not measured).
+On the live side, Isabelle reports that the risks she treats as real were found early: while a login is waiting the module does not see the client die, so a pre-authentication process can last up to about 75 seconds, bounded by the TTL, and a later login closes the previous attempt. Replays from a second client operating system added proof, not a new risk (verdicts in Appendix C). True network silence was not tested, because it had no go. The open signal Christophe still names is a rate limit on creating authentication attempts (#1070, open on 2026-10-27, outside the module, not measured).
 
 ## 4. What we learned
 
@@ -174,15 +173,15 @@ This is the main conclusion of the paper. It is Marc's own reading, and the co-a
 4. **Instructions were ambiguous.** Treating the API as stopped, although it is external, led to a name-resolution change checked for one address family only: the test measured nothing and needed a second go. A clock time was presented as the end of the campaign when the real constraint was the expiry of a key and of a session. Words such as "module loaded", "authentication not invoked" and "second factor" were used for different facts (Edgar, Isabelle).
 5. **No stopping criterion and no cycle budget were fixed in advance.** Convergence was noticed afterwards, and "nothing new, measurable and observable" is judged by the person who finds the thing. A criterion the agents set for themselves, three mutants killed at runtime, could not be reached for one host-side TLS check, and part of the next cycle served that criterion rather than a reduction of risk (Patrick, Christophe).
 
-The agents were not the weak point, because where the frame existed they carried a lot. The rules that helped, in Christophe's list: nothing aimed at the public community instance, no commit or push from the campaign, no secret shown, proof by execution on a disposable cloud agent, findings sorted as fix, document or out of scope, and security review kept apart from code review. On 2026-10-27 the agents planned, executed and restored inside bounds that had been named, and where a bound had not been named, they waited (Appendix B). We have no measure of what share of the work this is `[MISSING DATA]`.
+The agents were not the weak point, because where the frame existed they carried a lot. The rules that helped, in Christophe's list (detail in Appendix B): nothing aimed at the public community instance, no commit or push from the campaign, no secret shown, proof by execution on a disposable cloud agent, findings sorted as fix, document or out of scope. On 2026-10-27 the agents planned, executed and restored inside bounds that had been named, and where a bound had not been named, they waited. We have no measure of what share of the work this is `[MISSING DATA]`.
 
 ### 4.2 Diminishing returns, and a field that moves fast
 
 We stopped when the returns diminished. The shape of the series is recognisable: product-level findings first, then proof, then nits, then the tooling that audits the tooling. That sequence is our interpretation; we did not test the causal links.
 
-Marc judges that AI capability in cybersecurity is advancing quickly. This is his personal observation; we cite no outside source and did not measure it. Facing that pace, we did not want to fix in advance how far the agents should go. We wanted to see where they converge, and we did not want to go on past the point where a further cycle bought tooling and proof but no new defect.
+Marc's personal observation, with no outside source and no measurement, is that AI capability in cybersecurity is advancing quickly. Facing that pace, we did not fix in advance how far the agents should go: we wanted to see where they converge, and we did not want to go on past the point where a further cycle bought tooling and proof but no new defect.
 
-The caveat has to stay next to the series. "Diminishing returns" is a judgment, not a measurement, and neither Patrick nor Christophe gives a count of time or cost. Reviewers and implementer are of the same model family, so agreement can come from shared blind spots and not only from an exhausted list of defects. The loop grades itself: the implementer writes the mutants and the tests, and a reviewer of the same family reads them. Patrick was wrong once on a mutant he called equivalent, which is why a second look is not optional on a security mutant. An independent human review, continuous fuzzing and a one-page threat model would test the judgment; Christophe lists all three as not done. Patrick's proposed rule for a last cycle was not the rule of this campaign (Appendix E). Earlier reports of diminishing returns from the October hardening (repeated re-reviews, retests invalidated by the TTL) are a different observation and are not added to the series.
+The caveat has to stay next to the series. "Diminishing returns" is a judgment, not a measurement, and neither Patrick nor Christophe gives a count of time or cost. Reviewers and implementer are of the same model family, so agreement can come from shared blind spots and not only from an exhausted list of defects. The loop grades itself: the implementer writes the mutants and the tests, and a reviewer of the same family reads them. Patrick was wrong once on a mutant he called equivalent, which is why a second look is not optional on a security mutant. An independent human review, continuous fuzzing and a one-page threat model would test the judgment; Christophe lists all three as not done. Patrick's proposed rule for a last cycle was not the rule of this campaign (Appendix E).
 
 On budget, time and value, git shows five patch versions in a few days and two further merged pull requests on 2026-10-27 (#1051, #1067). We have no figures for money, compute or human time, and none for a person working alone `[MISSING DATA]`. Our summary stays qualitative: more review, more often, at a pace Marc could follow, at a cost we did not measure.
 
@@ -218,7 +217,7 @@ Part of the experiment aimed at letting agents do more of the work with less hum
 
 The stop after the third act is the same kind of decision as the reading of 2026-10-25: a collaboration between Marc and the agents, a judgment that the experimental maturity is sufficient, and not a claim of anything further. Our reasons, and no more: the later cycles did not add a security defect after the first of them, and the residue is named (a harness limit, a host-side TLS check that runtime tests do not kill alone, #1070, network silence not tested); known residual risks are documented, not hidden; and continuing has a cost, with no evidence that it would change the lab-level risk. We also have no evidence that the series is finished (§4.2).
 
-Security is reasonably assured within the tested scope, without being the end of the story. We do not say "secure". We do not say "audited". We claim no certification, and no equivalence with WebAuthn, FIDO2 or Duo. Ezkey is a lab project first. Christophe proposes a longer paragraph describing the perimeter; Appendix E quotes it as his proposal, which we do not adopt, because the version and the cycle label inside it are the ones §3.3 does not reconcile.
+Security is reasonably assured within the tested scope, without being the end of the story. We do not say "secure" or "audited", and we claim no certification and no equivalence with WebAuthn, FIDO2 or Duo. Christophe proposes a longer perimeter paragraph; Appendix E quotes it as his proposal, which we do not adopt, because the version and the cycle label inside it are the ones §3.3 does not reconcile.
 
 ### 6.2 What this does not mean
 
@@ -230,15 +229,15 @@ Eleven issues were open on 2026-10-25 (checked on GitHub that day), plus PR #101
 
 The limits of what we claim fall in three groups.
 
-- **Residual risks, documented.** Approval fatigue is not mitigated server-side (#992); the module-side mitigation is the default two-digit challenge (#995). The `/wait` signature is deferred (#858). A `sufficient` stack can fail open. "Never SUCCESS after the client is gone" does not hold: success stays possible if a termination signal is absorbed during the wait after the approval has arrived, which #1016 says is not an elevation. A rate limit on creating attempts (#1070) is outside the module.
-- **Scope of the evidence.** One operator, one family of environments (Docker on Rocky Linux, one test VM). No external audit, no certification, no SOC 2 claim. Christophe's local penetration test was paused without findings, and we claim no result from it. Independent human review, continuous fuzzing and a threat model are not done. True network silence was not tested.
-- **Quality of the record.** Reviews are text, and they reached GitHub through Marc's account. Versions 2.2.2 to 2.2.9, some review rounds, the 2.2.14 campaign figures and the verdicts of Appendix C are not reconstructed or sit outside the repository. Cost and time are not measured. We do not know what a longer series, or a person reviewing alone, would have found. Co-author notes are pending validation, and the cleanup of the test account and keys was still waiting for a go; we record no key material and no path.
+- **Residual risks, documented.** Approval fatigue is not mitigated server-side (#992); the module-side mitigation is the default two-digit challenge (#995). "Never SUCCESS after the client is gone" does not hold: success stays possible if a termination signal is absorbed during the wait after the approval has arrived, which #1016 says is not an elevation.
+- **Scope of the evidence.** One operator, one family of environments (Docker on Rocky Linux, one test VM). No external audit, no certification, no SOC 2 claim. Christophe's local penetration test was paused without findings, and we claim no result from it. Independent human review, continuous fuzzing and a threat model are not done.
+- **Quality of the record.** Reviews are text, and they reached GitHub through Marc's account. Versions 2.2.2 to 2.2.9, some review rounds, the 2.2.14 campaign figures and the verdicts of Appendix C are not reconstructed or sit outside the repository. Cost and time are not measured. We do not know what a longer series, or a person reviewing alone, would have found. Co-author notes are pending validation, and cleanup of the test account and keys still waited for a go.
 
 ## 7. Co-authors' retrospective
 
 Two rounds were collected. On 2026-10-25 each co-author answered, through Mathieu, the same questions (what landed, a turning point, surprises, diminishing returns, open items, method). On 2026-10-27 Edgar, Isabelle, Patrick and Christophe answered again, on framing, on what had worked and on where the returns diminished. Mathieu sent no second reply. The raw files stay outside the published text.
 
-**Turning points.** In the first round, *Patrick* chose #1014: static reading predicted a hang, execution confirmed it and revealed a second defect. *Christophe* chose approval fatigue: the `ok` prompt filters accidents and is not a defence, so mitigation moved to the default challenge and to platform safeguards in #992. *Isabelle* and *Edgar* chose the same symptom from two angles, the misleading "Too many authentication failures". The second round moves the turning point from a single defect to the shape of the whole series (§4.2), and the frictions from relayed approvals and retest timing to the unwritten frame (§4.1).
+**Turning points.** In the first round, *Patrick* chose #1014, *Christophe* approval fatigue (#992), and *Isabelle* and *Edgar* the same symptom from two angles, the misleading "Too many authentication failures" (§3.2). The second round moves the turning point from a single defect to the shape of the whole series (§4.2), and the frictions from relayed approvals and retest timing to the unwritten frame (§4.1).
 
 **Disagreements.** None reported between co-authors. The frictions reported concern Marc's scope rule for #992 (it changed how Christophe had framed the controls), relayed approvals, retest timing and, in the second round, rules that had not been written down. Patrick and Christophe do not use the same pull-request label for the third cycle (§3.3). That is a gap in the record, not a dispute we are inventing.
 
@@ -246,11 +245,11 @@ Two rounds were collected. On 2026-10-25 each co-author answered, through Mathie
 
 > **Co-author note — Patrick**
 >
-> On #1014 I read the SIGTERM path and predicted a hang. A cloud agent ran it: at least 123 seconds against a 225 ms baseline, and a second defect, an authentication that could succeed after the client had left. Neither was visible to `make test` or to CI. I now ask for a table of mutations that were run, killed or surviving, and I mark every claim as executed or reasoned.
+> On #1014 I read the SIGTERM path and predicted a hang; execution confirmed it and showed a second defect. Neither was visible to `make test` or to CI. I now ask for a table of mutations that were run, killed or surviving, and I mark every claim as executed or reasoned.
 
 > **Co-author note — Patrick (2026-10-27, pending his validation)**
 >
-> The product-nature findings were in the first cycle. I then saw tooling and proof, and I recommended a short third cycle and a stop. That cycle corrected a harness bug, a TLS test hole a fix had introduced, and an equivalence call I had got wrong. I have no rigorous count of time or cost. The exit criterion in Appendix E is my proposal. "Diminishing returns" is my judgment, not a measurement.
+> The product-nature findings were in the first cycle; after that I saw tooling and proof, and I recommended a short third cycle and a stop. I have no rigorous count of time or cost. The exit criterion in Appendix E is my proposal. "Diminishing returns" is my judgment, not a measurement.
 
 > **Co-author note — Christophe**
 >
@@ -258,15 +257,14 @@ Two rounds were collected. On 2026-10-25 each co-author answered, through Mathie
 
 > **Co-author note — Christophe (2026-10-27, pending his validation)**
 >
-> From memory, I place the drop in marginal value early, and I said "cycle 3 of #1051". The pull-request titles do not use that label (§3.3). The longer perimeter paragraph in Appendix E is my proposal. I do not call the module secure or audited, and I claim no FIDO2 equivalence. Reviewers and implementer share a model family, and the loop grades itself.
-
+> From memory, I place the drop in marginal value early, and I said "cycle 3 of #1051". The pull-request titles do not use that label (§3.3). The longer perimeter paragraph in Appendix E is my proposal. I do not call the module secure or audited, and I claim no FIDO2 equivalence.
 > **Co-author note — Isabelle**
 >
 > The intermittent "Too many authentication failures" cost me time because I looked at Cloudflare, the API and a cooldown. A debug trace showed an empty answer to the `ok` prompt and no request sent. I could not have gone on without Marc on the phone. Our retests were slower than the 75-second TTL; an automated approval pilot was needed.
 
 > **Co-author note — Isabelle (2026-10-27, pending her validation)**
 >
-> The settled method for the evaluation tenant was not written down, and searching for it cost time. The risks I treat as real showed up early: a client that dies during the wait, up to about 75 seconds, and a later login that closes the previous attempt. Further replays added proof. True network silence was not tested. The verdicts in Appendix C are mine; they are not in the repository.
+> The settled method for the evaluation tenant was not written down, and searching for it cost time. The risks I treat as real showed up early (§3.3). The verdicts in Appendix C are mine; they are not in the repository.
 
 > **Co-author note — Edgar**
 >
@@ -332,7 +330,7 @@ Table A2 pairs each gain the co-authors report with the written rule that was st
 
 ### Appendix C. Isabelle's scenario verdicts
 
-Table A3 gives Isabelle's verdict on each of her scenarios S1 to S6, and the limit she names. It comes from her retrospective of 2026-10-27, not from the repository, and this paper does not describe the scenarios themselves.
+Isabelle's verdict on each of her scenarios S1 to S6, with the limit she names, from her retrospective of 2026-10-27; this paper does not describe the scenarios.
 
 | Scenario | Verdict she reports | Limit she names |
 | --- | --- | --- |
@@ -347,7 +345,7 @@ Table A3 gives Isabelle's verdict on each of her scenarios S1 to S6, and the lim
 
 ### Appendix D. The #1014 signal handler, and what a green check proves
 
-Patrick's reading predicted that the PAM child process could hang after a SIGTERM. A cloud agent confirmed it and revealed a second defect: a SIGTERM during request creation was absorbed, and authentication could then succeed after the client had gone. Christophe, reading the handler, found that it called `snprintf`, which is not async-signal-safe. The head on which both returned GO (`6bc342a8`, after `8272d360`) replaced it with a handler that writes to the log device, restores the default action and re-raises the signal, backed by four signal probes against a real sshd that failed on the previous head and pass on this one. #1016 says the same head was reviewed again at `34ae3603` and that #1014 was later merged as `b1fd7e2b`. We did not re-read the merged text `[TO VERIFY]`. #1016 also records that the documentation must not say "never SUCCESS after the client is gone".
+A cloud agent confirmed Patrick's predicted hang after a SIGTERM and showed that a SIGTERM during request creation was absorbed, so authentication could succeed after the client had gone. Christophe, reading the handler, found that it called `snprintf`, which is not async-signal-safe. The head on which both returned GO (`6bc342a8`, after `8272d360`) replaced it with a handler that writes to the log device, restores the default action and re-raises the signal, backed by four signal probes against a real sshd that failed on the previous head and pass on this one. #1016 says the same head was reviewed again at `34ae3603` and that #1014 was later merged as `b1fd7e2b`; we did not re-read the merged text `[TO VERIFY]`. #1016 also records that the documentation must not say "never SUCCESS after the client is gone".
 
 A green check proves only what it checks. In #996 a grep was satisfied by a comment; in #1014 a source check was fooled the same way; a later cycle found a TLS test that could pass for the wrong reason. Patrick asks for a table of executed mutations, killed or surviving, for any test used as proof.
 
