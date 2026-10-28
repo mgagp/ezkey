@@ -751,5 +751,115 @@ grep -E '(^|[[:space:]])down([[:space:]]|$)' "$REC_LOG" >/dev/null \
   && echo "ok - default preflight still invokes compose down" && pass=$((pass+1)) \
   || { echo "not ok - default preflight still invokes compose down"; fail=$((fail+1)); cat "$REC_LOG"; }
 
+# 12) Playwright regenerates Orval before UI tests (#915 defect 6).
+# Fake npm records script order; fake curl satisfies stack_up (Admin+Crypto probes);
+# all_healthy keeps check_replicas from rewriting GREEN→AMBER. Failing generate:api
+# must RED and must not invoke UI test npm scripts.
+NPM_REC_BIN="$TMP/bin-npm-record"
+NPM_REC_LOG="$TMP/npm-calls.log"
+mkdir -p "$NPM_REC_BIN"
+: >"$NPM_REC_LOG"
+cat >"$NPM_REC_BIN/npm" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+# Record "run <script>" lines for generate:api vs test:browser* ordering.
+printf '%s\n' "$*" >>"${FAKE_NPM_CALL_LOG:?}"
+if [[ "${1:-}" == "run" && "${2:-}" == "generate:api" && "${FAKE_NPM_GENERATE_FAIL:-0}" == "1" ]]; then
+  echo "fake-npm: generate:api failed (test stub)" >&2
+  exit 1
+fi
+exit 0
+EOF
+chmod +x "$NPM_REC_BIN/npm"
+# stack_up: curl -sf http://127.0.0.1:9080/... && curl -sf http://127.0.0.1:8084/...
+cat >"$NPM_REC_BIN/curl" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+chmod +x "$NPM_REC_BIN/curl"
+
+PW_SKIP=(
+  --skip preflight --skip unit-tests --skip clean-start --skip post-clean-health
+  --skip functional-tests --skip elective-tests
+  --skip churn-init --skip churn --skip health
+)
+
+# Seed the full gate HA_REPLICAS set (harness all_healthy only covers admin-api-1/2).
+seed_gate_replicas_healthy() {
+  local n
+  for n in ezkey-admin-api-1 ezkey-admin-api-2 \
+           ezkey-auth-api-1 ezkey-auth-api-2 \
+           ezkey-integration-api-1 ezkey-integration-api-2 \
+           ezkey-crypto-api-ha; do
+    set_replica "$n" running healthy 0
+  done
+}
+
+# 12a) generate:api runs before UI test npm scripts.
+seed_gate_replicas_healthy
+: >"$NPM_REC_LOG"
+PW_OK_OUT="$TMP/playwright-orval-ok"
+set +e
+(
+  cd "$ROOT"
+  FAKE_NPM_CALL_LOG="$NPM_REC_LOG" PATH="$NPM_REC_BIN:$PATH" \
+    ./scripts/quality-gate.sh "${PW_SKIP[@]}" \
+    >"$PW_OK_OUT.log" 2>&1
+)
+pw_ok_ec=$?
+set -e
+# Skipped phases → exit 4 when playwright GREEN; RED would be 1.
+[[ "$pw_ok_ec" -eq 4 || "$pw_ok_ec" -eq 0 ]] \
+  && echo "ok - playwright+Orval regen → exit $pw_ok_ec (not NO-GO)" && pass=$((pass+1)) \
+  || { echo "not ok - playwright+Orval regen unexpected exit $pw_ok_ec"; fail=$((fail+1)); \
+       cat "$PW_OK_OUT.log" || true; cat "$NPM_REC_LOG" || true; }
+PW_OK_RUN="$(sed -n 's/.*run dir: //p' "$PW_OK_OUT.log" | head -1)"
+[[ -n "$PW_OK_RUN" && -f "$PW_OK_RUN/phases.tsv" ]] \
+  && grep -E $'^playwright\tGREEN\t' "$PW_OK_RUN/phases.tsv" >/dev/null \
+  && echo "ok - playwright phase GREEN after generate:api" && pass=$((pass+1)) \
+  || { echo "not ok - playwright phase GREEN after generate:api"; fail=$((fail+1)); \
+       echo "run_dir=${PW_OK_RUN:-missing}"; cat "$PW_OK_OUT.log" || true; \
+       [[ -n "${PW_OK_RUN:-}" ]] && cat "$PW_OK_RUN/phases/playwright.log" 2>/dev/null || true; \
+       [[ -n "${PW_OK_RUN:-}" ]] && cat "$PW_OK_RUN/phases.tsv" 2>/dev/null || true; }
+# First npm run must be generate:api; a UI-test script must appear later.
+gen_line="$(grep -nE '^run generate:api([[:space:]]|$)' "$NPM_REC_LOG" | head -1 | cut -d: -f1)"
+ui_line="$(grep -nE '^run test:browser' "$NPM_REC_LOG" | head -1 | cut -d: -f1)"
+[[ -n "$gen_line" && -n "$ui_line" && "$gen_line" -lt "$ui_line" ]] \
+  && echo "ok - generate:api before test:browser* (lines $gen_line < $ui_line)" && pass=$((pass+1)) \
+  || { echo "not ok - generate:api before test:browser* (gen=$gen_line ui=$ui_line)"; fail=$((fail+1)); \
+       cat "$NPM_REC_LOG" || true; }
+
+# 12b) failing generate:api → RED; UI tests never invoked.
+seed_gate_replicas_healthy
+: >"$NPM_REC_LOG"
+PW_FAIL_OUT="$TMP/playwright-orval-fail"
+set +e
+(
+  cd "$ROOT"
+  FAKE_NPM_CALL_LOG="$NPM_REC_LOG" FAKE_NPM_GENERATE_FAIL=1 PATH="$NPM_REC_BIN:$PATH" \
+    ./scripts/quality-gate.sh "${PW_SKIP[@]}" \
+    >"$PW_FAIL_OUT.log" 2>&1
+)
+pw_fail_ec=$?
+set -e
+assert_eq "$pw_fail_ec" "1" "generate:api fail → exit 1 (NO-GO)"
+PW_FAIL_RUN="$(sed -n 's/.*run dir: //p' "$PW_FAIL_OUT.log" | head -1)"
+[[ -n "$PW_FAIL_RUN" && -f "$PW_FAIL_RUN/phases.tsv" ]] \
+  && grep -E $'^playwright\tRED\t' "$PW_FAIL_RUN/phases.tsv" >/dev/null \
+  && echo "ok - generate:api fail → playwright RED" && pass=$((pass+1)) \
+  || { echo "not ok - generate:api fail → playwright RED"; fail=$((fail+1)); \
+       echo "run_dir=${PW_FAIL_RUN:-missing}"; cat "$PW_FAIL_OUT.log" || true; }
+[[ -n "$PW_FAIL_RUN" && -f "$PW_FAIL_RUN/phases/playwright.log" ]] \
+  && grep -q 'refusing Playwright with a stale Orval client' "$PW_FAIL_RUN/phases/playwright.log" \
+  && echo "ok - generate:api fail → clear stale-client note in log" && pass=$((pass+1)) \
+  || { echo "not ok - generate:api fail → clear stale-client note in log"; fail=$((fail+1)); \
+       [[ -n "${PW_FAIL_RUN:-}" ]] && cat "$PW_FAIL_RUN/phases/playwright.log" 2>/dev/null || true; }
+grep -E '^run test:browser' "$NPM_REC_LOG" >/dev/null \
+  && { echo "not ok - generate:api fail must not run test:browser*"; fail=$((fail+1)); cat "$NPM_REC_LOG"; } \
+  || { echo "ok - generate:api fail → no test:browser*"; pass=$((pass+1)); }
+grep -E '^run generate:api([[:space:]]|$)' "$NPM_REC_LOG" >/dev/null \
+  && echo "ok - generate:api was attempted before abort" && pass=$((pass+1)) \
+  || { echo "not ok - generate:api was attempted before abort"; fail=$((fail+1)); cat "$NPM_REC_LOG"; }
+
 echo "passes=$pass fails=$fail"
 [[ "$fail" -eq 0 ]]

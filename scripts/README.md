@@ -132,6 +132,8 @@ seconds (BSD `date` on macOS). `#915` lot 1: portable `sed '$d'` for phase rewri
 Surefire summary excludes `Time elapsed` class lines, compose bound uses
 `timeout`/`gtimeout` or warns unbound. `#915` defect 3: `--no-clean-start` does not
 `docker compose down -v` (reuses stack) and skips `unit-tests` for stack-up RAM.
+`#915` defect 6: Playwright regenerates the Orval client (`generate:api`) first so a
+stale gitignored client cannot false-RED the suite.
 CI job `quality-gate` runs the HA helper tests.
 
 ```bash
