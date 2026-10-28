@@ -387,3 +387,70 @@ classify_clean_start_verdict() {
     echo GREEN
   fi
 }
+
+# Rewrite last phases.tsv row: optional new verdict + note.
+# Uses POSIX `sed '$d'` — BSD head on macOS rejects `head -n -1` (#915 defect 2).
+# Expected global: PHASE_TSV.
+rewrite_last_phase() {
+  local new_verdict="${1:-}" note="${2:-}"
+  local tmp last name ver code dur log counts
+  tmp="$(mktemp)"
+  sed '$d' "$PHASE_TSV" >"$tmp"
+  last="$(tail -1 "$PHASE_TSV")"
+  name="$(echo "$last" | cut -f1)"
+  ver="$(echo "$last" | cut -f2)"
+  code="$(echo "$last" | cut -f3)"
+  dur="$(echo "$last" | cut -f4)"
+  log="$(echo "$last" | cut -f5)"
+  counts="$(echo "$last" | cut -f6)"
+  [[ -n "$new_verdict" ]] && ver="$new_verdict"
+  [[ -z "$note" ]] && note="$(echo "$last" | cut -f7)"
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+    "$name" "$ver" "$code" "$dur" "$log" "$counts" "$note" >>"$tmp"
+  mv "$tmp" "$PHASE_TSV"
+}
+
+# Sum Surefire module totals from a build log (display-only; verdict uses exit code).
+# Exclude per-class lines (`… Time elapsed … in <Class>`) so class + module lines
+# are not double-counted (#915 defect 5).
+parse_surefire_counts() {
+  local log="$1" run=0 failed=0 errors=0 skipped=0 line sum_run=0 sum_f=0 sum_e=0 sum_s=0 found=0
+  while IFS= read -r line; do
+    [[ "$line" == *"Time elapsed"* ]] && continue
+    if [[ "$line" =~ Tests\ run:\ *([0-9]+),\ *Failures:\ *([0-9]+),\ *Errors:\ *([0-9]+),\ *Skipped:\ *([0-9]+) ]]; then
+      sum_run=$((sum_run + BASH_REMATCH[1])); sum_f=$((sum_f + BASH_REMATCH[2]))
+      sum_e=$((sum_e + BASH_REMATCH[3])); sum_s=$((sum_s + BASH_REMATCH[4])); found=1
+      run="${BASH_REMATCH[1]}"; failed="${BASH_REMATCH[2]}"; errors="${BASH_REMATCH[3]}"; skipped="${BASH_REMATCH[4]}"
+    fi
+  done < <(grep -E 'Tests run:' "$log" 2>/dev/null || true)
+  if [[ $found -eq 1 && $sum_run -ge $run ]]; then echo "$sum_run $sum_f $sum_e $sum_s"; else echo "$run $failed $errors $skipped"; fi
+}
+
+# Resolve GNU `timeout` or Homebrew `gtimeout` (stock macOS has neither).
+# Prints absolute path on success; returns 1 when neither is on PATH (#915).
+quality_gate_resolve_timeout_cmd() {
+  local cmd
+  if cmd="$(command -v timeout 2>/dev/null)" && [[ -n "$cmd" ]]; then
+    printf '%s\n' "$cmd"
+    return 0
+  fi
+  if cmd="$(command -v gtimeout 2>/dev/null)" && [[ -n "$cmd" ]]; then
+    printf '%s\n' "$cmd"
+    return 0
+  fi
+  return 1
+}
+
+# Run argv under a wall-clock bound when timeout/gtimeout exists; else warn on
+# stderr and run unbound (never fail silently; never hang forever on purpose).
+quality_gate_run_bounded() {
+  local secs="$1"
+  shift
+  local cmd
+  if cmd="$(quality_gate_resolve_timeout_cmd)"; then
+    "$cmd" "$secs" "$@"
+  else
+    echo "[quality-gate] warning: neither timeout nor gtimeout on PATH; running unbound" >&2
+    "$@"
+  fi
+}

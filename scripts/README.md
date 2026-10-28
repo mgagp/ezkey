@@ -128,7 +128,9 @@ PATH — not `/bin/bash` (system 3.2). `#747` retry scans admin-api logs with
 `docker logs --since` (phase start − 5 s backoff; no `tail` cap; `grep -F` without `-q`
 under `pipefail`; HA `5e` proves SIGPIPE with `seq` after the signature); `now_ms`
 validates GNU `date +%s%3N` digits before falling back to `python3` / `node` / whole
-seconds (BSD `date` on macOS). CI job `quality-gate` runs the HA helper tests.
+seconds (BSD `date` on macOS). `#915` lot 1: portable `sed '$d'` for phase rewrite,
+Surefire summary excludes `Time elapsed` class lines, compose bound uses
+`timeout`/`gtimeout` or warns unbound. CI job `quality-gate` runs the HA helper tests.
 
 ```bash
 ./scripts/quality-gate.sh
