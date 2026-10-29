@@ -803,8 +803,27 @@ seed_gate_replicas_healthy() {
 # Hide/restore Orval so the gate sees missing Admin UI deps without moving
 # the whole node_modules tree. Keep the backup beside .bin (not under $TMP)
 # and restore on EXIT so a failed assertion cannot leave Orval missing.
+# CI checkouts often have no ezkey-admin-ui/node_modules — seed a stub Orval
+# for the "deps present" cases, then remove only that stub on EXIT.
 ORVAL_BIN="$ROOT/ezkey-admin-ui/node_modules/.bin/orval"
 ORVAL_HIDE=""
+STUB_ORVAL=0
+ensure_admin_ui_deps_present_for_test() {
+  mkdir -p "$(dirname "$ORVAL_BIN")"
+  if [[ ! -e "$ORVAL_BIN" && ! -L "$ORVAL_BIN" ]]; then
+    printf '#!/bin/sh\nexit 0\n' >"$ORVAL_BIN"
+    chmod +x "$ORVAL_BIN"
+    STUB_ORVAL=1
+  fi
+}
+cleanup_stub_admin_ui_orval() {
+  if [[ "${STUB_ORVAL:-0}" -eq 1 ]]; then
+    rm -f "$ORVAL_BIN"
+    rmdir "$(dirname "$ORVAL_BIN")" 2>/dev/null || true
+    rmdir "$ROOT/ezkey-admin-ui/node_modules" 2>/dev/null || true
+    STUB_ORVAL=0
+  fi
+}
 hide_admin_ui_orval() {
   ORVAL_HIDE=""
   if [[ -e "$ORVAL_BIN" || -L "$ORVAL_BIN" ]]; then
@@ -823,9 +842,10 @@ restore_admin_ui_orval() {
     mv "${ORVAL_BIN}.__qg_ha_bak" "$ORVAL_BIN"
   fi
 }
-trap 'restore_admin_ui_orval; rm -rf "$TMP"' EXIT
+trap 'restore_admin_ui_orval; cleanup_stub_admin_ui_orval; rm -rf "$TMP"' EXIT
 
 # 12a) deps present → no npm ci; generate:api runs before UI test npm scripts.
+ensure_admin_ui_deps_present_for_test
 seed_gate_replicas_healthy
 : >"$NPM_REC_LOG"
 PW_OK_OUT="$TMP/playwright-orval-ok"
