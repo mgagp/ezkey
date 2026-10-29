@@ -437,7 +437,11 @@ run_phase_playwright() {
     if [[ "$admin_ui_ready" -eq 1 ]]; then
       echo "=== Orval generate:api ==="
       if (cd ezkey-admin-ui && npm run generate:api); then
-        EZKEY_BROWSER_TEST_RESULTS_DIR="$results" ./ezkey-admin-ui/scripts/run-ui-tests.sh
+        # Screenshot smokes resolve via EZKEY_PLAYWRIGHT_ARTIFACTS_DIR (else
+        # EZKEY_BROWSER_TEST_RESULTS_DIR); never hardcode /opt/cursor (#915).
+        EZKEY_BROWSER_TEST_RESULTS_DIR="$results" \
+          EZKEY_PLAYWRIGHT_ARTIFACTS_DIR="$results" \
+          ./ezkey-admin-ui/scripts/run-ui-tests.sh
       else
         echo "FATAL: npm run generate:api failed — refusing Playwright with a stale Orval client (#915)"
         note="Orval generate:api failed; Playwright not run"
