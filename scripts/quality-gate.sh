@@ -6,7 +6,7 @@
 # Cloud agent tooling (Linux, Git Bash, Homebrew bash on macOS).
 #
 # Phase order (unit tests before stack — memory headroom on ~16Gi VMs):
-#   preflight → unit-tests → clean-start HA+JM+prod-safe (+gate memory overlay)
+#   preflight → unit-tests → clean-start HA+JM (+gate memory overlay)
 #   → post-clean-health → functional → elective → docker-start restore
 #   → Playwright → churn-init → 2× churn → health → REPORT.md + summary.json
 #
@@ -298,10 +298,8 @@ ha_compose_retry() {
     echo "HA compose retry $i (#747): admin-1=$h1 admin-2=$h2"
     if [[ "$h1" == "healthy" && "$h2" == "healthy" ]]; then
       echo "Resuming compose up -d (timeout 180s) — AMBER #747"
-      # Match --prod-safe clean-start (docker only; rate limits on). Do not
-      # re-apply docker-test or the #912 C1 proof regresses after a #747 retry.
       # shellcheck disable=SC2086
-      quality_gate_run_bounded 180 env SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-docker}" \
+      quality_gate_run_bounded 180 env SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-docker,docker-dev,docker-test}" \
         EZKEY_ENABLE_JAVA_MELODY=true $compose up -d || return 1
       return 0
     fi
@@ -312,26 +310,17 @@ ha_compose_retry() {
 
 run_phase_clean_start() {
   local log="$RUN_DIR/phases/clean-start.log" start end code=0 verdict=GREEN
-  local note="HA + JavaMelody + prod-safe + gate memory overlay"
-  local phase_since clean_start_bin
+  local note="HA + JavaMelody + gate memory overlay"
+  local phase_since
   COMPOSE_RETRY_FIRED=0
   phase_since="$(iso_now)"
   start="$(now_ms)"
   {
-    echo "=== clean-start HA + JavaMelody + prod-safe + quality-gate memory overlay ==="
+    echo "=== clean-start HA + JavaMelody + quality-gate memory overlay ==="
     export EZKEY_ENABLE_JAVA_MELODY=true
     export EZKEY_COMPOSE_EXTRA_FILES="$GATE_OVERLAY"
-    # --prod-safe → Spring profile docker only (rate limits on; #912 C1).
-    # Export so #747 ha_compose_retry inherits the same profiles.
-    export SPRING_PROFILES_ACTIVE=docker
-    # PATH-first so quality-gate-ha.test.sh can prepend a recorder; else repo script.
-    if command -v clean-start.sh >/dev/null 2>&1; then
-      clean_start_bin="$(command -v clean-start.sh)"
-    else
-      clean_start_bin="./ezkey-tests/clean-start.sh"
-    fi
     set +e
-    "$clean_start_bin" --ha --with-java-melody --prod-safe
+    ./ezkey-tests/clean-start.sh --ha --with-java-melody
     local cs=$?
     if [[ "$cs" -ne 0 ]]; then
       # Phase log is mid-write under this redirection; inspect admin replica logs
@@ -374,7 +363,7 @@ run_phase_clean_start() {
       ;;
     *)
       code=0
-      note="HA + JM + prod-safe + memory overlay (no #747 retry)"
+      note="HA + JM + memory overlay (no #747 retry)"
       ;;
   esac
   export COMPOSE_RETRY_FIRED

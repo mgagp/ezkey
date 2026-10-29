@@ -110,14 +110,6 @@ case "$cmd" in
     fi
     exit 0
     ;;
-  ps)
-    # clean-start phase logs `docker ps`; keep exit 0 for PATH harnesses.
-    exit 0
-    ;;
-  stats)
-    # Memory sampler polls stats; empty output is fine.
-    exit 0
-    ;;
   *) echo "fake-docker: unsupported $cmd" >&2; exit 1 ;;
 esac
 EOF
@@ -1001,76 +993,6 @@ grep -E '^run generate:api([[:space:]]|$)' "$NPM_REC_LOG" >/dev/null \
 grep -E '^run test:browser' "$NPM_REC_LOG" >/dev/null \
   && { echo "not ok - npm ci fail must not run test:browser*"; fail=$((fail+1)); cat "$NPM_REC_LOG"; } \
   || { echo "ok - npm ci fail → no test:browser*"; pass=$((pass+1)); }
-
-# 13) clean-start argv must include --prod-safe (#912 rate-limit proof / Refs #915).
-# Fake clean-start.sh on PATH records the gate's command line; fake curl/docker keep
-# stack_up + check_replicas green without a real stack. Other phases skipped.
-CS_REC_BIN="$TMP/bin-clean-start"
-CS_REC_LOG="$TMP/clean-start-calls.log"
-mkdir -p "$CS_REC_BIN"
-: >"$CS_REC_LOG"
-cat >"$CS_REC_BIN/clean-start.sh" <<'EOF'
-#!/usr/bin/env bash
-set -euo pipefail
-# Record argv only — prove quality-gate passes --prod-safe (and HA/JM flags).
-printf '%s\n' "$*" >>"${FAKE_CLEAN_START_LOG:?}"
-exit 0
-EOF
-chmod +x "$CS_REC_BIN/clean-start.sh"
-cat >"$CS_REC_BIN/curl" <<'EOF'
-#!/usr/bin/env bash
-exit 0
-EOF
-chmod +x "$CS_REC_BIN/curl"
-# Reuse the stateful fake docker from the harness (inspect/start/events/logs).
-# Prepend CS_REC_BIN so clean-start.sh + curl win; keep $TMP/bin for docker.
-seed_gate_replicas_healthy
-CS_SKIP=(
-  --skip preflight --skip unit-tests --skip post-clean-health
-  --skip functional-tests --skip elective-tests --skip playwright
-  --skip churn-init --skip churn --skip health
-)
-CS_OUT="$TMP/clean-start-prod-safe-run"
-set +e
-(
-  cd "$ROOT"
-  FAKE_CLEAN_START_LOG="$CS_REC_LOG" PATH="$CS_REC_BIN:$TMP/bin:$PATH" \
-    ./scripts/quality-gate.sh "${CS_SKIP[@]}" \
-    >"$CS_OUT.log" 2>&1
-)
-cs_ec=$?
-set -e
-# Skipped phases → exit 4 when clean-start GREEN.
-[[ "$cs_ec" -eq 4 || "$cs_ec" -eq 0 ]] \
-  && echo "ok - clean-start --prod-safe harness → exit $cs_ec (not NO-GO)" && pass=$((pass+1)) \
-  || { echo "not ok - clean-start --prod-safe harness unexpected exit $cs_ec"; fail=$((fail+1)); \
-       cat "$CS_OUT.log" || true; cat "$CS_REC_LOG" || true; }
-CS_RUN="$(sed -n 's/.*run dir: //p' "$CS_OUT.log" | head -1)"
-[[ -n "$CS_RUN" && -f "$CS_RUN/phases.tsv" ]] \
-  && grep -E $'^clean-start\tGREEN\t' "$CS_RUN/phases.tsv" >/dev/null \
-  && echo "ok - clean-start phase GREEN with PATH recorder" && pass=$((pass+1)) \
-  || { echo "not ok - clean-start phase GREEN with PATH recorder"; fail=$((fail+1)); \
-       echo "run_dir=${CS_RUN:-missing}"; cat "$CS_OUT.log" || true; \
-       [[ -n "${CS_RUN:-}" ]] && cat "$CS_RUN/phases.tsv" 2>/dev/null || true; \
-       [[ -n "${CS_RUN:-}" ]] && cat "$CS_RUN/phases/clean-start.log" 2>/dev/null || true; }
-grep -E '(^|[[:space:]])--prod-safe([[:space:]]|$)' "$CS_REC_LOG" >/dev/null \
-  && echo "ok - clean-start command line contains --prod-safe" && pass=$((pass+1)) \
-  || { echo "not ok - clean-start command line contains --prod-safe"; fail=$((fail+1)); \
-       cat "$CS_REC_LOG" || true; }
-grep -E '(^|[[:space:]])--ha([[:space:]]|$)' "$CS_REC_LOG" >/dev/null \
-  && grep -E '(^|[[:space:]])--with-java-melody([[:space:]]|$)' "$CS_REC_LOG" >/dev/null \
-  && echo "ok - clean-start still passes --ha --with-java-melody" && pass=$((pass+1)) \
-  || { echo "not ok - clean-start still passes --ha --with-java-melody"; fail=$((fail+1)); \
-       cat "$CS_REC_LOG" || true; }
-# #747 retry default must stay docker (not docker-test) so rate limits stay on.
-grep -F 'SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-docker}"' \
-  "$ROOT/scripts/quality-gate.sh" >/dev/null \
-  && echo "ok - #747 compose retry defaults to docker (prod-safe)" && pass=$((pass+1)) \
-  || { echo "not ok - #747 compose retry defaults to docker (prod-safe)"; fail=$((fail+1)); }
-grep -F 'SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-docker,docker-dev,docker-test}"' \
-  "$ROOT/scripts/quality-gate.sh" >/dev/null \
-  && { echo "not ok - #747 must not default to docker-test"; fail=$((fail+1)); } \
-  || { echo "ok - #747 no longer defaults to docker-test"; pass=$((pass+1)); }
 
 echo "passes=$pass fails=$fail"
 [[ "$fail" -eq 0 ]]

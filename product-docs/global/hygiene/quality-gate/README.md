@@ -45,10 +45,8 @@ code **137**. Searching from `GATE_STARTED_AT` is wrong: preflight `stop_stacks`
 
 1. **Preflight** — stop stacks; `docker info` MemTotal vs gate memory budget.
 2. **Unit tests** — `./scripts/build.sh` with stack down (`MAVEN_OPTS=-Xmx1024m`).
-3. **Clean-start** — HA + JavaMelody + `--prod-safe` + gate memory overlay
+3. **Clean-start** — HA + JavaMelody + gate memory overlay
    ([`docker/docker-compose.ha.quality-gate.yml`](../../../../docker/docker-compose.ha.quality-gate.yml)).
-   Rate limits stay on so `#912` C1 (`AuthenticationFlowSecurityTest` 429 proof) can pass; `Refs #915`.
-   With `--prod-safe` (profile `docker` only), the gate no longer exercises admin-api's accelerated `docker-test` schedules (key rotation every 5 min with max key age 1 day, re-encryption every 10 min, audit archive auto-seal and purge with short delays), so rotation/re-encryption/audit-seal race coverage (#747 family) is not exercised during gate runs; a possible later overlay could restore only the fast schedules with rate limits ON. `Refs #915`.
 4. **Post-clean health** → **functional** → **elective** → **docker-start restore** →
    **Playwright** (Orval `generate:api` first — gitignored client must not go stale; #915) →
    **churn** → **health** → **OOM check** (whole-run window).
