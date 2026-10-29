@@ -410,6 +410,7 @@ run_maven_phase() {
 run_phase_playwright() {
   local log="$RUN_DIR/phases/playwright.log" start end code=0 results="$RUN_DIR/playwright-results"
   local note="Admin UI e2e (Orval generate:api then Playwright)"
+  local admin_ui_ready=1
   mkdir -p "$results"
   start="$(now_ms)"
   {
@@ -421,12 +422,28 @@ run_phase_playwright() {
     # Orval client under src/generated/ is gitignored; only build:cloudflare
     # regenerates it. A stale local client caused false RED Playwright results
     # (#915 defect 6). Fail closed: never run UI tests after a failed generate.
-    echo "=== Orval generate:api ==="
-    if (cd ezkey-admin-ui && npm run generate:api); then
-      EZKEY_BROWSER_TEST_RESULTS_DIR="$results" ./ezkey-admin-ui/scripts/run-ui-tests.sh
+    # Fresh worktree often has no ezkey-admin-ui/node_modules, so generate:api
+    # fails with "orval: command not found" and Playwright goes RED in 0s (#915).
+    admin_ui_ready=1
+    if [[ ! -d ezkey-admin-ui/node_modules \
+       || ! -e ezkey-admin-ui/node_modules/.bin/orval ]]; then
+      echo "=== npm ci (Admin UI deps missing) ==="
+      if ! (cd ezkey-admin-ui && npm ci); then
+        echo "FATAL: npm ci failed in ezkey-admin-ui — refusing Playwright (deps unavailable) (#915)"
+        note="npm ci failed; Playwright not run"
+        admin_ui_ready=0
+      fi
+    fi
+    if [[ "$admin_ui_ready" -eq 1 ]]; then
+      echo "=== Orval generate:api ==="
+      if (cd ezkey-admin-ui && npm run generate:api); then
+        EZKEY_BROWSER_TEST_RESULTS_DIR="$results" ./ezkey-admin-ui/scripts/run-ui-tests.sh
+      else
+        echo "FATAL: npm run generate:api failed — refusing Playwright with a stale Orval client (#915)"
+        note="Orval generate:api failed; Playwright not run"
+        false
+      fi
     else
-      echo "FATAL: npm run generate:api failed — refusing Playwright with a stale Orval client (#915)"
-      note="Orval generate:api failed; Playwright not run"
       false
     fi
   } >"$log" 2>&1 || code=$?
