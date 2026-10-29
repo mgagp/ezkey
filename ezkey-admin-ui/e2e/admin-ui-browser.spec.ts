@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { playwrightArtifactPath } from './support/artifact-path';
 import { loginViaDemoDevice } from './support/auth-flow';
 
 test('@smoke public shell supports language switch and contextual help', async ({ page }) => {
@@ -58,7 +59,7 @@ test('@smoke @device-backed representative authenticated workflow loads admins a
 test('@smoke @device-backed Integrity cut 3 micro-dashboard is the glance strip', async ({
   page,
   context,
-}) => {
+}, testInfo) => {
   const demoPage = await loginViaDemoDevice(page, context, 'approve');
 
   await page.getByTestId('sidebar-link-integrity').click();
@@ -77,7 +78,7 @@ test('@smoke @device-backed Integrity cut 3 micro-dashboard is the glance strip'
   await expect(page.getByTestId('integrity-micro-dashboard-reverify')).toBeVisible();
 
   await page.screenshot({
-    path: '/opt/cursor/artifacts/integrity-micro-dashboard-smoke.png',
+    path: playwrightArtifactPath(testInfo, 'integrity-micro-dashboard-smoke.png'),
     fullPage: true,
   });
 
