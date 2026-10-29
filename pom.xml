@@ -78,7 +78,7 @@
 		<checkstyle.version>3.6.0</checkstyle.version>
 		<!-- maven-pmd-plugin version (narrow ruleset under config/java-doctor/; not a build gate) -->
 		<pmd.version>3.28.0</pmd.version>
-		<jacoco.version>0.8.15</jacoco.version>
+		<jacoco.version>0.8.16</jacoco.version>
 		<zxing.version>3.5.4</zxing.version>
 		<spotless.version>3.10.4</spotless.version>
 		<!-- Nested Spotless pin; Dependabot typically misses the plugin XML. Pulse in dependabot-curated. -->
