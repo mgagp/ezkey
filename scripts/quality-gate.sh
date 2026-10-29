@@ -7,8 +7,9 @@
 #
 # Phase order (unit tests before stack — memory headroom on ~16Gi VMs):
 #   preflight → unit-tests → clean-start HA+JM (+gate memory overlay)
-#   → post-clean-health → functional → elective → docker-start restore
-#   → Playwright → churn-init → 2× churn → health → REPORT.md + summary.json
+#   → post-clean-health → c1-rate-limit (#912 Auth overlay only) → functional
+#   → elective → docker-start restore → Playwright → churn-init → 2× churn
+#   → health → REPORT.md + summary.json
 #
 # Exit codes:
 #   0 = GO
@@ -55,7 +56,8 @@ SHEDLOCK_KILL_MISSING=0
 SHEDLOCK_RESTORE_OK=0
 
 GATE_OVERLAY="$REPO_ROOT/docker/docker-compose.ha.quality-gate.yml"
-PHASES="preflight unit-tests clean-start post-clean-health functional-tests elective-tests playwright churn-init churn health"
+C1_OVERLAY="$REPO_ROOT/ezkey-tests/gate-c1/docker-compose.ha.gate-c1-test.yml"
+PHASES="preflight unit-tests clean-start post-clean-health c1-rate-limit functional-tests elective-tests playwright churn-init churn health"
 
 HA_REPLICAS="ezkey-admin-api-1 ezkey-admin-api-2 ezkey-auth-api-1 ezkey-auth-api-2 ezkey-integration-api-1 ezkey-integration-api-2 ezkey-crypto-api-ha"
 MEM_SAMPLE_CONTAINERS="$HA_REPLICAS ezkey-demo-device-ha ezkey-demo-app-acme-ha"
@@ -392,6 +394,39 @@ run_phase_post_clean_health() {
   return "$code"
 }
 
+# #912 C1: enable Auth API rate limit (low respond thresholds) only for the
+# gate-c1 tagged test, then restore docker-test (limits off) before functional.
+# AdminRateLimitFilter stays OFF the whole time (docker-test on admin-api).
+run_phase_c1_rate_limit() {
+  local log="$RUN_DIR/phases/c1-rate-limit.log" start end code=0
+  local note="#912 C1 Auth rate-limit overlay (Admin filter OFF)"
+  start="$(now_ms)"
+  {
+    set -e
+    echo "=== c1-rate-limit (#912) ==="
+    quality_gate_assert_gate_c1_overlay_not_in_deploy
+    [[ -f "$C1_OVERLAY" ]] || { echo "FATAL: missing $C1_OVERLAY"; false; }
+    # Keep docker-test so AdminRateLimitFilter remains disabled (#1095 lesson).
+    export SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-docker,docker-dev,docker-test}"
+    export GATE_OVERLAY
+    quality_gate_c1_set_auth_rate_limit on
+    export MAVEN_OPTS="${MAVEN_OPTS:--Xmx1024m}"
+    mvn test -pl ezkey-tests -P gate-c1-tests
+  } >"$log" 2>&1 || code=$?
+  # Always try to restore limits-off auth-api before leaving the phase.
+  {
+    set -e
+    echo "=== c1-rate-limit restore (Auth limits off) ==="
+    export SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-docker,docker-dev,docker-test}"
+    export GATE_OVERLAY
+    quality_gate_c1_set_auth_rate_limit off
+  } >>"$log" 2>&1 || code=1
+  end="$(now_ms)"
+  record_phase c1-rate-limit "$([[ $code -eq 0 ]] && echo GREEN || echo RED)" "$code" \
+    "$(duration_ms "$start" "$end")" "$log" "$(parse_surefire_counts "$log")" "$note"
+  return "$code"
+}
+
 run_maven_phase() {
   local name="$1" cmd="$2" note="$3"
   local log="$RUN_DIR/phases/${name}.log" start end code=0
@@ -560,6 +595,7 @@ for phase in $PHASES; do
     unit-tests) run_phase_unit_tests || true ;;
     clean-start) run_phase_clean_start || true ;;
     post-clean-health) run_phase_post_clean_health || true ;;
+    c1-rate-limit) run_phase_c1_rate_limit || true ;;
     functional-tests) run_maven_phase functional-tests "mvn test -pl ezkey-tests -P all-tests" "all-tests" || true ;;
     elective-tests)
       # Bound ShedLock die-event proof to the elective window (not GATE_STARTED_AT /
@@ -582,7 +618,10 @@ for phase in $PHASES; do
   last_verdict="$(tail -1 "$PHASE_TSV" | cut -f2)"
   if [[ "$last_verdict" == "RED" ]]; then
     OVERALL_RED=1
-    if [[ "$phase" == "preflight" || "$phase" == "unit-tests" || "$phase" == "clean-start" ]]; then
+    # c1-rate-limit fail-fast: a failed restore would leave Auth limits ON and
+    # recreate #1095 (suite-wide 429 / AdminRateLimitFilter) in functional.
+    if [[ "$phase" == "preflight" || "$phase" == "unit-tests" || "$phase" == "clean-start" \
+       || "$phase" == "c1-rate-limit" ]]; then
       echo "[$KEYWORD] fail-fast: $phase RED — stopping"
       break
     fi

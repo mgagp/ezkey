@@ -91,8 +91,8 @@
           <includes>
             <include>**/*Test.java</include>
           </includes>
-          <!-- Default: exclude slow, time-dependent, elective, operational churn, churn init, mobile real-device -->
-          <excludedGroups>slow,time-dependent,elective,operational-churn,operational-churn-init,mobile-real-device</excludedGroups>
+          <!-- Default: exclude slow, time-dependent, elective, operational churn, churn init, mobile real-device, gate-c1 -->
+          <excludedGroups>slow,time-dependent,elective,operational-churn,operational-churn-init,mobile-real-device,gate-c1</excludedGroups>
           <systemPropertyVariables>
             <!-- Anchors .ezkey-test/ to this module's basedir regardless of the shell cwd.
                  Prevents stale-cache cross-contamination when running from a worktree or a
@@ -173,9 +173,9 @@
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-surefire-plugin</artifactId>
             <configuration>
-              <!-- No groups filter = run all standard tests; elective always excluded -->
+              <!-- No groups filter = run all standard tests; elective + gate-c1 always excluded -->
               <groups combine.self="override"></groups>
-              <excludedGroups>elective,operational-churn,operational-churn-init,mobile-real-device</excludedGroups>
+              <excludedGroups>elective,operational-churn,operational-churn-init,mobile-real-device,gate-c1</excludedGroups>
             </configuration>
           </plugin>
         </plugins>
@@ -308,6 +308,23 @@
             <artifactId>maven-surefire-plugin</artifactId>
             <configuration>
               <groups>elective</groups>
+              <excludedGroups combine.self="override"></excludedGroups>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+    <!-- Quality-gate C1 (#912): Auth respond rate-limit ownership isolation (gate-c1 overlay) -->
+    <profile>
+      <id>gate-c1-tests</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <configuration>
+              <groups>gate-c1</groups>
               <excludedGroups combine.self="override"></excludedGroups>
             </configuration>
           </plugin>

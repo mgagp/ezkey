@@ -454,3 +454,136 @@ quality_gate_run_bounded() {
     "$@"
   fi
 }
+
+# --- Gate C1 (#912) Auth rate-limit overlay helpers ---
+# Overlay path is test-only (ezkey-tests/gate-c1/). Must never appear in deploy
+# compose / .env trees. quality_gate_assert_gate_c1_overlay_not_in_deploy enforces that.
+
+quality_gate_c1_overlay_path() {
+  local root="${REPO_ROOT:-}"
+  if [[ -z "$root" ]]; then
+    root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+  fi
+  printf '%s\n' "$root/ezkey-tests/gate-c1/docker-compose.ha.gate-c1-test.yml"
+}
+
+quality_gate_c1_thresholds_path() {
+  local root="${REPO_ROOT:-}"
+  if [[ -z "$root" ]]; then
+    root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+  fi
+  printf '%s\n' "$root/ezkey-tests/gate-c1/rate-limit-thresholds.properties"
+}
+
+# Grep guard: gate-c1 overlay / thresholds must not be referenced from deploy
+# compose or env examples (Lightsail, experimental-hybrid, docker/.env*).
+# Returns 0 when clean; prints offending lines and returns 1 on hit.
+quality_gate_assert_gate_c1_overlay_not_in_deploy() {
+  local root="${REPO_ROOT:-}"
+  if [[ -z "$root" ]]; then
+    root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+  fi
+  local needle='gate-c1|docker-compose\.ha\.gate-c1-test'
+  local hits=""
+  # Deploy / ops trees only — never scan ezkey-tests/gate-c1 or quality-gate scripts.
+  hits="$(
+    grep -RInE "$needle" \
+      "$root/docker" \
+      "$root/docs/lightsail" \
+      "$root/experimental-hybrid" \
+      "$root/.env.example" \
+      "$root/docker/.env.example" \
+      2>/dev/null || true
+  )"
+  if [[ -n "$hits" ]]; then
+    echo "[quality-gate] FATAL: gate-c1 overlay referenced from deploy/ops paths:" >&2
+    printf '%s\n' "$hits" >&2
+    return 1
+  fi
+  return 0
+}
+
+# Nice-to-have: refuse gate-c1 overlay together with --prod-safe / ezkey.online posture.
+quality_gate_assert_gate_c1_not_with_prod_safe() {
+  local profiles="${SPRING_PROFILES_ACTIVE:-}"
+  if [[ "${PROD_SAFE:-}" == "true" || "${PROD_SAFE:-}" == "1" ]]; then
+    echo "[quality-gate] FATAL: gate-c1 overlay must not combine with PROD_SAFE/--prod-safe" >&2
+    return 1
+  fi
+  if [[ ",${profiles}," == *",ezkey.online,"* || ",${profiles}," == *",ezkey-online,"* ]]; then
+    echo "[quality-gate] FATAL: gate-c1 overlay must not combine with ezkey.online profile" >&2
+    return 1
+  fi
+  # --prod-safe uses Spring profile "docker" alone (no docker-test). Gate C1 keeps
+  # docker-test so AdminRateLimitFilter stays off; refuse a pure docker-only stack.
+  if [[ -n "$profiles" && "$profiles" == "docker" ]]; then
+    echo "[quality-gate] FATAL: gate-c1 overlay refused with SPRING_PROFILES_ACTIVE=docker only (prod-safe)" >&2
+    return 1
+  fi
+  return 0
+}
+
+# Recreate auth-api replicas with or without the gate-c1 overlay. Updates
+# PREV_RESTARTS so intentional recreate does not trip HA C1-bis restart deltas.
+# $1 = "on" | "off"
+quality_gate_c1_set_auth_rate_limit() {
+  local mode="$1"
+  local overlay compose name profiles
+  overlay="$(quality_gate_c1_overlay_path)"
+  [[ -f "$overlay" ]] || { echo "[quality-gate] FATAL: missing C1 overlay: $overlay" >&2; return 1; }
+  quality_gate_assert_gate_c1_not_with_prod_safe || return 1
+
+  profiles="${SPRING_PROFILES_ACTIVE:-docker,docker-dev,docker-test}"
+  export SPRING_PROFILES_ACTIVE="$profiles"
+  export EZKEY_ENABLE_JAVA_MELODY="${EZKEY_ENABLE_JAVA_MELODY:-true}"
+
+  if [[ "$mode" == "on" ]]; then
+    if [[ -n "${GATE_OVERLAY:-}" ]]; then
+      export EZKEY_COMPOSE_EXTRA_FILES="${GATE_OVERLAY} ${overlay}"
+    else
+      export EZKEY_COMPOSE_EXTRA_FILES="${overlay}"
+    fi
+  elif [[ "$mode" == "off" ]]; then
+    export EZKEY_COMPOSE_EXTRA_FILES="${GATE_OVERLAY:-}"
+  else
+    echo "[quality-gate] FATAL: quality_gate_c1_set_auth_rate_limit mode must be on|off" >&2
+    return 1
+  fi
+
+  if ! declare -F ha_compose_cmd >/dev/null 2>&1; then
+    echo "[quality-gate] FATAL: ha_compose_cmd is required (define in quality-gate.sh)" >&2
+    return 1
+  fi
+  compose="$(ha_compose_cmd)"
+  echo "[quality-gate] C1 auth rate-limit overlay: $mode (profiles=$profiles extra=${EZKEY_COMPOSE_EXTRA_FILES:-})"
+  # shellcheck disable=SC2086
+  SPRING_PROFILES_ACTIVE="$profiles" $compose up -d --no-deps --force-recreate auth-api-1 auth-api-2 \
+    || return 1
+
+  # Wait auth replicas healthy (management port inside containers; host via LB/health).
+  local elapsed=0
+  local timeout_s="${QUALITY_GATE_RESTORE_TIMEOUT_S:-180}"
+  local poll_s="${QUALITY_GATE_RESTORE_POLL_S:-5}"
+  while [[ "$elapsed" -lt "$timeout_s" ]]; do
+    local h1 h2
+    h1="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' ezkey-auth-api-1 2>/dev/null || echo missing)"
+    h2="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' ezkey-auth-api-2 2>/dev/null || echo missing)"
+    if [[ "$h1" == "healthy" && "$h2" == "healthy" ]]; then
+      break
+    fi
+    sleep "$poll_s"
+    elapsed=$((elapsed + poll_s))
+  done
+  h1="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' ezkey-auth-api-1 2>/dev/null || echo missing)"
+  h2="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' ezkey-auth-api-2 2>/dev/null || echo missing)"
+  if [[ "$h1" != "healthy" || "$h2" != "healthy" ]]; then
+    echo "[quality-gate] FATAL: auth-api replicas not healthy after C1 overlay $mode (1=$h1 2=$h2)" >&2
+    return 1
+  fi
+
+  # Baseline restart counters after intentional recreate (avoid false HA_INVALID).
+  for name in ezkey-auth-api-1 ezkey-auth-api-2; do
+    PREV_RESTARTS[$name]="$(docker inspect -f '{{.RestartCount}}' "$name" 2>/dev/null || echo 0)"
+  done
+  return 0
+}
