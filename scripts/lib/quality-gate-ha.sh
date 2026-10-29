@@ -475,35 +475,51 @@ quality_gate_c1_thresholds_path() {
   printf '%s\n' "$root/ezkey-tests/gate-c1/rate-limit-thresholds.properties"
 }
 
-# Grep guard: gate-c1 overlay / thresholds must not be referenced from deploy
-# compose or env examples (Lightsail, experimental-hybrid, docker/.env*).
-# Returns 0 when clean; prints offending lines and returns 1 on hit.
+# Grep guard: gate-c1 overlay must not be referenced from tracked compose / .env
+# files outside ezkey-tests/ (covers docker/, experimental-hybrid/, scripts/lab/,
+# ezkey-pam/, ezkey-admin-ui/, docs, etc.). Returns 0 when clean; 1 on hit.
+# QUALITY_GATE_C1_FORCE_GUARD_FAIL=1 forces failure (HA harness only).
 quality_gate_assert_gate_c1_overlay_not_in_deploy() {
+  if [[ "${QUALITY_GATE_C1_FORCE_GUARD_FAIL:-}" == "1" ]]; then
+    echo "[quality-gate] FATAL: gate-c1 deploy grep guard forced fail (test hook)" >&2
+    return 1
+  fi
   local root="${REPO_ROOT:-}"
   if [[ -z "$root" ]]; then
     root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
   fi
   local needle='gate-c1|docker-compose\.ha\.gate-c1-test'
-  local hits=""
-  # Deploy / ops trees only — never scan ezkey-tests/gate-c1 or quality-gate scripts.
-  hits="$(
-    grep -RInE "$needle" \
-      "$root/docker" \
-      "$root/docs/lightsail" \
-      "$root/experimental-hybrid" \
-      "$root/.env.example" \
-      "$root/docker/.env.example" \
-      2>/dev/null || true
-  )"
+  local hits="" file match grec
+  local -a files=()
+  # Fail closed on git ls-files errors (no 2>/dev/null). Exclude ezkey-tests/ only.
+  while IFS= read -r file; do
+    [[ -z "$file" ]] && continue
+    [[ "$file" == ezkey-tests/* ]] && continue
+    files+=("$file")
+  done < <(cd "$root" && git ls-files -- '*compose*.y*ml' '*.env*')
+  for file in "${files[@]}"; do
+    if [[ ! -f "$root/$file" ]]; then
+      echo "[quality-gate] FATAL: tracked compose/.env path missing on disk: $file" >&2
+      return 1
+    fi
+    # grep exit 1 = no match (OK); exit 2 = error (propagate). No 2>/dev/null.
+    if match="$(grep -nEH "$needle" "$root/$file")"; then
+      hits+="$match"$'\n'
+    else
+      grec=$?
+      [[ "$grec" -eq 1 ]] || return "$grec"
+    fi
+  done
   if [[ -n "$hits" ]]; then
-    echo "[quality-gate] FATAL: gate-c1 overlay referenced from deploy/ops paths:" >&2
-    printf '%s\n' "$hits" >&2
+    echo "[quality-gate] FATAL: gate-c1 overlay referenced from deploy/ops compose/.env paths:" >&2
+    printf '%s' "$hits" >&2
     return 1
   fi
   return 0
 }
 
 # Nice-to-have: refuse gate-c1 overlay together with --prod-safe / ezkey.online posture.
+# Gate C1 requires docker-test so AdminRateLimitFilter stays off.
 quality_gate_assert_gate_c1_not_with_prod_safe() {
   local profiles="${SPRING_PROFILES_ACTIVE:-}"
   if [[ "${PROD_SAFE:-}" == "true" || "${PROD_SAFE:-}" == "1" ]]; then
@@ -514,10 +530,9 @@ quality_gate_assert_gate_c1_not_with_prod_safe() {
     echo "[quality-gate] FATAL: gate-c1 overlay must not combine with ezkey.online profile" >&2
     return 1
   fi
-  # --prod-safe uses Spring profile "docker" alone (no docker-test). Gate C1 keeps
-  # docker-test so AdminRateLimitFilter stays off; refuse a pure docker-only stack.
-  if [[ -n "$profiles" && "$profiles" == "docker" ]]; then
-    echo "[quality-gate] FATAL: gate-c1 overlay refused with SPRING_PROFILES_ACTIVE=docker only (prod-safe)" >&2
+  # Require docker-test (not merely refuse exact "docker"). e.g. docker,docker-dev is refused.
+  if [[ -n "$profiles" && ",${profiles}," != *",docker-test,"* ]]; then
+    echo "[quality-gate] FATAL: gate-c1 overlay requires docker-test in SPRING_PROFILES_ACTIVE (got: ${profiles})" >&2
     return 1
   fi
   return 0

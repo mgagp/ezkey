@@ -999,13 +999,13 @@ grep -E '^run test:browser' "$NPM_REC_LOG" >/dev/null \
   || { echo "ok - npm ci fail → no test:browser*"; pass=$((pass+1)); }
 
 # 13) Gate C1 (#912) overlay hygiene: deploy grep guard + threshold/env sync +
-# prod-safe refusal. No live Docker recreate here.
+# prod-safe refusal + fail-closed phase on guard fail. No live Docker recreate.
 REPO_ROOT="$ROOT"
 
 if quality_gate_assert_gate_c1_overlay_not_in_deploy; then
-  echo "ok - gate-c1 overlay not referenced from deploy/ops trees" && pass=$((pass+1))
+  echo "ok - gate-c1 overlay not referenced from tracked compose/.env (excl. ezkey-tests/)" && pass=$((pass+1))
 else
-  echo "not ok - gate-c1 overlay not referenced from deploy/ops trees"; fail=$((fail+1))
+  echo "not ok - gate-c1 overlay not referenced from tracked compose/.env (excl. ezkey-tests/)"; fail=$((fail+1))
 fi
 
 # Threshold properties must match compose overlay env (no silent drift).
@@ -1050,9 +1050,15 @@ fi
 unset PROD_SAFE
 SPRING_PROFILES_ACTIVE=docker
 if quality_gate_assert_gate_c1_not_with_prod_safe 2>/dev/null; then
-  echo "not ok - gate-c1 must refuse SPRING_PROFILES_ACTIVE=docker only"; fail=$((fail+1))
+  echo "not ok - gate-c1 must refuse profiles without docker-test (docker only)"; fail=$((fail+1))
 else
-  echo "ok - gate-c1 refuses docker-only (prod-safe) profiles" && pass=$((pass+1))
+  echo "ok - gate-c1 refuses profiles without docker-test (docker only)" && pass=$((pass+1))
+fi
+SPRING_PROFILES_ACTIVE=docker,docker-dev
+if quality_gate_assert_gate_c1_not_with_prod_safe 2>/dev/null; then
+  echo "not ok - gate-c1 must refuse docker,docker-dev (no docker-test)"; fail=$((fail+1))
+else
+  echo "ok - gate-c1 refuses docker,docker-dev (no docker-test)" && pass=$((pass+1))
 fi
 SPRING_PROFILES_ACTIVE=docker,docker-dev,docker-test
 if quality_gate_assert_gate_c1_not_with_prod_safe; then
@@ -1062,17 +1068,61 @@ else
 fi
 unset SPRING_PROFILES_ACTIVE
 
-# Negative: planting a deploy reference must trip the grep guard.
+# Negative: tracked compose outside ezkey-tests/ that mentions gate-c1 must trip the guard.
 FAKE_DEPLOY="$TMP/fake-deploy-ref"
-mkdir -p "$FAKE_DEPLOY/docker"
-echo 'include: ezkey-tests/gate-c1/docker-compose.ha.gate-c1-test.yml' >"$FAKE_DEPLOY/docker/docker-compose.yml"
+rm -rf "$FAKE_DEPLOY"
+mkdir -p "$FAKE_DEPLOY/scripts/lab"
+echo 'include: ezkey-tests/gate-c1/docker-compose.ha.gate-c1-test.yml' \
+  >"$FAKE_DEPLOY/scripts/lab/docker-compose.yml"
+(
+  cd "$FAKE_DEPLOY"
+  git init -q
+  git add scripts/lab/docker-compose.yml
+)
 REPO_ROOT="$FAKE_DEPLOY"
 if quality_gate_assert_gate_c1_overlay_not_in_deploy 2>/dev/null; then
-  echo "not ok - gate-c1 deploy grep guard must RED on planted reference"; fail=$((fail+1))
+  echo "not ok - gate-c1 deploy grep guard must RED on planted scripts/lab reference"; fail=$((fail+1))
 else
-  echo "ok - gate-c1 deploy grep guard detects planted reference" && pass=$((pass+1))
+  echo "ok - gate-c1 deploy grep guard detects planted scripts/lab reference" && pass=$((pass+1))
 fi
 REPO_ROOT="$ROOT"
+
+# B1: forced guard fail → c1-rate-limit phase RED (fail-closed; no overlay-on).
+# Fake curl satisfies stack_up; other phases skipped.
+C1_GUARD_BIN="$TMP/bin-c1-guard"
+mkdir -p "$C1_GUARD_BIN"
+cat >"$C1_GUARD_BIN/curl" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+chmod +x "$C1_GUARD_BIN/curl"
+seed_gate_replicas_healthy
+C1_GUARD_OUT="$TMP/c1-guard-fail-run"
+set +e
+(
+  cd "$ROOT"
+  QUALITY_GATE_C1_FORCE_GUARD_FAIL=1 PATH="$C1_GUARD_BIN:$PATH" \
+    ./scripts/quality-gate.sh \
+      --skip preflight --skip unit-tests --skip clean-start --skip post-clean-health \
+      --skip functional-tests --skip elective-tests --skip playwright \
+      --skip churn-init --skip churn --skip health \
+      >"$C1_GUARD_OUT.log" 2>&1
+)
+c1_guard_ec=$?
+set -e
+assert_eq "$c1_guard_ec" "1" "forced gate-c1 guard fail → exit 1 (NO-GO)"
+C1_GUARD_RUN="$(sed -n 's/.*run dir: //p' "$C1_GUARD_OUT.log" | head -1)"
+[[ -n "$C1_GUARD_RUN" && -f "$C1_GUARD_RUN/phases.tsv" ]] \
+  && grep -E $'^c1-rate-limit\tRED\t' "$C1_GUARD_RUN/phases.tsv" >/dev/null \
+  && echo "ok - forced guard fail → c1-rate-limit RED" && pass=$((pass+1)) \
+  || { echo "not ok - forced guard fail → c1-rate-limit RED"; fail=$((fail+1)); \
+       echo "run_dir=${C1_GUARD_RUN:-missing}"; cat "$C1_GUARD_OUT.log" || true; \
+       [[ -n "${C1_GUARD_RUN:-}" ]] && cat "$C1_GUARD_RUN/phases.tsv" 2>/dev/null || true; }
+[[ -n "$C1_GUARD_RUN" && -f "$C1_GUARD_RUN/phases/c1-rate-limit.log" ]] \
+  && grep -q 'forced fail (test hook)' "$C1_GUARD_RUN/phases/c1-rate-limit.log" \
+  && echo "ok - forced guard fail logged in c1-rate-limit phase" && pass=$((pass+1)) \
+  || { echo "not ok - forced guard fail logged in c1-rate-limit phase"; fail=$((fail+1)); \
+       [[ -n "${C1_GUARD_RUN:-}" ]] && cat "$C1_GUARD_RUN/phases/c1-rate-limit.log" 2>/dev/null || true; }
 
 echo "passes=$pass fails=$fail"
 [[ "$fail" -eq 0 ]]

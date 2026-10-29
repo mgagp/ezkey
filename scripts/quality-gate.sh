@@ -397,11 +397,37 @@ run_phase_post_clean_health() {
 # #912 C1: enable Auth API rate limit (low respond thresholds) only for the
 # gate-c1 tagged test, then restore docker-test (limits off) before functional.
 # AdminRateLimitFilter stays OFF the whole time (docker-test on admin-api).
+#
+# Fail-closed: deploy-grep guard and overlay-on run in a `( set -e; … )` subshell
+# (set -e is ignored inside `{ … } || code=$?` — Security B1 on #1097).
 run_phase_c1_rate_limit() {
   local log="$RUN_DIR/phases/c1-rate-limit.log" start end code=0
   local note="#912 C1 Auth rate-limit overlay (Admin filter OFF)"
+  local c1_on=0
   start="$(now_ms)"
-  {
+
+  _qg_c1_restore_limits_off() {
+    if [[ "${c1_on:-0}" -ne 1 ]]; then
+      return 0
+    fi
+    {
+      echo "=== c1-rate-limit restore (Auth limits off) ==="
+      export SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-docker,docker-dev,docker-test}"
+      export GATE_OVERLAY
+      quality_gate_c1_set_auth_rate_limit off
+    } >>"$log" 2>&1 || code=1
+    c1_on=0
+  }
+
+  # INT/TERM: restore Auth limits OFF before the global churn cleanup trap.
+  trap '_qg_c1_restore_limits_off; cleanup_churn' INT TERM
+
+  # Setup must fail hard (guard / missing overlay / overlay-on).
+  # Run `( set -e; … )` as a statement (capture $? after) — NOT as an `if`
+  # condition: bash disables set -e for the entire if-condition command list,
+  # including nested subshells (Security B1 on #1097).
+  local setup_ec=0
+  (
     set -e
     echo "=== c1-rate-limit (#912) ==="
     quality_gate_assert_gate_c1_overlay_not_in_deploy
@@ -410,17 +436,21 @@ run_phase_c1_rate_limit() {
     export SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-docker,docker-dev,docker-test}"
     export GATE_OVERLAY
     quality_gate_c1_set_auth_rate_limit on
-    export MAVEN_OPTS="${MAVEN_OPTS:--Xmx1024m}"
-    mvn test -pl ezkey-tests -P gate-c1-tests
-  } >"$log" 2>&1 || code=$?
-  # Always try to restore limits-off auth-api before leaving the phase.
-  {
-    set -e
-    echo "=== c1-rate-limit restore (Auth limits off) ==="
-    export SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-docker,docker-dev,docker-test}"
-    export GATE_OVERLAY
-    quality_gate_c1_set_auth_rate_limit off
-  } >>"$log" 2>&1 || code=1
+  ) >"$log" 2>&1
+  setup_ec=$?
+  if [[ "$setup_ec" -ne 0 ]]; then
+    code=$setup_ec
+  else
+    c1_on=1
+    {
+      export MAVEN_OPTS="${MAVEN_OPTS:--Xmx1024m}"
+      mvn test -pl ezkey-tests -P gate-c1-tests
+    } >>"$log" 2>&1 || code=$?
+  fi
+
+  _qg_c1_restore_limits_off
+  trap cleanup_churn INT TERM EXIT
+
   end="$(now_ms)"
   record_phase c1-rate-limit "$([[ $code -eq 0 ]] && echo GREEN || echo RED)" "$code" \
     "$(duration_ms "$start" "$end")" "$log" "$(parse_surefire_counts "$log")" "$note"
