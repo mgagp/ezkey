@@ -47,6 +47,7 @@ code **137**. Searching from `GATE_STARTED_AT` is wrong: preflight `stop_stacks`
 2. **Unit tests** — `./scripts/build.sh` with stack down (`MAVEN_OPTS=-Xmx1024m`).
 3. **Clean-start** — HA + JavaMelody + gate memory overlay
    ([`docker/docker-compose.ha.quality-gate.yml`](../../../../docker/docker-compose.ha.quality-gate.yml)).
+   Do not pass `--prod-safe` here: Mac gate on `10788444` (2026-10-29) showed rate limits ON for the whole functional suite (71× HTTP 429 / AdminRateLimitFilter); a targeted C1-only limiter fix will follow. `Refs #915`.
 4. **Post-clean health** → **functional** → **elective** → **docker-start restore** →
    **Playwright** (Orval `generate:api` first — gitignored client must not go stale; #915) →
    **churn** → **health** → **OOM check** (whole-run window).
