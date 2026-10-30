@@ -5,8 +5,11 @@
 #
 # Safety: `gh pr merge --auto` only waits if `main` REQUIRES status checks. If no
 # required check is configured, GitHub would merge immediately, so this workflow
-# refuses to enable auto-merge unless `main` has at least one required status check
-# (classic protection or ruleset). Repo setting "Allow auto-merge" must be on.
+# refuses to enable auto-merge unless `main` has at least one required status check.
+# Prefer repository rulesets (GET .../rules/branches/main, type required_status_checks)
+# — this repo uses an active ruleset for `ci-gate`, not classic branch protection —
+# and fall back to classic protection contexts when present. Repo setting
+# "Allow auto-merge" must be on.
 name: dependabot-auto-merge
 
 on:
@@ -64,14 +67,23 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
+          # Rulesets first (active on this repo for ci-gate). Count contexts, not
+          # merely the presence of a required_status_checks rule with an empty list.
           n=$(gh api "repos/${GITHUB_REPOSITORY}/rules/branches/main" \
-                --jq '[.[] | select(.type=="required_status_checks")] | length' 2>/dev/null || echo 0)
-          m=$(gh api "repos/${GITHUB_REPOSITORY}/branches/main" \
-                --jq '.protection.required_status_checks.contexts | length' 2>/dev/null || echo 0)
-          if [ "${n:-0}" -gt 0 ] || [ "${m:-0}" -gt 0 ]; then
+                --jq '[.[] | select(.type=="required_status_checks") | .parameters.required_status_checks[]?.context // empty] | length' \
+                2>/dev/null || true)
+          n=${n:-0}
+          # Classic branch protection fallback (often 403 / absent when only rulesets apply).
+          m=$(gh api "repos/${GITHUB_REPOSITORY}/branches/main/protection" \
+                --jq '.required_status_checks.contexts | length' \
+                2>/dev/null || true)
+          m=${m:-0}
+          echo "ruleset_required_contexts=$n classic_required_contexts=$m"
+          if [ "$n" -gt 0 ] || [ "$m" -gt 0 ]; then
             echo "ok=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::warning::main has no required status checks; refusing to enable auto-merge (it would merge before CI)."
+            echo "::warning::main has no required status checks (ruleset or classic); refusing to enable auto-merge (it would merge before CI)."
             echo "ok=false" >> "$GITHUB_OUTPUT"
           fi
 
