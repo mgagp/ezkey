@@ -37,6 +37,8 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: write
+      # Needed to dispatch ci.yml/codeql.yml because GITHUB_TOKEN pushes do not
+      # retrigger pull_request CI.
       actions: write
     steps:
       - name: Checkout PR branch
@@ -44,6 +46,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 1
+          persist-credentials: false
 
       - name: Setup Node
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
@@ -64,6 +67,7 @@ jobs:
         id: push
         env:
           BRANCH: ${{ github.event.pull_request.head.ref }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           if git diff --quiet -- ezkey_mobile/app/data/thirdPartyLicenses.json; then
             echo "Licenses snapshot already fresh."
@@ -74,6 +78,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add ezkey_mobile/app/data/thirdPartyLicenses.json
           git commit -m "chore(mobile): regenerate third-party licenses snapshot"
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git push origin "HEAD:${BRANCH}"
           echo "pushed=true" >> "$GITHUB_OUTPUT"
 

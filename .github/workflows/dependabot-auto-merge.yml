@@ -50,7 +50,8 @@ jobs:
           case "$GROUP" in mobile-rn-core|mobile-vision-camera|android-gradle-*|docker-*|compose-*) reason="group=$GROUP";; esac
           if echo "$LABELS" | grep -Eiq '(^|,)(deferred:|hitl)'; then reason="labels=$LABELS"; fi
           # Crypto libraries: never auto-merged (Christophe reviews).
-          if echo "$DEPS" | grep -Eiq 'tink|bouncycastle|bcprov|bcpkix|bcutil|conscrypt|crypto|sha256|sha2|sodium|@noble/|jose|jsonwebtoken|keychain|biometric'; then
+          # Keep list in sync with skill + hygiene README wording (exact tokens).
+          if echo "$DEPS" | grep -Eiq 'tink|bouncycastle|bcprov|bcpkix|bcutil|conscrypt|crypto|sha256|sha2|sodium|@noble/|jose|jsonwebtoken|jwt|keychain|biometric'; then
             reason="crypto deps=$DEPS"
           fi
           if [ -n "$reason" ]; then
