@@ -2,6 +2,10 @@
 # See also: product-docs/global/normative-posture.md (dependency hygiene as operational discipline).
 # Cadence + cooldown policy: product-docs/global/hygiene/dependabot/README.md
 # Curation skill: .cursor/skills/dependabot-curated/SKILL.md
+# Inflow reduction (Marc 2026-10-30): per-directory minor+patch catch-all groups,
+# open-pull-requests-limit 10 -> 5, ignore deferred majors (TypeScript 7 has its own
+# gate; ESLint 10 on mobile waits for the community eslint-comments plugin).
+# Majors stay solo PRs. Crypto libs stay solo (never grouped, never auto-merged).
 
 version: 2
 updates:
@@ -16,7 +20,7 @@ updates:
       semver-patch-days: 3
       semver-minor-days: 3
       semver-major-days: 7
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
     groups:
@@ -32,6 +36,17 @@ updates:
         patterns:
           - "org.openrewrite.maven:*"
           - "org.openrewrite:*"
+      # Catch-all minor+patch (Marc 2026-10-30). Crypto stays solo: review by Christophe.
+      maven-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "com.google.crypto.tink:*"
+          - "org.bouncycastle:*"
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: "npm"
     directory: "/ezkey-admin-ui"
@@ -42,12 +57,15 @@ updates:
       semver-patch-days: 3
       semver-minor-days: 3
       semver-major-days: 7
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
     # Keep @types/node on the same major as the runtime in root .nvmrc (Node 24 LTS).
     ignore:
       - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      # TypeScript 7 has its own gate (Marc 2026-10-30) — no Dependabot major PRs.
+      - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
     groups:
       admin-ui-eslint:
@@ -64,6 +82,14 @@ updates:
           - "vite"
           - "vitest"
           - "@vitejs/*"
+      # Catch-all minor+patch (Marc 2026-10-30); majors stay solo.
+      admin-ui-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: "npm"
     directory: "/ezkey-sdk/javascript"
@@ -74,7 +100,7 @@ updates:
       semver-patch-days: 3
       semver-minor-days: 3
       semver-major-days: 7
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
     # Keep @types/node on the same major as the runtime in root .nvmrc (Node 24 LTS).
@@ -82,6 +108,17 @@ updates:
     ignore:
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+      # TypeScript 7 has its own gate (Marc 2026-10-30) — no Dependabot major PRs.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+    groups:
+      sdk-js-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   # Yarn 4 workspace (packageManager: yarn@4.x). Dependabot npm ecosystem updates
   # package.json + yarn.lock. Keep RN-core / vision-camera / Orval out of tooling batches —
@@ -96,9 +133,17 @@ updates:
       semver-patch-days: 3
       semver-minor-days: 3
       semver-major-days: 7
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
+    ignore:
+      # TypeScript 7 has its own gate (Marc 2026-10-30) — no Dependabot major PRs.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      # ESLint 10 breaks eslint-plugin-eslint-comments (context.getSourceCode removed);
+      # wait for @eslint-community migration (Marc 2026-10-30, was #1007).
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
     groups:
       # ESLint / Jest majors stay ungrouped (visible solo PRs). RN preset gates
       # (`yarn deps:monitor`) block ESLint 10 / Jest 30; do not batch them with
@@ -133,6 +178,24 @@ updates:
       mobile-navigation:
         patterns:
           - "@react-navigation/*"
+      # Catch-all minor+patch (Marc 2026-10-30). Excludes RN core / vision-camera
+      # (own groups above), orval (O-grid solo) and eslint / jest (RN gates).
+      mobile-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "orval"
+          - "@orval/*"
+          - "eslint"
+          - "eslint-*"
+          - "@eslint/*"
+          - "jest"
+          - "jest-*"
+          - "@jest/*"
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -141,7 +204,7 @@ updates:
     # github-actions supports default-days only (no semver-*-days in Dependabot schema).
     cooldown:
       default-days: 3
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
     # CodeQL init/analyze must share one version — split PRs fail Analyze.
@@ -149,6 +212,14 @@ updates:
       codeql-action:
         patterns:
           - "github/codeql-action/*"
+      # Catch-all minor+patch (Marc 2026-10-30).
+      actions-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: "pip"
     directory: "/ezkey-cli-python"
@@ -159,9 +230,18 @@ updates:
       semver-patch-days: 3
       semver-minor-days: 3
       semver-major-days: 7
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
+    groups:
+      # Catch-all minor+patch (Marc 2026-10-30).
+      cli-python-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   # -------------------------------------------------------------------------
   # Wave 0.3 — close Dependabot coverage gaps (security hygiene, config only).
@@ -184,7 +264,7 @@ updates:
       semver-patch-days: 3
       semver-minor-days: 3
       semver-major-days: 7
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
     groups:
@@ -213,7 +293,7 @@ updates:
       semver-patch-days: 3
       semver-minor-days: 3
       semver-major-days: 7
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
     ignore:
@@ -249,7 +329,7 @@ updates:
     # docker supports default-days only (no semver-*-days in Dependabot).
     cooldown:
       default-days: 3
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
     ignore:
@@ -304,7 +384,7 @@ updates:
     # docker-compose supports default-days only (no semver-*-days in Dependabot).
     cooldown:
       default-days: 3
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
     ignore:

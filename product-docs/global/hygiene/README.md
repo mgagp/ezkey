@@ -55,6 +55,7 @@ One owning pass per procedure per slot — back off on concurrent merges.
 
 Repo-is-memory decisions (one line + reason):
 
+- **Dependabot inflow reduction** — minor+patch catch-all groups per directory, PR limit 5, ignore TS 7 / mobile ESLint 10 majors, CI regen of mobile licenses JSON, auto-merge of green semver-patch PRs (excl. crypto, Docker, Gradle, RN-core, deferred/HITL): open-PR stock fell but weekly inflow (~34) did not, so cut it at the source (Marc 2026-10-30).
 - **Dependabot curated at 09:14 ET weekdays (light) / Monday full** — fixed clock so agents and
   humans share one slot; avoids ad-hoc “whenever” drift.
 - **Code-scanning triage Monday 10:15 ET** (moved from 09:17) — avoid collision with the
