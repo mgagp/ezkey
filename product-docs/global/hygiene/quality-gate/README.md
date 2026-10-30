@@ -7,7 +7,10 @@ Cloud-agent gate between merge batches. Exit **0** GO · **1** NO-GO · **2** us
 Artifacts under `logs/quality-gate/<UTC>-<shortsha>/` (gitignored).
 
 **Not** a CI gate. A phase that can show GREEN wrongly is worse than no gate.
-Cloud agent tooling; Git Bash best-effort, untested on macOS.
+Requires **Bash >= 4** (associative arrays / `declare -A`). On macOS install Homebrew
+bash (`brew install bash`) and launch via `#!/usr/bin/env bash` or `bash` from PATH —
+not `/bin/bash` (system Bash is 3.2). Cloud agent tooling (Linux, Git Bash, Homebrew
+bash on macOS).
 
 ## Command
 
@@ -24,7 +27,7 @@ node scripts/lib/quality-gate-secrets.test.mjs
 | --- | --- |
 | **0** | GO — all phases ran; no RED; no AMBER; HA valid |
 | **1** | NO-GO — any RED check/phase |
-| **2** | Bad args / usage |
+| **2** | Bad args / usage (also Bash older than 4) |
 | **3** | GO with reservations — AMBER only (HA valid; no skipped phases) |
 | **4** | INCONCLUSIVE — HA invalid and/or any `--skip` phase (never GO) |
 
@@ -44,8 +47,10 @@ code **137**. Searching from `GATE_STARTED_AT` is wrong: preflight `stop_stacks`
 2. **Unit tests** — `./scripts/build.sh` with stack down (`MAVEN_OPTS=-Xmx1024m`).
 3. **Clean-start** — HA + JavaMelody + gate memory overlay
    ([`docker/docker-compose.ha.quality-gate.yml`](../../../../docker/docker-compose.ha.quality-gate.yml)).
-4. **Post-clean health** → **functional** → **elective** → **docker-start restore** →
-   **Playwright** → **churn** → **health** → **OOM check** (whole-run window).
+   Do not pass `--prod-safe` here: Mac gate on `10788444` (2026-10-29) showed rate limits ON for the whole functional suite (71× HTTP 429 / AdminRateLimitFilter). `Refs #915`.
+4. **Post-clean health** → **c1-rate-limit** (#912: test-only `ezkey-tests/gate-c1` overlay enables Auth API respond limits with low thresholds while AdminRateLimitFilter stays OFF; restores limits-off before functional) → **functional** → **elective** → **docker-start restore** →
+   **Playwright** (Orval `generate:api` first — gitignored client must not go stale; #915) →
+   **churn** → **health** → **OOM check** (whole-run window). `Refs #912`.
 
 Fail-fast on RED for preflight, unit-tests, or clean-start.
 
@@ -59,7 +64,8 @@ UNKNOWN/AMBER (never silent "no OOM").
 
 | Issue | Gate behaviour |
 | --- | --- |
-| [#747](https://github.com/mgagp/ezkey/issues/747) | Retry only if `ezkey_encryption_key_pkey`; else clean-start RED. Allowlist: `requires=COMPOSE_RETRY_FIRED` + Spring `<TS> ERROR` signature. |
+| [#747](https://github.com/mgagp/ezkey/issues/747) | Retry only if `ezkey_encryption_key_pkey` appears in admin-api replica logs **since clean-start phase start − 5 s** (`QUALITY_GATE_SINCE_BACKOFF_S`, Docker Desktop macOS VM clock skew) via `docker logs --since` (no `tail` cap); else clean-start RED. Match uses `grep -F … >/dev/null` **without** `-q` so `set -o pipefail` does not treat writer SIGPIPE (141) as a miss when the signature is early (Patrick B1). HA test `5e` uses signature then `seq 1 2000000` (a single fat line is one write and does not prove SIGPIPE). `quality_gate_since_backoff` never returns empty on python3 failure (raw timestamp + stderr; Patrick N1) and validates backoff secs as `^[0-9]+$` (N2). Allowlist: `requires=COMPOSE_RETRY_FIRED` + Spring `<TS> ERROR` signature. Phase timing: portable `now_ms` (GNU `%3N` when numeric; else `python3` / `node` / whole seconds with stderr note) — BSD `date` on macOS must not poison arithmetic (Carl 2026-10-19). CI: dedicated `quality-gate` job runs `quality-gate-ha.test.sh`. |
+| [#915](https://github.com/mgagp/ezkey/issues/915) | Lot 1 (scripts): `rewrite_last_phase` uses POSIX `sed '$d'` (not `head -n -1`); `parse_surefire_counts` skips `Time elapsed` class lines so module totals are not double-counted (display-only); `#747` compose resume resolves `timeout` or Homebrew `gtimeout`, else warns on stderr and runs unbound. Defect 3: `--no-clean-start` reuses the running stack (preflight does **not** `docker compose down -v`) and also skips `unit-tests` (stack-up RAM headroom); exit stays **4**. Defect 6: Playwright runs `npm run generate:api` first (fail-closed RED if Orval regen fails — never stale client). Before `generate:api`, if `ezkey-admin-ui/node_modules` (or `.bin/orval`) is missing — typical fresh worktree — run `npm ci` first (RED + no UI tests if `npm ci` fails). Playwright smoke screenshots use `EZKEY_PLAYWRIGHT_ARTIFACTS_DIR` (gate sets it to the run's `playwright-results/`) or `EZKEY_BROWSER_TEST_RESULTS_DIR`, else `testInfo.outputPath` — never hardcode `/opt/cursor/artifacts` (ENOENT on macOS hosts without that dir). |
 | [#748](https://github.com/mgagp/ezkey/issues/748) | Auth security false pass (sticky RestAssured → crypto). Fixed in product tests. |
 | [#750](https://github.com/mgagp/ezkey/issues/750) | Bootstrap proof/challenge/QR **emitted during clean-start only** (`kind=secret-channel`). Still valid when scanned later; emission outside clean-start stays RED. |
 | [#751](https://github.com/mgagp/ezkey/issues/751) | Recovery codes / login challenges no longer logged. |

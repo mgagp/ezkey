@@ -57,6 +57,7 @@ import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.audit.util.ClientContext;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
+import org.ezkey.util.LogSanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -478,7 +479,9 @@ public class AdminAuthController {
       HttpServletRequest httpRequest,
       HttpServletResponse httpResponse) {
 
-    logger.info("🌐 Login request received for username: {}", request.username());
+    logger.info(
+        "🌐 Login request received for username: {}",
+        LogSanitizer.sanitizeForLog(request.username()));
 
     // Extract client context for audit logging
     ClientContext context = ClientContext.from(httpRequest);
@@ -494,8 +497,8 @@ public class AdminAuthController {
     if (response.success()) {
       logger.info(
           "✅ Login successful for username: {} from IP: {}",
-          request.username(),
-          context.clientIp());
+          LogSanitizer.sanitizeForLog(request.username()),
+          LogSanitizer.sanitizeForLog(context.clientIp()));
 
       // Record successful attempt for rate limiting
       rateLimitFilter.recordSuccessfulAttempt(context.clientIp());
@@ -512,8 +515,8 @@ public class AdminAuthController {
     } else if ("pending".equals(response.status())) {
       logger.info(
           "⏳ Login pending (challenge required) for username: {} from IP: {}",
-          request.username(),
-          context.clientIp());
+          LogSanitizer.sanitizeForLog(request.username()),
+          LogSanitizer.sanitizeForLog(context.clientIp()));
 
       rateLimitFilter.recordSuccessfulAttempt(context.clientIp());
 
@@ -532,8 +535,8 @@ public class AdminAuthController {
     } else {
       logger.error(
           "❌ Unexpected login response status: {} for username: {}",
-          response.status(),
-          request.username());
+          LogSanitizer.sanitizeForLog(response.status()),
+          LogSanitizer.sanitizeForLog(request.username()));
 
       rateLimitFilter.recordFailedAttempt(context.clientIp());
 
@@ -934,7 +937,9 @@ public class AdminAuthController {
 
     try {
       logger.warn(
-          "🔑 Recovery attempt for admin: {} from IP: {}", request.username(), context.clientIp());
+          "🔑 Recovery attempt for admin: {} from IP: {}",
+          LogSanitizer.sanitizeForLog(request.username()),
+          LogSanitizer.sanitizeForLog(context.clientIp()));
 
       String recoveryToken =
           recoveryService.validateRecoveryCode(request.username(), request.recoveryCode());
@@ -960,7 +965,7 @@ public class AdminAuthController {
 
       logger.warn(
           "✅ Recovery successful for admin: {} ({} codes remaining)",
-          request.username(),
+          LogSanitizer.sanitizeForLog(request.username()),
           codesRemaining);
 
       // Record successful attempt for rate limiting
@@ -996,9 +1001,9 @@ public class AdminAuthController {
       String internalDetail = e.getInternalDetail();
       logger.warn(
           "❌ Recovery failed for admin: {} from IP: {} - Reason: {}",
-          request.username(),
-          context.clientIp(),
-          internalDetail);
+          LogSanitizer.sanitizeForLog(request.username()),
+          LogSanitizer.sanitizeForLog(context.clientIp()),
+          LogSanitizer.sanitizeForLog(internalDetail));
 
       rateLimitFilter.recordFailedAttempt(context.clientIp());
 
@@ -1027,7 +1032,11 @@ public class AdminAuthController {
                   org.ezkey.admin.service.AdminRecoveryService.GENERIC_RECOVERY_FAILURE_MESSAGE));
 
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
-      logger.error("❌ Recovery error for admin: {} - {}", request.username(), e.getMessage(), e);
+      logger.error(
+          "❌ Recovery error for admin: {} - {}",
+          LogSanitizer.sanitizeForLog(request.username()),
+          LogSanitizer.sanitizeForLog(e.getMessage()),
+          e);
 
       Integer errorTenantId = resolveAdminTenantId(request.username());
       Integer errorAdminId = resolveAdminId(request.username());

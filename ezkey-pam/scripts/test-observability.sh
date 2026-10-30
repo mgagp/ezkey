@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # M1 observability: exactly one authpriv attempt line per scenario in /var/log/secure.
 # Scenarios: success, reject, timeout, network error. Never secrets in any log sink.
+# #1016 D3: isolate from caller ENV (CI stub keys → Integration API http=401).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -9,7 +10,24 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 require_cmd docker
 require_cmd ssh
+
+# D3: drop caller/CI stub keys, then reload provisioned .env only.
+unset EZKEY_INTEGRATION_KEY EZKEY_SECRET_KEY EZKEY_INTEGRATION_API_URL \
+  EZKEY_M2M_API_URL
+load_env_file "${ENV_FILE}"
 require_integration_keys
+case "${EZKEY_INTEGRATION_KEY}" in
+  *ci_dummy*|*not_a_secret*)
+    echo "test-observability needs provisioned .env keys (got CI stub pattern in EZKEY_INTEGRATION_KEY)" >&2
+    exit 1
+    ;;
+esac
+case "${EZKEY_SECRET_KEY}" in
+  *ci_dummy*|*not_a_secret*)
+    echo "test-observability needs provisioned .env keys (got CI stub pattern in EZKEY_SECRET_KEY)" >&2
+    exit 1
+    ;;
+esac
 
 CONTAINER="${EZKEY_PAM_CONTAINER:-ezkey-pam-ssh}"
 CONF="/etc/security/pam_ezkey.conf"
@@ -32,6 +50,47 @@ restore_conf() {
     || true
 }
 trap restore_conf EXIT
+
+# Sync provisioned .env credentials into the running container conf so a prior
+# CI-stub start cannot leave http=401 keys in place (#1016 D3).
+docker exec "${CONTAINER}" cp -a "${CONF}" "${BACKUP}"
+# Values from .env (validated non-empty / non-stub). Pass via env; rewrite in
+# container Python so the host shell never interpolates secrets into argv.
+docker exec -i \
+  -e "OBS_IKEY=${EZKEY_INTEGRATION_KEY}" \
+  -e "OBS_SKEY=${EZKEY_SECRET_KEY}" \
+  -e "OBS_URL=${EZKEY_INTEGRATION_API_URL:-http://integration-api:7080}" \
+  -e "OBS_CONF=${CONF}" \
+  "${CONTAINER}" python3 - <<'PY'
+import os, pathlib, tempfile
+conf = pathlib.Path(os.environ["OBS_CONF"])
+ikey, skey, url = os.environ["OBS_IKEY"], os.environ["OBS_SKEY"], os.environ["OBS_URL"]
+for label, val in (("ikey", ikey), ("skey", skey), ("url", url)):
+    if any(c in val for c in "\n\r"):
+        raise SystemExit(f"refusing conf rewrite: {label} contains newline")
+lines = conf.read_text(encoding="utf-8").splitlines()
+out = []
+for line in lines:
+    if line.startswith("integration_api_url="):
+        out.append(f"integration_api_url={url}")
+    elif line.startswith("integration_key="):
+        out.append(f"integration_key={ikey}")
+    elif line.startswith("secret_key="):
+        out.append(f"secret_key={skey}")
+    else:
+        out.append(line)
+text = "\n".join(out) + "\n"
+fd, tmp_name = tempfile.mkstemp(prefix="pam_ezkey.obs.", dir=str(conf.parent))
+os.close(fd)
+tmp = pathlib.Path(tmp_name)
+tmp.write_text(text, encoding="utf-8")
+tmp.chmod(0o600)
+os.chown(tmp, 0, 0)
+tmp.replace(conf)
+print("obs: synced conf keys from provisioned .env")
+PY
+# EXIT restore should return to provisioned keys, not a prior stub conf.
+docker exec "${CONTAINER}" cp -a "${CONF}" "${BACKUP}"
 
 attempt_count() {
   # GNU grep -c prints 0 and exits 1 when there are no matches — do not append another 0.
@@ -67,7 +126,8 @@ wait_new_attempt() {
 assert_one_clean_line() {
   local before="$1"
   local expect_result="$2"
-  local label="$3"
+  local expect_reason="$3"
+  local label="$4"
   local lines count line
 
   wait_new_attempt "${before}" || true
@@ -79,9 +139,9 @@ assert_one_clean_line() {
     fail "${label}: expected at least 1 new attempt line, got ${count}"
     return 0
   fi
-  # With MaxAuthTries 1, success/network/conf should be exactly one; reject/timeout too.
+  # Demo Match User MaxAuthTries 1 → one pam_sm_authenticate per SSH try.
   if [ "${count}" -gt 1 ]; then
-    fail "${label}: expected exactly 1 new attempt line (MaxAuthTries 1), got ${count}"
+    fail "${label}: expected exactly 1 new attempt line (Match MaxAuthTries 1), got ${count}"
     echo "${lines}" | sed 's/^/  /' || true
     return 0
   fi
@@ -89,8 +149,13 @@ assert_one_clean_line() {
     fail "${label}: expected result=${expect_result} in: ${line}"
     return 0
   fi
-  if ! echo "${line}" | grep -Eq 'user=[^ ]+ authAttemptId=[^ ]+ result=[^ ]+ pam_code=[0-9]+ latency_ms=[0-9]+ lab_http=(true|false) cancel=(ok|fail|skipped|final)'; then
-    fail "${label}: line missing required fields (incl. lab_http + cancel): ${line}"
+  # N1: assert the expected reason (not merely "any reason= token").
+  if ! echo "${line}" | grep -Eq " reason=${expect_reason}( |$)"; then
+    fail "${label}: expected reason=${expect_reason} in: ${line}"
+    return 0
+  fi
+  if ! echo "${line}" | grep -Eq 'user=[^ ]+ authAttemptId=[^ ]+ result=[^ ]+ pam_code=[0-9]+ latency_ms=(-|[0-9]+) lab_http=(true|false) cancel=(ok|fail|skipped|final) timeoutSeconds=(-|[0-9]+) stage=(init|conf|confirm|create|challenge|wait) reason=([-a-z0-9_]+) curl_rc=(-|[0-9]+) http=(-|[0-9]+) confirm_ms=(-|[0-9]+) api_ms=(-|[0-9]+)$'; then
+    fail "${label}: line missing required fields (incl. #1011 stage/reason/timings, \$ anchored): ${line}"
     return 0
   fi
   if echo "${line}" | grep -Eiq 'secret|proof|token|Authorization|body=\{'; then
@@ -105,7 +170,7 @@ assert_one_clean_line() {
     fail "${label}: integration_key leaked"
     return 0
   fi
-  ok "${label}: one clean line (${expect_result})"
+  ok "${label}: one clean line (${expect_result} reason=${expect_reason})"
   echo "  ${line}"
 }
 
@@ -130,17 +195,11 @@ ssh_run() {
   local out="$1"
   local cmd="$2"
   local rc=0
-  ssh -tt \
-    -p "${PORT}" \
-    -o StrictHostKeyChecking=no \
-    -o UserKnownHostsFile=/dev/null \
-    -o PreferredAuthentications=keyboard-interactive \
-    -o PubkeyAuthentication=no \
-    -o PasswordAuthentication=no \
-    -o ConnectTimeout=10 \
-    "${SSH_USER}@127.0.0.1" \
-    "${cmd}" \
-    >"${out}" 2>&1 || rc=$?
+  # #941: no-challenge waiting prompt needs Enter; capture includes PAM markers.
+  set +e
+  ezkey_ssh_kbdint_autoenter "${out}" "${cmd}" 10
+  rc=$?
+  set -e
   echo "${rc}" >"${out}.rc"
 }
 
@@ -175,7 +234,7 @@ else
   fail "success path did not print PAM_SSH_OK"
   tail -n 40 "${LOG}" || true
 fi
-assert_one_clean_line "${BEFORE}" "SUCCESS" "success"
+assert_one_clean_line "${BEFORE}" "SUCCESS" "-" "success"
 
 # --- reject ---
 BEFORE="$(attempt_count)"
@@ -190,7 +249,7 @@ if [ "${RC}" != "0" ] && ! grep -q SHOULD_NOT "${LOG}"; then
 else
   fail "reject path unexpectedly succeeded (rc=${RC})"
 fi
-assert_one_clean_line "${BEFORE}" "DENIED" "reject"
+assert_one_clean_line "${BEFORE}" "DENIED" "-" "reject"
 
 # --- timeout (short wait, no approve) → result=TIMEOUT (#895) ---
 BEFORE="$(attempt_count)"
@@ -206,7 +265,7 @@ if [ "${RC}" != "0" ]; then
 else
   fail "timeout path unexpectedly succeeded"
 fi
-assert_one_clean_line "${BEFORE}" "TIMEOUT" "timeout"
+assert_one_clean_line "${BEFORE}" "TIMEOUT" "-" "timeout"
 
 # --- network error (unreachable Integration API) ---
 BEFORE="$(attempt_count)"
@@ -222,7 +281,7 @@ if [ "${RC}" != "0" ]; then
 else
   fail "network-error path unexpectedly succeeded"
 fi
-assert_one_clean_line "${BEFORE}" "UNAVAIL" "network-error"
+assert_one_clean_line "${BEFORE}" "UNAVAIL" "curl" "network-error"
 
 assert_no_secret_in_logs
 

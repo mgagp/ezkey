@@ -164,3 +164,83 @@ Append-only residual for **weekday light** `dependabot-curated` passes.
   - No Orval PRs in queue this pass
 - Validation: Dependabot CI green + `mergeStateStatus` CLEAN for #838/#839/#840/#841; Admin UI local Node 24 — vitest **206/206** on 5.0.4; mobile hygiene #850 — local `yarn validate` (jest **42/307**) + PR CI (`js-validate`, `android-jvm-unit-tests`, `android-16kb-alignment`, `ci-gate`). Deferred full `./scripts/build.sh` / Playwright stack (box may lack JDK/Docker; not required for this light lot).
 - Residual: phone smoke for mobile bumps tracked on #627 (gates next Play AAB). Nothing deployed.
+
+## 2026-10-21
+
+- Pass: weekday light (autonomous); concurrency: clear (re-checked before first write — no Dependabot/hygiene merges in prior ~45 min; no other in-flight `dependabot-curated`/Orval agent; other cloud agents were keyset/PAM/docs out of scope)
+- GitHub write: `GH_TOKEN as mgagp`
+- Merged (squash):
+  - GitHub Actions T2: #924 `actions/setup-java` 6.0.1→6.1.0 `e4f1d06f`
+  - Hygiene **#957** `83698cb8` (branch `cursor/hygiene-dependabot-2026-10-21-69b6`) superseding:
+    - CodeQL T2: #932+#935 `github/codeql-action` init/analyze 4.38.3→4.39.0 together (solo PRs fail Analyze version mismatch)
+    - Admin UI T1: #877+#931 react/react-dom 19.3.0→19.3.1 together; #925 i18next 26.4.4→26.4.7; #928 react-i18next 17.0.16→17.0.21; #927 `@hookform/resolvers` 5.9.1→5.9.2
+    - Admin UI T3: #926 lucide-react 1.58.0→1.59.0
+    - Mobile T1: #933 react-i18next 17.0.20→17.0.21; Mobile T3: #930 react-native-gesture-handler 3.3.0→3.4.0 + `yarn license:app-data` (`thirdPartyLicenses.json`; precedent #836/#850)
+- Held (out of light scope; not closed):
+  - #929 android-gradle-minor-patch (Marc: Android Gradle HITL on full passes)
+  - #878 mobile-rn-core (never auto-merge without Marc)
+  - #870 com.google.crypto.tink 1.23→1.24 (crypto hard escalator; Christophe opinion)
+  - #779 mobile ESLint 10, #653 Jest 30 (ecosystem gates)
+  - #767 textual pip floor jump (Monday/T4)
+  - deferred:later-train `#498`/`#337` (skip)
+- Red-CI evidence (pre-hygiene; not merged as-is):
+  - #932/#935 Analyze: `Loaded a configuration file for version '4.39.0', but running version '4.38.3'` (and inverse) — runs `39439048338` / `39439226421`
+  - #877/#931 admin-ui: react/react-dom version mismatch / ERESOLVE peer — runs `39344363630` / `39439043809`
+  - #933/#930 `js-validate`: stale `app/data/thirdPartyLicenses.json` only — runs `39439091461` / `39439023542`
+- Validation: #924 + #957 `ci-gate` green / `mergeStateStatus` CLEAN; local Node 24 Admin lint + `tsc -b` + vitest **206/206**; Playwright **6/6**; mobile `yarn validate` jest **323/323** + PR `js-validate` / android jobs / `ci-gate`
+- Residual: phone smoke for mobile bumps tracked on #627 (gates next Play AAB). Nothing deployed.
+
+## 2026-10-22
+
+- Pass: weekday light (autonomous); concurrency: clear (no Dependabot/hygiene merges in prior ~30 min; only this `dependabot-curated` agent owning the pass; idle docs agent #984 out of scope)
+- GitHub write: `GH_TOKEN as mgagp`
+- Merged (squash):
+  - Maven T1: #965 `jackson-2-bom.version` 2.22.3→2.22.4 `20c40f68`
+  - Admin UI T1: #967 `@tanstack/react-query` 5.104.3→5.104.4 `69517d00`
+  - Admin UI T3: #968 i18next 26.4.7→26.5.2 `51187fe0`; #966 react-i18next 17.0.21→17.1.0 `7a656eb8`
+  - Mobile T1/T3 via hygiene **#986** `172d91cc` (branch `cursor/dependabot-mobile-licenses-1dbc`) superseding #969 i18next 26.5.2 (T3), #970 `@tanstack/react-query` 5.104.4 (T1), #971 react-i18next 17.1.0 (T3) + `yarn license:app-data` (`thirdPartyLicenses.json`; same pattern as #850/#957)
+- Held (out of light scope; not closed — Marc hold 2026-10-21 / gates):
+  - #870 Tink 1.23→1.24 (crypto; PAM/Tink restructuring)
+  - #878 mobile-rn-core (never auto-merge without Marc)
+  - #929 android-gradle junit (HITL until PAM/Tink stabilize)
+  - #779 ESLint 10, #653 Jest 30 (ecosystem gates)
+  - #767 textual pip (Monday)
+  - deferred:later-train `#498`/`#337` (skip)
+- Red-CI evidence (pre-hygiene; not merged as-is):
+  - #969/#970/#971 `mobile / js-validate`: stale `app/data/thirdPartyLicenses.json` only (package version bump in snapshot) — runs `39616637307` / `39616678938` / `39616713754` — not infra
+- Validation: Dependabot CI green for #965/#966/#967/#968; #986 `ci-gate` + `js-validate` / android jobs green; `./scripts/build.sh` OK; clean-start OK (Admin `9081` UP, audit HMAC READY); smoke excl. prod-safe-only rate-limit assertion OK (full smoke needs `--prod-safe`); Admin Node 24 lint + vitest **206/206**; Playwright **6/6**; mobile jest **323/323**
+- Residual: phone smoke for mobile bumps tracked on #627 (gates next Play AAB). Nothing deployed.
+
+## 2026-10-23
+
+- Pass: weekday light (autonomous); concurrency: clear at merge time (operator check 09:25 ET + re-check; no Dependabot/hygiene merges in prior ~30 min; last unrelated merge #996 PAM at 2026-10-23T00:17Z; only this `dependabot-curated` agent owning the pass)
+- GitHub write: `GH_TOKEN as mgagp`
+- Merged (squash):
+  - Maven T1: #990 `jackson-bom.version` 3.2.3→3.2.4 `d81e069a` (Dependabot CI CLEAN: backend + `ci-gate`; run `39795325472`)
+  - Mobile T1: #991 `@rnx-kit/third-party-notices` 3.0.3→3.0.4 `41d80fc2` — direct squash after update-branch onto main; `mobile / js-validate` green on rebased head (no `yarn license:app-data` companion; unlike #969–#971/#933/#930); android-jvm + android-16kb + `ci-gate` SUCCESS (post-rebase run `39960907148`)
+- Held (out of light scope; not closed — Marc hold / gates):
+  - #870 Tink 1.23→1.24 (crypto; PAM + Tink at-rest restructuring; Christophe)
+  - #878 mobile-rn-core (never auto-merge without Marc)
+  - #929 android-gradle junit (Marc hold)
+  - #779 ESLint 10, #653 Jest 30 (ecosystem gates)
+  - #767 textual pip floor (Monday)
+  - deferred:later-train `#498`/`#337` (skip)
+- Red-CI evidence: none for actionable queue (both Dependabot CIs green before merge)
+- Validation: T1-only shortcut — `./scripts/build.sh` BUILD SUCCESS on `main` @ `d81e069a` (pre-#991); after #991, mobile `yarn validate` jest **323/323** (42 suites; eslint 0 errors / 5 pre-existing warnings). Stack/Playwright deferred (T1-only).
+- Residual: phone smoke for #991 tracked on #627 (gates next Play AAB; non-blocking). Nothing deployed.
+
+## 2026-10-26
+
+- Pass: afternoon low-risk lots (Marc go 2026-10-26); concurrency: clear (no other Dependabot/hygiene owning pass in prior ~30 min; morning Monday full #1027 already merged)
+- GitHub write: `GH_TOKEN as mgagp`
+- Merged (squash):
+  - Mobile hygiene **#1041** `40a43ec7` (branch `hygiene/dependabot-mobile-2026-10-26b`) — `react-i18next` 17.1.4 + `zustand` 5.0.16 + `i18next` 26.5.6 + `yarn license:app-data` (supersedes #1036/#1037/#1038; Dependabot CI red only on stale `thirdPartyLicenses.json`)
+  - Mobile Orval **#1039** 8.43.0→8.44.0 (**O0** — codegen 8.43≡8.44 on same Auth OpenAPI; Dependabot pin+lock only) `6c059500`
+  - Maven T1/T2: #1028 surefire 3.6.0→3.6.1 `14f70f7a`; #1029 failsafe 3.6.0→3.6.1 `ecb0339c`; #1033 rest-assured 6.2.0→6.3.0 `528b1d07` (CodeQL Analyze re-triggered via empty commit after transient failed-SARIF upload; `ci-gate` already green)
+  - Admin UI: #1035 react-i18next 17.1.0→17.1.4 `427d9a25`; #1030 vite 8.3.4→8.3.5 `caf7f13e`; #1032 Orval 8.43.0→8.44.0 (**O0** — `src/generated/` bit-identical base vs bump) `ff391cf7`
+- Closed as superseded: #1037, #1038 (comment); #1036 already closed by GitHub after #1041
+- Held / not touched (operator leave-alone): #870, #878, #929, #1007, #1031, #1034, #767, #653, #498, #337, #347, #917, #1025, #1014
+- Note: Orval pin lines in Admin UI / mobile `AGENTS.md` still say `8.43.0` — sync deferred to draft #917 (out of this lot)
+- Code-scanning alerts API: PAT 403 (`actions`/security-events); relied on PR CodeQL checks SUCCESS + `mergeStateStatus` CLEAN + 0 unresolved review threads
+- Validation: mobile Node 24 — `yarn install --immutable`, `yarn validate:ci` (42 suites / 323 tests), `yarn license:ci`; Orval O0 diffs saved under artifacts; Dependabot/`ci-gate` green per PR before squash. No deploy.
+- Residual: phone smoke for mobile bumps tracked on #627 (gates next Play AAB). Nothing deployed.

@@ -10,6 +10,7 @@
 
 package org.ezkey.authattempt.service;
 
+import java.time.OffsetDateTime;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
@@ -49,26 +50,38 @@ public class AuthAttemptTxHelper {
   }
 
   /**
-   * Mark auth attempt as INVALID in an independent transaction.
+   * Mark auth attempt as INVALID in an independent transaction, only when status is still {@code
+   * READ}.
    *
-   * <p>This method commits immediately regardless of the calling method's transaction state. This
-   * ensures auth attempts are marked as INVALID even when validation throws an exception (e.g.,
-   * challenge mismatch, signature validation failure).
+   * <p>This method commits immediately regardless of the calling method's transaction state. Used
+   * for challenge mismatches after ownership was proven. Conditional on {@code READ} so a
+   * concurrent cancel/approve cannot be overwritten (#912).
    *
-   * <p><b>Security:</b> Critical for audit trail - we need to record INVALID attempts even when the
-   * response processing fails. This helps detect brute force attacks and provides accurate security
-   * metrics.
+   * <p><b>Security:</b> Invalid-signature probes must <em>not</em> call this method — they keep the
+   * attempt in {@code READ} and return generic state-conflict (#912). Challenge mismatch after a
+   * valid device signature still records INVALID for audit.
    *
    * @param authAttemptId the auth attempt ID to mark as invalid
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void markAsInvalid(Integer authAttemptId) {
-    AuthAttempt authAttempt = authAttemptRepository.findById(authAttemptId).orElse(null);
-    if (authAttempt != null) {
-      authAttempt.setAuthAttemptStatus(AuthAttemptStatus.INVALID);
-      authAttemptRepository.save(authAttempt);
+    OffsetDateTime now = OffsetDateTime.now();
+    int updated =
+        authAttemptRepository.updateStatusIfCurrent(
+            authAttemptId, AuthAttemptStatus.READ, AuthAttemptStatus.INVALID, now);
+    if (updated == 1) {
       logger.warn("🔒 Auth attempt {} marked as INVALID (committed independently)", authAttemptId);
+      return;
     }
+    AuthAttempt latest = authAttemptRepository.findById(authAttemptId).orElse(null);
+    if (latest == null) {
+      logger.warn("Skip markAsInvalid for auth attempt {}: not found", authAttemptId);
+      return;
+    }
+    logger.warn(
+        "Skip markAsInvalid for auth attempt {}: status is {} (not READ or expired)",
+        authAttemptId,
+        latest.getAuthAttemptStatus());
     // Transaction commits here when method returns
   }
 

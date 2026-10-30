@@ -53,15 +53,22 @@ class RateLimitFilterRespondTest {
     objectMapper = new ObjectMapper();
     properties = new RateLimitProperties();
     properties.setEnabled(true);
-    // Respond: 1 request per 5 min, key by auth-attempt-id
+    // Respond: 1 request per 5 min after ownership; filter uses fail-IP (#912 C1)
     RateLimitProperties.EndpointConfig respondConfig = new RateLimitProperties.EndpointConfig();
     respondConfig.setRequests(1);
     respondConfig.setWindowMinutes(5);
     respondConfig.setKeyStrategy("auth-attempt-id");
+    respondConfig.setFailIpRequests(30);
+    respondConfig.setFailIpWindowMinutes(1);
     properties.setRespond(respondConfig);
+    AuthRespondRateLimitService respondRateLimits = new AuthRespondRateLimitService(properties);
     filter =
         new RateLimitFilter(
-            properties, new org.ezkey.auth.config.TrustedProxyProperties(), objectMapper);
+            properties,
+            new org.ezkey.auth.config.TrustedProxyProperties(),
+            objectMapper,
+            null,
+            respondRateLimits);
   }
 
   @Test
@@ -76,11 +83,58 @@ class RateLimitFilterRespondTest {
     verify(filterChain).doFilter(any(HttpServletRequest.class), any(HttpServletResponse.class));
   }
 
+  /**
+   * #912 C1 repro (filter layer): with {@code auth-attempt-id} strategy the filter consumes the
+   * per-id token <em>before</em> ownership. A third-party invalid respond therefore burns the
+   * owner's only token (1 / 5 min). Desired: filter must not debit {@code respond:<id>} — both
+   * requests with the same id stay allowed at the filter (IP fail ceiling is separate).
+   */
   @Test
-  @DisplayName("Second respond request for same authAttemptId within window returns 429")
-  void secondRespondRequestSameAuthAttemptIdReturns429() throws Exception {
-    MockHttpServletRequest request1 = respondRequest(789, "sig1", true);
-    MockHttpServletRequest request2 = respondRequest(789, "sig2", true);
+  @DisplayName(
+      "C1 #912: same authAttemptId twice must both pass the filter (no pre-ownership id debit)")
+  void sameAuthAttemptIdTwice_mustBothPassFilter_noPreOwnershipDebit() throws Exception {
+    MockHttpServletRequest request1 = respondRequest(789, "sig-invalid-third-party", true);
+    MockHttpServletRequest request2 = respondRequest(789, "sig-owner", true);
+    MockHttpServletResponse response1 = new MockHttpServletResponse();
+    MockHttpServletResponse response2 = new MockHttpServletResponse();
+
+    filter.doFilter(request1, response1, filterChain);
+    filter.doFilter(request2, response2, filterChain);
+
+    assertThat(response1.getStatus()).isEqualTo(200);
+    assertThat(response2.getStatus())
+        .as(
+            "CONFIRMED C1: pre-ownership filter debit → second respond HTTP %s Retry-After=%s"
+                + " (desired 200 so owner can approve after a third-party 409)",
+            response2.getStatus(), response2.getHeader("Retry-After"))
+        .isEqualTo(200);
+    verify(filterChain, org.mockito.Mockito.times(2))
+        .doFilter(any(HttpServletRequest.class), any(HttpServletResponse.class));
+  }
+
+  @Test
+  @DisplayName("Retry-After on respond fail-IP 429 is a positive refill delay (not 0)")
+  void respond429_retryAfterIsPositiveSeconds() throws Exception {
+    RateLimitProperties.EndpointConfig respondConfig = new RateLimitProperties.EndpointConfig();
+    respondConfig.setRequests(1);
+    respondConfig.setWindowMinutes(5);
+    respondConfig.setKeyStrategy("auth-attempt-id");
+    respondConfig.setFailIpRequests(1);
+    respondConfig.setFailIpWindowMinutes(5);
+    properties.setRespond(respondConfig);
+    AuthRespondRateLimitService respondRateLimits = new AuthRespondRateLimitService(properties);
+    filter =
+        new RateLimitFilter(
+            properties,
+            new org.ezkey.auth.config.TrustedProxyProperties(),
+            objectMapper,
+            null,
+            respondRateLimits);
+
+    MockHttpServletRequest request1 = respondRequest(111, "sig1", true);
+    MockHttpServletRequest request2 = respondRequest(222, "sig2", true);
+    request1.setRemoteAddr("203.0.113.9");
+    request2.setRemoteAddr("203.0.113.9");
     MockHttpServletResponse response1 = new MockHttpServletResponse();
     MockHttpServletResponse response2 = new MockHttpServletResponse();
 
@@ -89,8 +143,10 @@ class RateLimitFilterRespondTest {
 
     assertThat(response1.getStatus()).isEqualTo(200);
     assertThat(response2.getStatus()).isEqualTo(429);
-    assertThat(response2.getHeader("Retry-After")).isNotNull();
-    verify(filterChain).doFilter(any(HttpServletRequest.class), any(HttpServletResponse.class));
+    long retryAfter = Long.parseLong(response2.getHeader("Retry-After"));
+    assertThat(retryAfter)
+        .as("Retry-After must be a real delay in seconds, not getAvailableTokens()=0")
+        .isBetween(1L, 5L * 60L);
   }
 
   @Test
@@ -111,8 +167,23 @@ class RateLimitFilterRespondTest {
   }
 
   @Test
-  @DisplayName("Respond with empty body falls back to client IP for bucket key")
-  void respondEmptyBodyFallsBackToClientIp() throws Exception {
+  @DisplayName("Respond fail-IP ceiling: second request from same IP returns 429 when budget is 1")
+  void respondEmptyBodyUsesFailIpCeiling() throws Exception {
+    RateLimitProperties.EndpointConfig respondConfig = new RateLimitProperties.EndpointConfig();
+    respondConfig.setRequests(1);
+    respondConfig.setWindowMinutes(5);
+    respondConfig.setKeyStrategy("auth-attempt-id");
+    respondConfig.setFailIpRequests(1);
+    respondConfig.setFailIpWindowMinutes(1);
+    properties.setRespond(respondConfig);
+    filter =
+        new RateLimitFilter(
+            properties,
+            new org.ezkey.auth.config.TrustedProxyProperties(),
+            objectMapper,
+            null,
+            new AuthRespondRateLimitService(properties));
+
     MockHttpServletRequest request = new MockHttpServletRequest("POST", RESPOND_PATH);
     request.setContentType("application/json");
     request.setContent(new byte[0]);
@@ -123,7 +194,6 @@ class RateLimitFilterRespondTest {
 
     assertThat(response.getStatus()).isEqualTo(200);
     verify(filterChain).doFilter(any(HttpServletRequest.class), any(HttpServletResponse.class));
-    // Second request from same IP (same empty body scenario) should hit rate limit
     MockHttpServletRequest request2 = new MockHttpServletRequest("POST", RESPOND_PATH);
     request2.setContentType("application/json");
     request2.setContent(new byte[0]);
@@ -131,6 +201,7 @@ class RateLimitFilterRespondTest {
     MockHttpServletResponse response2 = new MockHttpServletResponse();
     filter.doFilter(request2, response2, filterChain);
     assertThat(response2.getStatus()).isEqualTo(429);
+    assertThat(Long.parseLong(response2.getHeader("Retry-After"))).isBetween(1L, 60L);
   }
 
   @Test

@@ -65,6 +65,12 @@ public enum EventType {
   AUTH_ATTEMPT_CREATED,
   AUTH_ATTEMPT_PENDING,
   AUTH_ATTEMPT_RESPOND,
+  /**
+   * Respond rejected because the device signature failed ownership verification (#912). No attempt
+   * status transition; client sees generic {@code auth-attempt-state-conflict}. Never logs the
+   * signature bytes.
+   */
+  AUTH_ATTEMPT_RESPOND_SIGNATURE_REJECTED,
   AUTH_ATTEMPT_CANCELLED,
   /** Auth attempt TTL elapsed; status set to EXPIRED by scheduled job (past {@code expires_at}). */
   AUTH_ATTEMPT_EXPIRED,

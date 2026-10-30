@@ -85,14 +85,24 @@ public class RateLimitConfig {
   }
 
   /**
+   * Shared respond budgets: fail-IP (filter) + per-id after ownership (service) (#912 C1).
+   *
+   * @param properties rate-limit properties
+   * @return respond rate-limit service
+   */
+  @Bean
+  public AuthRespondRateLimitService authRespondRateLimitService(RateLimitProperties properties) {
+    return new AuthRespondRateLimitService(properties);
+  }
+
+  /**
    * Creates the rate limiting filter bean.
    *
-   * <p>This filter intercepts HTTP requests and applies rate limiting based on the configured
-   * properties for specific endpoints. For the respond endpoint, the filter parses the request body
-   * to extract authAttemptId; ObjectMapper is required for that JSON parsing.
-   *
    * @param properties the rate limiting configuration properties
-   * @param objectMapper the Jackson ObjectMapper for parsing respond request body
+   * @param trustedProxyProperties trusted proxy CIDRs
+   * @param objectMapper Jackson ObjectMapper for parsing respond/pending bodies
+   * @param meterRegistry Micrometer registry for backstop counters
+   * @param authRespondRateLimitService respond fail-IP + post-ownership budgets
    * @return configured RateLimitFilter instance
    */
   @Bean
@@ -100,8 +110,14 @@ public class RateLimitConfig {
       RateLimitProperties properties,
       TrustedProxyProperties trustedProxyProperties,
       ObjectMapper objectMapper,
-      MeterRegistry meterRegistry) {
-    return new RateLimitFilter(properties, trustedProxyProperties, objectMapper, meterRegistry);
+      MeterRegistry meterRegistry,
+      AuthRespondRateLimitService authRespondRateLimitService) {
+    return new RateLimitFilter(
+        properties,
+        trustedProxyProperties,
+        objectMapper,
+        meterRegistry,
+        authRespondRateLimitService);
   }
 
   /**

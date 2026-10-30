@@ -63,23 +63,22 @@
 		<maven.compiler.target>25</maven.compiler.target>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-		<spring-boot.version>4.1.1</spring-boot.version>
-		<!-- SEC-019: targeted BOM overrides (July 2026 Security Challenge advisories) -->
-		<postgresql.version>42.7.14</postgresql.version>
-		<logback.version>1.6.5</logback.version>
-		<tomcat.version>11.0.27</tomcat.version>
+		<spring-boot.version>4.1.2</spring-boot.version>
+		<!-- SEC-019: targeted BOM overrides (July 2026 Security Challenge advisories).
+		     postgresql / tomcat pins dropped with Boot 4.1.2 — BOM manages 42.7.14 / 11.0.27 (#1031, #939). -->
+		<logback.version>1.6.6</logback.version>
 
-		<jackson-bom.version>3.2.3</jackson-bom.version>
-		<jackson-2-bom.version>2.22.3</jackson-2-bom.version>
+		<jackson-bom.version>3.2.4</jackson-bom.version>
+		<jackson-2-bom.version>2.22.4</jackson-2-bom.version>
 		<mapstruct.version>1.6.3</mapstruct.version>
-		<springdoc.version>3.1.1</springdoc.version>
+		<springdoc.version>3.2.0</springdoc.version>
 		<!-- SpotBugs engine + Maven plugin (report-only via java-doctor-curated; not a build gate) -->
 		<spotbugs.version>4.10.5</spotbugs.version>
 		<spotbugs-maven-plugin.version>4.10.5.0</spotbugs-maven-plugin.version>
 		<checkstyle.version>3.6.0</checkstyle.version>
 		<!-- maven-pmd-plugin version (narrow ruleset under config/java-doctor/; not a build gate) -->
 		<pmd.version>3.28.0</pmd.version>
-		<jacoco.version>0.8.15</jacoco.version>
+		<jacoco.version>0.8.16</jacoco.version>
 		<zxing.version>3.5.4</zxing.version>
 		<spotless.version>3.10.4</spotless.version>
 		<!-- Nested Spotless pin; Dependabot typically misses the plugin XML. Pulse in dependabot-curated. -->
@@ -105,12 +104,8 @@
 				<scope>import</scope>
 			</dependency>
 
-			<!-- SEC-019: explicit overrides (imported BOM keeps its own property values) -->
-			<dependency>
-				<groupId>org.postgresql</groupId>
-				<artifactId>postgresql</artifactId>
-				<version>${postgresql.version}</version>
-			</dependency>
+			<!-- SEC-019: explicit overrides (imported BOM keeps its own property values).
+			     postgresql + tomcat-embed-* removed: Boot 4.1.2 BOM already manages those versions. -->
 			<dependency>
 				<groupId>ch.qos.logback</groupId>
 				<artifactId>logback-classic</artifactId>
@@ -120,21 +115,6 @@
 				<groupId>ch.qos.logback</groupId>
 				<artifactId>logback-core</artifactId>
 				<version>${logback.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>org.apache.tomcat.embed</groupId>
-				<artifactId>tomcat-embed-core</artifactId>
-				<version>${tomcat.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>org.apache.tomcat.embed</groupId>
-				<artifactId>tomcat-embed-el</artifactId>
-				<version>${tomcat.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>org.apache.tomcat.embed</groupId>
-				<artifactId>tomcat-embed-websocket</artifactId>
-				<version>${tomcat.version}</version>
 			</dependency>
 
 			<!-- MapStruct -->
@@ -365,7 +345,7 @@
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-surefire-plugin</artifactId>
-					<version>3.6.0</version>
+					<version>3.6.1</version>
 					<configuration>
 						<includes>
 							<include>**/*Test.java</include>
@@ -381,7 +361,7 @@
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-failsafe-plugin</artifactId>
-					<version>3.6.0</version>
+					<version>3.6.1</version>
 					<configuration>
 						<includes>
 							<include>**/*IntegrationTest.java</include>

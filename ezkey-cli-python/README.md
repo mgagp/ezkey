@@ -25,6 +25,7 @@ The CLI is **not** started by `./ezkey-tests/clean-start.sh`. After the Docker s
 
 - **Python >= 3.12** — see the [major-upgrades Python policy](../product-docs/global/hygiene/major-upgrades/README.md#python)
 - Runtime dependency floors in `setup.py` / `requirements.txt` are **tested minimums** (not merely the latest known-good).
+- **textual >= 8.2.8** — TUI floor raised from `>=0.38.0` after validation on Python 3.12/3.14 (no CLI API adapters required for imports/widgets/CSS/App/Screen used here); Dependabot [#767](https://github.com/mgagp/ezkey/pull/767).
 
 ## Installation
 
@@ -114,14 +115,22 @@ ezkey admin auth logout
 API keys provide authentication for server-to-server integrations without interactive login.
 
 ```bash
-# Create API key
+# Create API key (secret printed once on stdout)
 ezkey admin api-key create \
   --integration-id 123 \
   --description "Production Server" \
-  --expires-at "2025-12-31T23:59:59Z" \
+  --expires-at "<EXPIRY_ISO8601>" \
   --save-key
 
-# ⚠️ IMPORTANT: Save the secret key immediately - it's shown only once!
+# Agent/QA: write ikey+skey to a mode-600 .env outside the repo (never print the secret)
+ezkey admin api-key create \
+  --integration-id 123 \
+  --expires-at "<EXPIRY_ISO8601>" \
+  --ip-whitelist "203.0.113.0/24" \
+  --out-file ~/.config/ezkey-qa/api-key.env
+
+# ⚠️ Without --out-file: save the secret key immediately — it is shown only once.
+# Mode 600 is POSIX best-effort; on Windows the file inherits folder ACLs.
 
 # List API keys
 ezkey admin api-key list --integration-id 123
@@ -129,6 +138,8 @@ ezkey admin api-key list --integration-id 123
 # Revoke API key
 ezkey admin api-key revoke --id 42
 ```
+
+Agent create → use → revoke notes: [`docs/lab/API_KEY_CLI_AGENT_WORKFLOW.md`](../docs/lab/API_KEY_CLI_AGENT_WORKFLOW.md).
 
 ### 3. No Authentication
 
@@ -165,10 +176,27 @@ All commands support these global options:
 - `--admin-url <url>` - Override admin API URL
 - `--auth-url <url>` - Override auth API URL
 - `--crypto-url <url>` - Override crypto API URL
+- `--ca-bundle <path>` - Custom CA bundle for TLS verification (also `EZKEY_CA_BUNDLE` / `REQUESTS_CA_BUNDLE`)
+- `--insecure` - Disable TLS verification (**loopback hosts only**: `localhost`, `127.0.0.1`, `::1`; also `EZKEY_CLI_INSECURE=1`). Prefer `--ca-bundle` for self-signed certs.
 - `--no-pretty` - Disable pretty printing of JSON output
 - `--timeout <ms>` - Set request timeout in milliseconds
 - `--verbose` - Enable verbose output
 - `--tui` - Start interactive admin console
+
+## TLS certificate verification
+
+TLS verification is **on by default** for CLI and TUI (including login, recover, and re-auth). Hostname alone (for example `localhost` or a Docker hostname) does **not** disable verification.
+
+```bash
+# Custom CA (recommended for self-signed local HTTPS)
+ezkey --ca-bundle /path/to/ca-bundle.pem admin auth login --username admin
+
+# Escape hatch: loopback only; prints a WARNING each time
+ezkey --insecure --admin-url https://localhost:9080 admin auth login --username admin
+# Same via env: EZKEY_CLI_INSECURE=1
+```
+
+`--insecure` against a non-loopback host is refused. There is no silent `verify=False`.
 
 ## JSON Input Support
 

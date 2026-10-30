@@ -35,7 +35,7 @@ import {
   getById1,
 } from '@/generated/admin-api/integrations/integrations';
 import { search1 } from '@/generated/admin-api/enrollments/enrollments';
-import type { EnrollmentResponseDto, IntegrationResponseDto, PagedModelEnrollmentResponseDto } from '@/generated/admin-api/model';
+import type { EnrollmentResponseDto, IntegrationResponseDto } from '@/generated/admin-api/model';
 
 // ── Info row helper ──────────────────────────────────────────────────────────
 
@@ -198,7 +198,7 @@ export default function IntegrationDetailPage() {
     queryKey: ['enrollments', 'for-integration', integrationId],
     baseParams: { integrationId: isNaN(integrationId) ? undefined : integrationId },
     defaultSize: 10,
-    fetchPage: (params) => search1(params) as Promise<PagedModelEnrollmentResponseDto>,
+    fetchPage: (params) => search1(params),
   });
 
   const enrollmentColumns: ColumnDef<EnrollmentResponseDto>[] = useMemo(() => {

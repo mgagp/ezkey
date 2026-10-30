@@ -48,6 +48,16 @@ load_env_file "${ENV_FILE}"
 SSH_USER="${EZKEY_SSH_USER:-${SSH_USER}}"
 SSH_PORT="${EZKEY_PAM_SSH_PORT:-${SSH_PORT}}"
 
+# #1016 N6: portable artifact default (not a host-specific /opt/cursor path).
+# Override with EZKEY_PAM_ARTIFACT_DIR when a campaign host wants another dir.
+ezkey_pam_artifact_dir() {
+  if [ -n "${EZKEY_PAM_ARTIFACT_DIR:-}" ]; then
+    printf '%s' "${EZKEY_PAM_ARTIFACT_DIR}"
+    return
+  fi
+  printf '%s' "${PAM_ROOT}/runtime/artifacts"
+}
+
 json_get() {
   local json="$1"
   local path="$2"
@@ -133,4 +143,128 @@ wait_http_ok() {
   done
   echo "Timed out waiting for ${url}" >&2
   return 1
+}
+
+# True when a live SSH capture already shows a PAM_PROMPT_ECHO_ON line —
+# pre-create confirm (#975 / #982) and/or post-create challenge code (#982).
+ezkey_ssh_capture_has_prewait_prompt() {
+  local log="$1"
+  local flat
+  flat="$(tr -cd '\11\12\15\40-\176' <"${log}" 2>/dev/null || true)"
+  echo "${flat}" | grep -qE \
+    'SSH login for user |Ezkey challenge code:|Type ok and press Enter to request device approval|Approve on your phone, then press Enter'
+}
+
+# Run one keyboard-interactive SSH under a PTY; auto-send "ok" / Enter when a
+# confirm/challenge prompt appears (#941 / #975 / #982).
+# Re-sends on cooldown: ok #1 creates; challenge path needs a 2nd Enter (#982).
+# Create-fail paths that never show a prompt — helper waits for ssh to exit.
+# Args: <log> [remote_cmd] [ConnectTimeout] [NumberOfPasswordPrompts]
+# Default prompts=1 (Match MaxAuthTries 1). Pass 3 for F9 multitry case A.
+ezkey_ssh_kbdint_autoenter() {
+  local log="$1"
+  local remote_cmd="${2:-echo X}"
+  local connect_to="${3:-15}"
+  local password_prompts="${4:-1}"
+  local ctrl=""
+  local ctrl_dir=""
+  local bg=""
+  local i
+  local rc=1
+  local since_enter=999
+  local script_dir
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+  require_cmd python3
+  require_cmd ssh
+  : >"${log}"
+  # Nit a (#956): mktemp -d then fifo inside — avoid mktemp -u race.
+  ctrl_dir="$(mktemp -d /tmp/ezkey-pam-kbdint.XXXXXX)"
+  ctrl="${ctrl_dir}/enter.fifo"
+  mkfifo "${ctrl}"
+
+  set +e
+  python3 "${script_dir}/ssh-pty-capture.py" "${log}" "${ctrl}" \
+    ssh -tt \
+      -p "${SSH_PORT}" \
+      -o StrictHostKeyChecking=no \
+      -o UserKnownHostsFile=/dev/null \
+      -o PreferredAuthentications=keyboard-interactive \
+      -o PubkeyAuthentication=no \
+      -o PasswordAuthentication=no \
+      -o "NumberOfPasswordPrompts=${password_prompts}" \
+      -o ConnectTimeout="${connect_to}" \
+      "${SSH_USER}@127.0.0.1" \
+      "${remote_cmd}" \
+    >/dev/null 2>&1 &
+  bg=$!
+  set -e
+
+  # First visible prompt → ok (pre-create). Later challenge line → bare Enter
+  # (#982 tier 1). Cooldown covers OpenSSH multitry (#907 F9 / #975 D4).
+  # Prefer the *latest* prompt (#995): after a challenge round the log still
+  # contains "Ezkey challenge code:" from earlier; whole-log matching would
+  # send Enter on the next pre-create "Type ok" and block F9 multitry creates.
+  for i in $(seq 1 600); do
+    if ! kill -0 "${bg}" 2>/dev/null; then
+      break
+    fi
+    since_enter=$((since_enter + 1))
+    if ezkey_ssh_capture_has_prewait_prompt "${log}" && [ "${since_enter}" -ge 15 ]; then
+      flat="$(tr -cd '\11\12\15\40-\176' <"${log}" 2>/dev/null || true)"
+      # grep exit 1 (no match) must not abort under set -e + pipefail: the
+      # first pre-create round has Type ok only, no challenge line yet.
+      last_chal_n="$(echo "${flat}" \
+        | grep -nE 'Ezkey challenge code:|Approve on your phone, then press Enter' \
+        | tail -1 | cut -d: -f1)" || true
+      last_ok_n="$(echo "${flat}" \
+        | grep -nE 'Type ok and press Enter to request device approval|SSH login for user ' \
+        | tail -1 | cut -d: -f1)" || true
+      last_chal_n="${last_chal_n:-0}"
+      last_ok_n="${last_ok_n:-0}"
+      if [ "${last_chal_n}" -gt "${last_ok_n}" ]; then
+        ezkey_ctrl_write "${ctrl}" "enter"
+      else
+        ezkey_ctrl_write "${ctrl}" "ok"
+      fi
+      since_enter=0
+    fi
+    sleep 0.1
+  done
+
+  # Keep set +e through return: a non-zero `return` under set -e aborts the
+  # whole caller script in Bash (not only the function).
+  set +e
+  wait "${bg}"
+  rc=$?
+  rm -f "${ctrl}" 2>/dev/null || true
+  rmdir "${ctrl_dir}" 2>/dev/null || true
+  return "${rc}"
+}
+
+# Create a control fifo under a private mktemp -d (Patrick #956 nit a).
+# Prints the fifo path on stdout; caller should rm -rf the parent dir later.
+ezkey_mk_ctrl_fifo() {
+  local dir fifo
+  dir="$(mktemp -d /tmp/ezkey-pam-ctrl.XXXXXX)"
+  fifo="${dir}/enter.fifo"
+  mkfifo "${fifo}"
+  printf '%s\n' "${fifo}"
+}
+
+# Write a control command to a capture fifo without hanging when the reader
+# (ssh-pty-capture.py) has already exited (#1054 probe 4 flake: O_WRONLY open
+# on a FIFO with no reader blocks forever).
+# #1067 nit: a mutant that drops this timeout can leave harness bash stuck on
+# the FIFO after the probe wall fires — the external suite `timeout` is then
+# authoritative (smaller fix than killing the script process group).
+ezkey_ctrl_write() {
+  local fifo="$1"
+  local msg="$2"
+  if [ -z "${fifo}" ] || [ ! -p "${fifo}" ]; then
+    return 0
+  fi
+  # timeout bounds the open(2); printf failure is non-fatal.
+  timeout 1s sh -c 'printf "%s\n" "$1" >"$2"' _ "${msg}" "${fifo}" \
+    >/dev/null 2>&1 || true
 }

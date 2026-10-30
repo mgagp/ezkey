@@ -65,6 +65,13 @@ services:
       EZKEY_DB_ADMIN_PASSWORD: ${EZKEY_DB_ADMIN_PASSWORD:-ezkey_admin}
       EZKEY_DB_AUTH_PASSWORD: ${EZKEY_DB_AUTH_PASSWORD:-ezkey_auth}
       EZKEY_DB_INTEGRATION_PASSWORD: ${EZKEY_DB_INTEGRATION_PASSWORD:-ezkey_integration}
+      # Patrick m3 / #961: no default — refuse compose start if unset (init would otherwise
+      # create ezkey_crypto with the lab default password). Set in Lightsail .env only.
+      # No crypto-api service on Lightsail by design: db-grants still creates the
+      # ezkey_crypto read-only role, but it is unused on this deployment (the crypto-api
+      # read-only DataSource applies to local clean-start lab stacks). See
+      # docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md.
+      EZKEY_DB_CRYPTO_PASSWORD: ${EZKEY_DB_CRYPTO_PASSWORD:?EZKEY_DB_CRYPTO_PASSWORD must be set in Lightsail .env — no default}
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ../../docker/postgres/init:/docker-entrypoint-initdb.d:ro
@@ -108,22 +115,13 @@ services:
     environment:
       <<: *container-tz
       PGPASSWORD: ${POSTGRES_PASSWORD:-ezkey}
+      PGHOST: postgres
+      PGDATABASE: ${POSTGRES_DB:-ezkey_db}
+      PGUSER: postgres
+      EZKEY_DB_CRYPTO_PASSWORD: ${EZKEY_DB_CRYPTO_PASSWORD:?EZKEY_DB_CRYPTO_PASSWORD must be set in Lightsail .env — no default}
     volumes:
       - ../../scripts/db:/scripts:ro
-    entrypoint:
-      [
-        "psql",
-        "-h",
-        "postgres",
-        "-U",
-        "postgres",
-        "-d",
-        "${POSTGRES_DB:-ezkey_db}",
-        "-v",
-        "ON_ERROR_STOP=1",
-        "-f",
-        "/scripts/apply-grants.sql",
-      ]
+    entrypoint: ["/bin/sh", "/scripts/apply-grants.sh", "--in-container"]
     networks:
       - ezkey-exp-net
     restart: "no"

@@ -111,7 +111,7 @@ yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'
 
 ### Error responses (RFC 9457)
 
-HTTP **4xx** and **5xx** responses from the Auth API use **RFC 9457** Problem Details (`Content-Type: application/problem+json`). The JSON body includes `type` (URI identifying the problem category), `title`, `status`, `detail` (operator-safe text; do not rely on it for security-sensitive branching), and extension properties `path` and `timestamp`. RFC 9457 `instance` is the request path (a URI-reference, not an absolute URI). Clients should branch on **`type`** and HTTP status.
+HTTP **4xx** and **5xx** responses from the Auth API use **RFC 9457** Problem Details (`Content-Type: application/problem+json`). The JSON body includes `type` (URI identifying the problem category), `title`, `status`, `detail` (operator-safe catalog text for logs/diagnostics only), and extension properties `path` and `timestamp`. RFC 9457 `instance` is the request path (a URI-reference, not an absolute URI). **Authenticator / device clients MUST branch on `type` and HTTP status and MUST NOT display `detail` (or `title`) verbatim to end users** — map `type` to local copy ([`CLIENT_BEHAVIOUR_CONTRACT.md`](CLIENT_BEHAVIOUR_CONTRACT.md) §7; full type table in [`MOBILE_DEVELOPER_GUIDE.md`](MOBILE_DEVELOPER_GUIDE.md) § Auth API problem types).
 
 Unauthenticated public operations (`GET /api/v1/public/instance-info`) declare no HTTP security requirement in OpenAPI (`security: []`). Device POSTs authenticate with signatures in the JSON body, not a Bearer header.
 
@@ -123,15 +123,16 @@ IP-keyed enrollment surfaces (`verify`, `bind`, enrolled `instance-info`) also h
 
 **204 No Content** on `POST /api/v1/auth-attempts/pending` when there is no pending attempt is a **success** (no body), not an error.
 
-**200 OK** on `POST /api/v1/auth-attempts/respond` returns a business-level result in the JSON body (`APPROVED` / `DENIED` / `FAILED`) **only when the body is integration-signed** (see `docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`). Legitimate `FAILED` covers device-signature or challenge validation errors after the attempt was loaded. The server **never** emits an unsigned HTTP 200 on this path (#844).
+**200 OK** on `POST /api/v1/auth-attempts/respond` returns a business-level result in the JSON body (`APPROVED` / `DENIED` / `FAILED`) **only when the body is integration-signed** (see `docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`). Legitimate `FAILED` covers **challenge validation errors after ownership** (valid device signature). Invalid device signature and missing device public key are **not** FAILED — they are generic **409** `auth-attempt-state-conflict` with **no** attempt status transition (#912). The server **never** emits an unsigned HTTP 200 on this path (#844).
 
 HTTP-level outcomes for respond (RFC 9457 Problem Details unless noted):
 
 | Condition | Status | `type` (suffix under `https://ezkey.io/problems/auth/`) |
 | --- | --- | --- |
 | Attempt or enrollment not found, still `PENDING`, or terminal (`ACCEPTED`, `REJECTED`, `EXPIRED`, `INVALID`) / cancel-win / superseded | **409** | `auth-attempt-state-conflict` (unified client surface; distinction only in server logs — #844 Marc m1) |
-| Wall-clock expiry (`expiresAt` reached; conditional UPDATE refused) | **409** | `auth-attempt-expired` (#895) |
-| Per-enrollment integration private key missing/blank when signing is required (runtime; transaction rolls back; no JVM startup gate) | **503** | `integration-signing-unavailable` |
+| Invalid device signature or missing device public key (before proof of possession) | **409** | `auth-attempt-state-conflict` (no status transition; audit `AUTH_ATTEMPT_RESPOND_SIGNATURE_REJECTED` for invalid signature — #912) |
+| Wall-clock expiry after ownership proof (`expiresAt` reached; conditional UPDATE refused) | **409** | `auth-attempt-expired` (#895; only after device-signature verification — Christophe) |
+| Per-enrollment integration private key missing/blank when signing is required (runtime; transaction rolls back — except FAILED on a wrong challenge: INVALID is already committed, a retry gets a 409; no JVM startup gate) | **503** | `integration-signing-unavailable` |
 
 A raw `IllegalArgumentException` or other uncaught exception from that flow is not converted to `FAILED` and is handled like other Auth API errors (typically Problem Details **400** for `IllegalArgumentException`).
 
@@ -141,11 +142,17 @@ A raw `IllegalArgumentException` or other uncaught exception from that flow is n
 sequential ids; server logs keep the distinction). **Exception (#895):** wall-clock expiry after
 `expiresAt` uses `https://ezkey.io/problems/auth/auth-attempt-expired` so Demo Device / PAM /
 mobile can show an expired message; respond UPDATE is fail-closed (`status = READ AND expires_at >
-now`). The official mobile app may still map both 409 types to one sentence until the typed-expiry
-UI slice lands. A lost approve/deny response after the HTTP call was sent (timeout / transport),
-where a session may already exist, is a separate mobile case (orientation Question 10 /
+now`). **Ordering (#895 Christophe + Patrick M1/M2):** typed `auth-attempt-expired` is raised after
+enrollment load and device-signature (ownership) verification, and **before** challenge validation
+(so a wrong challenge on an expired attempt does not flip `INVALID`). A non-owner signature or a
+missing device public key (expired or not) or an invalid device signature keeps generic
+`auth-attempt-state-conflict` (no INVALID flip — #912). The official mobile app may still map both
+409 types to one sentence until the typed-expiry UI slice lands. A lost approve/deny response after the HTTP call was sent (timeout /
+transport), where a session may already exist, is a separate mobile case (orientation Question 10 /
 `UncertainDecision`), not a new problem type. Missing integration signing key remains **503**
-(retryable; transaction rolled back).
+`integration-signing-unavailable` (**retryable**; a retry may then return terminal **409**, for
+example when a wrong challenge already committed `INVALID` before signing failed — see
+`AuthAttemptRespondService` FAILED-response notes).
 
 ### Public instance metadata (unauthenticated)
 
@@ -262,9 +269,9 @@ Reason and interaction model:
 **POST /api/v1/auth-attempts/respond**
 
 - **Description**: The mobile device submits the user's response (approved, denied, signature, etc.) for the received authentication request.
-- **Rate limiting**: When rate limiting is enabled (`ezkey.rate-limit.enabled=true`), this endpoint is limited **per auth attempt** (by `authAttemptId` from the request body). Default: 1 request per 5 minutes per `authAttemptId`. If the body is missing or invalid, the limit is applied per client IP. When exceeded, the API returns **429 Too Many Requests** with a `Retry-After` header.
-- **One attempt per auth request**: The backend invalidates the authentication attempt on **first failed validation** (invalid signature, wrong challenge, or missing device key). There is no retry: after one failure the attempt is marked INVALID and the user must start a new authentication flow from the integrating application (e.g. log in again and receive a new pending request).
-- **Deny vs challenge:** When `authAttemptAccepted` is `false`, challenge response is not required after a valid device signature — the attempt is stored as `REJECTED`. Wrong or missing challenge on **accept** still marks the attempt `INVALID`.
+- **Rate limiting**: When rate limiting is enabled (`ezkey.rate-limit.enabled=true`), the filter applies an **IP ceiling on every respond request** (default 30 / 1 min — not failures-only). The strict per-`authAttemptId` budget (default 1 / 5 min) is consumed **only after** a valid device signature (#912 C1), so a third-party invalid respond cannot starve the owner. When exceeded, the API returns **429 Too Many Requests** with a positive `Retry-After` (seconds from Bucket4j refill; same refill-based `Retry-After` applies to pending / verify / bind keyed denials).
+- **Ownership before state change (#912 / #844):** Invalid device signature or missing device public key → generic **409** `auth-attempt-state-conflict`, attempt stays in its prior status (typically `READ`), and an audit event `AUTH_ATTEMPT_RESPOND_SIGNATURE_REJECTED` is recorded (attempt id, enrollment id, sanitized IP/UA — **never** the signature). Wrong challenge on **accept** after a valid device signature still marks the attempt `INVALID` (conditional on status still `READ`).
+- **Deny vs challenge:** When `authAttemptAccepted` is `false`, challenge response is not required after a valid device signature — the attempt is stored as `REJECTED`.
 
 **Request**
 ```http
@@ -672,6 +679,7 @@ Errors use `Content-Type: application/problem+json` (or JSON with the same field
 ```
 
 The client should use `detail` (then `title`) for user-facing messages, not assume a transport failure.
+(**Admin / Integration API only; device clients: contract section 7.**)
 
 **Audit:** Each call to `/passwordless-wait` that reaches a terminal outcome writes an `ADMIN_LOGIN` audit row with a distinct `event_action` (for example `login_mfa_session_issued`, `login_mfa_expired`, `login_mfa_rejected`). See [AUDIT_ADMIN_LOGIN_ACTIONS.md](AUDIT_ADMIN_LOGIN_ACTIONS.md) for the full list and SIEM notes.
 
@@ -679,7 +687,7 @@ The client should use `detail` (then `title`) for user-facing messages, not assu
 - `waiterSecret` capability token prevents replay and session hijacking by requiring the unguessable CSPRNG secret returned only to the initial `/login` caller.
 - Atomic CAS guarantees a session is issued at most once per authentication attempt; replays after session issuance are rejected with generic 401 and cannot trigger token rotation or mint survivor tokens.
 - `challengeCode` prevents enumeration attacks (proof of legitimate login initiation)
-- Blocking HTTP call: the server waits up to the minimum of 300 seconds and (remaining attempt lifetime + small slack). If `ezkey.core.auth-attempt.ttl-seconds` is set above 300 (max 600), the wait may return HTTP 408 while the attempt row is still valid in the database. The lifetime itself is that property (default **120**, range **30–600**). On Cloudflare Free (`ezkey.org`, `ezkey.online`, including the community instance) the origin is cut at **100 seconds** (HTTP **524**, not raisable; see `product-docs/global/product-intent.md`). A blocking wait can therefore end at the proxy while a default 120-second attempt is still valid. Noted for that deployment (#834 Question 12); the default is not changed here.
+- Blocking HTTP call: the server waits up to the minimum of 300 seconds and (remaining attempt lifetime + small slack). **Applied** create TTL: per-request floor **15**, hard ceiling **120** (`min(request|default, 120)` since #895). Property `ezkey.core.auth-attempt.ttl-seconds` default **120** (Bean Validation **30–600**; startup clamp **>120 → 120**, so effective configured default **30–120**). On Cloudflare Free (`ezkey.org`, `ezkey.online`, including the community instance) the origin is cut at **100 seconds** (HTTP **524**, not raisable; see `product-docs/global/product-intent.md`). A blocking wait can therefore end at the proxy while a default 120-second attempt is still valid. Noted for that deployment (#834 Question 12); the default is not changed here.
 - Device must enter matching challenge code before approval
 - Invalid challenge on device marks attempt as INVALID
 
@@ -1906,6 +1914,7 @@ Content-Type: application/json
 - Lost secret keys cannot be recovered - create new key instead
 - Expiration date optional but recommended (enforces rotation)
 - IP whitelist optional but recommended for production
+- Response includes `Cache-Control: no-store` (controller + Spring Security defaults) so intermediaries do not cache the one-time secret
 
 ---
 
@@ -2189,7 +2198,7 @@ Content-Type: application/json
 **Response Fields:**
 - `authAttemptId`: Unique identifier of the created authentication attempt
 - `authAttemptChallenge`: Optional challenge code (2 digits) if challenge was requested. Null if no challenge was requested.
-- `timeoutSeconds`: Maximum time in seconds the user has to respond to the authentication request (currently 120 seconds)
+- `timeoutSeconds`: Applied attempt lifetime in seconds (per-request floor 15, hard ceiling 120; when omitted, the clamped configured default — typically **120**)
 - `expiresAt`: Absolute expiration timestamp when the authentication attempt will expire (UTC format)
 - `contextTitle`, `contextMessage`: Context fields echoed back for confirmation (null if not provided)
 
@@ -2334,7 +2343,7 @@ Optional query parameter: `reason` (10–500 characters) for audit.
 
 **Responses:**
 - **200 OK:** Body includes `newPrimaryKeyId` (the newly introduced key's ID) and a message describing the current state. The key is `PENDING`, not yet primary; a scheduled job promotes it to `PRIMARY` automatically once the sync window elapses. Re-encrypting existing records to the new key is a separate step (scheduled job or manual trigger).
-- **409 Conflict:** RFC 9457 `ProblemDetail` (`type`, `title`, `status`, `detail`, `path`) when a `PENDING` key already exists and another introduction is not allowed yet, or when key rotation is inactive (`ezkey.encryption.rotation.enabled=false`; typical on opt-in `--runtime=base`). Problem types: `https://ezkey.io/problems/domain/pending-encryption-key-exists` or `https://ezkey.io/problems/domain/encryption-rotation-disabled`. The gate uses the config flag, not the product runtime profile name.
+- **409 Conflict:** RFC 9457 `ProblemDetail` (`type`, `title`, `status`, `detail`, `path`) when a `PENDING` key already exists and another introduction is not allowed yet; when key rotation is inactive (`ezkey.encryption.rotation.enabled=false`; typical on opt-in `--runtime=base`); or when another writer won the keyset CAS race (HA multi-admin `POST /rotate`). Concurrent-CAS losses use type `https://ezkey.io/problems/admin/state-conflict` with detail that the keyset was modified concurrently, no key was added by this request, and retry is safe (no stack trace). Other problem types: `https://ezkey.io/problems/domain/pending-encryption-key-exists` or `https://ezkey.io/problems/domain/encryption-rotation-disabled`. The gate uses the config flag, not the product runtime profile name. A lost CAS race is **not** audited as `REENCRYPTION_FAILED`/`ERROR`.
 - **500 Internal Server Error:** Unexpected failure; body may include a legacy error payload for this endpoint.
 
 #### List encryption keys

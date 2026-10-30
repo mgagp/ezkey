@@ -7,7 +7,13 @@
 
 /* Module identification */
 #define EZKEY_MODULE_NAME "pam_ezkey"
-#define EZKEY_VERSION "2.2.8"
+#define EZKEY_VERSION "2.2.20"
+
+/*
+ * Linux PAM_AUTHINFO_UNAVAIL value (security/pam_constants.h). Used by
+ * ezkey_diag when pam.h is not included; keep in sync with the host PAM.
+ */
+#define EZKEY_PAM_AUTHINFO_UNAVAIL 9
 
 /*
  * Cancel outcome on the authpriv attempt summary line (Patrick #897 M2;
@@ -37,11 +43,19 @@
 #define EZKEY_DEFAULT_WAIT_POLLING 2
 #define EZKEY_DEFAULT_API_TIMEOUT 10
 /*
+ * Connector default for create challengeRequested (#995 — Alex, confirmed by
+ * Marc on 2026-10-22). Safer default for SSH: request the two-digit code unless
+ * conf opts out. Enrollment authAttemptChallengeRequired still wins on the
+ * server regardless of this connector flag.
+ */
+#define EZKEY_DEFAULT_CHALLENGE_REQUESTED 1
+/*
  * Single auth wall-clock budget (Patrick P3 / #726): finish under demo sshd
  * LoginGraceTime 120 with margin. pam_sm_authenticate starts the clock;
  * wait = min(conf, remaining - CURL_SLACK); too little left → UNAVAIL + attempt
  * line. Enter is NOT signal-bounded (PAM must not touch host signals); measure
- * pam_prompt duration with CLOCK_MONOTONIC and reject if > MAX_ENTER_SECS.
+ * pam_prompt duration with CLOCK_MONOTONIC. Pre-create reject if >
+ * MAX_ENTER_SECS; challenge (code) Enter keeps only rem-budget (#982 B1).
  * See STATUS § timeouts inventory.
  *
  * Server attempt TTL (#895 / PR-B): create sends ttlSeconds = planned wait
@@ -56,6 +70,14 @@
 #define EZKEY_MIN_TTL_SECONDS 15
 #define EZKEY_MAX_ENTER_SECS 25
 #define EZKEY_MAX_WAIT_TIMEOUT 90
+/*
+ * #907 review (Patrick/Christophe, option A): chunked /wait so the waiting
+ * process can abort on client disconnect (SIGTERM) and cancel in-process.
+ * Interrupt cancel is capped at min(api_timeout, INTERRUPT_CANCEL_MAX) so
+ * worst-case auth+cancel stays under LoginGraceTime 120 (105+5=110).
+ */
+#define EZKEY_WAIT_CHUNK_SECS 5
+#define EZKEY_INTERRUPT_CANCEL_MAX 5
 
 /* Configuration file path loaded at PAM runtime (override only via pam.d conf=) */
 #define EZKEY_DEFAULT_CONFIG_FILE "/etc/security/pam_ezkey.conf"

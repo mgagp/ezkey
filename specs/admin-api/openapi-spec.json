@@ -1562,7 +1562,7 @@
             }
           },
           "409": {
-            "description": "A PENDING encryption key already exists, or key rotation is inactive on this instance",
+            "description": "A PENDING encryption key already exists, key rotation is inactive on this instance, or the keyset was modified concurrently (CAS loss — retry is safe)",
             "content": {
               "*/*": {
                 "schema": {
@@ -5229,6 +5229,7 @@
                 "AUTH_ATTEMPT_CREATED",
                 "AUTH_ATTEMPT_PENDING",
                 "AUTH_ATTEMPT_RESPOND",
+                "AUTH_ATTEMPT_RESPOND_SIGNATURE_REJECTED",
                 "AUTH_ATTEMPT_CANCELLED",
                 "AUTH_ATTEMPT_EXPIRED",
                 "API_KEY_CREATED",
@@ -9293,7 +9294,13 @@
             "type": "integer",
             "format": "int64"
           }
-        }
+        },
+        "required": [
+          "number",
+          "size",
+          "totalElements",
+          "totalPages"
+        ]
       },
       "PagedModelTenantResponseDto": {
         "type": "object",
@@ -9307,7 +9314,11 @@
           "page": {
             "$ref": "#/components/schemas/PageMetadata"
           }
-        }
+        },
+        "required": [
+          "content",
+          "page"
+        ]
       },
       "PublicInstanceInfoResponseDto": {
         "type": "object",
@@ -9425,7 +9436,11 @@
           "page": {
             "$ref": "#/components/schemas/PageMetadata"
           }
-        }
+        },
+        "required": [
+          "content",
+          "page"
+        ]
       },
       "PagedModelEnrollmentResponseDto": {
         "type": "object",
@@ -9439,7 +9454,11 @@
           "page": {
             "$ref": "#/components/schemas/PageMetadata"
           }
-        }
+        },
+        "required": [
+          "content",
+          "page"
+        ]
       },
       "EncryptionKeyResponse": {
         "type": "object",
@@ -9541,7 +9560,11 @@
           "page": {
             "$ref": "#/components/schemas/PageMetadata"
           }
-        }
+        },
+        "required": [
+          "content",
+          "page"
+        ]
       },
       "PagedModelReencryptionBatchResponse": {
         "type": "object",
@@ -9555,7 +9578,11 @@
           "page": {
             "$ref": "#/components/schemas/PageMetadata"
           }
-        }
+        },
+        "required": [
+          "content",
+          "page"
+        ]
       },
       "ReencryptionBatchResponse": {
         "type": "object",
@@ -9986,7 +10013,11 @@
           "page": {
             "$ref": "#/components/schemas/PageMetadata"
           }
-        }
+        },
+        "required": [
+          "content",
+          "page"
+        ]
       },
       "AuthAttemptWaitResponseDto": {
         "type": "object",
@@ -10077,6 +10108,7 @@
               "AUTH_ATTEMPT_CREATED",
               "AUTH_ATTEMPT_PENDING",
               "AUTH_ATTEMPT_RESPOND",
+              "AUTH_ATTEMPT_RESPOND_SIGNATURE_REJECTED",
               "AUTH_ATTEMPT_CANCELLED",
               "AUTH_ATTEMPT_EXPIRED",
               "API_KEY_CREATED",
@@ -10218,7 +10250,11 @@
           "page": {
             "$ref": "#/components/schemas/PageMetadata"
           }
-        }
+        },
+        "required": [
+          "content",
+          "page"
+        ]
       },
       "EntryIntegrityConciliationSummary": {
         "type": "object",
@@ -10365,7 +10401,11 @@
           "page": {
             "$ref": "#/components/schemas/PageMetadata"
           }
-        }
+        },
+        "required": [
+          "content",
+          "page"
+        ]
       },
       "ArchiveEligibilityResult": {
         "type": "object",
@@ -10623,7 +10663,11 @@
           "page": {
             "$ref": "#/components/schemas/PageMetadata"
           }
-        }
+        },
+        "required": [
+          "content",
+          "page"
+        ]
       },
       "PagedModelApiKeyResponseDto": {
         "type": "object",
@@ -10637,7 +10681,11 @@
           "page": {
             "$ref": "#/components/schemas/PageMetadata"
           }
-        }
+        },
+        "required": [
+          "content",
+          "page"
+        ]
       },
       "AlertResponseDto": {
         "type": "object",
@@ -10720,7 +10768,11 @@
           "page": {
             "$ref": "#/components/schemas/PageMetadata"
           }
-        }
+        },
+        "required": [
+          "content",
+          "page"
+        ]
       },
       "PagedModelAdminResponseDto": {
         "type": "object",
@@ -10734,7 +10786,11 @@
           "page": {
             "$ref": "#/components/schemas/PageMetadata"
           }
-        }
+        },
+        "required": [
+          "content",
+          "page"
+        ]
       },
       "AdminSessionResponseDto": {
         "type": "object",
@@ -10805,42 +10861,42 @@
   },
   "x-tagGroups": [
     {
+      "name": "Getting started",
       "tags": [
         "Public",
         "Admin Authentication"
-      ],
-      "name": "Getting started"
+      ]
     },
     {
+      "name": "Tenant and integration setup",
       "tags": [
         "Tenants",
         "Integrations",
         "Enrollments",
         "API Keys"
-      ],
-      "name": "Tenant and integration setup"
+      ]
     },
     {
+      "name": "MFA operations",
       "tags": [
         "Auth Attempts",
         "Admin Enrollment Management"
-      ],
-      "name": "MFA operations"
+      ]
     },
     {
+      "name": "Administration",
       "tags": [
         "Administrator Provisioning"
-      ],
-      "name": "Administration"
+      ]
     },
     {
+      "name": "Platform operations",
       "tags": [
         "Audit Logs",
         "Encryption Keys",
         "Alerts",
         "Dashboard"
-      ],
-      "name": "Platform operations"
+      ]
     }
   ]
 }

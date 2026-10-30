@@ -13,7 +13,7 @@ ARG CJSON_VERSION=1.7.18
 FROM ${AL2023_IMAGE} AS builder-al2023
 
 LABEL org.ezkey.component="pam-builder-al2023"
-LABEL org.ezkey.version="2.2.6"
+LABEL org.ezkey.version="2.2.20"
 
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
@@ -49,7 +49,7 @@ RUN make clean && make all \
 FROM ${AL2023_IMAGE} AS smoke-al2023
 
 LABEL org.ezkey.component="pam-smoke-al2023"
-LABEL org.ezkey.version="2.2.6"
+LABEL org.ezkey.version="2.2.20"
 
 # Base image already ships libcurl-minimal (conflicts with full libcurl package).
 RUN dnf -y install pam binutils gcc \
@@ -72,7 +72,7 @@ CMD ["/opt/pam-ezkey/test/smoke_al2023.sh"]
 FROM ${AL2023_IMAGE} AS runtime-al2023
 
 LABEL org.ezkey.component="pam-ssh-demo-al2023"
-LABEL org.ezkey.version="2.2.6"
+LABEL org.ezkey.version="2.2.20"
 LABEL description="Amazon Linux 2023 SSH mirror authenticated by Ezkey PAM"
 
 ENV LANG=C.UTF-8
@@ -111,13 +111,20 @@ RUN chmod 600 /etc/security/pam_ezkey.conf
 
 COPY sshd /etc/pam.d/sshd
 COPY sshd_config /etc/ssh/sshd_config
+COPY sshd_config.f9-multitry /opt/pam-ezkey/sshd_config.f9-multitry
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 COPY test/test_pam.sh /opt/pam-ezkey/test/test_pam.sh
 COPY test/test_conf_security.sh /opt/pam-ezkey/test/test_conf_security.sh
+COPY scripts/integration-api-stub.py /opt/pam-ezkey/scripts/integration-api-stub.py
+COPY scripts/test-f9-retry.sh /opt/pam-ezkey/scripts/test-f9-retry.sh
+COPY scripts/sshd-warn-global-maxauthtries-1.awk /opt/pam-ezkey/scripts/sshd-warn-global-maxauthtries-1.awk
+COPY scripts/sshd-warn-global-maxauthtries-1.sh /opt/pam-ezkey/scripts/sshd-warn-global-maxauthtries-1.sh
 # rsyslog authpriv routing is fixed at runtime by docker-entrypoint.sh (imuxsock
 # SysSock.Use=on; no journald in the container). Stock conf already has authpriv.*.
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh /opt/pam-ezkey/test/test_pam.sh \
         /opt/pam-ezkey/test/test_conf_security.sh \
+        /opt/pam-ezkey/scripts/integration-api-stub.py \
+        /opt/pam-ezkey/scripts/test-f9-retry.sh \
     && mkdir -p /var/log /var/log/ezkey-pam \
     && chmod 700 /var/log/ezkey-pam \
     && touch /var/log/secure \

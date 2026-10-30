@@ -43,7 +43,6 @@ import type {
   GetAuditLogContextParams,
   GetAuditLogsParams,
   IntegrityReport,
-  PagedModelAuditLogResponseDto,
 } from '@/generated/admin-api/model';
 
 type AuditLogQueryParams = GetAuditLogsParams & {
@@ -655,7 +654,7 @@ export default function AuditLogsPage() {
       createdAfter: listApiDateParams.createdAfter,
       createdBefore: listApiDateParams.createdBefore,
     },
-    fetchPage: (params) => getAuditLogs(params as GetAuditLogsParams) as Promise<PagedModelAuditLogResponseDto>,
+    fetchPage: (params) => getAuditLogs(params as GetAuditLogsParams),
     enabled: !isAuditLogContextMode,
   });
 

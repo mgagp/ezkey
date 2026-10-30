@@ -38,8 +38,9 @@ meant to be linked from trust-facing material without inflating the top-level pi
   non signé est refusé, le serveur ne l'émet jamais). **Decision (#844 / #833, lived loop):**
   **409** `auth-attempt-state-conflict` et **200** dont la signature résultat n'est pas vérifiable
   → état neutre Back-only (catalogue local ; pas d'effacement, deny ni retry d'approbation) ;
-  **503** `integration-signing-unavailable` (clé manquante, transaction annulée, **pas de corps
-  signé**) → **retryable** (exception au chemin neutre Back-only) ;
+  **503** `integration-signing-unavailable` (clé manquante, transaction annulée — sauf FAILED
+  sur un mauvais challenge : INVALID est déjà commité, un nouvel essai reçoit un 409 ; **pas de
+  corps signé**) → **retryable** (exception au chemin neutre Back-only) ;
   coupure / timeout **après** que le `respond` HTTP a été envoyé → `UncertainDecision` (Q10 :
   résultat incertain, pas un échec, regarder l'écran de connexion d'origine, verrou
   `authAttemptId`, pas de leave-as-deny ni seconde décision — pas d'idempotent respond). Un MITM
@@ -50,6 +51,30 @@ meant to be linked from trust-facing material without inflating the top-level pi
   `auth-attempt-state-conflict` so sequential auth-attempt ids do not reveal existence or state
   before the caller is verified; distinction stays in server logs only. Missing integration key
   remains **503** `integration-signing-unavailable`.
+- **Decision (#912, Christophe):** Before proof of possession (invalid device signature or missing
+  device public key), **no** attempt status transition and the same generic **409**
+  `auth-attempt-state-conflict`. Invalid signature also emits audit
+  `AUTH_ATTEMPT_RESPOND_SIGNATURE_REJECTED` (attempt id, enrollment id, IP/UA via `LogSanitizer` —
+  never the signature). `markAsInvalid` remains only for post-ownership failures (e.g. wrong
+  challenge) and is conditional on status still `READ` (atomic `updateStatusIfCurrent`). Sequential
+  ids aggravate enumeration but are not required once an id is known.
+- **Decision (#912 C1):** The respond per-`authAttemptId` budget (default 1 / 5 min) is consumed
+  **only after** a valid device signature. The filter applies an IP ceiling on **all** respond
+  requests (not failures only); a third-party invalid respond must not starve the owner into HTTP
+  429 past the attempt TTL. `Retry-After` uses Bucket4j refill delay (also for pending / verify /
+  bind keyed denials).
+- **Decision (#912 C2, accepted):** Timing differences between not-found and invalid-signature
+  respond paths can hint that an id is a live `READ` attempt. That gap is **not** equalized: the
+  same existence signal is already available from sequential auth-attempt ids. Documented; no
+  latency padding.
+- **Decision (#895, Christophe + Patrick M1/M2):** Wall-clock expiry after `expiresAt` maps to
+  **409** `auth-attempt-expired` so Demo Device / PAM / mobile can show a clear expired message.
+  That typed problem is emitted **only after** enrollment load and device-signature (ownership)
+  verification succeed, and **before** challenge validation (owner + valid signature + wrong
+  challenge on an expired attempt → typed expiry, not `INVALID`/`FAILED`). An unauthenticated or
+  non-owner caller, a missing device public key, an unknown attempt, or a still-`PENDING` /
+  terminal attempt keeps the generic **409** `auth-attempt-state-conflict` (no `INVALID` flip) so
+  sequential ids do not reveal expiry or READ state before the caller is verified.
 - **Audit log integrity (tamper-evident).** Every audit entry is signed with **HMAC-SHA256** using a
   key held in a **file separate from the database** (and separate from the encryption master key).
   Periodic **checkpoints** chain windows together for a completeness proof.
@@ -61,10 +86,14 @@ meant to be linked from trust-facing material without inflating the top-level pi
 - **Operator-actionable signals.** Integrity problems surface as alerts a Global Admin can triage;
   declared gaps and recovered outages are reconciled in the chain rather than hidden.
 - **Encryption at rest with rotatable keys**, self-hosted control, and inspectable open-source code.
-  Ezkey uses Google Tink for the at-rest keyset and data-encryption primitives. The platform keyset
-  is protected by a file-based master key; both the file keyset and the `ezkey_keyset_blob` database
-  synchronization row use Tink's encrypted-keyset JSON envelope. Tink envelope metadata such as key
-  IDs and primary-key status is treated as non-secret operational metadata, not as a security layer.
+  Ezkey uses Google Tink for the at-rest keyset and data-encryption primitives. The runtime source of
+  truth for the platform keyset is the `ezkey_keyset_blob` database row (Tink encrypted-keyset JSON
+  envelope; ADR-0016). A file-based **master key** wraps that envelope; API processes do not treat a
+  keyset file as authority. Tink envelope metadata such as key IDs (**kids**) and primary-key status
+  is treated as non-secret operational metadata, not as a security layer. **PII and most operator
+  contact fields remain cleartext in the database** — the keyset protects selected at-rest secrets
+  (for example enrollment private keys, proof tokens, API key material), not general PII
+  confidentiality.
 
 ## What Ezkey does not do (current limits, stated honestly)
 
@@ -84,9 +113,13 @@ meant to be linked from trust-facing material without inflating the top-level pi
   operations are not blocked (**fail-open**). Tamper-evidence applies to rows that were stored;
   omission at the source is a separate concern (tracked in
   [`I-2026-07-18-audit-log-fail-open-exception-swallow`](../product-docs/global/backlog/ideas/I-2026-07-18-audit-log-fail-open-exception-swallow.md)).
-- **It does not rely on hiding Tink keyset metadata.** Key material is secret; key IDs, primary-key
-  status, and similar Tink envelope metadata are not treated as secrets. Ezkey deliberately avoids a
-  second custom envelope whose only purpose would be to hide non-secret metadata.
+- **It does not rely on hiding Tink keyset metadata.** Key material is secret; key IDs (**kids**),
+  primary-key status, and similar Tink envelope metadata are not treated as secrets. Ezkey
+  deliberately avoids a second custom envelope whose only purpose would be to hide non-secret
+  metadata.
+- **It does not encrypt general PII under the platform keyset.** Contacts, admin names/emails, audit
+  IP/UA, and free-text auth context are stored in cleartext. Keyset loss is an availability /
+  re-enrollment problem for encrypted columns, not a PII confidentiality guarantee.
 
 ## What Ezkey aims to do (planned, if adoption justifies)
 
@@ -226,6 +259,7 @@ issue** (table above). Decision records for those components land in this subsec
 
 - **2026-10-14:** PAM debug file logs leave `/tmp` — directory via `open(O_DIRECTORY|O_NOFOLLOW)`, files via `openat(…, O_WRONLY|O_CREAT|O_APPEND|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK, 0600)` then `fstat` (regular, uid 0, `nlink==1`) + `fchmod 0600`, under root-owned `/var/log/ezkey-pam/` (mode `0700`), gated by conf/PAM `debug` (sample default `false`; Docker lab entrypoint may set `true`). Log lines neutralize CR/LF/controls before syslog/file. Closes CodeQL **123** / **124** ([#818](https://github.com/mgagp/ezkey/issues/818); idea `I-2026-10-13-pam-tmp-log-hardening`). Reason: `fopen("/tmp/…","a")` in a root-loaded PAM `.so` is a classic symlink / TOCTOU race on multi-user hosts.
 - **2026-10-14:** CodeQL `paths-ignore: ezkey-pam/test/**` — test harness only, not shipped; product path is `ezkey-pam/src/` ([#818](https://github.com/mgagp/ezkey/issues/818)).
+- **2026-10-22:** PAM approval fatigue is **not yet mitigated server-side** — an attacker holding the first SSH factor can loop connections (`MaxAuthTries 1` → one approval request each; a new attempt supersedes the pending one). Only a per-API-key create bucket exists; per-enrollment pending policy, rate limit, cooldown and alert-on-deny are platform work tracked in [#992](https://github.com/mgagp/ezkey/issues/992). Mitigation today is connector-side: `ezkey-pam` requests the two-digit challenge code by default (`challenge_requested=true`, [#995](https://github.com/mgagp/ezkey/issues/995)); the platform is unchanged. The code is shown when the enrollment requires it (`authAttemptChallengeRequired`, enforced server-side regardless of the connector) **or** the request asks for it; connector `false` only means "not requested by the connector". Because the code appears on the requester's terminal, a victim cannot approve an attacker's login by reflex; this does not resist real-time phishing relay. The pre-create `ok` prompt is an anti-accident filter for honest batch clients, **not a defense**. Experimental module, never released.
 
 **Rules (Christophe):**
 
@@ -265,6 +299,7 @@ there; direct XLSX URL 404 as of 2026-10-14);
 - **2026-10-14:** code-scanning alert #9 (`java/ssrf` at demo-device `AuthApiService`) is a false positive after Lot A allowlist — input reaches `WebClient.baseUrl` only via `AuthApiUrlValidator.validate(String,Set)`; modeled as a `request-forgery` barrier so CodeQL recognizes the sanitizer (defense in depth: `EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment` also revalidates persisted URLs) ([#810](https://github.com/mgagp/ezkey/pull/810)). With [#809](https://github.com/mgagp/ezkey/pull/809) `security-extended` on `main`, confirm alert closure; dismiss only after Marc's go if still open.
 - **2026-10-14:** code-scanning alert #16 (`java/sensitive-log` at `AdminOperationsRateLimitService.recordResetEnrollment`) — never log the raw recovery token; log `RecoveryAuditDetails.recoveryTokenFingerprint` (and wrap caller-supplied log values with `LogSanitizer`) ([#810](https://github.com/mgagp/ezkey/pull/810)). Confirm closure under `security-extended` after #809.
 - Any caller-controlled value written to logs goes through `org.ezkey.util.LogSanitizer.sanitizeForLog`; secrets are never logged, at any level. Production call sites that still need wrapping are tracked in [#801](https://github.com/mgagp/ezkey/issues/801).
+- **2026-10-26 (#801, [#1040](https://github.com/mgagp/ezkey/pull/1040)):** Auth API `GlobalExceptionHandler` routes caller-controlled log args through `LogSanitizer.sanitizeForLog`, which neutralizes CR/LF only (not U+0085, U+2028/2029, or ESC). Exception messages logged with stack traces (`LOG.error("Unexpected runtime error", ex)`, `"Unhandled exception"`) are not sanitized and are not flagged by CodeQL.
 - In `credentials-output-mode=full` (default), first-start logs print the single-use bootstrap enrollment proof token, challenge and QR — by design (#750, maintainer 2026-10-09); token valid 24 h and only while CREATED; `recovery_primary` omits them (`docs/OPERATIONAL.md:547`).
 - Triage campaign notes: [`../product-docs/global/hygiene/code-scanning/`](../product-docs/global/hygiene/code-scanning/). Prior triage plan approved by Marc 2026-10-13 19:40; cadence/SLA decision [#815](https://github.com/mgagp/ezkey/issues/815).
 - CI/CD and repository-settings parity inventory (evaluator-facing): [`engineering/ci-cd-best-practices-plan.md`](engineering/ci-cd-best-practices-plan.md).

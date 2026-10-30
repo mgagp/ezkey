@@ -4,6 +4,9 @@ import { useCallback, useState } from 'react';
 /**
  * Shape of the JSON body returned by Admin API paginated list endpoints.
  * Orval generates PagedModel*Dto types; the mutator returns this body directly.
+ *
+ * Fields stay optional here so UI code can defend against partial payloads even when
+ * springdoc 3.2+ marks OpenAPI `PagedModel*` / `PageMetadata` properties as required.
  */
 export interface PagedBody<T> {
   content?: T[];
@@ -13,6 +16,34 @@ export interface PagedBody<T> {
     totalElements?: number;
     totalPages?: number;
   };
+}
+
+/**
+ * Bridge Orval list-GET return types to the Spring Page JSON body the mutator returns.
+ *
+ * Orval types `customInstance` results as HTTP response-envelope unions
+ * (`{ data, status, headers }`). Our mutator unwraps to the JSON body. Prefer this
+ * helper over per-call-site `as Promise<PagedModel*>` — those casts break under
+ * springdoc 3.2.0 when PagedModel/PageMetadata fields are `required` (TS2352).
+ *
+ * @param response Orval list promise (typed as envelope union; runtime is page body)
+ * @returns Promise of the page body used by {@link usePaginatedFromOrval}
+ */
+export function orvalPagedBody<T>(response: Promise<unknown>): Promise<PagedBody<T>> {
+  return response as Promise<PagedBody<T>>;
+}
+
+/**
+ * Same bridge for already-resolved Orval query `data` (raw hooks / selectors).
+ *
+ * @param value Orval query data (typed as envelope union; runtime is page body)
+ * @returns Page body or undefined when the query has no data yet
+ */
+export function asOrvalPagedBody<T>(value: unknown): PagedBody<T> | undefined {
+  if (value == null) {
+    return undefined;
+  }
+  return value as PagedBody<T>;
 }
 
 /** Alias for compatibility with code that still expects PageResponse (e.g. dashboard). */
@@ -68,7 +99,12 @@ export type PaginatedParams = {
 export function usePaginatedFromOrval<T, P extends Record<string, unknown>>(options: {
   queryKey: unknown[];
   baseParams: P;
-  fetchPage: (params: P & { page: number; size: number; sort: string[] }) => Promise<PagedBody<T>>;
+  /**
+   * Orval-generated list function (or thin wrapper). May be typed as an HTTP envelope
+   * union; pass through {@link orvalPagedBody} at the call site, or return the promise
+   * directly — this hook normalizes via {@link orvalPagedBody}.
+   */
+  fetchPage: (params: P & { page: number; size: number; sort: string[] }) => Promise<unknown>;
   defaultSize?: number;
   defaultSort?: string;
   /** When false, the query is not run (e.g. for nested expandable sections). Default true. */
@@ -125,7 +161,7 @@ export function usePaginatedFromOrval<T, P extends Record<string, unknown>>(opti
 
   const { data: body, isLoading, isError, error, refetch } = useQuery({
     queryKey: [...queryKey, page, size, sort],
-    queryFn: () => fetchPage(params),
+    queryFn: () => orvalPagedBody<T>(fetchPage(params)),
     placeholderData: useKeepPreviousData ? keepPreviousData : undefined,
     enabled,
     refetchInterval,

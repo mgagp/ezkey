@@ -125,14 +125,29 @@ ezkey admin auth logout
 **Create API Key:**
 
 ```bash
+# Interactive / operator: secret printed once on stdout
 ezkey admin api-key create \
   --integration-id 123 \
   --description "Production Server" \
-  --expires-at "2025-12-31T23:59:59Z" \
+  --expires-at "<EXPIRY_ISO8601>" \
   --ip-whitelist "192.168.1.0/24" \
   --save-key
 
-# ⚠️ IMPORTANT: Save the secret key displayed - it's shown only once!
+# Agent / QA: write credentials to a mode-600 .env file outside the repo; never print the secret
+mkdir -p ~/.config/ezkey-qa && chmod 700 ~/.config/ezkey-qa
+ezkey admin api-key create \
+  --integration-id 123 \
+  --description "qa-agent-placeholder" \
+  --expires-at "<EXPIRY_ISO8601>" \
+  --ip-whitelist "203.0.113.0/24" \
+  --out-file ~/.config/ezkey-qa/api-key.env
+
+# Overwrite an existing non-symlink out-file only with an explicit flag:
+#   --out-file ~/.config/ezkey-qa/api-key.env --force
+
+# ⚠️ Without --out-file: save the secret key displayed — it is shown only once
+#    (BCrypt hash only is stored; there is no retrieve-secret API).
+# Mode 600 is POSIX best-effort; on Windows the file inherits folder ACLs.
 ```
 
 **Use API Key:**
@@ -144,6 +159,9 @@ ezkey admin api-key create \
 #   "integrationKey": "ezkey_ikey_...",
 #   "secretKey": "ezkey_skey_..."
 # }
+#
+# Or load a --out-file .env into a subprocess env (never cat / trace the secret).
+# Agent create → use → revoke: ../../docs/lab/API_KEY_CLI_AGENT_WORKFLOW.md
 ```
 
 **Revoke API Key:**
@@ -254,12 +272,18 @@ ezkey admin auth logout
 #### API Keys
 
 ```bash
-# Create API key
+# Create API key (secret on stdout once)
 ezkey admin api-key create \
   --integration-id 123 \
   --description "Production Server" \
-  --expires-at "2025-12-31T23:59:59Z" \
+  --expires-at "<EXPIRY_ISO8601>" \
   --ip-whitelist "192.168.1.0/24"
+
+# Create and write credentials to a mode-600 .env file outside the repo
+ezkey admin api-key create \
+  --integration-id 123 \
+  --expires-at "<EXPIRY_ISO8601>" \
+  --out-file ~/.config/ezkey-qa/api-key.env
 
 # List API keys for integration
 ezkey admin api-key list --integration-id 123
@@ -428,7 +452,7 @@ ezkey admin auth login --username admin
 ezkey admin api-key create \
   --integration-id 123 \
   --description "Production Server" \
-  --expires-at "2026-12-31T23:59:59Z" \
+  --expires-at "<EXPIRY_ISO8601>" \
   --ip-whitelist "10.0.0.0/8" \
   --save-key
 
@@ -489,7 +513,7 @@ ezkey admin auth login --username admin
 ezkey admin api-key create \
   --integration-id 123 \
   --description "Production Server - New Key" \
-  --expires-at "2026-12-31T23:59:59Z"
+  --expires-at "<EXPIRY_ISO8601>"
 
 # 3. Update application configuration with new key
 # (Deploy changes to production)

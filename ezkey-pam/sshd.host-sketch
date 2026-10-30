@@ -2,6 +2,11 @@
 # Host-oriented sketch ONLY — not installed by the demo image and not applied
 # to any live Lightsail / dogfood host by this repository.
 #
+# Interaction model (2.2.12 confirm-before-create): one kbd-int round →
+# pre-create "ok" → at most one POST /auth-attempts → optional challenge
+# prompt → /wait. Batch / empty / Ctrl-C at the first prompt create nothing.
+# Full catalogue: docs/INTERACTION-MODEL.md
+#
 # Intent (fail-closed MFA with named break-glass):
 #   - Interactive users: primary factor (pubkey or unix) AND pam_ezkey required.
 #   - Named break-glass account skips pam_ezkey (console / emergency access).
@@ -28,5 +33,43 @@
 # account    required     pam_unix.so
 # session    required     pam_unix.so
 #
+# sshd_config (host): LoginGraceTime >= 120.
+#
+# MANDATORY — MaxAuthTries 1 inside Match (not global).
+# install.sh / entrypoint WARN when missing; they do not rewrite sshd_config.
+# OpenSSH portable forks each keyboard-interactive PAM round and _exit's — each
+# prompt round is one pam_sm_authenticate and one Integration API auth request.
+# A pam_set_data marker does NOT stop a second create after Deny/Expire (#907).
+# Edgar retest of #908 (2026-10-20): F9 (one SSH login → 3 auth requests) is
+# fixed only when MaxAuthTries 1 is inside the MFA Match; leave other users
+# (e.g. ec2-user) on the global try budget. Prefer Match Group over a global
+# MaxAuthTries 1 (refused public keys also consume tries):
+#
+# groupadd ezkey-mfa
+# usermod -aG ezkey-mfa mfa-user
+#
+# Match Group ezkey-mfa
+#     MaxAuthTries 1
+#     AuthenticationMethods keyboard-interactive
+#     PubkeyAuthentication no
+#
+# PubkeyAuthentication no (security GO): with MaxAuthTries 1, a refused
+# client-offered pubkey consumes the single try before keyboard-interactive and
+# locks out the MFA account; AuthenticationMethods keyboard-interactive makes
+# pubkey unused anyway. Combining publickey,keyboard-interactive requires raising
+# MaxAuthTries (out of scope — document separately if funded).
+#
+# Single-user lab alternative:
+# Match User mfa-user
+#     MaxAuthTries 1
+#     AuthenticationMethods keyboard-interactive
+#     PubkeyAuthentication no
+#
+# WARNING: without this Match, OpenSSH recreates auth attempts after Deny/Expire
+# in the same TCP connection (#907 F9). Do not rely on PAM_MAXTRIES across rounds.
+#
+# Clients: ssh -o NumberOfPasswordPrompts=1 …
+#
 # Rollback: restore /etc/pam.d/sshd from a copy taken the same day; sshd -t before
 # restart. Confirm Lightsail serial/browser console the same day as any cutover.
+# Never commit origin IPs — use <static-ip ezkey-online-community> in notes.

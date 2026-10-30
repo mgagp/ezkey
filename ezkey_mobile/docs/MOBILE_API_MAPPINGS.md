@@ -367,13 +367,14 @@ response updates a volatile latest-response summary for the enrollment and retur
 
 ## Notes on Contract Drift and Verification Rules
 
-- User-visible Auth API HTTP errors show RFC 9457 `detail` only when `type` is under
-  `https://ezkey.io/problems/` (origin Auth catalog). Other Problem Details, including
-  Cloudflare 1020 JSON, plus HTML or transport failures, use the generic localized fallback.
-  Structural parsing stays in `parseAuthApiProblemDetail`; production UI uses
-  `userFacingAuthApiError`. Wire-protocol canon:
+- User-visible Auth API HTTP errors **MUST** branch on HTTP status and RFC 9457 `type` and
+  **MUST NOT** display `detail` (or `title`) verbatim. Map Ezkey `type` URIs under
+  `https://ezkey.io/problems/` to local / localized copy. Other Problem Details (including edge/WAF
+  JSON), HTML, or transport failures use the generic localized fallback. Structural parsing may
+  stay in `parseAuthApiProblemDetail`; production UI must not render raw `detail`. Canon:
+  [`docs/CLIENT_BEHAVIOUR_CONTRACT.md`](../../docs/CLIENT_BEHAVIOUR_CONTRACT.md) §7 and
   [`docs/MOBILE_DEVELOPER_GUIDE.md`](../../docs/MOBILE_DEVELOPER_GUIDE.md) § Error Handling
-  Expectations.
+  Expectations (full type table).
 - The app intentionally validates `integrationKeyAlgorithm` during bind before trusting `integrationPublicKey`.
 - Home does not trigger `pending`; the explicit user path is Home -> Enrollment Detail -> Pending Authentication.
 - The current implementation persists `enrollmentProofToken` and `integrationPublicKey` through the secure secret delegate so later pending/respond trust checks can run without refetching bind state or leaving those values in AsyncStorage cleartext.

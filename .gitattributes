@@ -22,6 +22,13 @@
 .gitattributes text eol=lf
 .editorconfig text eol=lf
 
+# ezkey-pam: CRLF checkout breaks make check-source (^challenge_requested=true$).
+# Linux CI is the reference platform for ezkey-pam (GNU sed -i; see ezkey-pam/README.md).
+*.conf text eol=lf
+Makefile text eol=lf
+**/Makefile text eol=lf
+docker-entrypoint.sh text eol=lf
+
 # Windows batch files: CRLF (exception)
 *.bat text eol=crlf
 *.cmd text eol=crlf

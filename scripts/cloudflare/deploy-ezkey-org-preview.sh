@@ -44,7 +44,7 @@ if [[ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]]; then
 fi
 
 cd "$ROOT"
-# Portal OpenAPI JSON is gitignored; copy from specs/ before Pages deploy (#833).
+# Refresh committed portal OpenAPI copies from specs/ before Pages deploy (#833 / #977).
 bash "$ROOT/scripts/sync-ezkey-org-api-specs.sh"
 exec npx wrangler pages deploy sites/ezkey-org \
   --project-name="$PROJECT" \

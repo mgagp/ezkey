@@ -12,6 +12,8 @@
 package org.ezkey.admin.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -46,6 +48,8 @@ import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.enrollment.mapper.EnrollmentAdminMapper;
 import org.ezkey.enrollment.service.EnrollmentService;
+import org.ezkey.exception.AdminApiProblemCatalog;
+import org.ezkey.exception.ValidationExceptionHandler;
 import org.ezkey.integration.domain.entity.ApiKey;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
@@ -59,6 +63,7 @@ import org.ezkey.security.KeyUsageVerificationService;
 import org.ezkey.security.ReencryptionService;
 import org.ezkey.security.domain.repository.EncryptionKeyRepository;
 import org.ezkey.security.domain.repository.ReencryptionBatchRepository;
+import org.ezkey.security.exception.KeysetCasConflictException;
 import org.ezkey.security.exception.PendingEncryptionKeyExistsException;
 import org.ezkey.service.EntityEligibilityService;
 import org.junit.jupiter.api.AfterEach;
@@ -69,9 +74,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.context.request.ServletWebRequest;
 
 /**
  * Unit tests verifying that the optional {@code reason} justification field is correctly propagated
@@ -407,6 +417,60 @@ class AuditReasonPropagationTest {
     assertEquals(EventStatus.FAILURE, logged.getEventStatus());
     assertEquals("Annual key rotation policy", logged.getReason());
     assertEquals(7, logged.getAdminId());
+  }
+
+  @Test
+  @DisplayName(
+      "rotateKey() on keyset CAS loss — 409 state-conflict ProblemDetail, no ERROR audit (#961"
+          + " Lot 3)")
+  void rotateKey_whenKeysetCasConflict_returns409AndWritesNoErrorAudit() throws Exception {
+    EncryptionKeyController controller =
+        new EncryptionKeyController(
+            encryptionKeyRepository,
+            reencryptionBatchRepository,
+            rotationService,
+            reencryptionService,
+            auditLogService,
+            keyUsageVerificationService);
+
+    when(rotationService.introduceNewKey("ADMIN_MANUAL"))
+        .thenThrow(
+            new KeysetCasConflictException(
+                "Keyset mutation CAS failed (updatedBy=KEY_ADDED_PENDING); staging discarded and"
+                    + " blob reloaded"));
+    Authentication auth = mock(Authentication.class);
+    when(auth.getPrincipal()).thenReturn(new AdminPrincipal(7, AdminType.GLOBAL_ADMIN, null, null));
+
+    KeysetCasConflictException thrown =
+        assertThrows(
+            KeysetCasConflictException.class,
+            () -> controller.rotateKey("HA rotate race loser", auth, httpRequest));
+
+    assertEquals(
+        "The encryption keyset was modified concurrently; no key was added by this request."
+            + " Retry is safe.",
+        thrown.getMessage());
+    assertFalse(
+        thrown.getMessage().contains("CAS failed"),
+        "Operator-facing detail must not leak internal CAS / stack wording");
+    verify(auditLogService, never()).log(any(AuditLog.class));
+
+    MockHttpServletRequest servletRequest = new MockHttpServletRequest();
+    servletRequest.setRequestURI("/api/v1/encryption-keys/rotate");
+    ResponseEntity<ProblemDetail> response =
+        new ValidationExceptionHandler()
+            .handleIllegalStateException(thrown, new ServletWebRequest(servletRequest));
+
+    assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+    ProblemDetail body = response.getBody();
+    assertNotNull(body);
+    assertEquals(409, body.getStatus());
+    assertEquals(AdminApiProblemCatalog.TYPE_STATE_CONFLICT, body.getType().toString());
+    assertEquals(AdminApiProblemCatalog.TITLE_STATE_CONFLICT, body.getTitle());
+    assertEquals(thrown.getMessage(), body.getDetail());
+    assertFalse(
+        body.getDetail() != null && body.getDetail().contains("at org."),
+        "ProblemDetail must not include a stack trace");
   }
 
   // -------------------------------------------------------------------------

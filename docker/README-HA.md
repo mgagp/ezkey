@@ -145,7 +145,7 @@ replicas. Crypto API is excluded. See [`README.md`](README.md) § JavaMelody col
 - **Port**: `9090` (exposed to host)
 - **Purpose**: Cryptographic operations service
 - **Depends on**: PostgreSQL (healthy), Migration (completed)
-- **Health Check**: http://localhost:9091/actuator/health (management port; business port remains `9090`)
+- **Health Check (liveness)**: http://localhost:9091/actuator/health/liveness (encryption readiness: `/actuator/health/encryption`; business port remains `9090`)
 
 ### Demo Device (demo-device)
 - **Container**: `ezkey-demo-device-ha`

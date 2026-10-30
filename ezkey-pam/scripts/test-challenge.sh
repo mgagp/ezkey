@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Two-digit challenge: prove code appears in live SSH capture BEFORE approve
 # (Patrick). Cases: match → SUCCESS; wrong code → refuse; absent challenge
-# (stub) → UNAVAIL. Default challenge_requested=false (see STATUS).
+# (stub) → UNAVAIL. Default challenge_requested=true since #995 (see STATUS);
+# cases that need no-challenge or explicit true still sed the conf.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -19,7 +20,7 @@ BACKUP="/etc/security/pam_ezkey.conf.chalbak"
 PORT="${SSH_PORT}"
 PASS=0
 FAIL=0
-ARTIFACT_DIR="${EZKEY_PAM_ARTIFACT_DIR:-/opt/cursor/artifacts}"
+ARTIFACT_DIR="$(ezkey_pam_artifact_dir)"
 mkdir -p "${ARTIFACT_DIR}"
 SSH_LOG="${ARTIFACT_DIR}/pam-challenge-ssh.log"
 PROOF_LOG="${ARTIFACT_DIR}/pam-challenge-proof.log"
@@ -115,7 +116,7 @@ wait_challenge_in_capture() {
 }
 
 # PTY driver + control fifo: OpenSSH keyboard-interactive reads from the PTY
-# (not redirected stdin). Helper tees live output and accepts "enter".
+# (not redirected stdin). Helper tees live output and accepts "ok" confirm.
 SSH_CTRL=""
 
 close_ssh_ctrl() {
@@ -125,18 +126,42 @@ close_ssh_ctrl() {
   SSH_CTRL=""
 }
 
+send_ssh_ok() {
+  if [ -n "${SSH_CTRL}" ]; then
+    # Pre-create confirm token (#975 / #982 tier 0).
+    printf 'ok\n' >"${SSH_CTRL}" 2>/dev/null || true
+  fi
+}
+
 send_ssh_enter() {
   if [ -n "${SSH_CTRL}" ]; then
-    # Non-blocking writer: helper holds the read end open.
+    # Challenge path: bare Enter continues to /wait (#982 tier 1).
     printf 'enter\n' >"${SSH_CTRL}" 2>/dev/null || true
   fi
+}
+
+# Confirm-before-create: wait for the pre-create "Type ok… request" line, then
+# send ok so POST /auth-attempts runs (challenge appears only after create).
+wait_precreate_and_confirm() {
+  local log="${1:-${SSH_LOG}}"
+  local i flat
+  for i in $(seq 1 80); do
+    flat="$(tr -cd '\11\12\15\40-\176' <"${log}" 2>/dev/null || true)"
+    if echo "${flat}" | grep -qE \
+      'Type ok and press Enter to request device approval|SSH login for user |Approve on your phone, then press Enter'; then
+      send_ssh_ok
+      return 0
+    fi
+    sleep 0.25
+  done
+  return 1
 }
 
 start_ssh_capture() {
   local log="${1:-${SSH_LOG}}"
   : >"${log}"
   close_ssh_ctrl
-  # /opt/cursor/artifacts may be a FUSE mount that cannot host fifos.
+  # Artifact dirs on some hosts (FUSE) cannot host fifos — use /tmp for ctrl.
   SSH_CTRL="$(mktemp -u /tmp/pam-chal-ctrl.XXXXXX)"
   mkfifo "${SSH_CTRL}"
 
@@ -173,6 +198,17 @@ docker exec "${CONTAINER}" sh -c \
 
 SSH_LOG_A="${ARTIFACT_DIR}/pam-challenge-ssh-a.log"
 start_ssh_capture "${SSH_LOG_A}"
+
+# Confirm-before-create: ok #1 creates the attempt; challenge is prompt #2.
+if wait_precreate_and_confirm "${SSH_LOG_A}"; then
+  ok "Case A: pre-create ok sent (confirm-before-create)"
+else
+  fail "Case A: pre-create prompt missing"
+  kill "${SSH_BG}" 2>/dev/null || true
+  wait "${SSH_BG}" 2>/dev/null || true
+  echo "=== Results: $PASS passed, $FAIL failed ===" | tee -a "${PROOF_LOG}"
+  exit 1
+fi
 
 ATTEMPT_ID=""
 CHALLENGE=""
@@ -214,15 +250,16 @@ else
 fi
 
 if [ -n "${SHOWN}" ]; then
-  # Code is on the PTY; answer the Enter prompt so PAM proceeds to /wait,
-  # then approve — order proves display-before-approve (Patrick).
-  echo "Sending Enter on SSH stdin (after live capture proof)" | tee -a "${PROOF_LOG}"
-  send_ssh_enter
-  sleep 0.3
-  echo "Approving with challenge=${CHALLENGE} (after capture proof)" | tee -a "${PROOF_LOG}"
+  # #982: approve while still on the challenge prompt, then Enter → /wait
+  # (approval-before-Enter). Code was already proven visible above.
+  echo "Approving with challenge=${CHALLENGE} before challenge Enter (#982)" \
+    | tee -a "${PROOF_LOG}"
   "${SCRIPT_DIR}/respond-pending.sh" approve "${ENROLLMENT_ID}" "${CHALLENGE}" \
     >"${ARTIFACT_DIR}/pam-challenge-approve.log" 2>&1
-  ok "Demo Device approve with matching challenge submitted"
+  ok "Demo Device approve with matching challenge submitted (before Enter)"
+  echo "Sending Enter on challenge prompt (after approve)" | tee -a "${PROOF_LOG}"
+  send_ssh_enter
+  sleep 0.3
 
   set +e
   wait "${SSH_BG}"
@@ -292,6 +329,9 @@ docker exec "${CONTAINER}" sh -c \
 
 SSH_LOG_B="${ARTIFACT_DIR}/pam-challenge-ssh-b.log"
 start_ssh_capture "${SSH_LOG_B}"
+if ! wait_precreate_and_confirm "${SSH_LOG_B}"; then
+  fail "wrong-code case: pre-create prompt missing"
+fi
 ATTEMPT_ID=""
 CHALLENGE=""
 for _ in $(seq 1 80); do
@@ -376,13 +416,17 @@ docker exec "${CONTAINER}" sh -c ': > /var/log/ezkey-pam/debug.err'
 before="$(docker exec "${CONTAINER}" sh -c \
   "grep -c 'pam_ezkey: attempt ' /var/log/secure 2>/dev/null || true" | tr -d ' \r')"
 before="${before:-0}"
+# Confirm-before-create: must ok the pre-create prompt before stub create runs;
+# then missing challenge → UNAVAIL (fail-closed #726 / #975).
+SSH_LOG_C="${ARTIFACT_DIR}/pam-challenge-ssh-c-absent.log"
+start_ssh_capture "${SSH_LOG_C}"
+wait_precreate_and_confirm "${SSH_LOG_C}" || true
 set +e
-ssh -tt -p "${PORT}" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-  -o PreferredAuthentications=keyboard-interactive -o PubkeyAuthentication=no \
-  -o PasswordAuthentication=no -o ConnectTimeout=10 \
-  "${SSH_USER}@127.0.0.1" 'echo SHOULD_FAIL' >/dev/null 2>&1
+wait "${SSH_BG}"
 abs_rc=$?
 set -e
+SSH_BG=""
+close_ssh_ctrl
 for _ in $(seq 1 40); do
   after="$(docker exec "${CONTAINER}" sh -c \
     "grep -c 'pam_ezkey: attempt ' /var/log/secure 2>/dev/null || true" | tr -d ' \r')"
@@ -400,6 +444,63 @@ if [ "${abs_rc}" -ne 0 ] && echo "${ATTEMPT}" | grep -q 'result=UNAVAIL' \
   ok "absent challenge (stub) → UNAVAIL + debug.err bound/missing reason"
 else
   fail "absent challenge expected UNAVAIL+reason (rc=${abs_rc} line=${ATTEMPT} err=${ERR})"
+fi
+stop_stub
+restore_conf
+
+# ---------------------------------------------------------------------------
+# Case D — #975: enrollment-required challenge with challenge_requested=false
+# Stub forces authAttemptChallenge; host conf stays false. Code must still show.
+# ---------------------------------------------------------------------------
+stop_stub
+docker exec -d "${CONTAINER}" sh -c \
+  "EZKEY_STUB_MODE=enrollment_challenge EZKEY_STUB_PORT='${STUB_PORT}' \
+   EZKEY_STUB_CHALLENGE=42 \
+   python3 /opt/pam-ezkey/scripts/integration-api-stub.py \
+   >/tmp/ezkey-pam-stub.log 2>&1 & echo \$! >'${STUB_PID_FILE}'"
+for _ in $(seq 1 40); do
+  docker exec "${CONTAINER}" sh -c "ss -ltn | grep -q ':${STUB_PORT}'" 2>/dev/null && break
+  sleep 0.1
+done
+
+docker exec "${CONTAINER}" sh -c \
+  "sed -i 's/^challenge_requested=.*/challenge_requested=false/' '${CONF}'; \
+   sed -i 's/^lab_http=.*/lab_http=true/' '${CONF}'; \
+   sed -i 's|^integration_api_url=.*|integration_api_url=http://127.0.0.1:${STUB_PORT}|' '${CONF}'; \
+   sed -i 's/^wait_timeout=.*/wait_timeout=30/' '${CONF}'; \
+   sed -i 's/^debug=.*/debug=true/' '${CONF}'; \
+   chown root:root '${CONF}'; chmod 600 '${CONF}'"
+
+SSH_LOG_D="${ARTIFACT_DIR}/pam-challenge-ssh-d-enrollment.log"
+start_ssh_capture "${SSH_LOG_D}"
+if ! wait_precreate_and_confirm "${SSH_LOG_D}"; then
+  fail "#975 Case D: pre-create prompt missing"
+fi
+if wait_challenge_in_capture "42" "${SSH_LOG_D}" >/dev/null; then
+  ok "#975 Case D: challenge 42 visible with challenge_requested=false (enrollment stub)"
+  tr -cd '\11\12\15\40-\176' <"${SSH_LOG_D}" | grep -E 'Ezkey challenge' \
+    | tee -a "${PROOF_LOG}" | tee "${ARTIFACT_DIR}/pam-challenge-enrollment-false.txt" || true
+  send_ssh_enter
+else
+  fail "#975 Case D: challenge not visible with challenge_requested=false"
+  send_ssh_enter
+fi
+set +e
+wait "${SSH_BG}"
+SSH_RC_D=$?
+set -e
+SSH_BG=""
+close_ssh_ctrl
+FLAT_D="$(tr -cd '\11\12\15\40-\176' <"${SSH_LOG_D}" 2>/dev/null || true)"
+ATTEMPT_D="$(docker exec "${CONTAINER}" sh -c \
+  "grep 'pam_ezkey: attempt ' /var/log/secure | tail -n 1" || true)"
+echo "case_d_attempt=${ATTEMPT_D} ssh_rc=${SSH_RC_D}" >>"${PROOF_LOG}"
+if echo "${FLAT_D}" | grep -q PAM_CHALLENGE_OK \
+  && echo "${ATTEMPT_D}" | grep -q 'result=SUCCESS' \
+  && ! echo "${ATTEMPT_D}" | grep -qi 'challenge'; then
+  ok "#975 Case D: SUCCESS after enrollment challenge + no digits in authpriv"
+else
+  fail "#975 Case D expected SUCCESS without authpriv digits (rc=${SSH_RC_D}): ${ATTEMPT_D}"
 fi
 stop_stub
 restore_conf

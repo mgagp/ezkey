@@ -19,7 +19,9 @@ This folder is the **source of truth** for the static public site served at **ez
 | `fr/integration-api-reference.html` | French Integration API public reference page powered by ReDoc CE. |
 | `trust.html` / `fr/trust.html` | Short trust / security diligence (links to public GitHub + on-site evaluation). |
 | `monthly-digest.html` / `fr/monthly-digest.html` | Monthly digests: reverse-chronological index (Git-distilled months link to detail pages; legacy entries index-only). |
-| `articles.html` / `fr/articles.html` | Guides & walkthroughs lane + index of essays (cards link to standalone HTML pages). |
+| `articles.html` / `fr/articles.html` | About Ezkey + Craft & engineering + Lab papers pointer (cards link to standalone HTML pages). |
+| `lab.html` / `fr/labo.html` | Lab Papers / Cahiers du labo hub (no primary-nav tab yet). Method docs live in `sites/ezkey-org-editorial/`. |
+| `lab-paper-template-example.html` / `fr/lab-paper-template-example.html` | Sample Lab Paper reading layout (template/example only). |
 | `changelog.html` / `fr/changelog.html` | Placeholder for future technical release notes; linked from Monthly digests; omitted from primary nav until filled. |
 | `*.html` under root / `fr/` | Article bodies and other standalone pages (each includes Open Graph + Twitter Card meta for sharing). |
 
@@ -28,7 +30,7 @@ This folder is the **source of truth** for the static public site served at **ez
 | `sitemap.xml` | Sitemap; URL listed in `robots.txt`. |
 | `robots.txt` | `Allow: /` and `Sitemap:` pointer. |
 | `monthly-digest.rss` / `fr/monthly-digest.rss` | RSS feeds for **Monthly digests**; keep in sync when adding entries (see **AGENTS.md**). |
-| `api-specs/` | Static OpenAPI JSON assets consumed by the public API portal pages. |
+| `api-specs/` | Committed OpenAPI JSON copies (from `specs/`) consumed by the public API portal pages; refresh with `./scripts/sync-ezkey-org-api-specs.sh`. |
 
 **Locales:** Default URL `/` is English; `/fr/` is French. Hub pages expose `hreflang` alternates; in-page language switches link between paired locales.
 

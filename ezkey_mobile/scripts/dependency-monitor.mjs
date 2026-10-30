@@ -139,15 +139,28 @@ const classifyUpgrade = (name, latest) => {
     };
   }
 
-  if ((name === 'jest' || name === '@types/jest') && !jest30GateOpen) {
-    return {
-      name,
-      current,
-      latest,
-      status: 'deferred',
-      reason:
-        'React Native jest preset/runtime remains on Jest 29 ecosystem in this baseline.',
-    };
+  // Jest 30 landed on this app (2026-10-26 / #653) with green yarn test despite the
+  // preset still declaring ^29 deps. Only defer the *crossing* into major 30 when
+  // still on 29; once current is already >= 30, allow further 30.x bumps.
+  if (name === 'jest' || name === '@types/jest') {
+    const currentMajor = parseMajor(current);
+    const latestMajor = parseMajor(latest);
+    if (
+      !jest30GateOpen &&
+      currentMajor != null &&
+      currentMajor < 30 &&
+      latestMajor != null &&
+      latestMajor >= 30
+    ) {
+      return {
+        name,
+        current,
+        latest,
+        status: 'deferred',
+        reason:
+          'React Native jest preset still declares Jest 29 deps; crossing to 30 needs an explicit trial (see MOBILE_ESLINT10_JEST30_UNBLOCK_MEMO.md).',
+      };
+    }
   }
 
   // TypeScript 7+ is an intentional monorepo deferral (Admin UI still on TS ~6).

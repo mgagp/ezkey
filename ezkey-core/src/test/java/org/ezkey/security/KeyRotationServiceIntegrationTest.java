@@ -107,6 +107,10 @@ class KeyRotationServiceIntegrationTest {
 
   @BeforeEach
   void setUp() throws Exception {
+    // Reset flags mutated by individual tests (Patrick n3 / #961).
+    tinkProperties.setEnabled(true);
+    tinkProperties.getRotation().setEnabled(true);
+
     // Setup mock key management behavior
     org.mockito.Mockito.when(keyManagementOperations.isInitialized()).thenReturn(true);
     org.mockito.Mockito.when(keyManagementOperations.getCurrentPrimaryKeyId())

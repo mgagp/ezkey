@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -209,15 +210,21 @@ class EncryptionServiceTest {
   }
 
   @Test
-  void testDecryptWhenNotAvailable() {
+  void testDecryptWhenNotAvailable_encPrefixFailsClosed() {
     when(keyManager.isInitialized()).thenReturn(false);
     String validBase64 =
         Base64.getEncoder().encodeToString("test-data-1234567890".getBytes(StandardCharsets.UTF_8));
     String encryptedValue = "ENC:1234567:" + validBase64;
 
-    String result = encryptionService.decrypt(encryptedValue);
+    IllegalStateException thrown =
+        assertThrows(IllegalStateException.class, () -> encryptionService.decrypt(encryptedValue));
+    assertTrue(thrown.getMessage().contains("fail-closed"));
+  }
 
-    assertEquals(encryptedValue, result);
+  @Test
+  void testDecryptWhenNotAvailable_plaintextPassesThrough() {
+    when(keyManager.isInitialized()).thenReturn(false);
+    assertEquals("plain-lab-value", encryptionService.decrypt("plain-lab-value"));
   }
 
   @Test
@@ -351,6 +358,7 @@ class EncryptionServiceTest {
 
   @Test
   void testDecryptWithInvalidKeyId() {
+    // Negative key id does not match ENC: pattern → treated as plaintext (not fail-closed).
     String encryptedValue = "ENC:-1:AbCdEf12345678901234567890";
 
     String result = encryptionService.decrypt(encryptedValue);
@@ -360,6 +368,7 @@ class EncryptionServiceTest {
 
   @Test
   void testDecryptWithInvalidBase64() {
+    // Invalid Base64 chars do not match ENC: pattern → treated as plaintext.
     String encryptedValue = "ENC:1234567:Invalid!@#$%Base64";
 
     String result = encryptionService.decrypt(encryptedValue);
@@ -369,11 +378,10 @@ class EncryptionServiceTest {
 
   @Test
   void testDecryptWithTooShortBase64() {
+    // Matches ENC: pattern but fails ciphertext length validation → fail-closed (#952 §2.7).
     String encryptedValue = "ENC:1234567:AbC";
 
-    String result = encryptionService.decrypt(encryptedValue);
-
-    assertEquals(encryptedValue, result);
+    assertThrows(IllegalStateException.class, () -> encryptionService.decrypt(encryptedValue));
   }
 
   @Test

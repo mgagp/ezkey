@@ -27,6 +27,9 @@ class ConfigManager:
     def __init__(self):
         """Initialize configuration manager with default values."""
         self._config: Dict[str, Any] = {}
+        # Process-lifetime TLS flags from CLI/env — never written by save() (#802 / Bugbot).
+        self._ssl_ca_bundle: Optional[str] = None
+        self._ssl_insecure: Optional[bool] = None
         self._load_config()
 
     def _load_config(self) -> None:
@@ -85,22 +88,76 @@ class ConfigManager:
             if value is not None:
                 self._config[key] = value
 
+    def set_ssl_runtime(
+        self,
+        *,
+        ca_bundle: Optional[str] = None,
+        insecure: Optional[bool] = None,
+    ) -> None:
+        """
+        Set ephemeral TLS options for this process only.
+
+        These are not stored in ``_config`` and are never written by ``save()``,
+        so a one-shot ``--insecure`` / ``--ca-bundle`` cannot stick across runs.
+
+        Args:
+            ca_bundle: Optional path from ``--ca-bundle``.
+            insecure: Optional explicit ``--insecure`` (True only when flag set).
+        """
+        if ca_bundle is not None:
+            self._ssl_ca_bundle = ca_bundle
+        if insecure is not None:
+            self._ssl_insecure = insecure
+
+    def get_ssl_ca_bundle(self) -> Optional[str]:
+        """Return ephemeral CA bundle path, if set for this process."""
+        return self._ssl_ca_bundle
+
+    def get_ssl_insecure(self) -> Optional[bool]:
+        """Return ephemeral insecure flag (True/False/None) for this process."""
+        return self._ssl_insecure
+
     def save(self, global_config: bool = False) -> None:
         """
         Save current configuration to file.
 
         Args:
             global_config: If True, save to home directory. Otherwise, save to current directory.
+
+        Global config uses ``~/.ezkey`` at mode ``0700`` and writes ``ezkey.json``
+        via the same atomic owner-only (``0600``) path as API-key ``--out-file``.
+        Permission failures warn instead of failing silently.
         """
+        # Lazy import avoids circular load: config → utils → http_client → config.
+        from ..utils.secure_file import (
+            SecureFileSymlinkError,
+            ensure_owner_only_dir,
+            write_secret_file,
+        )
+
         if global_config:
-            config_dir = Path.home() / self.HOME_CONFIG_DIR
-            config_dir.mkdir(exist_ok=True)
+            config_dir = ensure_owner_only_dir(Path.home() / self.HOME_CONFIG_DIR)
             config_path = config_dir / self.CONFIG_FILENAME
         else:
             config_path = Path.cwd() / self.CONFIG_FILENAME
 
-        with open(config_path, 'w', encoding='utf-8') as f:
-            json.dump(self._config, f, indent=2)
+        # Never persist one-shot TLS escape-hatch keys if present in _config.
+        persistable = {
+            key: value
+            for key, value in self._config.items()
+            if key not in {"sslInsecure", "sslCaBundle"}
+        }
+
+        body = json.dumps(persistable, indent=2) + "\n"
+        # overwrite=True: config files are updated in place; symlink targets refused.
+        try:
+            write_secret_file(config_path, body, overwrite=True, warn_chmod=True)
+        except SecureFileSymlinkError:
+            # Clear operator message; do not chain the low-level path traceback.
+            raise SecureFileSymlinkError(
+                "ezkey.json is a symbolic link; replace it with a regular file "
+                "or use --out-file"
+            ) from None
 
     def get_all(self) -> Dict[str, Any]:
         """Get all configuration values."""

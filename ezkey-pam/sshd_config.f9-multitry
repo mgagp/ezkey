@@ -1,0 +1,24 @@
+# Overlay for scripts/test-f9-retry.sh — proves F9 without Match MaxAuthTries 1.
+# Not used by the demo runtime. MaxAuthTries >= 3 so OpenSSH can retry
+# keyboard-interactive in the same connection after Deny/Expire.
+Port 22
+Protocol 2
+HostKey /etc/ssh/ssh_host_rsa_key
+HostKey /etc/ssh/ssh_host_ecdsa_key
+HostKey /etc/ssh/ssh_host_ed25519_key
+SyslogFacility AUTHPRIV
+LogLevel VERBOSE
+PermitRootLogin no
+PubkeyAuthentication no
+PasswordAuthentication no
+KbdInteractiveAuthentication yes
+ChallengeResponseAuthentication yes
+UsePAM yes
+AuthenticationMethods keyboard-interactive
+X11Forwarding no
+PrintMotd yes
+AcceptEnv LANG LC_*
+Subsystem sftp /usr/libexec/openssh/sftp-server
+LoginGraceTime 120
+MaxAuthTries 6
+PerSourcePenalties no
