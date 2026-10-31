@@ -150,8 +150,8 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         // Strictly increasing Play upload integer. Confirm against Play Console App bundle
         // explorer before each official upload; bump when the Console already has this value.
-        // Next Play upload: versionCode 5 / versionName 0.1.1-alpha (see MOBILE_PLAY_PUBLISHING.md).
-        versionCode 5
+        // Next Play upload: versionCode 6 / versionName 0.1.2-alpha (see MOBILE_PLAY_PUBLISHING.md).
+        versionCode 6
         versionName appVersionName
         def buildTimeUtc = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US)
         buildTimeUtc.setTimeZone(java.util.TimeZone.getTimeZone("UTC"))

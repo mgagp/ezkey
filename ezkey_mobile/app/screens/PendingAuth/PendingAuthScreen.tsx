@@ -112,6 +112,10 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
     navigateToEnrollmentDetail();
   }, [navigation, navigateToEnrollmentDetail]);
 
+  const approveChallengeIncomplete =
+    Boolean(attempt?.challengeRequired) &&
+    challengeInput.trim().length !== AUTH_CHALLENGE_LENGTH;
+
   const emptyIdentity = enrollment
     ? buildEnrollmentIdentityDisplay(
         enrollment,
@@ -230,6 +234,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
         attempt && (
           <ScrollView
             testID="ezkey.e2e.pendingAuth.attemptScroll"
+            keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.pendingScrollContent}>
             <View style={styles.card}>
@@ -288,9 +293,16 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
                     tracePendingAuthRespond('pendingAuth_ui_approve_press', {});
                     await handleRespond(true);
                   }}
-                  style={[styles.actionButton, styles.approveButton]}
-                  disabled={isProcessing}>
-                  <Text style={styles.approveLabel}>
+                  style={[
+                    styles.actionButton,
+                    approveChallengeIncomplete ? styles.approveButtonDisabled : styles.approveButton,
+                  ]}
+                  disabled={isProcessing || approveChallengeIncomplete}
+                  accessibilityState={{disabled: isProcessing || approveChallengeIncomplete}}>
+                  <Text
+                    style={
+                      approveChallengeIncomplete ? styles.approveLabelDisabled : styles.approveLabel
+                    }>
                     {isProcessing ? t('pendingAuth.sending') : t('pendingAuth.approve')}
                   </Text>
                 </TouchableOpacity>
@@ -500,6 +512,11 @@ const styles = StyleSheet.create({
   approveButton: {
     backgroundColor: '#61d095',
   },
+  approveButtonDisabled: {
+    borderWidth: 1,
+    borderColor: 'rgba(97, 208, 149, 0.35)',
+    backgroundColor: 'transparent',
+  },
   rejectLabel: {
     fontSize: 15,
     fontWeight: '600',
@@ -509,6 +526,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#0b0d11',
+  },
+  approveLabelDisabled: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: 'rgba(97, 208, 149, 0.45)',
   },
   secondaryButton: {
     alignItems: 'center',

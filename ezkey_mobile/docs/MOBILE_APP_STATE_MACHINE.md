@@ -74,7 +74,7 @@ in-memory `PendingAttempt` or not.
 | `ScannerOpen` | `scannerVisible === true` | Camera modal |
 | `Binding` | `isBinding === true` | Primary CTA “Binding…”; draft cleared for this attempt |
 | `BindError` | `bindError` or `cameraError` set, still `!draft` | Error banner on scan stage |
-| `DraftReady` | `draft` set, `!isSubmitting` | Verify stage: 6-digit challenge + info card |
+| `DraftReady` | `draft` set, `!isSubmitting` | Verify stage: 6-digit challenge, then Cancel / Complete enrollment directly under the boxes (Complete disabled until 6 digits; #1082), then info card |
 | `Verifying` | `isSubmitting === true` | Primary “Finishing…” |
 | `ChallengeError` | `challengeError` set while draft may still exist | Inline challenge error |
 | `Done` | Success path calls `popToTop()` after persist | Returns to Home |
@@ -194,7 +194,7 @@ Implementation today is scattered React state + refs (`attempt`, `loading`, `isP
 | `Empty` | `showEmptyState` | No pending + Check again |
 | `GlobalError` | `globalError` set; retryable | Error + Try again (+ optional debug panel) |
 | `NoLongerActive` | **Decided** ([#834](https://github.com/mgagp/ezkey/issues/834) Question 8; wire [#844](https://github.com/mgagp/ezkey/issues/844) m1 / #833; amended #895) | One sentence: the request is no longer active (or distinct “expired” copy). **Back only**, not Try again. **409** `auth-attempt-state-conflict` covers not-found, still `PENDING`, cancelled, already decided, superseded. **409** `auth-attempt-expired` covers wall-clock expiry after ownership proof (#895). |
-| `Ready` | `attempt` set, `!isProcessing` | Context card; Approve / Deny; leave-declines hint (Q5); optional 2-digit challenge |
+| `Ready` | `attempt` set, `!isProcessing` | Context card; Approve / Deny; leave-declines hint (Q5); optional 2-digit challenge. With a challenge, Approve is disabled until 2 digits (#1082) |
 | `Responding` | `isProcessing` / `respondInFlightRef` | Buttons disabled; “Sending…” on approve |
 | `UncertainDecision` | **Decided** ([#834](https://github.com/mgagp/ezkey/issues/834) Question 10); **delivered on #833** | After `respond` HTTP was sent: timeout / transport / undecidable. Catalog: result uncertain; check the sign-in where it was started; not a failure; Back only; lock `authAttemptId` (blocks leave-as-deny and a second decision). No idempotent respond. |
 | `SigningUnavailable` | HTTP **503** `integration-signing-unavailable` (#844) | Local catalog; **retryable**. A retry **may** then return terminal **409** (for example wrong challenge already committed `INVALID` before signing failed). Not a Q8/Q10 Back-only state by itself. |
@@ -220,7 +220,7 @@ Internal refs (#833):
 | Event | Guard | Effect |
 | --- | --- | --- |
 | Approve / Deny press | `enrollment`, `attempt`, `!hasSubmittedServerDecision()`, `!respondInFlightRef` | Else skip (duplicate / in-flight / locked id). Buttons also `disabled={isProcessing}` (UI only). |
-| Approve only | If `challengeRequired`, challenge length === 2 (`AUTH_CHALLENGE_LENGTH`) | Else form error; no API |
+| Approve only | If `challengeRequired`, challenge length === 2 (`AUTH_CHALLENGE_LENGTH`) | Else form error; no API. The screen also disables Approve until the length is met (#1082); the hook guard stays as the backstop |
 | Deny | Challenge **not** required locally; server also skips challenge on reject | Same `respond` path with `accepted=false` |
 | Protected mode | `requiresProtectedApproval` (enrollment policy **or** device preference) | **Decided ([#834](https://github.com/mgagp/ezkey/issues/834) Question 11):** biometric or device credential on **Approve only**, then `signForRespond`. Deny and leave-as-deny **SHOULD** sign without that prompt (**not yet shipped in the app code** — Deny may still prompt). |
 | HTTP `respond` 200 | — | Set `serverDecisionAttemptIdRef` **before** the result-signature check (**decided**, [#834](https://github.com/mgagp/ezkey/issues/834) Question 2); on success `setRecentAuthResult` + navigate. Body outcome may be `APPROVED` / `DENIED` / **`FAILED`**. |
