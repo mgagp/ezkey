@@ -20,6 +20,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  ViewStyle,
 } from 'react-native';
 import {StackScreenProps} from '@react-navigation/stack';
 import {useTranslation} from 'react-i18next';
@@ -178,6 +179,27 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
     handleScannerDismiss,
   } = useEnrollmentWizard(navigation.popToTop);
 
+  const actionButtons = (containerStyle: ViewStyle) => (
+    <View style={containerStyle}>
+      <TouchableOpacity
+        testID="ezkey.e2e.enrollmentWizard.secondaryAction"
+        style={[styles.secondaryButton, secondaryDisabled ? styles.disabledButton : undefined]}
+        onPress={handleSecondary}
+        disabled={secondaryDisabled}
+        accessibilityState={{disabled: secondaryDisabled}}>
+        <Text style={styles.secondaryLabel}>{secondaryLabel}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        testID="ezkey.e2e.enrollmentWizard.primaryAction"
+        style={[styles.primaryButton, primaryDisabled ? styles.disabledButton : undefined]}
+        onPress={() => handlePrimary(hasCameraPermission, requestPermission)}
+        disabled={primaryDisabled}
+        accessibilityState={{disabled: primaryDisabled}}>
+        <Text style={styles.primaryLabel}>{primaryLabel}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <>
     <KeyboardAvoidingView
@@ -271,6 +293,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
                     <Text style={styles.errorBannerText}>{challengeError}</Text>
                   </View>
                 ) : null}
+                {actionButtons(styles.actionsInline)}
               </View>
               <Text style={styles.enrollmentDetailsLabel}>{t('enrollmentWizard.enrollmentDetails')}</Text>
               {controlledBypassUsed ? (
@@ -285,22 +308,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
           ) : null}
         </View>
       </ScrollView>
-      <View style={styles.actions}>
-        <TouchableOpacity
-          testID="ezkey.e2e.enrollmentWizard.secondaryAction"
-          style={[styles.secondaryButton, secondaryDisabled ? styles.disabledButton : undefined]}
-          onPress={handleSecondary}
-          disabled={secondaryDisabled}>
-          <Text style={styles.secondaryLabel}>{secondaryLabel}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          testID="ezkey.e2e.enrollmentWizard.primaryAction"
-          style={[styles.primaryButton, primaryDisabled ? styles.disabledButton : undefined]}
-          onPress={() => handlePrimary(hasCameraPermission, requestPermission)}
-          disabled={primaryDisabled}>
-          <Text style={styles.primaryLabel}>{primaryLabel}</Text>
-        </TouchableOpacity>
-      </View>
+      {hasDraft ? null : actionButtons(styles.actions)}
     </KeyboardAvoidingView>
       <EnrollmentScannerModal
         visible={scannerVisible}
@@ -591,6 +599,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 32,
     paddingTop: 12,
+  },
+  actionsInline: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
   },
   primaryButton: {
     flex: 1,

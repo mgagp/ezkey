@@ -107,14 +107,14 @@ in memory, collects the six-digit challenge, then persists the record only after
 | Scan stage | CTA to open scanner, camera-permission guidance, bind errors; hidden after a successful bind | Local wizard state |
 | Enrollment info card | Purpose title, Account row (never Device), Role for admin MFA; hide tenant/integration when they equal the installation | Trusted bind response draft via `enrollmentDisplay` |
 | Challenge stage | Six-box challenge input | User input |
-| Primary/secondary actions | Open scanner, complete enrollment, cancel, learn more | Local wizard state |
+| Primary/secondary actions | Open scanner, complete enrollment, cancel, learn more. Before a draft exists they sit in the bottom footer. Once a draft exists, **Cancel** and **Complete enrollment** sit directly under the six boxes, so they stay above the number pad (#1082). | Local wizard state |
 
 | User action | Effect | Next state/navigation |
 | --- | --- | --- |
 | Open scanner | Requests camera access and opens QR modal | Remains in wizard |
 | Successful scan/bind | Draft becomes available | Wizard hides scan guidance and switches focus to the challenge stage |
-| Enter 6-digit challenge | Enables verify path | Remains in wizard |
-| Complete enrollment | Runs verify and save flow | On success, returns to Home |
+| Enter 6-digit challenge | Enables **Complete enrollment** (disabled until the sixth digit). The number pad stays open | Remains in wizard |
+| Complete enrollment | Runs verify and save flow. One press, pad open or closed | On success, returns to Home |
 | Cancel after draft exists | Clears draft and challenge state | Stays in wizard reset state or returns |
 
 | State type | How it appears | User consequence |
@@ -171,14 +171,14 @@ for request context and respond submission, then returns control to Enrollment D
 | Enrollment identity box | Account / Purpose / Role from `enrollmentDisplay`; pending card uses `contextTitle` then Account | Persisted enrollment + trusted pending response |
 | Request context block | `contextTitle`, `contextMessage`, challenge requirement | Trusted pending response |
 | Two-digit challenge input | Challenge entry when required | User input |
-| Action buttons | Approve, deny, and a permanent line that leaving this screen declines the request | Screen state |
+| Action buttons | Approve, deny, and a permanent line that leaving this screen declines the request. They sit directly under the challenge boxes, above the number pad. When a challenge is required, Approve is disabled (outlined, not filled) until both digits are entered. One press acts while the pad is open (#1082). | Screen state |
 | Debug panel | Optional diagnostics when `pendingAuthDebugPanel` is enabled | Screen debug snapshot |
 
 | User action | Effect | Next state/navigation |
 | --- | --- | --- |
 | Wait for initial load | Screen may use a preloaded verified pending request or call `pending` when entered directly | Remains on screen |
 | Tap `Check again` | Repeats `pending` load cycle | Remains on screen |
-| Enter challenge | Satisfies local precondition for approve | Remains on screen |
+| Enter challenge | Satisfies local precondition for approve and enables Approve | Remains on screen |
 | Tap approve | In protected mode, biometric or device credential, then signs and submits an accepted respond | Returns to Enrollment Detail with latest response summary |
 | Tap deny | Signs and submits a denied respond. **Q11 decided:** no biometric prompt (approve-only). Reference app code may still prompt on Deny until the code follow-up ships | Returns to Enrollment Detail with latest response summary |
 | Leave with loaded attempt (back / gesture) | Same as Deny via `respond(accepted=false)`. A permanent line under the buttons says so before the gesture (Question 5). | Returns to Enrollment Detail when deny succeeds; on deny failure still allows leave |

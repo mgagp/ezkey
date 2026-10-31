@@ -77,7 +77,7 @@ Before each Play upload:
 4. If dependencies changed, run `yarn license:app-data` and commit the JSON snapshot.
 5. Build the signed AAB (`./scripts/build-install-release-clean.sh` or `yarn android:bundle:release` with JDK 17).
 
-**Upload history:** vc4 = `0.1.0-alpha` (internal; same name as vc3 — why the policy exists). **vc5 = `0.1.1-alpha`** (patch; first upload under the policy). Do not reuse a `versionCode`.
+**Upload history:** vc4 = `0.1.0-alpha` (internal; same name as vc3 — why the policy exists). vc5 = `0.1.1-alpha` (patch; first upload under the policy). **vc6 = `0.1.2-alpha`** (patch; code-entry keypad fix #1082 on RN 0.88.1). Do not reuse a `versionCode`.
 
 ## Upload signed AAB to internal testing (CLI)
 
