@@ -1,0 +1,46 @@
+# Gate C1 (#912) — TEST-ONLY Auth API rate-limit overlay.
+#
+# Applied only by scripts/quality-gate.sh during the c1-rate-limit phase
+# (via EZKEY_COMPOSE_EXTRA_FILES). Never reference from deploy compose,
+# Lightsail, experimental-hybrid, or any .env / .env.example.
+#
+# Effects (auth-api replicas only):
+#   - ezkey.rate-limit.enabled=true (overrides docker-test false via env)
+#   - Tight post-ownership respond.requests / window (see rate-limit-thresholds.properties)
+#   - High pending/bind/verify/fail-ip/backstop so C1 traffic is not IP-starved
+#
+# Does NOT:
+#   - Enable AdminRateLimitFilter (admin-api keeps docker-test limits OFF)
+#   - Relax Actuator exposure, logging, or trusted-proxy posture
+#   - Combine with --prod-safe / ezkey.online (gate refuses that pairing)
+
+x-gate-c1-auth-rate-limit: &gate-c1-auth-rate-limit
+  # Spring Boot relaxed binding: EZKEY_RATE_LIMIT_* → ezkey.rate-limit.*
+  EZKEY_RATE_LIMIT_ENABLED: "true"
+  EZKEY_RATE_LIMIT_RESPOND_REQUESTS: "1"
+  EZKEY_RATE_LIMIT_RESPOND_WINDOW_MINUTES: "5"
+  EZKEY_RATE_LIMIT_RESPOND_KEY_STRATEGY: "auth-attempt-id"
+  EZKEY_RATE_LIMIT_RESPOND_FAIL_IP_REQUESTS: "50"
+  EZKEY_RATE_LIMIT_RESPOND_FAIL_IP_WINDOW_MINUTES: "1"
+  EZKEY_RATE_LIMIT_PENDING_REQUESTS: "10000"
+  EZKEY_RATE_LIMIT_PENDING_WINDOW_MINUTES: "1"
+  EZKEY_RATE_LIMIT_PENDING_KEY_STRATEGY: "enrollment-id"
+  EZKEY_RATE_LIMIT_VERIFY_REQUESTS: "10000"
+  EZKEY_RATE_LIMIT_VERIFY_WINDOW_MINUTES: "5"
+  EZKEY_RATE_LIMIT_VERIFY_KEY_STRATEGY: "client-ip"
+  EZKEY_RATE_LIMIT_BIND_REQUESTS: "10000"
+  EZKEY_RATE_LIMIT_BIND_WINDOW_MINUTES: "5"
+  EZKEY_RATE_LIMIT_BIND_KEY_STRATEGY: "client-ip"
+  EZKEY_RATE_LIMIT_BACKSTOP_ENABLED: "true"
+  EZKEY_RATE_LIMIT_BACKSTOP_VERIFY_REQUESTS: "10000"
+  EZKEY_RATE_LIMIT_BACKSTOP_VERIFY_WINDOW_MINUTES: "5"
+  EZKEY_RATE_LIMIT_BACKSTOP_BIND_REQUESTS: "10000"
+  EZKEY_RATE_LIMIT_BACKSTOP_BIND_WINDOW_MINUTES: "5"
+
+services:
+  auth-api-1:
+    environment:
+      <<: *gate-c1-auth-rate-limit
+  auth-api-2:
+    environment:
+      <<: *gate-c1-auth-rate-limit

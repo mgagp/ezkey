@@ -7,8 +7,9 @@
 #
 # Phase order (unit tests before stack — memory headroom on ~16Gi VMs):
 #   preflight → unit-tests → clean-start HA+JM (+gate memory overlay)
-#   → post-clean-health → functional → elective → docker-start restore
-#   → Playwright → churn-init → 2× churn → health → REPORT.md + summary.json
+#   → post-clean-health → c1-rate-limit (#912 Auth overlay only) → functional
+#   → elective → docker-start restore → Playwright → churn-init → 2× churn
+#   → health → REPORT.md + summary.json
 #
 # Exit codes:
 #   0 = GO
@@ -55,7 +56,8 @@ SHEDLOCK_KILL_MISSING=0
 SHEDLOCK_RESTORE_OK=0
 
 GATE_OVERLAY="$REPO_ROOT/docker/docker-compose.ha.quality-gate.yml"
-PHASES="preflight unit-tests clean-start post-clean-health functional-tests elective-tests playwright churn-init churn health"
+C1_OVERLAY="$REPO_ROOT/ezkey-tests/gate-c1/docker-compose.ha.gate-c1-test.yml"
+PHASES="preflight unit-tests clean-start post-clean-health c1-rate-limit functional-tests elective-tests playwright churn-init churn health"
 
 HA_REPLICAS="ezkey-admin-api-1 ezkey-admin-api-2 ezkey-auth-api-1 ezkey-auth-api-2 ezkey-integration-api-1 ezkey-integration-api-2 ezkey-crypto-api-ha"
 MEM_SAMPLE_CONTAINERS="$HA_REPLICAS ezkey-demo-device-ha ezkey-demo-app-acme-ha"
@@ -392,6 +394,69 @@ run_phase_post_clean_health() {
   return "$code"
 }
 
+# #912 C1: enable Auth API rate limit (low respond thresholds) only for the
+# gate-c1 tagged test, then restore docker-test (limits off) before functional.
+# AdminRateLimitFilter stays OFF the whole time (docker-test on admin-api).
+#
+# Fail-closed: deploy-grep guard and overlay-on run in a `( set -e; … )` subshell
+# (set -e is ignored inside `{ … } || code=$?` — Security B1 on #1097).
+run_phase_c1_rate_limit() {
+  local log="$RUN_DIR/phases/c1-rate-limit.log" start end code=0
+  local note="#912 C1 Auth rate-limit overlay (Admin filter OFF)"
+  local c1_on=0
+  start="$(now_ms)"
+
+  _qg_c1_restore_limits_off() {
+    if [[ "${c1_on:-0}" -ne 1 ]]; then
+      return 0
+    fi
+    {
+      echo "=== c1-rate-limit restore (Auth limits off) ==="
+      export SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-docker,docker-dev,docker-test}"
+      export GATE_OVERLAY
+      quality_gate_c1_set_auth_rate_limit off
+    } >>"$log" 2>&1 || code=1
+    c1_on=0
+  }
+
+  # INT/TERM: restore Auth limits OFF before the global churn cleanup trap.
+  trap '_qg_c1_restore_limits_off; cleanup_churn' INT TERM
+
+  # Setup must fail hard (guard / missing overlay / overlay-on).
+  # Run `( set -e; … )` as a statement (capture $? after) — NOT as an `if`
+  # condition: bash disables set -e for the entire if-condition command list,
+  # including nested subshells (Security B1 on #1097).
+  local setup_ec=0
+  (
+    set -e
+    echo "=== c1-rate-limit (#912) ==="
+    quality_gate_assert_gate_c1_overlay_not_in_deploy
+    [[ -f "$C1_OVERLAY" ]] || { echo "FATAL: missing $C1_OVERLAY"; false; }
+    # Keep docker-test so AdminRateLimitFilter remains disabled (#1095 lesson).
+    export SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-docker,docker-dev,docker-test}"
+    export GATE_OVERLAY
+    quality_gate_c1_set_auth_rate_limit on
+  ) >"$log" 2>&1
+  setup_ec=$?
+  if [[ "$setup_ec" -ne 0 ]]; then
+    code=$setup_ec
+  else
+    c1_on=1
+    {
+      export MAVEN_OPTS="${MAVEN_OPTS:--Xmx1024m}"
+      mvn test -pl ezkey-tests -P gate-c1-tests
+    } >>"$log" 2>&1 || code=$?
+  fi
+
+  _qg_c1_restore_limits_off
+  trap cleanup_churn INT TERM EXIT
+
+  end="$(now_ms)"
+  record_phase c1-rate-limit "$([[ $code -eq 0 ]] && echo GREEN || echo RED)" "$code" \
+    "$(duration_ms "$start" "$end")" "$log" "$(parse_surefire_counts "$log")" "$note"
+  return "$code"
+}
+
 run_maven_phase() {
   local name="$1" cmd="$2" note="$3"
   local log="$RUN_DIR/phases/${name}.log" start end code=0
@@ -410,6 +475,7 @@ run_maven_phase() {
 run_phase_playwright() {
   local log="$RUN_DIR/phases/playwright.log" start end code=0 results="$RUN_DIR/playwright-results"
   local note="Admin UI e2e (Orval generate:api then Playwright)"
+  local admin_ui_ready=1
   mkdir -p "$results"
   start="$(now_ms)"
   {
@@ -421,12 +487,32 @@ run_phase_playwright() {
     # Orval client under src/generated/ is gitignored; only build:cloudflare
     # regenerates it. A stale local client caused false RED Playwright results
     # (#915 defect 6). Fail closed: never run UI tests after a failed generate.
-    echo "=== Orval generate:api ==="
-    if (cd ezkey-admin-ui && npm run generate:api); then
-      EZKEY_BROWSER_TEST_RESULTS_DIR="$results" ./ezkey-admin-ui/scripts/run-ui-tests.sh
+    # Fresh worktree often has no ezkey-admin-ui/node_modules, so generate:api
+    # fails with "orval: command not found" and Playwright goes RED in 0s (#915).
+    admin_ui_ready=1
+    if [[ ! -d ezkey-admin-ui/node_modules \
+       || ! -e ezkey-admin-ui/node_modules/.bin/orval ]]; then
+      echo "=== npm ci (Admin UI deps missing) ==="
+      if ! (cd ezkey-admin-ui && npm ci); then
+        echo "FATAL: npm ci failed in ezkey-admin-ui — refusing Playwright (deps unavailable) (#915)"
+        note="npm ci failed; Playwright not run"
+        admin_ui_ready=0
+      fi
+    fi
+    if [[ "$admin_ui_ready" -eq 1 ]]; then
+      echo "=== Orval generate:api ==="
+      if (cd ezkey-admin-ui && npm run generate:api); then
+        # Screenshot smokes resolve via EZKEY_PLAYWRIGHT_ARTIFACTS_DIR (else
+        # EZKEY_BROWSER_TEST_RESULTS_DIR); never hardcode /opt/cursor (#915).
+        EZKEY_BROWSER_TEST_RESULTS_DIR="$results" \
+          EZKEY_PLAYWRIGHT_ARTIFACTS_DIR="$results" \
+          ./ezkey-admin-ui/scripts/run-ui-tests.sh
+      else
+        echo "FATAL: npm run generate:api failed — refusing Playwright with a stale Orval client (#915)"
+        note="Orval generate:api failed; Playwright not run"
+        false
+      fi
     else
-      echo "FATAL: npm run generate:api failed — refusing Playwright with a stale Orval client (#915)"
-      note="Orval generate:api failed; Playwright not run"
       false
     fi
   } >"$log" 2>&1 || code=$?
@@ -539,6 +625,7 @@ for phase in $PHASES; do
     unit-tests) run_phase_unit_tests || true ;;
     clean-start) run_phase_clean_start || true ;;
     post-clean-health) run_phase_post_clean_health || true ;;
+    c1-rate-limit) run_phase_c1_rate_limit || true ;;
     functional-tests) run_maven_phase functional-tests "mvn test -pl ezkey-tests -P all-tests" "all-tests" || true ;;
     elective-tests)
       # Bound ShedLock die-event proof to the elective window (not GATE_STARTED_AT /
@@ -561,7 +648,10 @@ for phase in $PHASES; do
   last_verdict="$(tail -1 "$PHASE_TSV" | cut -f2)"
   if [[ "$last_verdict" == "RED" ]]; then
     OVERALL_RED=1
-    if [[ "$phase" == "preflight" || "$phase" == "unit-tests" || "$phase" == "clean-start" ]]; then
+    # c1-rate-limit fail-fast: a failed restore would leave Auth limits ON and
+    # recreate #1095 (suite-wide 429 / AdminRateLimitFilter) in functional.
+    if [[ "$phase" == "preflight" || "$phase" == "unit-tests" || "$phase" == "clean-start" \
+       || "$phase" == "c1-rate-limit" ]]; then
       echo "[$KEYWORD] fail-fast: $phase RED — stopping"
       break
     fi

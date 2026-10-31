@@ -126,19 +126,23 @@
   component: React Native
   owner: fred
   eol_slug: react-native
-  current: "0.87"
+  current: "0.88"
   sources:
-    - { file: ezkey_mobile/package.json, expect: '"react-native": "0.87' }
+    - { file: ezkey_mobile/package.json, expect: '"react-native": "0.88' }
   eol: null # API returns false while supported; prior 2027-02-01 estimate withdrawn 2026-10-19
-  target: "0.88 / 0.89"
-  decision: plan
+  target: "0.89"
+  decision: keep
   security: true
   warn_months: 3
   issue: null
-  last_review: 2026-10-19
+  last_review: 2026-10-30
   notes: >
-    Plan T1 2027; dedicated issue + Pixel smoke pattern #627 before line move.
-    Marc go required. endoflife.date still reports eol:false / support:true for 0.87.
+    Line move 0.87.1 → 0.88.1 on the local mobile train (2026-10-30), Marc go.
+    Template diff is iOS SceneDelegate only; Android Gradle pins unchanged.
+    Presets aligned to 0.88.1 (Dependabot #1107 had react-native 0.88.0 against
+    presets 0.88.1). React stays 19.3.0, matching the 0.88.1 template.
+    Security-owner written opinion is still owed before this lands on main.
+    Next line is 0.89. Pixel smoke follows pattern #627.
 
 - id: node
   component: Node.js (repository reference)
@@ -422,16 +426,16 @@
   component: Conscrypt (Android)
   owner: fred
   eol_slug: null
-  current: "2.7"
+  current: "2.8"
   sources:
-    - { file: ezkey_mobile/android/app/build.gradle, expect: "org.conscrypt:conscrypt-android:2.7." }
+    - { file: ezkey_mobile/android/app/build.gradle, expect: "org.conscrypt:conscrypt-android:2.8." }
   eol: null
-  target: "2.7"
+  target: "2.8"
   decision: keep
   security: true
   issue: null
-  last_review: 2026-10-19
-  notes: "In register because Gradle majors ignored per #712; 2.7.x required for 16 KB gate (#659)"
+  last_review: 2026-10-30
+  notes: "In register because Gradle majors ignored per #712. 2.8.0 keeps the 16 KB GNU_RELRO alignment that 2.5.3 failed (#659); CI gate passed on #1062. Local cold AAB rechecks at the end of the mobile train."
 
 - id: androidx-biometric
   component: AndroidX Biometric

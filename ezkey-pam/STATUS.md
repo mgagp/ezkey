@@ -400,7 +400,9 @@ Each slice should stay mergeable on its own:
   Deal with it on the AL2023 dogfood host; do not pre-build a policy pack.
 - **sudo later.** Same `.so` can appear in `/etc/pam.d/sudo` once SSH is boring. Do not couple
   the first slice to sudo.
-- **Challenge (number matching).** Default **`challenge_requested=true`** (#995): create
+- **Challenge (number matching).** Number matching counters MFA fatigue; it is **not**
+  phishing-resistant — see [`docs/SECURITY_POSTURE.md`](../docs/SECURITY_POSTURE.md)
+  § Challenge-code direction (Decision #960). Default **`challenge_requested=true`** (#995): create
   requests a code; response `authAttemptChallenge` is shown with `pam_prompt` before `/wait`.
   Device must enter the same code. Set conf `false` to opt out of *connector-requested*
   challenge (when the **enrollment** has `authAttemptChallengeRequired` the server still
@@ -692,6 +694,8 @@ until applied TTL (≤ 90 s). Arming SIGTERM during `pam_prompt` was declined
 (Christophe / STATUS M3).
 
 **Two-digit challenge (2.2.4+; display + confirm-before-create 2.2.12 / #975).**
+Number matching (counters MFA fatigue; not phishing-resistant, see
+[`SECURITY_POSTURE`](../docs/SECURITY_POSTURE.md) Decision #960).
 
 1. Host `challenge_requested=true` **or** enrollment `authAttemptChallengeRequired`.
 2. Create returns `authAttemptChallenge` (default 2 digits).

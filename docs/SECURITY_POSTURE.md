@@ -75,6 +75,26 @@ meant to be linked from trust-facing material without inflating the top-level pi
   non-owner caller, a missing device public key, an unknown attempt, or a still-`PENDING` /
   terminal attempt keeps the generic **409** `auth-attempt-state-conflict` (no `INVALID` flip) so
   sequential ids do not reveal expiry or READ state before the caller is verified.
+### Challenge-code direction (Decision #960)
+
+- **Decision (#960, Christophe):** When a challenge is required for an auth attempt, challenge-code
+  direction is intentional: the integrating app shows a two-digit code; the user enters it in the
+  mobile app, then approves or denies. **When it applies:** Integration API create requires
+  `challengeRequested` (boolean, per attempt); a code is generated when that flag is `true`
+  **and/or** the enrollment has `authAttemptChallengeRequired`. Without either, approve/deny alone
+  still applies. PAM host conf `challenge_requested` defaults to **true** (#995 — safer SSH
+  default); operators may set `false` for approve/deny-only SSH (enrollment-forced codes still
+  display). Same principle as CISA number matching
+  ([Implementing Number Matching in MFA Applications](https://www.cisa.gov/sites/default/files/publications/fact-sheet-implement-number-matching-in-mfa-applications-508c.pdf),
+  Oct 2022) — approving requires access to the login screen, so prompt spam (MFA fatigue) does not
+  work; no vendor implementation equivalence is implied. Honest entropy: two digits are a 1-in-100
+  blind guess; the code counters reflex approval, nothing more. The approve/deny decision is signed
+  by the device key within the signed protocol (explicit deny remains an audit/alert signal). This
+  does **not** resist real-time proxy phishing and is **not** WebAuthn/FIDO2/passkey-equivalent.
+  An inverted mode (mobile shows the code; integration enters it) stays parked as additive-only —
+  see
+  [`I-2026-10-21-inverted-challenge-code-mode`](../product-docs/global/backlog/ideas/I-2026-10-21-inverted-challenge-code-mode.md).
+
 - **Audit log integrity (tamper-evident).** Every audit entry is signed with **HMAC-SHA256** using a
   key held in a **file separate from the database** (and separate from the encryption master key).
   Periodic **checkpoints** chain windows together for a completeness proof.
@@ -120,6 +140,12 @@ meant to be linked from trust-facing material without inflating the top-level pi
 - **It does not encrypt general PII under the platform keyset.** Contacts, admin names/emails, audit
   IP/UA, and free-text auth context are stored in cleartext. Keyset loss is an availability /
   re-enrollment problem for encrypted columns, not a PII confidentiality guarantee.
+- **Demo App ACME access-code slot secrets are plaintext on the host volume.** Integration keys and
+  secrets for evaluator `/t/{code}` slots live in `/app/config/application.properties` on the
+  `demo-app-acme-config` volume (non-root `spring` uid). The entrypoint applies `umask 077`,
+  `chmod 600`, and **fail-closes** (refuses to start) unless the file mode is **0600**. Slots load
+  at JVM start — **restart required** after edit. There is **no** encryption-at-rest guarantee for
+  those demo secrets (Related to [#958](https://github.com/mgagp/ezkey/issues/958)).
 
 ## What Ezkey aims to do (planned, if adoption justifies)
 

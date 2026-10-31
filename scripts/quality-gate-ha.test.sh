@@ -669,6 +669,7 @@ set +e
   # Isolate artifacts under TMP via QUALITY_GATE override is unavailable — use --skip all.
   ./scripts/quality-gate.sh \
     --skip preflight --skip unit-tests --skip clean-start --skip post-clean-health \
+    --skip c1-rate-limit \
     --skip functional-tests --skip elective-tests --skip playwright \
     --skip churn-init --skip churn --skip health \
     >"$SKIP_OUT.log" 2>&1
@@ -707,6 +708,7 @@ set +e
   cd "$ROOT"
   FAKE_DOCKER_CALL_LOG="$REC_LOG" PATH="$REC_BIN:$PATH" \
     ./scripts/quality-gate.sh --no-clean-start \
+      --skip c1-rate-limit \
       --skip functional-tests --skip elective-tests --skip playwright \
       --skip churn-init --skip churn --skip health \
       >"$NCS_OUT.log" 2>&1
@@ -740,6 +742,7 @@ set +e
   FAKE_DOCKER_CALL_LOG="$REC_LOG" PATH="$REC_BIN:$PATH" \
     ./scripts/quality-gate.sh \
       --skip unit-tests --skip clean-start --skip post-clean-health \
+      --skip c1-rate-limit \
       --skip functional-tests --skip elective-tests --skip playwright \
       --skip churn-init --skip churn --skip health \
       >"$STOP_OUT.log" 2>&1
@@ -754,7 +757,8 @@ grep -E '(^|[[:space:]])down([[:space:]]|$)' "$REC_LOG" >/dev/null \
 # 12) Playwright regenerates Orval before UI tests (#915 defect 6).
 # Fake npm records script order; fake curl satisfies stack_up (Admin+Crypto probes);
 # all_healthy keeps check_replicas from rewriting GREEN→AMBER. Failing generate:api
-# must RED and must not invoke UI test npm scripts.
+# must RED and must not invoke UI test npm scripts. Missing Admin UI deps → npm ci
+# first (fresh worktree); npm ci failure → RED, no UI tests.
 NPM_REC_BIN="$TMP/bin-npm-record"
 NPM_REC_LOG="$TMP/npm-calls.log"
 mkdir -p "$NPM_REC_BIN"
@@ -762,8 +766,12 @@ mkdir -p "$NPM_REC_BIN"
 cat >"$NPM_REC_BIN/npm" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
-# Record "run <script>" lines for generate:api vs test:browser* ordering.
+# Record npm argv (ci / run generate:api / run test:browser*).
 printf '%s\n' "$*" >>"${FAKE_NPM_CALL_LOG:?}"
+if [[ "${1:-}" == "ci" && "${FAKE_NPM_CI_FAIL:-0}" == "1" ]]; then
+  echo "fake-npm: npm ci failed (test stub)" >&2
+  exit 1
+fi
 if [[ "${1:-}" == "run" && "${2:-}" == "generate:api" && "${FAKE_NPM_GENERATE_FAIL:-0}" == "1" ]]; then
   echo "fake-npm: generate:api failed (test stub)" >&2
   exit 1
@@ -780,6 +788,7 @@ chmod +x "$NPM_REC_BIN/curl"
 
 PW_SKIP=(
   --skip preflight --skip unit-tests --skip clean-start --skip post-clean-health
+  --skip c1-rate-limit
   --skip functional-tests --skip elective-tests
   --skip churn-init --skip churn --skip health
 )
@@ -795,7 +804,52 @@ seed_gate_replicas_healthy() {
   done
 }
 
-# 12a) generate:api runs before UI test npm scripts.
+# Hide/restore Orval so the gate sees missing Admin UI deps without moving
+# the whole node_modules tree. Keep the backup beside .bin (not under $TMP)
+# and restore on EXIT so a failed assertion cannot leave Orval missing.
+# CI checkouts often have no ezkey-admin-ui/node_modules — seed a stub Orval
+# for the "deps present" cases, then remove only that stub on EXIT.
+ORVAL_BIN="$ROOT/ezkey-admin-ui/node_modules/.bin/orval"
+ORVAL_HIDE=""
+STUB_ORVAL=0
+ensure_admin_ui_deps_present_for_test() {
+  mkdir -p "$(dirname "$ORVAL_BIN")"
+  if [[ ! -e "$ORVAL_BIN" && ! -L "$ORVAL_BIN" ]]; then
+    printf '#!/bin/sh\nexit 0\n' >"$ORVAL_BIN"
+    chmod +x "$ORVAL_BIN"
+    STUB_ORVAL=1
+  fi
+}
+cleanup_stub_admin_ui_orval() {
+  if [[ "${STUB_ORVAL:-0}" -eq 1 ]]; then
+    rm -f "$ORVAL_BIN"
+    rmdir "$(dirname "$ORVAL_BIN")" 2>/dev/null || true
+    rmdir "$ROOT/ezkey-admin-ui/node_modules" 2>/dev/null || true
+    STUB_ORVAL=0
+  fi
+}
+hide_admin_ui_orval() {
+  ORVAL_HIDE=""
+  if [[ -e "$ORVAL_BIN" || -L "$ORVAL_BIN" ]]; then
+    ORVAL_HIDE="${ORVAL_BIN}.__qg_ha_bak"
+    mv "$ORVAL_BIN" "$ORVAL_HIDE"
+  fi
+}
+restore_admin_ui_orval() {
+  if [[ -n "${ORVAL_HIDE:-}" && -e "$ORVAL_HIDE" ]]; then
+    mkdir -p "$(dirname "$ORVAL_BIN")"
+    mv "$ORVAL_HIDE" "$ORVAL_BIN"
+    ORVAL_HIDE=""
+  fi
+  # Stale backup from a killed prior run.
+  if [[ -e "${ORVAL_BIN}.__qg_ha_bak" && ! -e "$ORVAL_BIN" ]]; then
+    mv "${ORVAL_BIN}.__qg_ha_bak" "$ORVAL_BIN"
+  fi
+}
+trap 'restore_admin_ui_orval; cleanup_stub_admin_ui_orval; rm -rf "$TMP"' EXIT
+
+# 12a) deps present → no npm ci; generate:api runs before UI test npm scripts.
+ensure_admin_ui_deps_present_for_test
 seed_gate_replicas_healthy
 : >"$NPM_REC_LOG"
 PW_OK_OUT="$TMP/playwright-orval-ok"
@@ -828,6 +882,9 @@ ui_line="$(grep -nE '^run test:browser' "$NPM_REC_LOG" | head -1 | cut -d: -f1)"
   && echo "ok - generate:api before test:browser* (lines $gen_line < $ui_line)" && pass=$((pass+1)) \
   || { echo "not ok - generate:api before test:browser* (gen=$gen_line ui=$ui_line)"; fail=$((fail+1)); \
        cat "$NPM_REC_LOG" || true; }
+grep -E '^ci([[:space:]]|$)' "$NPM_REC_LOG" >/dev/null \
+  && { echo "not ok - deps present must not run npm ci"; fail=$((fail+1)); cat "$NPM_REC_LOG"; } \
+  || { echo "ok - deps present → no npm ci"; pass=$((pass+1)); }
 
 # 12b) failing generate:api → RED; UI tests never invoked.
 seed_gate_replicas_healthy
@@ -860,6 +917,212 @@ grep -E '^run test:browser' "$NPM_REC_LOG" >/dev/null \
 grep -E '^run generate:api([[:space:]]|$)' "$NPM_REC_LOG" >/dev/null \
   && echo "ok - generate:api was attempted before abort" && pass=$((pass+1)) \
   || { echo "not ok - generate:api was attempted before abort"; fail=$((fail+1)); cat "$NPM_REC_LOG"; }
+
+# 12c) deps missing → npm ci ok → generate:api (and UI tests) run.
+seed_gate_replicas_healthy
+: >"$NPM_REC_LOG"
+hide_admin_ui_orval
+PW_CI_OK_OUT="$TMP/playwright-npm-ci-ok"
+set +e
+(
+  cd "$ROOT"
+  FAKE_NPM_CALL_LOG="$NPM_REC_LOG" PATH="$NPM_REC_BIN:$PATH" \
+    ./scripts/quality-gate.sh "${PW_SKIP[@]}" \
+    >"$PW_CI_OK_OUT.log" 2>&1
+)
+pw_ci_ok_ec=$?
+set -e
+restore_admin_ui_orval
+[[ "$pw_ci_ok_ec" -eq 4 || "$pw_ci_ok_ec" -eq 0 ]] \
+  && echo "ok - deps missing + npm ci ok → exit $pw_ci_ok_ec (not NO-GO)" && pass=$((pass+1)) \
+  || { echo "not ok - deps missing + npm ci ok unexpected exit $pw_ci_ok_ec"; fail=$((fail+1)); \
+       cat "$PW_CI_OK_OUT.log" || true; cat "$NPM_REC_LOG" || true; }
+PW_CI_OK_RUN="$(sed -n 's/.*run dir: //p' "$PW_CI_OK_OUT.log" | head -1)"
+[[ -n "$PW_CI_OK_RUN" && -f "$PW_CI_OK_RUN/phases.tsv" ]] \
+  && grep -E $'^playwright\tGREEN\t' "$PW_CI_OK_RUN/phases.tsv" >/dev/null \
+  && echo "ok - deps missing + npm ci ok → playwright GREEN" && pass=$((pass+1)) \
+  || { echo "not ok - deps missing + npm ci ok → playwright GREEN"; fail=$((fail+1)); \
+       echo "run_dir=${PW_CI_OK_RUN:-missing}"; cat "$PW_CI_OK_OUT.log" || true; \
+       [[ -n "${PW_CI_OK_RUN:-}" ]] && cat "$PW_CI_OK_RUN/phases/playwright.log" 2>/dev/null || true; }
+[[ -n "$PW_CI_OK_RUN" && -f "$PW_CI_OK_RUN/phases/playwright.log" ]] \
+  && grep -q 'npm ci (Admin UI deps missing)' "$PW_CI_OK_RUN/phases/playwright.log" \
+  && echo "ok - deps missing → npm ci logged to phase log" && pass=$((pass+1)) \
+  || { echo "not ok - deps missing → npm ci logged to phase log"; fail=$((fail+1)); \
+       [[ -n "${PW_CI_OK_RUN:-}" ]] && cat "$PW_CI_OK_RUN/phases/playwright.log" 2>/dev/null || true; }
+ci_line="$(grep -nE '^ci([[:space:]]|$)' "$NPM_REC_LOG" | head -1 | cut -d: -f1)"
+gen_line="$(grep -nE '^run generate:api([[:space:]]|$)' "$NPM_REC_LOG" | head -1 | cut -d: -f1)"
+ui_line="$(grep -nE '^run test:browser' "$NPM_REC_LOG" | head -1 | cut -d: -f1)"
+[[ -n "$ci_line" && -n "$gen_line" && "$ci_line" -lt "$gen_line" ]] \
+  && echo "ok - npm ci before generate:api (lines $ci_line < $gen_line)" && pass=$((pass+1)) \
+  || { echo "not ok - npm ci before generate:api (ci=$ci_line gen=$gen_line)"; fail=$((fail+1)); \
+       cat "$NPM_REC_LOG" || true; }
+[[ -n "$gen_line" && -n "$ui_line" && "$gen_line" -lt "$ui_line" ]] \
+  && echo "ok - deps missing path: generate:api before test:browser*" && pass=$((pass+1)) \
+  || { echo "not ok - deps missing path: generate:api before test:browser*"; fail=$((fail+1)); \
+       cat "$NPM_REC_LOG" || true; }
+
+# 12d) npm ci fails → RED; UI tests never invoked (nor generate:api).
+seed_gate_replicas_healthy
+: >"$NPM_REC_LOG"
+hide_admin_ui_orval
+PW_CI_FAIL_OUT="$TMP/playwright-npm-ci-fail"
+set +e
+(
+  cd "$ROOT"
+  FAKE_NPM_CALL_LOG="$NPM_REC_LOG" FAKE_NPM_CI_FAIL=1 PATH="$NPM_REC_BIN:$PATH" \
+    ./scripts/quality-gate.sh "${PW_SKIP[@]}" \
+    >"$PW_CI_FAIL_OUT.log" 2>&1
+)
+pw_ci_fail_ec=$?
+set -e
+restore_admin_ui_orval
+assert_eq "$pw_ci_fail_ec" "1" "npm ci fail → exit 1 (NO-GO)"
+PW_CI_FAIL_RUN="$(sed -n 's/.*run dir: //p' "$PW_CI_FAIL_OUT.log" | head -1)"
+[[ -n "$PW_CI_FAIL_RUN" && -f "$PW_CI_FAIL_RUN/phases.tsv" ]] \
+  && grep -E $'^playwright\tRED\t' "$PW_CI_FAIL_RUN/phases.tsv" >/dev/null \
+  && echo "ok - npm ci fail → playwright RED" && pass=$((pass+1)) \
+  || { echo "not ok - npm ci fail → playwright RED"; fail=$((fail+1)); \
+       echo "run_dir=${PW_CI_FAIL_RUN:-missing}"; cat "$PW_CI_FAIL_OUT.log" || true; }
+[[ -n "$PW_CI_FAIL_RUN" && -f "$PW_CI_FAIL_RUN/phases/playwright.log" ]] \
+  && grep -q 'FATAL: npm ci failed in ezkey-admin-ui' "$PW_CI_FAIL_RUN/phases/playwright.log" \
+  && echo "ok - npm ci fail → clear FATAL in phase log" && pass=$((pass+1)) \
+  || { echo "not ok - npm ci fail → clear FATAL in phase log"; fail=$((fail+1)); \
+       [[ -n "${PW_CI_FAIL_RUN:-}" ]] && cat "$PW_CI_FAIL_RUN/phases/playwright.log" 2>/dev/null || true; }
+grep -E '^ci([[:space:]]|$)' "$NPM_REC_LOG" >/dev/null \
+  && echo "ok - npm ci was attempted before abort" && pass=$((pass+1)) \
+  || { echo "not ok - npm ci was attempted before abort"; fail=$((fail+1)); cat "$NPM_REC_LOG"; }
+grep -E '^run generate:api([[:space:]]|$)' "$NPM_REC_LOG" >/dev/null \
+  && { echo "not ok - npm ci fail must not run generate:api"; fail=$((fail+1)); cat "$NPM_REC_LOG"; } \
+  || { echo "ok - npm ci fail → no generate:api"; pass=$((pass+1)); }
+grep -E '^run test:browser' "$NPM_REC_LOG" >/dev/null \
+  && { echo "not ok - npm ci fail must not run test:browser*"; fail=$((fail+1)); cat "$NPM_REC_LOG"; } \
+  || { echo "ok - npm ci fail → no test:browser*"; pass=$((pass+1)); }
+
+# 13) Gate C1 (#912) overlay hygiene: deploy grep guard + threshold/env sync +
+# prod-safe refusal + fail-closed phase on guard fail. No live Docker recreate.
+REPO_ROOT="$ROOT"
+
+if quality_gate_assert_gate_c1_overlay_not_in_deploy; then
+  echo "ok - gate-c1 overlay not referenced from tracked compose/.env (excl. ezkey-tests/)" && pass=$((pass+1))
+else
+  echo "not ok - gate-c1 overlay not referenced from tracked compose/.env (excl. ezkey-tests/)"; fail=$((fail+1))
+fi
+
+# Threshold properties must match compose overlay env (no silent drift).
+C1_PROPS="$ROOT/ezkey-tests/gate-c1/rate-limit-thresholds.properties"
+C1_YML="$ROOT/ezkey-tests/gate-c1/docker-compose.ha.gate-c1-test.yml"
+C1_CP="$ROOT/ezkey-tests/src/test/resources/gate-c1/rate-limit-thresholds.properties"
+[[ -f "$C1_PROPS" && -f "$C1_YML" && -f "$C1_CP" ]] \
+  && echo "ok - gate-c1 overlay + thresholds files present" && pass=$((pass+1)) \
+  || { echo "not ok - gate-c1 overlay + thresholds files present"; fail=$((fail+1)); }
+cmp -s "$C1_PROPS" "$C1_CP" \
+  && echo "ok - gate-c1 thresholds classpath copy matches canon" && pass=$((pass+1)) \
+  || { echo "not ok - gate-c1 thresholds classpath copy matches canon"; fail=$((fail+1)); }
+
+prop_val() { grep -E "^$1=" "$C1_PROPS" | head -1 | cut -d= -f2-; }
+yml_val() { grep -E "^[[:space:]]*$1:" "$C1_YML" | head -1 | sed -E 's/.*:[[:space:]]*"?([^"]*)"?/\1/'; }
+for pair in \
+  "ezkey.rate-limit.enabled=EZKEY_RATE_LIMIT_ENABLED" \
+  "ezkey.rate-limit.respond.requests=EZKEY_RATE_LIMIT_RESPOND_REQUESTS" \
+  "ezkey.rate-limit.respond.window-minutes=EZKEY_RATE_LIMIT_RESPOND_WINDOW_MINUTES" \
+  "ezkey.rate-limit.respond.fail-ip-requests=EZKEY_RATE_LIMIT_RESPOND_FAIL_IP_REQUESTS"
+do
+  pk="${pair%%=*}"
+  yk="${pair#*=}"
+  pv="$(prop_val "$pk")"
+  yv="$(yml_val "$yk")"
+  [[ "$pv" == "$yv" ]] \
+    && echo "ok - gate-c1 sync $pk=$pv" && pass=$((pass+1)) \
+    || { echo "not ok - gate-c1 sync $pk (props=$pv yml=$yv)"; fail=$((fail+1)); }
+done
+
+# Overlay must not mention admin rate-limit / Actuator relaxation.
+grep -Ei 'admin\.rate-limit|ADMIN_RATE_LIMIT|management\.endpoints\.web\.exposure' "$C1_YML" >/dev/null \
+  && { echo "not ok - gate-c1 overlay must not touch AdminRateLimitFilter / Actuator exposure"; fail=$((fail+1)); } \
+  || { echo "ok - gate-c1 overlay Auth-only (no Admin/Actuator relax)"; pass=$((pass+1)); }
+
+PROD_SAFE=true
+if quality_gate_assert_gate_c1_not_with_prod_safe 2>/dev/null; then
+  echo "not ok - gate-c1 must refuse PROD_SAFE"; fail=$((fail+1))
+else
+  echo "ok - gate-c1 refuses PROD_SAFE" && pass=$((pass+1))
+fi
+unset PROD_SAFE
+SPRING_PROFILES_ACTIVE=docker
+if quality_gate_assert_gate_c1_not_with_prod_safe 2>/dev/null; then
+  echo "not ok - gate-c1 must refuse profiles without docker-test (docker only)"; fail=$((fail+1))
+else
+  echo "ok - gate-c1 refuses profiles without docker-test (docker only)" && pass=$((pass+1))
+fi
+SPRING_PROFILES_ACTIVE=docker,docker-dev
+if quality_gate_assert_gate_c1_not_with_prod_safe 2>/dev/null; then
+  echo "not ok - gate-c1 must refuse docker,docker-dev (no docker-test)"; fail=$((fail+1))
+else
+  echo "ok - gate-c1 refuses docker,docker-dev (no docker-test)" && pass=$((pass+1))
+fi
+SPRING_PROFILES_ACTIVE=docker,docker-dev,docker-test
+if quality_gate_assert_gate_c1_not_with_prod_safe; then
+  echo "ok - gate-c1 allows docker,docker-dev,docker-test" && pass=$((pass+1))
+else
+  echo "not ok - gate-c1 allows docker,docker-dev,docker-test"; fail=$((fail+1))
+fi
+unset SPRING_PROFILES_ACTIVE
+
+# Negative: tracked compose outside ezkey-tests/ that mentions gate-c1 must trip the guard.
+FAKE_DEPLOY="$TMP/fake-deploy-ref"
+rm -rf "$FAKE_DEPLOY"
+mkdir -p "$FAKE_DEPLOY/scripts/lab"
+echo 'include: ezkey-tests/gate-c1/docker-compose.ha.gate-c1-test.yml' \
+  >"$FAKE_DEPLOY/scripts/lab/docker-compose.yml"
+(
+  cd "$FAKE_DEPLOY"
+  git init -q
+  git add scripts/lab/docker-compose.yml
+)
+REPO_ROOT="$FAKE_DEPLOY"
+if quality_gate_assert_gate_c1_overlay_not_in_deploy 2>/dev/null; then
+  echo "not ok - gate-c1 deploy grep guard must RED on planted scripts/lab reference"; fail=$((fail+1))
+else
+  echo "ok - gate-c1 deploy grep guard detects planted scripts/lab reference" && pass=$((pass+1))
+fi
+REPO_ROOT="$ROOT"
+
+# B1: forced guard fail → c1-rate-limit phase RED (fail-closed; no overlay-on).
+# Fake curl satisfies stack_up; other phases skipped.
+C1_GUARD_BIN="$TMP/bin-c1-guard"
+mkdir -p "$C1_GUARD_BIN"
+cat >"$C1_GUARD_BIN/curl" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+chmod +x "$C1_GUARD_BIN/curl"
+seed_gate_replicas_healthy
+C1_GUARD_OUT="$TMP/c1-guard-fail-run"
+set +e
+(
+  cd "$ROOT"
+  QUALITY_GATE_C1_FORCE_GUARD_FAIL=1 PATH="$C1_GUARD_BIN:$PATH" \
+    ./scripts/quality-gate.sh \
+      --skip preflight --skip unit-tests --skip clean-start --skip post-clean-health \
+      --skip functional-tests --skip elective-tests --skip playwright \
+      --skip churn-init --skip churn --skip health \
+      >"$C1_GUARD_OUT.log" 2>&1
+)
+c1_guard_ec=$?
+set -e
+assert_eq "$c1_guard_ec" "1" "forced gate-c1 guard fail → exit 1 (NO-GO)"
+C1_GUARD_RUN="$(sed -n 's/.*run dir: //p' "$C1_GUARD_OUT.log" | head -1)"
+[[ -n "$C1_GUARD_RUN" && -f "$C1_GUARD_RUN/phases.tsv" ]] \
+  && grep -E $'^c1-rate-limit\tRED\t' "$C1_GUARD_RUN/phases.tsv" >/dev/null \
+  && echo "ok - forced guard fail → c1-rate-limit RED" && pass=$((pass+1)) \
+  || { echo "not ok - forced guard fail → c1-rate-limit RED"; fail=$((fail+1)); \
+       echo "run_dir=${C1_GUARD_RUN:-missing}"; cat "$C1_GUARD_OUT.log" || true; \
+       [[ -n "${C1_GUARD_RUN:-}" ]] && cat "$C1_GUARD_RUN/phases.tsv" 2>/dev/null || true; }
+[[ -n "$C1_GUARD_RUN" && -f "$C1_GUARD_RUN/phases/c1-rate-limit.log" ]] \
+  && grep -q 'forced fail (test hook)' "$C1_GUARD_RUN/phases/c1-rate-limit.log" \
+  && echo "ok - forced guard fail logged in c1-rate-limit phase" && pass=$((pass+1)) \
+  || { echo "not ok - forced guard fail logged in c1-rate-limit phase"; fail=$((fail+1)); \
+       [[ -n "${C1_GUARD_RUN:-}" ]] && cat "$C1_GUARD_RUN/phases/c1-rate-limit.log" 2>/dev/null || true; }
 
 echo "passes=$pass fails=$fail"
 [[ "$fail" -eq 0 ]]
