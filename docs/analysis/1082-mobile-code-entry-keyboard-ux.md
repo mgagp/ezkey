@@ -6,11 +6,40 @@
 
 # #1082 — Mobile code-entry keyboard UX (6-digit enrollment, 2-digit auth)
 
-**Status:** analysis only — awaiting Marc go / no-go. No product code in this change set.  
+**Status:** decided and implemented after a Pixel prototype on 2026-10-31 — see §0. Sections 1–6 keep the analysis that led there; where they differ from §0, §0 wins.  
 **Issue:** [#1082](https://github.com/mgagp/ezkey/issues/1082).  
 **Evidence basis:** static read of React Native source, plus Pixel 7 Pro walks on 2026-10-30 (clean-start local instance, Running Devices mirror): enrollment verify (6 digits) and pending auth (2-digit challenge).  
 **Vocabulary:** enrollment FSM states `DraftReady` / `Verifying` / `ChallengeError` and auth FSM state `Ready` / `Responding` from [`ezkey_mobile/docs/MOBILE_APP_STATE_MACHINE.md`](../../ezkey_mobile/docs/MOBILE_APP_STATE_MACHINE.md) (#834 / #835).  
 **Out of scope:** challenge length, Auth API / protocol semantics, security behaviour of bind / verify / respond.
+
+---
+
+## 0. Decision (2026-10-31, Marc, after a Pixel 7 Pro prototype)
+
+One model on both screens: **the actions sit directly under the code boxes, the number pad stays open, the primary is disabled until the code is complete, and one press acts.**
+
+| Screen | Shipped behaviour |
+| --- | --- |
+| Enrollment verify (`DraftReady`) | **Annuler** and **Terminer l'enrôlement** moved from the bottom footer to directly under the six boxes, so the pad no longer covers them. **Terminer** stays disabled until 6 digits (existing hook guard). The footer remains for the scan stage only. |
+| Pending auth (`Ready`, challenge required) | Attempt `ScrollView` uses `keyboardShouldPersistTaps="handled"`, so the first press on **Approuver** acts instead of only hiding the pad. **Approuver** is disabled and drawn outlined until 2 digits. **Refuser** stays available with no digits. The hook's short-challenge guard stays. |
+
+Marc's verdict on the Pixel: works well, and the two screens now behave the same way.
+
+Considered and not taken:
+
+| Option | Why not |
+| --- | --- |
+| Dismiss the pad on the last digit | Marginal once the button is beside the boxes. It only reveals the details card and adds motion. Prototyped behind a switch; switch removed. |
+| In-app numeric pad | Only needed if the system pad kept covering the button. It does not. |
+| Sticky footer kept above the IME | Replaced by inline actions. The footer failed on the device (`targetSdk 36`, edge-to-edge is a plausible cause, not verified). |
+| Auto-submit, single plain field, teaching the keyboard checkmark | Unchanged from §3: rejected. |
+
+Non-goals, decided by Marc on 2026-10-31:
+
+- **Maximum font / display size.** At the largest settings the layout does not hold well. Supporting it is not a target. A reasonable display setting is the bar.
+- **TalkBack.** Not a target for this work. The buttons declare `accessibilityState.disabled` because it costs one line; that is not a TalkBack commitment.
+
+Superseded parts: the §4 slice (footer kept above the IME, dismiss on length), the `PinCodeInput` dismiss test in §6.4, and the large-font and TalkBack steps of the Pixel walk script.
 
 ---
 
