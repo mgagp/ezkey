@@ -140,7 +140,9 @@ The check extracts `arm64-v8a` / `x86_64` `.so` files and fails the build if:
 Standalone: `./scripts/check-16kb-alignment.sh path/to/app-release.apk|aab`.
 
 Requires `llvm-readelf` / `readelf` on PATH, or the NDK copy (`llvm-readelf` on Linux,
-`llvm-readelf.exe` under `prebuilt/windows-x86_64/bin` on Windows Git Bash).
+`llvm-readelf.exe` under `prebuilt/windows-x86_64/bin` on Windows Git Bash). APK checks
+also need `zipalign` from build-tools 35+ (`zipalign.exe` on Windows; the script probes
+`ANDROID_HOME` / `ANDROID_SDK_ROOT`, then `%LOCALAPPDATA%\Android\Sdk`).
 
 Policy: [`docs/MOBILE_ANDROID_PLATFORM_SUPPORT.md`](../docs/MOBILE_ANDROID_PLATFORM_SUPPORT.md)
 § *16 KB page-size gate*. Do **not** set `useLegacyPackaging=true` as a workaround.
