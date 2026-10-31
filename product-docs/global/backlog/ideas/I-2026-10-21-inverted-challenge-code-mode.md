@@ -29,9 +29,12 @@ as an **additive** mode only, never replacing the current default.
 
 ## Settled context (do not re-litigate without new signal)
 
-Recorded in [`docs/SECURITY_POSTURE.md`](../../../../docs/SECURITY_POSTURE.md) Decision (#960,
-Christophe) and issue [#960](https://github.com/mgagp/ezkey/issues/960):
+Recorded in
+[`docs/SECURITY_POSTURE.md` § Challenge-code direction (Decision #960)](../../../../docs/SECURITY_POSTURE.md#challenge-code-direction-decision-960)
+(Christophe) and issue [#960](https://github.com/mgagp/ezkey/issues/960):
 
+- **When a challenge is required:** Integration API `challengeRequested` and/or enrollment
+  `authAttemptChallengeRequired` (PAM host conf defaults to `challenge_requested=true` per #995).
 - **Default stays:** integrating app shows a two-digit code; user enters it on mobile, then
   approves or denies.
 - **Why:** same principle as CISA number matching (enter numbers from the login screen into the
@@ -63,8 +66,8 @@ Christophe) and issue [#960](https://github.com/mgagp/ezkey/issues/960):
 
 ## Links
 
-- Decision record: [`docs/SECURITY_POSTURE.md`](../../../../docs/SECURITY_POSTURE.md) § What Ezkey
-  does — Decision (#960)
+- Decision record:
+  [`docs/SECURITY_POSTURE.md` § Challenge-code direction (Decision #960)](../../../../docs/SECURITY_POSTURE.md#challenge-code-direction-decision-960)
 - GitHub: [#960](https://github.com/mgagp/ezkey/issues/960)
 - Related (challenge lifecycle, not UX direction):
   [`I-2026-07-07-auth-attempt-challenge-protection`](I-2026-07-07-auth-attempt-challenge-protection.md)
