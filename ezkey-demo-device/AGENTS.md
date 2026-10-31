@@ -4,6 +4,55 @@ Spring Boot app simulating a mobile device for Auth API enrollment and MFA flows
 
 Monorepo copy lives under `ezkey/ezkey-demo-device/`; public standalone mirror: `mgagp/ezkey-demo-device` (sync Java `src/`, `openapi-spec.json`, `pom.xml`, `AGENTS.md` after monorepo changes).
 
+## Product posture
+
+The Demo Device is **never** part of any official or community deployment. It is a **local
+internal test tool** on a developer workstation (CLI or Docker). What is enrolled and tested only
+concerns that developer — no external evaluators, no security-grade UI locks. Error-copy honesty
+tracks **mobile app fidelity**, not a production threat model. English only.
+
+## Faithful device stub (#943)
+
+Target balance (Alex / Marc): behave faithfully on the Auth API device path without cloning full
+mobile complexity. Canon (decided):
+[`TB-2026-10-20-demo-device-api-and-mobile-parity`](../product-docs/global/backlog/TB-2026-10-20-demo-device-api-and-mobile-parity.md).
+
+| Kept | Deliberately omitted / accepted |
+| --- | --- |
+| Bind → verify → pending (sig) → respond (sig); bind `integrationKeyAlgorithm == ed25519` | Leave-as-deny / leave-declines hint (omitted for good) |
+| Read-once session claim; local TTL fallback + typed respond 409 net | Phone countdown; pending-wire `expiresAt` (until wire adds it) |
+| Expired vs no longer active 409 (Back only; no Approve/Deny) | Differentiating #916 signature refuse from other 409 state-conflict |
+| `AuthApiOutcome` + Julie catalog; never server `detail` / HTTP code / URL / host / method on screen | UncertainDecision soft id lock (F6 dropped); biometrics; Keystore tiers |
+| Fail-closed bad pending integration signature | Initiator wait verdict duplication; Integration API client |
+| Free-text challenge; Q9 `unconfirmed` on `auth_result` | Bind payload signature verification (deferred) |
+
+### Durable UI outcome rules (#943)
+
+- **Never display** ProblemDetail `detail`, raw HTTP status, URL, hostname, or method on screen.
+  Map via package-private `AuthApiOutcome` + `classify(statusCode, problemType)` /
+  `messageFor` / `safePreRespondHttpMessage` (bind/verify/pending).
+- **Expired** = typed `auth-attempt-expired` only. **No longer active** = other 409 (cancel,
+  state-conflict, #916) — neutral grey title “Request no longer active”.
+- **Unconfirmed** = HTTP 200 with unverifiable result signature, or ambiguous 5xx / transport
+  after respond send started. Same Julie text; own `data-testid`; do **not** reuse `failed` or
+  “tampering” copy. Pre-respond 5xx stay generic (not unconfirmed).
+- **429 / 503 on respond** keep the session claim and re-show `auth_pending` with a neutral
+  banner; Approve/Deny stay. Clear the claim only after a terminal 200 decision or non-retryable
+  error (e.g. 409).
+
+### Leave / side-exit — omitted for good (#943)
+
+Leaving the pending screen (side-exit / Back to enrollments) with a loaded claim does **not** call
+`respond(accepted=false)`. The attempt stays `READ` until server TTL (or initiator cancel). There is
+**no** on-screen leave-declines hint. Prefer Approve or Deny when exercising Admin passwordless /
+PAM waits; do not rely on leaving the phone UI to unblock the initiator.
+
+**Reopen trigger:** if Demo Device becomes a real human approver (not only a lab stub), revisit
+leave-as-deny.
+
+**Bind payload signature:** accepted deferred (not equally cheap). **Reopen trigger:** an external
+evaluator uses Demo Device as a real approver.
+
 ## Home screen tenant grouping
 
 Bind response `tenantId` / `tenantName` / `tenantDescription` are persisted on `EnrollmentStoreService.Record`. The Ezkey app home groups enrollments via `EnrollmentTenantGrouper` into `tenantGroups` (header + list per tenant). Use `EnrollmentTenantGrouper.normalizeTenantName`: null `tenantId` / absent name → **Platform**. Do not invent “Unknown tenant”. Prefer that helper over ad-hoc sorting in the controller or template.
@@ -12,14 +61,16 @@ Bind response `tenantId` / `tenantName` / `tenantDescription` are persisted on `
 
 Auth API pending is read-once (`PENDING` → `READ`). After a successful claim, `ClaimedPendingAuth` is stored in the HTTP session so a second GET can re-show Approve/Deny without calling pending again (204).
 
-**Claim `expiresAt` resolution** (`ClaimExpiresAtResolver`):
+**Claim `expiresAt` resolution** — class `ClaimExpiresAtResolver`:
 
 1. Prefer server `expiresAt` from the pending JSON when present (`AuthApiService` keeps the raw field even if the generated DTO omits it).
 2. Otherwise fall back to `claimedAt + ezkey.demo-device.claimed-pending-attempt-ttl` (default **120s**, aligned with `ezkey.core.auth-attempt.ttl-seconds`).
 
 Auth API pending currently omits expiry on the wire (#834 — countdown stays on the integrating app). The local fallback can drift: e.g. PAM `ttlSeconds` 90 with a 120 s fallback leaves a stale Approve/Deny visible for ~30 s after server expiry. Prefer aligning the property with the initiator TTL, or rely on respond **409** as the fail-closed net. `PendingAuthClaimSession.findOpen` invalidates at `min(expiresAt, claimedAt + 10 min)`.
 
-On `POST …/auth/respond`, HTTP **409** with ProblemDetail type ending in `auth-attempt-expired` (PR-A) shows the expired result with initiator-neutral copy (“Restart the login from the application” — Admin UI, PAM/SSH, SDK, …). Other 409s (including older `auth-attempt-state-conflict` or a missing type) show “no longer active” — tolerant when PR-A is not yet deployed.
+**Reopen trigger for `ClaimExpiresAtResolver`:** if `expiresAt` ever enters the Auth API pending wire, prefer the server value and re-check local TTL defaults vs initiator TTL.
+
+On `POST …/auth/respond`, HTTP **409** with ProblemDetail type ending in `auth-attempt-expired` (PR-A) shows the expired result. Other 409s (including `auth-attempt-state-conflict`, and **#916** invalid device signature — which must **not** be differentiated client-side) show “no longer active” (Julie). Terminals are Back-only; body / `e.getMessage()` must never reach the screen (#943).
 
 ## QR `authUrl` routing (mobile parity)
 

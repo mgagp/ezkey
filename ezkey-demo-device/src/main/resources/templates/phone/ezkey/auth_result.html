@@ -12,66 +12,56 @@
     .content { position:absolute; top: 52px; left:0; right:0; bottom: 0; display:flex; flex-direction:column; }
     .header { padding: 20px 16px 8px 16px; }
     .title { margin:0; font-size: 1.25rem; }
-    .integration-info { 
-      display: flex; 
-      align-items: center; 
-      margin-bottom: 16px; 
-      padding: 12px 14px; 
-      border-radius: 14px; 
-      background: rgba(255,255,255,.06); 
-      border: 1px solid rgba(255,255,255,.08); 
+    .integration-info {
+      display: flex;
+      align-items: center;
+      margin-bottom: 16px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.08);
     }
-    .integration-logo { 
-      width: 48px; 
-      height: 48px; 
-      border-radius: 8px; 
-      margin-right: 12px; 
-      background: rgba(255,255,255,.1); 
-      display: flex; 
-      align-items: center; 
-      justify-content: center; 
-      font-size: 1.2rem; 
-      color: #ccc; 
+    .integration-logo {
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+      margin-right: 12px;
+      background: rgba(255,255,255,.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      color: #ccc;
     }
     .integration-details { flex: 1; }
     .integration-name { font-weight: 600; margin-bottom: 4px; }
     .integration-description { font-size: 0.85rem; color: #ccc; line-height: 1.2; }
-    .result-card { 
-      padding: 20px; 
-      margin: 16px; 
-      border-radius: 14px; 
-      background: rgba(255,255,255,.06); 
-      border: 1px solid rgba(255,255,255,.08); 
+    .result-card {
+      padding: 20px;
+      margin: 16px;
+      border-radius: 14px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.08);
       text-align: center;
     }
-    .result-icon { 
-      font-size: 3rem; 
-      margin-bottom: 16px; 
-    }
+    .result-icon { font-size: 3rem; margin-bottom: 16px; }
     .result-success { color: #28a745; }
-    .result-error { color: #dc3545; }
     .result-denied { color: #dc3545; }
     .result-failed { color: #fd7e14; }
     .result-expired { color: #6c757d; }
-    .result-title { 
-      font-size: 1.2rem; 
-      font-weight: 600; 
-      margin-bottom: 8px; 
-    }
-    .result-message { 
-      font-size: 0.9rem; 
-      color: #ccc; 
-      line-height: 1.4; 
-    }
-    .btn-primary { 
-      width: calc(100% - 32px); 
-      padding: 12px 14px; 
-      border-radius: 14px; 
-      background: #0d6efd; 
-      color: #fff; 
-      border: none; 
-      font-size: 1rem; 
-      cursor: pointer; 
+    .result-inactive { color: #adb5bd; }
+    .result-unconfirmed { color: #6c757d; }
+    .result-title { font-size: 1.2rem; font-weight: 600; margin-bottom: 8px; }
+    .result-message { font-size: 0.9rem; color: #ccc; line-height: 1.4; }
+    .btn-primary {
+      width: calc(100% - 32px);
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: #0d6efd;
+      color: #fff;
+      border: none;
+      font-size: 1rem;
+      cursor: pointer;
       margin: 8px 16px;
       display: block;
       text-align: center;
@@ -92,8 +82,7 @@
       <div class="header">
         <h1 class="title">Authentication Result</h1>
       </div>
-      
-      <!-- Integration Information -->
+
       <div class="px-3">
         <div class="integration-info">
           <div class="integration-logo">
@@ -106,43 +95,38 @@
           </div>
         </div>
       </div>
-      
-      <!-- Result Card -->
+
       <div class="result-card" data-testid="demo-device-result-card" aria-live="polite" aria-atomic="true">
-        <!-- Success State -->
         <div th:if="${success}" data-testid="demo-device-result-success" class="result-icon result-success">✅</div>
-        
-        <!-- Denied State (User Choice) -->
         <div th:if="${denied}" data-testid="demo-device-result-denied" class="result-icon result-denied">❌</div>
-        
-        <!-- Failed State (Technical Error) -->
         <div th:if="${failed}" data-testid="demo-device-result-failed" class="result-icon result-failed">⚠️</div>
-        
-        <!-- Expired State (Authentication Expired) -->
         <div th:if="${expired}" data-testid="demo-device-result-expired" class="result-icon result-expired">⏰</div>
-        
-        <!-- Dynamic Title -->
-        <div class="result-title" 
-             th:text="${success ? 'Authentication Successful' : 
-                        denied ? 'Authentication Denied' : 
-                        failed ? 'Authentication Failed' : 
+        <div th:if="${inactive}" data-testid="demo-device-result-inactive" class="result-icon result-inactive">○</div>
+        <div th:if="${unconfirmed}" data-testid="demo-device-result-unconfirmed" class="result-icon result-unconfirmed">?</div>
+
+        <div class="result-title"
+             th:text="${success ? 'Authentication Successful' :
+                        denied ? 'Authentication Denied' :
                         expired ? 'Authentication Expired' :
+                        inactive ? 'Request no longer active' :
+                        unconfirmed ? 'Confirmation not verified' :
+                        failed ? 'Authentication Failed' :
                         'Authentication Result'}">
           Result
         </div>
-        
-        <!-- Dynamic Message -->
-        <div class="result-message" 
-             th:text="${message ?: 
-                        denied ? 'Authentication was denied by user' : 
-                        failed ? 'Authentication failed due to technical error' : 
-                        expired ? 'This authentication request has expired. Restart the login from the application.' :
+
+        <div class="result-message"
+             th:text="${message ?:
+                        denied ? 'Authentication was denied by user' :
+                        expired ? 'This request expired. Ask for a new sign-in.' :
+                        inactive ? 'This request is no longer active.' :
+                        unconfirmed ? 'Response sent, confirmation not verified; check the connection on the app side.' :
+                        failed ? 'Authentication failed due to technical error' :
                         'Authentication response submitted'}">
           Result message
         </div>
       </div>
-      
-      <!-- Action Button -->
+
       <div class="mt-auto">
         <a class="btn-primary" th:href="@{/phone/ezkey}" data-testid="demo-device-back-to-enrollments">Back to Enrollments</a>
       </div>

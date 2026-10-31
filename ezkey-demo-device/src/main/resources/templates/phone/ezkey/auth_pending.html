@@ -149,6 +149,16 @@
         <p class="context-message" th:text="${contextMessage}">Authorize payment of $5,000 to Suppliers Ltd.</p>
       </div>
 
+      <!-- Neutral retryable banner (429 / 503) — not red error (#943) -->
+      <div th:if="${pendingBanner}"
+           class="mx-3 mb-2"
+           data-testid="demo-device-pending-banner"
+           aria-live="polite"
+           style="padding:12px 14px;border-radius:14px;background:rgba(108,117,125,.25);border:1px solid rgba(173,181,189,.35);color:#dee2e6;font-size:0.9rem;">
+        <div th:text="${pendingBanner}">Signing is temporarily unavailable. Try again.</div>
+        <div th:if="${pendingBannerRetryable}" style="margin-top:6px;font-size:0.8rem;color:#adb5bd;">You can retry Approve or Deny.</div>
+      </div>
+
       <!-- Authentication Request -->
       <div class="auth-request" data-testid="demo-device-auth-request" aria-live="polite" aria-atomic="true">
         <form
