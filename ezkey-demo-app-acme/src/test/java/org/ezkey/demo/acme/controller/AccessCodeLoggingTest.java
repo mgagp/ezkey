@@ -5,7 +5,7 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Test: AccessCodeLoggingTest
- * Description: Access codes and challenge values must not appear in INFO logs.
+ * Description: Access codes, secrets, and challenge values must not appear in INFO logs.
  */
 
 package org.ezkey.demo.acme.controller;
@@ -38,6 +38,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 class AccessCodeLoggingTest {
 
   private static final String CODE = "0123456789abcdef0123456789abcdef";
+  private static final String SECRET = "ezkey_skey_must_never_appear_in_logs_958";
 
   private ListAppender<ILoggingEvent> accessCodeAppender;
   private ListAppender<ILoggingEvent> loginAppender;
@@ -63,7 +64,7 @@ class AccessCodeLoggingTest {
   }
 
   @Test
-  void shouldNotLogAccessCodeOnSuccessfulActivation() throws Exception {
+  void shouldNotLogAccessCodeOrSecretOnSuccessfulActivation() throws Exception {
     AccessCodeService accessCodeService = mock(AccessCodeService.class);
     DemoApiKeyConfigService demoApiKeyConfigService = mock(DemoApiKeyConfigService.class);
     DemoRateLimitService demoRateLimitService = mock(DemoRateLimitService.class);
@@ -71,6 +72,8 @@ class AccessCodeLoggingTest {
         .thenReturn(new DemoRateLimitService.RateLimitDecision(true, 0, "127.0.0.1"));
     when(accessCodeService.findSlotIdByCode(CODE)).thenReturn(Optional.of("northwind"));
     when(accessCodeService.getLabel("northwind")).thenReturn("Northwind Portal");
+    when(accessCodeService.resolveCredentials("northwind"))
+        .thenReturn(new DemoApiKeyConfigService.DemoApiKeyCredentials("ezkey_ikey_test", SECRET));
 
     MockMvc mockMvc =
         MockMvcBuilders.standaloneSetup(
@@ -85,6 +88,7 @@ class AccessCodeLoggingTest {
             .map(ILoggingEvent::getFormattedMessage)
             .reduce("", (a, b) -> a + "\n" + b);
     assertThat(joined).doesNotContain(CODE);
+    assertThat(joined).doesNotContain(SECRET);
     assertThat(joined).contains("Northwind Portal");
   }
 

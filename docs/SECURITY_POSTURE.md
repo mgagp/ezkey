@@ -122,10 +122,10 @@ meant to be linked from trust-facing material without inflating the top-level pi
   re-enrollment problem for encrypted columns, not a PII confidentiality guarantee.
 - **Demo App ACME access-code slot secrets are plaintext on the host volume.** Integration keys and
   secrets for evaluator `/t/{code}` slots live in `/app/config/application.properties` on the
-  `demo-app-acme-config` volume (mode **0600**, non-root `spring` uid; entrypoint re-applies chmod
-  on every start). Slots load at JVM start — **restart required** after edit. There is **no**
-  encryption-at-rest guarantee for those demo secrets (Related to
-  [#958](https://github.com/mgagp/ezkey/issues/958)).
+  `demo-app-acme-config` volume (non-root `spring` uid). The entrypoint applies `umask 077`,
+  `chmod 600`, and **fail-closes** (refuses to start) unless the file mode is **0600**. Slots load
+  at JVM start — **restart required** after edit. There is **no** encryption-at-rest guarantee for
+  those demo secrets (Related to [#958](https://github.com/mgagp/ezkey/issues/958)).
 
 ## What Ezkey aims to do (planned, if adoption justifies)
 

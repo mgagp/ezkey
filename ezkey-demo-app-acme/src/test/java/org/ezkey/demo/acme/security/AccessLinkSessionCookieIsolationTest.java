@@ -116,6 +116,18 @@ class AccessLinkSessionCookieIsolationTest {
   }
 
   @Test
+  void plainLoginPageEmitsCsrfMetaForConfigureApiKey() {
+    ResponseEntity<String> login =
+        restTemplate.exchange(
+            URI.create(baseUrl + "/login"), HttpMethod.GET, HttpEntity.EMPTY, String.class);
+
+    assertThat(login.getStatusCode().is2xxSuccessful()).isTrue();
+    assertThat(login.getBody())
+        .as("self-service /login must expose CSRF meta for Configure API Key")
+        .contains("name=\"_csrf\"");
+  }
+
+  @Test
   void unknownAccessLinkDoesNotMintSessionCookie() {
     ResponseEntity<String> unknown =
         restTemplate.exchange(
@@ -125,9 +137,11 @@ class AccessLinkSessionCookieIsolationTest {
             String.class);
 
     assertThat(unknown.getStatusCode().is2xxSuccessful()).isTrue();
-    assertThat(setCookieHeaders(unknown))
-        .as("link-lost /t must not mint EZKEY_ACME_SESSION (no CSRF meta when form hidden)")
+    List<String> setCookies = setCookieHeaders(unknown);
+    assertThat(setCookies)
+        .as("link-lost /t must not mint EZKEY_ACME_SESSION (no CSRF meta when chrome hidden)")
         .noneMatch(c -> c.startsWith("EZKEY_ACME_SESSION="));
+    assertThat(setCookies).noneMatch(c -> c.startsWith("JSESSIONID="));
     assertThat(unknown.getBody()).doesNotContain("name=\"_csrf\"");
   }
 
