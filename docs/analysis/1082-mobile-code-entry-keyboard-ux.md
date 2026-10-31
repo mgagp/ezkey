@@ -8,7 +8,7 @@
 
 **Status:** analysis only — awaiting Marc go / no-go. No product code in this change set.  
 **Issue:** [#1082](https://github.com/mgagp/ezkey/issues/1082).  
-**Evidence basis:** static read of React Native source on `main` (and this analysis branch). **Not** re-run on a physical Pixel in this pass unless noted. Marc’s original observation (Pixel 7 Pro) is treated as the UX problem statement.  
+**Evidence basis:** static read of React Native source, plus a Pixel 7 Pro enrollment walk on 2026-10-30 (clean-start local instance, Running Devices mirror). The 2-digit auth screen was **not** re-walked in that session.  
 **Vocabulary:** enrollment FSM states `DraftReady` / `Verifying` / `ChallengeError` and auth FSM state `Ready` / `Responding` from [`ezkey_mobile/docs/MOBILE_APP_STATE_MACHINE.md`](../../ezkey_mobile/docs/MOBILE_APP_STATE_MACHINE.md) (#834 / #835).  
 **Out of scope:** challenge length, Auth API / protocol semantics, security behaviour of bind / verify / respond.
 
@@ -23,7 +23,20 @@
 | Auth API (`verify` / `respond`) | Mobile app | Unchanged by any keyboard UX fix |
 | Integrating app / Admin UI (shows the code) | Operator or end-user starting enrollment or login | Displays the challenge the phone must type; not in scope for layout |
 
-Problem symptom (Marc): with the virtual keyboard open, the primary action sits just above the keyboard; the first tap often only dismisses the keyboard instead of completing Approve / Complete.
+Ezkey is a passage on the way to another application, not the person's main task ([operator-alignment guide](../../product-docs/global/operator-alignment-guide.md)). A novice who cannot see the next step will stall here, and that friction costs adoption.
+
+### 1.1 Device observation — enrollment verify, Pixel 7 Pro, 2026-10-30
+
+Clean-start local instance. Screen: **Ajouter un enrôlement**. System number pad (Gboard on this phone).
+
+- Tapping the first box opens the pad. The six boxes stay. Filling all six digits does **not** dismiss the pad and does **not** reveal the primary action.
+- With the pad open, **Annuler** and **Terminer l'enrôlement** are off-screen. The enrollment-details card is clipped. The existing `KeyboardAvoidingView` plus sticky footer does **not** keep the primary action above the IME on this device.
+- The only controls that brought the button back were keys on the keyboard itself: the checkmark at the bottom right, and the glyph at the bottom left (square or caret, depending on the keyboard). Those keys only hide the keyboard. They do not complete enrollment.
+- After that dismiss, the six digits remain. **Terminer l'enrôlement** is visible and enabled.
+
+A person who does not recognize those glyphs has no in-app next step. Tapping the form does not surface the button. The glyphs differ by keyboard and by platform: an iOS number pad usually has no Done key. The design must not depend on them.
+
+This replaces the earlier wording that the primary button sits just above the keyboard and that the first tap is swallowed. That swallowed-tap mode may still apply to the 2-digit auth screen (§2.3). That screen was not re-walked here.
 
 ---
 
@@ -69,7 +82,7 @@ Files:
 | Keyboard dismiss | No explicit dismiss on Complete; no blur handler on `PinCodeInput` | — |
 | Android soft input | Activity `windowSoftInputMode="adjustResize"` | [`AndroidManifest.xml`](../../ezkey_mobile/android/app/src/main/AndroidManifest.xml) L20 |
 
-**Implication:** enrollment already combines KAV + sticky footer + `keyboardShouldPersistTaps="handled"` on the scroll body. Sticky actions are **outside** the `ScrollView`, so persist-taps only covers taps on scroll content; footer taps depend on OS / RN delivering the press while the IME is focused. Marc still reported the two-step dismiss on Pixel — treat enrollment as **possibly still affected** until a device walk confirms whether Complete receives the first press or only the keyboard collapses.
+**Implication:** enrollment already combines KAV + sticky footer + `keyboardShouldPersistTaps="handled"` on the scroll body. The 2026-10-30 Pixel walk (§1.1) shows that footer is **covered** by the number pad, so persist-taps never gets a press on **Terminer**. The layout does not keep the primary action above the IME on this device.
 
 ### 2.3 Authentication — 2-digit challenge (`Ready` when `challengeRequired`)
 
@@ -161,16 +174,18 @@ No change to leave-as-deny, Q8/Q10 Back-only states, or challenge semantics.
 2. Backspace / delete-last still works while focused; after dismiss, one tap reopens then delete.
 3. Prefer dismiss only when length reaches max **and** previous length was shorter (edge: paste of full code).
 
-**Fit:** Strong **complement** to (d), especially for enrollment sticky footer visibility under `adjustResize`. Not sufficient alone for Pending Auth’s persist-taps gap.
+**Fit:** Reveals a footer that was covered, which matches the Pixel enrollment dead-end once six digits are in. It does not help someone who has typed only some of the digits and is already looking for a next step. If the button moves at the moment the keyboard closes, the person taps the old spot ([BC Wallet unlock](https://github.com/bcgov/bc-wallet-mobile/issues/2395)). Use dismiss-on-last-digit only when the primary button stays put.
 
 ### (d) Single-step Approve / Complete while keyboard is open
 
 **Idea:** With a complete code, one tap on the primary action dismisses the keyboard **and** submits. Require `keyboardShouldPersistTaps="handled"` so the first tap is not swallowed. Disable primary until length is complete (enrollment already does; auth does not).
 
+**Pixel enrollment, 2026-10-30:** the primary action is not on screen while the pad is open, so persist-taps has nothing to receive. This option applies only after the button is visible. It remains the right guard for Pending Auth if Approve is on screen and the first tap is swallowed (§2.3).
+
 | Pros | Cons |
 | --- | --- |
-| Directly matches Marc’s pain (“I reach for Approve”) | Must set persist-taps on **Pending Auth** `ScrollView` (missing today) |
-| Enrollment already dismisses-on-respond pattern exists for auth (`Keyboard.dismiss` in `handleRespond`) | Footer-outside-scroll on enrollment still needs Pixel confirmation |
+| Useful once the primary action is actually on screen | Must set persist-taps on **Pending Auth** `ScrollView` (missing today) |
+| Enrollment already dismisses-on-respond pattern exists for auth (`Keyboard.dismiss` in `handleRespond`) | Pixel enrollment (§1.1): the footer is covered, so this option does not apply until the button is visible |
 | Aligns auth Approve enablement with enrollment Complete | Deny must remain tappable without digits (already true) |
 | No protocol / length change | Large font / landscape: still verify scroll + KAV |
 
@@ -187,7 +202,18 @@ No change to leave-as-deny, Q8/Q10 Back-only states, or challenge semantics.
 | Sticky action bar above IME | Enrollment partial; auth not | Auth could adopt KAV + sticky footer like enrollment |
 | Biometric after digits | Separate (#834 Q11) | Out of scope for keyboard hide |
 
-**Auto-submit at full length is deliberately not recommended** for Ezkey: verify and respond are high-assurance; wrong last digit should not fire the network path without an explicit Confirm.
+**Auto-submit at full length is deliberately not recommended** for Ezkey: verify and respond are high-assurance; the code is copied from another screen, and a wrong last digit must be correctable before the network call. Explicit **Terminer** / **Approve** stays.
+
+Comparable practice, checked against this walk:
+
+| Pattern | What it does for a novice | Ezkey |
+| --- | --- | --- |
+| Segmented boxes over one real field | Shows how many digits are expected. Paste and one caret stay simple. Guides (Twilio OTP, typical OTP field write-ups) prefer this over six separate inputs. | **Keep.** `PinCodeInput` is already this. |
+| Primary action visible the whole time, disabled until the length is met, one tap continues | The next step is always on screen. The person never learns the keyboard's close key. Banks and OTP screens do this. | **Lead.** The current footer failed this test on the Pixel. |
+| Dismiss the pad when the last digit lands, button does not move | Removes the "code is full and I am stuck" dead-end. Tap a box to correct. | **With the lead**, only if the button stays put. |
+| In-app numeric pad (card PIN, wallet PIN) | No system keyboard, so nothing can cover the confirm control. Same on every phone, including iOS. | **Fallback** if a Pixel walk still shows the system pad covering the button. More UI and accessibility work. |
+| One plain text field, then validate | Simpler keyboard. Weaker "six digits" cue. Tried in a lab client. | **Set aside.** The boxes are the part that already works. |
+| Teach the keyboard checkmark / hide key | Depends on glyphs the app does not own. | **Reject.** |
 
 ### (f) Other findings
 
@@ -214,7 +240,7 @@ No change to leave-as-deny, Q8/Q10 Back-only states, or challenge semantics.
 | --- | --- | --- |
 | Soft input | `adjustResize` + optional KAV `height` | KAV `padding` already on enrollment |
 | Persist taps | Critical on Pending Auth `ScrollView` | Same RN prop |
-| `number-pad` Done | OEM-dependent | Usually absent → (c)/(d) matter more |
+| `number-pad` Done | Pixel/Gboard showed a checkmark and a bottom-left glyph; both only hide the pad. Do not depend on them. | Usually absent. The in-app next step has to exist without a Done key. |
 | Autofill OTP | Do not enable SMS OTP hints | Same |
 
 ---
@@ -223,25 +249,28 @@ No change to leave-as-deny, Q8/Q10 Back-only states, or challenge semantics.
 
 ### Preferred direction
 
-**Lead with (d), optionally pack (c) in the same small PR after Marc’s go.**
+**Keep the segmented boxes. Make the next step visible and stable. Do not depend on the keyboard's own close keys.** Awaiting Marc's go before any product code.
 
-1. **Pending Auth:** set `keyboardShouldPersistTaps="handled"` on the attempt `ScrollView`.
-2. **Pending Auth:** disable Approve when `challengeRequired && challengeInput.length !== AUTH_CHALLENGE_LENGTH` (mirror enrollment `challengeMissing`); Deny unchanged.
-3. **Keep** existing `Keyboard.dismiss()` at the start of a valid `handleRespond` so one Approve tap both dismisses and submits once digits are complete.
-4. **Optional same slice:** in `PinCodeInput`, when `value` reaches `length`, blur / `Keyboard.dismiss()` (auto-dismiss), relying on existing tap-to-refocus for edits.
-5. **Defer:** (a) color/label two-step teaching; SMS `oneTimeCode` hints; auto-**submit**; rebuilding Pending Auth sticky footer unless Pixel walk still shows Complete/Approve obscured after (1)–(4).
-6. **Enrollment:** no mandatory change if Pixel walk shows Complete already receives the first press; if not, add explicit dismiss-on-Complete and/or auto-dismiss (4) without changing FSM guards.
+1. **Enrollment:** **Terminer l'enrôlement** stays on screen for the whole entry, including while the number pad is open. Disabled until 6 digits, then enabled in the **same place**. One tap completes enrollment. The current `KeyboardAvoidingView` footer failed this on the Pixel (§1.1); the next slice has to be proven on the device, not assumed from the component tree. Stay on the current React Native stack before adding a keyboard library.
+2. **Do not move the button** when the pad opens or closes. A button that jumps at the moment of the last digit is a mis-tap ([BC Wallet unlock](https://github.com/bcgov/bc-wallet-mobile/issues/2395)).
+3. **Dismiss the pad when the last digit lands**, only as part of (1) and (2): the button is already where the person is looking, and it becomes enabled. Tapping a box brings the pad back to correct a digit.
+4. **Explicit confirm stays.** No auto-submit. No hint that teaches the checkmark or the bottom-left glyph. No SMS one-time-code autofill.
+5. **Auth (2 digits):** same rules — Approve visible, disabled until 2 digits, stable, one tap responds. Also set `keyboardShouldPersistTaps="handled"` on the attempt `ScrollView`, and keep `Keyboard.dismiss()` at the start of a valid respond. Persist-taps does not fix enrollment occlusion; it still guards a visible Approve. Deny stays available with no digits. This screen still needs its own Pixel walk.
+6. **Fallback:** an in-app numeric pad, with the same boxes above it, if the Pixel walk shows the system pad still covering the button. Heavier (layout, TalkBack, large font). Not the first slice.
+7. **Set aside:** collapsing to one plain text field. A lab client used that and gained simpler keyboard handling; it drops the length cue the boxes already provide.
 
 ### Smallest implementation slice (after go)
 
 | Item | Touch |
 | --- | --- |
-| Persist taps + Approve disabled-until-complete | `PendingAuthScreen.tsx` (+ maybe thin derived flag from hook) |
-| Optional auto-dismiss | `PinCodeInput.tsx` only |
-| Copy | None required if disabled state is enough; optional hint string only if Marc wants it |
+| Enrollment footer that stays visible and stable above the IME, disabled until 6 digits | `EnrollmentWizardScreen.tsx` layout. Prove on the Pixel before calling it done. |
+| Dismiss pad when length is reached, without moving the footer; tap boxes to edit | `PinCodeInput.tsx` |
+| Auth: persist taps + Approve disabled until 2 digits + same visibility rule | `PendingAuthScreen.tsx` |
+| Copy | None required if the disabled button label is the cue |
 | Protocol / API / lengths | **None** |
+| In-app pad, keyboard library, plain single field, auto-submit | **Not in this slice** |
 
-**Effort estimate (engineering, not calendar):** **S** — roughly a focused half-day including Jest, plus a short Pixel walk. Auto-dismiss adds little if confined to `PinCodeInput`. Sticky-footer redesign for Pending Auth would bump to **M** and should wait for device evidence.
+**Effort estimate (engineering, not calendar):** enablement and dismiss-on-length are **S**. Making the enrollment footer actually stay above the IME, and proving it on the Pixel, is the risky part and can land at **M** if the current `KeyboardAvoidingView` has to be rebuilt. An in-app pad is a later slice.
 
 ### Automated tests that should cover the slice
 
@@ -261,7 +290,7 @@ Do **not** assert IME geometry in Jest (not reliable). Persist-taps behaviour is
 
 **Surfaces:** end-user on mobile; Auth API as today; Admin / integrating app only to **display** codes (operator or end-user elsewhere).
 
-1. **Enrollment:** scan QR → land on verify stage → confirm `number-pad` → enter 6 digits (optionally note whether keyboard auto-dismisses after change) → **single** tap **Complete enrollment** with keyboard still open if not auto-dismissed → expect verify proceeds without a prior dismiss-only tap.
+1. **Enrollment:** scan QR → land on verify stage → confirm the number pad → while typing digits 1–5, **Terminer l'enrôlement** stays visible and disabled, and it does not jump → enter the 6th digit → pad may dismiss, button stays put and enables → **one** tap completes enrollment. Do not use the keyboard checkmark or the bottom-left glyph.
 2. **Wrong digit then edit:** enter 5 digits, pause; enter 6th wrong intentionally if testing auto-dismiss; tap boxes, delete last digit, correct, Complete once.
 3. **Auth challenge:** trigger pending with `challengeRequired` → screen auto-focuses PIN → enter 1 digit → confirm Approve disabled (after slice) → enter 2nd → **single** tap Approve → expect respond without dismiss-only first tap.
 4. **Deny:** with keyboard open and 0–1 digits, tap Deny once → expect deny respond (no challenge required).
@@ -274,11 +303,17 @@ Record pass/fail only; no codes in logs or screenshots of live secrets.
 
 ## 5. Open questions for Marc
 
-1. **Auto-dismiss at full length (c):** include in the first implementation slice with (d), or ship persist-taps + Approve disable first and A/B auto-dismiss on a follow-up?
-2. **Approve disabled until 2 digits:** OK to mirror enrollment Complete (recommended), or keep pressable + form error for discoverability?
-3. **Enrollment on Pixel:** after a controlled walk, does **Complete enrollment** already accept the first tap with the current sticky footer + KAV, or do you still see dismiss-only? (Code suggests auth is the structural bug; enrollment needs your confirmation.)
-4. **Auto-submit:** confirm **no** — explicit Complete / Approve remains mandatory even when length is full?
-5. **iOS:** any need to prototype Done-key / accessory behaviour now, or keep Android-first and rely on (c)/(d) for later iOS?
+Answered by the 2026-10-30 enrollment walk:
+
+- The enrollment primary is **covered**, not sitting just above the pad. Keyboard chrome (checkmark, bottom-left glyph) is the only dismiss Marc found, and it does not complete enrollment.
+- The six boxes stay. A plain single field is set aside.
+- Auto-submit stays off unless Marc overrides it.
+
+Still open:
+
+1. **Go / no-go** on §4 before any product code: visible stable **Terminer**, dismiss on the last digit only if the button does not move, same rule for Approve.
+2. **Auth screen:** confirm on the Pixel whether Approve is covered like Terminer, or visible with a swallowed first tap. Same design either way; the walk changes the proof, not the direction.
+3. **In-app pad:** only if the sticky button cannot be kept visible on the Pixel.
 
 ---
 
