@@ -23,6 +23,28 @@ command line, never in an unquoted shell heredoc that expands into `sh -c '…'`
 - Shell with Docker access to the community host (use the SSH Host alias already configured for
   ops). Prefer Git Bash on Windows (`MSYS_NO_PATHCONV=1` if path conversion interferes).
 
+### Pre-deploy check (fail-closed entrypoint)
+
+Before deploying an image that **fail-closes** unless `/app/config/application.properties` is mode
+`600`, verify the existing file on volume `demo-app-acme-config` is owned by the image’s `spring`
+user and already mode `600`. In the current Acme image that is **uid 100 / gid 101** — confirm with
+the running (or about-to-replace) image rather than assuming forever:
+
+```bash
+# Confirm spring identity in the image (expect uid=100 gid=101 today)
+docker exec ezkey-exp-demo-app-acme id spring
+# Owner + mode of the live config (expect 100 101 and -rw------- / 600)
+docker exec ezkey-exp-demo-app-acme sh -c 'ls -ln /app/config/application.properties'
+```
+
+If owner/mode are wrong, fix on the **host volume** (or from a one-off root container that mounts
+the same volume) with the **verified** uid/gid, e.g. `chown 100:101` and `chmod 600` on
+`application.properties`, then start Acme again.
+
+**Windows / NTFS bind mounts** (not Docker named volumes): `stat` may report a mode other than
+`600` even after `chmod`. Prefer the named volume `demo-app-acme-config` on community; do not rely
+on NTFS bind-mount semantics for this fail-closed check.
+
 ## Add a slot
 
 1. **Generate a code** (32 lowercase hex — fail-fast validation is `^[0-9a-f]{32,64}$`):
@@ -135,6 +157,26 @@ docker restart ezkey-exp-demo-app-acme
 
 After a successful rollback verification, create a fresh `.bak` only when you next edit — do not
 leave stale secret-bearing backups around.
+
+## Troubleshooting — fail-closed entrypoint
+
+**Symptom:** Acme container exits immediately / refuses to stay up; logs show
+`ERROR: … mode is '…', expected 600` or `could not chmod 600` and `Refusing to start`.
+
+**Cause:** `/app/config/application.properties` on `demo-app-acme-config` is not mode `600`, or
+`chmod` failed (often root-owned file from a past host edit).
+
+**Fix:**
+
+1. Confirm `spring` uid/gid in the image (`docker exec … id spring` — today **100:101**).
+2. On the host (or a root helper container mounting the same volume): `chown <uid>:<gid>` and
+   `chmod 600` on `application.properties`.
+3. Start / recreate only `demo-app-acme` again.
+4. If you are on a **Windows NTFS bind mount** and mode still looks wrong after `chmod`, switch to
+   the named volume path used on community — do not weaken the entrypoint to warn-and-continue.
+
+For malformed/duplicate `ezkey.access-codes.*` fail-fast at JVM start, use **Rollback** above (restore
+`.bak`), not ownership fixes.
 
 ## Related docs
 

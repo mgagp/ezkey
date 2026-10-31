@@ -77,7 +77,7 @@ class DemoAppAcmeEntrypointScriptTest {
             PosixFilePermission.OWNER_EXECUTE));
     Files.writeString(appRoot.resolve("app.jar"), "noop", StandardCharsets.UTF_8);
 
-    Process process = runAdaptedEntrypoint(appRoot, configFile, null);
+    Process process = runAdaptedEntrypoint(appRoot, configFile, false);
     assertThat(process.exitValue()).isZero();
 
     Set<PosixFilePermission> perms = Files.getPosixFilePermissions(configFile);
@@ -106,14 +106,15 @@ class DemoAppAcmeEntrypointScriptTest {
             PosixFilePermission.OWNER_EXECUTE));
     Files.writeString(appRoot.resolve("app.jar"), "noop", StandardCharsets.UTF_8);
 
-    // Force chmod to fail so the fail-closed path is exercised.
-    Process process =
-        runAdaptedEntrypoint(
-            appRoot, configFile, "s/chmod 600 \"\\$CONFIG\"/false # chmod 600 \"\\$CONFIG\"/");
+    Process process = runAdaptedEntrypoint(appRoot, configFile, true);
     assertThat(process.exitValue()).isNotZero();
   }
 
-  private Process runAdaptedEntrypoint(Path appRoot, Path configFile, String sedExpression)
+  /**
+   * @param forceChmodFailure when true, replace {@code chmod 600} with {@code false} so the
+   *     fail-closed {@code exit 1} path is exercised
+   */
+  private Process runAdaptedEntrypoint(Path appRoot, Path configFile, boolean forceChmodFailure)
       throws Exception {
     Path script = resolveEntrypoint();
     Path localScript = appRoot.resolve("entrypoint.sh");
@@ -124,8 +125,7 @@ class DemoAppAcmeEntrypointScriptTest {
                 "/app/config-template.properties",
                 appRoot.resolve("template.properties").toString())
             .replace("/app/app.jar", appRoot.resolve("app.jar").toString());
-    if (sedExpression != null) {
-      // Apply a simple in-test substitution without relying on host sed quoting.
+    if (forceChmodFailure) {
       adapted = adapted.replace("chmod 600 \"$CONFIG\"", "false # chmod 600 \"$CONFIG\"");
     }
     Files.writeString(localScript, adapted, StandardCharsets.UTF_8);
