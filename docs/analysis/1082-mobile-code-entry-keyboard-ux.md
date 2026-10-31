@@ -326,12 +326,61 @@ Answered by the 2026-10-30 walks:
 
 Still open:
 
-1. **Go / no-go** on §4 before any product code.
-2. **In-app pad:** only if the enrollment button cannot be kept visible on the Pixel. Not required for the auth two-press bug.
+1. **Go / no-go** on §4 before any product code. No separate UX prototype is required before that go (§6).
+2. **In-app pad:** only if the enrollment button cannot be kept visible on the Pixel during the implementation proof. Not required for the auth two-press bug.
 
 ---
 
-## 6. Security reminder (non-negotiable for the future code PR)
+## 6. Prototyping gate, design impact, corpus
+
+### 6.1 The solution is envisioned
+
+No UX prototype phase (no alternate layouts, no Figma, no second concept) before implementation. Both failures were walked on the Pixel. The comparable patterns are already in §3. The outcome and the two slices are in §4.
+
+What is still unproven is mechanical, and it belongs inside the implementation slice, on the Pixel:
+
+- Enrollment: whether the current React Native stack can keep **Terminer l'enrôlement** visible and stable above the system pad. The existing `KeyboardAvoidingView` footer failed that on 2026-10-30. Prove the layout on the device before calling the slice done. Stay on the current stack. Do not add a keyboard library on the first attempt.
+- If that proof fails, stop. The in-app numeric pad is then a new design, and that is the only point that would need a short UX pass before more code. Do not start the pad now.
+- Auth: the shape is known (`keyboardShouldPersistTaps="handled"`, **Approuver** disabled until 2 digits). No layout experiment.
+
+### 6.2 Mobile design impact
+
+No new screen, route, FSM state, API field, or challenge length.
+
+| Surface | Change | Unchanged |
+| --- | --- | --- |
+| Enrollment Wizard, `DraftReady` | **Terminer** stays on screen while the pad is open, disabled until 6 digits (the hook already disables it), enabled in the same place at 6. Pad dismisses on the 6th digit only if the button does not move. One tap verifies. Tap a box to edit. | `Annuler`, back, info card, verify/persist path |
+| Pending Auth, `Ready` + `challengeRequired` | One tap on **Approuver** with the pad open responds once 2 digits are present. **Approuver** is not shown as ready while the boxes are short. | **Refuser** and leave-as-deny with no digits. No layout rebuild unless a later walk shows **Approuver** covered |
+| `PinCodeInput` | Dismiss when `value` reaches `length`. Tap the boxes to focus again. | Six and two boxes, `number-pad`, no SMS autofill |
+
+Length guards stay in the hooks (`challengeMissing` on enrollment, `AUTH_CHALLENGE_LENGTH` on approve). The screen enablement is in addition to those guards. A press that still reaches `handleRespond` with a short code must still set the form error and must not call the API.
+
+### 6.3 Corpus when the code lands
+
+Do not edit these docs in the analysis PR. Update them in the implementation change set, with the behaviour that actually shipped.
+
+| Doc | What exists today | Adjustment |
+| --- | --- | --- |
+| [`MOBILE_SCREENS_AND_WIREFLOWS.md`](../../ezkey_mobile/docs/MOBILE_SCREENS_AND_WIREFLOWS.md) | Prose tables and a navigation mermaid. No bitmap wireframes. Enrollment "Challenge stage" and Pending "Action buttons" do not mention the pad or enablement. | A few sentences on each screen: where the primary sits relative to the pad, and that it is disabled until the length is met. The mermaid does not change (same screens, same transitions). Do not add a wireframe set. |
+| [`MOBILE_APP_STATE_MACHINE.md`](../../ezkey_mobile/docs/MOBILE_APP_STATE_MACHINE.md) | `DraftReady` / `Ready`. Enrollment primary guard is length === 6. Approve guard is length === 2, else form error. Keyboard is not a state. | No new state and no new transition. One presentation note on `DraftReady` and `Ready`: the primary is visible and disabled until the length is met. The approve form-error guard stays as the backstop. |
+| [`MOBILE_FUNCTIONAL_FLOWS.md`](../../ezkey_mobile/docs/MOBILE_FUNCTIONAL_FLOWS.md) | "Missing required 2-digit challenge" → inline form error. Enrollment step 5 is "enter 6 digits, local length check, verify can start". | Auth row: the visible handling is a disabled **Approuver**; the form error remains if respond is still invoked. Enrollment row: verify stays disabled until 6 digits, and the button stays reachable while the pad is open. |
+| [`MOBILE_API_MAPPINGS.md`](../../ezkey_mobile/docs/MOBILE_API_MAPPINGS.md) | Tap approve requires a valid challenge when required. Deny does not. | No change unless a sentence implies the button is pressable while the code is short. No payload change. |
+
+### 6.4 Tests
+
+Jest cannot prove IME geometry or "the button was covered". The Pixel walk in §4 remains the proof for occlusion and for one-press **Approuver**.
+
+| Test | Impact |
+| --- | --- |
+| New `PinCodeInput` test | Digits-only filter, `maxLength`, blur/dismiss when length is reached, tap refocuses. |
+| `usePendingAuth.test.ts` | Keep "empty challenge sets formError and does not call the API" and "deny with empty challenge still responds". Those guards stay. |
+| `useEnrollmentWizard.test.ts` | `primaryDisabled` when a draft exists and the challenge is shorter than 6 is already the hook behaviour. Add that case if the implementation touches the hook. No change if the hook is untouched. |
+| `authenticationContinuity.workflow.test.tsx` | Today's approve cases use `challengeRequired: false`. They stay. Add a challenge-required case only if the screen test asserts **Approuver** `disabled` until 2 digits. |
+| Maestro / functional | Not a CI gate for this UX. The manual Pixel script in §4 is the functional check after the code lands. |
+
+---
+
+## 7. Security reminder (non-negotiable for the future code PR)
 
 - Do not log challenge digits, proof tokens, or signatures.
 - Do not enable SMS OTP autofill APIs for these fields.
@@ -340,7 +389,7 @@ Still open:
 
 ---
 
-## 7. Discoverability
+## 8. Discoverability
 
 - Issue: [#1082](https://github.com/mgagp/ezkey/issues/1082)
 - Living FSM: [`ezkey_mobile/docs/MOBILE_APP_STATE_MACHINE.md`](../../ezkey_mobile/docs/MOBILE_APP_STATE_MACHINE.md)
