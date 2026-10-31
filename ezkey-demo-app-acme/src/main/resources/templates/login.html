@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="_csrf" th:content="${_csrf.token}">
-    <meta name="_csrf_header" th:content="${_csrf.headerName}">
+    <!-- CSRF only when a form/API action is present. Link-lost /t pages must not mint a session cookie. -->
+    <meta name="_csrf" th:if="${showLoginForm != false}" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:if="${showLoginForm != false}" th:content="${_csrf.headerName}">
     <title th:text="${pageTitle}">Login - ACME Inc</title>
     <link rel="stylesheet" th:href="@{/css/neo-brutalism.css}">
     <link rel="stylesheet" th:href="@{/css/acme-theme.css}">

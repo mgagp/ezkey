@@ -25,6 +25,30 @@ image that only listens on 8082 blocks Caddy (`depends_on: service_healthy`).
 Redeploying Acme drops any in-memory sessions that still used the previous cookie name. Do not
 override this to `JSESSIONID` in the optional `/app/config/` volume.
 
+## Access-code slots (`ezkey.access-codes.*`)
+
+Optional multi-tenant evaluator links (`GET /t/{code}`). Bind from external
+`/app/config/application.properties` on volume `demo-app-acme-config` (or the JAR defaults). Loaded
+**once at JVM start** — edit then **restart** the Acme container. Fail-fast if a code is missing,
+not `^[0-9a-f]{32,64}$`, or duplicated across slots.
+
+| Property | Default | Obligation | Description |
+|----------|---------|------------|-------------|
+| `ezkey.access-codes.<slot>.code` | (none) | requis per slot | Capability URL token; 32–64 lowercase hex (`openssl rand -hex 16`). Never log. |
+| `ezkey.access-codes.<slot>.integration-key` | (none) | requis per slot | Tenant Integration API integration key for that slot. |
+| `ezkey.access-codes.<slot>.secret-key` | (none) | requis per slot | Matching secret key. Plaintext on the volume (see `docs/SECURITY_POSTURE.md`). |
+| `ezkey.access-codes.<slot>.label` | (none) | requis per slot | Operator-facing label in logs / login heading (never the code). |
+
+Legacy single-tenant demo keys (optional when not using slots):
+
+| Property | Default | Obligation | Description |
+|----------|---------|------------|-------------|
+| `ezkey.integration-key` | empty | optionnel | Env `EZKEY_INTEGRATION_KEY`. |
+| `ezkey.secret-key` | empty | optionnel | Env `EZKEY_SECRET_KEY`. |
+
+Community operator steps: [`docs/lightsail/acme-access-code-runbook.md`](../docs/lightsail/acme-access-code-runbook.md).
+There is no Actuator `/refresh` for these properties and no second hot-reloaded mapping file.
+
 ## Rate limiting (`ezkey.rate-limit.*`)
 
 | Property | Default | Obligation | Description |

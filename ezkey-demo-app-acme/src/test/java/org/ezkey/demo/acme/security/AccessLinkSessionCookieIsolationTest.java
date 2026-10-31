@@ -116,6 +116,22 @@ class AccessLinkSessionCookieIsolationTest {
   }
 
   @Test
+  void unknownAccessLinkDoesNotMintSessionCookie() {
+    ResponseEntity<String> unknown =
+        restTemplate.exchange(
+            URI.create(baseUrl + "/t/ffffffffffffffffffffffffffffffff"),
+            HttpMethod.GET,
+            HttpEntity.EMPTY,
+            String.class);
+
+    assertThat(unknown.getStatusCode().is2xxSuccessful()).isTrue();
+    assertThat(setCookieHeaders(unknown))
+        .as("link-lost /t must not mint EZKEY_ACME_SESSION (no CSRF meta when form hidden)")
+        .noneMatch(c -> c.startsWith("EZKEY_ACME_SESSION="));
+    assertThat(unknown.getBody()).doesNotContain("name=\"_csrf\"");
+  }
+
+  @Test
   void accessLinkUsernameSubmitSurvivesSiblingJsessionIdOverwrite() {
     ResponseEntity<String> activate =
         restTemplate.exchange(
