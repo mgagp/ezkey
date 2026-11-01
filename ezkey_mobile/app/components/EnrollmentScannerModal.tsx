@@ -5,7 +5,7 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Module: EnrollmentScannerModal
- * Description: React Native modal that scans enrollment QR codes via VisionCamera 5 barcode output (ML Kit).
+ * Description: React Native modal that scans enrollment QR codes via VisionCamera 5 (ML Kit on Android, AVFoundation on iOS).
  * Security Context: Aligns with docs/CRYPTO.md and docs/features/AUTH_SECURITY.md to preserve anti-enumeration guarantees
  *                   by limiting QR payload reuse and adhering to read-once token semantics.
  * @since 2025
@@ -14,19 +14,7 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {ActivityIndicator, Modal, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {Camera, useCameraDevice} from 'react-native-vision-camera';
-import {
-  useBarcodeScannerOutput,
-  type Barcode,
-} from 'react-native-vision-camera-barcode-scanner';
-
-/** Formats aligned with legacy ML Kit enrollment scanner (QR-first). */
-const ENROLLMENT_BARCODE_FORMATS = [
-  'qr-code',
-  'aztec',
-  'data-matrix',
-  'pdf-417',
-  'code-128',
-] as const;
+import {useEnrollmentCodeOutput} from './enrollmentCodeOutput';
 
 /**
  * Modal properties for the enrollment QR scanner.
@@ -42,7 +30,7 @@ type Props = {
 /**
  * Displays the secure enrollment scanner overlay responsible for capturing QR codes emitted by the Admin API.
  *
- * Uses {@link useBarcodeScannerOutput} (ML Kit on iOS and Android).
+ * Uses {@link useEnrollmentCodeOutput}: ML Kit on Android, native AVFoundation on iOS.
  *
  * @param visible Whether the modal should be displayed.
  * @param onDismiss Callback invoked when the user cancels the modal.
@@ -75,29 +63,7 @@ export const EnrollmentScannerModal: React.FC<Props> = ({visible, onDismiss, onS
     [onScanned],
   );
 
-  const onBarcodeScanned = useCallback(
-    (barcodes: Barcode[]) => {
-      for (const barcode of barcodes) {
-        const value = barcode.rawValue;
-        if (value == null || value.length === 0) {
-          continue;
-        }
-        handleScanned(value);
-        return;
-      }
-    },
-    [handleScanned],
-  );
-
-  const onScannerError = useCallback((_error: Error) => {
-    // Scanner errors are rare; enrollment wizard surfaces camera permission issues separately.
-  }, []);
-
-  const barcodeOutput = useBarcodeScannerOutput({
-    barcodeFormats: [...ENROLLMENT_BARCODE_FORMATS],
-    onBarcodeScanned,
-    onError: onScannerError,
-  });
+  const barcodeOutput = useEnrollmentCodeOutput(handleScanned);
 
   const content = useMemo(() => {
     if (device == null) {

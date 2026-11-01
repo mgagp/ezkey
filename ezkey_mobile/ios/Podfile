@@ -5,7 +5,7 @@ require Pod::Executable.execute_command('node', ['-p',
     {paths: [process.argv[1]]},
   )', __dir__]).strip
 
-platform :ios, min_ios_version_supported
+platform :ios, '15.5' # Floor: VisionCamera barcode scanner (ML Kit 9). See docs/IOS_SETUP.md
 prepare_react_native_project!
 
 linkage = ENV['USE_FRAMEWORKS']
@@ -23,21 +23,23 @@ target 'EzkeyMobile' do
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
 
-  pod 'react-native-config', :path => '../node_modules/react-native-config'
-  pod 'GoogleMLKit/BarcodeScanning'
-
-  target 'EzkeyMobileTests' do
-    inherit! :complete
-    # Pods for testing
-  end
-
   post_install do |installer|
-    # https://github.com/facebook/react-native/blob/main/packages/react-native/scripts/react_native_pods.rb#L197-L202
     react_native_post_install(
       installer,
       config[:reactNativePath],
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+
+    # Xcode 27 rejects deployment targets below iOS 15.0 (e.g. AsyncStorage resource
+    # bundle declares 13.0). Raise any lower pod target to the app floor.
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |build_config|
+        current = build_config.build_settings['IPHONEOS_DEPLOYMENT_TARGET']
+        if current.nil? || Gem::Version.new(current) < Gem::Version.new('15.5')
+          build_config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.5'
+        end
+      end
+    end
   end
 end

@@ -3,7 +3,7 @@
 ## Metadata
 
 - **ID:** `TB-2026-0004`
-- **Status:** `draft`
+- **Status:** `in-progress`
 - **Related idea:** `I-2026-0027`
 - **Lane:** `A`
 - **GitHub issue:** `#152`
@@ -50,3 +50,15 @@ This tracer bullet covers what was originally Phase 1 + Phase 2 of the iOS plan.
 - **Analysis gate:** ADR-MOB-0005 accepted, R-2026-0003 integrated ✅
 - **Design gate:** toolchain compatibility matrix confirmed during execution
 - **Implementation gate:** clean simulator launch with no unresolved native dependency errors
+
+## Execution notes (2026-11-01)
+
+- Stale `ios/` deleted; regenerated from the RN 0.88.1 template (Swift `AppDelegate` + `SceneDelegate`),
+  bundle id `org.ezkey.mobile`, display name `Ezkey`. Toolchain: Xcode 27.0, CocoaPods 1.17.0, Ruby 4.0.
+- **Replan trigger fired:** the ML Kit barcode scanner requires iOS 15.5 and ships no arm64 simulator
+  slice. Decisions (maintainer): minimum iOS **15.5**; iOS decodes enrollment QR with VisionCamera's
+  native AVFoundation object output, ML Kit stays Android-only (platform hook `useEnrollmentCodeOutput`).
+- Xcode 27 rejects pod targets below iOS 15.0 → Podfile `post_install` raises pods to 15.5.
+- Evidence: simulator build succeeds; the app shell (home screen) launches on iPhone 18 Pro / iOS 27.
+  Jest 324/324, `tsc` clean, lint 0 errors; Android and iOS release bundles both build.
+- Baseline documented in `ezkey_mobile/docs/IOS_SETUP.md`.

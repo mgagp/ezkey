@@ -7,9 +7,9 @@ its internal data model, and its relationship to the Auth API without reopening 
 ## Current Scope Note
 
 The current mobile implementation and security posture should be read as **Android-first**.
-iOS remains a **later planned milestone** and is **not** a short-term parity or release target.
-Reviewers should not treat missing iOS parity as a current defect unless a document explicitly claims
-that parity already exists.
+The **iOS rebuild is in progress** (issue #152, ADR-MOB-0005); see [IOS_SETUP.md](IOS_SETUP.md) for
+the baseline and known gaps. Reviewers should not treat missing iOS parity as a current defect unless
+a document explicitly claims that parity already exists.
 
 Root-level documents remain canonical for shared Ezkey product identity, protocol semantics, cryptographic wire
 formats, and signed payload definitions. The documents in this directory interpret those shared truths for the
@@ -67,6 +67,7 @@ reference mobile app.
 
 | Document | Category | When to read it |
 | --- | --- | --- |
+| [IOS_SETUP.md](IOS_SETUP.md) | iOS setup and baseline | When setting up the iOS toolchain, running the simulator, or checking the iOS floor and known gaps. |
 | [NATIVE_MODULES.md](NATIVE_MODULES.md) | Supporting technical detail | When the primary architecture doc is not deep enough on Android/iOS bridges. |
 | [MOBILE_STRONGBOX_MANUAL_CHECKLIST.md](MOBILE_STRONGBOX_MANUAL_CHECKLIST.md) | Physical-device StrongBox evidence | When recording STRONG tier / StrongBox fallback on a phone (MOB-006); not CI. |
 | [MOBILE_CRYPTO_REFERENCE.md](MOBILE_CRYPTO_REFERENCE.md) | Supporting security detail | When reviewing mobile-specific crypto wording and storage caveats. |
