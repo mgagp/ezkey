@@ -276,6 +276,33 @@ Lab Papers are a third publication type. Full method: [`../ezkey-org-editorial/L
 
 This section records the design decisions made during active development, in reverse chronological order. Use it as a reference when evolving the site to ensure new work stays coherent with established patterns.
 
+### November 2026 — Entry pages vs document pages (`community-instance.html`)
+
+**Decision ([#1115](https://github.com/mgagp/ezkey/issues/1115), 2026-11-01, Marc):** `community-instance.html` /
+`fr/community-instance.html` (target of the home **Alpha · Community instance** badge) moved from a
+Markdown-style dump to an **entry-page** layout: static amber badge, lede, one primary CTA, access
+paths as cards, services as tiles, one "Before you start" box, three numbered next steps.
+
+**Editorial principles (apply when creating or challenging any page):**
+
+1. **Name the page's job first.** A *document page* is read (articles, digests, Lab Papers). An *entry
+   page* is acted on (community instance, signup, guides hub). Entry pages lead with what the visitor
+   can do; document pages lead with what there is to read.
+2. **One primary action per entry page** (gradient button), at most one secondary (outlined button);
+   everything else stays an inline link. If two actions look equally primary, the page has two jobs.
+3. **Match the shape to the content:** choices → cards; inventories (hosts, services) → tiles;
+   sequences → numbered steps; caveats → one scope box, said **once** (same rule as Lab Papers).
+4. **Markdown-dump smell test:** a page that is only `h2` + `p` + `ul` *and* asks the reader to act is
+   under-using HTML. Prose stays prose on document pages; do not card-ify essays.
+5. **Bold is a signal, not a texture.** A handful of bold phrases per page at most (the old community
+   page had 38, which cancels emphasis).
+6. **Honest up front, detailed once.** Keep a one-line honesty note near the CTA (e.g. "Alpha, no
+   production SLA"); the full limits live in the scope box, not repeated across sections.
+7. **Reuse before inventing.** Amber badge vocabulary for alpha status (static off the home page:
+   motion stays on the home hero), brand gradient for primary buttons and step numbers, existing
+   `.callout` amber for caveats. No new hue, no library.
+8. **Language links live in `nav-top`**, not repeated in the body.
+
 ### May 2026 — Amber pill section dividers on `articles.html`
 
 **Decision:** Section headings on `articles.html` / `fr/articles.html` use an **amber pill divider** style (Direction B, chosen over a plain rule and an architectural band after A/B/C preview comparison).
