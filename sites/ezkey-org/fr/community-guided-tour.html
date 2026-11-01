@@ -189,13 +189,124 @@
             text-align: center;
         }
         footer.doc-footer a { color: rgba(255, 255, 255, 0.9); }
+
+        /* Sequence-page components (see AGENTS.md § Entry pages vs document pages). */
+        ol { margin: 8px 0 12px 1.4em; font-size: 0.98rem; }
+
+        .prep-box {
+            margin: 0 0 26px;
+            padding: 18px 20px;
+            border: 2px solid #667eea;
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+        }
+
+        .prep-box h2 { margin: 0 0 10px; font-size: 1.05rem; }
+
+        .checklist { list-style: none; margin: 0 0 10px; }
+
+        .checklist li {
+            position: relative;
+            padding-left: 28px;
+            margin-bottom: 8px;
+        }
+
+        .checklist li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 3px;
+        }
+
+        .checklist .check-title { font-weight: 700; color: #111; }
+
+        .prep-note { margin: 0; font-size: 0.88rem; color: #4a4a63; }
+
+        .steps {
+            list-style: none;
+            counter-reset: step;
+            margin: 10px 0 14px;
+            display: grid;
+            gap: 10px;
+        }
+
+        .steps li {
+            counter-increment: step;
+            position: relative;
+            padding: 3px 0 3px 46px;
+            min-height: 34px;
+            margin: 0;
+        }
+
+        .steps li::before {
+            content: counter(step);
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .steps .step-link { display: block; font-weight: 700; color: #3847a8; }
+        .steps .step-desc { display: block; font-size: 0.92rem; color: #4a4a63; }
+
+        h2.step-h {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 36px;
+            padding-top: 18px;
+            border-top: 1px solid #e3e4f3;
+            scroll-margin-top: 12px;
+        }
+
+        .step-num {
+            flex-shrink: 0;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            font-size: 1rem;
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .page-foot {
+            margin-top: 30px;
+            padding-top: 18px;
+            border-top: 1px solid #e3e4f3;
+            font-size: 0.92rem;
+        }
+
+        .page-foot a { color: #4a56c4; font-weight: 600; }
     </style>
 </head>
 <body>
     <div class="shell">
         <p class="nav-top">
             <a href="/fr/">Accueil</a>
-            · <a href="/fr/articles.html">Articles</a>
+            · <a href="/fr/guides.html">Guides</a>
             · <a href="/fr/community-instance.html">Instance communautaire</a>
             · <a href="/community-guided-tour.html">English</a>
         </p>
@@ -210,139 +321,128 @@
                 <p class="kicker">Public visé : personnes ayant accès à l’instance communautaire ezkey.online, à l’aise avec une UI technique — pas un grand public novice.</p>
             </header>
 
-            <p><em>Les figures reprennent chaque étape numérotée.</em></p>
+            <section class="prep-box" aria-labelledby="before-you-begin">
+                <h2 id="before-you-begin">Avant de commencer</h2>
+                <ul class="checklist">
+                    <li><span class="check-title">Votre code d’activation</span>, issu de l’<a href="/fr/community-signup.html">inscription instantanée</a> (affiché une seule fois) ou reçu par courriel.</li>
+                    <li><span class="check-title">L’Admin UI</span> sur <a href="https://admin-ui.ezkey.online" rel="noopener noreferrer">admin-ui.ezkey.online</a>.</li>
+                    <li><span class="check-title">Un téléphone :</span> l’app mobile Ezkey, ou le <a href="#demo-device">Demo Device</a> exécuté en local.</li>
+                    <li><span class="check-title">Une deuxième fenêtre de navigateur</span> (navigation privée ou profil distinct) pour la <a href="https://demo-acme.ezkey.online/login">démo Acme</a>.</li>
+                </ul>
+                <p class="prep-note">Ezkey est en alpha ; ses limites sont décrites une seule fois, sur la <a href="/fr/community-instance.html">page de l’instance communautaire</a>.</p>
+            </section>
 
             <h2>Objectif de ce guide</h2>
-            <p>Ce parcours s’adresse à une <strong>personne ayant accès à l’instance communautaire</strong> qui a manifesté son intérêt pour explorer Ezkey : profil technique (collègue informaticien, équipe produit ou sécurité, journaliste spécialisé, etc.).</p>
-            <p><strong>But :</strong> faire vivre une <strong>expérience Ezkey bout en bout</strong>, du premier contact avec la console jusqu’à une authentification réussie via l’application mobile, en s’appuyant sur une <strong>application de démonstration</strong> intégrée à l’instance communautaire ezkey.online.</p>
-            <p>À l’arrivée, un opérateur aura préparé le terrain : <strong>tenant</strong>, <strong>mode d’activation différé</strong>, communication du <strong>code d’activation</strong>. Si vous avez utilisé l’<a href="/fr/community-signup.html">inscription instantanée</a>, le code ne s’est affiché qu’une fois sur cette page ; ouvrez l’Admin UI sur <a href="https://admin-ui.ezkey.online" rel="noopener noreferrer">admin-ui.ezkey.online</a>. Ce guide décrit ensuite une <strong>séquence scriptée</strong>.</p>
-            <p><strong>Où ouvrir dans le navigateur :</strong> l’URL de l’<strong>Admin UI</strong> de votre tenant vous est envoyée <strong>avec le code d’activation</strong> lors de l’accueil sur l’instance communautaire — ce n’est pas un signet public sur ezkey.org. L’<strong>application démo Acme</strong> de ce parcours est publique : <a href="https://demo-acme.ezkey.online/login">https://demo-acme.ezkey.online/login</a> (écran de connexion <em>ACME Inc</em> propulsé par Ezkey ; utilisez d’abord <strong>Configure API Key</strong> / configuration de la clé, puis <strong>Login with EZKey</strong>).</p>
-            <div class="callout">
-                <strong>À garder à l’esprit :</strong> Ezkey est en <strong>alpha</strong>. L’instance communautaire sur <strong>ezkey.online</strong> tourne à petit volume. L’alpha n’est pas un SLA de production, ni une parité Duo/Okta/Keycloak, ni une équivalence WebAuthn/FIDO2/passkey. Délais, canaux et gestion des secrets peuvent différer d’un déploiement sérieux.
-            </div>
-            <p>Une fois les étapes assimilées, le participant peut consacrer quelques minutes au <strong>dashboard</strong> du tenant dans l’Admin UI — nous y revenons en fin de parcours.</p>
+            <p>Ce parcours s’adresse à une personne ayant accès à l’instance communautaire qui souhaite explorer Ezkey : profil technique (collègue informaticien, équipe produit ou sécurité, journaliste spécialisé, etc.).</p>
+            <p>Le but est de faire vivre une expérience Ezkey de bout en bout, du premier contact avec la console jusqu’à une authentification réussie via l’application mobile, en s’appuyant sur une application de démonstration intégrée à l’instance communautaire ezkey.online. Les figures reprennent chaque étape numérotée. Une fois les étapes assimilées, prenez quelques minutes pour le tableau de bord du tenant dans l’Admin UI ; nous y revenons en fin de parcours.</p>
 
-            <h2>Pas d’app mobile Ezkey ? Utilisez le Demo Device</h2>
-            <p>L’<strong>application mobile</strong> Ezkey est encore en <strong>test interne limité</strong> et n’est en général pas accessible aux évaluateurs anonymes. En attendant une publication mobile publique, vous pouvez suivre ce parcours avec l’<strong>Ezkey Demo Device</strong> — un téléphone simulé autonome, publié sur GitHub et exécutable en local :</p>
-            <p><a href="https://github.com/mgagp/ezkey-demo-device" rel="noopener noreferrer">github.com/mgagp/ezkey-demo-device</a></p>
+            <h2 id="demo-device">Pas d’app mobile Ezkey ? Utilisez le Demo Device</h2>
+            <p>L’application mobile Ezkey est encore en test interne limité et n’est en général pas accessible aux évaluateurs anonymes. En attendant une publication mobile publique, vous pouvez suivre ce parcours avec l’Ezkey Demo Device, un téléphone simulé autonome, publié sur GitHub et exécutable en local : <a href="https://github.com/mgagp/ezkey-demo-device" rel="noopener noreferrer">github.com/mgagp/ezkey-demo-device</a>.</p>
             <ul>
-                <li>Lancez-le avec <strong>Docker</strong> (voir le README du dépôt) ; par défaut il cible l’<strong>Auth API communautaire</strong> (<code>auth-api.ezkey.online</code>) et s’ouvre sur <strong>localhost:3080</strong>.</li>
-                <li>Il reprend la même <strong>cryptographie d’enrôlement et d’approbation</strong> que le client mobile, à des fins de démonstration.</li>
-                <li>Ce n’est <strong>pas un logiciel de production</strong> — uniquement un <strong>outil d’assistance à la démo</strong>. Il n’offre pas les protections matérielles d’un vrai téléphone, en particulier le <strong>Secure Storage</strong> et le <strong>StrongBox</strong> (stockage de clés soutenu par le matériel Android) que l’app mobile est conçue pour utiliser.</li>
+                <li>Lancez-le avec Docker (voir le README du dépôt) ; par défaut il cible l’Auth API communautaire (<code>auth-api.ezkey.online</code>) et s’ouvre sur <code>localhost:3080</code>.</li>
+                <li>Il reprend la même cryptographie d’enrôlement et d’approbation que le client mobile, à des fins de démonstration.</li>
+                <li>C’est un outil d’assistance à la démo, pas un logiciel de production. Il n’offre pas les protections matérielles d’un vrai téléphone, en particulier le Secure Storage et le StrongBox (stockage de clés soutenu par le matériel Android) que l’app mobile est conçue pour utiliser.</li>
             </ul>
             <p>Dans la suite de ce guide, chaque mention de « app mobile » vise aussi le Demo Device comme substitut pratique sur l’instance communautaire pour les évaluateurs en libre-service.</p>
 
-            <h2>Flux principal du scénario (vue d’ensemble)</h2>
-            <ol>
-                <li>Activer son accès Tenant Admin (<strong>code d’activation</strong> puis <strong>association du mobile</strong> depuis l’écran de connexion — app mobile Ezkey ou <strong>Demo Device</strong>).</li>
-                <li>Créer une <strong>intégration</strong> (première action métier dans l’Admin UI).</li>
-                <li>Créer une <strong>clé d’API</strong> pour cette intégration ; conserver précieusement <strong>identifiant + secret</strong> tels qu’affichés à la création (hors navigateur, selon OS de l’équipe).</li>
-                <li>Créer un <strong>enrôlement</strong> et le rattacher au <strong>mobile</strong> ou au <strong>Demo Device</strong> (scan QR + validation du défi à six chiffres).</li>
-                <li>Dans un <strong>autre navigateur</strong> (fenêtre privée ou profil distinct), ouvrir <a href="https://demo-acme.ezkey.online/login">la démo Acme</a> sur <strong>demo-acme.ezkey.online/login</strong>, renseigner la <strong>clé d’API</strong> via <strong>Configure API Key</strong>, puis lancer une <strong>connexion</strong> avec l’identifiant utilisateur associé à l’enrôlement.</li>
-                <li>Sur le téléphone ou le Demo Device : saisir le <strong>défi à 2 chiffres</strong> affiché par la démo, puis <strong>examiner et approuver</strong> pendant la fenêtre (compte à rebours).</li>
+            <h2>Le parcours en un coup d’œil</h2>
+            <ol class="steps">
+                <li><a class="step-link" href="#step-1">Activer l’accès Tenant Admin</a><span class="step-desc">Code d’activation, puis association du téléphone depuis l’écran de connexion.</span></li>
+                <li><a class="step-link" href="#step-2">Créer une intégration</a><span class="step-desc">La première action métier dans l’Admin UI.</span></li>
+                <li><a class="step-link" href="#step-3">Créer une clé d’API pour celle-ci</a><span class="step-desc">Conserver l’identifiant et le secret hors du navigateur.</span></li>
+                <li><a class="step-link" href="#step-4">Enrôler le téléphone</a><span class="step-desc">Scan du QR et défi à six chiffres.</span></li>
+                <li><a class="step-link" href="#step-5">Donner la clé d’API à la démo Acme</a><span class="step-desc">Dans une autre fenêtre de navigateur.</span></li>
+                <li><a class="step-link" href="#step-6">Se connecter et approuver sur le téléphone</a><span class="step-desc">Saisir le défi à 2 chiffres, puis approuver pendant le compte à rebours.</span></li>
+                <li><a class="step-link" href="#step-7">Session établie</a><span class="step-desc">La démo affiche un écran connecté : le parcours complet a réussi.</span></li>
             </ol>
-            <p>Si tout se déroule correctement, l’app démo affiche un <strong>écran de session</strong> pseudo-application, avec possibilité de <strong>déconnexion</strong> — signal que le flux complet a réussi.</p>
 
             <h2>Pourquoi l’intégration avant la clé API (et où entre l’app démo)</h2>
-            <p>L’Admin UI pilote l’organisation : intégrations, enrôlements, admins, etc. Pour qu’une application « réelle » parle aux services Ezkey, l’usage normal passe par un <strong>backend</strong> qui utilise l’<strong>Integration API</strong> et des <strong>clés d’API</strong> pour des flux machine-à-machine.</p>
+            <p>L’Admin UI pilote l’organisation : intégrations, enrôlements, admins, etc. Pour qu’une application « réelle » parle aux services Ezkey, l’usage normal passe par un backend qui utilise l’Integration API et des clés d’API pour des flux machine-à-machine.</p>
             <ul>
-                <li>Votre interlocuteur <strong>automatique</strong>, une fois une intégration définie, c’est l’<strong>application intégrée</strong> — pas seulement les écrans Admin UI.</li>
-                <li>Sur l’instance communautaire, l’<strong>app démo Acme</strong> sur <a href="https://demo-acme.ezkey.online/login">demo-acme.ezkey.online/login</a> joue le rôle d’application intégrée pour éprouver le cycle sans coder une appli complète tout de suite.</li>
-                <li>Un <strong>SDK Java</strong> fait partie du projet (la démo s’appuie dessus). <strong>Publication et disponibilité</strong> suivent le calendrier décrit sur ezkey.org.</li>
+                <li>Une fois une intégration définie, votre interlocuteur automatique, c’est l’application intégrée, pas seulement les écrans de l’Admin UI.</li>
+                <li>Sur l’instance communautaire, l’app démo Acme sur <a href="https://demo-acme.ezkey.online/login">demo-acme.ezkey.online/login</a> joue le rôle d’application intégrée, pour éprouver le cycle sans coder une appli complète tout de suite.</li>
+                <li>Un SDK Java fait partie du projet (la démo s’appuie dessus). Publication et disponibilité suivent le calendrier décrit sur ezkey.org.</li>
             </ul>
 
-            <h2>Étape 1 — Activer l’accès Tenant Admin (code d’activation + mobile)</h2>
-            <p>Ouvrir l’<strong>Admin UI</strong> avec l’URL qui vous a été communiquée avec le code d’activation, et atteindre l’écran de <strong>connexion</strong>.</p>
+            <h2 id="step-1" class="step-h"><span class="step-num">1</span>Activer l’accès Tenant Admin (code d’activation + mobile)</h2>
+            <p>Ouvrir l’Admin UI sur <a href="https://admin-ui.ezkey.online" rel="noopener noreferrer">admin-ui.ezkey.online</a> et atteindre l’écran de connexion.</p>
             <ol>
-                <li>Saisir le <strong>code d’activation</strong> communiqué par l’opérateur (activation différée côté Global Admin).</li>
-                <li>Suivre le flux pour <strong>associer le téléphone</strong> : <strong>scanner le QR</strong> avec l’app mobile Ezkey ou le <strong>Demo Device</strong> (localhost:3080) et compléter les étapes à l’écran.</li>
+                <li>Saisir le <strong>code d’activation</strong> reçu.</li>
+                <li>Suivre le flux pour associer le téléphone : scanner le QR avec l’app mobile Ezkey ou le Demo Device (<code>localhost:3080</code>) et compléter les étapes à l’écran.</li>
             </ol>
             <figure class="guide-figure">
                 <img src="/community-guided-tour/community-tour-01-admin-login-activation.webp" alt="Admin UI : écran de connexion avec code d’activation et zone QR pour l’app mobile" width="960" height="540" loading="lazy" decoding="async">
                 <figcaption>Connexion avec code d’activation et fil QR pour associer l’app mobile.</figcaption>
             </figure>
 
-            <h2>Étape 2 — Créer une intégration</h2>
-            <p>Aller à la section <strong>integrations</strong>, puis <strong>créer une intégration</strong> avec les champs requis par l’instance communautaire (libellés, identifiants fonctionnels selon le formulaire).</p>
+            <h2 id="step-2" class="step-h"><span class="step-num">2</span>Créer une intégration</h2>
+            <p>Aller à la section <strong>Intégrations</strong>, puis créer une intégration avec les champs requis par l’instance communautaire (libellés, identifiants fonctionnels selon le formulaire).</p>
             <figure class="guide-figure">
                 <img src="/community-guided-tour/community-tour-02-integration-created.webp" alt="Admin UI : formulaire ou liste montrant une intégration créée" width="960" height="540" loading="lazy" decoding="async">
                 <figcaption>Intégration créée dans l’Admin UI (formulaire ou liste).</figcaption>
             </figure>
 
-            <h2>Étape 3 — Créer une clé d’API pour cette intégration</h2>
+            <h2 id="step-3" class="step-h"><span class="step-num">3</span>Créer une clé d’API pour cette intégration</h2>
             <p>Depuis le contexte de l’intégration :</p>
             <ol>
-                <li>Lancer la création d’une <strong>clé d’API</strong>.</li>
-                <li>Lorsque l’UI affiche <strong>identifiant + secret</strong> (secrets machine-à-machine), les <strong>copier et les stocker hors navigateur</strong> immédiatement ; la récupération ultérieure n’est en général plus possible telle quelle.</li>
+                <li>Lancer la création d’une clé d’API.</li>
+                <li>Lorsque l’UI affiche l’identifiant et le secret (secrets machine-à-machine), <strong>les copier et les stocker hors du navigateur immédiatement</strong> ; la récupération ultérieure n’est en général plus possible telle quelle.</li>
             </ol>
             <figure class="guide-figure">
                 <img src="/community-guided-tour/community-tour-03-api-key-created.webp" alt="Admin UI : clé d’API nouvellement créée (secret partiellement masqué)" width="960" height="540" loading="lazy" decoding="async">
                 <figcaption>Identifiant et secret de clé API affichés une seule fois juste après la création.</figcaption>
             </figure>
 
-            <h2>Étape 4 — Enrôlement : QR + défi à six chiffres</h2>
-            <p>À la création de l’enrollment, renseignez l’<strong>Identifiant utilisateur</strong> (<code>userIdentifier</code>) avec exactement le username que vous saisirez sur la démo ACME (par exemple <code>alice</code>). Le <strong>Nom</strong> n’est qu’un libellé d’affichage : il ne sert pas au login. Si l’Identifiant utilisateur est vide ou différent de ce username, le login démo échouera.</p>
-            <p>Lorsque le produit affiche <strong>QR + défi numérique</strong> (par ex. six chiffres), sur l’app mobile ou le Demo Device : <strong>scanner puis saisir</strong>.</p>
+            <h2 id="step-4" class="step-h"><span class="step-num">4</span>Enrôlement : QR + défi à six chiffres</h2>
+            <p>À la création de l’enrôlement, renseignez l’<strong>Identifiant utilisateur</strong> (<code>userIdentifier</code>) avec exactement le nom d’utilisateur que vous saisirez sur la démo Acme (par exemple <code>alice</code>). Le <strong>Nom</strong> n’est qu’un libellé d’affichage : il ne sert pas au login. Si l’Identifiant utilisateur est vide ou différent de ce nom d’utilisateur, le login démo échouera.</p>
+            <p>Lorsque le produit affiche le QR et le défi numérique (par ex. six chiffres), scannez puis saisissez le défi sur l’app mobile ou le Demo Device.</p>
             <div class="callout">
-                <strong>Alpha communautaire et déploiement durci.</strong> Sur ezkey.online, le QR et le défi numérique apparaissent souvent <strong>sur un même écran</strong> de l’Admin UI. Dans des environnements plus stricts, on <strong>répartit plutôt les canaux</strong> (par ex. QR par courriel, défi par SMS). L’instance communautaire n’intègre pas tous les connecteurs de messagerie ou d’opérateurs qu’on attendrait d’un produit mature.
+                <strong>Alpha communautaire et déploiement durci.</strong> Sur ezkey.online, le QR et le défi numérique apparaissent souvent sur un même écran de l’Admin UI. Dans des environnements plus stricts, on répartit plutôt les canaux (par ex. QR par courriel, défi par SMS). L’instance communautaire n’intègre pas tous les connecteurs de messagerie ou d’opérateurs qu’on attendrait d’un produit mature.
             </div>
             <figure class="guide-figure">
                 <img src="/community-guided-tour/community-tour-04-enrollment-qr-challenge.webp" alt="Admin UI : écran d’enrôlement avec QR et défi" width="960" height="540" loading="lazy" decoding="async">
                 <figcaption>Enrôlement avec QR et défi numérique complété depuis le téléphone.</figcaption>
             </figure>
 
-            <h2>Étape 5 — App démo Acme : saisir la clé API (autre navigateur)</h2>
-            <p>Ouvrir une <strong>nouvelle fenêtre</strong> ou <strong>navigation privée</strong> pour ne pas mélanger session Tenant Admin et rôle « appli intégrée ».</p>
+            <h2 id="step-5" class="step-h"><span class="step-num">5</span>App démo Acme : saisir la clé API (autre navigateur)</h2>
+            <p>Ouvrir une nouvelle fenêtre ou une navigation privée pour ne pas mélanger la session Tenant Admin et le rôle « appli intégrée ».</p>
             <ol>
-                <li>Ouvrir <a href="https://demo-acme.ezkey.online/login">https://demo-acme.ezkey.online/login</a> dans cette session navigateur séparée.</li>
-                <li>Utiliser <strong>Configure API Key</strong> et saisir l’<strong>identifiant et le secret</strong> de clé d’intégration depuis l’Admin UI (la démo ne les garde que pour cette session de navigateur).</li>
+                <li>Ouvrir <a href="https://demo-acme.ezkey.online/login">demo-acme.ezkey.online/login</a> dans cette session de navigateur séparée.</li>
+                <li>Utiliser <strong>Configure API Key</strong> et saisir l’identifiant et le secret de la clé d’intégration depuis l’Admin UI (la démo ne les garde que pour cette session de navigateur).</li>
                 <li>Enchaîner avec <strong>Login with EZKey</strong> une fois la clé appliquée.</li>
             </ol>
-            <p>Dans vos propres intégrations, traitez les clés comme des <strong>secrets côté serveur</strong> — pas comme quelque chose que les utilisateurs finaux collent dans une page.</p>
+            <p>Dans vos propres intégrations, traitez les clés comme des secrets côté serveur, pas comme quelque chose que les utilisateurs finaux collent dans une page.</p>
             <figure class="guide-figure">
                 <img src="/community-guided-tour/community-tour-05-demo-acme-api-key.webp" alt="Demo Acme : saisie de la clé d’API" width="960" height="540" loading="lazy" decoding="async">
                 <figcaption>Démo Acme : saisie de la clé d’API d’intégration.</figcaption>
             </figure>
 
-            <h2>Étape 6 — Login avec l’utilisateur d’enrôlement, approbation mobile</h2>
+            <h2 id="step-6" class="step-h"><span class="step-num">6</span>Login avec l’utilisateur d’enrôlement, approbation mobile</h2>
             <p>Au login, utilisez le même identifiant (la valeur de l’Identifiant utilisateur, pas le Nom).</p>
-            <p>La démo affiche un <strong>défi à 2 chiffres</strong> sur l’écran d’attente. Sur l’app mobile ou le Demo Device : ouvrir la demande en attente, <strong>saisir ce même défi à 2 chiffres</strong>, puis <strong>approuver</strong> dans la fenêtre affichée par la démo.</p>
+            <p>La démo affiche un défi à 2 chiffres sur l’écran d’attente. Sur l’app mobile ou le Demo Device : ouvrir la demande en attente, saisir ce même défi à 2 chiffres, puis approuver dans la fenêtre affichée par la démo.</p>
             <figure class="guide-figure">
                 <img src="/community-guided-tour/community-tour-06-demo-acme-login-pending.webp" alt="Demo Acme : écran d’attente pendant la validation mobile" width="960" height="540" loading="lazy" decoding="async">
                 <figcaption>La démo attend l’approbation dans l’app mobile Ezkey.</figcaption>
             </figure>
 
-            <h2>Étape 7 — Session établie côté démo</h2>
-            <p>Après accord sur le téléphone, la démo doit passer à une vue <strong>session active</strong> (pseudo-application) avec <strong>déconnexion</strong> disponible selon les écrans.</p>
+            <h2 id="step-7" class="step-h"><span class="step-num">7</span>Session établie côté démo</h2>
+            <p>Après accord sur le téléphone, la démo doit passer à une vue de session active (pseudo-application), avec déconnexion disponible selon les écrans.</p>
             <figure class="guide-figure">
                 <img src="/community-guided-tour/community-tour-07-demo-acme-session-success.webp" alt="Demo Acme : session active" width="960" height="540" loading="lazy" decoding="async">
                 <figcaption>Session réussie dans la démo après accord sur le téléphone.</figcaption>
             </figure>
 
             <h2>Ensuite : tableau de bord du tenant</h2>
-            <p>Revenir sur le <strong>tableau de bord</strong> du tenant dans l’Admin UI : il résume l’activité et renvoie vers les autres sections utilisées dans ce parcours.</p>
+            <p>Revenir sur le <strong>Tableau de bord</strong> du tenant dans l’Admin UI : il résume l’activité et renvoie vers les autres sections utilisées dans ce parcours.</p>
             <figure class="guide-figure">
                 <img src="/community-guided-tour/community-tour-08-dashboard-overview.webp" alt="Admin UI : tableau de bord du tenant" width="960" height="540" loading="lazy" decoding="async">
                 <figcaption>Vue d’ensemble du tableau de bord après le parcours démo.</figcaption>
             </figure>
+            <p>Ce parcours n’épuise pas le produit ; il donne une succession fonctionnelle utile pour un invité qui veut juger Ezkey avant de se projeter.</p>
 
-            <h2>En résumé</h2>
-            <table class="summary">
-                <thead><tr><th>Étape</th><th>Rôle narratif principal</th></tr></thead>
-                <tbody>
-                    <tr><td>1</td><td>Déverrouiller Tenant Admin ; lier l’appareil (mobile ou Demo Device).</td></tr>
-                    <tr><td>2</td><td>Ancrer Ezkey dans un périmètre applicatif.</td></tr>
-                    <tr><td>3</td><td>Identifiants machine-à-machine (clé Integration API).</td></tr>
-                    <tr><td>4</td><td>Enrôler l’appareil (QR + défi sur l’instance communautaire).</td></tr>
-                    <tr><td>5–7</td><td>Pousser jusqu’à la demande MFA puis le succès côté démo.</td></tr>
-                </tbody>
-            </table>
-            <p>Ce parcours n’épuise pas le produit ; il donne une <strong>succession fonctionnelle</strong> utile pour un invité qui veut juger Ezkey avant de se projeter.</p>
-
-            <p class="doc-link-sibling"><a href="/fr/articles.html">Retour aux articles</a></p>
-            <p class="doc-link-sibling"><a href="/fr/community-instance.html">Instance communautaire — alpha sur ezkey.online</a></p>
-            <p class="doc-link-sibling"><a href="/fr/community-signup.html">Inscription instantanée</a></p>
-            <p class="doc-link-sibling"><a href="/community-guided-tour.html">Read in English</a></p>
+            <div class="page-foot">
+                <p><a href="/fr/guides.html">← Tous les guides</a> · <a href="/fr/community-instance.html">Instance communautaire</a> · <a href="/fr/community-signup.html">Inscription instantanée</a></p>
+            </div>
         </article>
 
         <footer class="doc-footer">

@@ -303,6 +303,20 @@ paths as cards, services as tiles, one "Before you start" box, three numbered ne
    `.callout` amber for caveats. No new hue, no library.
 8. **Language links live in `nav-top`**, not repeated in the body.
 
+**Pass 2 ([#1119](https://github.com/mgagp/ezkey/issues/1119), 2026-11-01):** applied to
+`source-and-evaluation.html` (entry page: two sibling evaluation cards, numbered run-locally steps,
+documentation tiles) and `community-guided-tour.html` (sequence page: "Before you begin" checklist,
+linked overview stepper, numbered step headings). Four more principles:
+
+9. **First screen answers three questions:** what is this, what do I need, what do I do next. On a
+   guide, "what do I need" is a short checklist before the first step.
+10. **In guides, bold means "find this on screen"** (a button, field, menu label, matching the Admin UI
+    locale) plus at most one critical warning. The tour went from 87 bold phrases to 8.
+11. **Evaluation paths are siblings.** Run locally and the community instance point to each other with
+    the same card pattern, so a visitor who picks the wrong door finds the other in one click.
+12. **Overview once, and linked.** A sequence page has a single overview that links to its steps; no
+    closing recap table repeating it.
+
 ### May 2026 — Amber pill section dividers on `articles.html`
 
 **Decision:** Section headings on `articles.html` / `fr/articles.html` use an **amber pill divider** style (Direction B, chosen over a plain rule and an architectural band after A/B/C preview comparison).
