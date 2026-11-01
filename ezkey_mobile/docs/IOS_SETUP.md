@@ -71,8 +71,31 @@ The split lives in one hook, resolved per platform by Metro:
 
 Both accept the same QR-first format set (QR, Aztec, Data Matrix, PDF417, Code 128).
 
+## Enrollment without a camera (simulator, debug only)
+
+The simulator has no camera. Use the existing **F2a controlled enrollment seed bypass** (same as the
+Android Maestro harness; see `docs/MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md`). It is gated by all of:
+
+- native debug build: iOS `EzkeyCryptoModule` exports `isDebugBuild` from the Swift `DEBUG` condition
+  (Xcode Debug configuration only; Release reports `false`);
+- `.env`: `EZKEY_ENROLLMENT_SEED_BYPASS_ENABLED=true` and `EZKEY_ENROLLMENT_SEED_BYPASS_ACK=F2A_TEST_ONLY`
+  (copy `.env.example` to `.env`; rebuild the native app after any change — `react-native-config`
+  reads `.env` at build time).
+
+Then: **+** → paste `enrollmentId|proofToken|authUrl` (or the JSON QR payload) → *Use controlled
+test seed*. Bind/verify trust checks still run.
+
+**Local backend:** the iOS simulator shares the Mac network stack, so `http://localhost:8080`
+reaches the local Docker stack directly (Android emulator needs `10.0.2.2`). Plain HTTP to localhost
+is allowed by ATS (`NSAllowsLocalNetworking`). No ngrok: use localhost.
+
+**Maestro on iOS:** `brew install mobile-dev-inc/tap/maestro`; existing flows using `ezkey.e2e.*`
+test IDs (e.g. `maestro/flows/pilot_enrollment_seed_bypass_runtime.yaml`) run on the booted
+simulator with `maestro --device <simulator-udid> test <flow>`.
+
 ## Known iOS gaps (expected during the rebuild)
 
-- `EzkeyCryptoModule`: no iOS native implementation yet (Swift / Secure Enclave rewrite planned).
-- `EzkeyPlayUpdateModule`: Google Play in-app updates, Android-only; TypeScript needs an iOS no-op path.
-- QR capture untestable on the simulator; a dev-only QR injection path is planned.
+- `EzkeyCryptoModule`: Swift module exports constants only (`isDebugBuild`); key generation, signing,
+  public-key export and deletion (Secure Enclave / EC P-256) are step 4. Crypto calls fail closed until then.
+- `EzkeyPlayUpdateModule`: Google Play in-app updates, Android-only; TypeScript already no-ops on iOS.
+- QR capture untestable on the simulator; use the F2a bypass above.
