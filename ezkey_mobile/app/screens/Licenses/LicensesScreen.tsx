@@ -19,6 +19,7 @@ type LicenseRow = {
 };
 
 const PACKAGES: LicenseRow[] = thirdPartyData.packages;
+const SNAPSHOT_DATE = thirdPartyData.generatedAt ? thirdPartyData.generatedAt.slice(0, 10) : '';
 
 /**
  * Third-party packages shipped with the app (direct dependencies). Regenerate data with
@@ -37,13 +38,13 @@ export const LicensesScreen: React.FC = () => {
       <Text style={styles.intro} accessibilityRole="text">
         {t('licenses.intro')}
       </Text>
-      {thirdPartyData.generatedAt ? (
+      {SNAPSHOT_DATE ? (
         <Text
           style={styles.meta}
           accessibilityLabel={t('licenses.generatedAtAccessibility', {
-            value: thirdPartyData.generatedAt,
+            value: SNAPSHOT_DATE,
           })}>
-          {t('licenses.snapshot', {value: thirdPartyData.generatedAt})}
+          {t('licenses.snapshot', {value: SNAPSHOT_DATE})}
         </Text>
       ) : null}
       <View style={styles.list} accessibilityRole="list">
