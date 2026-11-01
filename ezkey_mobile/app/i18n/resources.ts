@@ -73,7 +73,7 @@ export const resources = {
       },
       releaseNotes: {
         accessibilityLabel: 'What is new in Ezkey Mobile',
-        eyebrow: 'Version 1.0',
+        eyebrow: 'Public alpha',
         title: 'Ezkey Mobile for Android',
         intro:
           'Approve sign-ins from a trusted Android device. Scan an enrollment QR from your Ezkey installation, then approve or deny authentication requests on this phone.',
@@ -191,9 +191,9 @@ export const resources = {
       licenses: {
         accessibilityLabel: 'Open source licenses',
         intro:
-          'This app bundles the following direct npm dependencies. Run yarn license:app-data in the project to refresh this list after dependency changes.',
-        generatedAtAccessibility: 'Data generated at {{value}}',
-        snapshot: 'Data snapshot: {{value}}',
+          'Ezkey Mobile is built with these open source packages. Thanks to their authors.',
+        generatedAtAccessibility: 'List updated on {{value}}',
+        snapshot: 'List updated: {{value}}',
         rowAccessibility: '{{name}} version {{version}}, {{license}} license',
       },
       enrollmentWizard: {
@@ -449,7 +449,7 @@ export const resources = {
       },
       releaseNotes: {
         accessibilityLabel: 'Nouveautés de Ezkey Mobile',
-        eyebrow: 'Version 1.0',
+        eyebrow: 'Alpha publique',
         title: 'Ezkey Mobile pour Android',
         intro:
           'Approuvez les connexions depuis un appareil Android de confiance. Scannez un QR d’enrôlement de votre installation Ezkey, puis approuvez ou refusez les demandes d’authentification sur ce téléphone.',
@@ -570,9 +570,9 @@ export const resources = {
       licenses: {
         accessibilityLabel: 'Licences open source',
         intro:
-          'Cette application embarque les dépendances npm directes suivantes. Exécutez yarn license:app-data dans le projet pour rafraîchir cette liste après une modification des dépendances.',
-        generatedAtAccessibility: 'Données générées à {{value}}',
-        snapshot: 'Instantané des données : {{value}}',
+          'Ezkey Mobile est construite avec ces logiciels open source. Merci à leurs auteurs.',
+        generatedAtAccessibility: 'Liste mise à jour le {{value}}',
+        snapshot: 'Liste mise à jour : {{value}}',
         rowAccessibility: '{{name}} version {{version}}, licence {{license}}',
       },
       enrollmentWizard: {
