@@ -1,7 +1,7 @@
 ---
 name: mobile-ios-phase-4-native-crypto-parity
 overview: Implement the iOS EzkeyCryptoModule (Swift, CryptoKit + Secure Enclave) with wire-format parity to the Android reference, an honest simulator fallback, and focused XCTest coverage.
-status: draft — stage 1 (author). Awaiting maintainer decisions D1–D3 and stage-2 cold-agent review.
+status: draft — stage 1 (author); maintainer decisions D1–D3 recorded 2026-11-01. Awaiting stage-2 cold-agent review.
 issue: "#152"
 branch: feature/152-mobile-ios
 created_at: 2026-11-01
@@ -34,13 +34,13 @@ supersedes: archived mobile_ios_phase_4_native_crypto_parity.plan.md (R-2026-000
 |---|---|---|
 | `generateEnrollmentKeyPair(id, securityLevel?)` | EC P-256 in Keystore, StrongBox preferred; **no-op `true` if alias exists**; `securityLevel` accepted, unused | Secure Enclave P-256 key (`SecureEnclave.P256.Signing.PrivateKey`), opaque `dataRepresentation` stored in Keychain; simulator fallback per **D2**; same "exists → `true`" semantics; `securityLevel` accepted, unused |
 | `getPublicKey(id)` | X.509 SPKI DER, standard Base64 (no wrap) | `P256.Signing.PublicKey.derRepresentation` (SPKI DER, iOS 14+), standard Base64 |
-| `getEnrollmentPrivateKeyStorageTier(id)` | `STRONG` (StrongBox) / `STANDARD` (TEE) / `NONE` (software) | Secure Enclave → per **D1**; software (simulator) → `NONE` |
+| `getEnrollmentPrivateKeyStorageTier(id)` | `STRONG` (StrongBox) / `STANDARD` (TEE) / `NONE` (software) | Secure Enclave → `STRONG` (**D1**); software (simulator) → `NONE` |
 | `sign(id, data)` | SHA256withECDSA over UTF-8, DER, **low-S normalized**, standard Base64 | CryptoKit `signature(for: Data(data.utf8))` (hashes SHA-256 internally) → raw `r‖s` → normalize `s` to low-S → encode DER → standard Base64 |
 | `verify(data, sig, pub)` | Ed25519 (integration key), raw 32-byte key + 64-byte sig, Base64URL **or** standard Base64, PEM/whitespace tolerant; **returns `false`** (never throws) on malformed input | CryptoKit `Curve25519.Signing.PublicKey(rawRepresentation:)` + `isValidSignature`; same flexible decoding and same `false`-on-malformed semantics |
 | `generateProofToken()` | 32 + 16 CSPRNG bytes, Base64URL no padding, `random.salt` | `SecRandomCopyBytes`; same format (already documented in `MOBILE_CRYPTO_REFERENCE.md` as iOS behavior) |
 | `deleteKeyPair(id)` | delete alias if present; resolve `true` | delete Keychain item if present; resolve `true` |
 | `getBuildTimestamp()` / `getGitShortSha()` | Gradle `BuildConfig` | Info.plist keys `EzkeyBuildTimestamp` / `EzkeyGitShortSha` written into the **built product's** Info.plist by a Run Script build phase (not the source plist); `unknown` when git is unavailable |
-| `canUseProtectedSigning()` / `signWithAuthentication()` / `authenticateSecurityPreferenceDowngrade()` | BiometricPrompt (`BIOMETRIC_STRONG \| DEVICE_CREDENTIAL`) as a **gate**, then sign with the same non-auth-bound key | Per **D3**: `LAContext` `.deviceOwnerAuthentication` as the same gate; error mapping `EZK_AUTH_CANCELLED` (user/system/app cancel) vs `EZK_AUTH_UNAVAILABLE`; adds `NSFaceIDUsageDescription` |
+| `canUseProtectedSigning()` / `signWithAuthentication()` / `authenticateSecurityPreferenceDowngrade()` | BiometricPrompt (`BIOMETRIC_STRONG \| DEVICE_CREDENTIAL`) as a **gate**, then sign with the same non-auth-bound key | Included (**D3**): `LAContext` `.deviceOwnerAuthentication` as the same gate; error mapping `EZK_AUTH_CANCELLED` (user/system/app cancel) vs `EZK_AUTH_UNAVAILABLE`; adds `NSFaceIDUsageDescription` |
 
 **Out of scope (deliberately not implemented on iOS):**
 
@@ -96,25 +96,25 @@ Keep the legacy interop (`RCT_EXTERN_METHOD` with `RCTPromiseResolveBlock` / `RC
 `requiresMainQueueSetup = false`; operations run off the main thread except `LAContext` UI.
 A TurboModule/codegen spec is **not** introduced in this step (Android also uses the legacy module).
 
-## Maintainer decisions needed before execution
+## Maintainer decisions (recorded 2026-11-01)
 
-- **D1 — Secure Enclave tier.** Recommendation: **`STRONG`**. The SE is a dedicated, isolated
+- **D1 — Secure Enclave tier. Decided: `STRONG`.** The SE is a dedicated, isolated
   coprocessor with its own TRNG and key storage, the iOS counterpart of StrongBox (Android
-  `STANDARD` = TEE on the main CPU). Alternative: `STANDARD` (more conservative wording).
+  `STANDARD` = TEE on the main CPU). Rejected alternative: `STANDARD`.
   Either way the tier stays client-reported, never "verified".
-- **D2 — Software fallback.** Recommendation: allow a software P-256 key (tier `NONE`) **only when
+- **D2 — Software fallback. Decided:** allow a software P-256 key (tier `NONE`) **only when
   `SecureEnclave.isAvailable == false`**, which in practice means the simulator (every iPhone able to
   run iOS 15.5 has a Secure Enclave). On a device where SE generation *fails*, reject (fail closed)
   rather than silently downgrading. Matches Android's honest `NONE` on emulators.
-- **D3 — Local authentication in this step.** Recommendation: **include** (small, Face ID can be
-  simulated: Simulator › Features › Face ID › Enrolled / Matching Face). Alternative: defer to step 7.
+- **D3 — Local authentication in this step. Decided: include** (small; Face ID can be simulated:
+  Simulator › Features › Face ID › Enrolled / Matching Face).
 
 ## Execution order
 
 1. Codec helpers + XCTest target (`EzkeyMobileTests`, hosted in the app) with RED tests first.
 2. Key lifecycle (generate / public key / tier / delete / reinstall purge) + `sign`.
 3. `verify` (Ed25519), `generateProofToken`, build info (Run Script phase).
-4. Local authentication methods (if D3 = include) + `NSFaceIDUsageDescription`.
+4. Local authentication methods (D3) + `NSFaceIDUsageDescription`.
 5. Docs: `IOS_SETUP.md` (gaps), `NATIVE_MODULES.md`, `MOBILE_CRYPTO_REFERENCE.md` § iOS (honest,
    conservative wording), TB/plan status.
 
