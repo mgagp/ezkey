@@ -90,6 +90,7 @@ remains orthogonal to the closed September operability program. Wave B closeout:
 | `I-2026-09-15-mobile-admin-enrollment-account-label` | Mobile admin enrollment account label (bind/pending) | `done` | `P1` | `auth-api`, `admin-api`, `mobile`, `docs` | `2026-09-15` |
 | `I-2026-10-13-pam-tmp-log-hardening` | PAM debug logs under `/tmp` (TOCTOU / symlink; CodeQL 123/124) | `done` | `P3` | `pam`, `security`, `docs` | `2026-10-13` |
 | `I-2026-10-21-inverted-challenge-code-mode` | Inverted challenge-code mode (mobile shows, integration enters) | `parked` | `P3` | `auth-api`, `mobile`, `integration-api`, `docs`, `security` | `2026-10-21` |
+| `I-2026-11-01-pam-macos-windows-exploration` | ezkey-pam macOS and Windows exploration (F0 → gate → P1 → E1) | `captured` | `P3` | `pam`, `docs`, `lab:experimental` | `2026-11-01` |
 
 ## Tracer bullets (draft / ready / in progress)
 
