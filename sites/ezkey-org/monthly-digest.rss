@@ -7,6 +7,13 @@
     <language>en</language>
     <atom:link href="https://ezkey.org/monthly-digest.rss" rel="self" type="application/rss+xml"/>
     <item>
+      <title>October 2026 — A safer alpha, ready for its first testers</title>
+      <link>https://ezkey.org/monthly-digest-2026-10.html</link>
+      <guid isPermaLink="true">https://ezkey.org/monthly-digest-2026-10.html</guid>
+      <pubDate>Sun, 01 Nov 2026 12:00:00 GMT</pubDate>
+      <description><![CDATA[Security work you don't see but would want, automated checks on every change, and a mobile app ready for its first outside testers.]]></description>
+    </item>
+    <item>
       <title>September 2026 — Public alpha honesty, integrity operators can trust</title>
       <link>https://ezkey.org/monthly-digest-2026-09.html</link>
       <guid isPermaLink="true">https://ezkey.org/monthly-digest-2026-09.html</guid>

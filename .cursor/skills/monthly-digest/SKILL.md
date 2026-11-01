@@ -106,6 +106,22 @@ changelog.
 | Backend & API contracts | `ezkey-core*/`, `ezkey-*-api/`, `specs/`, `bruno/` |
 | The rest | `ezkey-sdk/`, `ezkey-tests/`, `docker/`, `sites/ezkey-org/`, audit/integrity code |
 
+## Product-intention pass
+
+Applied since the September 2026 digest (#635); recorded here on 2026-11-01 (Marc) because dense,
+technical months drowned the reader.
+
+- **Tell the month as product progression.** Before writing sections, name the one or two product
+  intentions the month served (e.g. "make the alpha safe to try", "get testers onto the app") and
+  let "In short" and the title carry them. Buckets then show how each area served those intentions.
+- **Ask "what changed for whom?"** for every sentence: an operator, a tester, an integrator, an
+  evaluator reading the site. If no reader is affected, it is maintenance — fold it into one
+  clause or drop it.
+- **Fewer, clearer items.** At most three ideas per section; pick the ones a reader would remember.
+  Volume (dozens of log-hardening or dependency PRs) becomes one sentence about the guarantee.
+- **Readable by a curious non-specialist.** Name industry tools as landmarks, but explain the
+  benefit in plain words; no protocol field names, config keys or class names.
+
 ## Distillation rules
 
 - One executive paragraph that states the dominant theme(s) and the month's rhythm.
