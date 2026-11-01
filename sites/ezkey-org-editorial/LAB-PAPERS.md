@@ -1,16 +1,18 @@
 # Ezkey Lab Papers — publication method
 
-Lab Papers are a third publication type on ezkey.org. They sit between reflective experience reports (Articles) and factual monthly digests. A Lab Paper is an account of an Ezkey experimental sub-project. The form nods to a research article without claiming academic status.
+Lab Papers are a third publication type on ezkey.org. They sit between reflective experience reports (Articles) and factual monthly digests. A Lab Paper is a short, readable account of an Ezkey experiment: what we tried, what we saw, what we got wrong, what we learned.
 
-This document is the method canon for Lab Papers. The first real paper (PAM) is out of scope here and gets its own issue.
+**The look of a paper, the voice of a lab notebook.** The research-paper nod lives in the layout: header, identifier, key-findings box, abstract, numbered sections, captions, references. The text itself is a plain, honest account. Rigour here means honesty, not exhaustiveness. We are not a research lab and do not imitate one.
 
-Authority: [GitHub issue #999](https://github.com/mgagp/ezkey/issues/999) (Marc-approved plan, 2026-10-23).
+This document is the method canon for Lab Papers.
+
+Authority: [GitHub issue #999](https://github.com/mgagp/ezkey/issues/999) (Marc-approved plan, 2026-10-23). Reframe of 2026-11-01 (Marc): the first PAM draft grew to ~6,500 words of sourcing, caveats and appendices; papers are now short and readable, in line with the rest of ezkey.org (refs #999).
 
 ---
 
 ## 1. Context
 
-Ezkey is a **lab project**: freer experimentation and learning, without certification or a paying sponsor. The site already publishes:
+Ezkey is a **lab project**: serious in its approach, free in what it explores, without certification or a paying sponsor. The site already publishes:
 
 - **Experience reports** (Articles). Marc dictates; an agent drafts; then revision and bilingual publication.
 - **Monthly digests**, from an established template.
@@ -19,10 +21,10 @@ Ezkey is a **lab project**: freer experimentation and learning, without certific
 
 | Type | Owns |
 | ---- | ---- |
-| **Lab Paper** | What happened and what was measured |
-| **Experience report** (Article) | What it taught and what it means |
+| **Lab Paper** | What we tried, what we observed, what we learned from it |
+| **Experience report** (Article) | What it means to Marc, beyond the experiment |
 
-The two cite each other. A sub-project (for example PAM) may yield a paper + experience-report pair.
+The two may cite each other. A sub-project (for example PAM) may yield a paper + experience-report pair.
 
 ---
 
@@ -43,9 +45,9 @@ Medium-term note (out of scope): possible nav regrouping into **Evaluate** vs **
 ### Presentation
 
 - **List card** centered on the abstract: identifier, status, date, reading time, ~2-line abstract, authors in small type.
-- **Top of each paper:** a **Key findings** box (3–5 bullets) before the abstract.
-- **Reading:** side table of contents (collapsible on mobile); horizontally scrollable tables; collapsed appendices.
-- **No PDF export.**
+- **Top of each paper:** a **Key findings** box (3–4 bullets) before the abstract.
+- **Reading:** side table of contents (collapsible on mobile); horizontally scrollable tables.
+- **No appendix by default.** **No PDF export.**
 
 ### Language
 
@@ -53,82 +55,77 @@ Write **English first**. French only after Marc’s explicit go.
 
 ---
 
-## 3. Structure (lightweight formalism)
+## 3. Structure (light)
 
-Sections are a **guide**. Omit any section with nothing true to say.
+**Length target: 1,500–2,500 words** (about 6–10 minutes), in line with Articles. Sections are a guide; omit any that has nothing to say.
 
 ### Header
 
-- Title and authors: Marc first, then bot co-signers with roles from [`product-docs/global/team-roles.md`](../../product-docs/global/team-roles.md).
-- Affiliation: **Ezkey Lab**.
-- Date, identifier `EZK-LAB-YYYY-NNN`, status `draft` or `published`, keywords.
-- Key findings box, then a short self-contained abstract.
+- Title, then authors: Marc first, then the **main** bot co-authors with their role from [`product-docs/global/team-roles.md`](../../product-docs/global/team-roles.md). Not exhaustive.
+- Affiliation: **Ezkey Lab**. Date, identifier `EZK-LAB-YYYY-NNN`, status `draft` or `published`, a few keywords, reading time.
+- **Key findings** (3–4 bullets), then a self-contained **abstract** of about 100 words.
+- One **scope box** — what this is / what it is not. Said once, not repeated.
 
 ### Body
 
-1. Introduction and motivation
-2. Hypotheses (stated so they can be checked)
-3. Prior state
-4. Protocol
-5. Course of work and iterations (including Marc ↔ agent misalignments)
-6. Results (numbered tables and figures)
-7. Discussion, with “Co-author note — [Name]” callouts
-8. **Limitations**
-9. Lessons learned
-10. Next steps
+1. Why we tried it
+2. What we set up
+3. What happened
+4. What we observed
+5. What we got wrong, and how we reframed
+6. What we take away
+7. Where we stopped
+
+At most one or two tables in the body. Co-author voices appear as **short quotes** inside the sections where they matter — one per main co-author at most, none required.
 
 ### Closing
 
-- **Who did what** — short list (do **not** use CRediT).
-- References: commits, PRs, issues, docs — links into the public repo.
-- Collapsed appendices.
-- Transparency note: co-authors are AI agents; Marc holds editorial responsibility.
-
-No falsely precise metrics. A formula appears only when it truly serves the argument.
+- **References** — a short list of public repo links (PRs, issues, docs) a reader may want to open.
+- **Transparency** — one line: co-authors are AI agents; Marc holds editorial responsibility; nothing here is a security guarantee.
 
 ### Register and tone
 
-The research-paper shape is a respectful nod to research culture, not a claim to belong there. Content is sincere, free, and bold in what it explores — neither jokey nor solemn.
+The research-paper shape is a respectful nod to research culture, not a claim to belong there. The text reads like a lab notebook written for others: first person plural, concrete, frank about mistakes, pleasant to read.
 
 - No deliberate humor: no “funny” acknowledgments, no whimsical affiliation. Affiliation is simply **Ezkey Lab**.
-- No inflated formalism: no academic jargon for show; no metrics or formulas that imitate rigor without carrying it. Template sections are a guide; omit empty ones.
-- No glorification: no lone-hero lab narrative. Named bot co-signers are collaborators, presented plainly and transparently (they are AI agents), never to fake a large team or institution.
-- Boldness lives in the ideas explored, not in the tone. An ambitious hypothesis is reported with the same frankness as a failure.
-- Final test: a reader should sense someone experimenting with seriousness and pleasure, without trying to appear more than they are.
+- No imitation of rigour: no hypotheses written after the fact, no metrics or formulas that look scientific without carrying the argument, no appendix tables kept for completeness.
+- No glorification: no lone-hero narrative. Bot co-authors are collaborators, presented plainly as AI agents, never to fake a team or institution.
+- Boldness lives in the ideas explored, not in the tone. A failure or a reframing is reported with the same frankness as a success.
+- Final test: a reader should finish the paper, sense someone experimenting with seriousness and pleasure, and not feel lectured.
 
 ---
 
 ## 4. Writing rules
 
-- **Truth first.** Facts come from real sources: git, tests, CI, logs, or Marc’s dictation. Gaps are marked `[TO VERIFY]` or `[MISSING DATA]` (French drafts may use `[À VÉRIFIER]` / `[DONNÉE MANQUANTE]`).
+- **True, not exhaustive.** Keep only facts we stand behind (git, tests, CI, logs, Marc’s dictation, co-author retrospectives). A doubtful fact is checked or cut — **no `[TO VERIFY]` marker survives into a publishable draft.**
+- **Say uncertainty once, in prose.** “From memory”, “we did not measure it”, “this is a judgment” — where it matters, not on every sentence.
+- **Links over provenance.** Link the PRs a reader would open; do not cite a source for every claim or reconcile internal labels in the text.
+- **One scope statement.** The disclaimer (no audit, no certification, no production readiness, no equivalence claims) lives in the scope box and the transparency line only.
+- **Mistakes have a place.** Reframings and errors get their own section; they are the substance of a lab that iterates.
 - **No fabricated consensus.** Real disagreement stays and is attributed.
-- **Security.** No secrets, tokens, internal hosts, real IPs, or exploitable configuration. Examples are anonymized.
-- **Honest status.** The paper states what is experimental, what became operable, and what did not.
+- **Security.** No secrets, tokens, internal hosts, real IPs, or exploitable configuration.
+
+Raw material (retrospectives, syntheses, figures) stays under `lab-notes/`, outside the published text.
 
 ---
 
-## 5. Co-author retrospective round
+## 5. Co-author input (optional)
 
-Run like a team retrospective:
+When a paper benefits from co-author voices, run a short retrospective:
 
-1. **Identify real participants** from Git history, PRs, issues, reviews, and status docs. Produce a name → evidence table; list nobody without evidence. Only names from `team-roles.md` are eligible. (“K” from walk-gate templates is **excluded** — Marc, 2026-10-23.)
-2. **Marc validates** the participant list.
-3. **Questionnaire** (same for each; Mathieu sends):
-   - contributions that landed, with references;
-   - disagreements;
-   - process blind spots (for example missed perspective on time accounting that drifted display vs integration);
-   - an 80–150 word co-author note.
-4. **Synthesis.** Raw answers go in an editorial exclude block in the draft, then are synthesized into the paper.
+1. Pick the main participants from Git history, PRs and issues. Only names from `team-roles.md` are eligible. (“K” from walk-gate templates is **excluded** — Marc, 2026-10-23.)
+2. Ask a few questions: what landed, what surprised you, where it stopped paying off, one or two sentences you would want quoted.
+3. Keep raw answers in `lab-notes/`. Quote briefly in the paper. Marc’s editorial validation is enough; there is no separate “pending validation” round.
 
 ---
 
 ## 6. Workflow
 
 1. Marc dictates raw material.
-2. Agent gathers facts and proposes a paper plan.
+2. Agent gathers facts and proposes a short plan (key findings + section outline).
 3. Marc validates the plan.
-4. Co-author retrospective round.
-5. English draft.
+4. Optional co-author retrospective.
+5. English draft, within the length target.
 6. Marc review + checklist.
 7. English publication: Lab card, monthly-digest mention, sitemap.
 8. French after an explicit go.
@@ -142,6 +139,7 @@ Run like a team retrospective:
 | [`templates/lab-paper.en.template.md`](templates/lab-paper.en.template.md) | English draft template |
 | [`templates/lab-paper.fr.template.md`](templates/lab-paper.fr.template.md) | French draft template (after Marc’s go) |
 | [`templates/lab-paper-review-checklist.md`](templates/lab-paper-review-checklist.md) | Pre-publish review checklist |
+| [`lab-notes/`](lab-notes/) | Raw retrospectives and syntheses (not published) |
 | [`../ezkey-org/lab.html`](../ezkey-org/lab.html) | Public EN hub |
 | [`../ezkey-org/fr/labo.html`](../ezkey-org/fr/labo.html) | Public FR hub |
 | [`../ezkey-org/lab-paper-template-example.html`](../ezkey-org/lab-paper-template-example.html) | Layout sample only (`noindex`; omitted from `sitemap.xml`). Real published papers are indexed and listed in the sitemap. |

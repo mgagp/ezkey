@@ -13,103 +13,60 @@ lab_status: draft
 TEMPLATE — Ezkey Lab Paper (English first).
 
 How to use:
-- Copy to sites/ezkey-org-editorial/draft-lab-EZK-LAB-YYYY-NNN-<slug>.md (or fr/ only when Marc has given an explicit French go).
-- Author in English first. French only after Marc’s explicit go.
-- Sections below are a GUIDE. Omit any section with nothing true to say.
-- Facts from git, tests, CI, logs, or Marc’s dictation only. Gaps: [TO VERIFY] or [MISSING DATA].
+- Copy to sites/ezkey-org-editorial/draft-lab-EZK-LAB-YYYY-NNN-<slug>.md (French mirror under fr/ only after Marc's go).
+- The look of a paper, the voice of a lab notebook. Target 1,500–2,500 words.
+- Sections below are a GUIDE. Omit any section with nothing to say.
+- Keep only facts we stand behind. A doubtful fact is checked or cut: no [TO VERIFY] in a publishable draft.
+- Say uncertainty once, in prose, where it matters. The disclaimer lives in the scope box only.
 - No secrets, tokens, internal hosts, real IPs, or exploitable configuration.
-- No fabricated consensus; attribute disagreements.
-- No falsely precise metrics. Formulas only when they serve the argument.
-- Eligible co-authors: names in product-docs/global/team-roles.md with evidence. “K” is excluded.
+- Main co-authors only, from product-docs/global/team-roles.md. "K" is excluded.
+- Raw material stays in sites/ezkey-org-editorial/lab-notes/.
 - Method canon: sites/ezkey-org-editorial/LAB-PAPERS.md
 - Review checklist: sites/ezkey-org-editorial/templates/lab-paper-review-checklist.md
-- Published HTML lives under sites/ezkey-org/ (hub: lab.html). Do not put drafts in the deploy folder.
 ezkey-org:exclude-end -->
 
 # <Title — concrete, no “Research” wording>
 
-**Authors:** Marc &lt;role if needed&gt;; &lt;Bot Name — role from team-roles.md&gt;; …
+**Authors:** Marc Gagnon; &lt;Bot Name — role&gt;; …
 **Affiliation:** Ezkey Lab
 **Identifier:** `EZK-LAB-YYYY-NNN`
 **Status:** draft | published
 **Date:** &lt;YYYY-MM-DD&gt;
-**Keywords:** &lt;comma-separated&gt;
+**Keywords:** &lt;a few, comma-separated&gt;
 **Reading time:** &lt;N&gt; min
 
 ## Key findings
 
-- &lt;Finding 1 — measured or observed, not aspirational&gt;
+- &lt;Finding 1 — what we saw, in one sentence&gt;
 - &lt;Finding 2&gt;
 - &lt;Finding 3&gt;
-- &lt;Optional finding 4–5&gt;
 
 ## Abstract
 
-&lt;Short, self-contained abstract. What was tried, what happened, what was measured. No security-guarantee language.&gt;
+&lt;About 100 words. What we tried, what happened, what we take away.&gt;
 
-## 1. Introduction and motivation
+> **Scope.** &lt;What this is, and what it is not — once, here.&gt;
 
-&lt;Why this experiment. Problem shape. What success would look like without overselling.&gt;
+## 1. Why we tried it
 
-## 2. Hypotheses
+## 2. What we set up
 
-&lt;Verifiable statements. Omit if none.&gt;
+## 3. What happened
 
-## 3. Prior state
+## 4. What we observed
 
-&lt;What existed before the experiment. Omit if nothing useful.&gt;
+> “&lt;Short quote&gt;” — **&lt;Co-author&gt;**, &lt;role&gt;
 
-## 4. Protocol
+## 5. What we got wrong, and how we reframed
 
-&lt;How work was done: environment bounds, tools, constraints. No secrets or internal hosts.&gt;
+## 6. What we take away
 
-## 5. Course of work and iterations
-
-&lt;What happened, including Marc ↔ agent misalignments. Attribute disagreements.&gt;
-
-## 6. Results
-
-&lt;Numbered tables and figures. Honest empty cells beat invented precision.&gt;
-
-| Id | Observation | Source |
-| -- | ----------- | ------ |
-| R1 | &lt;…&gt; | &lt;commit / PR / test / dictation&gt; |
-
-## 7. Discussion
-
-&lt;Interpretation. Optional callouts:&gt;
-
-> **Co-author note — &lt;Name&gt;**
->
-> &lt;80–150 words when a retrospective note was collected.&gt;
-
-## 8. Limitations
-
-&lt;Required when results are claimed. What this does not prove.&gt;
-
-## 9. Lessons learned
-
-&lt;Concrete lessons. Omit empty platitudes.&gt;
-
-## 10. Next steps
-
-&lt;Optional. What follows if anything.&gt;
-
-## Who did what
-
-- **Marc:** editorial responsibility; …
-- **&lt;Name&gt;:** …
+## 7. Where we stopped
 
 ## References
 
-- &lt;Public repo links: commits, PRs, issues, docs&gt;
-
-## Appendix A — &lt;title&gt;
-
-<!-- Published HTML: wrap appendices in collapsed <details> -->
-
-&lt;Optional supporting material. Omit if empty.&gt;
+- &lt;A few public repo links a reader may want to open&gt;
 
 ## Transparency
 
-Co-authors named above who are AI agents are disclosed as such. Marc holds editorial responsibility for this Lab Paper. Nothing in this paper is a security guarantee or a production-readiness claim.
+Co-authors other than Marc are AI agents. Marc holds editorial responsibility. Nothing in this paper is a security guarantee.

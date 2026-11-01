@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Ezkey PAM : laisser des agents durcir un module SSH, et savoir s&#x27;arrêter — EZK-LAB-2026-001</title>
+  <link rel="stylesheet" href="lab-paper.css">
+</head>
+<body>
+  <div class="sheet">
+    <details class="toc" open>
+<summary>Sommaire</summary>
+<nav aria-label="Table of contents">
+<ol>
+<li class="toc-h2"><a href="#key-findings">Points clés</a></li>
+<li class="toc-h2"><a href="#abstract">Résumé</a></li>
+<li class="toc-h2"><a href="#1-pourquoi-on-a-essaye">1. Pourquoi on a essayé</a></li>
+<li class="toc-h2"><a href="#2-ce-qu-on-a-mis-en-place">2. Ce qu'on a mis en place</a></li>
+<li class="toc-h2"><a href="#3-ce-qui-s-est-passe">3. Ce qui s'est passé</a></li>
+<li class="toc-h2"><a href="#4-ce-qu-on-a-observe">4. Ce qu'on a observé</a></li>
+<li class="toc-h2"><a href="#5-nos-erreurs-et-comment-on-a-recadre">5. Nos erreurs, et comment on a recadré</a></li>
+<li class="toc-h2"><a href="#6-ce-qu-on-en-retient">6. Ce qu'on en retient</a></li>
+<li class="toc-h2"><a href="#7-ou-on-s-arrete">7. Où on s'arrête</a></li>
+<li class="toc-h2"><a href="#references">Références</a></li>
+<li class="toc-h2"><a href="#transparence">Transparence</a></li>
+</ol>
+</nav>
+</details>
+    <article class="lab-paper">
+        <p class="draft-banner">Brouillon — pas pour publication</p>
+<header class="title-block">
+<h1 id="ezkey-pam-laisser-des-agents-durcir-un-module-ssh-et-savoir-s-arreter">Ezkey PAM : laisser des agents durcir un module SSH, et savoir s'arrêter</h1>
+<p class="meta-line"><strong>Auteurs :</strong> Marc Gagnon ; Patrick Grokbot (revue d'ingénierie) ; Christophe Grokbot (revue de sécurité) ; Edgar Grokbot (exploitation de la VM de test) ; Isabelle Grokbot (QA exploratoire)</p>
+<p class="meta-line affiliation"><strong>Affiliation :</strong> Ezkey Lab</p>
+<p class="meta-line"><strong>Identifiant :</strong> <code>EZK-LAB-2026-001</code></p>
+<p class="meta-line"><strong>Statut :</strong> draft</p>
+<p class="meta-line"><strong>Date :</strong> 2026-11-01</p>
+<p class="meta-line"><strong>Mots-clés :</strong> PAM, SSH, MFA, fail-closed, agents IA, rendements décroissants</p>
+<p class="meta-line"><strong>Temps de lecture :</strong> ~9 min</p>
+</header>
+<section class="key-findings">
+<h2 id="key-findings">Points clés</h2>
+<ul>
+<li>Des agents IA ont porté l'essentiel du durcissement d'un petit module C. Là où on a perdu du temps, c'était presque toujours en attente d'une règle qu'on n'avait pas écrite.</li>
+<li>Le premier cycle de revue a trouvé les vrais défauts. Les suivants ont surtout ajouté des preuves, puis se sont mis à auditer leur propre outillage. C'est ce qui nous a dit d'arrêter.</li>
+<li>« Rendements décroissants » est un jugement, porté par des agents de la même famille de modèles que l'implémenteur. Ce n'est pas une mesure.</li>
+<li>Le module est expérimental et le reste : il n'est pas encore fait pour protéger un vrai serveur.</li>
+</ul>
+</section>
+<section class="abstract">
+<h2 id="abstract">Résumé</h2>
+<p><code>ezkey-pam</code> ajoute l'approbation sur appareil d'Ezkey aux connexions SSH sous Linux. Un prototype écrit en 2025 est resté intact pendant un an. En septembre et octobre 2026, on l'a modernisé et on a laissé une petite équipe d'agents IA le relire, le tester et le durcir, Marc gardant la décision. On voulait voir jusqu'où des agents peuvent porter le travail, et à partir de quand un tour de revue de plus cesse de rapporter. Ils ont porté beaucoup. Les frictions venaient de notre côté : règles non écrites, permissions floues, pas de critère d'arrêt. On s'est arrêtés quand les nouveaux tours produisaient des preuves plutôt que des défauts.</p>
+</section>
+<blockquote class="scope">
+<p><strong>Périmètre.</strong> Ceci est le compte rendu d'une expérience de labo. Ce n'est ni un audit, ni une certification, ni une garantie de sécurité, et <code>ezkey-pam</code> n'est pas un logiciel de production. Rien ici ne prétend à une équivalence avec Duo, WebAuthn ou FIDO2.</p>
+</blockquote>
+<h2 id="1-pourquoi-on-a-essaye">1. Pourquoi on a essayé</h2>
+<p>Marc a découvert au travail une connexion SSH protégée par une approbation sur téléphone, avec Duo. La question qui a suivi était simple : Ezkey, avec les pièces qu'il avait déjà — une Integration API, un flux d'authentification, un appareil qui approuve — pouvait-il jouer un rôle semblable pour SSH ?</p>
+<p>Il y avait une deuxième raison, moins évidente. Selon l'observation de Marc, les agents IA deviennent visiblement meilleurs pour trouver et corriger des problèmes de sécurité, et vite. Plutôt que de décider d'avance combien de revue mérite un petit module de sécurité, on a voulu laisser aller les agents et voir où eux, et nous, conviendrions que c'était assez.</p>
+<p>Ezkey est un projet de labo, promis à personne. C'est cette liberté qui a rendu l'expérience possible.</p>
+<h2 id="2-ce-qu-on-a-mis-en-place">2. Ce qu'on a mis en place</h2>
+<p><code>ezkey-pam</code> est un module C pour PAM sous Linux, la couche qui gère l'authentification à la connexion. Utilisé par SSH, il demande à l'utilisateur de taper <code>ok</code>, crée une tentative d'authentification par l'Integration API d'Ezkey, affiche au besoin un code à deux chiffres à faire correspondre, puis attend que l'utilisateur approuve ou refuse sur un appareil. Il <strong>échoue fermé</strong> : si l'API ou la configuration est inutilisable, la connexion est refusée. Il n'y a volontairement aucun mode « laisser entrer si Ezkey est en panne ».</p>
+<p>Le travail s'est fait dans un conteneur Rocky Linux, puis sur une VM de test dédiée avec un vrai <code>sshd</code>. Ce second environnement a compté : plusieurs constats n'y sont apparus que là.</p>
+<p>L'équipe :</p>
+<ul>
+<li><strong>Marc</strong> décidait, donnait chaque go et tenait le clavier SSH pendant les campagnes manuelles.</li>
+<li><strong>Patrick</strong> relisait l'ingénierie, <strong>Christophe</strong> la sécurité.</li>
+<li><strong>Edgar</strong> exploitait la VM de test : snapshot, <code>sshd -t</code>, rapport, avant chaque changement.</li>
+<li><strong>Isabelle</strong> menait les campagnes de QA exploratoire.</li>
+</ul>
+<p>Les tests utilisaient le Demo Device, la doublure web du téléphone dans Ezkey, pour que l'essentiel du travail ne dépende pas de quelqu'un qui tient un téléphone.</p>
+<h2 id="3-ce-qui-s-est-passe">3. Ce qui s'est passé</h2>
+<p><strong>Un prototype, puis un an de silence.</strong> Le premier commit, en septembre 2025, était un module codé en dur d'environ 900 lignes, lancé dans Docker et validé à la main. Ensuite, rien de fonctionnel sur PAM pendant un an.</p>
+<p><strong>Modernisation et première vraie revue.</strong> Le travail a repris en septembre 2026 (<a href="https://github.com/mgagp/ezkey/pull/540">#540</a>). Le jalon suivant (<a href="https://github.com/mgagp/ezkey/pull/610">#610</a>, fusionné le 17 octobre) a ajouté la journalisation, une configuration stricte, le code à deux chiffres et un budget de temps. La première revue de Patrick l'a bloqué sur un constat qui justifiait à lui seul l'exercice : quand l'URL de l'API manquait, le code se rabattait en silence sur une valeur locale par défaut. Une connexion pouvait alors être approuvée par n'importe quoi répondant sur ce port local. Le module devait échouer fermé ; sur ce chemin, il ne le faisait pas.</p>
+<p><strong>Cinq versions en trois jours.</strong> Du 20 au 22 octobre, les versions 2.2.10 à 2.2.14 se sont suivies, chacune déclenchée par un nouveau test ou une revue sur la VM. Surtout des petites choses : un message d'attente qu'OpenSSH gardait en mémoire trop longtemps, une demande créée avant que l'utilisateur ait confirmé, un délai calculé à partir du mauvais moment.</p>
+<p><strong>Un symptôme trompeur.</strong> Pendant la campagne manuelle d'Isabelle, des connexions échouaient par intermittence avec « Too many authentication failures ». Elle a d'abord regardé le réseau, l'API, un éventuel délai de blocage. Une trace de débogage racontait autre chose : l'invite <code>ok</code> avait reçu une réponse vide, et aucune demande n'avait même été envoyée. Avec un <code>sshd</code> réglé pour une seule tentative, presque n'importe quelle erreur interne ressemble à un mauvais mot de passe. Edgar a trouvé une seconde surprise en chemin : la vraie limite de temps d'une connexion était le délai de grâce de <code>sshd</code> lui-même (120 secondes), pas les 75 secondes du module. Ces deux constats ont mené à de meilleurs diagnostics (<a href="https://github.com/mgagp/ezkey/pull/1014">#1014</a>).</p>
+<p><strong>Les signaux.</strong> Sur ce même changement, Patrick a lu le chemin de terminaison et prédit que le module pouvait rester bloqué après un <code>SIGTERM</code>. Un agent cloud jetable l'a exécuté : le blocage était réel, et il a révélé un second défaut, une authentification qui pouvait encore réussir après le départ du client. Christophe, en lisant ce qu'appelait le gestionnaire de signal, y a trouvé une fonction non sûre. Les trois ont été corrigés avant la fusion.</p>
+<blockquote>
+<p>« Aucun des deux défauts n'était visible pour <code>make test</code> ni pour la CI. Désormais, je marque chaque affirmation comme exécutée ou raisonnée. » — <strong>Patrick</strong>, revue d'ingénierie</p>
+</blockquote>
+<p><strong>Laisser courir les agents.</strong> Le 25 octobre, on a convenu que le module avait atteint une maturité expérimentale suffisante. Marc a ensuite laissé les agents libres de continuer, pour voir la courbe plutôt que la deviner. Trois cycles de revue ont suivi, fusionnés le 27 octobre en versions 2.2.19 (<a href="https://github.com/mgagp/ezkey/pull/1051">#1051</a>) et 2.2.20 (<a href="https://github.com/mgagp/ezkey/pull/1067">#1067</a>), en parallèle d'une campagne réelle sur la VM de test.</p>
+<h2 id="4-ce-qu-on-a-observe">4. Ce qu'on a observé</h2>
+<p><strong>Les rendements avaient une forme reconnaissable.</strong> Selon Patrick, le cycle 1 a été le seul à trouver quelque chose sur le produit lui-même : aucun test ne remarquait qu'on casse volontairement la décision d'authentification, et rien ne protégeait la vérification TLS. Le cycle 2 n'a trouvé aucun défaut de comportement. Le cycle 3 a corrigé un bogue du harnais de test, un trou de test qu'un correctif antérieur avait ouvert, et un de ses propres jugements sur un mutant. Après, des détails, puis une récursion : un audit des tests, puis du script qui audite les tests.</p>
+<p>Les cycles suivants avaient encore une valeur — mesurer au lieu de soupçonner, rattraper un défaut introduit par un correctif, corriger l'erreur d'un réviseur — mais aucun nouveau défaut de sécurité.</p>
+<p><strong>La campagne réelle a trouvé ses vrais risques tôt.</strong> Le constat d'Isabelle : pendant qu'une connexion attend l'approbation, le module ne remarque pas que le client est parti, si bien qu'un processus de pré-authentification peut traîner jusqu'à environ 75 secondes ; et une nouvelle connexion ferme la demande précédente encore en attente. Les reprises depuis une seconde machine ont ajouté de la preuve, pas de nouveau risque.</p>
+<p><strong>La fatigue d'approbation est un problème de plateforme.</strong> C'était le point charnière de Christophe. L'invite <code>ok</code> évite les accidents ; elle n'arrête pas un attaquant qui a déjà le premier facteur SSH — il tape <code>ok</code> lui aussi. La parade est passée au code à deux chiffres, actif par défaut depuis la 2.2.14, et à des limites côté serveur cadrées (<a href="https://github.com/mgagp/ezkey/issues/992">#992</a>) mais pas construites.</p>
+<blockquote>
+<p>« L'invite <code>ok</code> est un filtre, pas une défense. » — <strong>Christophe</strong>, revue de sécurité</p>
+</blockquote>
+<p><strong>Les agents ont porté plus qu'on l'attendait.</strong> Là où le cadre était clair, ils planifiaient, exécutaient et restauraient seuls : un tenant de test ouvert par l'API publique, un protocole d'état avec observateur en lecture seule et retour arrière vérifié, la preuve par exécution sur un agent cloud jetable, des constats triés en corriger, documenter ou hors périmètre. Là où le cadre n'était pas clair, ils s'arrêtaient et attendaient. C'était le bon comportement, et il pointait droit vers nous.</p>
+<h2 id="5-nos-erreurs-et-comment-on-a-recadre">5. Nos erreurs, et comment on a recadré</h2>
+<p>Quand on a demandé aux agents, après le tour du 27 octobre, ce qui les avait ralentis, presque chaque réponse désignait quelque chose qu'une personne — Marc d'abord — n'avait pas rendu explicite.</p>
+<ul>
+<li><strong>La règle du go était connue, jamais écrite.</strong> « Seul Marc, dans le fil de l'agent qui exécute, donne un go. » Tout le monde la connaissait. Il y a quand même eu de l'attente quand on disait à un agent que Marc répondrait dans le fil d'un autre.</li>
+<li><strong>Une permission permanente n'avait pas de portée déclarée.</strong> Un go permanent pour le travail PAM ne disait pas s'il couvrait les écritures système — une règle de pare-feu, un fichier hosts, une clé. Chacune a attendu son propre go.</li>
+<li><strong>Une méthode réglée vivait seulement dans le chat.</strong> La façon d'ouvrir le tenant d'évaluation avait été convenue, puis pas écrite, et recherchée à nouveau.</li>
+<li><strong>Des consignes ambiguës.</strong> « Considérer l'API comme arrêtée », pour une API hébergée ailleurs, a mené à une modification de résolution de noms qui ne couvrait qu'une famille d'adresses. Le test n'a rien mesuré et a dû être refait.</li>
+<li><strong>Pas de critère d'arrêt.</strong> On a constaté la convergence après coup. Un critère d'acceptation que les agents s'étaient fixé eux-mêmes ne pouvait pas être atteint par un test côté hôte seul, et une partie d'un cycle a servi à le satisfaire plutôt qu'à réduire le risque.</li>
+</ul>
+<blockquote>
+<p>« Un “Marc est d'accord” relayé n'est jamais un go pour moi. Une feuille de go d'une page, signée dans mon fil, aurait évité l'essentiel de l'attente. » — <strong>Edgar</strong>, exploitation de la VM de test</p>
+</blockquote>
+<p>Rien de cela n'est une limite des agents. C'est une limite du cadre qu'on leur a donné.</p>
+<h2 id="6-ce-qu-on-en-retient">6. Ce qu'on en retient</h2>
+<ul>
+<li><strong>Écrire le cadre avant le travail.</strong> Qui donne un go, ce que couvre une permission permanente, la méthode qu'on a réglée. Une page, lue avant la campagne.</li>
+<li><strong>Fixer la règle d'arrêt d'avance, et la confier à un humain.</strong> Patrick en a proposé une : s'arrêter un cycle après le dernier constat de niveau produit, et ne relire l'outillage de test que sur un niveau, jamais le script qui vérifie le script. On ne l'a pas appliquée cette fois ; on le ferait la prochaine.</li>
+<li><strong>Exécuter, pas seulement lire.</strong> Les défauts qui comptaient ont été confirmés, ou révélés, en lançant le code contre un vrai <code>sshd</code>. Une CI verte ne prouve que ce qu'elle vérifie.</li>
+<li><strong>Garder la réserve à côté de la courbe.</strong> Nos réviseurs et notre implémenteur viennent de la même famille de modèles. Leur accord peut refléter des angles morts partagés autant qu'une liste de défauts épuisée. Une revue humaine indépendante, du fuzzing continu et un modèle de menace le testeraient ; on n'a fait aucun des trois.</li>
+<li><strong>Les agents ont besoin d'un humain aux bons moments, pas tout le temps.</strong> La campagne manuelle demandait encore Marc au clavier, et un aller-retour humain (environ 77 secondes) dépassait la fenêtre d'approbation (75 secondes). Un pilote d'approbation automatisé aurait épargné des essais.</li>
+</ul>
+<blockquote>
+<p>« Je n'aurais pas pu avancer sans Marc au téléphone. Nos nouveaux tests étaient plus lents que la fenêtre d'approbation. » — <strong>Isabelle</strong>, QA exploratoire</p>
+</blockquote>
+<h2 id="7-ou-on-s-arrete">7. Où on s'arrête</h2>
+<p>On s'est arrêtés à la version 2.2.20, ensemble : Marc et les agents ont convenu que d'autres cycles achèteraient plus de preuve, mais pas moins de risque à l'échelle du labo. Dans ce qu'on a testé, les chemins d'erreur échouent fermés et la vérification TLS est contrôlée par exécution. On ne va pas plus loin que ça.</p>
+<p>Le module reste expérimental. Son fichier de statut dit clairement qu'il n'est pas un agent MFA exploitable sur un vrai serveur, et il n'a pas été publié en version. Les limites côté serveur contre la fatigue d'approbation (#992) et une limite de débit sur la création de tentatives (<a href="https://github.com/mgagp/ezkey/issues/1070">#1070</a>) restent ouvertes. Le passer sur l'instance communautaire voudrait dire recommencer l'évaluation.</p>
+<p>Ce qu'on garde concerne moins PAM que le travail avec des agents : ils vont aussi loin que le cadre le permet. Bien tracer ce cadre, c'est notre travail.</p>
+<h2 id="references">Références</h2>
+<ul>
+<li>[<code>ezkey-pam/</code>](https://github.com/mgagp/ezkey/tree/main/ezkey-pam) — module, README et fichier de statut</li>
+<li><a href="https://github.com/mgagp/ezkey/pull/540">#540</a> modernisation · <a href="https://github.com/mgagp/ezkey/pull/610">#610</a> premier jalon · <a href="https://github.com/mgagp/ezkey/pull/1014">#1014</a> diagnostics et signaux · <a href="https://github.com/mgagp/ezkey/pull/1051">#1051</a>, <a href="https://github.com/mgagp/ezkey/pull/1067">#1067</a> cycles suivants</li>
+<li><a href="https://github.com/mgagp/ezkey/issues/992">#992</a> fatigue d'approbation · <a href="https://github.com/mgagp/ezkey/issues/1070">#1070</a> limite de débit des tentatives</li>
+<li>[<code>docs/SECURITY_POSTURE.md</code>](https://github.com/mgagp/ezkey/blob/main/docs/SECURITY_POSTURE.md)</li>
+</ul>
+<h2 id="transparence">Transparence</h2>
+<p>Les co-auteurs autres que Marc sont des agents IA. Marc assume la responsabilité éditoriale et a relu ce papier avant publication. Rien dans ce papier ne constitue une garantie de sécurité.</p>
+      </article>
+  </div>
+</body>
+</html>
