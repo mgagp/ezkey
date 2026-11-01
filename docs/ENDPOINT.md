@@ -111,7 +111,7 @@ yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'
 
 ### Error responses (RFC 9457)
 
-HTTP **4xx** and **5xx** responses from the Auth API use **RFC 9457** Problem Details (`Content-Type: application/problem+json`). The JSON body includes `type` (URI identifying the problem category), `title`, `status`, `detail` (operator-safe text; do not rely on it for security-sensitive branching), and extension properties `path` and `timestamp`. RFC 9457 `instance` is the request path (a URI-reference, not an absolute URI). Clients should branch on **`type`** and HTTP status.
+HTTP **4xx** and **5xx** responses from the Auth API use **RFC 9457** Problem Details (`Content-Type: application/problem+json`). The JSON body includes `type` (URI identifying the problem category), `title`, `status`, `detail` (operator-safe catalog text for logs/diagnostics only), and extension properties `path` and `timestamp`. RFC 9457 `instance` is the request path (a URI-reference, not an absolute URI). **Authenticator / device clients MUST branch on `type` and HTTP status and MUST NOT display `detail` (or `title`) verbatim to end users** — map `type` to local copy ([`CLIENT_BEHAVIOUR_CONTRACT.md`](CLIENT_BEHAVIOUR_CONTRACT.md) §7; full type table in [`MOBILE_DEVELOPER_GUIDE.md`](MOBILE_DEVELOPER_GUIDE.md) § Auth API problem types).
 
 Unauthenticated public operations (`GET /api/v1/public/instance-info`) declare no HTTP security requirement in OpenAPI (`security: []`). Device POSTs authenticate with signatures in the JSON body, not a Bearer header.
 
@@ -132,7 +132,7 @@ HTTP-level outcomes for respond (RFC 9457 Problem Details unless noted):
 | Attempt or enrollment not found, still `PENDING`, or terminal (`ACCEPTED`, `REJECTED`, `EXPIRED`, `INVALID`) / cancel-win / superseded | **409** | `auth-attempt-state-conflict` (unified client surface; distinction only in server logs — #844 Marc m1) |
 | Invalid device signature or missing device public key (before proof of possession) | **409** | `auth-attempt-state-conflict` (no status transition; audit `AUTH_ATTEMPT_RESPOND_SIGNATURE_REJECTED` for invalid signature — #912) |
 | Wall-clock expiry after ownership proof (`expiresAt` reached; conditional UPDATE refused) | **409** | `auth-attempt-expired` (#895; only after device-signature verification — Christophe) |
-| Per-enrollment integration private key missing/blank when signing is required (runtime; transaction rolls back; no JVM startup gate) | **503** | `integration-signing-unavailable` |
+| Per-enrollment integration private key missing/blank when signing is required (runtime; transaction rolls back — except FAILED on a wrong challenge: INVALID is already committed, a retry gets a 409; no JVM startup gate) | **503** | `integration-signing-unavailable` |
 
 A raw `IllegalArgumentException` or other uncaught exception from that flow is not converted to `FAILED` and is handled like other Auth API errors (typically Problem Details **400** for `IllegalArgumentException`).
 
@@ -150,7 +150,9 @@ missing device public key (expired or not) or an invalid device signature keeps 
 409 types to one sentence until the typed-expiry UI slice lands. A lost approve/deny response after the HTTP call was sent (timeout /
 transport), where a session may already exist, is a separate mobile case (orientation Question 10 /
 `UncertainDecision`), not a new problem type. Missing integration signing key remains **503**
-(retryable; transaction rolled back).
+`integration-signing-unavailable` (**retryable**; a retry may then return terminal **409**, for
+example when a wrong challenge already committed `INVALID` before signing failed — see
+`AuthAttemptRespondService` FAILED-response notes).
 
 ### Public instance metadata (unauthenticated)
 
@@ -677,6 +679,7 @@ Errors use `Content-Type: application/problem+json` (or JSON with the same field
 ```
 
 The client should use `detail` (then `title`) for user-facing messages, not assume a transport failure.
+(**Admin / Integration API only; device clients: contract section 7.**)
 
 **Audit:** Each call to `/passwordless-wait` that reaches a terminal outcome writes an `ADMIN_LOGIN` audit row with a distinct `event_action` (for example `login_mfa_session_issued`, `login_mfa_expired`, `login_mfa_rejected`). See [AUDIT_ADMIN_LOGIN_ACTIONS.md](AUDIT_ADMIN_LOGIN_ACTIONS.md) for the full list and SIEM notes.
 
@@ -684,7 +687,7 @@ The client should use `detail` (then `title`) for user-facing messages, not assu
 - `waiterSecret` capability token prevents replay and session hijacking by requiring the unguessable CSPRNG secret returned only to the initial `/login` caller.
 - Atomic CAS guarantees a session is issued at most once per authentication attempt; replays after session issuance are rejected with generic 401 and cannot trigger token rotation or mint survivor tokens.
 - `challengeCode` prevents enumeration attacks (proof of legitimate login initiation)
-- Blocking HTTP call: the server waits up to the minimum of 300 seconds and (remaining attempt lifetime + small slack). If `ezkey.core.auth-attempt.ttl-seconds` is set above 300 (max 600), the wait may return HTTP 408 while the attempt row is still valid in the database. The lifetime itself is that property (default **120**, range **30–600**). On Cloudflare Free (`ezkey.org`, `ezkey.online`, including the community instance) the origin is cut at **100 seconds** (HTTP **524**, not raisable; see `product-docs/global/product-intent.md`). A blocking wait can therefore end at the proxy while a default 120-second attempt is still valid. Noted for that deployment (#834 Question 12); the default is not changed here.
+- Blocking HTTP call: the server waits up to the minimum of 300 seconds and (remaining attempt lifetime + small slack). **Applied** create TTL: per-request floor **15**, hard ceiling **120** (`min(request|default, 120)` since #895). Property `ezkey.core.auth-attempt.ttl-seconds` default **120** (Bean Validation **30–600**; startup clamp **>120 → 120**, so effective configured default **30–120**). On Cloudflare Free (`ezkey.org`, `ezkey.online`, including the community instance) the origin is cut at **100 seconds** (HTTP **524**, not raisable; see `product-docs/global/product-intent.md`). A blocking wait can therefore end at the proxy while a default 120-second attempt is still valid. Noted for that deployment (#834 Question 12); the default is not changed here.
 - Device must enter matching challenge code before approval
 - Invalid challenge on device marks attempt as INVALID
 
@@ -1911,6 +1914,7 @@ Content-Type: application/json
 - Lost secret keys cannot be recovered - create new key instead
 - Expiration date optional but recommended (enforces rotation)
 - IP whitelist optional but recommended for production
+- Response includes `Cache-Control: no-store` (controller + Spring Security defaults) so intermediaries do not cache the one-time secret
 
 ---
 
@@ -2194,7 +2198,7 @@ Content-Type: application/json
 **Response Fields:**
 - `authAttemptId`: Unique identifier of the created authentication attempt
 - `authAttemptChallenge`: Optional challenge code (2 digits) if challenge was requested. Null if no challenge was requested.
-- `timeoutSeconds`: Maximum time in seconds the user has to respond to the authentication request (currently 120 seconds)
+- `timeoutSeconds`: Applied attempt lifetime in seconds (per-request floor 15, hard ceiling 120; when omitted, the clamped configured default — typically **120**)
 - `expiresAt`: Absolute expiration timestamp when the authentication attempt will expire (UTC format)
 - `contextTitle`, `contextMessage`: Context fields echoed back for confirmation (null if not provided)
 

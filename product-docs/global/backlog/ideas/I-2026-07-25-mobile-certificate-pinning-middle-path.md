@@ -10,6 +10,7 @@
 - **Last reviewed at:** `2026-08-10`
 - **Progression markers:** `P2-hardening`, `P3-distribution`
 - **Component tags:** `mobile`, `auth-api`, `admin-api`, `docs`, `security`
+- **In-app promise:** mobile Settings → Coming soon card `comingSoon.pinning` (“Stronger connection checks”); update it when this idea ships or is parked — see [`settings-copy-end-user-compass.md`](../../../components/mobile/settings-copy-end-user-compass.md)
 - **Lane:** `D`
 - **Captured by:** Marc
 - **GitHub issue:** none

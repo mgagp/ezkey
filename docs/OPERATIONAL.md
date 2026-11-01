@@ -645,7 +645,7 @@ Ceiling ≈ **8 services × 20 MiB × 3 files ≈ 480 MiB** of container json lo
 
 ### Post-upgrade checks (m6) — community VM `ezkey-experimental-lightsail`
 
-Run on the VM after a rolling upgrade (no `cat` of secrets):
+Run on the VM after an upgrade (no `cat` of secrets). For the commissioned community host, prefer the non-destructive checklist in [`docs/lightsail/community-host.md`](lightsail/community-host.md) over blind `rolling` / `--sync-operator-files --remote-up`:
 
 1. `bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail`
 2. Confirm `json-file` rotation via `docker inspect` / hygiene check

@@ -48,6 +48,16 @@ load_env_file "${ENV_FILE}"
 SSH_USER="${EZKEY_SSH_USER:-${SSH_USER}}"
 SSH_PORT="${EZKEY_PAM_SSH_PORT:-${SSH_PORT}}"
 
+# #1016 N6: portable artifact default (not a host-specific /opt/cursor path).
+# Override with EZKEY_PAM_ARTIFACT_DIR when a campaign host wants another dir.
+ezkey_pam_artifact_dir() {
+  if [ -n "${EZKEY_PAM_ARTIFACT_DIR:-}" ]; then
+    printf '%s' "${EZKEY_PAM_ARTIFACT_DIR}"
+    return
+  fi
+  printf '%s' "${PAM_ROOT}/runtime/artifacts"
+}
+
 json_get() {
   local json="$1"
   local path="$2"
@@ -213,9 +223,9 @@ ezkey_ssh_kbdint_autoenter() {
       last_chal_n="${last_chal_n:-0}"
       last_ok_n="${last_ok_n:-0}"
       if [ "${last_chal_n}" -gt "${last_ok_n}" ]; then
-        printf 'enter\n' >"${ctrl}" 2>/dev/null || true
+        ezkey_ctrl_write "${ctrl}" "enter"
       else
-        printf 'ok\n' >"${ctrl}" 2>/dev/null || true
+        ezkey_ctrl_write "${ctrl}" "ok"
       fi
       since_enter=0
     fi
@@ -240,4 +250,21 @@ ezkey_mk_ctrl_fifo() {
   fifo="${dir}/enter.fifo"
   mkfifo "${fifo}"
   printf '%s\n' "${fifo}"
+}
+
+# Write a control command to a capture fifo without hanging when the reader
+# (ssh-pty-capture.py) has already exited (#1054 probe 4 flake: O_WRONLY open
+# on a FIFO with no reader blocks forever).
+# #1067 nit: a mutant that drops this timeout can leave harness bash stuck on
+# the FIFO after the probe wall fires — the external suite `timeout` is then
+# authoritative (smaller fix than killing the script process group).
+ezkey_ctrl_write() {
+  local fifo="$1"
+  local msg="$2"
+  if [ -z "${fifo}" ] || [ ! -p "${fifo}" ]; then
+    return 0
+  fi
+  # timeout bounds the open(2); printf failure is non-fatal.
+  timeout 1s sh -c 'printf "%s\n" "$1" >"$2"' _ "${msg}" "${fifo}" \
+    >/dev/null 2>&1 || true
 }

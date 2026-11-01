@@ -63,6 +63,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -287,7 +288,10 @@ public class ApiKeyController {
               .eventDetails("API key ID: " + result.getApiKeyId())
               .build());
 
-      return ResponseEntity.status(HttpStatus.CREATED).body(response);
+      // Secret is shown once in the body; never allow intermediary caches to store it.
+      return ResponseEntity.status(HttpStatus.CREATED)
+          .cacheControl(CacheControl.noStore())
+          .body(response);
 
     } catch (IllegalArgumentException e) {
       logger.warn("API key creation failed - Bad request: {}", e.getMessage());

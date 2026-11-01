@@ -71,6 +71,59 @@ class TestTuiImports:
     assert SidebarWidget is not None
 
 
+class TestTuiTextualPilot:
+  """Headless Textual run_test pilot (textual >= 8.2.8 floor / #767)."""
+
+  def test_admin_tui_mounts_home_screen(self):
+    import asyncio
+    from unittest.mock import patch
+
+    from ezkey_cli.tui.app import EzkeyAdminTUI
+    from ezkey_cli.tui.screens.home import HomeScreen
+
+    config = ConfigManager()
+    overview = {
+      "integrations": {"total": 0, "active": 0, "inactive": 0},
+      "enrollments": {
+        "total": 0,
+        "verified": 0,
+        "bound": 0,
+        "created": 0,
+        "invalid": 0,
+      },
+      "auth24h": {
+        "total": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "invalid": 0,
+        "expired": 0,
+        "terminalTotal": 0,
+        "successRatePct": None,
+      },
+      "recentActivity": [],
+    }
+
+    async def _run():
+      with patch(
+          "ezkey_cli.tui.api_client.ApiClient.get_dashboard_overview",
+          return_value=overview,
+      ), patch(
+          "ezkey_cli.tui.api_client.ApiClient.get_auth_attempts_pending_count",
+          return_value=0,
+      ):
+        app = EzkeyAdminTUI(config, token="pilot-token", admin_url="http://localhost:9080")
+        app._is_token_expired = lambda: False
+        async with app.run_test(size=(100, 30)) as pilot:
+          await pilot.pause()
+          assert isinstance(app.screen, HomeScreen)
+          widget_names = [w.__class__.__name__ for w in app.screen.query("*")]
+          assert "Header" in widget_names
+          assert "Footer" in widget_names
+          assert "StatusPanel" in widget_names
+
+    asyncio.run(_run())
+
+
 class TestConfigManagerBearerToken:
   """Bearer token persistence via shared CLI config."""
 

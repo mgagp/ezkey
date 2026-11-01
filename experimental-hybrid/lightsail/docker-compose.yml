@@ -67,6 +67,10 @@ services:
       EZKEY_DB_INTEGRATION_PASSWORD: ${EZKEY_DB_INTEGRATION_PASSWORD:-ezkey_integration}
       # Patrick m3 / #961: no default — refuse compose start if unset (init would otherwise
       # create ezkey_crypto with the lab default password). Set in Lightsail .env only.
+      # No crypto-api service on Lightsail by design: db-grants still creates the
+      # ezkey_crypto read-only role, but it is unused on this deployment (the crypto-api
+      # read-only DataSource applies to local clean-start lab stacks). See
+      # docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md.
       EZKEY_DB_CRYPTO_PASSWORD: ${EZKEY_DB_CRYPTO_PASSWORD:?EZKEY_DB_CRYPTO_PASSWORD must be set in Lightsail .env — no default}
     volumes:
       - postgres-data:/var/lib/postgresql/data

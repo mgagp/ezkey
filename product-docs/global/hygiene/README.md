@@ -55,6 +55,8 @@ One owning pass per procedure per slot — back off on concurrent merges.
 
 Repo-is-memory decisions (one line + reason):
 
+- **Dependabot inflow reduction** — minor+patch catch-all groups per directory, PR limit 5, ignore TS 7 / mobile ESLint 10 majors, CI regen of mobile licenses JSON, auto-merge of green semver-patch PRs (excl. Docker / Gradle ecosystems, RN-core / vision-camera / android-gradle / docker groups, deferred:* / hitl* labels, or crypto deps matching `tink|bouncycastle|bcprov|bcpkix|bcutil|conscrypt|crypto|sha256|sha2|sodium|@noble/|jose|jsonwebtoken|jwt|keychain|biometric`): open-PR stock fell but weekly inflow (~34) did not, so cut it at the source (Marc 2026-10-30).
+- **Dependabot auto-merge gate posture** — Spring Boot / Spring Security and GitHub Actions patch bumps stay eligible for auto-merge; rely on the gate, and if a problem occurs understand it and add unit/functional tests before excluding (Marc 2026-10-30).
 - **Dependabot curated at 09:14 ET weekdays (light) / Monday full** — fixed clock so agents and
   humans share one slot; avoids ad-hoc “whenever” drift.
 - **Code-scanning triage Monday 10:15 ET** (moved from 09:17) — avoid collision with the

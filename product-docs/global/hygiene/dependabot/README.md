@@ -52,7 +52,7 @@ Dependabot alone cannot prove current:
 | Admin UI | `npm` at `/ezkey-admin-ui` (daily + cooldown) | Orval via **Orval risk grid** (skill); evaluate **separately** from mobile |
 | Ezkey Mobile (Yarn 4) | `npm` at `/ezkey_mobile` (daily + cooldown) | **Mobile RN pulse** Monday full; Orval via **Orval risk grid** (separate from Admin UI) |
 | SDK JS | `npm` at `/ezkey-sdk/javascript` (daily + cooldown) | — |
-| GitHub Actions | `github-actions` at `/` (weekly) | — |
+| GitHub Actions | `github-actions` at `/` (weekly); group `codeql-action` (`github/codeql-action/*`) so init/analyze bump together (#1061/#1063 failed alone; fixed by #1072) | — |
 | Python CLI | `pip` at `/ezkey-cli-python` (weekly) | — |
 
 **Maven dependency graph:** Dependabot PR updates are separate from GitHub’s Insights dependency
@@ -79,12 +79,23 @@ only), Node engines pre-flight, and AGENTS pin sync always apply.
 
 Evidence: 2026-10-05 Admin Orval 8.32→8.39 (#658) — empty codegen diff, 112 vitest green → O0.
 
+**springdoc-openapi 3.2.0+:** live Admin `/api-docs` marks `PagedModel*` / `PageMetadata`
+properties as `required`. After `./scripts/update-specs.sh` + Admin UI `npm run generate:api`,
+list call sites that cast Orval envelope unions to `PagedModel*` hit TS2352 — use
+`orvalPagedBody` / `asOrvalPagedBody` in `ezkey-admin-ui` (mutator returns the page JSON body).
+Companion hygiene for Dependabot `#1055`: see the springdoc 3.2.0 companion PR (do not merge
+`#1055` alone without that Admin UI + spec refresh). Mobile Auth Orval path stays **O0**.
+
 ## Crypto-adjacent and ecosystem gates
 
 - **Crypto-adjacent** (e.g. `js-sha256`, keystore / crypto / proof-token): never autonomous on a
   **major**; route to security owner (Christophe). *If it ain't broken, don't fix it.*
-- **Unchanged gates:** Jest 30 / ESLint 10 mobile (RN presets), TypeScript 7
-  (`deferred:later-train`), RN-core / vision-camera coupled slice → HITL / defer as today.
+- **Unchanged gates:** ESLint 10 mobile (RN lint plugins; `#1007` trial 2026-10-26 stopped —
+  `eslint-plugin-react` + `eslint-plugin-react-native` still call removed ESLint 10 APIs; see
+  [`ezkey_mobile/docs/MOBILE_ESLINT10_JEST30_UNBLOCK_MEMO.md`](../../../../ezkey_mobile/docs/MOBILE_ESLINT10_JEST30_UNBLOCK_MEMO.md)),
+  TypeScript 7 (`deferred:later-train`), RN-core / vision-camera coupled slice → HITL / defer as
+  today. **Jest 30 mobile:** gate lifted 2026-10-26 after green `yarn test` on RN 0.87.1 (Dependabot
+  `#653` integrated via hygiene PR; preset still *declares* Jest 29 deps — trust runtime evidence).
 
 ## Majeures / Major upgrades
 
@@ -145,6 +156,16 @@ still pending (next Play AAB after `#650`/`#651`) — see [`2026-10-05-pass-1.md
 **2026-10-12 Monday full (trial-week review):** merged `#732`/`#733`/`#734` + hygiene `#759`
 (supersedes `#735` license-snapshot companion); held `#717`/`#718` (post-`#702`) and T4/gates;
 `#627` Pixel smoke still pending — see [`2026-10-12-pass-1.md`](2026-10-12-pass-1.md).
+**2026-10-26 Monday full:** merged `#1001`/`#1002`/`#1003`/`#1004` + hygiene `#1026`
+(supersedes `#1005`/`#1006` license-snapshot companion); held `#1007` (eslint 10) and standing
+T4/crypto/gates (`#870`/`#878`/`#929`/`#767`/`#653`); Boot 4.1.2 HITL; `#917` DRAFT residual;
+`#627` Pixel smoke still pending — see [`2026-10-26-pass-1.md`](2026-10-26-pass-1.md).
+**2026-10-26 Marc go (mobile tooling hygiene):** ESLint 10 (`#1007`) **stopped** — key plugins
+`eslint-plugin-react` / `eslint-plugin-react-native` incompatible; Jest 30 + `@types/jest` 30
+(`#653`) **landed** after 42/323 green without test rewrites — memo
+[`MOBILE_ESLINT10_JEST30_UNBLOCK_MEMO.md`](../../../../ezkey_mobile/docs/MOBILE_ESLINT10_JEST30_UNBLOCK_MEMO.md).
+
+**2026-10-19 Monday full (rerun):** merged Maven #868/#853, Admin UI #869/#871/#873/#875/#855 + Orval #872 (O0) + #874/#876/#822/#885, mobile lot via hygiene #913 (supersedes #879–#884); held #870 (Tink → Christophe), #877 (react without react-dom), #878 (RN 0.88 line), #767, #717 (post-#702 decision), gates #779/#653; `#627` Pixel smoke still pending — see [`2026-10-19-pass-1.md`](2026-10-19-pass-1.md).
 
 Routine peel still skips any PR labeled `deferred:rn-upgrade`. To park *future* RN-coupled mobile
 deps until a line bump: comment + `gh pr edit <n> --add-label deferred:rn-upgrade`.
@@ -224,6 +245,14 @@ On every Monday-full `dependabot-curated` pass the agent must:
 4. Check `google-java-format.version` (Spotless nested pin; Dependabot typically misses it).
    Bump only when Spotless, JDK compatibility, or a real formatter bug requires it (T2 tooling).
 
+**Boot 4.1.2 (2026-10-26, replaces Dependabot [#1031](https://github.com/mgagp/ezkey/pull/1031)):**
+dropped parent `postgresql.version` / `tomcat.version` SEC-019 overrides — Boot BOM already
+manages **42.7.14** / **11.0.27**. Kept `logback` 1.6.5 (and jackson / caffeine ahead pins).
+Dependabot `#1031` `backend` failed resolving Spotless plugin transitive
+`commons-codec:1.22.1` (`PluginResolutionException`) — same Maven Central flake family as
+[#939](https://github.com/mgagp/ezkey/issues/939); hygiene PR retries the bump without pinning
+codec. Provenance: Monday pulse [`2026-10-26-pass-1.md`](2026-10-26-pass-1.md).
+
 Do **not** add Docker image tags to this pulse unless the operator asks. Tink / ShedLock /
 ipaddress now follow parent properties (see
 [`handoff-centralize-core-pins.md`](handoff-centralize-core-pins.md)).
@@ -256,7 +285,10 @@ replace the mobile stack inventory. Groups:
 
 **`orval` is not grouped** — solo PRs, classified by the **Orval risk grid**, exact pin (no caret).
 
-**Standing policy — mobile ESLint / Jest:** leave them ungrouped. `deps:monitor` ecosystem gates (`ESLint 10`, `Jest 30`) mean those majors are not clear T1–T3 tooling-only; batching them inside `mobile-tooling` hides the gate and invites false autonomy.
+**Standing policy — mobile ESLint / Jest:** leave them ungrouped. ESLint 10 remains an
+ecosystem gate (RN lint plugins; `#1007` stopped 2026-10-26). Jest 30 is landed on the app
+(`#653`); keep Jest ungrouped so further majors stay visible — do not fold eslint/jest into
+`mobile-tooling`.
 
 On every Monday-full `dependabot-curated` pass the agent must:
 

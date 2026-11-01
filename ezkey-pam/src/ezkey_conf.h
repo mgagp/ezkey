@@ -41,11 +41,19 @@ typedef struct {
 
 /**
  * Zero the struct and apply compiled-in defaults (including
- * EZKEY_DEFAULT_CHALLENGE_REQUESTED).
+ * EZKEY_DEFAULT_CHALLENGE_REQUESTED). {@code lab_http} defaults to 0.
  *
  * @param cfg destination (must not be NULL)
  */
 void ezkey_config_init(EzkeyConfig *cfg);
+
+/**
+ * Wipe credential fields ({@code integration_key}, {@code secret_key}) with
+ * {@code explicit_bzero}. Does not clear api_url / timeouts.
+ *
+ * @param cfg config (may be NULL)
+ */
+void ezkey_config_wipe_secrets(EzkeyConfig *cfg);
 
 /**
  * Parse a conf boolean. Known true: true/1/yes/on. Known false: false/0/no/off.
@@ -71,10 +79,16 @@ void ezkey_conf_apply_key(EzkeyConfig *cfg, const char *key, const char *value);
 /**
  * Parse key=value lines from an open stream into cfg (comments and blanks
  * skipped). Does not enforce ownership/mode — caller must.
+ * A physical line longer than {@code EZKEY_CONF_LINE_MAX-2} payload characters
+ * (1022 when {@code EZKEY_CONF_LINE_MAX} is 1024) — i.e. fgets fills the
+ * buffer with no newline and more input remains — returns -3 after draining
+ * to the next newline (#1016 C3/S5). Duplicate keys: last assignment wins.
+ * The stack line buffer is wiped ({@code explicit_bzero}) before return
+ * (#1016 S2).
  *
  * @param fp open text stream
  * @param cfg config already initialized (missing keys keep defaults)
- * @return 0 on success, -1 on I/O error
+ * @return 0 on success, -1 on I/O error, -3 on overlong line
  */
 int ezkey_conf_load_fp(FILE *fp, EzkeyConfig *cfg);
 

@@ -13,7 +13,7 @@ require_integration_keys
 CONTAINER="${EZKEY_PAM_CONTAINER:-ezkey-pam-ssh}"
 CONF="/etc/security/pam_ezkey.conf"
 BACKUP="/etc/security/pam_ezkey.conf.noconvbak"
-ARTIFACT_DIR="${EZKEY_PAM_ARTIFACT_DIR:-/opt/cursor/artifacts}"
+ARTIFACT_DIR="$(ezkey_pam_artifact_dir)"
 mkdir -p "${ARTIFACT_DIR}"
 PROOF="${ARTIFACT_DIR}/pam-challenge-nits.log"
 PASS=0

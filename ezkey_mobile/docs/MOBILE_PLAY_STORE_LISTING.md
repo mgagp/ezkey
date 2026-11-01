@@ -98,7 +98,7 @@ customer enrollments (use a clean-start Demo Device / lab installation).
    it would leak a real enrollment).
 4. **Pending authentication** — approve/deny (lab attempt).
 5. **Settings** — What's new, Coming soon, version footer `Ezkey · Public alpha`.
-6. **Release notes** — Version 1.0 / requirements Android 12+.
+6. **Release notes** — Public alpha / requirements Android 12+.
 
 Tablet screenshots: optional unless Play asks for them.
 

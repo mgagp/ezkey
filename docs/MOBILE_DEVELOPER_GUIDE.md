@@ -34,6 +34,12 @@ semantics, canonical signed strings, and verification order. It does **not** pre
 layouts, navigation, or general user experience beyond security-relevant behavior (for example
 user-initiated polling). Product UX is intentionally out of scope here.
 
+Application-independent **client behaviour** (decision lock, unknown `respond` outcome, leave-as-deny,
+approve-only local confirmation, error presentation) lives in
+[`CLIENT_BEHAVIOUR_CONTRACT.md`](CLIENT_BEHAVIOUR_CONTRACT.md) (RFC 2119 MUST/SHOULD/MAY, citing the
+mobile state machine and #834 Q-numbers). Read that contract alongside this guide when building a
+third-party client.
+
 ## Audience And Scope
 
 This guide targets:
@@ -773,14 +779,29 @@ This verification is mandatory for a correct high-security Ezkey client.
 
 Ezkey treats failed validation strictly.
 
-- If the device signature is invalid, the backend may invalidate the attempt immediately.
-- If the challenge response is wrong, the attempt may become invalid.
-- There is no optimistic retry assumption for the same attempt.
+- If the device signature is invalid before ownership proof, the backend returns **409**
+  `auth-attempt-state-conflict` with **no** status transition (#912).
+- If the challenge response is wrong **after** a valid device signature on accept, the attempt may
+  become `INVALID` and the signed body result is `FAILED`.
+- There is no optimistic retry assumption for the same attempt once a decision was sent or the
+  outcome became unknown.
 
-Client implication:
+Client implication (see also [`CLIENT_BEHAVIOUR_CONTRACT.md`](CLIENT_BEHAVIOUR_CONTRACT.md) §2 / **Q10**):
 
-- Do not build UX that assumes the user can retry a failed `respond` on the same attempt.
-- Surface the failure clearly and let the integrating system initiate a new auth attempt.
+- Do **not** build UX that assumes the user can retry `respond` on the same attempt after the HTTP
+  call was sent.
+- A `respond` with **no HTTP response** (timeout / transport cut) is an **UNKNOWN** outcome: lock
+  the `authAttemptId`, never send a second decision, point the user at the integrating application
+  (**Q10**).
+- Ambiguous **5xx** after `respond` was sent **SHOULD** use the same UNKNOWN posture (**extension
+  of Q10**). **503** `integration-signing-unavailable` remains **retryable**, but a retry **may**
+  return terminal **409** (for example wrong challenge already committed `INVALID` before signing
+  failed). Do not treat 503 as proof that nothing was committed.
+- After send, classified **4xx** / **429** with a body keep catalog retryability (not UNKNOWN).
+- **Known gap:** neither the Dart SDK nor the RN reference app fully implements UNKNOWN for
+  ambiguous 5xx; the SDK also marks lost `respond` transport as `retryable`. Code follow-up
+  (#1052 plan).
+- Surface final failures clearly and let the integrating system initiate a new auth attempt.
 
 ## Request And Response Canonicalization Checklist
 
@@ -834,18 +855,17 @@ Auth API error responses use RFC 9457 Problem Details for HTTP `4xx` and `5xx` f
 
 Stable `type` URIs for origin errors are under **`https://ezkey.io/problems/`** (Auth catalog
 `https://ezkey.io/problems/auth/…`, plus
-`https://ezkey.io/problems/system/audit-chain-heartbeat-degraded`). Those are the only Problem
-Details a client should treat as Ezkey domain copy (`detail` / `title` from the API).
+`https://ezkey.io/problems/system/audit-chain-heartbeat-degraded`).
 
-When Auth is reached through Cloudflare (for example community `https://auth-api.ezkey.online`), a
-schema-validation **Block** or other WAF rule can return **before** origin. Clients that send
-`Accept: application/json` or `application/problem+json` then receive Cloudflare's own RFC 9457
-JSON (HTTP 403, Error 1020, `cloudflare_error: true`, `type` under
-`https://developers.cloudflare.com/…`). That is an **edge** contract, not Auth API. Do not show
-Cloudflare `detail`, `what_you_should_do`, or `ray_id` as a protocol error. Do not retry 1020
-(`retryable` is false). A well-formed client must not send a schema-invalid body; if a legitimate
-client sees 1020, treat it as installation unreachable and fix the edge schema or mitigation
-(operator), not the wire protocol.
+**One rule for end-user presentation:** branch on HTTP **status** and problem **`type`**. **Never
+display** `detail` or `title` verbatim to end users — map `type` to local / localized copy. Use
+`detail` only in logs or diagnostics. See [`CLIENT_BEHAVIOUR_CONTRACT.md`](CLIENT_BEHAVIOUR_CONTRACT.md)
+§7.
+
+When Auth is reached through an edge/WAF that returns Problem Details **before** origin, that is
+an **edge** contract, not Auth API. Do not show edge `detail` as a protocol error. Do not retry
+schema-block responses that advertise non-retryable. A well-formed client must not send a
+schema-invalid body.
 
 Client guidance:
 
@@ -853,11 +873,47 @@ Client guidance:
 - Treat `200 OK` from `respond` as transport success, then inspect `authAttemptResult` and verify
   `authAttemptProofTokenResultSignedByIntegration`.
 - Branch primarily on HTTP status and stable **Ezkey** problem `type` (`https://ezkey.io/problems/…`),
-  not on free-form human message text and not on any Problem Details object.
+  not on free-form human message text.
 - If `type` is missing or is not under `https://ezkey.io/problems/`, use a generic local
-  “request failed / installation unreachable” string. Operator reading of the two shapes:
+  “request failed / installation unreachable” string. Operator reading of origin vs edge shapes:
   [`docs/cloudflare/auth-api-schema-validation.md`](cloudflare/auth-api-schema-validation.md)
   § Reading responses.
+
+### Auth API problem types (full catalog)
+
+Nineteen stable types from `AuthApiProblemCatalog` (Auth API). Client action is behavioural
+guidance for authenticator UIs; always prefer local copy keyed by `type`.
+
+| `type` suffix (under `https://ezkey.io/problems/` unless noted) | HTTP | Client action | SDK (`EzkeyProblemKind`) |
+| --- | --- | --- | --- |
+| `auth/resource-not-found` | 404 | Generic not-found / unreachable; do not enumerate | **Unmapped** → `unknown` |
+| `auth/method-not-allowed` | 405 | Treat as client bug / unreachable; respect `Allow` if present | **Unmapped** → `unknown` |
+| `auth/enrollment-already-bound` | 409 | Invitation consumed; stop bind | `enrollmentAlreadyBound` |
+| `auth/enrollment-binding-failed` | 400 | Bad invitation; allow re-scan | `enrollmentBindingFailed` |
+| `auth/enrollment-invitation-expired` | 400 | Invitation expired; new QR required | `enrollmentInvitationExpired` |
+| `auth/enrollment-not-available` | 400 | Invitation unusable | `enrollmentNotAvailable` |
+| `auth/enrollment-integration-not-found` | 404 | Configuration issue; do not retry blindly | `enrollmentIntegrationNotFound` |
+| `auth/enrollment-verify-failed` | 400 | Verify rejected; invitation may be dead | `enrollmentVerifyFailed` |
+| `auth/enrollment-instance-info-failed` | 400 | Branding fetch failed; enrollment may still be valid | `enrollmentInstanceInfoFailed` |
+| `auth/enrollment-state-conflict` | 409 | Enrollment lifecycle forbids operation | `enrollmentStateConflict` |
+| `auth/auth-attempt-binding-failed` | 400 | Pending/respond proof rejected | `authAttemptBindingFailed` |
+| `auth/auth-attempt-state-conflict` | 409 | Attempt no longer actionable; Back only (**Q8**) | `authAttemptStateConflict` |
+| `auth/auth-attempt-expired` | 409 | Expired; Back only (**Q8** / #895) | `authAttemptExpired` |
+| `auth/auth-attempt-respond-failed` | 400† | Respond could not be processed; do not assume retry | `authAttemptRespondFailed` |
+| `auth/integration-signing-unavailable` | 503 | Retryable (#844); a retry may return terminal **409** (e.g. `INVALID` already committed) | `integrationSigningUnavailable` |
+| `auth/validation-failed` | 400 | Fix request fields | `validationFailed` |
+| `auth/invalid-request-body` | 400 | Fix JSON body | `validationFailed` |
+| `auth/internal-error` | 500 | Generic failure; after `respond` was sent, **SHOULD** treat as UNKNOWN (extension of Q10; SDK marks retryable — known gap) | `internalError` |
+| `system/audit-chain-heartbeat-degraded` | 503 | Retry later (`Retry-After`); new pending claims blocked | `auditChainDegraded` |
+
+† `auth-attempt-respond-failed` is in the catalog; no dedicated handler emits it on current `main` —
+if observed, treat as a non-retryable respond failure.
+
+**HTTP 429** on Auth device POSTs uses an **empty body** (filter), not a catalog `type`. Clients
+**SHOULD** honour `Retry-After` and use generic rate-limit copy.
+
+The two **unmapped** SDK types (`resource-not-found`, `method-not-allowed`) currently fall through
+to `EzkeyProblemKind.unknown`. Mapping them is a code follow-up (#1052).
 
 ## Local Validation With Docker
 
@@ -933,10 +989,12 @@ Relevant Bruno folders:
 
 Use these repository files as the normative implementation references alongside this guide:
 
+- `docs/CLIENT_BEHAVIOUR_CONTRACT.md` (MUST/SHOULD/MAY client behaviour)
 - `docs/CRYPTO.md`
 - `docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`
 - `docs/CONTEXTUAL_AUTH.md`
 - `docs/ENDPOINT.md`
+- `ezkey_mobile/docs/MOBILE_APP_STATE_MACHINE.md` (reference-app FSM)
 - `ezkey_mobile/android/app/src/main/java/org/ezkey/mobile/crypto/EzkeyCryptoModule.kt`
 - `ezkey_mobile/android/app/src/main/java/org/ezkey/mobile/crypto/IntegrationKeyVerifier.kt`
 - `ezkey-demo-device/src/main/java/org/ezkey/demo/device/service/DeviceCryptoService.java`

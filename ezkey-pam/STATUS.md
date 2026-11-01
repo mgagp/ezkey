@@ -45,7 +45,18 @@ Non-goals until dogfood is boring:
 
 ### What it is
 
-Version **2.2.14** (#995: connector default `challenge_requested=true`). Prior
+Version **2.2.20** (#1054 cycle 3: conf `O_NONBLOCK`, probe-4 harness FIFO
+fix, TLS runtime guard, check-source statement form). Prior **2.2.19**
+(#1016 cycle 2b: decision harness, TLS pin, conf unknown-key warn, `#` in
+values, mutation re-kill). Prior **2.2.18** (#1016 cycle 2). Prior **2.2.17**
+(cycle 1b). Prior **2.2.16** (snapshot/probes). Prior **2.2.15**.
+
+**Conf comments (#1016 P6 / #1054):** `#` starts a comment only at line start or
+after whitespace. A value may contain `#` (e.g. `secret_key=ab#cd`). Prefer not
+to put `#` inside credentials without need. Unknown keys log
+`reason=conf_unknown_key key=<sanitized-name>` (never the value). Unrecognized
+boolean values keep the prior setting and do **not** log the raw value.
+Prior **2.2.14** (#995: connector default `challenge_requested=true`). Prior
 **2.2.13** (#982 tiers 0–1 on #976: ECHO_ON confirm + challenge Enter-only
 wait). Prior **2.2.12** (#975 / PR #976: **confirm-before-create** + display
 server-provided challenge even when host `challenge_requested=false`; builds on
@@ -104,7 +115,7 @@ owner `root:root` in the demo image. That path and style match Linux-PAM convent
 
 | Key | Role | Demo-adequate? |
 |---|---|---|
-| `integration_api_url` | Integration API base URL (**required**; no compiled-in default) | Yes for Docker DNS; non-lab / host installs need HTTPS |
+| `integration_api_url` | Integration API base URL (**required**; no compiled-in default). Alias: `api_url` (#1016 P7) | Yes for Docker DNS; non-lab / host installs need HTTPS |
 | `integration_key` / `secret_key` | Basic auth | Yes; file perms are the control |
 | `wait_timeout` / `wait_polling` / `api_timeout` | HTTP waits | Yes |
 | `challenge_requested` | Two-digit number-matching challenge | **Default `true` (#995)**. Connector owns the default (safer for SSH). Operator types **`ok` before create** (confirm-before-create; anti-accident; 25 s Enter cap). Create asks for a challenge unless conf opts out with `false`; when the **enrollment** has `authAttemptChallengeRequired` the server still forces a code. Unknown/empty conf values keep the prior default + warning. Valid challenge in the response → **second** `pam_prompt` (#975; challenge Enter = rem-budget / #982). `true` + missing/out-of-range → UNAVAIL. See [`docs/INTERACTION-MODEL.md`](docs/INTERACTION-MODEL.md) |
@@ -115,13 +126,32 @@ owner `root:root` in the demo image. That path and style match Linux-PAM convent
 
 PAM args (root-owned `pam.d` only): `debug`, `conf=/path`, optional `wait_timeout=N` (overrides conf).
 
-**Process ENV is not read by `pam_ezkey.so`.** Compose may still set
-`EZKEY_INTEGRATION_*`, `EZKEY_WAIT_*`, `EZKEY_DEBUG`, and optionally
-`EZKEY_CONFIG_FILE` for **`docker-entrypoint.sh` only** — the entrypoint writes the
-root-owned conf via `mktemp` under `/etc/security` (never `/tmp`) +
-`install -m 600 -o root -g root`. That bridge exists because sshd does not pass
-Docker ENV into PAM. A caller-controlled environment (e.g. `su`/`sudo`) cannot
-redirect conf path, debug, or timeouts inside the `.so`.
+**Process ENV is not read by `pam_ezkey.so` for conf path, credentials, debug,
+or timeouts.** Compose may still set `EZKEY_INTEGRATION_*`, `EZKEY_WAIT_*`,
+`EZKEY_DEBUG`, and optionally `EZKEY_CONFIG_FILE` for **`docker-entrypoint.sh`
+only** — the entrypoint writes the root-owned conf via `mktemp` under
+`/etc/security` (never `/tmp`) + `install -m 600 -o root -g root`. That bridge
+exists because sshd does not pass Docker ENV into PAM. A caller-controlled
+environment (e.g. `su`/`sudo`) cannot redirect conf path, debug, or timeouts
+inside the `.so`. **Exception (#1016 C2):** libcurl would honour
+`http_proxy` / `https_proxy` / `ALL_PROXY` unless the module clears the proxy
+(`CURLOPT_PROXY ""` on every easy handle). Without that guard, Basic auth could
+reach a caller-controlled proxy in `lab_http` `http://` mode. **Exception
+(#1016 S1):** libcurl/OpenSSL honour `SSLKEYLOGFILE` — with it set, a root PAM
+child would create the caller-chosen path (typically mode `0644`) and write TLS
+session keys. The module refuses authenticate early (`UNAVAIL`, `reason=env`,
+no network call) when `getenv("SSLKEYLOGFILE")` is non-NULL. **Denial-of-service
+tradeoff (#1054):** that refuse-closed path is intentional — availability is
+denied for the login rather than writing session keys to a caller-chosen path.
+An ENV injector who can set `SSLKEYLOGFILE` on the PAM child can force UNAVAIL
+for every attempt; that is preferred to a key-exfiltration side channel.
+**Remedy:** remove `SSLKEYLOGFILE` from the service environment; an UNAVAIL
+caused by a caller-set variable is harmless only when the stack uses
+`required` / `[default=die]` — not with `sufficient` / `[default=ignore]`
+(`su`/`sudo`: the caller controls its environment). On the
+measured build, `SSL_CERT_FILE` / `SSL_CERT_DIR` / `CURL_CA_BUNDLE` are **not**
+honoured; that is a build-specific observation and is **not** guaranteed on
+other libcurl builds — do not treat those names as a complete ENV surface.
 
 **Verdict:** the current parameter set is **enough for the demo** and is the right *shape* for
 v1 operable use. It is not missing a second config system. Remaining gaps for a non-lab host are
@@ -131,6 +161,12 @@ operational (TLS, live sshd cutover), not “more keys.”
 
 - **HTTP** to `integration-api:7080` only with **`lab_http=true`** (entrypoint sets it). Outside
   lab, `http://` → `PAM_AUTHINFO_UNAVAIL`. No TLS verify knobs yet. (Slice #4+ / non-lab HTTPS)
+- **No client-disconnect detection during `/wait` (#1054 / #1067):** the module does **not**
+  detect that the SSH client has left while waiting. The attempt expires at the applied TTL
+  (about **75 s** by default under the demo budget), and the pre-auth PAM process is held
+  until then, bounded by sshd `LoginGraceTime`; sshd `MaxStartups` also applies. Operators
+  should restrict allowed sources on the SSH port. Do **not** expect fast disconnect
+  detection — POLLHUP monitoring is intentionally out of scope.
 - **Demo PAM stack is Ezkey-only** (`pam_ezkey` + `pam_permit`). Host-oriented sketch lives in
   [`sshd.host-sketch`](sshd.host-sketch) — not applied to any live host by this repo.
 - **`install.sh` can still build on the host.** Prefer image-matched extract for real hosts
@@ -149,6 +185,9 @@ operational (TLS, live sshd cutover), not “more keys.”
   from create (`timeoutSeconds`, ≤ **90 s** for PAM). A late device approval then marks an
   orphan attempt `ACCEPTED` while nobody is waiting on that id — SSH already failed closed.
   Residual risk is **approval fatigue** (operator/device sees a prompt that grants nothing).
+  **Without an id only the server TTL bounds the request** (#1016 C7): if create times out
+  or the response is lost before `authAttemptId` is known, PAM cannot cancel and a phone
+  may still receive a request nobody waits for. An idempotency key is out of scope.
 
 ### Slices #1–#3 done (this eval)
 
@@ -361,7 +400,9 @@ Each slice should stay mergeable on its own:
   Deal with it on the AL2023 dogfood host; do not pre-build a policy pack.
 - **sudo later.** Same `.so` can appear in `/etc/pam.d/sudo` once SSH is boring. Do not couple
   the first slice to sudo.
-- **Challenge (number matching).** Default **`challenge_requested=true`** (#995): create
+- **Challenge (number matching).** Number matching counters MFA fatigue; it is **not**
+  phishing-resistant — see [`docs/SECURITY_POSTURE.md`](../docs/SECURITY_POSTURE.md)
+  § Challenge-code direction (Decision #960). Default **`challenge_requested=true`** (#995): create
   requests a code; response `authAttemptChallenge` is shown with `pam_prompt` before `/wait`.
   Device must enter the same code. Set conf `false` to opt out of *connector-requested*
   challenge (when the **enrollment** has `authAttemptChallengeRequired` the server still
@@ -439,19 +480,58 @@ Format (stable; parse with `grep 'pam_ezkey: attempt '` or `pam_ezkey: start `):
 
 ```text
 pam_ezkey: start user=<linuxUser> authAttemptId=<id> timeoutSeconds=<n>
-pam_ezkey: attempt user=<linuxUser> authAttemptId=<id|-> result=<R> pam_code=<n> latency_ms=<ms> lab_http=<true|false> cancel=<ok|fail|skipped|final> timeoutSeconds=<n|->
+pam_ezkey: attempt user=<linuxUser> authAttemptId=<id|-> result=<R> pam_code=<n> latency_ms=<ms> lab_http=<true|false> cancel=<ok|fail|skipped|final> timeoutSeconds=<n|-> stage=<S> reason=<R> curl_rc=<n|-> http=<n|-> confirm_ms=<n|-> api_ms=<n|->
 ```
 
 | Field | Meaning |
 |---|---|
 | `user` | Linux username (sanitized); `-` if unavailable |
 | `authAttemptId` | Numeric id from create, or `-` if never created |
-| `result` | `SUCCESS` \| `EXPIRED` \| `TIMEOUT` \| `DENIED` \| `MAXTRIES` \| `UNAVAIL` \| `ERROR` \| `UNKNOWN_USER` |
+| `result` | `SUCCESS` \| `EXPIRED` \| `TIMEOUT` \| `DENIED` \| `MAXTRIES` \| `UNAVAIL` \| `CONFIRM` \| `SIGNAL` \| `ERROR` \| `UNKNOWN_USER` |
 | `pam_code` | Integer PAM return code |
-| `latency_ms` | Monotonic elapsed ms for the authenticate call |
+| `latency_ms` | Monotonic elapsed ms for the authenticate call, or `-` if unknown (never invent `0`) |
 | `lab_http` | Conf `lab_http` as `true` or `false` (Christophe) |
 | `cancel` | Exactly one of `ok` \| `fail` \| `skipped` \| `final` (`EZKEY_CANCEL_*`; Patrick #897 M2 + Christophe observability) |
 | `timeoutSeconds` | Planned wait on `start` (before create); applied TTL on `attempt` (or `-`) (#907) |
+| `stage` | Fixed vocab: `init` \| `conf` \| `confirm` \| `create` \| `challenge` \| `wait` (#1011) |
+| `reason` | Fixed vocab (e.g. `empty_confirm`, `curl`, `http`, `budget`, `signal`, `challenge_missing`, `-`) — never free-form secrets |
+| `curl_rc` | libcurl code from the last create/wait call (including SUCCESS), or `-` |
+| `http` | HTTP status from the last create/wait call (including SUCCESS), or `-` |
+| `confirm_ms` | Pre-create `ok` prompt duration (ms), or `-` if unknown |
+| `api_ms` | Cumulative create/wait HTTP time (ms), or `-` |
+
+**#1011 notes:** `CONFIRM` = empty/wrong pre-create `ok` (`pam_code` =
+`PAM_AUTHINFO_UNAVAIL` / Linux `9`; `EZKEY_PAM_AUTHINFO_UNAVAIL` in diag init).
+Only **SIGTERM** is handled during authenticate (abort during `/wait`, or
+best-effort SIGNAL + `SIG_DFL` + re-raise outside `/wait`). Other signals
+(HUP, USR1, ALRM, PIPE, INT, QUIT, …) keep the process default action: the
+PAM child dies with no cancel and no SIGNAL line, never SUCCESS, and a
+created attempt stays pending until its TTL (#1016 C5).
+
+`SIGNAL` = best-effort authpriv line when SIGTERM arrives **outside** `/wait`
+(prompts or create): async-signal-safe non-blocking `write` to `/dev/log`
+(`SOCK_NONBLOCK` or `fcntl O_NONBLOCK`; full queue → drop the line), then
+`SIG_DFL` + `raise(SIGTERM)` so the child exits (no hung `[pam]` under OpenSSH
+atomicio). The SIGNAL line is a **best-effort snapshot**: `stage` may be stale,
+`authAttemptId=-` and `cancel=skipped` are expected outside `/wait` (no cancel
+is attempted there — the Integration API attempt stays pending on the device
+until TTL). Snapshot length is double-buffered (#1016 N5): a TERM mid-refresh
+still emits the previous complete line (never a zeroed active length). Wait-path
+SIGTERM still uses abort → cancel → normal summary (`reason=signal`, often
+`cancel=ok`) — #1012 unchanged. **D1 — do not document “never SUCCESS after
+client gone”:** if TERM is absorbed during `/wait` after the ACCEPTED answer
+already arrived in the same chunk, PAM can return `SUCCESS` to an sshd whose
+client has left; that is not an elevation. Residual window: SIGTERM between
+`/wait` ACCEPTED and clearing `ezkey_in_wait` is still absorbed as abort (doc
+only). SIGNAL lines use real `latency_ms` when the auth clock is known;
+otherwise `latency_ms=-` / `confirm_ms=-`. Experimental / never released: no
+log-format compatibility promise.
+
+**#1016 T2 `/dev/log` coverage:** host `make test` without a log-daemon socket
+(dangling `/dev/log`, no journald/rsyslog) **skips** the live path. CI Rocky
+runtime (rsyslog up) runs `test_diag_harness` with
+`EZKEY_PAM_REQUIRE_DEVLOG=1` so the real `/dev/log` O_NONBLOCK path is
+required, not skipped.
 
 **#907 F9 / R5 (option A — Patrick/Christophe review):** Under OpenSSH portable, each
 keyboard-interactive **prompt round** runs in a forked child that `_exit`s and
@@ -517,7 +597,7 @@ authpriv goes to journald — use `journalctl -t pam_ezkey` (not `/var/log/secur
 | File mode | Exactly `0600` or `0400` (rejects `0000`, `0644`, etc.; root bypasses DAC) |
 | Timeouts / debug / conf path | Conf file and/or `pam.d` module args only — not process ENV |
 | Violation / missing field / unreadable | `PAM_AUTHINFO_UNAVAIL` (fail-closed) |
-| Secrets in memory | Wiped (`explicit_bzero`) on every exit path |
+| Secrets in memory | Module buffers wiped (`explicit_bzero` on conf line, `userpwd`, `integration_key` / `secret_key`); libcurl-internal and residual stack copies are **not** guaranteed (#1016 S2) |
 
 Docker entrypoint maps compose ENV → conf write via `mktemp` under `/etc/security`
 (not `/tmp`) + `install -m 600 -o root -g root` (rejects newline injection in ENV values).
@@ -598,8 +678,8 @@ create under `Match … MaxAuthTries 1`. Username controls sanitized
 | Client situation | Pre-2.2.12 | 2.2.12 |
 |---|---|---|
 | No `PAM_CONV` / `PAM_CONV_ERR` | UNAVAIL | UNAVAIL (0 creates) |
-| `ssh -T </dev/null` (empty EOF) | **SUCCESS if device approved** | **UNAVAIL + 0 creates** |
-| Interactive bare Enter | SUCCESS path continued | **UNAVAIL + 0 creates** |
+| `ssh -T </dev/null` (empty EOF) | **SUCCESS if device approved** | **CONFIRM + 0 creates** (#1011) |
+| Interactive bare Enter | SUCCESS path continued | **CONFIRM + 0 creates** (#1011) |
 | `BatchMode` + pubkey outside MFA Match | unchanged | unchanged |
 
 **D1 (known):** some Windows OpenSSH clients without a console hang until
@@ -614,6 +694,8 @@ until applied TTL (≤ 90 s). Arming SIGTERM during `pam_prompt` was declined
 (Christophe / STATUS M3).
 
 **Two-digit challenge (2.2.4+; display + confirm-before-create 2.2.12 / #975).**
+Number matching (counters MFA fatigue; not phishing-resistant, see
+[`SECURITY_POSTURE`](../docs/SECURITY_POSTURE.md) Decision #960).
 
 1. Host `challenge_requested=true` **or** enrollment `authAttemptChallengeRequired`.
 2. Create returns `authAttemptChallenge` (default 2 digits).
@@ -640,10 +722,11 @@ until applied TTL (≤ 90 s). Arming SIGTERM during `pam_prompt` was declined
 ### Timeouts (Patrick / #726 / P3 budget) — path:line inventory
 
 Single deadline: `pam_ezkey.c:917` `clock_gettime(CLOCK_MONOTONIC, &started)`.
-Wall budget `ezkey_config.h:36` **`EZKEY_AUTH_BUDGET_SECS` 105** — **15 s margin** under
-demo `LoginGraceTime` 120 (`sshd_config:20`). Effective `/wait` =
-`min(conf, rem − CURL_SLACK)` at `pam_ezkey.c:814-825`; too little left →
-`UNAVAIL` **with** attempt line (`pam_sm_authenticate` `done:` / `log_attempt_summary`).
+Wall budget symbol **`EZKEY_AUTH_BUDGET_SECS` 105** (in `ezkey_config.h`) —
+**15 s margin** under demo `LoginGraceTime` 120 (`sshd_config`). Effective
+`/wait` = `min(conf, rem − CURL_SLACK)` in `pam_ezkey.c` (planned-wait helper);
+too little left → `UNAVAIL` **with** attempt line (`pam_sm_authenticate` `done:`
+/ `log_attempt_summary`).
 
 **Craft rule (amended #907 B2a / Marc; R5 best-effort):** no `alarm` and no
 global `sigaction`. **Exception — wait-scoped `SIGTERM` only:** installed solely
@@ -678,6 +761,8 @@ API attempt expires server-side (`ezkey.core.auth-attempt.ttl-seconds` **120**).
 
 | Knob | Where (path:line) | Lab default / bound | Beyond-threshold proof |
 |---|---|---|---|
+| Authpriv line max | `ezkey_diag.h` **`EZKEY_DIAG_LINE_MAX` 768** | ≥ measured worst ~416 | `test_diag_harness` worst-case format fits (proven) |
+| Attempt `user[]` | `EzkeyDiag.user[128]` (`ezkey_diag.h`) | sanitize + truncate | `test_diag_harness` huge user → `&lt;128` incl NUL (proven) |
 | Auth budget | `ezkey_config.h` **105**; rem helper `remaining_budget_secs` | 105 s (&lt; grace 120) | Delayed Enter 8s shrinks `?timeout=` (proven). Challenge Enter **>88 s** → UNAVAIL + cancel (B3 rem-exhaust proven) |
 | `api_timeout` | clamp / `EZKEY_MAX_API_TIMEOUT` **10**; POST curl | max **10** s | stub sleep 3 + conf `1` → UNAVAIL; conf **60** + stub sleep 12 → UNAVAIL in ≪60s (cap proven) |
 | Enter (pre-create) | `prompt_echo_on(require_ok=1)`; `EZKEY_MAX_ENTER_SECS` **25** | duration bound (no signals) | Enter **>25 s** → UNAVAIL + 0 creates (proven) |

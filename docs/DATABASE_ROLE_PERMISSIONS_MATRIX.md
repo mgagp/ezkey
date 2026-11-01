@@ -25,7 +25,7 @@ Normative matrix of PostgreSQL roles and per-table DML for Ezkey backends. This 
 | `ezkey_admin` | yes | Broadest runtime DML + all schedulers | `admin-api` |
 | `ezkey_auth` | yes | Device-facing Auth API DML | `auth-api` |
 | `ezkey_integration` | yes | M2M Integration API DML | `integration-api` |
-| `ezkey_crypto` | yes | SELECT-only on `ezkey_keyset_blob` (ADR-0016) | `crypto-api` (local clean-start lab only; not Lightsail) |
+| `ezkey_crypto` | yes | SELECT-only on `ezkey_keyset_blob` (ADR-0016) | `crypto-api` (local clean-start lab only). Role is still created by `db-grants` on Lightsail but unused there — no `crypto-api` service by design. |
 
 ### Provisioning (not Flyway)
 
@@ -113,7 +113,7 @@ Grants on parents `ezkey_audit_log` and `ezkey_auth_attempt` apply to partitions
 3. **Partition DDL:** app roles never get CREATE TABLE; only EXECUTE on the whitelist function.
 4. **RLS / column grants:** out of scope (see `I-2026-0021`).
 5. **Functional tests:** `DatabaseHelper` and similar may keep using `postgres` for opportunistic DB inspection — not a runtime path.
-6. **Crypto lab role:** `ezkey_crypto` is SELECT-only on `ezkey_keyset_blob` for the disposable local clean-start stack. No default privileges on future tables; no grant on `ezkey_encryption_key`. Application `writer=false` is defense in depth — the DB GRANT is the barrier.
+6. **Crypto lab role:** `ezkey_crypto` is SELECT-only on `ezkey_keyset_blob` for the disposable local clean-start stack (`crypto-api` read-only DataSource). No default privileges on future tables; no grant on `ezkey_encryption_key`. Application `writer=false` is defense in depth — the DB GRANT is the barrier. On Lightsail / community compose there is **no** `crypto-api` service; `db-grants` still creates the role (shared grant path / `EZKEY_DB_CRYPTO_PASSWORD`) but nothing connects as `ezkey_crypto`.
 
 ## 2-role vs 3-role (recorded)
 

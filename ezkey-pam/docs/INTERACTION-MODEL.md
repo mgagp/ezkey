@@ -6,12 +6,60 @@ client during one keyboard-interactive login. Maintained with the module
 `challenge_requested`, or the sshd recipe updates §2 and keeps the evidence
 tags honest.
 
-> Origin: Patrick craft draft (2026-10-21). State below is **ezkey-pam 2.2.14**
-> (#995 connector default `challenge_requested=true` on top of #982 tiers 0–1 /
-> #976 confirm-before-create + enrollment challenge).
+> Origin: Patrick craft draft (2026-10-21). State below is **ezkey-pam 2.2.20**
+> (#1054 cycle 3 conf `O_NONBLOCK` / TLS runtime guard / probe-4 harness;
+> #1016 cycle 2b decision harness; #995 connector default
+> `challenge_requested=true`, #982 tiers 0–1 / #976 confirm-before-create
+> + enrollment challenge).
 > Evidence tags: **[code]** verified in source, **[test]** automated assert,
 > **[isa]** Isabelle on ezkey-pam-test, **[inf]** OpenSSH/PAM inference.
 > Paths relative to the repo root. `pam.c` = `ezkey-pam/src/pam_ezkey.c`.
+
+### What changed in 2.2.20 (#1054 cycle 3)
+
+- Conf load `O_NONBLOCK` + ghost-file stub cases; TLS verify proven by runtime
+  self-signed test (0 stub requests); probe-4 FIFO write hang fixed in harness.
+
+### What changed in 2.2.19 (#1016 cycle 2b)
+
+- `ezkey_decision.h` + `test-decision` kill ACCEPTED/REJECTED/HTTP/URL mutations;
+  TLS verify pin; conf unknown-key warn; `#` in values; pinned 25/768/65536.
+
+### What changed in 2.2.18 (#1016 cycle 2)
+
+- Refuse when `SSLKEYLOGFILE` set (S1); wipe conf line buffer (S2); URL with
+  `@` logs `scheme://-` (S3); LDLIBS after objects + DT_NEEDED (S4); RELRO /
+  FORTIFY `_chk` + 1022-char conf message (S5).
+
+### What changed in 2.2.17 (#1016 cycle 1b)
+
+- HTTP body ≤ 64 KiB + `CURLOPT_MAXFILESIZE` (C1); `CURLOPT_PROXY ""` (C2);
+  overlong conf → UNAVAIL (C3); safe JSON number→long (C4); SIGTERM-only note
+  (C5); hardening flags + readelf (C6); orphan-without-id TTL note (C7);
+  debug URL scheme://host only (C8).
+
+### What changed in 2.2.16 (#1016)
+
+- SIGNAL snapshot double-buffer (N5); portable artifact dir (N6); `test-diag`
+  external `timeout` (P-a); `fcntl O_NONBLOCK` fallback (P-b); wait-entry
+  real helper (T1); CI Rocky live `/dev/log` required (T2).
+- Docs: SUCCESS-after-client-gone caveat (D1); SIGTERM disposition wording
+  (D2); observability ENV isolation (D3); host H1/H2/H4 + H3 note only.
+
+### What changed in 2.2.15 (#1011)
+
+- Authpriv attempt lines gain `stage` / `reason` / `curl_rc` / `http` /
+  `confirm_ms` / `api_ms`. Empty pre-create `ok` → `result=CONFIRM`.
+- **SIGTERM outside `/wait`:** best-effort `result=SIGNAL` (async-signal-safe
+  `/dev/log` write), restore `SIG_DFL`, `raise(SIGTERM)` — no hung `[pam]` at
+  the `ok` or challenge prompt. During `/wait` only the abort flag is set
+  (cancel path unchanged).
+- **D1 caveat:** do not claim “never SUCCESS after client gone”. If TERM is
+  absorbed during `/wait` after ACCEPTED already arrived in the same chunk,
+  PAM can return SUCCESS to an sshd whose client has left — not an elevation.
+- Unknown timings print `-` (`latency_ms=-`, `confirm_ms=-`), never a false `0`.
+- Execution probes: `scripts/test-signal-probes.sh` [test] (client kill /
+  SIGTERM at prompt, create, wait).
 
 ### Decision — challenge default (#995)
 
@@ -57,16 +105,18 @@ enrollment flags is **not covered today** — tracked as
 ## 0. The model in one paragraph
 
 One SSH login under `Match … MaxAuthTries 1` gives one `pam_sm_authenticate`
-call in sshd's PAM child. That call (2.2.14):
+call in sshd's PAM child. That call (2.2.15):
 
 1. Shows a **pre-create** `PAM_PROMPT_ECHO_ON` confirm
    ("SSH login for user… / Type ok … to request device approval") and
    requires trimmed case-insensitive **`ok`** (echo visible — #982 tier 0 /
    M1: no “Approve on your phone” before the request exists).
-   Empty / EOF / wrong token / Ctrl-C / conversation error →
-   `PAM_AUTHINFO_UNAVAIL` with **zero** Integration API creates (batch clients
-   and Windows hang before create leave no phone noise) [code][test].
-   The `ok` token is an anti-accident filter, not a security defense (#995).
+   Empty / EOF / wrong token → authpriv `result=CONFIRM` `reason=empty_confirm`
+   (`PAM_AUTHINFO_UNAVAIL`) with **zero** Integration API creates; conversation
+   error → `UNAVAIL`; sshd SIGTERM mid-prompt / during create → best-effort
+   `result=SIGNAL` then child exit (#1011) [code][test]
+   (`scripts/test-signal-probes.sh`). Batch clients leave no phone noise. The
+   `ok` token is an anti-accident filter, not a security defense (#995).
 2. Only then `POST /auth-attempts` with `userIdentifier=<linux user>`,
    `challengeRequested=<conf>` (default **true** since #995),
    `ttlSeconds=<planned>`.
@@ -120,13 +170,14 @@ console / askpass, OpenSSH answers with an **empty string** (Isabelle D4
 | `KbdInteractiveDevices` | Selects PAM sub-devices; irrelevant with `UsePAM yes` default. | — | [inf] |
 | `ControlMaster` / `ControlPath` / `ControlPersist` | New `ssh`, `scp`, `sftp` and `git` sessions **reuse the master connection: no authentication at all**. | MFA happens once per master. For `ControlPersist` duration (can be hours), every new session skips Ezkey. The server cannot see this. `MaxSessions` only bounds concurrency. | [inf] |
 | `SSH_ASKPASS` + `SSH_ASKPASS_REQUIRE=force` (or `DISPLAY` set, no tty) | The askpass program answers prompts, so a script can answer `ok`. | Defeats #976's "human gesture" in automation. Device approval is still required, so this is not a bypass of the factor. | [inf] |
-| Windows OpenSSH (Win32-OpenSSH) without a console (ConPTY-less, service, some IDEs) | The prompt read blocks forever, with no EOF. | **D1:** hangs until sshd `LoginGraceTime` (120 s). **2.2.12 confirm-before-create:** hang is on the pre-create prompt → **no** attempt created. Prefer `ssh -tt`. | [isa] D1; [code] |
+| No TTY / non-interactive launcher (H1) | Pre-create `ok` needs a real conversation. | `UNAVAIL`/`CONFIRM` with **zero** API calls — nothing appears on the device. Prefer `ssh -tt`. | [isa] H1 #1016; [code] |
+| Windows OpenSSH (Win32-OpenSSH) without a console (ConPTY-less, service, some IDEs) | The prompt read blocks forever, with no EOF. | **Windows D1:** hangs until sshd `LoginGraceTime` (120 s). **2.2.12 confirm-before-create:** hang is on the pre-create prompt → **no** attempt created. Prefer `ssh -tt`. | [isa] Windows D1; [code] |
 | PuTTY / plink | plink prompts on the console. `plink -batch` refuses interactive prompts. Pageant does not affect kbd-int. | Same as OpenSSH: interactive works, `-batch` behaves like BatchMode. | [inf] |
 | `scp` / `sftp` / `rsync -e ssh` | Spawn `ssh`, so the same rules apply. Interactive works; cron/CI behaves like the "no tty" row. Usually combined with ControlMaster. | Each cron run against an MFA account **creates an attempt (device push)** before failing. | [inf] |
 | Remote command (`ssh host cmd`) | No effect on auth. | — | [inf] |
 | Agent forwarding (`-A`) | No effect on kbd-int. Exposes the agent after login. | Out of scope for Ezkey; the usual SSH hygiene. | [inf] |
 | `ConnectTimeout` | Covers TCP connect + banner, not the auth wait. | The 75–105 s device wait is not limited by it. | [inf] |
-| `ServerAliveInterval` | Keepalives during auth help NAT/CGNAT paths survive the wait. | Recommended when wait > 60 s on mobile networks. | [inf] |
+| `ServerAliveInterval` | **Do not use during authentication (H2).** Client keepalives have been observed to cut the MFA wait on real-host dogfood. | Leave unset (or `0`) until the session is established; post-auth keepalives are separate. | [isa] H2 #1016 |
 | Ctrl-C at the prompt | The client closes the connection. sshd's monitor ends the PAM child: SIGTERM, or a conversation error. | **Pre-create prompt:** nothing created. **Challenge (2nd) prompt:** create already done → cancel if conversation error returns; else attempt until TTL (STATUS #956 M3). | [code], [inf] |
 
 ### 1.2 Server side
@@ -335,12 +386,12 @@ Common preconditions: ezkey-pam-test VM with 2.2.12+ (#976 or later); `Match Gro
 | PAM-S0-01 | S0 approve (opt-out) | host `challenge_requested=false` (opt-out of default true); enrollment challenge off | 1. `ssh testuser@host`. 2. Read pre-create prompt. 3. Type `ok`. 4. Approve on the device. | "SSH login… request device approval" **before** create; shell; `result=SUCCESS`; **exactly 1** create; no challenge prompt |
 | PAM-S0-02 | S0 deny | same | steps 1-3, then Deny | Access denied; `result=DENIED`; 1 attempt |
 | PAM-S0-03 | S0 expire | same | steps 1-3, no device action | Denied at ≈ applied TTL; `result=EXPIRED`; 1 attempt |
-| PAM-S0-04 | S0 wrong confirm | same | step 1, Enter (empty) or type `x` | `UNAVAIL`; debug "confirm"; **no attempt created** |
+| PAM-S0-04 | S0 wrong confirm | same | step 1, Enter (empty) or type `x` | `CONFIRM` `reason=empty_confirm`; **no attempt created** |
 | PAM-S1H-01 | S1-H code (default) | host `challenge_requested=true` (sample/entrypoint default since #995) | `ssh`, `ok` (create), read code on 2nd prompt, Enter, enter code on device, Approve | Code visible; SUCCESS; code **not** in `/var/log/secure` |
 | PAM-S1H-02 | S1-H wrong code | same | wrong code on device | `result=DENIED` (INVALID); 1 attempt |
 | PAM-S1E-01 | S1-E enrollment challenge | host **false**; enrollment challenge **on** | as S1H-01 | Code visible (#975); SUCCESS |
 | PAM-S1E-02 | S1-E deny | same | Deny without code | `result=DENIED` (REJECTED) |
-| PAM-S2-01 | S2 batch no tty | host false | `ssh -T testuser@host whoami </dev/null` | Denied; `UNAVAIL`; **0 creates**; approval must not open a shell |
+| PAM-S2-01 | S2 batch no tty | host false | `ssh -T testuser@host whoami </dev/null` | Denied; `CONFIRM`; **0 creates**; approval must not open a shell |
 | PAM-S2-02 | S2 scp from cron | same | `scp file testuser@host:` from cron | Fails; no PENDING attempt |
 | PAM-S3-01 | S3 Marc's case | host false; enrollment challenge on | as S2-01 | Denied; **0 creates**; code never shown |
 | PAM-S4-01 | S4 BatchMode | any | `ssh -o BatchMode=yes testuser@host` | Immediate denial; **no** attempt |
@@ -355,3 +406,12 @@ Common preconditions: ezkey-pam-test VM with 2.2.12+ (#976 or later); `Match Gro
 | PAM-S11-01 | S11 toggle on mid-attempt | host false; enrollment off | `ok`; enable challenge in Admin UI; approve | Denied (INVALID) |
 | PAM-S12-01 | S12 toggle off mid-attempt | enrollment on | see code, `ok`; disable challenge; approve **with** code | SUCCESS (attempt keeps code) |
 | PAM-S13-01 | S13 spam posture | `PerSourcePenalties` on | 10 rapid `ssh` without `ok` | sshd penalises; **0 creates** until someone types `ok` |
+
+### 5.6 Host dogfood observations (#1016 — not product bugs)
+
+| ID | Observation | Action |
+| --- | --- | --- |
+| H1 | Pre-create `ok` needs a real TTY; non-interactive launcher → UNAVAIL, **zero** API calls | Documented in README runbook + §1.1 |
+| H2 | Client `ServerAliveInterval` during auth can cut the approval wait | Documented: no client keepalive during authentication |
+| H3 | ~30 s between attempt create and card on the simulated device (both tries, AL2023 2.2.15) | **Note only** — cause not established; pointer [#982](https://github.com/mgagp/ezkey/issues/982). Do not guess. |
+| H4 | Challenge digits appear only on the SSH terminal; `.env` → conf key mapping | Documented in README runtime configuration + `.env.example` |
