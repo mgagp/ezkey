@@ -262,123 +262,107 @@
                     <ol>
                         <li><a href="#key-findings">Key findings</a></li>
                         <li><a href="#abstract">Abstract</a></li>
-                        <li><a href="#introduction">1. Introduction</a></li>
-                        <li><a href="#protocol">4. Protocol</a></li>
-                        <li><a href="#results">6. Results</a></li>
-                        <li><a href="#limitations">8. Limitations</a></li>
-                        <li><a href="#who">Who did what</a></li>
-                        <li><a href="#appendix-a">Appendix A</a></li>
+                        <li><a href="#why">1. Why we tried it</a></li>
+                        <li><a href="#observed">4. What we observed</a></li>
+                        <li><a href="#wrong">5. What we got wrong, and how we reframed</a></li>
+                        <li><a href="#stopped">7. Where we stopped</a></li>
+                        <li><a href="#references">References</a></li>
                     </ol>
                 </nav>
             </details>
 
             <article class="paper">
                 <span class="example-banner">Template / example — not a real Lab Paper</span>
-                <p class="paper-meta">EZK-LAB-0000-000 · status: example · reading time ~4 min</p>
+                <p class="paper-meta">EZK-LAB-0000-000 · status: example · reading time ~2 min</p>
                 <h1>Lab Paper template example</h1>
-                <p class="authors">Marc</p>
+                <p class="authors">Marc Gagnon; &lt;Bot Name&gt; (role)</p>
                 <p class="affiliation">Ezkey Lab</p>
 
                 <section class="key-findings" id="key-findings">
                     <h2>Key findings</h2>
                     <ul>
                         <li>This page demonstrates layout only; it does not report an experiment.</li>
-                        <li>Key findings appear before the abstract on every Lab Paper.</li>
-                        <li>Empty guide sections are omitted — only sections with real content remain.</li>
-                        <li>Nothing in a Lab Paper is a security guarantee.</li>
+                        <li>A Lab Paper has the look of a paper and the voice of a lab notebook.</li>
+                        <li>Three or four findings, one sentence each, before everything else.</li>
                     </ul>
                 </section>
 
                 <section class="abstract" id="abstract">
                     <span class="label">Abstract</span>
                     <p>
-                        This sample shows the intended reading layout for Ezkey Lab Papers:
-                        a key-findings box, a short abstract, a side table of contents (collapsible on small screens),
-                        a horizontally scrollable table, and a collapsed appendix.
-                        No experimental measurements are claimed here.
+                        About 100 words: what we tried, what happened, what we take away.
+                        This sample shows the reading layout — key findings, abstract, scope box,
+                        side table of contents (collapsible on small screens), a short quote and an optional table.
+                        A real paper runs 1,500 to 2,500 words.
                     </p>
                 </section>
 
-                <h2 id="introduction">1. Introduction and motivation</h2>
+                <div class="coauthor-note">
+                    <strong>Scope</strong>
+                    What this is, and what it is not — said once, here. No audit, no certification,
+                    no security guarantee. The disclaimer is not repeated in the body.
+                </div>
+
+                <h2 id="why">1. Why we tried it</h2>
                 <p>
-                    Lab Papers document what happened and what was measured in an Ezkey experimental sub-project.
-                    Experience reports on the Articles lane own reflection and meaning.
-                    This example exists so editors and agents can see the HTML shape before the first real paper is written.
+                    Plain prose, first person plural. Sections 2, 3 and 6 (what we set up, what happened,
+                    what we take away) are omitted from this sample.
                 </p>
 
-                <h2 id="protocol">4. Protocol</h2>
+                <h2 id="observed">4. What we observed</h2>
                 <p>
-                    Real papers describe the working bounds without secrets, tokens, internal hosts, or real IP addresses.
-                    Placeholder rows in the table below illustrate structure only.
+                    Observations are told, not tabulated for completeness. Uncertainty is said once, in prose:
+                    “from memory”, “we did not measure it”, “this is a judgment”. A table appears only when it helps.
                 </p>
-
-                <h2 id="results">6. Results</h2>
-                <p>Table&nbsp;1. Placeholder columns for a future paper (scroll horizontally on narrow viewports).</p>
-                <div class="table-scroll" role="region" aria-label="Scrollable results table" tabindex="0">
+                <p>Table&nbsp;1. An optional table (scrolls horizontally on narrow viewports).</p>
+                <div class="table-scroll" role="region" aria-label="Scrollable example table" tabindex="0">
                     <table>
                         <thead>
                             <tr>
-                                <th>Id</th>
-                                <th>Observation</th>
-                                <th>Source</th>
-                                <th>Notes</th>
-                                <th>Status in a real paper</th>
+                                <th>Cycle</th>
+                                <th>What it found</th>
+                                <th>Kind</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td>R1</td>
-                                <td>[MISSING DATA]</td>
-                                <td>n/a — template</td>
-                                <td>Replace with a measured fact</td>
-                                <td>Must cite git, tests, CI, logs, or Marc’s dictation</td>
+                                <td>1</td>
+                                <td>Example: a defect in the product itself</td>
+                                <td>Product</td>
                             </tr>
                             <tr>
-                                <td>R2</td>
-                                <td>[TO VERIFY]</td>
-                                <td>n/a — template</td>
-                                <td>Mark gaps explicitly</td>
-                                <td>Never invent precision</td>
+                                <td>2</td>
+                                <td>Example: more proof, no new defect</td>
+                                <td>Proof</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
 
                 <div class="coauthor-note">
-                    <strong>Co-author note — (example shape)</strong>
-                    Real papers may include short attributed notes (80–150 words) from named bot co-authors
-                    listed in <code>product-docs/global/team-roles.md</code>, after a retrospective round with evidence.
-                    This box is decorative scaffolding only.
+                    <strong>“A short quote from a main co-author.”</strong>
+                    — &lt;Bot Name&gt;, role. One or two sentences, where it adds a voice; none required.
                 </div>
 
-                <h2 id="limitations">8. Limitations</h2>
+                <h2 id="wrong">5. What we got wrong, and how we reframed</h2>
                 <p>
-                    This page is not an experiment report. It must not be cited as evidence of any Ezkey capability,
-                    security property, or operational result.
+                    Mistakes and reframings have their own section. They are the substance of a lab that iterates.
                 </p>
 
-                <h2 id="who">Who did what</h2>
-                <ul>
-                    <li><strong>Marc:</strong> editorial responsibility for the Lab Papers method and this template page.</li>
-                </ul>
+                <h2 id="stopped">7. Where we stopped</h2>
+                <p>
+                    Where the experiment stands, what remains open, and what it would take to go further.
+                </p>
 
-                <h2>References</h2>
+                <h2 id="references">References</h2>
                 <ul>
                     <li><a href="https://github.com/mgagp/ezkey/issues/999">GitHub issue #999</a> — Lab Papers publication method</li>
                     <li><a href="/lab.html">Lab Papers hub</a></li>
                 </ul>
 
-                <details class="appendix" id="appendix-a">
-                    <summary>Appendix A — Template notes (collapsed)</summary>
-                    <p>
-                        Appendices start collapsed. Put supporting material here only when it helps a reader
-                        verify a claim in the main text. Do not use appendices to hide weak evidence.
-                    </p>
-                </details>
-
                 <p class="transparency" id="transparency">
-                    Transparency: when bot co-authors appear on a real Lab Paper, they are AI agents.
-                    Marc holds editorial responsibility. Nothing in Lab Papers is a security guarantee.
+                    Transparency: co-authors other than Marc are AI agents. Marc holds editorial responsibility.
+                    Nothing in Lab Papers is a security guarantee.
                 </p>
             </article>
         </div>

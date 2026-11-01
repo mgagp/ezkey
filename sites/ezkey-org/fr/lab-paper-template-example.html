@@ -262,123 +262,108 @@
                     <ol>
                         <li><a href="#key-findings">Points clés</a></li>
                         <li><a href="#abstract">Résumé</a></li>
-                        <li><a href="#introduction">1. Introduction</a></li>
-                        <li><a href="#protocol">4. Protocole</a></li>
-                        <li><a href="#results">6. Résultats</a></li>
-                        <li><a href="#limitations">8. Limites</a></li>
-                        <li><a href="#who">Qui a fait quoi</a></li>
-                        <li><a href="#appendix-a">Annexe A</a></li>
+                        <li><a href="#why">1. Pourquoi on a essayé</a></li>
+                        <li><a href="#observed">4. Ce qu’on a observé</a></li>
+                        <li><a href="#wrong">5. Nos erreurs, et comment on a recadré</a></li>
+                        <li><a href="#stopped">7. Où on s’arrête</a></li>
+                        <li><a href="#references">Références</a></li>
                     </ol>
                 </nav>
             </details>
 
             <article class="paper">
-                <span class="example-banner">Gabarit / exemple — pas un vrai Lab Paper</span>
-                <p class="paper-meta">EZK-LAB-0000-000 · statut&nbsp;: exemple · lecture ~4 min</p>
-                <h1>Exemple de gabarit Lab Paper</h1>
-                <p class="authors">Marc</p>
+                <span class="example-banner">Gabarit / exemple — pas un vrai cahier du labo</span>
+                <p class="paper-meta">EZK-LAB-0000-000 · statut : exemple · temps de lecture ~2 min</p>
+                <h1>Exemple de gabarit de cahier du labo</h1>
+                <p class="authors">Marc Gagnon ; &lt;Nom du bot&gt; (rôle)</p>
                 <p class="affiliation">Ezkey Lab</p>
 
                 <section class="key-findings" id="key-findings">
                     <h2>Points clés</h2>
                     <ul>
-                        <li>Cette page montre uniquement la mise en page ; elle ne rapporte aucune expérience.</li>
-                        <li>Les points clés précèdent le résumé sur chaque Lab Paper.</li>
-                        <li>Les sections vides du guide sont omises — seules restent celles qui ont du contenu réel.</li>
-                        <li>Rien dans un Lab Paper ne constitue une garantie de sécurité.</li>
+                        <li>Cette page montre la mise en page seulement ; elle ne rapporte aucune expérience.</li>
+                        <li>Un cahier du labo a l’allure d’un papier et la voix d’un carnet de labo.</li>
+                        <li>Trois ou quatre points, une phrase chacun, avant tout le reste.</li>
                     </ul>
                 </section>
 
                 <section class="abstract" id="abstract">
                     <span class="label">Résumé</span>
                     <p>
-                        Cet échantillon montre la mise en page de lecture prévue pour les Lab Papers Ezkey&nbsp;:
-                        un encadré de points clés, un court résumé, une table des matières latérale (repliable sur petit écran),
-                        un tableau à défilement horizontal et une annexe repliée.
-                        Aucune mesure expérimentale n’est affirmée ici.
+                        Environ 100 mots : ce qu’on a tenté, ce qui s’est passé, ce qu’on en retient.
+                        Cet exemple montre la mise en page de lecture — points clés, résumé, encadré de périmètre,
+                        sommaire latéral (repliable sur petit écran), une courte citation et un tableau optionnel.
+                        Un vrai papier fait de 1 500 à 2 500 mots.
                     </p>
                 </section>
 
-                <h2 id="introduction">1. Introduction et motivation</h2>
+                <div class="coauthor-note">
+                    <strong>Périmètre</strong>
+                    Ce que c’est, et ce que ce n’est pas — une seule fois, ici. Ni audit, ni certification,
+                    ni garantie de sécurité. L’avertissement n’est pas répété dans le corps du texte.
+                </div>
+
+                <h2 id="why">1. Pourquoi on a essayé</h2>
                 <p>
-                    Les Lab Papers documentent ce qui s’est passé et ce qui a été mesuré dans un sous-projet expérimental d’Ezkey.
-                    Les retours d’expérience de la voie Articles portent la réflexion et le sens.
-                    Cet exemple existe pour que rédacteurs et agents voient la forme HTML avant le premier vrai papier.
+                    De la prose simple, au « nous ». Les sections 2, 3 et 6 (ce qu’on a mis en place,
+                    ce qui s’est passé, ce qu’on en retient) sont omises dans cet exemple.
                 </p>
 
-                <h2 id="protocol">4. Protocole</h2>
+                <h2 id="observed">4. Ce qu’on a observé</h2>
                 <p>
-                    Un vrai papier décrit les bornes de travail sans secrets, jetons, hôtes internes ni adresses IP réelles.
-                    Les lignes du tableau ci-dessous illustrent uniquement la structure.
+                    Les observations se racontent ; on ne les met pas en tableau par souci d’exhaustivité.
+                    L’incertitude se dit une fois, en prose : « de mémoire », « on ne l’a pas mesuré », « c’est un jugement ».
+                    Un tableau n’apparaît que s’il aide.
                 </p>
-
-                <h2 id="results">6. Résultats</h2>
-                <p>Tableau&nbsp;1. Colonnes de remplacement pour un futur papier (défilement horizontal sur viewport étroit).</p>
-                <div class="table-scroll" role="region" aria-label="Tableau de résultats défilant" tabindex="0">
+                <p>Tableau&nbsp;1. Un tableau optionnel (défilement horizontal sur écran étroit).</p>
+                <div class="table-scroll" role="region" aria-label="Tableau d’exemple défilant" tabindex="0">
                     <table>
                         <thead>
                             <tr>
-                                <th>Id</th>
-                                <th>Observation</th>
-                                <th>Source</th>
-                                <th>Notes</th>
-                                <th>Statut dans un vrai papier</th>
+                                <th>Cycle</th>
+                                <th>Ce qu’il a trouvé</th>
+                                <th>Nature</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td>R1</td>
-                                <td>[DONNÉE MANQUANTE]</td>
-                                <td>n/a — gabarit</td>
-                                <td>Remplacer par un fait mesuré</td>
-                                <td>Doit citer git, tests, CI, journaux ou dictée de Marc</td>
+                                <td>1</td>
+                                <td>Exemple : un défaut du produit lui-même</td>
+                                <td>Produit</td>
                             </tr>
                             <tr>
-                                <td>R2</td>
-                                <td>[À VÉRIFIER]</td>
-                                <td>n/a — gabarit</td>
-                                <td>Marquer les trous explicitement</td>
-                                <td>Ne jamais inventer de précision</td>
+                                <td>2</td>
+                                <td>Exemple : plus de preuve, aucun nouveau défaut</td>
+                                <td>Preuve</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
 
                 <div class="coauthor-note">
-                    <strong>Note du co-auteur — (forme d’exemple)</strong>
-                    Un vrai papier peut inclure de courtes notes attribuées (80–150 mots) de co-auteurs bots
-                    listés dans <code>product-docs/global/team-roles.md</code>, après un tour rétrospectif avec preuves.
-                    Cette boîte n’est qu’un échafaudage.
+                    <strong>« Une courte citation d’un co-auteur principal. »</strong>
+                    — &lt;Nom du bot&gt;, rôle. Une phrase ou deux, là où elle apporte une voix ; aucune n’est obligatoire.
                 </div>
 
-                <h2 id="limitations">8. Limites</h2>
+                <h2 id="wrong">5. Nos erreurs, et comment on a recadré</h2>
                 <p>
-                    Cette page n’est pas un compte rendu d’expérience. Elle ne doit pas être citée comme preuve
-                    d’une capacité Ezkey, d’une propriété de sécurité ou d’un résultat opérationnel.
+                    Les erreurs et les recadrages ont leur propre section. C’est la matière même d’un labo qui itère.
                 </p>
 
-                <h2 id="who">Qui a fait quoi</h2>
-                <ul>
-                    <li><strong>Marc&nbsp;:</strong> responsabilité éditoriale de la méthode Lab Papers et de cette page gabarit.</li>
-                </ul>
+                <h2 id="stopped">7. Où on s’arrête</h2>
+                <p>
+                    Où en est l’expérience, ce qui reste ouvert, et ce qu’il faudrait pour aller plus loin.
+                </p>
 
-                <h2>Références</h2>
+                <h2 id="references">Références</h2>
                 <ul>
-                    <li><a href="https://github.com/mgagp/ezkey/issues/999">Issue GitHub #999</a> — méthode de publication Lab Papers</li>
-                    <li><a href="/fr/labo.html">Hub Cahiers du labo</a></li>
+                    <li><a href="https://github.com/mgagp/ezkey/issues/999">Issue GitHub #999</a> — méthode de publication des cahiers du labo</li>
+                    <li><a href="/fr/labo.html">Cahiers du labo</a></li>
                 </ul>
-
-                <details class="appendix" id="appendix-a">
-                    <summary>Annexe A — Notes de gabarit (repliée)</summary>
-                    <p>
-                        Les annexes démarrent repliées. N’y placez du matériel de soutien que lorsqu’il aide
-                        à vérifier une affirmation du texte principal. Ne cachez pas une preuve faible en annexe.
-                    </p>
-                </details>
 
                 <p class="transparency" id="transparency">
-                    Transparence&nbsp;: lorsqu’un vrai Lab Paper nomme des co-auteurs bots, ce sont des agents IA.
-                    Marc assume la responsabilité éditoriale. Rien dans les Lab Papers ne constitue une garantie de sécurité.
+                    Transparence : les co-auteurs autres que Marc sont des agents IA. Marc assume la responsabilité éditoriale.
+                    Rien dans les cahiers du labo ne constitue une garantie de sécurité.
                 </p>
             </article>
         </div>

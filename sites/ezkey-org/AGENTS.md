@@ -264,7 +264,7 @@ Lab Papers are a third publication type. Full method: [`../ezkey-org-editorial/L
 - Use [`templates/lab-paper.en.template.md`](../ezkey-org-editorial/templates/lab-paper.en.template.md) then the FR template; pass [`templates/lab-paper-review-checklist.md`](../ezkey-org-editorial/templates/lab-paper-review-checklist.md) before publish.
 - Sharing rule: Lab Paper = what happened and what was measured; Article / experience report = what it taught and what it means. Keep reciprocal **Distinct from…** sentences on both hubs.
 - Do **not** add **Lab** / **Labo** to the primary nav until roughly three real papers are published (promotion threshold). Hub remains discoverable via Articles, sitemap, and direct URL.
-- Reading layout: Key findings before abstract; side TOC (collapsible on mobile); horizontally scrollable tables; collapsed appendices; **no PDF export**.
+- Reading layout: Key findings before abstract; side TOC (collapsible on mobile); horizontally scrollable tables; no appendix by default; **no PDF export**. Light format, 1,500–2,500 words (see `LAB-PAPERS.md`, reframe of 2026-11-01).
 - Co-authors: only names from [`product-docs/global/team-roles.md`](../../product-docs/global/team-roles.md) with evidence; “K” is excluded. Affiliation is **Ezkey Lab**. Disclose AI co-authors; Marc holds editorial responsibility.
 - Security: no secrets, tokens, internal hosts, real IPs, or exploitable configuration. Nothing here is a security guarantee — Trust page states Lab Papers sit outside its claims perimeter.
 - Do **not** invent the first real paper (e.g. PAM) under this method setup; that is a separate issue.

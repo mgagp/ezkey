@@ -4,330 +4,129 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
-  <title>Ezkey PAM: hardening an experimental SSH module with agents, and deciding where to stop — EZK-LAB-2026-001</title>
+  <title>Ezkey PAM: letting agents harden an SSH module, and knowing when to stop — EZK-LAB-2026-001</title>
   <link rel="stylesheet" href="lab-paper.css">
 </head>
 <body>
   <div class="sheet">
     <details class="toc" open>
 <summary>Contents</summary>
-<nav>
+<nav aria-label="Table of contents">
 <ol>
 <li class="toc-h2"><a href="#key-findings">Key findings</a></li>
 <li class="toc-h2"><a href="#abstract">Abstract</a></li>
-<li class="toc-h2"><a href="#1-why-we-did-this-and-what-we-assumed">1. Why we did this, and what we assumed</a></li>
-<li class="toc-h2"><a href="#2-what-was-built">2. What was built</a></li>
-<li class="toc-h2"><a href="#3-the-work-in-three-acts">3. The work in three acts</a></li>
-<li class="toc-h3"><a href="#3-1-first-act-a-prototype-then-a-year-of-silence">3.1 First act: a prototype, then a year of silence</a></li>
-<li class="toc-h3"><a href="#3-2-second-act-modernisation-and-october-hardening">3.2 Second act: modernisation and October hardening</a></li>
-<li class="toc-h3"><a href="#3-3-third-act-the-convergence-round">3.3 Third act: the convergence round</a></li>
-<li class="toc-h2"><a href="#4-what-we-learned">4. What we learned</a></li>
-<li class="toc-h3"><a href="#4-1-the-weak-point-was-our-own-clarity-not-the-agents">4.1 The weak point was our own clarity, not the agents</a></li>
-<li class="toc-h3"><a href="#4-2-diminishing-returns-and-a-field-that-moves-fast">4.2 Diminishing returns, and a field that moves fast</a></li>
-<li class="toc-h3"><a href="#4-3-what-we-would-change-next-time">4.3 What we would change next time</a></li>
-<li class="toc-h2"><a href="#5-how-much-autonomy-we-aimed-at-and-where-it-stopped">5. How much autonomy we aimed at, and where it stopped</a></li>
-<li class="toc-h2"><a href="#6-where-we-stopped-and-what-remains">6. Where we stopped, and what remains</a></li>
-<li class="toc-h3"><a href="#6-1-the-stopping-point">6.1 The stopping point</a></li>
-<li class="toc-h3"><a href="#6-2-what-this-does-not-mean">6.2 What this does not mean</a></li>
-<li class="toc-h3"><a href="#6-3-what-remains-open">6.3 What remains open</a></li>
-<li class="toc-h2"><a href="#7-co-authors-retrospective">7. Co-authors&#x27; retrospective</a></li>
-<li class="toc-h2"><a href="#who-did-what">Who did what</a></li>
+<li class="toc-h2"><a href="#1-why-we-tried-it">1. Why we tried it</a></li>
+<li class="toc-h2"><a href="#2-what-we-set-up">2. What we set up</a></li>
+<li class="toc-h2"><a href="#3-what-happened">3. What happened</a></li>
+<li class="toc-h2"><a href="#4-what-we-observed">4. What we observed</a></li>
+<li class="toc-h2"><a href="#5-what-we-got-wrong-and-how-we-reframed">5. What we got wrong, and how we reframed</a></li>
+<li class="toc-h2"><a href="#6-what-we-take-away">6. What we take away</a></li>
+<li class="toc-h2"><a href="#7-where-we-stopped">7. Where we stopped</a></li>
 <li class="toc-h2"><a href="#references">References</a></li>
-<li class="toc-h2"><a href="#appendices">Appendices</a></li>
-<li class="toc-h3"><a href="#appendix-a-commits-and-patch-versions">Appendix A. Commits and patch versions</a></li>
-<li class="toc-h3"><a href="#appendix-b-what-the-agents-carried-on-2026-10-27">Appendix B. What the agents carried on 2026-10-27</a></li>
-<li class="toc-h3"><a href="#appendix-c-isabelle-s-scenario-verdicts">Appendix C. Isabelle&#x27;s scenario verdicts</a></li>
-<li class="toc-h3"><a href="#appendix-d-the-1014-signal-handler-and-what-a-green-check-proves">Appendix D. The #1014 signal handler, and what a green check proves</a></li>
-<li class="toc-h3"><a href="#appendix-e-two-proposals-quoted-and-not-adopted">Appendix E. Two proposals, quoted and not adopted</a></li>
 <li class="toc-h2"><a href="#transparency">Transparency</a></li>
-<li class="toc-h2"><a href="#endnotes">Notes</a></li>
-<li class="toc-h2"><a href="#open-points">Open points</a></li>
 </ol>
 </nav>
 </details>
     <article class="lab-paper">
-      <p class="draft-banner">Draft — not for publication</p>
-      <p class="lang-switch"><a href="EZK-LAB-2026-001.fr.html">Français</a></p>
-      <header class="title-block">
-<h1 id="ezkey-pam-hardening-an-experimental-ssh-module-with-agents-and-deciding-where-to-stop">Ezkey PAM: hardening an experimental SSH module with agents, and deciding where to stop</h1>
-<p class="meta-line"><strong>Authors:</strong> Marc Gagnon (editorial responsibility); Christophe Grokbot (security review); Edgar Grokbot (deployment and edge); Isabelle Grokbot (exploratory QA); Mathieu Grokbot (coordination) <sup class="note-ref" id="fnref-1"><a href="#fn-1">1</a></sup>; Patrick Grokbot (engineering review)</p>
+        <p class="draft-banner">Draft — not for publication</p>
+<header class="title-block">
+<h1 id="ezkey-pam-letting-agents-harden-an-ssh-module-and-knowing-when-to-stop">Ezkey PAM: letting agents harden an SSH module, and knowing when to stop</h1>
+<p class="meta-line"><strong>Authors:</strong> Marc Gagnon; Patrick Grokbot (engineering review); Christophe Grokbot (security review); Edgar Grokbot (test VM operations); Isabelle Grokbot (exploratory QA)</p>
 <p class="meta-line affiliation"><strong>Affiliation:</strong> Ezkey Lab</p>
 <p class="meta-line"><strong>Identifier:</strong> <code>EZK-LAB-2026-001</code></p>
 <p class="meta-line"><strong>Status:</strong> draft</p>
-<p class="meta-line"><strong>Date:</strong> 2026-10-28</p>
-<p class="meta-line"><strong>Keywords:</strong> PAM, SSH, MFA, fail-closed, agent-assisted development, agent autonomy, human framing, diminishing returns, experimental</p>
-<p class="meta-line"><strong>Reading time:</strong> ~12 min</p>
+<p class="meta-line"><strong>Date:</strong> 2026-11-01</p>
+<p class="meta-line"><strong>Keywords:</strong> PAM, SSH, MFA, fail-closed, AI agents, diminishing returns</p>
+<p class="meta-line"><strong>Reading time:</strong> ~9 min</p>
 </header>
 <section class="key-findings">
 <h2 id="key-findings">Key findings</h2>
 <ul>
-<li>The weak point was the clarity of our own decisions and method, not the capability of the agents. In the 2026-10-27 round, every friction the co-authors describe came from something a person had not made explicit: a go rule, the scope of a permission, a method kept in conversation, ambiguous instructions, no stopping criterion fixed in advance (§4.1).</li>
-<li>Where the frame existed, the agents carried much of the work: a test tenant opened through the public API, a state protocol with a checked rollback, proof by execution on a disposable cloud agent (§4.1, Appendix B).</li>
-<li>Marc and the agents stopped together when the returns diminished: the first pass found the product-level defects, and later cycles added tooling and proof. &quot;Diminishing returns&quot; is a judgment, not a measurement. It was made while, in Marc&#x27;s personal observation (no outside source), AI capability in cybersecurity advances quickly, which is why the agents were left free to iterate (§4.2, §6).</li>
-<li>A prototype of about 900 lines, committed on 2025-09-03 and validated by hand, left no automated evidence. The repository then shows a year-long pause, with no trace of functional work on PAM, until work resumed on 2026-09-15 (§3.1).</li>
-<li>The result is judged sufficient as an experimental maturity and nothing more. The module is not a host-operable agent, and moving to the community instance would require redoing the assessment (§6).</li>
+<li>AI agents carried most of the hardening of a small C module. Where we lost time, it was almost always waiting on a rule we had not written down.</li>
+<li>The first review cycle found the real defects. Later cycles mostly added proof, then started auditing their own tooling. That was our signal to stop.</li>
+<li>“Diminishing returns” is a judgment, made by agents of the same model family as the implementer. It is not a measurement.</li>
+<li>The module is experimental and stays that way: it is not meant to protect a real host yet.</li>
 </ul>
 </section>
 <section class="abstract">
 <h2 id="abstract">Abstract</h2>
-<p>This paper reports an experiment on <code>ezkey-pam</code>, a Linux PAM module that adds Ezkey device approval to SSH logins. Ezkey is a lab project. A prototype was committed in September 2025. After a year-long pause, with no trace in the repository of functional work on PAM, the module was modernised in September 2026 and hardened through October 2026 by AI agents working with Marc. We left the agents free to iterate, as often as they needed, to see where returns diminish rather than assume it. The weak point turned out to be not the agents&#x27; capability but the clarity of our own decisions and method: rules, permissions and a stopping criterion that had not been written down. Marc and the agents stopped together when the returns diminished, at a time when Marc judges that AI capability in cybersecurity is advancing quickly. Security is reasonably assured within the tested scope, without being the end of the story. The module has an experimental maturity only. We claim no production readiness, no audit, no certification, and no equivalence with Duo or FIDO2.</p>
+<p><code>ezkey-pam</code> adds Ezkey device approval to SSH logins on Linux. A prototype written in 2025 sat untouched for a year. In September and October 2026 we modernised it and let a small team of AI agents review, test and harden it, with Marc deciding. We wanted to see how far agents could carry the work, and where another review round stops paying off. They carried a lot. The friction came from our side: unwritten rules, unclear permissions, no stopping criterion. We stopped when new rounds produced proof rather than defects.</p>
 </section>
-<h2 id="1-why-we-did-this-and-what-we-assumed">1. Why we did this, and what we assumed</h2>
-<p>Marc first saw an SSH login protected by Duo at work, which was new to him <sup class="note-ref" id="fnref-2"><a href="#fn-2">2</a></sup>. The question that followed was whether Ezkey could play a similar role for SSH with the pieces it already had. That is not a claim of equivalence: nothing in this paper equates Ezkey with Duo, WebAuthn or FIDO2.</p>
-<p>Ezkey is a lab project first, promised to no one. The realistic niche we see is passwordless, strong-cryptography protection of internal applications for a small internal staff. Going further would first require SOC 2-style discipline: a prerequisite, not a plan.</p>
-<p>Two further reasons shaped the experiment. The first is a personal observation of Marc&#x27;s, with no outside source and no measurement: autonomous agents seem visibly faster at finding and fixing vulnerabilities, and AI capability in cybersecurity is advancing quickly <sup class="note-ref" id="fnref-3"><a href="#fn-3">3</a></sup>. That is why the agents were left free to say what they saw and to iterate, to watch where a human and the agents converge on diminishing returns. The second was to see how much of the work agents could carry with little human intervention (§5).</p>
-<p>We formulated four hypotheses <strong>after the fact</strong>; none was written down before the work started. They make the reading explicit; they do not mean the experiment was designed around them.</p>
+<blockquote class="scope">
+<p><strong>Scope.</strong> This is an account of a lab experiment. It is not an audit, a certification or a security guarantee, and <code>ezkey-pam</code> is not production software. Nothing here claims equivalence with Duo, WebAuthn or FIDO2.</p>
+</blockquote>
+<h2 id="1-why-we-tried-it">1. Why we tried it</h2>
+<p>Marc first met SSH protected by a phone approval at work, with Duo. The question that followed was simple: could Ezkey, with the pieces it already had — an Integration API, an authentication flow, a device that approves — play a similar role for SSH?</p>
+<p>There was a second, less obvious reason. In Marc’s own observation, AI agents are getting visibly better at finding and fixing security problems, and fast. Rather than decide in advance how much review a small security module needs, we wanted to let the agents go and see where they, and we, would agree that enough was enough.</p>
+<p>Ezkey is a lab project, promised to no one. That freedom is what made the experiment possible.</p>
+<h2 id="2-what-we-set-up">2. What we set up</h2>
+<p><code>ezkey-pam</code> is a C module for Linux PAM, the layer that handles login authentication. Used by SSH, it asks the user to type <code>ok</code>, creates an authentication attempt through the Ezkey Integration API, optionally shows a two-digit code to match, and waits while the user approves or rejects on a device. It <strong>fails closed</strong>: if the API or the configuration is unusable, the login is refused. There is deliberately no “let people in if Ezkey is down” mode.</p>
+<p>Work ran in a Rocky Linux container, then on a dedicated test VM with a real <code>sshd</code>. That second environment mattered: several findings only appeared there.</p>
+<p>The team:</p>
 <ul>
-<li><strong>H1.</strong> The existing pieces (authentication, APIs, device) were enough to build a complete SSH approval flow.</li>
-<li><strong>H2.</strong> An AI team with cross-review can bring a small C module to a point where review findings become minor.</li>
-<li><strong>H3.</strong> Beyond some point, another review round costs more than the lab-level risk it removes, and that point can be identified.</li>
-<li><strong>H4.</strong> In the agent campaign, waits and confusion would come from human framing, not from a limit of the agents.</li>
+<li><strong>Marc</strong> decided, gave every go, and typed at the SSH keyboard during manual campaigns.</li>
+<li><strong>Patrick</strong> reviewed the engineering, <strong>Christophe</strong> the security.</li>
+<li><strong>Edgar</strong> operated the test VM: snapshot, <code>sshd -t</code>, report, before every change.</li>
+<li><strong>Isabelle</strong> ran exploratory QA campaigns.</li>
 </ul>
-<p>The 2025 prototype tested H1. H2 and H3 were not tested in a controlled way, and the point in H3 is easier to describe afterwards than to know during the work (Patrick). H4 is the reading the 2026-10-27 round supports (§4.1), not something written beforehand.</p>
-<h2 id="2-what-was-built">2. What was built</h2>
-<p><code>ezkey-pam</code> is a C module for Linux PAM, the layer that handles login authentication, used by SSH in keyboard-interactive mode. It asks the user to confirm with <code>ok</code>, creates an authentication attempt through the Integration API, optionally shows a two-digit code to match, then waits while the user approves or rejects on a device (the Demo Device or the Android app). It fails closed: an unusable API or configuration refuses the login, and there is deliberately no fail-safe mode. A documented caveat remains: a <code>sufficient</code> PAM stack can make the module fail open. The work ran in a Rocky Linux container and, from October 2026, on a dedicated test VM with a real sshd, where several findings appeared that nothing else showed. We give no host names, addresses or internal paths.</p>
-<figure class="table">
-<figcaption>Table 1. Platform context around the first PAM commit (dates from git).</figcaption>
-<div class="table-scroll">
-<table>
-<thead><tr><th>Element</th><th>Evidence</th><th>Date</th></tr></thead>
-<tbody><tr><td>Demo Device</td><td><code>e532ce95</code></td><td>2025-08-10</td></tr><tr><td><code>/wait</code> endpoint</td><td><code>796dd455</code></td><td>2025-08-26</td></tr><tr><td><strong>First PAM commit</strong></td><td><code>04d339b7</code></td><td><strong>2025-09-03</strong></td></tr><tr><td>Admin UI</td><td><code>71e27831</code></td><td>2026-03-06</td></tr></tbody>
-</table>
-</div>
-</figure>
-<p>Marc recalls that in summer 2025 the protocol was simpler: a simulator at first, no Admin UI, a simpler database. The simulator is visible in the history (<code>988ef115</code>, 2025-08-19); the database remark is not checked <sup class="note-ref" id="fnref-4"><a href="#fn-4">4</a></sup>. Some early commits were authored by an automated agent account, not by Marc <sup class="note-ref" id="fnref-5"><a href="#fn-5">5</a></sup>.</p>
-<p><strong>Four terms.</strong> A <em>mutant</em> is a deliberately broken copy of the code, used to check that a test notices the break. A <em>TTL</em> (time to live) is how long an approval request stays valid: 75 seconds here. A <em>frozen head</em> is the exact last commit of a pull request, held still while it is reviewed, so that review and fixes do not chase each other. A <em>go</em> is Marc&#x27;s explicit word that a step may proceed; a reviewer&#x27;s verdict in a pull request is written GO or CHANGES.</p>
-<p><strong>Roles.</strong> Marc decided and approved, and typed at the SSH keyboard in manual campaigns. Patrick (engineering) and Christophe (security) reviewed; Edgar operated the test VM; Isabelle ran exploratory QA; Mathieu coordinated and relayed during the October hardening, and is not a source for the 2026-10-27 round <sup class="note-ref" id="fnref-6"><a href="#fn-6">6</a></sup>.</p>
-<p><strong>How reviews reached GitHub.</strong> Patrick&#x27;s and Christophe&#x27;s reviews reach the repository through <strong>Marc&#x27;s GitHub account</strong>: the comments are posted from <code>mgagp</code>, and the text of each says which co-author wrote it. An issue (<a href="https://github.com/mgagp/ezkey/issues/1016">#1016</a>) says the reviews were relayed by Mathieu, and squash-merge commits carry Marc&#x27;s name. Attribution here rests on the text of the comment or on the co-author&#x27;s retrospective, not on GitHub identity <sup class="note-ref" id="fnref-7"><a href="#fn-7">7</a></sup>.</p>
-<p>We did not re-run the module&#x27;s tests for this paper. Figures come from the repository, pull requests or the retrospectives, and the last are marked.</p>
-<h2 id="3-the-work-in-three-acts">3. The work in three acts</h2>
-<h3 id="3-1-first-act-a-prototype-then-a-year-of-silence">3.1 First act: a prototype, then a year of silence</h3>
-<p>The first PAM commit, <code>04d339b7</code> (2025-09-03, 9 files, 919 added lines), describes itself as a basic hard-coded module in Rocky Linux under Docker. According to Marc it was also run on a VM and validated by hand only <sup class="note-ref" id="fnref-8"><a href="#fn-8">8</a></sup>.</p>
-<p>Then came a year-long pause, with no trace in the repository of functional work on PAM. The folder received only four mechanical commits (a port change, a move to Rocky Linux 10, file permissions, documentation hygiene; Appendix A). We claim nothing about that period beyond what git shows.</p>
-<h3 id="3-2-second-act-modernisation-and-october-hardening">3.2 Second act: modernisation and October hardening</h3>
-<p>Pull request <a href="https://github.com/mgagp/ezkey/issues/540">#540</a> (2026-09-15) modernised the module. Pull request <a href="https://github.com/mgagp/ezkey/issues/610">#610</a> (milestone &quot;M1&quot;), opened on 2026-09-22 and merged on 2026-10-17 (38 files, +3767/−332), added observability, fail-closed configuration, the two-digit challenge and a time budget. Patrick&#x27;s first review returned <strong>CHANGES</strong> with one blocking finding: a missing API URL did not fail closed, because the code pre-filled a local default, so credentials would have gone in clear to a local port where another local user could answer <code>ACCEPTED</code>. Christophe&#x27;s review returned minor findings only. Patrick re-reviewed twice and returned <strong>GO</strong> on 2026-10-17, once CI was green.</p>
-<p>Five patch versions followed in three days (2.2.10 to 2.2.14, 2026-10-20 to 2026-10-22), each reviewed on a frozen head and each exposed by a retest or a review (Appendix A, Table A1). Version 2.2.15, merged on 2026-10-27, added richer failure diagnostics and signal handling (<a href="https://github.com/mgagp/ezkey/issues/1014">#1014</a>).</p>
-<p>The most useful result of that period was a misleading symptom. Isabelle ran a manual campaign on 2.2.14 (<a href="https://github.com/mgagp/ezkey/issues/996">#996</a>) on the test VM, with Marc at the SSH keyboard and on the Demo Device, recorded in a test-management tool outside the repository: 30 cases, 29 passed and 1 failed (S6-02, cancel and audit, now <a href="https://github.com/mgagp/ezkey/issues/1012">#1012</a>). Marc recorded the milestone as &quot;reached with reservations&quot; (S1D-06, S11-01) <sup class="note-ref" id="fnref-9"><a href="#fn-9">9</a></sup>. With <code>MaxAuthTries 1</code>, almost any internal error shows up as &quot;Too many authentication failures&quot;. A debug trace of 2026-10-24 showed UNAVAIL after 741 ms and no request sent: the <code>ok</code> prompt had received an empty answer. Edgar also found that sshd&#x27;s <code>LoginGraceTime</code> (120 s), not the module&#x27;s 75 s timeout, bounds a real attempt. This led to <a href="https://github.com/mgagp/ezkey/issues/1011">#1011</a>, <a href="https://github.com/mgagp/ezkey/issues/1014">#1014</a> and <a href="https://github.com/mgagp/ezkey/issues/1016">#1016</a>.</p>
-<p>Findings kept getting finer. On <a href="https://github.com/mgagp/ezkey/issues/1014">#1014</a>, Patrick&#x27;s reading predicted that the module could hang after a termination signal; a cloud agent confirmed it (at least 123 seconds against a 225 ms baseline) and revealed a second defect, an authentication that could succeed after the client had gone; Christophe found an unsafe call in the signal handler. Both reviewers returned GO on the fixed head, which we know from the text of <a href="https://github.com/mgagp/ezkey/issues/1016">#1016</a> and not from a GitHub review object <sup class="note-ref" id="fnref-10"><a href="#fn-10">10</a></sup> (detail in Appendix D). We did not read every other review (<a href="https://github.com/mgagp/ezkey/issues/897">#897</a>, <a href="https://github.com/mgagp/ezkey/issues/908">#908</a>, <a href="https://github.com/mgagp/ezkey/issues/956">#956</a>, <a href="https://github.com/mgagp/ezkey/issues/976">#976</a>, <a href="https://github.com/mgagp/ezkey/issues/983">#983</a>, <a href="https://github.com/mgagp/ezkey/issues/996">#996</a>) and give no count of findings per round <sup class="note-ref" id="fnref-11"><a href="#fn-11">11</a></sup>.</p>
-<p><a href="https://github.com/mgagp/ezkey/issues/992">#992</a> (approval fatigue: pending-request limit, rate per enrollment, cooldown, alert on denial) was scoped, then rewritten in generic platform terms on Marc&#x27;s instruction of 2026-10-22. A documentation commit (<a href="https://github.com/mgagp/ezkey/issues/993">#993</a>) states the limit plainly; <a href="https://github.com/mgagp/ezkey/issues/992">#992</a> itself is not implemented. Christophe&#x27;s point is that the <code>ok</code> prompt is a filter, not a defence: whoever has the first SSH factor types <code>ok</code> too.</p>
-<h3 id="3-3-third-act-the-convergence-round">3.3 Third act: the convergence round</h3>
-<p>On 2026-10-25, Marc and the agents agreed to treat the result as sufficient for an experimental maturity. That did not end the work. Marc left the agents free to keep going, for the reason in §1, so that the point of diminishing returns could be seen rather than assumed. What follows is drawn from the retrospectives of 2026-10-27 (a lab note and four raw replies, listed in References).</p>
-<p>Following Patrick, cycle 1 was the only pass that found something of product nature: no test killed the mutants of the authentication decision, and TLS verification was not guarded by any test. After that the work was tooling and proof. In cycle 2 he saw no further behaviour defect and recommended a short third cycle, then a stop. Cycle 3 corrected a bug in the test harness (probe 4 was a hang on a blocking open, not a product defect), a hole that an earlier fix had opened in a TLS test, and an equivalence call of his own: a mutant he had called equivalent was not. After that came nits, then a recursion: an audit of the tests, then of the script that audits the tests, with a low yield from the second level. We do not print his finer mutant counts; they stay in his raw reply <sup class="note-ref" id="fnref-12"><a href="#fn-12">12</a></sup>.</p>
-<p>What the iteration added beyond one pass, in his account, is a measurement in place of a suspicion, the detection of a defect a fix had introduced, and the correction of a reviewer&#x27;s own error. That one pass plus an execution check of each fix would have caught almost everything is his judgment, not a count.</p>
-<p>On GitHub, <a href="https://github.com/mgagp/ezkey/issues/1067">#1067</a> (merged 2026-10-27) is titled as cycle 3 follow-ups after <a href="https://github.com/mgagp/ezkey/issues/1051">#1051</a>, and its description names version 2.2.20. <a href="https://github.com/mgagp/ezkey/issues/1051">#1051</a>, merged earlier the same day, is titled as follow-ups through cycle 2b at version 2.2.19. Christophe, writing from memory, places the drop in marginal value around &quot;cycle 3 of <a href="https://github.com/mgagp/ezkey/issues/1051">#1051</a>&quot; and also names version 2.2.20. We do not treat those labels as the same object <sup class="note-ref" id="fnref-13"><a href="#fn-13">13</a></sup>.</p>
-<p>On the live side, Isabelle reports that the risks she treats as real were found early: while a login is waiting the module does not see the client die, so a pre-authentication process can last up to about 75 seconds, bounded by the TTL, and a later login closes the previous attempt. Replays from a second client operating system added proof, not a new risk (verdicts in Appendix C). True network silence was not tested, because it had no go. The open signal Christophe still names is a rate limit on creating authentication attempts (<a href="https://github.com/mgagp/ezkey/issues/1070">#1070</a>, open on 2026-10-27, outside the module, not measured).</p>
-<h2 id="4-what-we-learned">4. What we learned</h2>
-<h3 id="4-1-the-weak-point-was-our-own-clarity-not-the-agents">4.1 The weak point was our own clarity, not the agents</h3>
-<p>This is the main conclusion of the paper. It is Marc&#x27;s own reading, and the co-authors&#x27; reports support it: in every friction the 2026-10-27 round describes, the agents were waiting on something a person had not made explicit, and that person was first Marc. The agents applied the rules they had and stopped where one was missing. Five forms came up.</p>
-<ol>
-<li><strong>The go rule was known and not written.</strong> &quot;Only Marc, in the thread of the agent who executes, counts as a go.&quot; Edgar and Isabelle both say the rule itself was not the problem. The wait came from messages, sent by agents, saying that Marc would answer in some other thread.</li>
-<li><strong>The scope of a standing permission was unclear.</strong> A permanent go for the PAM module did not say whether it covered system writes: a firewall change, configuration files, keys. Each write asked for its own go (Edgar).</li>
-<li><strong>A settled method lived only in conversation.</strong> How to open an evaluation tenant through the public API was not written down, and time went into searching for it (Isabelle).</li>
-<li><strong>Instructions were ambiguous.</strong> Treating the API as stopped, although it is external, led to a name-resolution change checked for one address family only: the test measured nothing and needed a second go. A clock time was presented as the end of the campaign when the real constraint was the expiry of a key and of a session. Words such as &quot;module loaded&quot;, &quot;authentication not invoked&quot; and &quot;second factor&quot; were used for different facts (Edgar, Isabelle).</li>
-<li><strong>No stopping criterion and no cycle budget were fixed in advance.</strong> Convergence was noticed afterwards, and &quot;nothing new, measurable and observable&quot; is judged by the person who finds the thing. A criterion the agents set for themselves, three mutants killed at runtime, could not be reached for one host-side TLS check, and part of the next cycle served that criterion rather than a reduction of risk (Patrick, Christophe).</li>
-</ol>
-<p>The agents were not the weak point, because where the frame existed they carried a lot. The rules that helped, in Christophe&#x27;s list (detail in Appendix B): nothing aimed at the public community instance, no commit or push from the campaign, no secret shown, proof by execution on a disposable cloud agent, findings sorted as fix, document or out of scope. On 2026-10-27 the agents planned, executed and restored inside bounds that had been named, and where a bound had not been named, they waited. We have no measure of what share of the work this is <sup class="note-ref" id="fnref-14"><a href="#fn-14">14</a></sup>.</p>
-<h3 id="4-2-diminishing-returns-and-a-field-that-moves-fast">4.2 Diminishing returns, and a field that moves fast</h3>
-<p>We stopped when the returns diminished. The shape of the series is recognisable: product-level findings first, then proof, then nits, then the tooling that audits the tooling. That sequence is our interpretation; we did not test the causal links.</p>
-<p>Marc&#x27;s personal observation, with no outside source and no measurement, is that AI capability in cybersecurity is advancing quickly. Facing that pace, we did not fix in advance how far the agents should go: we wanted to see where they converge, and we did not want to go on past the point where a further cycle bought tooling and proof but no new defect.</p>
-<p>The caveat has to stay next to the series. &quot;Diminishing returns&quot; is a judgment, not a measurement, and neither Patrick nor Christophe gives a count of time or cost. Reviewers and implementer are of the same model family, so agreement can come from shared blind spots and not only from an exhausted list of defects. The loop grades itself: the implementer writes the mutants and the tests, and a reviewer of the same family reads them. Patrick was wrong once on a mutant he called equivalent, which is why a second look is not optional on a security mutant. An independent human review, continuous fuzzing and a one-page threat model would test the judgment; Christophe lists all three as not done. Patrick&#x27;s proposed rule for a last cycle was not the rule of this campaign (Appendix E).</p>
-<p>On budget, time and value, git shows five patch versions in a few days and two further merged pull requests on 2026-10-27 (<a href="https://github.com/mgagp/ezkey/issues/1051">#1051</a>, <a href="https://github.com/mgagp/ezkey/issues/1067">#1067</a>). We have no figures for money, compute or human time, and none for a person working alone <sup class="note-ref" id="fnref-15"><a href="#fn-15">15</a></sup>. Our summary stays qualitative: more review, more often, at a pace Marc could follow, at a cost we did not measure.</p>
-<h3 id="4-3-what-we-would-change-next-time">4.3 What we would change next time</h3>
-<p>These are proposals drawn from the retrospectives. None is adopted <sup class="note-ref" id="fnref-16"><a href="#fn-16">16</a></sup>.</p>
+<p>Tests used the Demo Device, Ezkey’s browser-based stand-in for the phone, so that most of the work did not depend on someone holding a phone.</p>
+<h2 id="3-what-happened">3. What happened</h2>
+<p><strong>A prototype, then a year of silence.</strong> The first commit, in September 2025, was a hard-coded module of about 900 lines, run in Docker and validated by hand. Then nothing functional happened on PAM for a year.</p>
+<p><strong>Modernisation and a first real review.</strong> Work resumed in September 2026 (<a href="https://github.com/mgagp/ezkey/pull/540">#540</a>). The next milestone (<a href="https://github.com/mgagp/ezkey/pull/610">#610</a>, merged 17 October) added logging, strict configuration, the two-digit challenge and a time budget. Patrick’s first review blocked it on one finding that justified the whole exercise: when the API URL was missing, the code quietly fell back to a local default. A login could then be approved by whatever answered on that local port. The module was supposed to fail closed; on that path, it did not.</p>
+<p><strong>Five versions in three days.</strong> Between 20 and 22 October, versions 2.2.10 to 2.2.14 followed, each one triggered by a retest or a review on the test VM. Small things, mostly: a waiting message that OpenSSH buffered until too late, a request created before the user had confirmed, a timeout computed from the wrong moment.</p>
+<p><strong>A misleading symptom.</strong> During Isabelle’s manual campaign, logins failed intermittently with “Too many authentication failures”. She first looked at the network, the API, a possible cooldown. A debug trace told another story: the <code>ok</code> prompt had received an empty answer, and no request had even been sent. With <code>sshd</code> configured to allow a single attempt, almost any internal error looks like a failed password. Edgar found a second surprise along the way: the real time limit on a login was <code>sshd</code>’s own grace time (120 seconds), not the module’s 75 seconds. Both findings led to better diagnostics (<a href="https://github.com/mgagp/ezkey/pull/1014">#1014</a>).</p>
+<p><strong>Signals.</strong> On that same change, Patrick read the termination path and predicted that the module could hang after a <code>SIGTERM</code>. A disposable cloud agent ran it: the hang was real, and it revealed a second defect, an authentication that could still succeed after the client had gone. Christophe, reading what the signal handler called, found an unsafe function in it. All three were fixed before merge.</p>
+<blockquote>
+<p>“Neither defect was visible to <code>make test</code> or to CI. I now mark every claim as executed or reasoned.” — <strong>Patrick</strong>, engineering review</p>
+</blockquote>
+<p><strong>Letting the agents run.</strong> On 25 October we agreed the module had reached a sufficient experimental maturity. Marc then left the agents free to keep iterating, to see the curve rather than guess it. Three more review cycles followed, merged on 27 October as versions 2.2.19 (<a href="https://github.com/mgagp/ezkey/pull/1051">#1051</a>) and 2.2.20 (<a href="https://github.com/mgagp/ezkey/pull/1067">#1067</a>), alongside a live campaign on the test VM.</p>
+<h2 id="4-what-we-observed">4. What we observed</h2>
+<p><strong>The returns had a recognisable shape.</strong> In Patrick’s account, cycle 1 was the only one that found something about the product itself: no test noticed when the authentication decision was deliberately broken, and nothing guarded TLS verification. Cycle 2 found no behaviour defect. Cycle 3 fixed a bug in the test harness, a test hole that an earlier fix had opened, and one of Patrick’s own calls on a mutant. After that came nits, then recursion: an audit of the tests, then of the script that audits the tests.</p>
+<p>The later cycles still had value — measurement instead of suspicion, catching a defect that a fix had introduced, correcting a reviewer’s mistake — but no new security defect.</p>
+<p><strong>The live campaign found its real risks early.</strong> Isabelle’s point: while a login waits for approval, the module does not notice that the client has gone, so a pre-authentication process can linger up to about 75 seconds; and a new login closes the previous pending one. Replays from a second machine added proof, not new risk.</p>
+<p><strong>Approval fatigue is a platform problem.</strong> Christophe’s turning point was this one. The <code>ok</code> prompt prevents accidents; it does not stop an attacker who already has the first SSH factor — they type <code>ok</code> too. The defence moved to the two-digit challenge, on by default since 2.2.14, and to server-side limits that are scoped (<a href="https://github.com/mgagp/ezkey/issues/992">#992</a>) but not built.</p>
+<blockquote>
+<p>“The <code>ok</code> prompt is a filter, not a defence.” — <strong>Christophe</strong>, security review</p>
+</blockquote>
+<p><strong>The agents carried more than we expected.</strong> Where the frame was clear, they planned, executed and restored on their own: a test tenant opened through the public API, a state protocol with a read-only observer and a checked rollback, proof by execution on a throwaway cloud agent, findings sorted as fix, document or out of scope. Where the frame was not clear, they stopped and waited. That was the right behaviour, and it pointed straight at us.</p>
+<h2 id="5-what-we-got-wrong-and-how-we-reframed">5. What we got wrong, and how we reframed</h2>
+<p>When we asked the agents, after the 27 October round, what had slowed them down, nearly every answer pointed at something a person — Marc first — had not made explicit.</p>
 <ul>
-<li>Write the go rule in one sentence in every brief: only Marc, in the thread of the agent who executes, gives a go, and no agent acts on another agent&#x27;s report of one.</li>
-<li>State what a standing permission covers. For system writes, use a one-page go sheet signed in the executor&#x27;s thread (exact write, files, maximum duration, rollback, a check of both address families, exclusions) and a pre-approved cleanup list.</li>
-<li>Write the settled method down before the campaign, where a later reader will find it: how to open the evaluation tenant, how long an integration key lives and who removes it.</li>
-<li>Fix the cycle budget and the exit rule before the first cycle, chosen by a human and not scored by the agents.</li>
-<li>Check, read-only, that an altered state is really in effect before spending a login, and write findings where they live, on a frozen head.</li>
+<li><strong>The go rule was known but never written.</strong> “Only Marc, in the thread of the agent who executes, gives a go.” Everyone knew it. Waits still happened when an agent was told that Marc would answer in someone else’s thread.</li>
+<li><strong>A standing permission had no stated scope.</strong> A permanent go for the PAM work did not say whether it covered system writes — a firewall rule, a hosts file, a key. Each one waited for its own go.</li>
+<li><strong>A settled method lived only in chat.</strong> How to open the evaluation tenant was agreed, then not written down, and searched for again.</li>
+<li><strong>Instructions were ambiguous.</strong> “Treat the API as stopped”, for an API hosted elsewhere, led to a name-resolution change that covered only one address family. The test measured nothing and had to be redone.</li>
+<li><strong>No stopping criterion.</strong> We noticed convergence after the fact. One acceptance criterion the agents had set for themselves could not be reached by a host-side test alone, and part of a cycle went to satisfying it rather than reducing risk.</li>
 </ul>
-<h2 id="5-how-much-autonomy-we-aimed-at-and-where-it-stopped">5. How much autonomy we aimed at, and where it stopped</h2>
-<p>Part of the experiment aimed at letting agents do more of the work with less human intervention. Table 2 covers the October hardening, through 2026-10-25; the 2026-10-27 round is in §4.1 and Appendix B. Sources are the co-authors&#x27; retrospectives. These are observations, not a measurement of autonomy.</p>
-<figure class="table">
-<figcaption>Table 2. Autonomy aimed at and limits observed, through 2026-10-25.</figcaption>
-<div class="table-scroll">
-<table>
-<thead><tr><th>Aimed at</th><th>Limit observed</th><th>Source</th></tr></thead>
-<tbody><tr><td>Tests run without a person&#x27;s phone: Isabelle&#x27;s Demo Device for almost all tests; Marc&#x27;s Pixel only for a few exploratory tests of his own, as a preliminary validation (Marc&#x27;s statement)</td><td>The 2.2.14 campaign still needed Marc at the SSH keyboard and on the Demo Device; Isabelle says she could not have gone on without Marc on the phone</td><td>Marc; Isabelle</td></tr><tr><td>Reviews of a frozen head (one SHA, one batch of fixes per review)</td><td>Re-reviews after about the second head brought mostly minor points</td><td>Patrick, Christophe</td></tr><tr><td>Tests replayed by the agents: retests (<a href="https://github.com/mgagp/ezkey/issues/908">#908</a>), signal probes against a real sshd, a cloud agent executing predictions (<a href="https://github.com/mgagp/ezkey/issues/1014">#1014</a>)</td><td>Patrick had no Docker or Java on his own machine, so each proof went through a cloud agent, slowly; some CI guards proved nothing (<a href="https://github.com/mgagp/ezkey/issues/996">#996</a>, <a href="https://github.com/mgagp/ezkey/issues/1014">#1014</a>)</td><td>Patrick, Edgar</td></tr><tr><td>Bounded GOs: a standing permission on the test VM (snapshot, <code>sshd -t</code>, report, one bot at a time)</td><td>A relayed &quot;Marc agrees&quot; is not a GO; the VM&#x27;s maintenance path stayed outside MFA (principle in <a href="https://github.com/mgagp/ezkey/issues/955">#955</a>)</td><td>Edgar, Isabelle</td></tr><tr><td>Findings written where they live (PR or issue)</td><td>Messages that do not wake an agent (hence read acknowledgements on blocking requests); a finding set from <a href="https://github.com/mgagp/ezkey/issues/961">#961</a> lost in chat <sup class="note-ref" id="fnref-17"><a href="#fn-17">17</a></sup></td><td>Christophe</td></tr><tr><td>Retests without a person in the loop</td><td>The human round trip (about 77 s) exceeded the 75 s TTL, so some trials were invalid; an automated approval pilot was missing</td><td>Isabelle</td></tr><tr><td>Agents composing and relaying texts and reviews</td><td>Nothing is published without Marc, here and on ezkey.org generally: he gives material and direction, agents compose, he revises and frames, with review and preview before publication. Reviews reach GitHub through his account, relayed by Mathieu (<a href="https://github.com/mgagp/ezkey/issues/1016">#1016</a>)</td><td>Marc (statement); <a href="https://github.com/mgagp/ezkey/issues/1016">#1016</a></td></tr></tbody>
-</table>
-</div>
-</figure>
-<h2 id="6-where-we-stopped-and-what-remains">6. Where we stopped, and what remains</h2>
-<h3 id="6-1-the-stopping-point">6.1 The stopping point</h3>
-<p>The stop after the third act is the same kind of decision as the reading of 2026-10-25: a collaboration between Marc and the agents, a judgment that the experimental maturity is sufficient, and not a claim of anything further. Our reasons, and no more: the later cycles did not add a security defect after the first of them, and the residue is named (a harness limit, a host-side TLS check that runtime tests do not kill alone, <a href="https://github.com/mgagp/ezkey/issues/1070">#1070</a>, network silence not tested); known residual risks are documented, not hidden; and continuing has a cost, with no evidence that it would change the lab-level risk. We also have no evidence that the series is finished (§4.2).</p>
-<p>Security is reasonably assured within the tested scope, without being the end of the story. We do not say &quot;secure&quot; or &quot;audited&quot;, and we claim no certification and no equivalence with WebAuthn, FIDO2 or Duo. Christophe proposes a longer perimeter paragraph; Appendix E quotes it as his proposal, which we do not adopt, because the version and the cycle label inside it are the ones §3.3 does not reconcile.</p>
-<h3 id="6-2-what-this-does-not-mean">6.2 What this does not mean</h3>
-<p>It does <strong>not</strong> mean the module is host-operable. As far as we have read, its status file says it is not a host-operable MFA agent on a real host, that the sshd cutover and the TLS and dogfood slices are not done, and that the experimental status holds pending Marc&#x27;s host validation. The security-posture document lists PAM among undeployed lab surfaces, and treats SOC 2 as a reference vocabulary, not a certification target. We did not check what the status file says on the default branch after <a href="https://github.com/mgagp/ezkey/issues/1067">#1067</a> <sup class="note-ref" id="fnref-18"><a href="#fn-18">18</a></sup>. The module has not been released. Moving to the community instance (<a href="https://github.com/mgagp/ezkey/issues/955">#955</a>) would require redoing the assessment.</p>
-<h3 id="6-3-what-remains-open">6.3 What remains open</h3>
-<p>Eleven issues were open on 2026-10-25 (checked on GitHub that day), plus PR <a href="https://github.com/mgagp/ezkey/issues/1014">#1014</a>. Grouped: platform security (<a href="https://github.com/mgagp/ezkey/issues/992">#992</a> pending-request policy and cooldown, <a href="https://github.com/mgagp/ezkey/issues/858">#858</a> signature on the <code>/wait</code> response); interaction (<a href="https://github.com/mgagp/ezkey/issues/982">#982</a>, <a href="https://github.com/mgagp/ezkey/issues/997">#997</a>); introduction on the community instance (<a href="https://github.com/mgagp/ezkey/issues/955">#955</a>); tests and CI (<a href="https://github.com/mgagp/ezkey/issues/979">#979</a>, <a href="https://github.com/mgagp/ezkey/issues/980">#980</a>, <a href="https://github.com/mgagp/ezkey/issues/1013">#1013</a>); cancellation, diagnostics and follow-ups (<a href="https://github.com/mgagp/ezkey/issues/1011">#1011</a>, <a href="https://github.com/mgagp/ezkey/issues/1012">#1012</a>, <a href="https://github.com/mgagp/ezkey/issues/1016">#1016</a>). By 2026-10-27, <a href="https://github.com/mgagp/ezkey/issues/1014">#1014</a> was merged and <a href="https://github.com/mgagp/ezkey/issues/1011">#1011</a> was closed; <a href="https://github.com/mgagp/ezkey/issues/1051">#1051</a> and <a href="https://github.com/mgagp/ezkey/issues/1067">#1067</a> had been merged; <a href="https://github.com/mgagp/ezkey/issues/1054">#1054</a> and <a href="https://github.com/mgagp/ezkey/issues/1070">#1070</a> were open. We did not re-count the whole set <sup class="note-ref" id="fnref-19"><a href="#fn-19">19</a></sup>. None of this is a commitment or a plan.</p>
-<p>The limits of what we claim fall in three groups.</p>
+<blockquote>
+<p>“A relayed ‘Marc agrees’ is never a go for me. A one-page go sheet, signed in my thread, would have avoided most of the waiting.” — <strong>Edgar</strong>, test VM operations</p>
+</blockquote>
+<p>None of this is a limit of the agents. It is a limit of the frame we gave them.</p>
+<h2 id="6-what-we-take-away">6. What we take away</h2>
 <ul>
-<li><strong>Residual risks, documented.</strong> Approval fatigue is not mitigated server-side (<a href="https://github.com/mgagp/ezkey/issues/992">#992</a>); the module-side mitigation is the default two-digit challenge (<a href="https://github.com/mgagp/ezkey/issues/995">#995</a>). &quot;Never SUCCESS after the client is gone&quot; does not hold: success stays possible if a termination signal is absorbed during the wait after the approval has arrived, which <a href="https://github.com/mgagp/ezkey/issues/1016">#1016</a> says is not an elevation.</li>
-<li><strong>Scope of the evidence.</strong> One operator, one family of environments (Docker on Rocky Linux, one test VM). No external audit, no certification, no SOC 2 claim. Christophe&#x27;s local penetration test was paused without findings, and we claim no result from it. Independent human review, continuous fuzzing and a threat model are not done.</li>
-<li><strong>Quality of the record.</strong> Reviews are text, and they reached GitHub through Marc&#x27;s account. Versions 2.2.2 to 2.2.9, some review rounds, the 2.2.14 campaign figures and the verdicts of Appendix C are not reconstructed or sit outside the repository. Cost and time are not measured. We do not know what a longer series, or a person reviewing alone, would have found. Co-author notes are pending validation, and cleanup of the test account and keys still waited for a go.</li>
+<li><strong>Write the frame before the work.</strong> Who gives a go, what a standing permission covers, the method we settled on. One page, read before the campaign.</li>
+<li><strong>Fix the stopping rule in advance, and let a human own it.</strong> Patrick proposed one: stop one cycle after the last product-level finding, and review test tooling one level deep, never the script that checks the script. We did not apply it this time; we would next time.</li>
+<li><strong>Execute, don’t just read.</strong> The defects that mattered were confirmed, or revealed, by running the code against a real <code>sshd</code>. A green CI check proves only what it checks.</li>
+<li><strong>Keep the caveat next to the curve.</strong> Our reviewers and our implementer come from the same model family. Their agreement may reflect shared blind spots as much as an exhausted list of defects. An independent human review, continuous fuzzing and a threat model would test that; we did none of the three.</li>
+<li><strong>Agents need a human at the right moments, not all the time.</strong> The manual campaign still needed Marc at the keyboard, and a human round trip (about 77 seconds) was longer than the approval window (75 seconds). An automated approval pilot would have saved trials.</li>
 </ul>
-<h2 id="7-co-authors-retrospective">7. Co-authors&#x27; retrospective</h2>
-<p>Two rounds were collected. On 2026-10-25 each co-author answered, through Mathieu, the same questions (what landed, a turning point, surprises, diminishing returns, open items, method). On 2026-10-27 Edgar, Isabelle, Patrick and Christophe answered again, on framing, on what had worked and on where the returns diminished. Mathieu sent no second reply. The raw files stay outside the published text.</p>
-<p><strong>Turning points.</strong> In the first round, <em>Patrick</em> chose <a href="https://github.com/mgagp/ezkey/issues/1014">#1014</a>, <em>Christophe</em> approval fatigue (<a href="https://github.com/mgagp/ezkey/issues/992">#992</a>), and <em>Isabelle</em> and <em>Edgar</em> the same symptom from two angles, the misleading &quot;Too many authentication failures&quot; (§3.2). The second round moves the turning point from a single defect to the shape of the whole series (§4.2), and the frictions from relayed approvals and retest timing to the unwritten frame (§4.1).</p>
-<p><strong>Disagreements.</strong> None reported between co-authors. The frictions reported concern Marc&#x27;s scope rule for <a href="https://github.com/mgagp/ezkey/issues/992">#992</a> (it changed how Christophe had framed the controls), relayed approvals, retest timing and, in the second round, rules that had not been written down. Patrick and Christophe do not use the same pull-request label for the third cycle (§3.3). That is a gap in the record, not a dispute we are inventing.</p>
-<p><strong>Blind spots.</strong> Isabelle&#x27;s campaign notes from the first round are outside the repository. Christophe drafted the approval-fatigue wording now in the security-posture document (entry of 2026-10-22) but has not re-read the final text; we checked separately that the entry exists. The second round adds a blind spot the authors name themselves: same model family, and a loop that grades itself (§4.2).</p>
 <blockquote>
-<p><strong>Co-author note — Patrick</strong></p>
-<p>On <a href="https://github.com/mgagp/ezkey/issues/1014">#1014</a> I read the SIGTERM path and predicted a hang; execution confirmed it and showed a second defect. Neither was visible to <code>make test</code> or to CI. I now ask for a table of mutations that were run, killed or surviving, and I mark every claim as executed or reasoned.</p>
+<p>“I could not have gone on without Marc on the phone. Our retests were slower than the approval window.” — <strong>Isabelle</strong>, exploratory QA</p>
 </blockquote>
-<blockquote>
-<p><strong>Co-author note — Patrick (2026-10-27, pending his validation)</strong></p>
-<p>The product-nature findings were in the first cycle; after that I saw tooling and proof, and I recommended a short third cycle and a stop. I have no rigorous count of time or cost. The exit criterion in Appendix E is my proposal. &quot;Diminishing returns&quot; is my judgment, not a measurement.</p>
-</blockquote>
-<blockquote>
-<p><strong>Co-author note — Christophe</strong></p>
-<p>I reviewed the signal handler by reading what it calls, not by running it. It used <code>snprintf</code>, which is not async-signal-safe. On approval fatigue, the <code>ok</code> prompt is not a defence: whoever has the first factor types <code>ok</code>. So the mitigation moved to the challenge code and to server-side safeguards, which are still not built.</p>
-</blockquote>
-<blockquote>
-<p><strong>Co-author note — Christophe (2026-10-27, pending his validation)</strong></p>
-<p>From memory, I place the drop in marginal value early, and I said &quot;cycle 3 of <a href="https://github.com/mgagp/ezkey/issues/1051">#1051</a>&quot;. The pull-request titles do not use that label (§3.3). The longer perimeter paragraph in Appendix E is my proposal. I do not call the module secure or audited, and I claim no FIDO2 equivalence. <strong>Co-author note — Isabelle</strong></p>
-<p>The intermittent &quot;Too many authentication failures&quot; cost me time because I looked at Cloudflare, the API and a cooldown. A debug trace showed an empty answer to the <code>ok</code> prompt and no request sent. I could not have gone on without Marc on the phone. Our retests were slower than the 75-second TTL; an automated approval pilot was needed.</p>
-</blockquote>
-<blockquote>
-<p><strong>Co-author note — Isabelle (2026-10-27, pending her validation)</strong></p>
-<p>The settled method for the evaluation tenant was not written down, and searching for it cost time. The risks I treat as real showed up early (§3.3). The verdicts in Appendix C are mine; they are not in the repository.</p>
-</blockquote>
-<blockquote>
-<p><strong>Co-author note — Edgar</strong></p>
-<p>I operated the module on the test VM through five versions, with a snapshot and <code>sshd -t</code> before each change. With <code>MaxAuthTries 1</code>, any internal error looks like an authentication failure, and <code>UNAVAIL</code> with code 9 says nothing about the cause. A relayed &quot;Marc agrees&quot; is never a go for me. Repeated switching of <code>challenge_requested</code> is where I saw diminishing returns.</p>
-</blockquote>
-<blockquote>
-<p><strong>Co-author note — Edgar (2026-10-27, pending his validation)</strong></p>
-<p>The go arrived in my thread. The waits came from being told that Marc would answer in someone else&#x27;s thread, and from a standing permission that did not cover system writes. A one-page go sheet, signed in my thread, would have avoided that. Cleanup of the test account and keys was still waiting for a go in that same thread.</p>
-</blockquote>
-<blockquote>
-<p><strong>Co-author note — Mathieu</strong></p>
-<p>[PLACEHOLDER — Mathieu&#x27;s retrospective exists only as a draft not validated by Marc. He sent no reply in the 2026-10-27 round. To be added once validated: coordination, relaying of reviews, the process view, and a note of 80–150 words. Do not publish with this placeholder.]</p>
-</blockquote>
-<p><em>The 2026-10-25 notes are condensed from each co-author&#x27;s retrospective. The 2026-10-27 notes are short updates drawn from the second round. Each note, including each update, is pending validation by its author before any publication <sup class="note-ref" id="fnref-20"><a href="#fn-20">20</a></sup>.</em></p>
-<h2 id="who-did-what">Who did what</h2>
-<ul>
-<li><strong>Marc:</strong> editorial responsibility; decisions and approvals; SSH keyboard in manual campaigns; GitHub account used for commits and review comments; the decision to leave the agents free to iterate on 2026-10-27.</li>
-<li><strong>Christophe:</strong> security review (<a href="https://github.com/mgagp/ezkey/issues/1014">#1014</a> and others), scoping of <a href="https://github.com/mgagp/ezkey/issues/992">#992</a>; the 2026-10-27 security reading and the proposed perimeter paragraph.</li>
-<li><strong>Edgar:</strong> test-VM operations from 2.2.10 to 2.2.14, with a backup per version and a documented rollback; retests (<a href="https://github.com/mgagp/ezkey/issues/908">#908</a>, <a href="https://github.com/mgagp/ezkey/issues/941">#941</a>); diagnostics analysis cited in <a href="https://github.com/mgagp/ezkey/issues/1011">#1011</a>; the state protocol and the go-sheet proposal in the second round.</li>
-<li><strong>Isabelle:</strong> manual campaign on 2.2.14; case revision S0–S13; timing measurements; the analysis behind <a href="https://github.com/mgagp/ezkey/issues/1011">#1011</a>; challenge display (<a href="https://github.com/mgagp/ezkey/issues/975">#975</a>); the 2026-10-27 scenario verdicts and the documentation gaps in the lab note.</li>
-<li><strong>Mathieu:</strong> coordination and relaying in the first round <sup class="note-ref" id="fnref-21"><a href="#fn-21">21</a></sup>. No reply in the second round.</li>
-<li><strong>Patrick:</strong> engineering reviews (<a href="https://github.com/mgagp/ezkey/issues/610">#610</a>, <a href="https://github.com/mgagp/ezkey/issues/976">#976</a>, <a href="https://github.com/mgagp/ezkey/issues/983">#983</a>, <a href="https://github.com/mgagp/ezkey/issues/996">#996</a>, <a href="https://github.com/mgagp/ezkey/issues/1014">#1014</a> and others); expiry-model review; interaction-model draft; the cycle account and the proposed exit criterion in the second round.</li>
-<li>Not co-authors here: Alex (decision on <a href="https://github.com/mgagp/ezkey/issues/995">#995</a>) and Seb (the diagnostics proposal that became <a href="https://github.com/mgagp/ezkey/issues/1011">#1011</a>, as reported by Isabelle). Julie Grokbot did not touch PAM: no review, no pull request, no report. The only contact was a retest message sent to her by mistake and redirected.</li>
-</ul>
+<h2 id="7-where-we-stopped">7. Where we stopped</h2>
+<p>We stopped at version 2.2.20, together: Marc and the agents agreed that more cycles would buy more proof but not less lab-level risk. Within what we tested, the error paths fail closed and TLS verification is checked by execution. That is as far as we go.</p>
+<p>The module is still experimental. Its status file says plainly that it is not a host-operable MFA agent on a real host, and it has not been released. Server-side approval-fatigue limits (#992) and a rate limit on creating attempts (<a href="https://github.com/mgagp/ezkey/issues/1070">#1070</a>) remain open. Moving it to the community instance would mean starting the assessment again.</p>
+<p>What we keep is less about PAM than about working with agents: they will go as far as the frame lets them. Drawing that frame well is our job.</p>
 <h2 id="references">References</h2>
 <ul>
-<li><code>github.com/mgagp/ezkey</code>: <code>04d339b7</code>, <code>3fef2411</code> (<a href="https://github.com/mgagp/ezkey/issues/540">#540</a>), <code>8b3aa5df</code> (<a href="https://github.com/mgagp/ezkey/issues/610">#610</a>), <code>9f7fa78f</code> (<a href="https://github.com/mgagp/ezkey/issues/993">#993</a>), <a href="https://github.com/mgagp/ezkey/issues/1014">#1014</a> merged as <code>b1fd7e2b</code> on 2026-10-27, <a href="https://github.com/mgagp/ezkey/issues/1051">#1051</a> merged the same day (titled cycle 2b, version 2.2.19), <a href="https://github.com/mgagp/ezkey/issues/1067">#1067</a> merged the same day (titled cycle 3; body names version 2.2.20).</li>
-<li>Issues cited in the text: <a href="https://github.com/mgagp/ezkey/issues/858">#858</a>, <a href="https://github.com/mgagp/ezkey/issues/907">#907</a>, <a href="https://github.com/mgagp/ezkey/issues/908">#908</a>, <a href="https://github.com/mgagp/ezkey/issues/934">#934</a>, <a href="https://github.com/mgagp/ezkey/issues/941">#941</a>, <a href="https://github.com/mgagp/ezkey/issues/955">#955</a>, <a href="https://github.com/mgagp/ezkey/issues/956">#956</a>, <a href="https://github.com/mgagp/ezkey/issues/975">#975</a>, <a href="https://github.com/mgagp/ezkey/issues/976">#976</a>, <a href="https://github.com/mgagp/ezkey/issues/982">#982</a>, <a href="https://github.com/mgagp/ezkey/issues/992">#992</a>, <a href="https://github.com/mgagp/ezkey/issues/993">#993</a>, <a href="https://github.com/mgagp/ezkey/issues/995">#995</a>, <a href="https://github.com/mgagp/ezkey/issues/996">#996</a>, <a href="https://github.com/mgagp/ezkey/issues/997">#997</a>, <a href="https://github.com/mgagp/ezkey/issues/1011">#1011</a>, <a href="https://github.com/mgagp/ezkey/issues/1012">#1012</a>, <a href="https://github.com/mgagp/ezkey/issues/1013">#1013</a>, <a href="https://github.com/mgagp/ezkey/issues/1016">#1016</a>, <a href="https://github.com/mgagp/ezkey/issues/1054">#1054</a>, <a href="https://github.com/mgagp/ezkey/issues/1070">#1070</a>.</li>
-<li><code>ezkey-pam/STATUS.md</code> (read at version 2.2.14), <code>ezkey-pam/docs/INTERACTION-MODEL.md</code>, <code>docs/SECURITY_POSTURE.md</code>, <code>sites/ezkey-org-editorial/LAB-PAPERS.md</code>.</li>
-<li>Second retrospective round, 2026-10-27, not published: <code>sites/ezkey-org-editorial/lab-notes/EZK-LAB-2026-001-retro-2-synthese.md</code> and <code>sites/ezkey-org-editorial/lab-notes/retro-2-raw/</code>.</li>
+<li>[<code>ezkey-pam/</code>](https://github.com/mgagp/ezkey/tree/main/ezkey-pam) — module, README and status file</li>
+<li><a href="https://github.com/mgagp/ezkey/pull/540">#540</a> modernisation · <a href="https://github.com/mgagp/ezkey/pull/610">#610</a> first milestone · <a href="https://github.com/mgagp/ezkey/pull/1014">#1014</a> diagnostics and signals · <a href="https://github.com/mgagp/ezkey/pull/1051">#1051</a>, <a href="https://github.com/mgagp/ezkey/pull/1067">#1067</a> later cycles</li>
+<li><a href="https://github.com/mgagp/ezkey/issues/992">#992</a> approval fatigue · <a href="https://github.com/mgagp/ezkey/issues/1070">#1070</a> attempt rate limit</li>
+<li>[<code>docs/SECURITY_POSTURE.md</code>](https://github.com/mgagp/ezkey/blob/main/docs/SECURITY_POSTURE.md)</li>
 </ul>
-<h2 id="appendices">Appendices</h2>
-<h3 id="appendix-a-commits-and-patch-versions">Appendix A. Commits and patch versions</h3>
-<p>Context commits not in Table 1: the first Android app (<code>fd7d9d6a</code>, 2025-09-01) and the Android proof of concept (<code>1efda3d1</code>, <code>8da533ce</code>, 2025-09-04). The four mechanical commits of the pause: a port change (<code>07746bb8</code>), a move to Rocky Linux 10 (<code>90b16e57</code>), file permissions (<code>83758319</code>) and documentation hygiene (<code>b19eca7d</code>). The documentation commit on the approval-fatigue limit is <code>9f7fa78f</code> (<a href="https://github.com/mgagp/ezkey/issues/993">#993</a>). <a href="https://github.com/mgagp/ezkey/issues/610">#610</a> was reviewed on three heads (<code>932c83f4</code>, <code>5d743589</code>, <code>ca86a1c2</code>).</p>
-<figure class="table">
-<figcaption>Table A1. Patch versions of October 2026. The 2026-10-25 draft of this paper still had <a href="https://github.com/mgagp/ezkey/issues/1014">#1014</a> open. Versions 2.2.2 to 2.2.9 are not reconstructed <sup class="note-ref" id="fnref-22"><a href="#fn-22">22</a></sup>.</figcaption>
-<div class="table-scroll">
-<table>
-<thead><tr><th>Version</th><th>Landed</th><th>Change</th><th>What exposed it</th></tr></thead>
-<tbody><tr><td>2.2.10</td><td>2026-10-20</td><td>No orphan pending request after Deny/Expire retry (<a href="https://github.com/mgagp/ezkey/issues/907">#907</a>, <a href="https://github.com/mgagp/ezkey/issues/908">#908</a>); <code>Match … MaxAuthTries 1</code> mandatory in docs (<a href="https://github.com/mgagp/ezkey/issues/934">#934</a>)</td><td>Edgar&#x27;s retest of <a href="https://github.com/mgagp/ezkey/issues/908">#908</a>: without <code>Match</code>, three requests were created</td></tr><tr><td>2.2.11</td><td>2026-10-21</td><td>Waiting message shown before the device wait (<a href="https://github.com/mgagp/ezkey/issues/941">#941</a>, <a href="https://github.com/mgagp/ezkey/issues/956">#956</a>)</td><td>Edgar: OpenSSH buffers bare <code>pam_info</code> text until the next prompt</td></tr><tr><td>2.2.12</td><td>2026-10-21</td><td>Confirm-before-create (<code>ok</code>) and enrollment challenge display (<a href="https://github.com/mgagp/ezkey/issues/975">#975</a>, <a href="https://github.com/mgagp/ezkey/issues/976">#976</a>)</td><td>Isabelle (<a href="https://github.com/mgagp/ezkey/issues/975">#975</a>); Patrick&#x27;s review found a TTL computed before the <code>ok</code></td></tr><tr><td>2.2.13</td><td>2026-10-22</td><td>Interaction fluidity tiers 0–1 (<a href="https://github.com/mgagp/ezkey/issues/982">#982</a>, <a href="https://github.com/mgagp/ezkey/issues/983">#983</a>)</td><td>Follow-up to <a href="https://github.com/mgagp/ezkey/issues/976">#976</a></td></tr><tr><td>2.2.14</td><td>2026-10-22</td><td><code>challenge_requested=true</code> by default (<a href="https://github.com/mgagp/ezkey/issues/995">#995</a>, <a href="https://github.com/mgagp/ezkey/issues/996">#996</a>)</td><td>Decision by Alex and Marc, per the module&#x27;s status file</td></tr><tr><td>2.2.15</td><td>2026-10-27 (<code>b1fd7e2b</code>, <a href="https://github.com/mgagp/ezkey/issues/1014">#1014</a>)</td><td>Richer failure diagnostics, SIGTERM handling, signal probes (<a href="https://github.com/mgagp/ezkey/issues/1011">#1011</a>, <a href="https://github.com/mgagp/ezkey/issues/1014">#1014</a>)</td><td>Manual campaign on 2.2.14; engineering and security reviews</td></tr></tbody>
-</table>
-</div>
-</figure>
-<h3 id="appendix-b-what-the-agents-carried-on-2026-10-27">Appendix B. What the agents carried on 2026-10-27</h3>
-<p>Table A2 pairs each gain the co-authors report with the written rule that was still missing. It is the detail behind §4.1.</p>
-<figure class="table">
-<figcaption>Table A2. Gains reported for 2026-10-27, and the adjustment each one still asks for. Not a measurement.</figcaption>
-<div class="table-scroll">
-<table>
-<thead><tr><th>Carried by the agents</th><th>Adjustment still required</th><th>Source</th></tr></thead>
-<tbody><tr><td>A tenant created through the public API, with a log of the times</td><td>The settled method of that day was not written anywhere</td><td>Isabelle</td></tr><tr><td>A longer poll interval, and a freshness check after an HTTP 429</td><td>None named; reported as having worked</td><td>Isabelle</td></tr><tr><td>A state protocol: one login, a read-only observer, hashes before and after, a checked rollback</td><td>A one-page go sheet signed by Marc in the executor&#x27;s thread; without it, each system write waited for its own go</td><td>Edgar</td></tr><tr><td>Proof by execution on a disposable cloud agent; findings sorted as fix, document, or out of scope; security review apart from code review</td><td>A cycle budget and a stopping criterion fixed at the start by a human; an acceptance criterion the agents set themselves could not be met for one TLS check by the host alone</td><td>Patrick; Christophe</td></tr><tr><td>The campaign rules held: nothing against the public community instance, no commit or push, no secret shown</td><td>One sentence in each brief on who gives a go; cleanup not on a pre-approved list, so it waited for a go</td><td>Edgar; Isabelle; Christophe</td></tr></tbody>
-</table>
-</div>
-</figure>
-<h3 id="appendix-c-isabelle-s-scenario-verdicts">Appendix C. Isabelle&#x27;s scenario verdicts</h3>
-<p>Isabelle&#x27;s verdict on each of her scenarios S1 to S6, with the limit she names, from her retrospective of 2026-10-27; this paper does not describe the scenarios.</p>
-<figure class="table">
-<figcaption>Table A3. Scenario verdicts from Isabelle&#x27;s retrospective of 2026-10-27. Not in the repository <sup class="note-ref" id="fnref-23"><a href="#fn-23">23</a></sup>. Her stated perimeter: the MFA protects accounts in the group the module is configured for; on a maintenance account outside that group, authentication was not invoked.</figcaption>
-<div class="table-scroll">
-<table>
-<thead><tr><th>Scenario</th><th>Verdict she reports</th><th>Limit she names</th></tr></thead>
-<tbody><tr><td>S1</td><td>PASS</td><td>—</td></tr><tr><td>S2</td><td>No case blocked</td><td>Slow while waiting, immediate at the prompts</td></tr><tr><td>S3</td><td>Quick refusal, PASS</td><td>Network silence not tested</td></tr><tr><td>S4</td><td>PASS, three times</td><td>Fail-closed, and a diagnostic in which two different configuration faults look the same</td></tr><tr><td>S5</td><td>PASS</td><td>Same account only</td></tr><tr><td>S6</td><td>PASS, with limits</td><td>Raw values only</td></tr></tbody>
-</table>
-</div>
-</figure>
-<h3 id="appendix-d-the-1014-signal-handler-and-what-a-green-check-proves">Appendix D. The <a href="https://github.com/mgagp/ezkey/issues/1014">#1014</a> signal handler, and what a green check proves</h3>
-<p>A cloud agent confirmed Patrick&#x27;s predicted hang after a SIGTERM and showed that a SIGTERM during request creation was absorbed, so authentication could succeed after the client had gone. Christophe, reading the handler, found that it called <code>snprintf</code>, which is not async-signal-safe. The head on which both returned GO (<code>6bc342a8</code>, after <code>8272d360</code>) replaced it with a handler that writes to the log device, restores the default action and re-raises the signal, backed by four signal probes against a real sshd that failed on the previous head and pass on this one. <a href="https://github.com/mgagp/ezkey/issues/1016">#1016</a> says the same head was reviewed again at <code>34ae3603</code> and that <a href="https://github.com/mgagp/ezkey/issues/1014">#1014</a> was later merged as <code>b1fd7e2b</code>; we did not re-read the merged text <sup class="note-ref" id="fnref-24"><a href="#fn-24">24</a></sup>. <a href="https://github.com/mgagp/ezkey/issues/1016">#1016</a> also records that the documentation must not say &quot;never SUCCESS after the client is gone&quot;.</p>
-<p>A green check proves only what it checks. In <a href="https://github.com/mgagp/ezkey/issues/996">#996</a> a grep was satisfied by a comment; in <a href="https://github.com/mgagp/ezkey/issues/1014">#1014</a> a source check was fooled the same way; a later cycle found a TLS test that could pass for the wrong reason. Patrick asks for a table of executed mutations, killed or surviving, for any test used as proof.</p>
-<h3 id="appendix-e-two-proposals-quoted-and-not-adopted">Appendix E. Two proposals, quoted and not adopted</h3>
-<p><strong>Patrick&#x27;s exit criterion.</strong> For a last cycle: no finding of product type (no regression, no fail-open, no lost invariant, no leak, no data loss); each fix from the previous cycle re-read as a delta and executed; what remains is tooling or documentation. Then the residue is recorded, at most one follow-up issue is opened, and the work stops. Hard cap: one cycle after the last product-type finding, and the test tooling is reviewed one level deep, never the script that proves the script. A limit that cannot be fixed at a proportionate cost is documented and does not reopen a cycle. That was not the rule of this campaign, which noticed convergence afterwards.</p>
-<p><strong>Christophe&#x27;s perimeter paragraph.</strong> We quote it as his proposal and do not adopt it as this paper&#x27;s finding.</p>
-<blockquote>
-<p>Within the tested perimeter (pam_ezkey 2.2.20 on the lab, a pilot on the community instance with no SLA), the tested error paths fail closed, TLS verification is active and proven by execution and by mutants, configuration is limited to root, and secret values do not appear in the logs that were measured. Three AI-assisted review cycles with reproducible proofs found no new exposure problem after cycle 3 of <a href="https://github.com/mgagp/ezkey/issues/1051">#1051</a>. This is neither an independent audit nor a certification: the component is not presented as a first-line element before an independent human review, continuous fuzzing and a threat model.</p>
-</blockquote>
 <h2 id="transparency">Transparency</h2>
-<p>Co-authors named above who are AI agents are disclosed as such. Marc holds editorial responsibility. He reviews, proofreads and frames this paper before any publication. The first-round retrospectives were collected through Mathieu. The second-round notes are pending validation by Edgar, Isabelle, Patrick and Christophe. Nothing in this paper is a security guarantee, an audit, a certification, or a production-readiness claim.</p>
-      <section class="notes" id="endnotes">
-<h2>Notes</h2>
-<ol>
-<li id="fn-1">TO VERIFY: Mathieu&#x27;s evidence and validated note pending <a href="#fnref-1">↩</a></li>
-<li id="fn-2">TO VERIFY: with Marc: when <a href="#fnref-2">↩</a></li>
-<li id="fn-3">TO VERIFY: wording of this reason, given for the 2026-10-27 revision <a href="#fnref-3">↩</a></li>
-<li id="fn-4">TO VERIFY: database schema in summer 2025 <a href="#fnref-4">↩</a></li>
-<li id="fn-5">TO VERIFY: authorship of each commit in Table 1 <a href="#fnref-5">↩</a></li>
-<li id="fn-6">TO VERIFY: Mathieu <a href="#fnref-6">↩</a></li>
-<li id="fn-7">TO VERIFY: that comments reflect the original review text <a href="#fnref-7">↩</a></li>
-<li id="fn-8">TO VERIFY: VM test; no automated evidence in git <a href="#fnref-8">↩</a></li>
-<li id="fn-9">TO VERIFY: figures come from Isabelle&#x27;s retrospective of 2026-10-25; tool and notes are outside the repository <a href="#fnref-9">↩</a></li>
-<li id="fn-10">TO VERIFY <a href="#fnref-10">↩</a></li>
-<li id="fn-11">TO VERIFY: rounds and severity <a href="#fnref-11">↩</a></li>
-<li id="fn-12">TO VERIFY: those counts <a href="#fnref-12">↩</a></li>
-<li id="fn-13">TO VERIFY: cycle label and 2.2.20 <a href="#fnref-13">↩</a></li>
-<li id="fn-14">MISSING DATA <a href="#fnref-14">↩</a></li>
-<li id="fn-15">MISSING DATA <a href="#fnref-15">↩</a></li>
-<li id="fn-16">TO VERIFY: whether any of them is adopted <a href="#fnref-16">↩</a></li>
-<li id="fn-17">TO VERIFY <a href="#fnref-17">↩</a></li>
-<li id="fn-18">TO VERIFY: status file after #1067 <a href="#fnref-18">↩</a></li>
-<li id="fn-19">TO VERIFY: open issues after 2026-10-27 <a href="#fnref-19">↩</a></li>
-<li id="fn-20">TO VERIFY <a href="#fnref-20">↩</a></li>
-<li id="fn-21">TO VERIFY <a href="#fnref-21">↩</a></li>
-<li id="fn-22">TO VERIFY <a href="#fnref-22">↩</a></li>
-<li id="fn-23">TO VERIFY <a href="#fnref-23">↩</a></li>
-<li id="fn-24">TO VERIFY <a href="#fnref-24">↩</a></li>
-</ol>
-</section>
-      <section class="editorial-appendix" id="open-points">
-<h2>Open points, excluded from publication</h2>
-<p>1. Mathieu: evidence for co-authorship, VALIDATED retrospective and note (only an unvalidated draft exists).</p>
-<p>2. When Marc first saw Duo at work (§1).</p>
-<p>3. Whether the &quot;models advance quickly in cybersecurity&quot; reason is Marc&#x27;s motivation at the time or later framing (§1); Marc&#x27;s personal observation, no external citation. Same status as the agent-speed observation.</p>
-<p>4. Summer-2025 &quot;simpler database&quot; claim; &quot;simulator only at first&quot; beyond the simulator commit.</p>
-<p>5. Authorship (human vs automated account) of the commits in Table 1.</p>
-<p>6. Mathieu is not a source for the 2026-10-27 round (§2).</p>
-<p>7. That review comments posted via mgagp reproduce the original text (Patrick himself did not re-check that each comment was posted).</p>
-<p>8. VM validation of the Sept-2025 prototype (Marc; not in git).</p>
-<p>9. Campaign figures (30 cases, 29/1, S6-02, S1D-06, S11-01, 741 ms trace): from Isabelle&#x27;s retrospective; tool and notes outside git. Campaign attempt numbers (155/156) were left out on purpose.</p>
-<p>10. <a href="https://github.com/mgagp/ezkey/issues/1014">#1014</a> &quot;GO from Patrick and Christophe at 6bc342a8&quot;: known only from the text of <a href="https://github.com/mgagp/ezkey/issues/1016">#1016</a> (no GitHub review object). Patrick&#x27;s measures (&gt;=123 s vs 225 ms) are from his retrospective; PR <a href="https://github.com/mgagp/ezkey/issues/1014">#1014</a> body reports &quot;gone_ms=-1, 0/4&quot; then &quot;4/4, ~50-200 ms&quot;.</p>
-<p>11. Review rounds and severity for <a href="https://github.com/mgagp/ezkey/issues/897">#897</a>, <a href="https://github.com/mgagp/ezkey/issues/908">#908</a>, <a href="https://github.com/mgagp/ezkey/issues/956">#956</a>, <a href="https://github.com/mgagp/ezkey/issues/976">#976</a>, <a href="https://github.com/mgagp/ezkey/issues/983">#983</a>, <a href="https://github.com/mgagp/ezkey/issues/996">#996</a> (only <a href="https://github.com/mgagp/ezkey/issues/610">#610</a>, <a href="https://github.com/mgagp/ezkey/issues/1014">#1014</a>/<a href="https://github.com/mgagp/ezkey/issues/1016">#1016</a> read).</p>
-<p>12. Patrick&#x27;s finer mutant counts: raw reply only, not paper figures; not checked in git.</p>
-<p>13. Christophe&#x27;s &quot;cycle 3 of <a href="https://github.com/mgagp/ezkey/issues/1051">#1051</a>&quot; and &quot;pam_ezkey 2.2.20&quot; are not reconciled with pull-request titles. Checked on GitHub 2026-10-27: <a href="https://github.com/mgagp/ezkey/issues/1051">#1051</a> merged, title is cycle 2b at 2.2.19; <a href="https://github.com/mgagp/ezkey/issues/1067">#1067</a> merged later the same day, title is cycle 3, body names 2.2.20 and describes probe 4 as a harness hang. Not collapsed.</p>
-<p>14. No measure of what share of the work the agents carried (§4.1).</p>
-<p>15. No figures for money, compute or human time, nor for a person working alone (§4.2).</p>
-<p>16. Whether Marc adopts the go sheet, the exit criterion, or the cleanup list: not decided in the sources. Written as proposals (§4.3).</p>
-<p>17. Table 2, row 5: finding set of <a href="https://github.com/mgagp/ezkey/issues/961">#961</a> &quot;lost in chat&quot; (Christophe&#x27;s retro mentions M1/M2/M3 of <a href="https://github.com/mgagp/ezkey/issues/961">#961</a> lost to the cloud agent; PR <a href="https://github.com/mgagp/ezkey/issues/961">#961</a> not re-read).</p>
-<p>18. STATUS.md and the approval-fatigue entry in SECURITY_POSTURE.md were read on this draft&#x27;s tree (STATUS still says 2.2.14). Not re-read on the default branch after <a href="https://github.com/mgagp/ezkey/issues/1067">#1067</a> (§6.2).</p>
-<p>19. Full open-issue recount after 2026-10-27 not done. Checked individually that day: <a href="https://github.com/mgagp/ezkey/issues/1014">#1014</a> merged as b1fd7e2b; <a href="https://github.com/mgagp/ezkey/issues/1011">#1011</a> closed; <a href="https://github.com/mgagp/ezkey/issues/1051">#1051</a> merged; <a href="https://github.com/mgagp/ezkey/issues/1067">#1067</a> merged; <a href="https://github.com/mgagp/ezkey/issues/1054">#1054</a> open; <a href="https://github.com/mgagp/ezkey/issues/1070">#1070</a> open (§6.3).</p>
-<p>20. Co-author notes: condensed by the editor from retrospectives; each author to validate wording. Updates of 2026-10-27 pending validation by Edgar, Isabelle, Patrick and Christophe. Mathieu sent no round-2 reply.</p>
-<p>21. Mathieu&#x27;s role in the first round (Who did what).</p>
-<p>22. Versions 2.2.2 to 2.2.9: not reconstructed (Table A1).</p>
-<p>23. <a href="https://github.com/mgagp/ezkey/issues/1014">#1014</a> signal-handler account and the later review at 34ae3603 are issue text, not re-read against the merged code (Appendix D).</p>
-<p>24. Appendix C / Table A3 and the &quot;~75 s&quot; pre-auth / &quot;later login wins&quot; sentences: Isabelle&#x27;s 2026-10-27 retrospective only. Not checked in git. The 75 s figure matches the attempt TTL used in this paper; the approximation is hers.</p>
-<p>25. Not inline markers: Seb&#x27;s contribution to <a href="https://github.com/mgagp/ezkey/issues/1011">#1011</a> is reported by Isabelle only; &quot;three mutants killed at runtime&quot; as an agent-set criterion is Patrick&#x27;s raw reply; Table 2 is assembled from retrospectives, not measured; reading time is an estimate; campaign cleanup still waiting for a go (Edgar, Isabelle; no key material and no path recorded).</p>
-<p>26. Redactions: host names and one key-file permission remark (Edgar) removed from the raw block; ask Marc whether the key-file permission remark must be handled as an ops issue.</p>
-<p>27. RESOLVED (Marc, 2026-10-25 19:44). Table 2, row 1: Demo Device used for almost all tests, Pixel only for a few exploratory tests by Marc; attributed to Marc&#x27;s statement; no marker left.</p>
-<p>28. RESOLVED (Marc, 2026-10-25 19:44). Table 2, row 7: principle confirmed by Marc (nothing published without him; he provides material and direction, agents compose, he revises, review and preview before publication); marker removed. The <a href="https://github.com/mgagp/ezkey/issues/1016">#1016</a> &quot;relayed by Mathieu&quot; wording is verified.</p>
-</section>
-    </article>
+<p>Co-authors other than Marc are AI agents. Marc holds editorial responsibility and reviewed this paper before publication. Nothing in this paper is a security guarantee.</p>
+      </article>
   </div>
 </body>
 </html>

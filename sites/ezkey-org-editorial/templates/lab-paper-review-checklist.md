@@ -2,65 +2,53 @@
 
 Use before English publication (and again before a French mirror). Method: [`../LAB-PAPERS.md`](../LAB-PAPERS.md).
 
-## Identity and placement
+## Readability first
 
-- [ ] Identifier `EZK-LAB-YYYY-NNN` is unique and recorded on the hub card
-- [ ] Status is honest (`draft` vs `published`)
-- [ ] Affiliation is exactly **Ezkey Lab** (no whimsical affiliation)
-- [ ] Labels avoid “Research” / “Recherche”
-- [ ] English published first; French only after Marc’s explicit go
+- [ ] 1,500–2,500 words; reading time on the header matches
+- [ ] Key findings (3–4 bullets) say the point without the rest of the paper
+- [ ] A reader outside the project can follow it without opening a PR
+- [ ] One scope box; the disclaimer is not repeated in the body
+- [ ] Mistakes and reframings have their place
+- [ ] No hypotheses written after the fact, no appendix kept for completeness
 
-## Truth and sources
+## Truth
 
-- [ ] Every factual claim traces to git, tests, CI, logs, or Marc’s dictation
-- [ ] Gaps marked `[TO VERIFY]` / `[MISSING DATA]` (or FR equivalents) — none quietly invented
+- [ ] Every fact is one we stand behind (git, tests, CI, logs, Marc, co-author retrospectives)
+- [ ] No `[TO VERIFY]` / `[À VÉRIFIER]` marker left
+- [ ] Uncertainty said once, in prose, where it matters
 - [ ] No fabricated consensus; disagreements attributed
-- [ ] No falsely precise metrics; formulas only when they serve the argument
-- [ ] Limitations section present when results are claimed
+- [ ] No falsely precise metrics
 
 ## Security and public surface
 
 - [ ] No secrets, tokens, credentials
 - [ ] No internal hosts, real IPs, or exploitable configuration
-- [ ] Examples anonymized where needed
-- [ ] Paper does **not** claim a security guarantee or production readiness
+- [ ] No security guarantee or production-readiness claim
 
-## Structure and presentation
+## Identity and co-authors
 
-- [ ] Empty guide sections omitted
-- [ ] Key findings (3–5 bullets) appear before the abstract
-- [ ] Abstract is short and self-contained
-- [ ] Tables/figures numbered; wide tables scroll horizontally in HTML
-- [ ] Side TOC present; collapsible on mobile
-- [ ] Appendices collapsed by default
-- [ ] No PDF export offered
-- [ ] “Who did what” list present (not CRediT)
-- [ ] Transparency note: AI co-authors disclosed; Marc holds editorial responsibility
-
-## Co-authors
-
-- [ ] Participant list validated by Marc
-- [ ] Every named co-author has evidence (name → evidence table)
-- [ ] Only names from `product-docs/global/team-roles.md`
-- [ ] “K” not listed as a co-author
-- [ ] Co-author notes synthesized; raw answers kept in editorial exclude blocks only
+- [ ] Identifier `EZK-LAB-YYYY-NNN` is unique; status is honest
+- [ ] Affiliation is exactly **Ezkey Lab**; labels avoid “Research” / “Recherche”
+- [ ] Main co-authors only, from `product-docs/global/team-roles.md`; “K” not listed
+- [ ] Quotes short; raw answers stay in `lab-notes/`
+- [ ] Transparency line present
 
 ## Publish steps (English)
 
-- [ ] Card on `/lab.html` (abstract-centered: id, status, date, reading time, ~2-line abstract, authors)
+- [ ] Card on `/lab.html` (id, status, date, reading time, ~2-line abstract, authors)
 - [ ] Mention in that month’s monthly digest
 - [ ] URLs added/bumped in `sites/ezkey-org/sitemap.xml`
-- [ ] Draft front matter updated (`status`, published paths, `source_of_truth`)
+- [ ] Draft front matter updated (`status`, published paths)
 - [ ] Draft remains under `sites/ezkey-org-editorial/` (never in the deploy folder)
 
 ## Publish steps (French, after go)
 
 - [ ] Mirror on `/fr/labo.html` and FR paper page
 - [ ] Sitemap FR URLs updated
-- [ ] No FR-only facts that are absent from the English paper
+- [ ] No FR-only facts absent from the English paper
 
 ## Tone
 
 - [ ] Sincere and bold in ideas; neither jokey nor solemn
 - [ ] No hero narrative; bots presented plainly as AI collaborators
-- [ ] Final reader test: seriousness and pleasure without pretension
+- [ ] Final reader test: you want to finish it
