@@ -153,3 +153,6 @@ experimental-hybrid/lightsail/.local/
 *play*service*account*.json
 *play*publisher*.json
 
+
+# Claude Code per-user settings
+.claude/settings.local.json

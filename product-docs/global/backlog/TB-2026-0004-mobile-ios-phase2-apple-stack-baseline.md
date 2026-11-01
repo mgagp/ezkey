@@ -7,10 +7,10 @@
 - **Related idea:** `I-2026-0027`
 - **Lane:** `A`
 - **GitHub issue:** `#152`
-- **GitHub branch:** `feature/152-i-2026-0027-mobile-ios`
+- **GitHub branch:** `feature/152-mobile-ios`
 - **GitHub PR:** _(à créer)_
 - **Created at:** `2026-05-24`
-- **Updated at:** `2026-05-24`
+- **Updated at:** `2026-11-01`
 
 ## Objective
 
@@ -21,7 +21,7 @@ This tracer bullet covers what was originally Phase 1 + Phase 2 of the iOS plan.
 ## Boundaries in scope
 
 - Delete or archive `ezkey_mobile/ios/` iOS-specific native content that predates the rebuild
-- Confirm Xcode + CocoaPods version compatible with React Native 0.85.2
+- Confirm Xcode + CocoaPods version compatible with React Native 0.88.1
 - Validate or adjust minimum iOS deployment target (default: 15.1)
 - Regenerate clean iOS native scaffold via `npx react-native init` or equivalent RN CLI
 - Verify a minimal iOS simulator build launches without stack-level errors
@@ -37,7 +37,7 @@ This tracer bullet covers what was originally Phase 1 + Phase 2 of the iOS plan.
 ## Critical flows
 
 - **Nominal:** delete stale iOS code → scaffold clean iOS project → install pods → launch simulator → app shell appears
-- **Replan trigger:** if RN 0.85.2 forces a minimum iOS target above 15.1, or if a required dependency (vision-camera, etc.) introduces toolchain incompatibility, document and flag before proceeding to Phase 3
+- **Replan trigger:** if RN 0.88.1 forces a minimum iOS target above 15.1, or if a required dependency (vision-camera, etc.) introduces toolchain incompatibility, document and flag before proceeding to Phase 3
 
 ## Evidence plan
 
