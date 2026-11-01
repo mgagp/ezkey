@@ -118,6 +118,13 @@ Intro / included items 1–2 / site link: keep (already end-user capable).
 | `pinning.body` | Certificate pinning is planned in a pragmatic lightweight form. The initial direction is trust on first use during enrollment, followed by a controlled refresh path if the pin no longer matches, so later authentication cycles get meaningful network trust hardening without pretending to reach the most extreme pinning model. | Remember the server you enrolled with, so later check-ins have a clearer network trust path. | Le certificate pinning est prévu sous une forme légère et assumée. … | Mémoriser le serveur auquel vous vous êtes enrôlé, pour que les vérifications suivantes aient un chemin de confiance réseau plus clair. |
 | `footer` | Ezkey Mobile is intentionally aiming for practical, explicit security improvements rather than over-claiming perfection. Future work will continue in that same spirit. | **Deleted** (no manifesto) | Ezkey Mobile vise volontairement des améliorations de sécurité pratiques et explicites plutôt que des promesses excessives. La suite du travail restera dans ce même esprit. | **Supprimé** |
 
+**Backlog source for each Coming soon item.** When the backlog item ships, is parked, or is dropped, update or remove the matching card in the same change set.
+
+| Card | Backlog |
+|------|---------|
+| `comingSoon.auth` — Clearer approval rules | [`I-2026-0001`](../../global/backlog/ideas/I-2026-0001-mobile-respond-local-auth-per-enrollment.md) per-enrollment local authentication policy |
+| `comingSoon.pinning` — Stronger connection checks | [`I-2026-07-25-mobile-certificate-pinning-middle-path`](../../global/backlog/ideas/I-2026-07-25-mobile-certificate-pinning-middle-path.md) |
+
 ### Security (`security.*`)
 
 | Key | Current EN | Proposed EN | Current FR | Proposed FR |
@@ -135,8 +142,9 @@ Option titles/bodies (`standard*`, `confirmation*`) and error strings: keep (alr
 |------|--------|
 | Language | Keep as-is |
 | Danger zone | Keep (wording already clear) |
-| Open source licenses | Keep |
+| Open source licenses | End-user intro, no developer instructions; snapshot shown as a date (2026-11-01 review). Full notice format (license texts, transitive and native deps) tracked in [#1109](https://github.com/mgagp/ezkey/issues/1109). |
 | Requirements (in What’s new) | Keep (calibrated) |
+| What’s new eyebrow | **Public alpha** / **Alpha publique**, not a hard-coded version number: the list describes current capabilities, and About owns the exact version (2026-11-01 review). |
 
 ## Review checklist (Marc)
 

@@ -10,6 +10,7 @@
 - **Last reviewed at:** `2026-07-26`
 - **Phase tags:** `P2-hardening`, `P1-operability`
 - **Component tags:** `mobile`, `auth-api`, `admin-api`, `admin-ui`
+- **In-app promise:** mobile Settings → Coming soon card `comingSoon.auth` (“Clearer approval rules”); update it when this idea ships or is parked — see [`settings-copy-end-user-compass.md`](../../../components/mobile/settings-copy-end-user-compass.md)
 - **Captured by:** Marc
 
 ## Intent
