@@ -95,7 +95,8 @@ function websiteOf(meta) {
 
 function authorName(author) {
   const raw = typeof author === 'string' ? author : author?.name;
-  return raw ? raw.replace(/<[^>]*>|\([^)]*\)/g, '').trim() : '';
+  // npm person string: "Name <email> (url)" — keep the name only.
+  return raw ? raw.split(/[<(]/, 1)[0].trim() : '';
 }
 
 function readLicenseFile(dir) {
