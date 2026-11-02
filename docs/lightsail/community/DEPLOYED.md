@@ -20,11 +20,11 @@ actuator/health with no version string are **not** deploy identity.
 | Field | Value |
 |-------|-------|
 | **Surface** | community (ezkey.online) |
-| **Full git SHA** | `36bac04e833ec359e4453cf17003e207653d454c` |
-| **Short SHA** | `36bac04e` |
-| **Deployed at (UTC)** | 2026-10-20T14:31:00Z |
+| **Full git SHA** | `10264a0b778bc6c31c4a0469b2f22347ce126e2c` |
+| **Short SHA** | `10264a0b` |
+| **Deployed at (UTC)** | 2026-11-01T20:11:00Z |
 | **Operator** | Edgar |
-| **Note** | Full backend deploy 2026-10-20 ~14:31–14:33 UTC (10:31–10:33 EDT). Flyway schema version 25; no new migration applied. Image IDs: admin `547e07a91e8f`, auth `e028eab2ab6c`, integration `4203f0871a87`, acme `728769c0560f`. Pre-deploy rollback tag: `rollback-pre-36bac04e`. Host: `<static-ip ezkey-online-community>`. |
+| **Note** | Backend upgrade 2026-11-01 ~15:11–15:14 ET / America/Toronto (20:11–20:14 UTC) to main `10264a0b` (#1114). Sequential recreate (~35 s each): admin-api, auth-api, integration-api, demo-app-acme; postgres, caddy, and collector untouched. Flyway schema version 25; no migration applied. Keyset unchanged. Image IDs: admin-api `ad2fcfde4ca1`, auth-api `824fb8ba6d80`, integration-api `5bf27c154c19`, demo-app-acme `8790d8556b3c`, migration `57dddf6727ea` (OCI revision `10264a0b`). Rollback tags: `:rollback-pre-10264a0b` (previous revision `92717a40a`, #961, 2026-10-25). Admin UI (Cloudflare Pages project `admin-ui-ezkey-online`, production branch `main`, API base `https://admin-api.ezkey.online`) published from `10264a0b` ~15:22 ET. Host: `<static-ip ezkey-online-community>`. |
 
 ## Host OS
 
