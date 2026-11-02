@@ -288,6 +288,8 @@ So **`STRONG` means “the client asserted StrongBox-class storage according to 
 
 **Reference Android behavior (honest client):** At key generation, the app requests StrongBox when the API allows (`setIsStrongBoxBacked(true)`), catching `StrongBoxUnavailableException` and continuing without StrongBox when the device cannot satisfy the request. For reporting, the tier is derived from `KeyInfo` after the key exists: treat as StrongBox-tier when Android reports StrongBox via `isStrongBoxBacked` **or** (API 31+) `getSecurityLevel()` equals `SECURITY_LEVEL_STRONG_BOX`; otherwise map secure hardware to `STANDARD`, else `NONE`. That follows the platform’s own descriptors; it still does not create server-side proof.
 
+**Reference iOS behavior (honest client):** a Secure Enclave key reports `STRONG` (dedicated coprocessor, the counterpart of StrongBox); the simulator always uses a software key and reports `NONE`. The tier is derived from a kind tag stored with the key, never guessed. If Secure Enclave generation fails on a device, key generation fails (no silent software downgrade). Still client-reported, like Android.
+
 **Future hardening (not implemented):** [Android Key Attestation](https://developer.android.com/privacy-and-security/security-key-attestation) (or an equivalent verified signal) could allow the backend to validate hardware claims. Until then, treat tier as **informational client telemetry**, not a server-audited security property.
 
 #### Trust model boundary — no end-to-end PKI/CA chain

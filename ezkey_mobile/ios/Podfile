@@ -23,6 +23,11 @@ target 'EzkeyMobile' do
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
 
+  # Hosted XCTest target (crypto module tests). See docs/IOS_SETUP.md.
+  target 'EzkeyMobileTests' do
+    inherit! :search_paths # hosted: pods live in the app only (avoids double Nitro registration)
+  end
+
   post_install do |installer|
     react_native_post_install(
       installer,

@@ -10,7 +10,9 @@ This document records the current mobile crypto direction for Ezkey and should b
   Device / `SignatureService`). Android Keystore raw `SHA256withECDSA` can emit high-S ~50% of the
   time; `EzkeyCryptoModule` normalizes before returning signatures.
 - **StrongBox posture**: requested when available, not guaranteed on all devices
-- **Current iOS posture**: native secure-hardware-backed parity is still in progress and must be described conservatively
+- **Current iOS posture**: `EzkeyCryptoModule` (Swift, CryptoKit) implements the same wire formats (SPKI, low-S DER, Ed25519
+  verify, proof token) and requests a Secure Enclave key on devices. Proven on the **simulator only** (software key, tier
+  `NONE`); Secure Enclave generation/signing on a physical iPhone is **not yet verified** — describe it conservatively
 - **Private key wording**: private key material is not exposed to application code
 
 ## Device proof tokens (pending auth and similar)
@@ -40,7 +42,7 @@ Use these phrases in mobile documentation:
 - `StrongBox when available`
 - `private key material is not exposed to application code`
 - `current Android implementation`
-- `iOS native secure-hardware-backed parity is still in progress`
+- `iOS requests a Secure Enclave key on devices (not yet verified on hardware)`
 
 Avoid these phrases unless a future implementation and verification justify them:
 
@@ -162,7 +164,14 @@ signatures against that canonical material rather than against a transformed enc
 
 ## iOS Summary
 
-iOS remains a planned or partial path depending on the feature area being discussed. Documentation should not imply that iOS currently offers the same secure-hardware-backed enrollment path as Android unless the implementation has reached parity and has been verified.
+iOS (`ios/EzkeyMobile/Crypto/`, issue #152) mirrors the Android module: same method names, wire formats and `EZK_*`
+error codes. On a device the enrollment key is a Secure Enclave P-256 key (reported tier `STRONG`, client-reported like
+Android); on the **simulator** the app always uses a software key (tier `NONE`), even though the iOS 27 simulator on
+Apple Silicon exposes a working Secure Enclave, so a simulator never claims `STRONG`. Wire parity is proven by XCTest and
+by the server's own verifier (`POST /api/v1/crypto/validate`: iOS low-S signature accepted, high-S twin rejected).
+Not yet proven: Secure Enclave keys and real Face ID / passcode prompts on a physical iPhone, and end-to-end enrollment
+against the Auth API (step 5). Sealed secrets (`sealSecret` / `unsealSecret`) are Android-only; iOS stores local secrets
+in the Keychain through `react-native-keychain`.
 
 ## References
 

@@ -40,7 +40,8 @@ yarn ios                       # or open ios/EzkeyMobile.xcworkspace in Xcode (n
 ```
 
 No physical iPhone / Apple Developer account yet: iOS work is simulator-only. The simulator has no
-camera and no Secure Enclave, so QR capture and hardware-backed keys need a real device later.
+camera, so QR capture needs a real device later. The iOS 27 simulator on Apple Silicon *does* expose a
+working Secure Enclave, but the app deliberately uses a software key there (see *Native crypto*).
 
 ## Platform support floor
 
@@ -93,9 +94,63 @@ is allowed by ATS (`NSAllowsLocalNetworking`). No ngrok: use localhost.
 test IDs (e.g. `maestro/flows/pilot_enrollment_seed_bypass_runtime.yaml`) run on the booted
 simulator with `maestro --device <simulator-udid> test <flow>`.
 
+## Native crypto (`EzkeyCryptoModule`, step 4)
+
+Swift + CryptoKit in `ios/EzkeyMobile/Crypto/`, same methods, wire formats and `EZK_*` codes as
+Android (plan: `plans/mobile_ios_phase_4_native_crypto_parity.plan.md`).
+
+- **Keys:** one P-256 key per enrollment, Keychain item `org.ezkey.mobile.enrollment-key` /
+  `ezkey_enrollment_<id>`, `WhenUnlockedThisDeviceOnly`. Device → Secure Enclave (tier `STRONG`);
+  **simulator → software key (tier `NONE`) by policy**, even though the simulator reports a Secure
+  Enclave, so a simulator never claims `STRONG`.
+- **Reinstall purge:** Keychain items survive uninstall. Before the first key operation of a process,
+  if the UserDefaults marker `ezkeyCryptoInstallMarker` is absent, every enrollment key is deleted;
+  until that succeeds, key operations fail closed.
+- **Signatures:** SHA256withECDSA, normalized to low-S (the Auth API rejects high-S), DER via
+  CryptoKit `derRepresentation`.
+- **Build info:** Run Script phase *Ezkey build info* (last phase) writes `EzkeyBuildTimestamp` /
+  `EzkeyGitShortSha` into the **built** Info.plist (shown on the About screen). The Info.plist is
+  declared as an input only: declaring it as an output collides with Xcode's own Info.plist step
+  ("Multiple commands produce"). Script sandboxing is off for this target.
+- **Local authentication:** `LAContext` `.deviceOwnerAuthentication` as a gate before signing, like
+  Android BiometricPrompt. On the simulator, Features › Face ID › Enrolled / Matching Face, or
+  `xcrun simctl spawn <udid> notifyutil -p com.apple.BiometricKit_Sim.pearl.match` (`.nomatch`).
+  Note: the simulator reports device-owner authentication as available even without Face ID.
+
+### Native tests (XCTest)
+
+Hosted target `EzkeyMobileTests` (Podfile: `inherit! :search_paths` — `:complete` would link the pods
+twice and crash the host app on duplicate Nitro registrations). Metro is not needed.
+
+```bash
+cd ezkey_mobile/ios
+xcodebuild test -workspace EzkeyMobile.xcworkspace -scheme EzkeyMobile \
+  -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -derivedDataPath /tmp/ezkey-dd
+```
+
+Reinstall-purge probe on the real Keychain service (skipped by default):
+
+```bash
+P='-only-testing:EzkeyMobileTests/EzkeyReinstallPurgeProbeTests'
+TEST_RUNNER_EZKEY_PURGE_PROBE=seed  xcodebuild test <same args> $P
+xcrun simctl uninstall booted org.ezkey.mobile
+TEST_RUNNER_EZKEY_PURGE_PROBE=check xcodebuild test <same args> $P
+```
+
+### Editing the Xcode project
+
+Change `project.pbxproj` and the shared scheme **only through the `xcodeproj` Ruby gem** (installed
+with CocoaPods in `vendor/bundle`; run scripts with `bundle exec ruby` from `ezkey_mobile/`), never by
+hand. It is how the Crypto group, the test target and the Run Script phase were added.
+
 ## Known iOS gaps (expected during the rebuild)
 
-- `EzkeyCryptoModule`: Swift module exports constants only (`isDebugBuild`); key generation, signing,
-  public-key export and deletion (Secure Enclave / EC P-256) are step 4. Crypto calls fail closed until then.
+- **Device-only, not yet proven:** Secure Enclave key generation and signing, tier `STRONG`, real
+  Face ID / passcode prompts. Needs a physical iPhone (step 6).
+- **End-to-end enrollment / approval** against the Auth API: step 5 (local stack, `localhost:8080`).
+- **Orphaned secrets after reinstall:** `react-native-keychain` items (enrollment proof token,
+  integration key) also survive uninstall while their AsyncStorage metadata does not. Harmless
+  (unreachable) but residual; deliberately not purged.
+- `sealSecret` / `unsealSecret` / `deleteAllSealKeys`: Android-only by design; JS fallbacks apply.
 - `EzkeyPlayUpdateModule`: Google Play in-app updates, Android-only; TypeScript already no-ops on iOS.
 - QR capture untestable on the simulator; use the F2a bypass above.

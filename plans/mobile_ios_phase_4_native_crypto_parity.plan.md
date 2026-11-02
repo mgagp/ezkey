@@ -1,7 +1,7 @@
 ---
 name: mobile-ios-phase-4-native-crypto-parity
 overview: Implement the iOS EzkeyCryptoModule (Swift, CryptoKit + Secure Enclave) with wire-format parity to the Android reference, an honest simulator fallback, and focused XCTest coverage.
-status: approved 2026-11-01 — stage 2 review integrated (A1–A10); D1–D6 and A2 decided. Execution in progress.
+status: executed 2026-11-02 — stage 2 review integrated (A1–A10); D1–D6 and A2 decided; D2 revised during execution. See Execution record.
 issue: "#152"
 branch: feature/152-mobile-ios
 created_at: 2026-11-01
@@ -223,6 +223,10 @@ was used in step 3 to add the Crypto group.
   `SecureEnclave.isAvailable == false`**, which in practice means the simulator (every iPhone able to
   run iOS 15.5 has a Secure Enclave). On a device where SE generation *fails*, reject (fail closed)
   rather than silently downgrading. Matches Android's honest `NONE` on emulators.
+  - **Revised 2026-11-01 (execution finding):** the iOS 27 simulator on Apple Silicon reports
+    `SecureEnclave.isAvailable == true` and SE keys work there. Decision: force the software key
+    (tier `NONE`) whenever `targetEnvironment(simulator)`, so a simulator never claims `STRONG`; on
+    devices, use the SE when available. The SE path is still tested on the simulator by injection.
 - **D3 — Local authentication in this step. Decided: include** (small; Face ID can be simulated:
   Simulator › Features › Face ID › Enrolled / Matching Face).
 - **A2 — DER. Decided (2026-11-01): use CryptoKit's `derRepresentation`**; no custom encoder.
@@ -328,3 +332,22 @@ docs updated with conservative iOS wording; device-only items listed. Live enrol
 - Keychain persistence across reinstall → lazy fail-closed purge, unit-tested and simctl-proven.
 - Fragile project edits (test target, Run Script) → `xcodeproj` gem only; exact Run Script spec.
 - Simulator-only proof hides SE-specific failures → listed as device-required; step 6 (real device).
+
+## Execution record (2026-11-02)
+
+Deviations from the plan, all minor:
+
+- Podfile test target uses `inherit! :search_paths`, not `:complete`: `:complete` links the pods into
+  the test bundle too, and the host app crashed on duplicate Nitro HybridObject registration.
+- Run Script declares the built Info.plist as **input only**: declaring it as an output collides with
+  Xcode's ProcessInfoPlistFile ("Multiple commands produce"). `ENABLE_USER_SCRIPT_SANDBOXING` is
+  already `NO` for the target.
+- The scheme carried a dangling template testable (`00E356ED…`); replaced by the new target.
+- `canUseProtectedSigning() == false` could not be observed in the simulator UI (the simulator reports
+  device-owner authentication as available even without Face ID); covered by injected unit tests.
+- `signWithAuthentication` was not exercised through the UI (needs a pending auth → step 5); its
+  order and missing-key path are unit-tested.
+
+Evidence: RED (32 compile errors against the old module) → 23/23 XCTest green; Crypto API `/validate`
+low-S `true` / high-S twin `false`; reinstall purge probe on the real service; Face ID simulator pass;
+About screen build info; Jest 324/324, `tsc`, lint 0 errors.

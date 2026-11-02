@@ -62,3 +62,17 @@ This tracer bullet covers what was originally Phase 1 + Phase 2 of the iOS plan.
 - Evidence: simulator build succeeds; the app shell (home screen) launches on iPhone 18 Pro / iOS 27.
   Jest 324/324, `tsc` clean, lint 0 errors; Android and iOS release bundles both build.
 - Baseline documented in `ezkey_mobile/docs/IOS_SETUP.md`.
+
+## Execution notes — step 4, native crypto (2026-11-02)
+
+- `EzkeyCryptoModule` implemented in Swift/CryptoKit per
+  `plans/mobile_ios_phase_4_native_crypto_parity.plan.md` (stage-2 reviewed, D1–D6 decided).
+- **Decision D2 revised (maintainer, 2026-11-01):** the iOS 27 simulator on Apple Silicon exposes a
+  working Secure Enclave; the app still forces a software key (tier `NONE`) on the simulator so a
+  simulator never reports `STRONG`. The Secure Enclave path is exercised by XCTest via injection.
+- Evidence: 23/23 XCTest green; RED baseline captured (32 compile errors against the old module);
+  Crypto API `/validate` accepts the iOS low-S signature and rejects its high-S twin; reinstall purge
+  proven on the simulator (key survived uninstall, then purged; other service intact); Face ID pass
+  (prompt, no-match + cancel → `EZK_AUTH_CANCELLED`, match → downgrade); About screen shows build
+  SHA/timestamp. Jest 324/324, `tsc` clean, lint 0 errors.
+- Not proven (device-only): Secure Enclave keys and real biometrics on a physical iPhone.
