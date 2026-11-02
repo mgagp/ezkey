@@ -1,6 +1,6 @@
 # License Files in Distribution Artifacts
 
-**Last Updated**: 2025-12-11  
+**Last Updated**: 2026-11-02  
 **Purpose**: Documentation of how license files are included in distribution artifacts
 
 ## Overview
@@ -11,22 +11,25 @@ All distribution artifacts include third-party license attribution files to ensu
 
 ### Configuration
 
-License files are included in JAR files via Maven resources plugin. The `THIRD-PARTY.txt` file is copied to `META-INF/licenses/` directory in JAR files.
+Shipped server/backend modules (Admin API, Auth API, Integration API, Crypto API, Migration, Demo Device, Demo App ACME) copy the **committed** root `THIRD-PARTY.txt` into `META-INF/licenses/` via `maven-resources-plugin` (`copy-resources` at `process-resources`). Opt-in is per module (`ezkey.skip.third-party.licenses.copy=false`). Packaging reads the checked-in root file only — it does **not** regenerate licenses during the default build.
+
+Regenerate the root file separately with `mvn -Plicenses generate-resources` (enforced by CI job `licenses-drift`).
 
 ### Location in JAR
 
-- `META-INF/licenses/THIRD-PARTY.txt` - Complete list of all Maven dependencies with licenses
+- `META-INF/licenses/THIRD-PARTY.txt` (JAR root; present in both the thin `-original` JAR and the Spring Boot executable JAR)
 
 ### Verification
 
 To verify license files are included in a JAR:
 
 ```bash
-jar -tf target/ezkey-admin-api-*.jar | grep -i license
+jar tf ezkey-admin-api/target/ezkey-admin-api-*.jar | grep -i license
 ```
 
-Expected output should include:
+Expected output:
 ```
+META-INF/licenses/
 META-INF/licenses/THIRD-PARTY.txt
 ```
 

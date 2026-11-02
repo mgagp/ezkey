@@ -17,10 +17,10 @@ License validation should be integrated into the CI/CD pipeline to ensure:
 
 **Purpose**: Verify license files are regenerated when dependencies change
 
-**Maven**:
+**Maven** (CI job `licenses-drift` in `.github/workflows/ci.yml`):
 ```bash
-# Generate license file
-mvn license:aggregate-add-third-party
+# Generate license file (licenses profile only)
+mvn -B -ntp -Plicenses -DskipTests generate-resources
 
 # Check if file changed
 git diff --exit-code THIRD-PARTY.txt

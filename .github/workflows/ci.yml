@@ -103,6 +103,8 @@ jobs:
               - 'scripts/db/verify-grants.test.sh'
               - 'specs/**'
               - '.mvn/**'
+              - 'THIRD-PARTY.txt'
+              - 'src/license/**'
             quality-gate:
               - 'scripts/quality-gate.sh'
               - 'scripts/quality-gate-*.sh'
@@ -340,6 +342,43 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+  # Drift gate for committed root THIRD-PARTY.txt. Generation is profile-only
+  # (`mvn -Plicenses generate-resources`); never part of the default build.
+  licenses-drift:
+    name: licenses-drift
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: maven
+
+      # generate-resources walks the multi-module reactor; child modules need
+      # reactor jars installed. The licenses profile itself skips Checkstyle.
+      - name: Install reactor (warm jars for generate-resources)
+        run: mvn -B -ntp -Pno-checkstyle -DskipTests install
+
+      - name: Regenerate THIRD-PARTY.txt and fail on drift
+        run: |
+          set -euo pipefail
+          mvn -B -ntp -Plicenses -DskipTests generate-resources
+          if ! git diff --exit-code THIRD-PARTY.txt; then
+            echo "::error::THIRD-PARTY.txt drifted. Regenerate with: mvn -Plicenses generate-resources"
+            exit 1
+          fi
+
   # Live HA stack smoke: catch management bind regressions that unit tests miss (#905).
   ha-smoke:
     name: ha-smoke
@@ -539,7 +578,7 @@ jobs:
   # failure or cancellation of any needed job fails the gate.
   ci-gate:
     name: ci-gate
-    needs: [changes, admin-ui, backend, ha-smoke, mobile, mobile-ios, cli-python, ezkey-pam, lightsail, dart-sdk, quality-gate]
+    needs: [changes, admin-ui, backend, licenses-drift, ha-smoke, mobile, mobile-ios, cli-python, ezkey-pam, lightsail, dart-sdk, quality-gate]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -550,6 +589,7 @@ jobs:
           echo "changes=${{ needs.changes.result }}"
           echo "admin-ui=${{ needs.admin-ui.result }}"
           echo "backend=${{ needs.backend.result }}"
+          echo "licenses-drift=${{ needs.licenses-drift.result }}"
           echo "ha-smoke=${{ needs.ha-smoke.result }}"
           echo "mobile=${{ needs.mobile.result }}"
           echo "mobile-ios=${{ needs.mobile-ios.result }}"
@@ -567,6 +607,7 @@ jobs:
           for pair in \
             "admin-ui:${{ needs.admin-ui.result }}" \
             "backend:${{ needs.backend.result }}" \
+            "licenses-drift:${{ needs.licenses-drift.result }}" \
             "ha-smoke:${{ needs.ha-smoke.result }}" \
             "mobile:${{ needs.mobile.result }}" \
             "mobile-ios:${{ needs.mobile-ios.result }}" \

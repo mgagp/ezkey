@@ -91,6 +91,9 @@
 		<javamelody.version>2.9.0</javamelody.version>
 		<ipaddress.version>5.6.2</ipaddress.version>
 		<license-maven-plugin.version>2.7.1</license-maven-plugin.version>
+		<!-- Skip copying root THIRD-PARTY.txt into META-INF/licenses/ unless a shipped
+		     server/backend module opts in (see ezkey-admin-api and siblings). -->
+		<ezkey.skip.third-party.licenses.copy>true</ezkey.skip.third-party.licenses.copy>
 	</properties>
 
 	<!-- Gestion centralisée des dépendances -->
@@ -432,7 +435,8 @@
 					</executions>
 				</plugin>
 
-				<!-- Maven Resources Plugin - Include license files -->
+				<!-- Maven Resources Plugin — copy committed root THIRD-PARTY.txt into
+				     META-INF/licenses/ for shipped JARs (opt-in via property). -->
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-resources-plugin</artifactId>
@@ -442,6 +446,27 @@
 							<nonFilteredFileExtension>txt</nonFilteredFileExtension>
 						</nonFilteredFileExtensions>
 					</configuration>
+					<executions>
+						<execution>
+							<id>copy-third-party-licenses</id>
+							<phase>process-resources</phase>
+							<goals>
+								<goal>copy-resources</goal>
+							</goals>
+							<configuration>
+								<skip>${ezkey.skip.third-party.licenses.copy}</skip>
+								<outputDirectory>${project.build.outputDirectory}/META-INF/licenses</outputDirectory>
+								<resources>
+									<resource>
+										<directory>${maven.multiModuleProjectDirectory}</directory>
+										<includes>
+											<include>THIRD-PARTY.txt</include>
+										</includes>
+									</resource>
+								</resources>
+							</configuration>
+						</execution>
+					</executions>
 				</plugin>
 
 				<!-- SpotBugs (report-only; invoked by scripts/java-doctor-curated.sh) -->
@@ -485,35 +510,6 @@
 					</configuration>
 				</plugin>
 
-				<!-- License Maven Plugin -->
-				<plugin>
-					<groupId>org.codehaus.mojo</groupId>
-					<artifactId>license-maven-plugin</artifactId>
-					<version>${license-maven-plugin.version}</version>
-					<configuration>
-						<outputDirectory>${project.basedir}</outputDirectory>
-						<thirdPartyFilename>THIRD-PARTY.txt</thirdPartyFilename>
-						<useMissingFile>true</useMissingFile>
-						<missingFile>${project.basedir}/src/license/THIRD-PARTY.properties</missingFile>
-						<licenseMerges>
-							<licenseMerge>The Apache Software License, Version 2.0|Apache License, Version 2.0|Apache 2.0|Apache-2.0</licenseMerge>
-							<licenseMerge>MIT License|MIT|The MIT License</licenseMerge>
-							<licenseMerge>Eclipse Public License - v 1.0|EPL-1.0|Eclipse Public License 1.0</licenseMerge>
-							<licenseMerge>GNU General Public License, Version 2.0|GPL 2.0|GPL-2.0</licenseMerge>
-							<licenseMerge>GNU Lesser General Public License, Version 2.1|LGPL 2.1|LGPL-2.1</licenseMerge>
-						</licenseMerges>
-						<excludedGroups>org.ezkey</excludedGroups>
-					</configuration>
-					<executions>
-						<execution>
-							<id>aggregate-add-third-party</id>
-							<goals>
-								<goal>aggregate-add-third-party</goal>
-							</goals>
-							<phase>validate</phase>
-						</execution>
-					</executions>
-				</plugin>
 			</plugins>
 		</pluginManagement>
 
@@ -535,9 +531,11 @@
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
 			</plugin>
+			<!-- Opt-in copy of committed root THIRD-PARTY.txt → META-INF/licenses/
+			     (skipped unless a shipped module sets ezkey.skip.third-party.licenses.copy=false). -->
 			<plugin>
-				<groupId>org.codehaus.mojo</groupId>
-				<artifactId>license-maven-plugin</artifactId>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-resources-plugin</artifactId>
 			</plugin>
 			<!-- Available for explicit goals only (spotbugs:spotbugs / pmd:pmd); no lifecycle binding -->
 			<plugin>
@@ -580,6 +578,85 @@
 	</build>
 
 	<profiles>
+		<!--
+			Regenerate committed root THIRD-PARTY.txt. Not part of the default build —
+			run explicitly: mvn -Plicenses generate-resources
+			CI enforces freshness via the licenses-drift job.
+		-->
+		<profile>
+			<id>licenses</id>
+			<properties>
+				<!-- Generation only — do not require checkstyle-config for this profile.
+				     Plugin dependency resolution can fail before checkstyle.skip is honoured,
+				     so pluginManagement below also unbinds Checkstyle (same approach as no-checkstyle). -->
+				<checkstyle.skip>true</checkstyle.skip>
+			</properties>
+			<build>
+				<pluginManagement>
+					<plugins>
+						<plugin>
+							<groupId>org.apache.maven.plugins</groupId>
+							<artifactId>maven-checkstyle-plugin</artifactId>
+							<configuration>
+								<skip>true</skip>
+							</configuration>
+							<dependencies>
+								<!-- Empty: avoid resolving reactor checkstyle-config. -->
+							</dependencies>
+							<executions>
+								<execution>
+									<id>validate</id>
+									<phase>none</phase>
+								</execution>
+							</executions>
+						</plugin>
+					</plugins>
+				</pluginManagement>
+				<plugins>
+					<plugin>
+						<groupId>org.codehaus.mojo</groupId>
+						<artifactId>license-maven-plugin</artifactId>
+						<version>${license-maven-plugin.version}</version>
+						<!-- Aggregate goal belongs on the reactor parent only. -->
+						<inherited>false</inherited>
+						<configuration>
+							<outputDirectory>${maven.multiModuleProjectDirectory}</outputDirectory>
+							<thirdPartyFilename>THIRD-PARTY.txt</thirdPartyFilename>
+							<useMissingFile>true</useMissingFile>
+							<missingFile>${maven.multiModuleProjectDirectory}/src/license/THIRD-PARTY.properties</missingFile>
+							<failOnMissing>true</failOnMissing>
+							<sortArtifactByName>true</sortArtifactByName>
+							<excludedScopes>test,provided,system</excludedScopes>
+							<excludedGroups>org.ezkey</excludedGroups>
+							<licenseMerges>
+								<licenseMerge>Apache-2.0|The Apache Software License, Version 2.0|Apache License, Version 2.0|Apache 2.0|Apache License 2.0|Apache License, version 2.0|ASL, version 2</licenseMerge>
+								<licenseMerge>MIT|MIT License|The MIT License|The MIT License (MIT)</licenseMerge>
+								<licenseMerge>EPL-2.0|Eclipse Public License - v 2.0|Eclipse Public License 2.0|EPL 2.0</licenseMerge>
+								<licenseMerge>EPL-1.0|Eclipse Public License - v 1.0|Eclipse Public License 1.0|EPL 1.0</licenseMerge>
+								<licenseMerge>BSD-3-Clause|BSD 3-Clause|BSD 3-clause License|The BSD 3-Clause License|BSD Licence 3|BSD-3-Clause License|3-Clause BSD License|BSD 3-clause License w/nuclear disclaimer</licenseMerge>
+								<licenseMerge>BSD-2-Clause|BSD 2-Clause|BSD 2-clause License|The BSD 2-Clause License|BSD Licence 2</licenseMerge>
+								<licenseMerge>CDDL-1.0|CDDL|Common Development and Distribution License|CDDL License|COMMON DEVELOPMENT AND DISTRIBUTION LICENSE (CDDL) Version 1.0|CDDL 1.0</licenseMerge>
+								<licenseMerge>LGPL-2.1-only|GNU Lesser General Public License, Version 2.1|LGPL 2.1|LGPL-2.1|GNU Lesser General Public License</licenseMerge>
+								<licenseMerge>GPL-2.0-only|GNU General Public License, Version 2.0|GPL 2.0|GPL-2.0|GNU General Public License, version 2</licenseMerge>
+								<licenseMerge>GPL-2.0-with-classpath-exception|GNU General Public License, version 2 with the GNU Classpath Exception|GPLv2+CE|GPL2 w/ CPE</licenseMerge>
+								<licenseMerge>MPL-2.0|Mozilla Public License Version 2.0|MPL 2.0</licenseMerge>
+								<licenseMerge>EDL-1.0|Eclipse Distribution License - v 1.0|Eclipse Distribution License v. 1.0|EDL 1.0</licenseMerge>
+							</licenseMerges>
+						</configuration>
+						<executions>
+							<execution>
+								<id>aggregate-add-third-party</id>
+								<phase>generate-resources</phase>
+								<goals>
+									<goal>aggregate-add-third-party</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+
 		<!--
 			Profile used for Docker image builds and other environments
 			where we explicitly want to skip all Checkstyle execution.

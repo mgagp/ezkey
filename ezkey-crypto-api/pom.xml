@@ -16,6 +16,11 @@
 	<name>Ezkey Crypto API</name>
 	<description>Crypto API exposing cryptographic functions for testing and integration</description>
 
+	<properties>
+		<!-- Ship committed root THIRD-PARTY.txt under META-INF/licenses/ in the JAR. -->
+		<ezkey.skip.third-party.licenses.copy>false</ezkey.skip.third-party.licenses.copy>
+	</properties>
+
 	<dependencies>
 		<!-- Core module dependency -->
 		<dependency>
