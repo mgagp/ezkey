@@ -35,19 +35,18 @@
   component: HAProxy (local HA stack; absent from Lightsail)
   owner: fred
   eol_slug: haproxy
-  current: "2.9"
+  current: "3.4"
   sources:
-    - { file: docker/docker-compose.ha.yml, expect: "haproxy:2.9-alpine" }
-  eol: 2025-03-21
+    - { file: docker/docker-compose.ha.yml, expect: "haproxy:3.4-alpine" }
+  eol: 2031-04-01
   target: "3.4" # LTS since 2026-06-03 (3.4.7 at review); EOL 2031-04-01
-  decision: plan
+  decision: keep
   security: true
-  issue: null
-  last_review: 2026-10-19
+  issue: 1134
+  last_review: 2026-11-02
   notes: >
-    EOL overdue since 2025-03-21 (~19 months). Loudest register debt. Dedicated
-    issue for 3.4 LTS when Marc funds; Christophe opinion required. No bump in
-    Oct 2026 quarterly docs PR.
+    Bumped 2.9→3.4 LTS (tag+digest) 2026-11-02 because 2.9 EOL 2025-03-21 (#1134);
+    Christophe conditions held; local HA only (not Lightsail).
 
 - id: alpine-bootstrap-init
   component: Alpine (bootstrap-init image)
