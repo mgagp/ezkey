@@ -52,6 +52,9 @@ COPY ezkey-sdk/java/src ./ezkey-sdk/java/src
 COPY ezkey-demo-device/src ./ezkey-demo-device/src
 COPY ezkey-demo-app-acme/src ./ezkey-demo-app-acme/src
 COPY ezkey-demo-app-acme/config ./ezkey-demo-app-acme/config
+# Committed root license inventory — packaged into META-INF/licenses/ for shipped JARs
+# (maven-resources-plugin copy-resources; not regenerated during the image build).
+COPY THIRD-PARTY.txt ./THIRD-PARTY.txt
 
 # Build all modules in one go (this creates all JARs)
 # Using BuildKit cache mount - cache persists between builds and is shared across parallel builds

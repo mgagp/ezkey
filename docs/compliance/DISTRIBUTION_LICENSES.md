@@ -11,7 +11,9 @@ All distribution artifacts include third-party license attribution files to ensu
 
 ### Configuration
 
-Shipped server/backend modules (Admin API, Auth API, Integration API, Crypto API, Migration, Demo Device, Demo App ACME) copy the **committed** root `THIRD-PARTY.txt` into `META-INF/licenses/` via `maven-resources-plugin` (`copy-resources` at `process-resources`). Opt-in is per module (`ezkey.skip.third-party.licenses.copy=false`). Packaging reads the checked-in root file only — it does **not** regenerate licenses during the default build.
+Shipped server/backend modules (Admin API, Auth API, Integration API, Crypto API, Migration, Demo Device, Demo App ACME) copy the **committed** root `THIRD-PARTY.txt` into `META-INF/licenses/` via `maven-resources-plugin` (`copy-resources` at `process-resources`). Opt-in is per module (`ezkey.skip.third-party.licenses.copy=false`). Packaging reads the checked-in root file only — it does **not** regenerate licenses during the default build. `maven-enforcer-plugin` fails the build if that file is missing after the copy (so a Docker context that forgot `COPY THIRD-PARTY.txt` cannot silently ship empty licenses).
+
+Docker image builds (`docker/Dockerfile`) must `COPY THIRD-PARTY.txt` into the build stage before `mvn package` so the opt-in modules can package it.
 
 Regenerate the root file separately with `mvn -Plicenses generate-resources` (enforced by CI job `licenses-drift`).
 

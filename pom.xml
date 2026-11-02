@@ -469,6 +469,34 @@
 					</executions>
 				</plugin>
 
+				<!-- Fail closed when a shipped module opts in but root THIRD-PARTY.txt is absent
+				     (e.g. Docker build forgot to COPY it). Skipped with the same property. -->
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-enforcer-plugin</artifactId>
+					<version>3.6.2</version>
+					<executions>
+						<execution>
+							<id>require-third-party-licenses-file</id>
+							<phase>process-resources</phase>
+							<goals>
+								<goal>enforce</goal>
+							</goals>
+							<configuration>
+								<skip>${ezkey.skip.third-party.licenses.copy}</skip>
+								<rules>
+									<requireFilesExist>
+										<files>
+											<file>${maven.multiModuleProjectDirectory}/THIRD-PARTY.txt</file>
+											<file>${project.build.outputDirectory}/META-INF/licenses/THIRD-PARTY.txt</file>
+										</files>
+									</requireFilesExist>
+								</rules>
+							</configuration>
+						</execution>
+					</executions>
+				</plugin>
+
 				<!-- SpotBugs (report-only; invoked by scripts/java-doctor-curated.sh) -->
 				<plugin>
 					<groupId>com.github.spotbugs</groupId>
@@ -536,6 +564,10 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-resources-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-enforcer-plugin</artifactId>
 			</plugin>
 			<!-- Available for explicit goals only (spotbugs:spotbugs / pmd:pmd); no lifecycle binding -->
 			<plugin>
