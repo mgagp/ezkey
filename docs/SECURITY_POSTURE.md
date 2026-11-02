@@ -230,7 +230,8 @@ See [`../product-docs/global/normative-posture.md`](../product-docs/global/norma
 
 ## Code scanning policy
 
-CodeQL runs on every PR and on `main` (advanced setup:
+CodeQL runs on PRs and on `main`, analyzing only the languages whose files changed; the weekly
+schedule, `workflow_dispatch` and any change to the CodeQL setup analyze every language (advanced setup:
 [`.github/workflows/codeql.yml`](../.github/workflows/codeql.yml), config
 [`.github/codeql/codeql-config.yml`](../.github/codeql/codeql-config.yml) with
 `queries: security-extended`). Open alerts follow the cadence and SLAs below.

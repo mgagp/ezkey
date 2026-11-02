@@ -174,8 +174,9 @@ doc comments on types and non-trivial functions.
 
 `.github/workflows/ezkey-mobile-ios.yml` (job `mobile-ios`, part of `ci-gate`) runs `yarn ios:lint`
 then `yarn ios:test` on `macos-26`. It triggers only on the iOS native surface (`ios/**`,
-`package.json`, `yarn.lock`, `Gemfile*`, `scripts/ios-*.sh`) or a workflow change; JS-only changes
-stay on the Linux jobs (a Debug simulator build does not bundle JS). The repository is public, so
+`package.json`, `yarn.lock`, `Gemfile*`, `scripts/ios-*.sh`), its own workflow or `ci.yml`; JS-only
+changes stay on the Linux jobs (a Debug simulator build does not bundle JS). It runs on pull
+requests and nightly on `main`, not on the post-merge push (~22 min, of which ~18 build). The repository is public, so
 standard macOS runner minutes are free.
 
 - **Toolchain gap:** the runner uses its default Xcode 26.x and an iOS 26 simulator, while local
