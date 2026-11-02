@@ -35,6 +35,7 @@ jobs:
       admin-ui: ${{ steps.resolve.outputs.admin-ui }}
       backend: ${{ steps.resolve.outputs.backend }}
       mobile: ${{ steps.resolve.outputs.mobile }}
+      mobile-ios: ${{ steps.resolve.outputs.mobile-ios }}
       cli-python: ${{ steps.resolve.outputs.cli-python }}
       ezkey-pam: ${{ steps.resolve.outputs.ezkey-pam }}
       lightsail: ${{ steps.resolve.outputs.lightsail }}
@@ -99,6 +100,14 @@ jobs:
               - 'config/quality-gate/**'
             mobile:
               - 'ezkey_mobile/**'
+            # iOS native surface only (macOS runner); JS-only changes do not need it.
+            mobile-ios:
+              - 'ezkey_mobile/ios/**'
+              - 'ezkey_mobile/package.json'
+              - 'ezkey_mobile/yarn.lock'
+              - 'ezkey_mobile/Gemfile'
+              - 'ezkey_mobile/Gemfile.lock'
+              - 'ezkey_mobile/scripts/ios-*.sh'
             cli-python:
               - 'ezkey-cli-python/**'
             ezkey-pam:
@@ -133,6 +142,7 @@ jobs:
             echo "admin-ui=true" >> "$GITHUB_OUTPUT"
             echo "backend=true" >> "$GITHUB_OUTPUT"
             echo "mobile=true" >> "$GITHUB_OUTPUT"
+            echo "mobile-ios=true" >> "$GITHUB_OUTPUT"
             echo "cli-python=true" >> "$GITHUB_OUTPUT"
             echo "ezkey-pam=true" >> "$GITHUB_OUTPUT"
             echo "lightsail=true" >> "$GITHUB_OUTPUT"
@@ -144,6 +154,7 @@ jobs:
             echo "admin-ui=${{ steps.filter.outputs.admin-ui }}" >> "$GITHUB_OUTPUT"
             echo "backend=${{ steps.filter.outputs.backend }}" >> "$GITHUB_OUTPUT"
             echo "mobile=${{ steps.filter.outputs.mobile }}" >> "$GITHUB_OUTPUT"
+            echo "mobile-ios=${{ steps.filter.outputs.mobile-ios }}" >> "$GITHUB_OUTPUT"
             echo "cli-python=${{ steps.filter.outputs.cli-python }}" >> "$GITHUB_OUTPUT"
             echo "ezkey-pam=${{ steps.filter.outputs.ezkey-pam }}" >> "$GITHUB_OUTPUT"
             echo "lightsail=${{ steps.filter.outputs.lightsail }}" >> "$GITHUB_OUTPUT"
@@ -324,6 +335,13 @@ jobs:
     # Reusable workflow: JS validate + Android JVM tests + 16 KB alignment gate.
     uses: ./.github/workflows/ezkey-mobile-unit-tests.yml
 
+  mobile-ios:
+    name: mobile-ios
+    needs: changes
+    if: needs.changes.outputs.mobile-ios == 'true' || needs.changes.outputs.workflows == 'true'
+    # Reusable workflow (macos-26): Swift lint + simulator build + XCTest.
+    uses: ./.github/workflows/ezkey-mobile-ios.yml
+
   cli-python:
     name: cli-python
     needs: changes
@@ -485,7 +503,7 @@ jobs:
   # failure or cancellation of any needed job fails the gate.
   ci-gate:
     name: ci-gate
-    needs: [changes, admin-ui, backend, ha-smoke, mobile, cli-python, ezkey-pam, lightsail, dart-sdk, quality-gate]
+    needs: [changes, admin-ui, backend, ha-smoke, mobile, mobile-ios, cli-python, ezkey-pam, lightsail, dart-sdk, quality-gate]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -498,6 +516,7 @@ jobs:
           echo "backend=${{ needs.backend.result }}"
           echo "ha-smoke=${{ needs.ha-smoke.result }}"
           echo "mobile=${{ needs.mobile.result }}"
+          echo "mobile-ios=${{ needs.mobile-ios.result }}"
           echo "cli-python=${{ needs.cli-python.result }}"
           echo "ezkey-pam=${{ needs.ezkey-pam.result }}"
           echo "lightsail=${{ needs.lightsail.result }}"
@@ -514,6 +533,7 @@ jobs:
             "backend:${{ needs.backend.result }}" \
             "ha-smoke:${{ needs.ha-smoke.result }}" \
             "mobile:${{ needs.mobile.result }}" \
+            "mobile-ios:${{ needs.mobile-ios.result }}" \
             "cli-python:${{ needs.cli-python.result }}" \
             "ezkey-pam:${{ needs.ezkey-pam.result }}" \
             "lightsail:${{ needs.lightsail.result }}" \

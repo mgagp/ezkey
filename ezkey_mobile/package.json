@@ -8,6 +8,7 @@
     "android:jdk17": "node scripts/run-with-git-bash.mjs scripts/android-with-jdk17.sh",
     "ios": "npx react-native run-ios",
     "ios:lint": "bash scripts/ios-lint.sh",
+    "ios:test": "bash scripts/ios-test.sh",
     "start": "npx react-native start",
     "generate:api": "orval --config orval.config.ts",
     "deps:monitor": "node scripts/dependency-monitor.mjs",
