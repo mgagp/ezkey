@@ -29,9 +29,9 @@ type NativeModuleShape = {
    * false when none were present or on platforms without the Android seal-key model.
    */
   deleteAllSealKeys(): Promise<boolean>;
-  /** UTC ISO-8601 string set at native build time (Android `BuildConfig`); iOS uses bundle mtime proxy. */
+  /** UTC ISO-8601 string set at native build time (Android `BuildConfig`; iOS built Info.plist `EzkeyBuildTimestamp`). */
   getBuildTimestamp(): Promise<string>;
-  /** Seven-character git SHA stamped at Android compile time; empty or unknown when unavailable. */
+  /** Seven-character git SHA stamped at native build time (Android `BuildConfig`, iOS Info.plist); `unknown` when unavailable. */
   getGitShortSha(): Promise<string>;
   /** Same wire format as `SignatureService.generateProofToken()`; uses platform CSPRNG (no `RNGetRandomValues`). */
   generateProofToken(): Promise<string>;

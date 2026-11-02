@@ -21,7 +21,7 @@ The mobile app verifies **integration** signatures with **Ed25519** (`Integratio
 - **Private key**: PKCS#8 DER, standard Base64.
 - **Public key**: X.509 SubjectPublicKeyInfo (SPKI), standard Base64.
 - **Signature**: `SHA256withECDSA`, ASN.1 DER, standard Base64.
-- **Mobile**: In the current Android implementation, keys live in Android Keystore with StrongBox requested when available. Private key material is not exposed to application code. iOS secure-hardware integration should be documented conservatively until the native path reaches feature parity.
+- **Mobile**: In the current Android implementation, keys live in Android Keystore with StrongBox requested when available. Private key material is not exposed to application code. On iOS, `EzkeyCryptoModule` (Swift, CryptoKit) uses the same wire formats and requests a Secure Enclave key on devices (software key, tier `NONE`, on the simulator); Secure Enclave behaviour on a physical iPhone is not yet verified, so describe iOS hardware protection conservatively.
 
 **`devicePrivateKeyStorageTier` (enrollment verify):** The wire value `NONE` / `STANDARD` / `STRONG` is **client-reported metadata**. The Auth API does **not** validate Android Key Attestation or any hardware attestation chain; the backend stores what the app sends. A well-behaved Android client derives the tier from `KeyInfo` (and requested StrongBox at generation time) per `docs/MOBILE_DEVELOPER_GUIDE.md` — but that remains **trust in the client**, not a server-proven property. Do not describe Admin-visible tier as “verified StrongBox” unless a future protocol adds attestation or equivalent verification.
 
