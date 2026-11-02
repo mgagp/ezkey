@@ -114,8 +114,9 @@ services:
       EZKEY_ORGANIZATION_DESCRIPTION: ${EZKEY_ORGANIZATION_DESCRIPTION:-Ezkey MFA instance for your organization}
       EZKEY_ORGANIZATION_ABOUT_URL: ${EZKEY_ORGANIZATION_ABOUT_URL:-}
       EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE: ${EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE:-full}
-      # Trust only the pinned HA compose subnet (#1141); HAProxy rewrites XFF (#1140).
-      EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.28.0.0/24}
+      # Trust only pinned HAProxy LB addresses (#1141); HAProxy rewrites XFF (#1140).
+      # Demo/app peers on 172.28.0.0/24 must NOT be trusted proxies.
+      EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.28.0.250/32,172.28.0.251/32,172.28.0.252/32}
       EZKEY_TRUSTED_PROXIES_REQUIRED: ${EZKEY_TRUSTED_PROXIES_REQUIRED:-true}
     volumes:
       - encryption-secrets-ha:/etc/ezkey
@@ -167,7 +168,7 @@ services:
       EZKEY_ORGANIZATION_DESCRIPTION: ${EZKEY_ORGANIZATION_DESCRIPTION:-Ezkey MFA instance for your organization}
       EZKEY_ORGANIZATION_ABOUT_URL: ${EZKEY_ORGANIZATION_ABOUT_URL:-}
       EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE: ${EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE:-full}
-      EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.28.0.0/24}
+      EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.28.0.250/32,172.28.0.251/32,172.28.0.252/32}
       EZKEY_TRUSTED_PROXIES_REQUIRED: ${EZKEY_TRUSTED_PROXIES_REQUIRED:-true}
     volumes:
       - encryption-secrets-ha:/etc/ezkey
@@ -201,7 +202,9 @@ services:
       - "9080:9080"
       - "127.0.0.1:9081:9081"  # Stats page (loopback-only; #905)
     networks:
-      - ezkey-network-ha
+      ezkey-network-ha:
+        # Pinned outside ip_range so dynamic peers cannot claim it (#1141).
+        ipv4_address: 172.28.0.250
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "haproxy -c -f /usr/local/etc/haproxy/haproxy.cfg || exit 1"]
@@ -236,7 +239,7 @@ services:
       EZKEY_ORGANIZATION_NAME: ${EZKEY_ORGANIZATION_NAME:-Ezkey System}
       EZKEY_ORGANIZATION_DESCRIPTION: ${EZKEY_ORGANIZATION_DESCRIPTION:-Ezkey MFA instance for your organization}
       EZKEY_ORGANIZATION_ABOUT_URL: ${EZKEY_ORGANIZATION_ABOUT_URL:-}
-      EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.28.0.0/24}
+      EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.28.0.250/32,172.28.0.251/32,172.28.0.252/32}
       EZKEY_TRUSTED_PROXIES_REQUIRED: ${EZKEY_TRUSTED_PROXIES_REQUIRED:-true}
     volumes:
       - encryption-secrets-ha:/etc/ezkey
@@ -280,7 +283,7 @@ services:
       EZKEY_ORGANIZATION_NAME: ${EZKEY_ORGANIZATION_NAME:-Ezkey System}
       EZKEY_ORGANIZATION_DESCRIPTION: ${EZKEY_ORGANIZATION_DESCRIPTION:-Ezkey MFA instance for your organization}
       EZKEY_ORGANIZATION_ABOUT_URL: ${EZKEY_ORGANIZATION_ABOUT_URL:-}
-      EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.28.0.0/24}
+      EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.28.0.250/32,172.28.0.251/32,172.28.0.252/32}
       EZKEY_TRUSTED_PROXIES_REQUIRED: ${EZKEY_TRUSTED_PROXIES_REQUIRED:-true}
     volumes:
       - encryption-secrets-ha:/etc/ezkey
@@ -313,7 +316,9 @@ services:
       - "8080:8080"
       - "127.0.0.1:8085:8085"  # Stats page (loopback-only; #905)
     networks:
-      - ezkey-network-ha
+      ezkey-network-ha:
+        # Pinned outside ip_range so dynamic peers cannot claim it (#1141).
+        ipv4_address: 172.28.0.251
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "haproxy -c -f /usr/local/etc/haproxy/haproxy.cfg || exit 1"]
@@ -346,7 +351,7 @@ services:
       MANAGEMENT_SERVER_PORT: 7081
       MANAGEMENT_SERVER_ADDRESS: "0.0.0.0"
       EZKEY_INSTANCE_ID: integration-api-1
-      EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.28.0.0/24}
+      EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.28.0.250/32,172.28.0.251/32,172.28.0.252/32}
       EZKEY_TRUSTED_PROXIES_REQUIRED: ${EZKEY_TRUSTED_PROXIES_REQUIRED:-true}
     volumes:
       - encryption-secrets-ha:/etc/ezkey
@@ -388,7 +393,7 @@ services:
       MANAGEMENT_SERVER_PORT: 7081
       MANAGEMENT_SERVER_ADDRESS: "0.0.0.0"
       EZKEY_INSTANCE_ID: integration-api-2
-      EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.28.0.0/24}
+      EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.28.0.250/32,172.28.0.251/32,172.28.0.252/32}
       EZKEY_TRUSTED_PROXIES_REQUIRED: ${EZKEY_TRUSTED_PROXIES_REQUIRED:-true}
     volumes:
       - encryption-secrets-ha:/etc/ezkey
@@ -421,7 +426,9 @@ services:
       - "7080:7080"
       - "127.0.0.1:7081:7081"  # Stats page (loopback-only; #905)
     networks:
-      - ezkey-network-ha
+      ezkey-network-ha:
+        # Pinned outside ip_range so dynamic peers cannot claim it (#1141).
+        ipv4_address: 172.28.0.252
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "haproxy -c -f /usr/local/etc/haproxy/haproxy.cfg || exit 1"]
@@ -566,11 +573,14 @@ services:
 networks:
   ezkey-network-ha:
     driver: bridge
-    # Narrow fixed subnet so EZKEY_TRUSTED_PROXIES_CIDRS can be pinned (#1141).
+    # Fixed subnet; trust only HAProxy LB /32s (.250–.252), not demos (#1141).
+    # ip_range keeps dynamic allocation in .2–.127 so LB static IPs cannot collide.
     # Never use 0.0.0.0/0. Override via compose project network settings if needed.
     ipam:
       config:
         - subnet: 172.28.0.0/24
+          gateway: 172.28.0.1
+          ip_range: 172.28.0.0/25
 
 volumes:
   postgres-data-ha:
