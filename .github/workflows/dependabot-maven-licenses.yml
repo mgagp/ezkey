@@ -114,20 +114,25 @@ jobs:
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: third-party-txt
-          path: .
+          path: ${{ runner.temp }}/lic
 
       - name: Validate artifact (plain text, size bound)
         run: |
           set -euo pipefail
-          test -f THIRD-PARTY.txt
+          # Artifact lands outside the checkout so a crafted zip cannot plant .git/*.
+          test "$(find "${RUNNER_TEMP}/lic" -mindepth 1 | wc -l)" -eq 1
+          src="${RUNNER_TEMP}/lic/THIRD-PARTY.txt"
+          test ! -L "${src}"
+          test -f "${src}"
           # Must be plain text (reject binaries / archives).
-          file_out="$(file -b THIRD-PARTY.txt)"
+          file_out="$(file -b "${src}")"
           echo "file(1): ${file_out}"
           echo "${file_out}" | grep -qiE 'text|ASCII|UTF-8 Unicode text'
-          size="$(wc -c < THIRD-PARTY.txt)"
+          size="$(wc -c < "${src}")"
           echo "size=${size}"
           test "${size}" -gt 0
           test "${size}" -le 1048576
+          install -m 0644 "${src}" ./THIRD-PARTY.txt
 
       - name: Commit and push
         id: push
@@ -136,18 +141,20 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add THIRD-PARTY.txt
-          if git diff --cached --quiet; then
+          # Disable hooks/fsmonitor so a planted .git/config cannot run code with the token.
+          g() { git -c core.hooksPath=/dev/null -c core.fsmonitor=false "$@"; }
+          g config user.name "github-actions[bot]"
+          g config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          g add THIRD-PARTY.txt
+          if g diff --cached --quiet; then
             echo "No staged change after artifact apply."
             echo "pushed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          git commit -m "chore(licenses): regenerate THIRD-PARTY.txt"
+          g commit -m "chore(licenses): regenerate THIRD-PARTY.txt"
           # One-shot Authorization header — do not persist the token in .git/config.
           basic="$(printf 'x-access-token:%s' "${GITHUB_TOKEN}" | base64 -w0)"
-          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${basic}" \
+          g -c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${basic}" \
             push origin "HEAD:${BRANCH}"
           echo "pushed=true" >> "$GITHUB_OUTPUT"
 
