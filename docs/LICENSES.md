@@ -20,7 +20,7 @@ Ezkey is licensed under the **MIT License**. This document explains how we manag
 
 ### Regenerating License Files
 
-Root `THIRD-PARTY.txt` is generated only via `mvn -Plicenses generate-resources`, checked in CI (`licenses-drift`), never commit a local rewrite.
+Root `THIRD-PARTY.txt` is generated only via `mvn -Plicenses generate-resources`, checked in CI (`licenses-drift`), never commit a local rewrite. On Dependabot Maven PRs, `.github/workflows/dependabot-maven-licenses.yml` regenerates and pushes the file; Dependabot does not rebase that PR afterward — use `@dependabot recreate` if a rebase is needed.
 
 ```bash
 # Maven dependencies (licenses profile only — not part of the default build)

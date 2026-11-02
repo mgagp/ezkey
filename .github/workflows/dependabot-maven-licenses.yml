@@ -2,14 +2,22 @@
 # (Dependabot never regenerates it, so licenses-drift would go red and need a
 # manual push). Decision: Marc 2026-11-02 (licenses drift stop).
 #
+# Security: Maven runs only in a read-only `generate` job. The write-capable
+# `push` job never runs Maven / setup-java / cache — it only downloads the
+# regenerated THIRD-PARTY.txt artifact, validates it, commits, and pushes.
+# That prevents untrusted dependency code from writing $GITHUB_ENV/$GITHUB_PATH
+# and stealing the write token.
+#
 # Token notes:
 # - Dependabot-triggered `pull_request` runs get a read-only GITHUB_TOKEN unless the
 #   workflow raises it via `permissions:` (allowed for Dependabot; no secrets exposed).
 # - A push made with GITHUB_TOKEN does NOT retrigger `pull_request` workflows. We
-#   therefore dispatch CI (`workflow_dispatch`, which GITHUB_TOKEN may trigger) on the
-#   PR branch so the new head gets a `ci-gate` check run. The PR's checks tab shows the
-#   dispatch run, not a pull_request run.
+#   therefore dispatch CI + CodeQL (`workflow_dispatch`) on the PR branch so the new
+#   head gets `ci-gate` (including licenses-drift: workflow_dispatch forces backend
+#   + workflows=true) and CodeQL (workflow_dispatch analyzes all languages).
 # - Only same-repo branches authored by dependabot[bot] are processed.
+# - After this bot pushes THIRD-PARTY.txt, Dependabot will not auto-rebase that PR;
+#   use `@dependabot recreate` if a rebase is needed.
 name: dependabot-maven-licenses
 
 on:
@@ -28,22 +36,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  regenerate:
+  generate:
     if: >-
       github.event.pull_request.user.login == 'dependabot[bot]' &&
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
-      contents: write
-      # Needed to dispatch ci.yml/codeql.yml because GITHUB_TOKEN pushes do not
-      # retrigger pull_request CI.
-      actions: write
+      contents: read
+    outputs:
+      changed: ${{ steps.diff.outputs.changed }}
     steps:
-      - name: Checkout PR branch
+      - name: Checkout PR head SHA
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 1
           persist-credentials: false
 
@@ -62,31 +69,97 @@ jobs:
       - name: Regenerate THIRD-PARTY.txt
         run: mvn -B -ntp -Plicenses -DskipTests generate-resources
 
-      - name: Commit and push if changed
+      - name: Detect drift
+        id: diff
+        run: |
+          if git diff --quiet -- THIRD-PARTY.txt; then
+            echo "THIRD-PARTY.txt already fresh."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "THIRD-PARTY.txt changed; uploading artifact."
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload THIRD-PARTY.txt artifact
+        if: steps.diff.outputs.changed == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: third-party-txt
+          path: THIRD-PARTY.txt
+          if-no-files-found: error
+          retention-days: 1
+
+  push:
+    needs: generate
+    if: >-
+      needs.generate.outputs.changed == 'true' &&
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      # Needed to dispatch ci.yml/codeql.yml because GITHUB_TOKEN pushes do not
+      # retrigger pull_request CI.
+      actions: write
+    steps:
+      - name: Checkout PR head SHA
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Download THIRD-PARTY.txt artifact
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: third-party-txt
+          path: .
+
+      - name: Validate artifact (plain text, size bound)
+        run: |
+          set -euo pipefail
+          test -f THIRD-PARTY.txt
+          # Must be plain text (reject binaries / archives).
+          file_out="$(file -b THIRD-PARTY.txt)"
+          echo "file(1): ${file_out}"
+          echo "${file_out}" | grep -qiE 'text|ASCII|UTF-8 Unicode text'
+          size="$(wc -c < THIRD-PARTY.txt)"
+          echo "size=${size}"
+          test "${size}" -gt 0
+          test "${size}" -le 1048576
+
+      - name: Commit and push
         id: push
         env:
           BRANCH: ${{ github.event.pull_request.head.ref }}
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          if git diff --quiet -- THIRD-PARTY.txt; then
-            echo "THIRD-PARTY.txt already fresh."
-            echo "pushed=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add THIRD-PARTY.txt
+          if git diff --cached --quiet; then
+            echo "No staged change after artifact apply."
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           git commit -m "chore(licenses): regenerate THIRD-PARTY.txt"
-          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          git push origin "HEAD:${BRANCH}"
+          # One-shot Authorization header — do not persist the token in .git/config.
+          basic="$(printf 'x-access-token:%s' "${GITHUB_TOKEN}" | base64 -w0)"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${basic}" \
+            push origin "HEAD:${BRANCH}"
           echo "pushed=true" >> "$GITHUB_OUTPUT"
 
-      - name: Dispatch CI on new head (GITHUB_TOKEN pushes do not retrigger pull_request)
+      - name: Dispatch CI and CodeQL on new head
         if: steps.push.outputs.pushed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
+          set -euo pipefail
+          # workflow_dispatch on ci.yml forces every suite (backend + workflows=true),
+          # so licenses-drift runs on the new head. CodeQL workflow_dispatch analyzes
+          # all languages (see .github/workflows/codeql.yml).
           gh workflow run ci.yml --repo "${GITHUB_REPOSITORY}" --ref "${BRANCH}"
-          gh workflow run codeql.yml --repo "${GITHUB_REPOSITORY}" --ref "${BRANCH}" || \
-            echo "::warning::codeql.yml has no workflow_dispatch; CodeQL check will be missing on the new head."
+          gh workflow run codeql.yml --repo "${GITHUB_REPOSITORY}" --ref "${BRANCH}"

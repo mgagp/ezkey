@@ -17,7 +17,7 @@ License validation should be integrated into the CI/CD pipeline to ensure:
 
 **Purpose**: Verify license files are regenerated when dependencies change
 
-**Maven** (CI job `licenses-drift` in `.github/workflows/ci.yml`):
+**Maven** (CI job `licenses-drift` in `.github/workflows/ci.yml`; also forced on `workflow_dispatch`):
 ```bash
 # Generate license file (licenses profile only)
 mvn -B -ntp -Plicenses -DskipTests generate-resources
@@ -25,6 +25,8 @@ mvn -B -ntp -Plicenses -DskipTests generate-resources
 # Check if file changed
 git diff --exit-code THIRD-PARTY.txt
 ```
+
+Dependabot Maven PRs: `.github/workflows/dependabot-maven-licenses.yml` regenerates and commits `THIRD-PARTY.txt` (read-only Maven job + separate write job). After that bot push, Dependabot will not auto-rebase — use `@dependabot recreate` if a rebase is needed.
 
 **npm (React Native)**:
 ```bash
