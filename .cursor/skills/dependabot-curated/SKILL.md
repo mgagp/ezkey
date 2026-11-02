@@ -228,7 +228,7 @@ Dependabot list as "Java is current."**
    **not** invent a weekly lot if unchanged. Bump only when Spotless itself moved, JDK
    compatibility requires it, or a real formatter bug exists. Treat a bump as T2 tooling.
    **Pin `2.0.0` adopted 2026-11-02** (layout engine + cleanup default on; Spotless 3.10.4 OK;
-   keep cleanup unless a later trial proves otherwise). Refs draft PR / hygiene README.
+   keep cleanup unless a later trial proves otherwise). Refs [#1136](https://github.com/mgagp/ezkey/pull/1136).
 
 Out of this pulse (operator-owned, separate hygiene): Docker image tags (e.g. `postgres:18-alpine`).
 Do not add a `docker` ecosystem or invent a Compose-image lot unless the operator asks.

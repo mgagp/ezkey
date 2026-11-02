@@ -55,7 +55,7 @@ One owning pass per procedure per slot — back off on concurrent merges.
 
 Repo-is-memory decisions (one line + reason):
 
-- **google-java-format 2.0.0 adopted (keep cleanup default on)** — nested Spotless pin `1.36.1`→`2.0.0` (2026-10-30 layout engine; cleanup on by default). Spotless 3.10.4 compatible without bump; Checkstyle needed no alignment; reformatted in a blame-ignored commit. Refs draft PR (hygiene trial 2026-11-02).
+- **google-java-format 2.0.0 adopted (keep cleanup default on)** — nested Spotless pin `1.36.1`→`2.0.0` (2026-10-30 layout engine; cleanup on by default). Spotless 3.10.4 compatible without bump; Checkstyle needed no alignment; reformatted in a blame-ignored commit. Refs [#1136](https://github.com/mgagp/ezkey/pull/1136).
 - **Dependabot inflow reduction** — minor+patch catch-all groups per directory, PR limit 5, ignore TS 7 / mobile ESLint 10 majors, CI regen of mobile licenses JSON, auto-merge of green semver-patch PRs (excl. Docker / Gradle ecosystems, RN-core / vision-camera / android-gradle / docker groups, deferred:* / hitl* labels, or crypto deps matching `tink|bouncycastle|bcprov|bcpkix|bcutil|conscrypt|crypto|sha256|sha2|sodium|@noble/|jose|jsonwebtoken|jwt|keychain|biometric`): open-PR stock fell but weekly inflow (~34) did not, so cut it at the source (Marc 2026-10-30).
 - **Dependabot auto-merge gate posture** — Spring Boot / Spring Security and GitHub Actions patch bumps stay eligible for auto-merge; rely on the gate, and if a problem occurs understand it and add unit/functional tests before excluding (Marc 2026-10-30).
 - **Dependabot curated at 09:14 ET weekdays (light) / Monday full** — fixed clock so agents and

@@ -248,7 +248,8 @@ On every Monday-full `dependabot-curated` pass the agent must:
 4. Check `google-java-format.version` (Spotless nested pin; Dependabot typically misses it).
    Bump only when Spotless, JDK compatibility, or a real formatter bug requires it (T2 tooling).
    **Current pin `2.0.0` (adopted 2026-11-02 hygiene trial):** keep cleanup default on; Spotless
-   3.10.4 needs no bump for that pin; blame-ignore the mechanical reformat commit. Refs draft PR.
+   3.10.4 needs no bump for that pin; blame-ignore the mechanical reformat commit. Refs
+   [#1136](https://github.com/mgagp/ezkey/pull/1136).
 
 **Boot 4.1.2 (2026-10-26, replaces Dependabot [#1031](https://github.com/mgagp/ezkey/pull/1031)):**
 dropped parent `postgresql.version` / `tomcat.version` SEC-019 overrides — Boot BOM already
