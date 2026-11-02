@@ -1,2 +1,3 @@
-# Mechanical google-java-format 2.0.0 reformat (layout engine; cleanup default on, no cleanup hits in this tree).
-a888762018d732e4a6812f098f872a8ec907c8c8
+# Mechanical google-java-format 2.0.0 reformat — #1136 squash-merge on main
+# (PR tip a8887620… is not reachable from main after squash; list the squash SHA).
+11f8700119b93ac84ea5cf9867430a7c456a188f

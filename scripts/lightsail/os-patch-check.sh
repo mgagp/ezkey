@@ -36,8 +36,8 @@ Usage (from repository root, Git Bash):
 This script SSHes as ec2-user and reports (read-only):
   - /etc/system-release and /etc/dnf/vars/releasever (if present)
   - dnf check-release-update
-  - dnf updateinfo list --sec-severity=Critical,Important
-  - needs-restarting -r (reboot recommended?)
+  - dnf updateinfo list --sec-severity=Critical and --sec-severity=Important (one each)
+  - needs-restarting -r (exit 1 = reboot required; exit 0 = no reboot)
   - uname -r
   - docker ps
 
@@ -139,22 +139,29 @@ set -e
 echo "(dnf check-release-update exit=${cru_rc})"
 
 section "security updateinfo (Critical, Important)"
+# dnf rejects comma-separated --sec-severity values; query one severity per call.
 set +e
-sudo dnf updateinfo list --sec-severity=Critical,Important
-ui_rc=$?
+for sev in Critical Important; do
+  echo "-- sec-severity=${sev}"
+  sudo dnf updateinfo list --sec-severity="${sev}"
+  ui_rc=$?
+  echo "(dnf updateinfo list --sec-severity=${sev} exit=${ui_rc})"
+done
 set -e
-echo "(dnf updateinfo list exit=${ui_rc})"
 
 section "needs-restarting -r"
+# needs-restarting -r: exit 0 = no reboot required; exit 1 = reboot required.
 if command -v needs-restarting >/dev/null 2>&1; then
   set +e
   sudo needs-restarting -r
   nr_rc=$?
   set -e
-  if [[ "${nr_rc}" -eq 0 ]]; then
-    echo "(needs-restarting -r exit=0 — reboot is recommended)"
+  if [[ "${nr_rc}" -eq 1 ]]; then
+    echo "(needs-restarting -r exit=1 — reboot is required)"
+  elif [[ "${nr_rc}" -eq 0 ]]; then
+    echo "(needs-restarting -r exit=0 — no reboot required)"
   else
-    echo "(needs-restarting -r exit=${nr_rc} — reboot not indicated by this check)"
+    echo "(needs-restarting -r exit=${nr_rc} — unexpected; treat as inconclusive)"
   fi
 else
   echo "(needs-restarting not installed — skip; do not install from this script)"
