@@ -205,6 +205,15 @@ See [`../product-docs/global/normative-posture.md`](../product-docs/global/norma
 - **2026-10-19 (#905):** Local/HA Docker profiles set `management.server.address=0.0.0.0` so
   HAProxy and peers can health-check management ports; IDE defaults stay `127.0.0.1`. Host
   exposure remains `127.0.0.1:port:port` (non-HA) or `expose` only (HA API replicas).
+- **2026-11-02 (#1140):** Client IP trust order behind a reverse proxy: when `remoteAddr` is
+  outside `ezkey.trusted-proxies.cidrs`, headers are ignored (fail-closed). When trusted, walk
+  `X-Forwarded-For` **right-to-left** (skip trusted hops; never prefer the leftmost entry);
+  `X-Real-IP` is never used; `CF-Connecting-IP` only when
+  `ezkey.trusted-proxies.trust-cloudflare-connecting-ip=true` (OFF by default).
+- **2026-11-02 (#1142):** In-memory rate limits are **per replica**. Behind HAProxy round-robin
+  with *N* API replicas and no shared store, the effective allowance is approximately
+  **configured limit × N**. Operators sizing limits for HA must account for that multiplier
+  until a shared rate-limit store exists.
 
 ## Session and cookies
 
