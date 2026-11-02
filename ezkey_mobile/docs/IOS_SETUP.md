@@ -130,6 +130,13 @@ Hosted target `EzkeyMobileTests` (Podfile: `inherit! :search_paths` — `:comple
 twice and crash the host app on duplicate Nitro registrations). Metro is not needed.
 
 ```bash
+cd ezkey_mobile
+yarn ios:test     # newest iOS runtime, first iPhone; IOS_SIM_DESTINATION overrides
+```
+
+`yarn ios:test` (`scripts/ios-test.sh`) is the command CI runs. The equivalent raw call:
+
+```bash
 cd ezkey_mobile/ios
 xcodebuild test -workspace EzkeyMobile.xcworkspace -scheme EzkeyMobile \
   -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -derivedDataPath /tmp/ezkey-dd
@@ -161,7 +168,23 @@ bash scripts/ios-lint.sh --fix     # format in place, then check
 
 Every Swift file starts with the repo-standard header (`Ezkey - Open Source Cryptographic MFA
 Platform`, copyright, MIT line, then module and description), mirroring the Kotlin files. Use `///`
-doc comments on types and non-trivial functions. Not yet enforced in CI (needs a macOS runner).
+doc comments on types and non-trivial functions.
+
+### CI (macOS runner)
+
+`.github/workflows/ezkey-mobile-ios.yml` (job `mobile-ios`, part of `ci-gate`) runs `yarn ios:lint`
+then `yarn ios:test` on `macos-26`. It triggers only on the iOS native surface (`ios/**`,
+`package.json`, `yarn.lock`, `Gemfile*`, `scripts/ios-*.sh`), its own workflow or `ci.yml`; JS-only
+changes stay on the Linux jobs (a Debug simulator build does not bundle JS). It runs on pull
+requests and nightly on `main`, not on the post-merge push (~22 min, of which ~18 build). The repository is public, so
+standard macOS runner minutes are free.
+
+- **Toolchain gap:** the runner uses its default Xcode 26.x and an iOS 26 simulator, while local
+  development uses Xcode 27 / iOS 27 (the Xcode 27 runner image is still preview). CI therefore also
+  proves the code builds on the previous Xcode. If swift-format behaves differently between the two,
+  the CI result is the reference.
+- **SwiftLint** is pinned in the workflow (version + SHA-256). Bump it there and locally together.
+- On failure the `.xcresult` bundle is uploaded as an artifact (open it in Xcode).
 
 ### Editing the Xcode project
 
@@ -173,7 +196,6 @@ hand. It is how the Crypto group, the test target and the Run Script phase were 
 
 - **Device-only, not yet proven:** Secure Enclave key generation and signing, tier `STRONG`, real
   Face ID / passcode prompts. Needs a physical iPhone (step 6).
-- **End-to-end enrollment / approval** against the Auth API: step 5 (local stack, `localhost:8080`).
 - **Orphaned secrets after reinstall:** `react-native-keychain` items (enrollment proof token,
   integration key) also survive uninstall while their AsyncStorage metadata does not. Harmless
   (unreachable) but residual; deliberately not purged.

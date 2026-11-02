@@ -10,6 +10,11 @@ name: ezkey_mobile unit tests
 
 on:
   workflow_call:
+    inputs:
+      run-heavy:
+        description: Run the release-build 16 KB alignment gate (ci.yml skips it on the post-merge push)
+        type: boolean
+        default: true
   workflow_dispatch:
 
 permissions:
@@ -162,6 +167,8 @@ jobs:
   # 16 KB page-size gate (#659): release APK must pass ELF PT_LOAD + GNU_RELRO checks
   # (RN 0.87.1 Maven prebuilts may be allowlisted residuals only). No useLegacyPackaging.
   android-16kb-alignment:
+    # Direct workflow_dispatch has no inputs: null != false, so the gate runs.
+    if: inputs.run-heavy != false
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:

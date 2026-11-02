@@ -2,8 +2,15 @@
 #
 # Path-filtered jobs avoid wasted runners; a final always-running `ci-gate` job
 # is the single check intended to become required on `main` (no "Expected —
-# waiting" on unrelated PRs). Changes under `.github/workflows/**` run every job.
+# waiting" on unrelated PRs). A change to this file runs every job; a change to
+# a reusable workflow runs only the job that calls it.
 # workflow_dispatch always runs every suite (never an empty green gate).
+#
+# Proportionality (2026-11-02): heavy jobs (Android 16 KB release build, iOS
+# simulator XCTest, HA load-balancer smoke, PAM) run on pull requests, where they
+# gate the change, but not again on the push to main right after the merge. The
+# nightly schedule runs every suite on main instead, and does nothing when main
+# had no commit in the last 24 h.
 #
 # Playwright Admin UI browser tests need a live Docker stack — not a PR gate.
 name: CI
@@ -13,6 +20,9 @@ on:
     branches: [main, master]
   push:
     branches: [main, master]
+  schedule:
+    # Nightly full run on main (UTC 07:23, ~03:23 Montreal). No-op without new commits.
+    - cron: "23 7 * * *"
   workflow_dispatch:
 
 permissions:
@@ -35,12 +45,14 @@ jobs:
       admin-ui: ${{ steps.resolve.outputs.admin-ui }}
       backend: ${{ steps.resolve.outputs.backend }}
       mobile: ${{ steps.resolve.outputs.mobile }}
+      mobile-ios: ${{ steps.resolve.outputs.mobile-ios }}
       cli-python: ${{ steps.resolve.outputs.cli-python }}
       ezkey-pam: ${{ steps.resolve.outputs.ezkey-pam }}
       lightsail: ${{ steps.resolve.outputs.lightsail }}
       dart-sdk: ${{ steps.resolve.outputs.dart-sdk }}
       quality-gate: ${{ steps.resolve.outputs.quality-gate }}
       workflows: ${{ steps.resolve.outputs.workflows }}
+      heavy: ${{ steps.resolve.outputs.heavy }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -52,8 +64,9 @@ jobs:
         uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         with:
           filters: |
+            # Only this file: a reusable workflow is listed under its own job's filter.
             workflows:
-              - '.github/workflows/**'
+              - '.github/workflows/ci.yml'
             admin-ui:
               - 'ezkey-admin-ui/**'
               - 'specs/**'
@@ -99,6 +112,16 @@ jobs:
               - 'config/quality-gate/**'
             mobile:
               - 'ezkey_mobile/**'
+              - '.github/workflows/ezkey-mobile-unit-tests.yml'
+            # iOS native surface only (macOS runner); JS-only changes do not need it.
+            mobile-ios:
+              - 'ezkey_mobile/ios/**'
+              - 'ezkey_mobile/package.json'
+              - 'ezkey_mobile/yarn.lock'
+              - 'ezkey_mobile/Gemfile'
+              - 'ezkey_mobile/Gemfile.lock'
+              - 'ezkey_mobile/scripts/ios-*.sh'
+              - '.github/workflows/ezkey-mobile-ios.yml'
             cli-python:
               - 'ezkey-cli-python/**'
             ezkey-pam:
@@ -123,27 +146,43 @@ jobs:
             dart-sdk:
               - 'ezkey_dart/**'
 
-      # Manual runs must exercise every suite; path filters alone would skip all
-      # and leave ci-gate green with nothing checked.
+      # Manual and nightly runs must exercise every suite; path filters alone would
+      # skip all and leave ci-gate green with nothing checked.
       - name: Resolve path outputs
         id: resolve
         run: |
           set -euo pipefail
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          event="${{ github.event_name }}"
+          # Heavy jobs are skipped only on the post-merge push (the PR already ran them).
+          if [[ "$event" == "push" ]]; then
+            echo "heavy=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "heavy=true" >> "$GITHUB_OUTPUT"
+          fi
+          if [[ "$event" == "schedule" ]] &&
+            (( $(date +%s) - $(git log -1 --format=%ct) > 86400 )); then
+            for suite in admin-ui backend mobile mobile-ios cli-python ezkey-pam lightsail \
+              dart-sdk quality-gate workflows; do
+              echo "$suite=false" >> "$GITHUB_OUTPUT"
+            done
+            echo "Nightly: no commit on main in the last 24 h, nothing to run"
+          elif [[ "$event" == "workflow_dispatch" || "$event" == "schedule" ]]; then
             echo "admin-ui=true" >> "$GITHUB_OUTPUT"
             echo "backend=true" >> "$GITHUB_OUTPUT"
             echo "mobile=true" >> "$GITHUB_OUTPUT"
+            echo "mobile-ios=true" >> "$GITHUB_OUTPUT"
             echo "cli-python=true" >> "$GITHUB_OUTPUT"
             echo "ezkey-pam=true" >> "$GITHUB_OUTPUT"
             echo "lightsail=true" >> "$GITHUB_OUTPUT"
             echo "dart-sdk=true" >> "$GITHUB_OUTPUT"
             echo "quality-gate=true" >> "$GITHUB_OUTPUT"
             echo "workflows=true" >> "$GITHUB_OUTPUT"
-            echo "Forced all suites (workflow_dispatch)"
+            echo "Forced all suites ($event)"
           else
             echo "admin-ui=${{ steps.filter.outputs.admin-ui }}" >> "$GITHUB_OUTPUT"
             echo "backend=${{ steps.filter.outputs.backend }}" >> "$GITHUB_OUTPUT"
             echo "mobile=${{ steps.filter.outputs.mobile }}" >> "$GITHUB_OUTPUT"
+            echo "mobile-ios=${{ steps.filter.outputs.mobile-ios }}" >> "$GITHUB_OUTPUT"
             echo "cli-python=${{ steps.filter.outputs.cli-python }}" >> "$GITHUB_OUTPUT"
             echo "ezkey-pam=${{ steps.filter.outputs.ezkey-pam }}" >> "$GITHUB_OUTPUT"
             echo "lightsail=${{ steps.filter.outputs.lightsail }}" >> "$GITHUB_OUTPUT"
@@ -305,7 +344,9 @@ jobs:
   ha-smoke:
     name: ha-smoke
     needs: changes
-    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true'
+    if: >-
+      (needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true')
+      && needs.changes.outputs.heavy == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -323,6 +364,17 @@ jobs:
     if: needs.changes.outputs.mobile == 'true' || needs.changes.outputs.workflows == 'true'
     # Reusable workflow: JS validate + Android JVM tests + 16 KB alignment gate.
     uses: ./.github/workflows/ezkey-mobile-unit-tests.yml
+    with:
+      run-heavy: ${{ needs.changes.outputs.heavy == 'true' }}
+
+  mobile-ios:
+    name: mobile-ios
+    needs: changes
+    if: >-
+      (needs.changes.outputs.mobile-ios == 'true' || needs.changes.outputs.workflows == 'true')
+      && needs.changes.outputs.heavy == 'true'
+    # Reusable workflow (macos-26): Swift lint + simulator build + XCTest.
+    uses: ./.github/workflows/ezkey-mobile-ios.yml
 
   cli-python:
     name: cli-python
@@ -372,7 +424,9 @@ jobs:
   ezkey-pam:
     name: ezkey-pam
     needs: changes
-    if: needs.changes.outputs.ezkey-pam == 'true' || needs.changes.outputs.workflows == 'true'
+    if: >-
+      (needs.changes.outputs.ezkey-pam == 'true' || needs.changes.outputs.workflows == 'true')
+      && needs.changes.outputs.heavy == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     defaults:
@@ -485,7 +539,7 @@ jobs:
   # failure or cancellation of any needed job fails the gate.
   ci-gate:
     name: ci-gate
-    needs: [changes, admin-ui, backend, ha-smoke, mobile, cli-python, ezkey-pam, lightsail, dart-sdk, quality-gate]
+    needs: [changes, admin-ui, backend, ha-smoke, mobile, mobile-ios, cli-python, ezkey-pam, lightsail, dart-sdk, quality-gate]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -498,6 +552,7 @@ jobs:
           echo "backend=${{ needs.backend.result }}"
           echo "ha-smoke=${{ needs.ha-smoke.result }}"
           echo "mobile=${{ needs.mobile.result }}"
+          echo "mobile-ios=${{ needs.mobile-ios.result }}"
           echo "cli-python=${{ needs.cli-python.result }}"
           echo "ezkey-pam=${{ needs.ezkey-pam.result }}"
           echo "lightsail=${{ needs.lightsail.result }}"
@@ -514,6 +569,7 @@ jobs:
             "backend:${{ needs.backend.result }}" \
             "ha-smoke:${{ needs.ha-smoke.result }}" \
             "mobile:${{ needs.mobile.result }}" \
+            "mobile-ios:${{ needs.mobile-ios.result }}" \
             "cli-python:${{ needs.cli-python.result }}" \
             "ezkey-pam:${{ needs.ezkey-pam.result }}" \
             "lightsail:${{ needs.lightsail.result }}" \
