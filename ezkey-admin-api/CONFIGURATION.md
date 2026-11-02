@@ -260,6 +260,7 @@ direct TCP connection originates from an IP in this list.
 |---|---|---|---|---|
 | `ezkey.trusted-proxies.required` | `boolean` | `false` | optionnel [prod] | When `true`, fail startup if `cidrs` is empty or invalid (SEC-011). Set via **`EZKEY_TRUSTED_PROXIES_REQUIRED=true`** on Docker / Lightsail / `--with-proxy` (not on direct-port clean-start). |
 | `ezkey.trusted-proxies.cidrs` | `List<String>` | *(empty)* | optionnel | CIDR ranges of trusted reverse proxies (e.g. `10.0.0.0/8`, `172.16.0.0/12`). In Docker, set comma-separated **`EZKEY_TRUSTED_PROXIES_CIDRS`**. |
+| `ezkey.trusted-proxies.trust-cloudflare-connecting-ip` | `boolean` | `false` | optionnel | When `true` and `remoteAddr` is trusted, prefer `CF-Connecting-IP` before walking X-Forwarded-For. Keep **OFF** unless the immediate hop is a declared Cloudflare edge (#1140). Env: **`EZKEY_TRUSTED_PROXIES_TRUST_CLOUDFLARE_CONNECTING_IP`**. |
 
 **YAML example:**
 
@@ -416,6 +417,7 @@ When `true`, Admin API emits a startup WARN in addition to the write-time WARN.
 | `ezkey.audit.integrity.instance-id` | `EZKEY_INSTANCE_ID` | `admin-api` |
 | `ezkey.trusted-proxies.cidrs` | `EZKEY_TRUSTED_PROXIES_CIDRS` | *(see compose; comma-separated CIDRs)* |
 | `ezkey.trusted-proxies.required` | `EZKEY_TRUSTED_PROXIES_REQUIRED` | `false` (direct ports); `true` on Lightsail / `--with-proxy` |
+| `ezkey.trusted-proxies.trust-cloudflare-connecting-ip` | `EZKEY_TRUSTED_PROXIES_TRUST_CLOUDFLARE_CONNECTING_IP` | `false` |
 | `ezkey.admin.cors.allowed-origins` | `EZKEY_ADMIN_CORS_ALLOWED_ORIGINS` | *(unset)* |
 | `ezkey.admin.cors.allow-credentials` | `EZKEY_ADMIN_CORS_ALLOW_CREDENTIALS` | *(unset)* |
 | `ezkey.admin.auth.browser-session-cookie-enabled` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_ENABLED` | *(unset)* |

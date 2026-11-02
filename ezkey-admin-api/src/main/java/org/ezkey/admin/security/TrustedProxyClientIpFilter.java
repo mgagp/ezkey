@@ -53,7 +53,11 @@ public class TrustedProxyClientIpFilter implements Filter {
   public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
       throws IOException, ServletException {
     if (request instanceof HttpServletRequest httpRequest) {
-      String clientIp = ClientIpResolver.resolve(httpRequest, trustedProxyProperties.getCidrs());
+      String clientIp =
+          ClientIpResolver.resolve(
+              httpRequest,
+              trustedProxyProperties.getCidrs(),
+              trustedProxyProperties.isTrustCloudflareConnectingIp());
       httpRequest.setAttribute(ClientContext.CLIENT_IP_REQUEST_ATTRIBUTE, clientIp);
     }
     chain.doFilter(request, response);

@@ -252,7 +252,9 @@ public class RateLimitFilter implements Filter {
         && authRespondRateLimitService != null) {
       List<String> cidrs =
           trustedProxyProperties != null ? trustedProxyProperties.getCidrs() : null;
-      String clientIp = ClientIpResolver.resolve(request, cidrs);
+      boolean trustCf =
+          trustedProxyProperties != null && trustedProxyProperties.isTrustCloudflareConnectingIp();
+      String clientIp = ClientIpResolver.resolve(request, cidrs, trustCf);
       AuthRespondRateLimitService.RateLimitDecision decision =
           authRespondRateLimitService.tryConsumeFailIp(clientIp);
       if (!decision.allowed()) {
@@ -373,7 +375,9 @@ public class RateLimitFilter implements Filter {
 
     // Default: use client IP (with trusted-proxy list when configured)
     List<String> cidrs = trustedProxyProperties != null ? trustedProxyProperties.getCidrs() : null;
-    return ClientIpResolver.resolve(request, cidrs);
+    boolean trustCf =
+        trustedProxyProperties != null && trustedProxyProperties.isTrustCloudflareConnectingIp();
+    return ClientIpResolver.resolve(request, cidrs, trustCf);
   }
 
   /**
