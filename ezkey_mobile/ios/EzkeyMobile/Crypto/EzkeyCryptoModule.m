@@ -1,7 +1,7 @@
 //
 // Ezkey - Open Source Cryptographic MFA Platform
 //
-// Copyright (c) 2025 Ezkey contributors
+// Copyright (c) 2026 Ezkey contributors
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 //
 // Registers the Swift EzkeyCryptoModule with React Native (legacy module interop,

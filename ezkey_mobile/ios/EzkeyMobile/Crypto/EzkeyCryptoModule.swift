@@ -1,7 +1,7 @@
 //
 // Ezkey - Open Source Cryptographic MFA Platform
 //
-// Copyright (c) 2025 Ezkey contributors
+// Copyright (c) 2026 Ezkey contributors
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 //
 // Module: EzkeyCryptoModule (iOS)
@@ -64,9 +64,9 @@ final class EzkeyCryptoModule: NSObject {
   /// enrollment bypass is gated on it (see app/config/buildFlavor.ts). Release builds report false.
   @objc func constantsToExport() -> [AnyHashable: Any] {
     #if DEBUG
-    let isDebugBuild = true
+      let isDebugBuild = true
     #else
-    let isDebugBuild = false
+      let isDebugBuild = false
     #endif
     return ["isDebugBuild": isDebugBuild]
   }
@@ -160,8 +160,9 @@ final class EzkeyCryptoModule: NSObject {
     // Order (Android parity): availability → key exists → prompt → sign. Never prompt for a
     // missing key.
     guard canAuthenticate() else {
-      reject(EzkeyCryptoErrorCode.authUnavailable,
-             "Device confirmation is not available on this phone", nil)
+      reject(
+        EzkeyCryptoErrorCode.authUnavailable,
+        "Device confirmation is not available on this phone", nil)
       return
     }
     withKey(enrollmentId, errorCode: EzkeyCryptoErrorCode.sign, reject: reject) { _ in
@@ -192,8 +193,9 @@ final class EzkeyCryptoModule: NSObject {
     _ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock
   ) {
     guard canAuthenticate() else {
-      reject(EzkeyCryptoErrorCode.authUnavailable,
-             "Device confirmation is not available on this phone", nil)
+      reject(
+        EzkeyCryptoErrorCode.authUnavailable,
+        "Device confirmation is not available on this phone", nil)
       return
     }
     LAContext().evaluatePolicy(
@@ -220,36 +222,44 @@ final class EzkeyCryptoModule: NSObject {
     _ data: String, signatureBase64: String, publicKeyBase64: String,
     resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock
   ) {
-    resolve(Self.verifyEd25519(data: data, signatureBase64: signatureBase64,
-                               publicKeyBase64: publicKeyBase64))
+    resolve(
+      Self.verifyEd25519(
+        data: data, signatureBase64: signatureBase64,
+        publicKeyBase64: publicKeyBase64))
   }
 
-  static func verifyEd25519(data: String, signatureBase64: String, publicKeyBase64: String) -> Bool {
+  static func verifyEd25519(
+    data: String,
+    signatureBase64: String,
+    publicKeyBase64: String
+  ) -> Bool {
     guard let pub = EzkeyCryptoCodec.decodeFlexibleBase64(publicKeyBase64),
-          let sig = EzkeyCryptoCodec.decodeFlexibleBase64(signatureBase64),
-          pub.count == 32, sig.count == 64,
-          let key = try? Curve25519.Signing.PublicKey(rawRepresentation: pub)
+      let sig = EzkeyCryptoCodec.decodeFlexibleBase64(signatureBase64),
+      pub.count == 32, sig.count == 64,
+      let key = try? Curve25519.Signing.PublicKey(rawRepresentation: pub)
     else {
       return false
     }
     return key.isValidSignature(sig, for: Data(data.utf8))
   }
 
-  /// Same wire format as SignatureService.generateProofToken(): base64url(32 random) "." base64url(16 salt).
+  /// Same wire format as SignatureService.generateProofToken():
+  /// base64url(32 random bytes) "." base64url(16 salt bytes), no padding.
   @objc(generateProofToken:reject:)
   func generateProofToken(
     _ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock
   ) {
     var random = [UInt8](repeating: 0, count: 32)
     var salt = [UInt8](repeating: 0, count: 16)
-    let s1 = SecRandomCopyBytes(kSecRandomDefault, random.count, &random)
-    let s2 = SecRandomCopyBytes(kSecRandomDefault, salt.count, &salt)
-    guard s1 == errSecSuccess, s2 == errSecSuccess else {
+    let randomStatus = SecRandomCopyBytes(kSecRandomDefault, random.count, &random)
+    let saltStatus = SecRandomCopyBytes(kSecRandomDefault, salt.count, &salt)
+    guard randomStatus == errSecSuccess, saltStatus == errSecSuccess else {
       reject(EzkeyCryptoErrorCode.proofToken, "SecRandomCopyBytes failed", nil)
       return
     }
-    resolve(EzkeyCryptoCodec.base64UrlNoPadding(Data(random)) + "."
-            + EzkeyCryptoCodec.base64UrlNoPadding(Data(salt)))
+    resolve(
+      EzkeyCryptoCodec.base64UrlNoPadding(Data(random)) + "."
+        + EzkeyCryptoCodec.base64UrlNoPadding(Data(salt)))
   }
 
   /// Written into the built Info.plist by the "Ezkey build info" Run Script phase.
@@ -257,16 +267,18 @@ final class EzkeyCryptoModule: NSObject {
   func getBuildTimestamp(
     _ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock
   ) {
-    resolveInfoValue("EzkeyBuildTimestamp", errorCode: EzkeyCryptoErrorCode.buildTimestamp,
-                     resolve: resolve, reject: reject)
+    resolveInfoValue(
+      "EzkeyBuildTimestamp", errorCode: EzkeyCryptoErrorCode.buildTimestamp,
+      resolve: resolve, reject: reject)
   }
 
   @objc(getGitShortSha:reject:)
   func getGitShortSha(
     _ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock
   ) {
-    resolveInfoValue("EzkeyGitShortSha", errorCode: EzkeyCryptoErrorCode.gitSha,
-                     resolve: resolve, reject: reject)
+    resolveInfoValue(
+      "EzkeyGitShortSha", errorCode: EzkeyCryptoErrorCode.gitSha,
+      resolve: resolve, reject: reject)
   }
 
   // MARK: - Helpers
@@ -296,7 +308,8 @@ final class EzkeyCryptoModule: NSObject {
       return
     }
     guard let key else {
-      reject(EzkeyCryptoErrorCode.notFound, "Key pair not found for enrollment \(enrollmentId)", nil)
+      reject(
+        EzkeyCryptoErrorCode.notFound, "Key pair not found for enrollment \(enrollmentId)", nil)
       return
     }
     body(key)

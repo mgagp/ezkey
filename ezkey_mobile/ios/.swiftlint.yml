@@ -1,0 +1,27 @@
+# SwiftLint for the Ezkey iOS native layer. Formatting is owned by swift-format (.swift-format,
+# Apple's formatter, Google Swift style defaults); SwiftLint adds code-smell rules on top.
+# Run: ezkey_mobile/scripts/ios-lint.sh  (see docs/IOS_SETUP.md § Swift code standards)
+included:
+  - EzkeyMobile
+  - EzkeyMobileTests
+excluded:
+  - Pods
+line_length:
+  warning: 100
+  error: 120
+  # Comments are exempt: the repo-standard license header line is 101 characters. Code lines
+  # are also held to 100 columns by swift-format.
+  ignores_comments: true
+identifier_name:
+  # Short names that are the standard notation in ECDSA / big-number code.
+  excluded: [r, s, n, a, b, i]
+disabled_rules:
+  # Formatting is swift-format's job; these rules contradict its output.
+  - trailing_comma   # swift-format adds trailing commas to multi-line collections
+  - opening_brace    # swift-format may put `{` on its own line after a wrapped signature
+opt_in_rules:
+  - empty_count
+  - explicit_init
+  - force_unwrapping
+analyzer_rules:
+  - unused_import

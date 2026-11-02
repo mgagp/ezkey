@@ -1,7 +1,7 @@
 //
 // Ezkey - Open Source Cryptographic MFA Platform
 //
-// Copyright (c) 2025 Ezkey contributors
+// Copyright (c) 2026 Ezkey contributors
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 //
 // Module: EzkeyCryptoCodec (iOS)
@@ -151,7 +151,10 @@ enum EzkeyCryptoCodec {
     var index = hex.startIndex
     while index < hex.endIndex {
       let next = hex.index(index, offsetBy: 2)
-      bytes.append(UInt8(hex[index..<next], radix: 16)!)
+      guard let byte = UInt8(hex[index..<next], radix: 16) else {
+        preconditionFailure("Invalid hex literal: \(hex)")
+      }
+      bytes.append(byte)
       index = next
     }
     return bytes

@@ -144,6 +144,25 @@ xcrun simctl uninstall booted org.ezkey.mobile
 TEST_RUNNER_EZKEY_PURGE_PROBE=check xcodebuild test <same args> $P
 ```
 
+### Swift code standards
+
+Same bar as Java (google-java-format + Checkstyle), with the community-standard Swift tools:
+
+| Tool | Role | Config |
+|------|------|--------|
+| **swift-format** (ships with Xcode) | Formatter and style lint; Apple's tool, defaults follow the Google Swift style guide (2-space indent, 100 columns) | `ios/.swift-format` (pinned defaults) |
+| **SwiftLint** (`brew install swiftlint`) | Code-smell rules: naming, force unwrapping, XCTest messages, line length | `ios/.swiftlint.yml` (formatting rules that contradict swift-format are disabled) |
+
+```bash
+cd ezkey_mobile
+yarn ios:lint                      # check (strict, non-zero exit on any finding)
+bash scripts/ios-lint.sh --fix     # format in place, then check
+```
+
+Every Swift file starts with the repo-standard header (`Ezkey - Open Source Cryptographic MFA
+Platform`, copyright, MIT line, then module and description), mirroring the Kotlin files. Use `///`
+doc comments on types and non-trivial functions. Not yet enforced in CI (needs a macOS runner).
+
 ### Editing the Xcode project
 
 Change `project.pbxproj` and the shared scheme **only through the `xcodeproj` Ruby gem** (installed

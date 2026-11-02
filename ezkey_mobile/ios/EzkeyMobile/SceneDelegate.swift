@@ -1,6 +1,6 @@
 import React
-import React_RCTAppDelegate
 import ReactAppDependencyProvider
+import React_RCTAppDelegate
 import UIKit
 
 class SceneDelegate: RCTDefaultReactNativeFactoryDelegate, UIWindowSceneDelegate {
@@ -19,27 +19,26 @@ class SceneDelegate: RCTDefaultReactNativeFactoryDelegate, UIWindowSceneDelegate
     dependencyProvider = RCTAppDependencyProvider()
     reactNativeFactory = RCTReactNativeFactory(delegate: self)
     window = UIWindow(windowScene: windowScene)
-    
+
     #if DEBUG
-    let devMenuConfiguration = RCTDevMenuConfiguration(
-      devMenuEnabled: true,
-      shakeGestureEnabled: true,
-      keyboardShortcutsEnabled: true
-    )
-    reactNativeFactory?.devMenuConfiguration = devMenuConfiguration
+      let devMenuConfiguration = RCTDevMenuConfiguration(
+        devMenuEnabled: true,
+        shakeGestureEnabled: true,
+        keyboardShortcutsEnabled: true
+      )
+      reactNativeFactory?.devMenuConfiguration = devMenuConfiguration
     #endif
-    
+
     reactNativeFactory?.startReactNative(
       withModuleName: "EzkeyMobile",
       in: window,
       connectionOptions: connectionOptions
     )
 
-   
   }
 
-  func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
-    RCTLinkingManager.scene(scene, openURLContexts: URLContexts)
+  func scene(_ scene: UIScene, openURLContexts urlContexts: Set<UIOpenURLContext>) {
+    RCTLinkingManager.scene(scene, openURLContexts: urlContexts)
   }
 
   func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
@@ -48,9 +47,9 @@ class SceneDelegate: RCTDefaultReactNativeFactoryDelegate, UIWindowSceneDelegate
 
   override func bundleURL() -> URL? {
     #if DEBUG
-    RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: "index")
+      RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: "index")
     #else
-    Bundle.main.url(forResource: "main", withExtension: "jsbundle")
+      Bundle.main.url(forResource: "main", withExtension: "jsbundle")
     #endif
   }
 }

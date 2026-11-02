@@ -1,7 +1,7 @@
 //
 // Ezkey - Open Source Cryptographic MFA Platform
 //
-// Copyright (c) 2025 Ezkey contributors
+// Copyright (c) 2026 Ezkey contributors
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 //
 // Module: EzkeyEnrollmentKeyStore (iOS)
@@ -26,7 +26,8 @@ enum EzkeyKeyStoreError: Error, CustomStringConvertible {
 
   var description: String {
     switch self {
-    case .keychain(let status, let op): return "Keychain \(op) failed (OSStatus \(status))"
+    case .keychain(let status, let operation):
+      return "Keychain \(operation) failed (OSStatus \(status))"
     case .purgeFailed(let status): return "Reinstall key purge failed (OSStatus \(status))"
     case .secureEnclave(let error): return "Secure Enclave error: \(error)"
     case .corruptItem(let account): return "Unreadable enrollment key item \(account)"
@@ -85,7 +86,8 @@ final class EzkeyEnrollmentKeyStore {
     service: String = EzkeyEnrollmentKeyStore.defaultService,
     defaults: UserDefaults = .standard,
     secureEnclaveAvailable: Bool = EzkeyEnrollmentKeyStore.useSecureEnclave,
-    deleteAllItems: @escaping (String) -> OSStatus = EzkeyEnrollmentKeyStore.deleteAllKeychainItems(service:)
+    deleteAllItems: @escaping (String) -> OSStatus = EzkeyEnrollmentKeyStore.deleteAllKeychainItems(
+      service:)
   ) {
     self.service = service
     self.defaults = defaults
@@ -98,9 +100,9 @@ final class EzkeyEnrollmentKeyStore {
   /// (same honesty as the Android emulator). The SE path is still exercised by XCTest via injection.
   static var useSecureEnclave: Bool {
     #if targetEnvironment(simulator)
-    return false
+      return false
     #else
-    return SecureEnclave.isAvailable
+      return SecureEnclave.isAvailable
     #endif
   }
 
@@ -125,10 +127,11 @@ final class EzkeyEnrollmentKeyStore {
   }
 
   static func deleteAllKeychainItems(service: String) -> OSStatus {
-    SecItemDelete([
-      kSecClass as String: kSecClassGenericPassword,
-      kSecAttrService as String: service,
-    ] as CFDictionary)
+    SecItemDelete(
+      [
+        kSecClass as String: kSecClassGenericPassword,
+        kSecAttrService as String: service,
+      ] as CFDictionary)
   }
 
   // MARK: - Key lifecycle
@@ -143,10 +146,14 @@ final class EzkeyEnrollmentKeyStore {
       // D2: on hardware with a Secure Enclave, failure is fatal (no silent software downgrade).
       do {
         var cfError: Unmanaged<CFError>?
-        guard let access = SecAccessControlCreateWithFlags(
-          nil, kSecAttrAccessibleWhenUnlockedThisDeviceOnly, .privateKeyUsage, &cfError)
+        guard
+          let access = SecAccessControlCreateWithFlags(
+            nil, kSecAttrAccessibleWhenUnlockedThisDeviceOnly, .privateKeyUsage, &cfError)
         else {
-          throw cfError!.takeRetainedValue() as Error
+          if let error = cfError?.takeRetainedValue() {
+            throw error as Error
+          }
+          throw EzkeyKeyStoreError.keychain(errSecParam, "access control")
         }
         let key = try SecureEnclave.P256.Signing.PrivateKey(accessControl: access)
         value.append(Self.kindSecureEnclave)
@@ -159,13 +166,14 @@ final class EzkeyEnrollmentKeyStore {
       value.append(P256.Signing.PrivateKey().rawRepresentation)
     }
 
-    let status = SecItemAdd([
-      kSecClass as String: kSecClassGenericPassword,
-      kSecAttrService as String: service,
-      kSecAttrAccount as String: Self.account(for: enrollmentId),
-      kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
-      kSecValueData as String: value,
-    ] as CFDictionary, nil)
+    let status = SecItemAdd(
+      [
+        kSecClass as String: kSecClassGenericPassword,
+        kSecAttrService as String: service,
+        kSecAttrAccount as String: Self.account(for: enrollmentId),
+        kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+        kSecValueData as String: value,
+      ] as CFDictionary, nil)
     // A concurrent generate already stored a key: same "exists" semantics.
     guard status == errSecSuccess || status == errSecDuplicateItem else {
       throw EzkeyKeyStoreError.keychain(status, "add")
@@ -198,11 +206,12 @@ final class EzkeyEnrollmentKeyStore {
   /// Deletes the key if present. Missing key is success.
   func delete(enrollmentId: String) throws {
     try ensurePurged()
-    let status = SecItemDelete([
-      kSecClass as String: kSecClassGenericPassword,
-      kSecAttrService as String: service,
-      kSecAttrAccount as String: Self.account(for: enrollmentId),
-    ] as CFDictionary)
+    let status = SecItemDelete(
+      [
+        kSecClass as String: kSecClassGenericPassword,
+        kSecAttrService as String: service,
+        kSecAttrAccount as String: Self.account(for: enrollmentId),
+      ] as CFDictionary)
     guard status == errSecSuccess || status == errSecItemNotFound else {
       throw EzkeyKeyStoreError.keychain(status, "delete")
     }
@@ -210,13 +219,14 @@ final class EzkeyEnrollmentKeyStore {
 
   private func loadItem(enrollmentId: String) throws -> Data? {
     var result: CFTypeRef?
-    let status = SecItemCopyMatching([
-      kSecClass as String: kSecClassGenericPassword,
-      kSecAttrService as String: service,
-      kSecAttrAccount as String: Self.account(for: enrollmentId),
-      kSecReturnData as String: true,
-      kSecMatchLimit as String: kSecMatchLimitOne,
-    ] as CFDictionary, &result)
+    let status = SecItemCopyMatching(
+      [
+        kSecClass as String: kSecClassGenericPassword,
+        kSecAttrService as String: service,
+        kSecAttrAccount as String: Self.account(for: enrollmentId),
+        kSecReturnData as String: true,
+        kSecMatchLimit as String: kSecMatchLimitOne,
+      ] as CFDictionary, &result)
     if status == errSecItemNotFound { return nil }
     guard status == errSecSuccess, let data = result as? Data else {
       throw EzkeyKeyStoreError.keychain(status, "read")
