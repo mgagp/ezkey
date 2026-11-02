@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
@@ -241,7 +242,8 @@ class ClientIpResolverTest {
   class StrictIpValidation {
 
     @ParameterizedTest
-    @ValueSource(strings = {"203.0.113.1", "2001:db8::1", "::1", "  198.51.100.10  "})
+    @ValueSource(
+        strings = {"203.0.113.1", "2001:db8::1", "::1", "  198.51.100.10  ", "::ffff:203.0.113.1"})
     @DisplayName("accepts IPv4 and IPv6 literals (optional surrounding whitespace)")
     void acceptsIpLiterals(String candidate) {
       assertThat(ClientIpResolver.isValidIp(candidate)).isTrue();
@@ -256,9 +258,14 @@ class ClientIpResolverTest {
           "example.com",
           "203.0.113.1:8080",
           "[2001:db8::1]:8080",
-          "not-an-ip"
+          "not-an-ip",
+          "0xcb.0.113.1",
+          "3405803777",
+          "203.0.113",
+          "0313.0.0161.1",
+          "fe80::1%eth0"
         })
-    @DisplayName("rejects CIDR prefixes, wildcard, hostnames, and ip:port forms")
+    @DisplayName("rejects CIDR, wildcard, hostnames, ip:port, inet_aton shorthands, and zones")
     void rejectsNonLiterals(String candidate) {
       assertThat(ClientIpResolver.isValidIp(candidate)).isFalse();
     }
@@ -269,6 +276,54 @@ class ClientIpResolverTest {
     @DisplayName("rejects null, empty, and blank")
     void rejectsBlank(String candidate) {
       assertThat(ClientIpResolver.isValidIp(candidate)).isFalse();
+    }
+  }
+
+  @Nested
+  @DisplayName("Canonicalization and inet_aton / zone fail-closed (#1140)")
+  class Canonicalization {
+
+    @ParameterizedTest
+    @CsvSource({"2001:0db8:0:0::1, 2001:db8::1", "::ffff:203.0.113.1, 203.0.113.1"})
+    @DisplayName("canonical() compresses IPv6 and maps IPv4-mapped to IPv4")
+    void canonical_forms(String input, String expected) {
+      assertThat(ClientIpResolver.canonical(input)).isEqualTo(expected);
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+        strings = {"0xcb.0.113.1", "3405803777", "203.0.113", "0313.0.0161.1", "fe80::1%eth0"})
+    @DisplayName("inet_aton / zone XFF entries fall back to remoteAddr")
+    void inetAtonAndZone_fallbackToRemoteAddr(String badHop) {
+      when(request.getRemoteAddr()).thenReturn("10.0.0.1");
+      stubXffHeaders(badHop + ", 10.0.0.9");
+
+      String result = ClientIpResolver.resolve(request, List.of("10.0.0.0/8"));
+
+      assertThat(result).isEqualTo("10.0.0.1");
+    }
+
+    @Test
+    @DisplayName(
+        "IPv4-mapped trusted hop ::ffff:172.28.0.5 is recognized as proxy after canonicalize")
+    void ipv4MappedTrustedHop_recognizedAsProxy() {
+      when(request.getRemoteAddr()).thenReturn("172.28.0.5");
+      stubXffHeaders("198.51.100.1, 203.0.113.40, ::ffff:172.28.0.5");
+
+      String result = ClientIpResolver.resolve(request, List.of("172.28.0.5/32"));
+
+      assertThat(result).isEqualTo("203.0.113.40");
+    }
+
+    @Test
+    @DisplayName("returned client hop is canonicalized (expanded IPv6)")
+    void returnedHop_isCanonicalized() {
+      when(request.getRemoteAddr()).thenReturn("fd00::1");
+      stubXffHeaders("2001:0db8:0:0::40, fd00::9");
+
+      String result = ClientIpResolver.resolve(request, List.of("fd00::/8"));
+
+      assertThat(result).isEqualTo("2001:db8::40");
     }
   }
 

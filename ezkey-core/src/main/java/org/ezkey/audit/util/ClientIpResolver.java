@@ -12,6 +12,8 @@ package org.ezkey.audit.util;
 
 import inet.ipaddr.IPAddress;
 import inet.ipaddr.IPAddressString;
+import inet.ipaddr.IPAddressStringParameters;
+import inet.ipaddr.ipv6.IPv6Address;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Collection;
 import java.util.Enumeration;
@@ -37,10 +39,11 @@ import java.util.Enumeration;
  *       preferred.
  * </ul>
  *
- * <p>Hop validation accepts <b>IPv4 or IPv6 literals only</b> (no CIDR prefixes, no {@code *}, no
- * hostnames). Forms such as {@code ip:port} or {@code [ipv6]:port} are <b>rejected</b>
- * (fail-closed) rather than normalized — a port suffix is not a client identity for rate-limit /
- * audit keys.
+ * <p>Hop validation accepts <b>canonical IPv4 or IPv6 literals only</b>: no CIDR prefixes, no
+ * {@code *}, no hostnames, no inet_aton shorthands (hex/octal/single-integer/joined segments), no
+ * IPv6 zones ({@code %iface}). Forms such as {@code ip:port} are rejected. IPv4-mapped IPv6 ({@code
+ * ::ffff:a.b.c.d}) is accepted and <b>canonicalized</b> to the embedded IPv4 so CIDR trust and
+ * rate-limit keys stay consistent.
  *
  * <p>Uses {@code com.github.seancfoley.ipaddress} for CIDR containment checks (no DNS lookup).
  *
@@ -56,8 +59,38 @@ public final class ClientIpResolver {
   private static final String HEADER_CF_CONNECTING_IP = "CF-Connecting-IP";
   private static final String HEADER_X_FORWARDED_FOR = "X-Forwarded-For";
 
+  /**
+   * Strict single-host IP parse options: reject prefixes, wildcards, inet_aton shorthands, and IPv6
+   * zones.
+   */
+  private static final IPAddressStringParameters STRICT_IP_PARAMS = buildStrictIpParams();
+
   private ClientIpResolver() {
     // Utility class - no instantiation
+  }
+
+  private static IPAddressStringParameters buildStrictIpParams() {
+    IPAddressStringParameters.Builder builder = new IPAddressStringParameters.Builder();
+    builder
+        .allowEmpty(false)
+        .allowAll(false)
+        .allowPrefix(false)
+        .allowMask(false)
+        .allowPrefixOnly(false)
+        .allowSingleSegment(false)
+        .allow_inet_aton(false);
+    builder
+        .getIPv4AddressParametersBuilder()
+        .allow_inet_aton(false)
+        .allow_inet_aton_hex(false)
+        .allow_inet_aton_octal(false)
+        .allow_inet_aton_joined_segments(false);
+    builder
+        .getIPv6AddressParametersBuilder()
+        .allowZone(false)
+        .allowEmptyZone(false)
+        .allow_mixed_inet_aton(false);
+    return builder.toParams();
   }
 
   /**
@@ -115,7 +148,7 @@ public final class ClientIpResolver {
     if (trustCloudflareConnectingIp) {
       String cf = request.getHeader(HEADER_CF_CONNECTING_IP);
       if (cf != null && !cf.isBlank() && isValidIp(cf.trim())) {
-        return cf.trim();
+        return canonical(cf.trim());
       }
     }
 
@@ -150,6 +183,9 @@ public final class ClientIpResolver {
   /**
    * Returns true if the given address is contained in any of the trusted proxy CIDRs.
    *
+   * <p>The candidate is canonicalized (IPv4-mapped → IPv4, then {@code toCanonicalString()}) before
+   * the CIDR containment check so {@code ::ffff:172.28.0.5} matches {@code 172.28.0.5/32}.
+   *
    * @param address IP address to check
    * @param cidrs trusted proxy CIDR or single-IP strings
    * @return true when address is a single IP literal and contained in at least one CIDR
@@ -158,7 +194,7 @@ public final class ClientIpResolver {
     if (!isValidIp(address)) {
       return false;
     }
-    IPAddress remoteAddrObj = new IPAddressString(address.trim()).getAddress();
+    IPAddress remoteAddrObj = new IPAddressString(canonical(address)).getAddress();
     if (remoteAddrObj == null) {
       return false;
     }
@@ -182,7 +218,8 @@ public final class ClientIpResolver {
   /**
    * Walks X-Forwarded-For right-to-left, skipping trusted hops. Returns null when the header is
    * absent/blank (caller falls back to remoteAddr). Returns {@code remoteAddr} when any entry is
-   * invalid or the entire chain is trusted.
+   * invalid or the entire chain is trusted. Returned client hops are {@link #canonical(String)
+   * canonicalized}.
    */
   private static String resolveFromXForwardedFor(
       String xff, String remoteAddr, Collection<String> trustedProxyCidrs) {
@@ -200,31 +237,55 @@ public final class ClientIpResolver {
     for (int i = parts.length - 1; i >= 0; i--) {
       String hop = parts[i].trim();
       if (!isAddressInTrustedProxies(hop, trustedProxyCidrs)) {
-        return hop;
+        return canonical(hop);
       }
     }
     return remoteAddr;
   }
 
   /**
-   * Validates that the string is a single IPv4 or IPv6 <b>literal</b> (no DNS lookup).
+   * Validates that the string is a single IPv4 or IPv6 <b>literal</b> under strict parse options
+   * (no DNS lookup).
    *
-   * <p>Rejects CIDR prefixes ({@code 10.0.0.0/8}, {@code 203.0.113.1/32}), wildcard {@code *},
-   * hostnames, and {@code ip:port} / {@code [ipv6]:port} forms. Port-bearing forms are rejected
-   * rather than stripped so rate-limit and audit keys never silently absorb a non-identity suffix.
+   * <p>Rejects CIDR prefixes, wildcard {@code *}, hostnames, inet_aton shorthands (hex, octal,
+   * single integer, joined/short segments), IPv6 zones ({@code %iface}), and {@code ip:port} /
+   * {@code [ipv6]:port} forms.
    *
    * @param ip candidate address string (leading/trailing whitespace allowed)
-   * @return true only for a single IPv4 or IPv6 literal
+   * @return true only for a single IPv4 or IPv6 literal accepted by {@link #STRICT_IP_PARAMS}
    */
   static boolean isValidIp(String ip) {
     if (ip == null || ip.isBlank()) {
       return false;
     }
-    IPAddressString parsed = new IPAddressString(ip.trim());
+    IPAddressString parsed = new IPAddressString(ip.trim(), STRICT_IP_PARAMS);
     if (!parsed.isValid() || !parsed.isIPAddress() || parsed.isPrefixed()) {
       return false;
     }
     IPAddress addr = parsed.getAddress();
     return addr != null && !addr.isMultiple();
+  }
+
+  /**
+   * Canonicalizes a previously validated IP literal for rate-limit / audit keys and CIDR compare.
+   *
+   * <p>IPv4-mapped IPv6 ({@code ::ffff:a.b.c.d}) becomes the embedded IPv4; otherwise {@link
+   * IPAddress#toCanonicalString()} is used (e.g. {@code 2001:0db8:0:0::1} → {@code 2001:db8::1}).
+   *
+   * @param ip validated IP literal (must pass {@link #isValidIp(String)})
+   * @return canonical string form
+   */
+  static String canonical(String ip) {
+    IPAddress addr = new IPAddressString(ip.trim(), STRICT_IP_PARAMS).getAddress();
+    if (addr == null) {
+      return ip.trim();
+    }
+    if (addr.isIPv6()) {
+      IPv6Address v6 = addr.toIPv6();
+      if (v6.isIPv4Mapped()) {
+        return v6.toIPv4().toCanonicalString();
+      }
+    }
+    return addr.toCanonicalString();
   }
 }
