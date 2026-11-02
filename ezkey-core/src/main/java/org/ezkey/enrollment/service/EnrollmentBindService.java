@@ -229,24 +229,23 @@ public class EnrollmentBindService {
   private void validateAdminLinkedEnrollmentEligibility(Enrollment enrollment) {
     ezkeyAdminRepository
         .findByEnrollmentId(enrollment.getEnrollmentId())
-        .ifPresent(
-            admin -> {
-              String ineligibilityReason =
-                  eligibilityService.adminLinkedEnrollmentIneligibilityReason(admin);
-              if (ineligibilityReason != null) {
-                logger.warn(
-                    "Validation failed: Admin-linked enrollment is not eligible for bind -"
-                        + " enrollmentId: {}, adminId: {}, lifecycleStatus: {}, active: {},"
-                        + " reason: {}",
-                    enrollment.getEnrollmentId(),
-                    admin.getAdminId(),
-                    admin.getLifecycleStatus(),
-                    admin.getActive(),
-                    ineligibilityReason);
-                throw new EnrollmentBindingFailedException(
-                    "Enrollment binding failed: " + ineligibilityReason);
-              }
-            });
+        .ifPresent(admin -> {
+          String ineligibilityReason =
+              eligibilityService.adminLinkedEnrollmentIneligibilityReason(admin);
+          if (ineligibilityReason != null) {
+            logger.warn(
+                "Validation failed: Admin-linked enrollment is not eligible for bind -"
+                    + " enrollmentId: {}, adminId: {}, lifecycleStatus: {}, active: {},"
+                    + " reason: {}",
+                enrollment.getEnrollmentId(),
+                admin.getAdminId(),
+                admin.getLifecycleStatus(),
+                admin.getActive(),
+                ineligibilityReason);
+            throw new EnrollmentBindingFailedException(
+                "Enrollment binding failed: " + ineligibilityReason);
+          }
+        });
   }
 
   /**

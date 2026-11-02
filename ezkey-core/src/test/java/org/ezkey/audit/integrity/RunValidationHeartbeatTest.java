@@ -86,27 +86,24 @@ class RunValidationHeartbeatTest {
     when(nightlyProperties.isEnabled()).thenReturn(true);
     when(entryIntegrityViolationClassifier.collectRangeViolations(
             eq(auditLogRepository), any(), any(), any()))
-        .thenAnswer(
-            inv -> {
-              Runnable hb = inv.getArgument(3);
-              if (hb != null) {
-                hb.run();
-              }
-              return new EntryIntegrityViolationClassifier.ViolationCollection(
-                  List.of(), List.of());
-            });
+        .thenAnswer(inv -> {
+          Runnable hb = inv.getArgument(3);
+          if (hb != null) {
+            hb.run();
+          }
+          return new EntryIntegrityViolationClassifier.ViolationCollection(List.of(), List.of());
+        });
     when(chainVerificationServiceMock.verifyChain(any(), any(), any()))
-        .thenAnswer(
-            inv -> {
-              Runnable hb = inv.getArgument(2);
-              if (hb != null) {
-                hb.run();
-                hb.run();
-              }
-              return new AuditChainVerificationService.ChainVerificationReport(
-                  0, 0, 0, 0, 0, List.of(), List.of(), List.of(), null, null, null, null, true,
-                  true, "OK");
-            });
+        .thenAnswer(inv -> {
+          Runnable hb = inv.getArgument(2);
+          if (hb != null) {
+            hb.run();
+            hb.run();
+          }
+          return new AuditChainVerificationService.ChainVerificationReport(
+              0, 0, 0, 0, 0, List.of(), List.of(), List.of(), null, null, null, null, true, true,
+              "OK");
+        });
 
     RetroactiveIntegrityValidationService validationService =
         new RetroactiveIntegrityValidationService(

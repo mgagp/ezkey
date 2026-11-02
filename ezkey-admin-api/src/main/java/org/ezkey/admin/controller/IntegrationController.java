@@ -489,7 +489,7 @@ public class IntegrationController {
         @ApiResponse(
             responseCode = "204",
             description = "Integration retired successfully",
-            content = @io.swagger.v3.oas.annotations.media.Content()),
+            content = @io.swagger.v3.oas.annotations.media.Content),
         @ApiResponse(
             responseCode = "403",
             description = "System integration cannot be retired",
@@ -584,7 +584,7 @@ public class IntegrationController {
         @ApiResponse(
             responseCode = "204",
             description = "Integration deleted successfully",
-            content = @io.swagger.v3.oas.annotations.media.Content()),
+            content = @io.swagger.v3.oas.annotations.media.Content),
         @ApiResponse(
             responseCode = "403",
             description = "System integration cannot be deleted",
@@ -692,10 +692,8 @@ public class IntegrationController {
       // Load admin by ID from AdminPrincipal
       return adminRepository
           .findById(adminPrincipal.adminId())
-          .orElseThrow(
-              () ->
-                  new IllegalStateException(
-                      "Admin not found with ID: " + adminPrincipal.adminId()));
+          .orElseThrow(() ->
+              new IllegalStateException("Admin not found with ID: " + adminPrincipal.adminId()));
     }
 
     // Fallback for backward compatibility (should not happen with new auth flow)

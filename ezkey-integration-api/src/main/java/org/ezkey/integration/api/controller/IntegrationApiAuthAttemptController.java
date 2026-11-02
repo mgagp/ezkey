@@ -625,10 +625,9 @@ public class IntegrationApiAuthAttemptController {
       Enrollment enrollmentForPath1 =
           enrollmentRepository
               .findById(enrollmentId)
-              .orElseThrow(
-                  () ->
-                      new AuthAttemptCreateValidationException(
-                          "Enrollment not found for ID: " + enrollmentId));
+              .orElseThrow(() ->
+                  new AuthAttemptCreateValidationException(
+                      "Enrollment not found for ID: " + enrollmentId));
       if (!integrationIdForPath1.equals(enrollmentForPath1.getIntegrationId())) {
         logger.warn(
             "Integration API cross-integration access attempt: API key from integration {} tried to"

@@ -381,10 +381,9 @@ public class EnrollmentService {
     Integration integration =
         integrationRepository
             .findById(request.getIntegrationId())
-            .orElseThrow(
-                () ->
-                    new EnrollmentCreateValidationException(
-                        "Integration not found: " + request.getIntegrationId()));
+            .orElseThrow(() ->
+                new EnrollmentCreateValidationException(
+                    "Integration not found: " + request.getIntegrationId()));
 
     if (Boolean.TRUE.equals(integration.getIsSystemIntegration())) {
       logger.warn(

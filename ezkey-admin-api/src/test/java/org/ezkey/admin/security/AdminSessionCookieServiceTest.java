@@ -42,10 +42,9 @@ class AdminSessionCookieServiceTest {
     assertFalse(setCookie.contains("EZKEY_ADMIN_API_SESSION"));
     assertTrue(
         setCookies.stream()
-            .anyMatch(
-                c ->
-                    c.startsWith("EZKEY_ADMIN_SESSION=")
-                        && c.contains("Secure")
-                        && c.contains("SameSite=Strict")));
+            .anyMatch(c ->
+                c.startsWith("EZKEY_ADMIN_SESSION=")
+                    && c.contains("Secure")
+                    && c.contains("SameSite=Strict")));
   }
 }

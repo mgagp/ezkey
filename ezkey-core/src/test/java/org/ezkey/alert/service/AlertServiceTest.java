@@ -65,12 +65,11 @@ class AlertServiceTest {
     when(alertRepository.findByDedupeKeyAndStatus("AUDIT_CHAIN_GAP_PENDING:42", AlertStatus.OPEN))
         .thenReturn(Optional.empty());
     when(alertRepository.saveAndFlush(any(Alert.class)))
-        .thenAnswer(
-            invocation -> {
-              Alert saved = invocation.getArgument(0);
-              saved.setAlertId(101L);
-              return saved;
-            });
+        .thenAnswer(invocation -> {
+          Alert saved = invocation.getArgument(0);
+          saved.setAlertId(101L);
+          return saved;
+        });
 
     Alert result =
         alertService.raiseOrTouch(

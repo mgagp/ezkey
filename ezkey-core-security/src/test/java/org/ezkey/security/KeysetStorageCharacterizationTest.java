@@ -525,18 +525,16 @@ class KeysetStorageCharacterizationTest {
     when(repository.findKeyset()).thenAnswer(_ -> Optional.ofNullable(storedBlob.get()));
     when(repository.keysetExists()).thenAnswer(_ -> storedBlob.get() != null);
     when(repository.insertSingletonIfAbsent(any(), any(), any()))
-        .thenAnswer(
-            invocation -> {
-              if (storedBlob.get() != null) {
-                return 0;
-              }
-              KeysetBlob blob =
-                  new KeysetBlob(invocation.getArgument(0), invocation.getArgument(2));
-              blob.setLastUpdatedAt(invocation.getArgument(1));
-              blob.setVersion(1L);
-              storedBlob.set(blob);
-              return 1;
-            });
+        .thenAnswer(invocation -> {
+          if (storedBlob.get() != null) {
+            return 0;
+          }
+          KeysetBlob blob = new KeysetBlob(invocation.getArgument(0), invocation.getArgument(2));
+          blob.setLastUpdatedAt(invocation.getArgument(1));
+          blob.setVersion(1L);
+          storedBlob.set(blob);
+          return 1;
+        });
     when(repository.findVersion())
         .thenAnswer(_ -> Optional.ofNullable(storedBlob.get()).map(KeysetBlob::getVersion));
     org.mockito.stubbing.Answer<KeysetBlob> bumpVersion =

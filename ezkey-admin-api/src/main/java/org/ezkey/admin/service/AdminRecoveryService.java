@@ -298,10 +298,9 @@ public class AdminRecoveryService {
     AdminToken token =
         tokenRepository
             .findByBearerTokenHashAndActiveTrue(tokenHash)
-            .orElseThrow(
-                () ->
-                    new org.ezkey.admin.exception.AuthenticationException(
-                        "Invalid or expired recovery token"));
+            .orElseThrow(() ->
+                new org.ezkey.admin.exception.AuthenticationException(
+                    "Invalid or expired recovery token"));
 
     // 3. Check expiration
     if (token.getExpiresAt().isBefore(OffsetDateTime.now())) {
@@ -336,14 +335,13 @@ public class AdminRecoveryService {
     }
     tokenRepository
         .findByBearerTokenHashAndActiveTrue(tokenHash)
-        .ifPresent(
-            token -> {
-              token.setActive(false);
-              tokenRepository.save(token);
-              logger.info(
-                  "✅ Recovery token deactivated after enrollment reset for admin: {}",
-                  token.getAdmin() != null ? token.getAdmin().getUsername() : "unknown");
-            });
+        .ifPresent(token -> {
+          token.setActive(false);
+          tokenRepository.save(token);
+          logger.info(
+              "✅ Recovery token deactivated after enrollment reset for admin: {}",
+              token.getAdmin() != null ? token.getAdmin().getUsername() : "unknown");
+        });
   }
 
   /**

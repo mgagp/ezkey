@@ -201,20 +201,19 @@ public class EvaluatorTempSessionService {
     }
     return adminRepository
         .findByEnrollmentId(enrollmentId)
-        .map(
-            admin -> {
-              int revoked =
-                  tokenRepository.deactivateTokensForAdminByPurpose(
-                      admin.getAdminId(), AdminTokenPurpose.EVALUATOR_TEMP);
-              if (revoked > 0) {
-                logger.info(
-                    "Superseded {} EVALUATOR_TEMP token(s) for adminId={} (enrollmentId={})",
-                    revoked,
-                    admin.getAdminId(),
-                    enrollmentId);
-              }
-              return revoked;
-            })
+        .map(admin -> {
+          int revoked =
+              tokenRepository.deactivateTokensForAdminByPurpose(
+                  admin.getAdminId(), AdminTokenPurpose.EVALUATOR_TEMP);
+          if (revoked > 0) {
+            logger.info(
+                "Superseded {} EVALUATOR_TEMP token(s) for adminId={} (enrollmentId={})",
+                revoked,
+                admin.getAdminId(),
+                enrollmentId);
+          }
+          return revoked;
+        })
         .orElse(0);
   }
 

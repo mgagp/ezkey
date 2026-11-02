@@ -209,7 +209,7 @@ public class AuthAttemptController {
         @ApiResponse(
             responseCode = "204",
             description = "No pending authentication attempts",
-            content = @io.swagger.v3.oas.annotations.media.Content()),
+            content = @io.swagger.v3.oas.annotations.media.Content),
         @ApiResponse(
             responseCode = "400",
             description = "Invalid request or enrollment proof token",
@@ -221,7 +221,7 @@ public class AuthAttemptController {
         @ApiResponse(
             responseCode = "429",
             description = "Rate limit exceeded",
-            content = @io.swagger.v3.oas.annotations.media.Content())
+            content = @io.swagger.v3.oas.annotations.media.Content)
       })
   public ResponseEntity<AuthAttemptPendingResponseDto> pending(
       @Valid @RequestBody final AuthAttemptPendingRequestDto request,

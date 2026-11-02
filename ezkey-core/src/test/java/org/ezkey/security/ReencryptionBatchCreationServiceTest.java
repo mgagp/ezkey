@@ -70,14 +70,13 @@ class ReencryptionBatchCreationServiceTest {
     when(batchRepository.findAnyActiveBatchesByTargetAndOldKey(any(), any(), any()))
         .thenReturn(List.of());
     when(batchRepository.save(any(ReencryptionBatch.class)))
-        .thenAnswer(
-            invocation -> {
-              ReencryptionBatch batch = invocation.getArgument(0);
-              if (batch.getBatchId() == null) {
-                batch.setBatchId(1);
-              }
-              return batch;
-            });
+        .thenAnswer(invocation -> {
+          ReencryptionBatch batch = invocation.getArgument(0);
+          if (batch.getBatchId() == null) {
+            batch.setBatchId(1);
+          }
+          return batch;
+        });
   }
 
   @Test

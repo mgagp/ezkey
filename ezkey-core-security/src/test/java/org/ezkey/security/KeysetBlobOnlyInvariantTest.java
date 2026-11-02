@@ -402,13 +402,12 @@ class KeysetBlobOnlyInvariantTest {
       when(repository.save(any(KeysetBlob.class))).thenAnswer(casPersistFails);
       when(repository.saveAndFlush(any(KeysetBlob.class))).thenAnswer(casPersistFails);
       when(repository.findKeyset())
-          .thenAnswer(
-              invocation -> {
-                if (saveAttempted.get()) {
-                  throw new DataAccessResourceFailureException("simulated reload DB outage");
-                }
-                return Optional.ofNullable(storedBlob.get());
-              });
+          .thenAnswer(invocation -> {
+            if (saveAttempted.get()) {
+              throw new DataAccessResourceFailureException("simulated reload DB outage");
+            }
+            return Optional.ofNullable(storedBlob.get());
+          });
 
       assertThrows(IllegalStateException.class, manager::rotateKey);
       assertEquals(
@@ -441,23 +440,22 @@ class KeysetBlobOnlyInvariantTest {
       AtomicBoolean peerInstalledBetween = new AtomicBoolean(false);
 
       when(repository.findKeyset())
-          .thenAnswer(
-              invocation -> {
-                int n = findsAfterInit.incrementAndGet();
-                if (n == 1) {
-                  // Mutation re-read — still the boot blob.
-                  return Optional.ofNullable(storedBlob.get());
-                }
-                if (n == 2 && !peerInstalledBetween.get()) {
-                  // Save-time find: peer committed after re-read. Hibernate @Version on this
-                  // freshly loaded entity would match; only app version==databaseKeysetVersion
-                  // pre-check rejects the overwrite (B2).
-                  peer.blob().setVersion(storedBlob.get().getVersion() + 1);
-                  storedBlob.set(peer.blob());
-                  peerInstalledBetween.set(true);
-                }
-                return Optional.ofNullable(storedBlob.get());
-              });
+          .thenAnswer(invocation -> {
+            int n = findsAfterInit.incrementAndGet();
+            if (n == 1) {
+              // Mutation re-read — still the boot blob.
+              return Optional.ofNullable(storedBlob.get());
+            }
+            if (n == 2 && !peerInstalledBetween.get()) {
+              // Save-time find: peer committed after re-read. Hibernate @Version on this
+              // freshly loaded entity would match; only app version==databaseKeysetVersion
+              // pre-check rejects the overwrite (B2).
+              peer.blob().setVersion(storedBlob.get().getVersion() + 1);
+              storedBlob.set(peer.blob());
+              peerInstalledBetween.set(true);
+            }
+            return Optional.ofNullable(storedBlob.get());
+          });
 
       assertThrows(IllegalStateException.class, manager::rotateKey);
       assertTrue(peerInstalledBetween.get(), "peer must win between re-read and save");
@@ -643,11 +641,10 @@ class KeysetBlobOnlyInvariantTest {
       verify(repository, never()).save(any(KeysetBlob.class));
       assertTrue(
           logCapture.list.stream()
-              .anyMatch(
-                  event ->
-                      event.getLevel() == Level.WARN
-                          && event.getFormattedMessage().contains("Failed to reload keyset")
-                          && event.getFormattedMessage().contains("simulated tick reload outage")),
+              .anyMatch(event ->
+                  event.getLevel() == Level.WARN
+                      && event.getFormattedMessage().contains("Failed to reload keyset")
+                      && event.getFormattedMessage().contains("simulated tick reload outage")),
           "reload-step DB error must be surfaced in logs");
     } finally {
       tinkLogger.detachAppender(logCapture);
@@ -703,14 +700,13 @@ class KeysetBlobOnlyInvariantTest {
     when(repository.findVersion())
         .thenAnswer(_ -> Optional.ofNullable(storedBlob.get()).map(KeysetBlob::getVersion));
     when(repository.findKeyset())
-        .thenAnswer(
-            invocation -> {
-              // First finds empty (enter wait); then legacy appears (must fail closed, M13).
-              if (finds.incrementAndGet() >= 2) {
-                storedBlob.set(legacy.blob());
-              }
-              return Optional.ofNullable(storedBlob.get());
-            });
+        .thenAnswer(invocation -> {
+          // First finds empty (enter wait); then legacy appears (must fail closed, M13).
+          if (finds.incrementAndGet() >= 2) {
+            storedBlob.set(legacy.blob());
+          }
+          return Optional.ofNullable(storedBlob.get());
+        });
 
     TinkProperties properties = baseProperties(masterKeyPath, keysetPath);
     properties.setRequired(true);
@@ -1007,18 +1003,16 @@ class KeysetBlobOnlyInvariantTest {
     when(repository.findKeyset()).thenAnswer(_ -> Optional.ofNullable(storedBlob.get()));
     when(repository.keysetExists()).thenAnswer(_ -> storedBlob.get() != null);
     when(repository.insertSingletonIfAbsent(any(), any(), any()))
-        .thenAnswer(
-            invocation -> {
-              if (storedBlob.get() != null) {
-                return 0;
-              }
-              KeysetBlob blob =
-                  new KeysetBlob(invocation.getArgument(0), invocation.getArgument(2));
-              blob.setLastUpdatedAt(invocation.getArgument(1));
-              blob.setVersion(1L);
-              storedBlob.set(blob);
-              return 1;
-            });
+        .thenAnswer(invocation -> {
+          if (storedBlob.get() != null) {
+            return 0;
+          }
+          KeysetBlob blob = new KeysetBlob(invocation.getArgument(0), invocation.getArgument(2));
+          blob.setLastUpdatedAt(invocation.getArgument(1));
+          blob.setVersion(1L);
+          storedBlob.set(blob);
+          return 1;
+        });
     when(repository.findVersion())
         .thenAnswer(_ -> Optional.ofNullable(storedBlob.get()).map(KeysetBlob::getVersion));
     org.mockito.stubbing.Answer<KeysetBlob> hibernateRealisticSave =

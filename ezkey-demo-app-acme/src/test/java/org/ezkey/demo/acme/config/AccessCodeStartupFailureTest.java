@@ -23,16 +23,15 @@ class AccessCodeStartupFailureTest {
   void shouldFailContextStartupWhenAccessCodeTooShort() {
     SpringApplication app = new SpringApplication(DemoAcmeApplication.class);
     Throwable thrown =
-        catchThrowable(
-            () ->
-                app.run(
-                    "--server.port=0",
-                    "--spring.main.web-application-type=none",
-                    "--ezkey.rate-limit.enabled=false",
-                    "--ezkey.access-codes.bad.code=abcd",
-                    "--ezkey.access-codes.bad.integration-key=ikey",
-                    "--ezkey.access-codes.bad.secret-key=skey",
-                    "--ezkey.access-codes.bad.label=Bad"));
+        catchThrowable(() ->
+            app.run(
+                "--server.port=0",
+                "--spring.main.web-application-type=none",
+                "--ezkey.rate-limit.enabled=false",
+                "--ezkey.access-codes.bad.code=abcd",
+                "--ezkey.access-codes.bad.integration-key=ikey",
+                "--ezkey.access-codes.bad.secret-key=skey",
+                "--ezkey.access-codes.bad.label=Bad"));
 
     assertThat(rootCause(thrown))
         .isInstanceOf(IllegalStateException.class)
@@ -43,20 +42,19 @@ class AccessCodeStartupFailureTest {
   void shouldFailContextStartupWhenAccessCodesDuplicate() {
     SpringApplication app = new SpringApplication(DemoAcmeApplication.class);
     Throwable thrown =
-        catchThrowable(
-            () ->
-                app.run(
-                    "--server.port=0",
-                    "--spring.main.web-application-type=none",
-                    "--ezkey.rate-limit.enabled=false",
-                    "--ezkey.access-codes.a.code=0123456789abcdef0123456789abcdef",
-                    "--ezkey.access-codes.a.integration-key=ikey-a",
-                    "--ezkey.access-codes.a.secret-key=skey-a",
-                    "--ezkey.access-codes.a.label=A",
-                    "--ezkey.access-codes.b.code=0123456789abcdef0123456789abcdef",
-                    "--ezkey.access-codes.b.integration-key=ikey-b",
-                    "--ezkey.access-codes.b.secret-key=skey-b",
-                    "--ezkey.access-codes.b.label=B"));
+        catchThrowable(() ->
+            app.run(
+                "--server.port=0",
+                "--spring.main.web-application-type=none",
+                "--ezkey.rate-limit.enabled=false",
+                "--ezkey.access-codes.a.code=0123456789abcdef0123456789abcdef",
+                "--ezkey.access-codes.a.integration-key=ikey-a",
+                "--ezkey.access-codes.a.secret-key=skey-a",
+                "--ezkey.access-codes.a.label=A",
+                "--ezkey.access-codes.b.code=0123456789abcdef0123456789abcdef",
+                "--ezkey.access-codes.b.integration-key=ikey-b",
+                "--ezkey.access-codes.b.secret-key=skey-b",
+                "--ezkey.access-codes.b.label=B"));
 
     assertThat(rootCause(thrown))
         .isInstanceOf(IllegalStateException.class)

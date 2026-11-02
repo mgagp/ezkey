@@ -120,19 +120,17 @@ class ManagementPortSeparationTest {
       http.sessionManagement(
               session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
           .requestCache(cache -> cache.requestCache(new NullRequestCache()))
-          .authorizeHttpRequests(
-              authz ->
-                  authz
-                      .dispatcherTypeMatchers(DispatcherType.ERROR)
-                      .permitAll()
-                      .requestMatchers("/actuator/**")
-                      .permitAll()
-                      .anyRequest()
-                      .authenticated())
-          .exceptionHandling(
-              exceptions ->
-                  exceptions.authenticationEntryPoint(
-                      new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+          .authorizeHttpRequests(authz ->
+              authz
+                  .dispatcherTypeMatchers(DispatcherType.ERROR)
+                  .permitAll()
+                  .requestMatchers("/actuator/**")
+                  .permitAll()
+                  .anyRequest()
+                  .authenticated())
+          .exceptionHandling(exceptions ->
+              exceptions.authenticationEntryPoint(
+                  new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
           .httpBasic(httpBasic -> httpBasic.disable())
           .formLogin(formLogin -> formLogin.disable());
       return http.build();

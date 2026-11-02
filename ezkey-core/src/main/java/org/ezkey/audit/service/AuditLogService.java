@@ -137,31 +137,30 @@ public class AuditLogService {
    */
   public void log(AuditLog auditLog) {
     try {
-      requiresNewTx.execute(
-          _ -> {
-            if (auditLog.getInstanceId() == null) {
-              auditLog.setInstanceId(auditHmacService.getInstanceId());
-            }
+      requiresNewTx.execute(_ -> {
+        if (auditLog.getInstanceId() == null) {
+          auditLog.setInstanceId(auditHmacService.getInstanceId());
+        }
 
-            // Application owns created_at at microsecond precision (signed == stored).
-            OffsetDateTime createdAt =
-                auditLog.getCreatedAt() != null ? auditLog.getCreatedAt() : OffsetDateTime.now();
-            auditLog.setCreatedAt(createdAt.truncatedTo(ChronoUnit.MICROS));
+        // Application owns created_at at microsecond precision (signed == stored).
+        OffsetDateTime createdAt =
+            auditLog.getCreatedAt() != null ? auditLog.getCreatedAt() : OffsetDateTime.now();
+        auditLog.setCreatedAt(createdAt.truncatedTo(ChronoUnit.MICROS));
 
-            // Pre-allocate identity so the canonical form can include audit_log_id before INSERT.
-            if (auditLog.getAuditLogId() == null) {
-              auditLog.setAuditLogId(auditLogRepository.nextAuditLogId());
-            }
+        // Pre-allocate identity so the canonical form can include audit_log_id before INSERT.
+        if (auditLog.getAuditLogId() == null) {
+          auditLog.setAuditLogId(auditLogRepository.nextAuditLogId());
+        }
 
-            if (auditLog.getEntryHmac() == null && auditHmacService.isActive()) {
-              auditLog.setIntegrationIdHmacSnapshot(auditLog.getIntegrationId());
-              auditLog.setEnrollmentIdHmacSnapshot(auditLog.getEnrollmentId());
-              auditLog.setEntryHmac(auditHmacService.computeHmac(auditLog));
-            }
+        if (auditLog.getEntryHmac() == null && auditHmacService.isActive()) {
+          auditLog.setIntegrationIdHmacSnapshot(auditLog.getIntegrationId());
+          auditLog.setEnrollmentIdHmacSnapshot(auditLog.getEnrollmentId());
+          auditLog.setEntryHmac(auditHmacService.computeHmac(auditLog));
+        }
 
-            auditLogRepository.save(auditLog);
-            return null;
-          });
+        auditLogRepository.save(auditLog);
+        return null;
+      });
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Failed to save audit log: {}", e.getMessage(), e);
     }

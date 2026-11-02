@@ -114,12 +114,11 @@ public class TinkKeyManager implements KeyManagementOperations {
 
   /** Single-thread executor for throttled keyset version checks outside the read lock. */
   private final ExecutorService keysetCheckExecutor =
-      Executors.newSingleThreadExecutor(
-          runnable -> {
-            Thread thread = new Thread(runnable, "tink-keyset-version-check");
-            thread.setDaemon(true);
-            return thread;
-          });
+      Executors.newSingleThreadExecutor(runnable -> {
+        Thread thread = new Thread(runnable, "tink-keyset-version-check");
+        thread.setDaemon(true);
+        return thread;
+      });
 
   /** Prevents overlapping async keyset version checks. */
   private final AtomicBoolean keysetCheckScheduled = new AtomicBoolean(false);
@@ -501,16 +500,15 @@ public class TinkKeyManager implements KeyManagementOperations {
     }
 
     lastDatabaseCheckTime = now;
-    keysetCheckExecutor.execute(
-        () -> {
-          try {
-            CHECKING_DATABASE.set(true);
-            checkAndReloadKeysetIfNeeded();
-          } finally {
-            CHECKING_DATABASE.set(false);
-            keysetCheckScheduled.set(false);
-          }
-        });
+    keysetCheckExecutor.execute(() -> {
+      try {
+        CHECKING_DATABASE.set(true);
+        checkAndReloadKeysetIfNeeded();
+      } finally {
+        CHECKING_DATABASE.set(false);
+        keysetCheckScheduled.set(false);
+      }
+    });
   }
 
   private void checkAndReloadKeysetIfNeeded() {

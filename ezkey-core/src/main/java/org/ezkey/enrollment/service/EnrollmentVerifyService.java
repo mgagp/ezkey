@@ -165,14 +165,12 @@ public class EnrollmentVerifyService {
     Enrollment enrollment =
         enrollmentRepository
             .findById(request.getEnrollmentId())
-            .orElseThrow(
-                () -> {
-                  logger.warn(
-                      "Validation failed: Enrollment not found for ID: {}",
-                      request.getEnrollmentId());
-                  return new EnrollmentVerifyStateConflictException(
-                      "Enrollment not available for verification");
-                });
+            .orElseThrow(() -> {
+              logger.warn(
+                  "Validation failed: Enrollment not found for ID: {}", request.getEnrollmentId());
+              return new EnrollmentVerifyStateConflictException(
+                  "Enrollment not available for verification");
+            });
 
     logger.debug(
         "Enrollment found: ID={}, Status={}", enrollment.getEnrollmentId(), enrollment.getStatus());
@@ -229,24 +227,23 @@ public class EnrollmentVerifyService {
   private void validateAdminLinkedEnrollmentEligibility(Enrollment enrollment) {
     ezkeyAdminRepository
         .findByEnrollmentId(enrollment.getEnrollmentId())
-        .ifPresent(
-            admin -> {
-              String ineligibilityReason =
-                  eligibilityService.adminLinkedEnrollmentIneligibilityReason(admin);
-              if (ineligibilityReason != null) {
-                logger.warn(
-                    "Validation failed: Admin-linked enrollment is not eligible for verify -"
-                        + " enrollmentId: {}, adminId: {}, lifecycleStatus: {}, active: {},"
-                        + " reason: {}",
-                    enrollment.getEnrollmentId(),
-                    admin.getAdminId(),
-                    admin.getLifecycleStatus(),
-                    admin.getActive(),
-                    ineligibilityReason);
-                throw new EnrollmentVerifyFailedException(
-                    "Enrollment verification failed: " + ineligibilityReason);
-              }
-            });
+        .ifPresent(admin -> {
+          String ineligibilityReason =
+              eligibilityService.adminLinkedEnrollmentIneligibilityReason(admin);
+          if (ineligibilityReason != null) {
+            logger.warn(
+                "Validation failed: Admin-linked enrollment is not eligible for verify -"
+                    + " enrollmentId: {}, adminId: {}, lifecycleStatus: {}, active: {},"
+                    + " reason: {}",
+                enrollment.getEnrollmentId(),
+                admin.getAdminId(),
+                admin.getLifecycleStatus(),
+                admin.getActive(),
+                ineligibilityReason);
+            throw new EnrollmentVerifyFailedException(
+                "Enrollment verification failed: " + ineligibilityReason);
+          }
+        });
   }
 
   /**

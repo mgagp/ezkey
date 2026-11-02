@@ -454,13 +454,12 @@ class AuthAttemptControllerTest {
     assertEquals("Enrollment is not active for authentication.", exception.getMessage());
     verify(auditLogService)
         .log(
-            argThat(
-                (AuditLog auditLog) ->
-                    auditLog.getEventStatus() == EventStatus.FAILURE
-                        && "auth_attempt_creation_failed".equals(auditLog.getEventAction())
-                        && "Enrollment is not active for authentication."
-                            .equals(auditLog.getErrorMessage())
-                        && Integer.valueOf(123).equals(auditLog.getEnrollmentId())
-                        && Integer.valueOf(456).equals(auditLog.getIntegrationId())));
+            argThat((AuditLog auditLog) ->
+                auditLog.getEventStatus() == EventStatus.FAILURE
+                    && "auth_attempt_creation_failed".equals(auditLog.getEventAction())
+                    && "Enrollment is not active for authentication."
+                        .equals(auditLog.getErrorMessage())
+                    && Integer.valueOf(123).equals(auditLog.getEnrollmentId())
+                    && Integer.valueOf(456).equals(auditLog.getIntegrationId())));
   }
 }

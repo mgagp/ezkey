@@ -57,13 +57,12 @@ class JavaMelodyStartupGuardConfigTest {
   void contextFailsWhenManagementPortEqualsBusinessPort() {
     SpringApplication app = new SpringApplication(DemoAcmeApplication.class);
     Throwable thrown =
-        org.assertj.core.api.Assertions.catchThrowable(
-            () ->
-                app.run(
-                    "--server.port=18082",
-                    "--management.server.port=18082",
-                    "--spring.main.web-application-type=none",
-                    "--ezkey.rate-limit.enabled=false"));
+        org.assertj.core.api.Assertions.catchThrowable(() ->
+            app.run(
+                "--server.port=18082",
+                "--management.server.port=18082",
+                "--spring.main.web-application-type=none",
+                "--ezkey.rate-limit.enabled=false"));
 
     assertThat(rootCause(thrown))
         .isInstanceOf(IllegalStateException.class)

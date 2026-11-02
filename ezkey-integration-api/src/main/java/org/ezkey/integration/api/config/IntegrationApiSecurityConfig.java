@@ -77,19 +77,16 @@ public class IntegrationApiSecurityConfig {
         .sessionManagement(
             session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .requestCache(cache -> cache.requestCache(new NullRequestCache()))
-        .authorizeHttpRequests(
-            authz ->
-                authz
-                    .requestMatchers("/actuator/**")
-                    .permitAll()
-                    .requestMatchers("/swagger-ui/**", "/api-docs/**")
-                    .permitAll()
-                    .anyRequest()
-                    .authenticated())
-        .exceptionHandling(
-            exceptions ->
-                exceptions.authenticationEntryPoint(
-                    new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+        .authorizeHttpRequests(authz ->
+            authz
+                .requestMatchers("/actuator/**")
+                .permitAll()
+                .requestMatchers("/swagger-ui/**", "/api-docs/**")
+                .permitAll()
+                .anyRequest()
+                .authenticated())
+        .exceptionHandling(exceptions ->
+            exceptions.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
         .httpBasic(httpBasic -> httpBasic.disable())
         .formLogin(formLogin -> formLogin.disable());
 

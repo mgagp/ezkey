@@ -60,11 +60,10 @@ class InitialGlobalAdminServiceLoggingTest {
     service = new InitialGlobalAdminService(adminRepository, properties, lockingTaskExecutor);
 
     when(lockingTaskExecutor.executeWithLock(anyString(), any(Duration.class), any(Runnable.class)))
-        .thenAnswer(
-            invocation -> {
-              invocation.getArgument(2, Runnable.class).run();
-              return true;
-            });
+        .thenAnswer(invocation -> {
+          invocation.getArgument(2, Runnable.class).run();
+          return true;
+        });
 
     adminLogger = (Logger) LoggerFactory.getLogger(InitialGlobalAdminService.class);
     logAppender = new ListAppender<>();

@@ -75,10 +75,9 @@ public class ScheduledJobLastRunService {
   private ScheduledJobLastRun loadOrThrow(ScheduledJobKey jobKey) {
     return repository
         .findById(jobKey)
-        .orElseThrow(
-            () ->
-                new IllegalStateException(
-                    "Missing scheduled job registry row for key: " + jobKey.name()));
+        .orElseThrow(() ->
+            new IllegalStateException(
+                "Missing scheduled job registry row for key: " + jobKey.name()));
   }
 
   private static String truncate(String value, int maxLen) {

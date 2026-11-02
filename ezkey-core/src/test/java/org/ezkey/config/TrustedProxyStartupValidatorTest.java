@@ -37,10 +37,8 @@ class TrustedProxyStartupValidatorTest {
   @Test
   @DisplayName("enforceRequired accepts valid CIDR list when required")
   void acceptsValidCidrsWhenRequired() {
-    assertDoesNotThrow(
-        () ->
-            TrustedProxyStartupValidator.enforceRequired(
-                true, List.of("10.0.0.0/8", "172.16.0.0/12")));
+    assertDoesNotThrow(() ->
+        TrustedProxyStartupValidator.enforceRequired(true, List.of("10.0.0.0/8", "172.16.0.0/12")));
   }
 
   @Test

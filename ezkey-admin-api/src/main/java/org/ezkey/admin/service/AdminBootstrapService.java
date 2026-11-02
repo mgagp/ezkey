@@ -315,11 +315,10 @@ public class AdminBootstrapService {
     EzkeyAdmin globalAdmin =
         adminRepository
             .findByUsername(initialGlobalAdminProperties.getUsername())
-            .orElseThrow(
-                () ->
-                    new RuntimeException(
-                        "Initial global admin not found: "
-                            + initialGlobalAdminProperties.getUsername()));
+            .orElseThrow(() ->
+                new RuntimeException(
+                    "Initial global admin not found: "
+                        + initialGlobalAdminProperties.getUsername()));
 
     // Create System Integration
     Integration systemIntegration = new Integration();
@@ -350,11 +349,10 @@ public class AdminBootstrapService {
     EzkeyAdmin globalAdmin =
         adminRepository
             .findByUsername(initialGlobalAdminProperties.getUsername())
-            .orElseThrow(
-                () ->
-                    new RuntimeException(
-                        "Initial global admin not found: "
-                            + initialGlobalAdminProperties.getUsername()));
+            .orElseThrow(() ->
+                new RuntimeException(
+                    "Initial global admin not found: "
+                        + initialGlobalAdminProperties.getUsername()));
 
     // Check if admin already has enrollment
     if (globalAdmin.getEnrollment() != null) {
@@ -408,11 +406,10 @@ public class AdminBootstrapService {
     EzkeyAdmin globalAdmin =
         adminRepository
             .findByUsername(initialGlobalAdminProperties.getUsername())
-            .orElseThrow(
-                () ->
-                    new RuntimeException(
-                        "Initial global admin not found: "
-                            + initialGlobalAdminProperties.getUsername()));
+            .orElseThrow(() ->
+                new RuntimeException(
+                    "Initial global admin not found: "
+                        + initialGlobalAdminProperties.getUsername()));
 
     // Generate Ed25519 key pair for integration signing (enrollment)
     logger.info("🔐 Generating Ed25519 key pair for Global Admin Enrollment...");

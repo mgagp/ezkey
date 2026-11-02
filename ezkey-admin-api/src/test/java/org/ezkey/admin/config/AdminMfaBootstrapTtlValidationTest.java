@@ -64,11 +64,10 @@ class AdminMfaBootstrapTtlValidationTest {
     factoryBean.afterPropertiesSet();
     ValidationBindHandler handler = new ValidationBindHandler(factoryBean);
 
-    assertThatThrownBy(
-            () ->
-                new Binder(source)
-                    .bind("ezkey.admin.mfa", Bindable.of(AdminMfaProperties.class), handler)
-                    .get())
+    assertThatThrownBy(() ->
+            new Binder(source)
+                .bind("ezkey.admin.mfa", Bindable.of(AdminMfaProperties.class), handler)
+                .get())
         .isInstanceOf(BindException.class);
   }
 

@@ -230,10 +230,9 @@ public class IntegrationService {
       tenant =
           tenantRepository
               .findByIsSystemTenantTrue()
-              .orElseThrow(
-                  () ->
-                      new SystemTenantNotConfiguredException(
-                          "System tenant not found. Database may not be properly initialized."));
+              .orElseThrow(() ->
+                  new SystemTenantNotConfiguredException(
+                      "System tenant not found. Database may not be properly initialized."));
       logger.debug("Associating integration with system tenant: {}", tenant.getTenantName());
     } else if (createdByAdmin.getAdminType() == AdminType.TENANT_ADMIN) {
       // Tenant admins create integrations in their own tenant

@@ -47,10 +47,8 @@ class EnrollmentAuthApiUrlResolverTest {
 
   @Test
   void resolveForBind_invalidQrUrl_throwsConstantMessage() {
-    assertThatThrownBy(
-            () ->
-                EnrollmentAuthApiUrlResolver.resolveForBind(
-                    "http://evil.example.com", CONFIG, ALLOW))
+    assertThatThrownBy(() ->
+            EnrollmentAuthApiUrlResolver.resolveForBind("http://evil.example.com", CONFIG, ALLOW))
         .isInstanceOf(InvalidAuthApiUrlException.class)
         .hasMessage(AuthApiUrlValidator.INVALID_URL_MESSAGE)
         .hasMessageNotContaining("evil.example.com");

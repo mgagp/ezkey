@@ -238,19 +238,18 @@ class KeyRotationTransactionalInstallPostgresTest {
 
     TransactionTemplate tx = new TransactionTemplate(transactionManager);
     Long newPrimary =
-        tx.execute(
-            _ -> {
-              try {
-                long id = tinkKeyManager.rotateKey();
-                midPrimary.set(tinkKeyManager.getCurrentPrimaryKeyId());
-                midVersion.set(tinkKeyManager.getDatabaseKeysetVersion());
-                return id;
-              } catch (RuntimeException runtimeException) {
-                throw runtimeException;
-              } catch (Exception e) {
-                throw new RuntimeException(e);
-              }
-            });
+        tx.execute(_ -> {
+          try {
+            long id = tinkKeyManager.rotateKey();
+            midPrimary.set(tinkKeyManager.getCurrentPrimaryKeyId());
+            midVersion.set(tinkKeyManager.getDatabaseKeysetVersion());
+            return id;
+          } catch (RuntimeException runtimeException) {
+            throw runtimeException;
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          }
+        });
 
     assertEquals(
         primaryBefore,
@@ -283,11 +282,10 @@ class KeyRotationTransactionalInstallPostgresTest {
         tinkKeyManager, "databaseKeysetVersion", -1L);
     AtomicLong orderMidVersion = new AtomicLong();
     AtomicLong orderMidPrimary = new AtomicLong();
-    tinkKeyManager.setBetweenHandleAndVersionPublishForTests(
-        () -> {
-          orderMidVersion.set(tinkKeyManager.getDatabaseKeysetVersion());
-          orderMidPrimary.set(tinkKeyManager.getCurrentPrimaryKeyId());
-        });
+    tinkKeyManager.setBetweenHandleAndVersionPublishForTests(() -> {
+      orderMidVersion.set(tinkKeyManager.getDatabaseKeysetVersion());
+      orderMidPrimary.set(tinkKeyManager.getCurrentPrimaryKeyId());
+    });
     try {
       tinkKeyManager.publishLiveKeysetHandleThenVersion(live, publishedVersion);
       assertEquals(
@@ -314,21 +312,20 @@ class KeyRotationTransactionalInstallPostgresTest {
     assertThrows(
         RuntimeException.class,
         () ->
-            tx.executeWithoutResult(
-                _ -> {
-                  try {
-                    tinkKeyManager.rotateKey();
-                  } catch (RuntimeException runtimeException) {
-                    throw runtimeException;
-                  } catch (Exception e) {
-                    throw new RuntimeException(e);
-                  }
-                  // Simulate install-before-commit corruption while deferred sync is registered.
-                  org.springframework.test.util.ReflectionTestUtils.setField(
-                      tinkKeyManager, "databaseKeysetVersion", versionBefore + 99);
-                  assertEquals(versionBefore + 99, tinkKeyManager.getDatabaseKeysetVersion());
-                  throw new RuntimeException("force rollback for afterCompletion restore");
-                }));
+            tx.executeWithoutResult(_ -> {
+              try {
+                tinkKeyManager.rotateKey();
+              } catch (RuntimeException runtimeException) {
+                throw runtimeException;
+              } catch (Exception e) {
+                throw new RuntimeException(e);
+              }
+              // Simulate install-before-commit corruption while deferred sync is registered.
+              org.springframework.test.util.ReflectionTestUtils.setField(
+                  tinkKeyManager, "databaseKeysetVersion", versionBefore + 99);
+              assertEquals(versionBefore + 99, tinkKeyManager.getDatabaseKeysetVersion());
+              throw new RuntimeException("force rollback for afterCompletion restore");
+            }));
 
     assertEquals(
         versionBefore,
@@ -375,17 +372,16 @@ class KeyRotationTransactionalInstallPostgresTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                tx.executeWithoutResult(
-                    _ -> {
-                      try {
-                        tinkKeyManager.rotateKey();
-                        tinkKeyManager.addKeyWithoutPromotion();
-                      } catch (RuntimeException runtimeException) {
-                        throw runtimeException;
-                      } catch (Exception e) {
-                        throw new RuntimeException(e);
-                      }
-                    }));
+                tx.executeWithoutResult(_ -> {
+                  try {
+                    tinkKeyManager.rotateKey();
+                    tinkKeyManager.addKeyWithoutPromotion();
+                  } catch (RuntimeException runtimeException) {
+                    throw runtimeException;
+                  } catch (Exception e) {
+                    throw new RuntimeException(e);
+                  }
+                }));
     assertTrue(
         thrown.getMessage().contains("second keyset mutation in the same transaction"),
         "got: " + thrown.getMessage());
@@ -418,16 +414,15 @@ class KeyRotationTransactionalInstallPostgresTest {
       assertThrows(
           OptimisticLockingFailureException.class,
           () ->
-              tx.executeWithoutResult(
-                  _ -> {
-                    try {
-                      tinkKeyManager.saveKeysetToDatabase("R2_CAS_IN_TX");
-                    } catch (RuntimeException runtimeException) {
-                      throw runtimeException;
-                    } catch (Exception e) {
-                      throw new RuntimeException(e);
-                    }
-                  }));
+              tx.executeWithoutResult(_ -> {
+                try {
+                  tinkKeyManager.saveKeysetToDatabase("R2_CAS_IN_TX");
+                } catch (RuntimeException runtimeException) {
+                  throw runtimeException;
+                } catch (Exception e) {
+                  throw new RuntimeException(e);
+                }
+              }));
 
       assertEquals(
           primaryBefore,

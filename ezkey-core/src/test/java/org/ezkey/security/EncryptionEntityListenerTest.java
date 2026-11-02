@@ -43,11 +43,10 @@ class EncryptionEntityListenerTest {
     listener.setEncryptionService(encryptionOperations);
     when(encryptionOperations.isEncryptionAvailable()).thenReturn(true);
     when(encryptionOperations.isEncrypted(anyString()))
-        .thenAnswer(
-            invocation -> {
-              String arg = invocation.getArgument(0);
-              return arg != null && arg.startsWith("ENC:");
-            });
+        .thenAnswer(invocation -> {
+          String arg = invocation.getArgument(0);
+          return arg != null && arg.startsWith("ENC:");
+        });
     when(encryptionOperations.encrypt(anyString())).thenReturn(CIPHERTEXT);
   }
 

@@ -117,12 +117,11 @@ class AdminProvisioningActivationCompletionTest {
             org.ezkey.enrollment.domain.EnrollmentStatus.VERIFIED))
         .thenReturn(List.of());
     when(enrollmentRepository.save(any(Enrollment.class)))
-        .thenAnswer(
-            invocation -> {
-              Enrollment enrollment = invocation.getArgument(0);
-              enrollment.setEnrollmentId(123);
-              return enrollment;
-            });
+        .thenAnswer(invocation -> {
+          Enrollment enrollment = invocation.getArgument(0);
+          enrollment.setEnrollmentId(123);
+          return enrollment;
+        });
     when(adminRepository.save(any(EzkeyAdmin.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
     when(tokenRepository.save(any(AdminToken.class)))
