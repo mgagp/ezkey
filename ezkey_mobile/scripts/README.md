@@ -158,8 +158,14 @@ base that changed `package.json` / `yarn.lock` — CI tests the **merge commit**
 
 ```bash
 yarn install --immutable
+yarn license:android   # only when native Android deps changed (Gradle, or an RN bump)
 yarn license:app-data
 ```
+
+`license:app-data` (`generate-third-party-licenses.mjs`) bundles the app with Metro for Android
+and iOS (about a minute) to list the JS packages actually shipped, then merges the native
+exports under `licenses/`. `license:android` (`export-android-licenses.sh`) runs the
+AboutLibraries Gradle export with JDK 17.
 
 Freshness ignores `generatedAt` only. On failure it prints a concise package-level
 diff (added / removed / version or license changes). See

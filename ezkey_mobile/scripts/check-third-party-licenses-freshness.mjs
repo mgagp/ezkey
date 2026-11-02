@@ -1,6 +1,6 @@
 /**
- * Fails when app/data/thirdPartyLicenses.json is stale relative to package.json
- * dependencies (and installed package metadata).
+ * Fails when app/data/thirdPartyLicenses.json is stale relative to the packages Metro
+ * bundles, installed package metadata, and the committed native exports under licenses/.
  *
  * Regenerates via generate-third-party-licenses.mjs into a temp file, then compares
  * the committed snapshot to the regenerated one while ignoring generatedAt so
@@ -42,7 +42,7 @@ function stableStringify(value) {
 }
 
 function packageKey(pkg) {
-  return pkg?.name ?? '';
+  return pkg?.id ?? pkg?.name ?? '';
 }
 
 function packageFingerprint(pkg) {
@@ -189,6 +189,9 @@ function main() {
   console.error('  yarn install --immutable');
   console.error('  yarn license:app-data');
   console.error('  git add app/data/thirdPartyLicenses.json && git commit');
+  console.error('');
+  console.error('Native Android deps changed (Gradle, or an RN bump)? Refresh the export first:');
+  console.error('  yarn license:android   # JDK 17; updates licenses/android-libraries.json');
   console.error('');
   console.error('Dependabot / dependency PRs: regenerate and commit the snapshot on the same');
   console.error('branch after package.json / yarn.lock change. No bot write token is required.');

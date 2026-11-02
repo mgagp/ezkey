@@ -21,6 +21,7 @@ export const resources = {
         about: 'About',
         releaseNotes: "What's new",
         licenses: 'Open Source Licenses',
+        licenseDetail: 'License',
         dangerZone: 'Danger Zone',
         language: 'Language',
       },
@@ -191,10 +192,27 @@ export const resources = {
       licenses: {
         accessibilityLabel: 'Open source licenses',
         intro:
-          'Ezkey Mobile is built with these open source packages. Thanks to their authors.',
+          'Ezkey Mobile is built with these components. Thanks to their authors. Tap one to read its license.',
         generatedAtAccessibility: 'List updated on {{value}}',
         snapshot: 'List updated: {{value}}',
         rowAccessibility: '{{name}} version {{version}}, {{license}} license',
+        rowHint: 'Opens the full license text',
+        sectionApp: 'App libraries',
+        sectionNative: '{{platform}} libraries',
+        sectionVendor: 'Vendor components',
+        sectionVendorNote: 'Provided by their vendor under their own terms, not an open source license.',
+        detail: {
+          version: 'Version',
+          license: 'License',
+          website: 'Project website',
+          websiteHint: 'Opens the project page in the browser',
+          terms: 'Read the terms',
+          termsHint: 'Opens the terms in the browser',
+          vendorNote:
+            'This component is provided by its vendor under its own terms, not an open source license.',
+          noText: 'License text not available.',
+          notFound: 'This component is no longer listed.',
+        },
       },
       enrollmentWizard: {
         integrationFallback: 'Integration',
@@ -397,6 +415,7 @@ export const resources = {
         about: 'À propos',
         releaseNotes: 'Nouveautés',
         licenses: 'Licences open source',
+        licenseDetail: 'Licence',
         dangerZone: 'Zone dangereuse',
         language: 'Langue',
       },
@@ -570,10 +589,28 @@ export const resources = {
       licenses: {
         accessibilityLabel: 'Licences open source',
         intro:
-          'Ezkey Mobile est construite avec ces logiciels open source. Merci à leurs auteurs.',
+          'Ezkey Mobile est construite avec ces composants. Merci à leurs auteurs. Touchez-en un pour lire sa licence.',
         generatedAtAccessibility: 'Liste mise à jour le {{value}}',
         snapshot: 'Liste mise à jour : {{value}}',
         rowAccessibility: '{{name}} version {{version}}, licence {{license}}',
+        rowHint: 'Ouvre le texte complet de la licence',
+        sectionApp: 'Bibliothèques de l’application',
+        sectionNative: 'Bibliothèques {{platform}}',
+        sectionVendor: 'Composants d’éditeurs',
+        sectionVendorNote:
+          'Fournis par leur éditeur selon ses propres conditions, pas sous une licence open source.',
+        detail: {
+          version: 'Version',
+          license: 'Licence',
+          website: 'Site du projet',
+          websiteHint: 'Ouvre la page du projet dans le navigateur',
+          terms: 'Lire les conditions',
+          termsHint: 'Ouvre les conditions dans le navigateur',
+          vendorNote:
+            'Ce composant est fourni par son éditeur selon ses propres conditions, pas sous une licence open source.',
+          noText: 'Texte de licence indisponible.',
+          notFound: 'Ce composant ne figure plus dans la liste.',
+        },
       },
       enrollmentWizard: {
         integrationFallback: 'Intégration',

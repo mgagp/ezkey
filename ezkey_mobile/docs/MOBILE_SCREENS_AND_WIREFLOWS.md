@@ -45,7 +45,8 @@ server context, and Pending Authentication owns polling plus approve/deny. The a
 | Security | Manage the local approval-confirmation preference | Switch between Standard and Confirm before approvals | `securityPreferenceStorage`, native device confirmation for downgrade protection | No |
 | About | Show app metadata and project link | Open `ezkey.org` | Native build timestamp, app info constants | No |
 | Danger Zone | Perform destructive local actions | Delete one enrollment, clear all local data | `useEnrollments`, delete mutation, storage clear-all | No |
-| Licenses | Show generated third-party dependency list | Scroll/read only | `thirdPartyLicenses.json` snapshot | No |
+| Licenses | Third-party components shipped on this platform: app libraries (JS), native libraries, vendor components | Tap a row to open its license | `thirdPartyLicenses.json` snapshot | No |
+| License detail | One component: version, license, project link, full license text (offline); vendor components link to their terms | Read; open project or terms link | `thirdPartyLicenses.json` snapshot | No |
 
 ## Home Screen
 

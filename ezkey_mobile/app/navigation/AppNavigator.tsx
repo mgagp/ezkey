@@ -9,7 +9,7 @@ import {DangerZoneScreen} from '../screens/DangerZone';
 import {SettingsScreen} from '../screens/Settings';
 import {AboutScreen} from '../screens/About';
 import {ReleaseNotesScreen} from '../screens/ReleaseNotes';
-import {LicensesScreen} from '../screens/Licenses';
+import {LicenseDetailScreen, LicensesScreen} from '../screens/Licenses';
 import {LanguageScreen} from '../screens/Language';
 import {SecurityScreen} from '../screens/Security';
 import {ComingSoonScreen} from '../screens/ComingSoon';
@@ -79,6 +79,11 @@ export const AppNavigator: React.FC = () => {
         name="Licenses"
         component={LicensesScreen}
         options={{title: t('navigation.licenses')}}
+      />
+      <Stack.Screen
+        name="LicenseDetail"
+        component={LicenseDetailScreen}
+        options={{title: t('navigation.licenseDetail')}}
       />
       <Stack.Screen
         name="DangerZone"

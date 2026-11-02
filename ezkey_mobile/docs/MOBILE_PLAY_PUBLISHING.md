@@ -117,21 +117,35 @@ Each track has one active release; a new upload on that track replaces the previ
 ## In-app third-party licenses snapshot
 
 The Licenses screen reads the committed snapshot
-[`app/data/thirdPartyLicenses.json`](../app/data/thirdPartyLicenses.json), generated from
-`package.json` `dependencies` only:
+[`app/data/thirdPartyLicenses.json`](../app/data/thirdPartyLicenses.json). Each row opens the
+full license text, bundled in the app (works offline); vendor components (Google ML Kit, Play
+services, Play Core) sit in their own section with a link to their terms (#1109). Sources:
+
+| Section | Source | Refresh |
+|---------|--------|---------|
+| App libraries (JS) | Packages Metro actually puts in a release bundle, per platform (sourcemaps of `react-native bundle --dev false`), not `package.json` alone | `yarn license:app-data` |
+| Android libraries + vendor components | [`licenses/android-libraries.json`](../licenses/android-libraries.json), AboutLibraries export of the release runtime classpath; `react-android` and Hermes are added from their npm packages (RN injects their version, so the export omits them) | `yarn license:android` (JDK 17), then `yarn license:app-data` |
+| iOS libraries | `licenses/ios-libraries.json`, same shape as the Android export — #1148 | Mac |
+
+License text comes from the package's own `LICENSE` file, else the file of a sibling package from
+the same repository (monorepos such as `@react-native/*`), else the standard MIT text with the
+`author` from `package.json`.
 
 ```bash
 cd ezkey_mobile
 yarn install --immutable
+yarn license:android   # only when native Android deps changed (Gradle, or an RN bump)
 yarn license:app-data
 ```
 
-CI (`ezkey-mobile-unit-tests` → `js-validate` → `yarn license:ci`) runs:
+CI runs:
 
-1. `yarn license:check` — direct dependency license allowlist.
-2. Snapshot freshness — regenerates the JSON and fails if the committed file differs, **ignoring
-   `generatedAt`** so timestamp-only drift does not fail. On failure it prints a concise
-   package-level diff (added / removed / version or license changes).
+1. `yarn license:check` (`js-validate`) — direct dependency license allowlist.
+2. Snapshot freshness (`js-validate`) — regenerates the JSON and fails if the committed file
+   differs, **ignoring `generatedAt`** so timestamp-only drift does not fail. On failure it prints a
+   concise package-level diff (added / removed / version or license changes).
+3. Android export freshness (`android-jvm-unit-tests`) — re-runs the AboutLibraries export and
+   fails if `licenses/android-libraries.json` changed.
 
 When the freshness check fails (including on Dependabot PRs): run `yarn install --immutable` then
 `yarn license:app-data` from `ezkey_mobile/` and commit `app/data/thirdPartyLicenses.json` on the
