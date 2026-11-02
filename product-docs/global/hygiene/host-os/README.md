@@ -71,8 +71,8 @@ Reports (no mutations):
 
 - `/etc/system-release` and locked `releasever`
 - `dnf check-release-update` (pending AL2023 minor)
-- `dnf updateinfo list` for Critical / Important
-- `needs-restarting -r` (reboot recommended?)
+- `dnf updateinfo list` for Critical / Important (one `--sec-severity` call each; dnf rejects CSV)
+- `needs-restarting -r` (exit **1** = reboot required; exit **0** = no reboot)
 - `uname -r`
 - `docker ps` (stack still up)
 
@@ -102,8 +102,8 @@ ssh ezkey-online 'sudo dnf update -y'
 
 ### Reboot gate
 
-- If `needs-restarting -r` was already true, or `dnf` reports a reboot-required kernel /
-  glibc change: **stop** and get **Marc go** before `sudo reboot`.
+- If `needs-restarting -r` exits **1** (reboot required), or `dnf` reports a reboot-required
+  kernel / glibc change: **stop** and get **Marc go** before `sudo reboot`.
 - Otherwise finish without reboot; re-run the check script and post-checks.
 
 ### Post

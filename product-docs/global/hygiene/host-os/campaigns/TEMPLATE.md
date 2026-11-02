@@ -19,7 +19,7 @@
 | `dnf check-release-update` | none / `2023.x.YYYYMMDD` |
 | Critical / Important (count + packages of interest) | |
 | Kernel (`uname -r`) before | |
-| `needs-restarting -r` before | exit 0 = reboot recommended / non-zero = not |
+| `needs-restarting -r` before | exit 1 = reboot required / exit 0 = no reboot |
 | `docker ps` summary | |
 
 Command: `./scripts/lightsail/os-patch-check.sh --target community`
