@@ -71,19 +71,18 @@ class TinkKeyManagerConcurrencyTest {
     ExecutorService executor = Executors.newFixedThreadPool(threadCount);
     try {
       for (int i = 0; i < threadCount; i++) {
-        executor.submit(
-            () -> {
-              try {
-                startLatch.await();
-                for (int j = 0; j < iterationsPerThread; j++) {
-                  assertNotNull(fixture.manager().getAeadPrimitive());
-                }
-              } catch (Exception e) {
-                failures.incrementAndGet();
-              } finally {
-                doneLatch.countDown();
-              }
-            });
+        executor.submit(() -> {
+          try {
+            startLatch.await();
+            for (int j = 0; j < iterationsPerThread; j++) {
+              assertNotNull(fixture.manager().getAeadPrimitive());
+            }
+          } catch (Exception e) {
+            failures.incrementAndGet();
+          } finally {
+            doneLatch.countDown();
+          }
+        });
       }
 
       assertTimeout(
@@ -154,31 +153,29 @@ class TinkKeyManagerConcurrencyTest {
     ExecutorService executor = Executors.newFixedThreadPool(readerCount + 1);
     try {
       for (int i = 0; i < readerCount; i++) {
-        executor.submit(
-            () -> {
-              try {
-                startLatch.await();
-                for (int j = 0; j < 50; j++) {
-                  assertNotNull(fixture.manager().getAeadPrimitive());
-                }
-              } catch (Exception e) {
-                failures.incrementAndGet();
-              } finally {
-                readersDone.countDown();
-              }
-            });
+        executor.submit(() -> {
+          try {
+            startLatch.await();
+            for (int j = 0; j < 50; j++) {
+              assertNotNull(fixture.manager().getAeadPrimitive());
+            }
+          } catch (Exception e) {
+            failures.incrementAndGet();
+          } finally {
+            readersDone.countDown();
+          }
+        });
       }
 
-      executor.submit(
-          () -> {
-            try {
-              startLatch.await();
-              Thread.sleep(10);
-              fixture.manager().addKeyWithoutPromotion();
-            } catch (Exception e) {
-              failures.incrementAndGet();
-            }
-          });
+      executor.submit(() -> {
+        try {
+          startLatch.await();
+          Thread.sleep(10);
+          fixture.manager().addKeyWithoutPromotion();
+        } catch (Exception e) {
+          failures.incrementAndGet();
+        }
+      });
 
       assertTimeout(
           Duration.ofSeconds(10),
@@ -340,11 +337,10 @@ class TinkKeyManagerConcurrencyTest {
     when(repository.keysetExists()).thenReturn(false);
     when(repository.insertSingletonIfAbsent(any(), any(), any())).thenReturn(1);
     when(repository.findVersion())
-        .thenAnswer(
-            _ -> {
-              Thread.sleep(sleepMs);
-              return Optional.of(0L);
-            });
+        .thenAnswer(_ -> {
+          Thread.sleep(sleepMs);
+          return Optional.of(0L);
+        });
     return repository;
   }
 
@@ -353,18 +349,16 @@ class TinkKeyManagerConcurrencyTest {
     when(repository.findKeyset()).thenAnswer(_ -> Optional.ofNullable(storedBlob.get()));
     when(repository.keysetExists()).thenAnswer(_ -> storedBlob.get() != null);
     when(repository.insertSingletonIfAbsent(any(), any(), any()))
-        .thenAnswer(
-            invocation -> {
-              if (storedBlob.get() != null) {
-                return 0;
-              }
-              KeysetBlob blob =
-                  new KeysetBlob(invocation.getArgument(0), invocation.getArgument(2));
-              blob.setLastUpdatedAt(invocation.getArgument(1));
-              blob.setVersion(1L);
-              storedBlob.set(blob);
-              return 1;
-            });
+        .thenAnswer(invocation -> {
+          if (storedBlob.get() != null) {
+            return 0;
+          }
+          KeysetBlob blob = new KeysetBlob(invocation.getArgument(0), invocation.getArgument(2));
+          blob.setLastUpdatedAt(invocation.getArgument(1));
+          blob.setVersion(1L);
+          storedBlob.set(blob);
+          return 1;
+        });
     when(repository.findVersion())
         .thenAnswer(_ -> Optional.ofNullable(storedBlob.get()).map(KeysetBlob::getVersion));
     org.mockito.stubbing.Answer<KeysetBlob> bumpVersion =

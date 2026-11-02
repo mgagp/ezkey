@@ -1086,9 +1086,8 @@ public class EnrollmentController {
             : integrationRepository.findAllByIdWithTenant(integrationIds).stream()
                 .collect(Collectors.toMap(Integration::getId, Function.identity()));
 
-    return page.map(
-        enrollment ->
-            enrollmentMapper.toResponseWithIntegration(
-                enrollment, integrationsById.get(enrollment.getIntegrationId())));
+    return page.map(enrollment ->
+        enrollmentMapper.toResponseWithIntegration(
+            enrollment, integrationsById.get(enrollment.getIntegrationId())));
   }
 }

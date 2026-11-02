@@ -791,10 +791,9 @@ class ReencryptionServiceTest {
     // Assert - Check that each target appears only once
     long enrollmentPrivateKeyCount =
         targets.stream()
-            .filter(
-                t ->
-                    t.table().equals("ezkey_enrollment")
-                        && t.column().equals("integration_private_key"))
+            .filter(t ->
+                t.table().equals("ezkey_enrollment")
+                    && t.column().equals("integration_private_key"))
             .count();
     assertEquals(1, enrollmentPrivateKeyCount, "Should have no duplicates");
   }
@@ -936,12 +935,11 @@ class ReencryptionServiceTest {
     ArgumentCaptor<ReencryptionBatch> batchCaptor =
         ArgumentCaptor.forClass(ReencryptionBatch.class);
     when(batchRepository.save(batchCaptor.capture()))
-        .thenAnswer(
-            invocation -> {
-              ReencryptionBatch b = invocation.getArgument(0);
-              b.setBatchId(batchCaptor.getAllValues().size() + 1);
-              return b;
-            });
+        .thenAnswer(invocation -> {
+          ReencryptionBatch b = invocation.getArgument(0);
+          b.setBatchId(batchCaptor.getAllValues().size() + 1);
+          return b;
+        });
 
     // Act
     service.createBatchesForOldKeys();
@@ -1033,12 +1031,11 @@ class ReencryptionServiceTest {
     ArgumentCaptor<ReencryptionBatch> batchCaptor =
         ArgumentCaptor.forClass(ReencryptionBatch.class);
     when(batchRepository.save(batchCaptor.capture()))
-        .thenAnswer(
-            invocation -> {
-              ReencryptionBatch b = invocation.getArgument(0);
-              b.setBatchId(batchCaptor.getAllValues().size() + 1);
-              return b;
-            });
+        .thenAnswer(invocation -> {
+          ReencryptionBatch b = invocation.getArgument(0);
+          b.setBatchId(batchCaptor.getAllValues().size() + 1);
+          return b;
+        });
 
     service.createBatchesForOldKeys();
 
@@ -1046,12 +1043,10 @@ class ReencryptionServiceTest {
     assertEquals(2, saved.size());
     assertTrue(
         saved.stream()
-            .allMatch(
-                b ->
-                    ReencryptionBatchCreationService.EZKEY_AUTH_ATTEMPT_TABLE.equals(
-                            b.getTargetTable())
-                        && "auth_attempt_proof_token".equals(b.getTargetColumn())
-                        && Integer.valueOf(2).equals(b.getShardCount())));
+            .allMatch(b ->
+                ReencryptionBatchCreationService.EZKEY_AUTH_ATTEMPT_TABLE.equals(b.getTargetTable())
+                    && "auth_attempt_proof_token".equals(b.getTargetColumn())
+                    && Integer.valueOf(2).equals(b.getShardCount())));
     assertEquals(
         10,
         saved.stream()

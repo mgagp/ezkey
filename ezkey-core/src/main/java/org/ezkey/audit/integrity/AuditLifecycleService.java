@@ -492,13 +492,12 @@ public class AuditLifecycleService {
       anchor =
           checkpointRepository
               .findById(request.anchorCheckpointId())
-              .orElseThrow(
-                  () ->
-                      new IllegalArgumentException(
-                          "anchorCheckpointId "
-                              + request.anchorCheckpointId()
-                              + " not found. Provide the checkpoint_id of the last checkpoint "
-                              + "recorded before the downtime."));
+              .orElseThrow(() ->
+                  new IllegalArgumentException(
+                      "anchorCheckpointId "
+                          + request.anchorCheckpointId()
+                          + " not found. Provide the checkpoint_id of the last checkpoint "
+                          + "recorded before the downtime."));
       gapStart = anchor.getWindowEnd();
       logger.info(
           "Anchor checkpoint id={} resolved: gapStart derived as {}",
@@ -876,10 +875,9 @@ public class AuditLifecycleService {
       AuditLog entry =
           auditLogRepository
               .findById(auditLogId)
-              .orElseThrow(
-                  () ->
-                      new IllegalArgumentException(
-                          "Audit log id " + auditLogId + " not found for entry conciliation."));
+              .orElseThrow(() ->
+                  new IllegalArgumentException(
+                      "Audit log id " + auditLogId + " not found for entry conciliation."));
       String violationReason =
           entry.getEntryHmac() == null
               ? EntryHmacViolationCollector.REASON_MISSING_ENTRY_HMAC
@@ -932,10 +930,8 @@ public class AuditLifecycleService {
       Alert alert =
           alertService
               .findById(request.alertId())
-              .orElseThrow(
-                  () ->
-                      new IllegalArgumentException(
-                          "Alert id " + request.alertId() + " not found."));
+              .orElseThrow(() ->
+                  new IllegalArgumentException("Alert id " + request.alertId() + " not found."));
       if (alert.getStatus() != AlertStatus.OPEN) {
         throw new IllegalArgumentException(
             "Alert id " + request.alertId() + " is not OPEN (status=" + alert.getStatus() + ").");
@@ -944,10 +940,9 @@ public class AuditLifecycleService {
     }
     return alertService
         .findOpenByDedupeKey(request.dedupeKey())
-        .orElseThrow(
-            () ->
-                new IllegalArgumentException(
-                    "No OPEN alert found for dedupeKey " + request.dedupeKey() + "."));
+        .orElseThrow(() ->
+            new IllegalArgumentException(
+                "No OPEN alert found for dedupeKey " + request.dedupeKey() + "."));
   }
 
   private void validateIntegrityRuptureAlert(
@@ -1122,10 +1117,9 @@ public class AuditLifecycleService {
     return checkpointRepository
         .findFirstAfter(anchorWindowEnd)
         .map(AuditChainCheckpoint::getWindowStart)
-        .orElseGet(
-            () ->
-                AuditChainScheduler.roundDownToWindow(
-                    OffsetDateTime.now(ZoneOffset.UTC), chainProperties.getWindowMinutes()));
+        .orElseGet(() ->
+            AuditChainScheduler.roundDownToWindow(
+                OffsetDateTime.now(ZoneOffset.UTC), chainProperties.getWindowMinutes()));
   }
 
   /** Counts audit log entries whose createdAt falls within the given range. */

@@ -130,43 +130,42 @@ class EncryptionKeyControllerTest {
 
     lenient()
         .when(keyUsageVerificationService.computeSnapshot(any(EncryptionKey.class)))
-        .thenAnswer(
-            inv -> {
-              EncryptionKey k = inv.getArgument(0);
-              OffsetDateTime ts = OffsetDateTime.now();
-              return switch (k.getKeyStatus()) {
-                case PRIMARY ->
-                    new KeyUsageVerificationService.KeyUsageSnapshot(
-                        KeyUsageVerificationService.LIFECYCLE_PRIMARY,
-                        50L,
-                        2,
-                        ts,
-                        KeyUsageVerificationService.VERIFICATION_PRIMARY_USAGE,
-                        false,
-                        false,
-                        null);
-                case ENABLED ->
-                    new KeyUsageVerificationService.KeyUsageSnapshot(
-                        KeyUsageVerificationService.LIFECYCLE_ENABLED_IN_USE,
-                        0L,
-                        0,
-                        ts,
-                        KeyUsageVerificationService.VERIFICATION_REMAINS_IN_USE,
-                        false,
-                        false,
-                        null);
-                default ->
-                    new KeyUsageVerificationService.KeyUsageSnapshot(
-                        KeyUsageVerificationService.LIFECYCLE_PENDING,
-                        null,
-                        null,
-                        ts,
-                        KeyUsageVerificationService.VERIFICATION_NOT_APPLICABLE,
-                        false,
-                        false,
-                        null);
-              };
-            });
+        .thenAnswer(inv -> {
+          EncryptionKey k = inv.getArgument(0);
+          OffsetDateTime ts = OffsetDateTime.now();
+          return switch (k.getKeyStatus()) {
+            case PRIMARY ->
+                new KeyUsageVerificationService.KeyUsageSnapshot(
+                    KeyUsageVerificationService.LIFECYCLE_PRIMARY,
+                    50L,
+                    2,
+                    ts,
+                    KeyUsageVerificationService.VERIFICATION_PRIMARY_USAGE,
+                    false,
+                    false,
+                    null);
+            case ENABLED ->
+                new KeyUsageVerificationService.KeyUsageSnapshot(
+                    KeyUsageVerificationService.LIFECYCLE_ENABLED_IN_USE,
+                    0L,
+                    0,
+                    ts,
+                    KeyUsageVerificationService.VERIFICATION_REMAINS_IN_USE,
+                    false,
+                    false,
+                    null);
+            default ->
+                new KeyUsageVerificationService.KeyUsageSnapshot(
+                    KeyUsageVerificationService.LIFECYCLE_PENDING,
+                    null,
+                    null,
+                    ts,
+                    KeyUsageVerificationService.VERIFICATION_NOT_APPLICABLE,
+                    false,
+                    false,
+                    null);
+          };
+        });
   }
 
   @Test

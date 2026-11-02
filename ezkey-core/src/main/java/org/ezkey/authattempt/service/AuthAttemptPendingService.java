@@ -146,11 +146,10 @@ public class AuthAttemptPendingService {
     Enrollment enrollment =
         enrollmentRepository
             .findByEnrollmentProofTokenHashAndActive(proofTokenHash, true)
-            .orElseThrow(
-                () -> {
-                  logger.warn("Invalid enrollment proof token provided");
-                  return new AuthAttemptRequestFailedException("Authentication request failed");
-                });
+            .orElseThrow(() -> {
+              logger.warn("Invalid enrollment proof token provided");
+              return new AuthAttemptRequestFailedException("Authentication request failed");
+            });
 
     // Validate that the provided enrollment ID matches the proof token
     if (!enrollment.getEnrollmentId().equals(request.getEnrollmentId())) {

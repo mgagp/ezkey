@@ -503,48 +503,46 @@ public class EncryptionKeyController {
     Integer adminId = resolveAdminId(auth);
     return batchRepository
         .findById(batchId)
-        .map(
-            batch -> {
-              try {
-                reencryptionService.enqueueBatchProcessing(List.of(batch));
-                auditLogService.log(
-                    AuditHelper.createAdminAudit(
-                            context,
-                            EventType.REENCRYPTION_STARTED,
-                            AdminAuditConstants.ENCRYPTION_BATCH_RESUME)
-                        .eventStatus(EventStatus.SUCCESS)
-                        .adminId(adminId)
-                        .eventDetails(
-                            AuditDetailsBuilder.builder().custom("batch_id", batchId).toJson())
-                        .build());
-                return ResponseEntity.status(HttpStatus.ACCEPTED)
-                    .body(
-                        new BatchResumeResponse(
-                            batchId, "Batch resume accepted; progress in batches table"));
-              } catch (EncryptionLifecycleDisabledException e) {
-                throw e;
-              } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
-                logger.error("Failed to enqueue resume for batch {}", batchId, e);
-                auditLogService.log(
-                    AuditHelper.createAdminAudit(
-                            context,
-                            EventType.REENCRYPTION_FAILED,
-                            AdminAuditConstants.ENCRYPTION_BATCH_RESUME)
-                        .eventStatus(EventStatus.ERROR)
-                        .adminId(adminId)
-                        .errorMessage(e.getMessage())
-                        .eventDetails(
-                            AuditDetailsBuilder.builder()
-                                .custom("batch_id", batchId)
-                                .errorSummary("Failed to resume batch: " + e.getMessage())
-                                .toJson())
-                        .build());
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(
-                        new BatchResumeResponse(
-                            batchId, "Failed to resume batch: " + e.getMessage()));
-              }
-            })
+        .map(batch -> {
+          try {
+            reencryptionService.enqueueBatchProcessing(List.of(batch));
+            auditLogService.log(
+                AuditHelper.createAdminAudit(
+                        context,
+                        EventType.REENCRYPTION_STARTED,
+                        AdminAuditConstants.ENCRYPTION_BATCH_RESUME)
+                    .eventStatus(EventStatus.SUCCESS)
+                    .adminId(adminId)
+                    .eventDetails(
+                        AuditDetailsBuilder.builder().custom("batch_id", batchId).toJson())
+                    .build());
+            return ResponseEntity.status(HttpStatus.ACCEPTED)
+                .body(
+                    new BatchResumeResponse(
+                        batchId, "Batch resume accepted; progress in batches table"));
+          } catch (EncryptionLifecycleDisabledException e) {
+            throw e;
+          } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
+            logger.error("Failed to enqueue resume for batch {}", batchId, e);
+            auditLogService.log(
+                AuditHelper.createAdminAudit(
+                        context,
+                        EventType.REENCRYPTION_FAILED,
+                        AdminAuditConstants.ENCRYPTION_BATCH_RESUME)
+                    .eventStatus(EventStatus.ERROR)
+                    .adminId(adminId)
+                    .errorMessage(e.getMessage())
+                    .eventDetails(
+                        AuditDetailsBuilder.builder()
+                            .custom("batch_id", batchId)
+                            .errorSummary("Failed to resume batch: " + e.getMessage())
+                            .toJson())
+                    .build());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(
+                    new BatchResumeResponse(batchId, "Failed to resume batch: " + e.getMessage()));
+          }
+        })
         .orElse(ResponseEntity.notFound().build());
   }
 

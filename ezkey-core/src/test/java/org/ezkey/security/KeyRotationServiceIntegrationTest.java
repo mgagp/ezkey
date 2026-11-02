@@ -297,11 +297,10 @@ class KeyRotationServiceIntegrationTest {
     tinkProperties.getRotation().setEnabled(false);
 
     // Act & Assert - Should not throw exception, but rotation should be skipped
-    assertDoesNotThrow(
-        () -> {
-          // The scheduled job would skip rotation, but manual rotation would fail
-          // This test verifies the service handles disabled state gracefully
-        });
+    assertDoesNotThrow(() -> {
+      // The scheduled job would skip rotation, but manual rotation would fail
+      // This test verifies the service handles disabled state gracefully
+    });
   }
 
   @Test

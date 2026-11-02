@@ -131,10 +131,8 @@ class EnrollmentRevocationServiceTest {
     void revoke_shouldThrow_whenEnrollmentNotFound() {
       when(enrollmentRepository.findById(99)).thenReturn(Optional.empty());
 
-      assertThatThrownBy(
-              () ->
-                  service.revoke(
-                      99, globalAdminPrincipal, "Valid reason here", clientContext, null))
+      assertThatThrownBy(() ->
+              service.revoke(99, globalAdminPrincipal, "Valid reason here", clientContext, null))
           .isInstanceOf(ResourceNotFoundException.class);
     }
 
@@ -146,9 +144,8 @@ class EnrollmentRevocationServiceTest {
       when(adminRepository.findByEnrollmentId(1)).thenReturn(Optional.of(ownerAdmin));
       when(ownerAdmin.getAdminId()).thenReturn(1); // Same as globalAdminPrincipal.adminId()
 
-      assertThatThrownBy(
-              () ->
-                  service.revoke(1, globalAdminPrincipal, "Valid reason here", clientContext, null))
+      assertThatThrownBy(() ->
+              service.revoke(1, globalAdminPrincipal, "Valid reason here", clientContext, null))
           .isInstanceOf(SelfRevocationNotAllowedException.class);
 
       verify(enrollmentRepository, never()).save(any());
@@ -277,10 +274,9 @@ class EnrollmentRevocationServiceTest {
       when(integrationRepository.findById(10)).thenReturn(Optional.of(integration));
       when(integration.getIsSystemIntegration()).thenReturn(true);
 
-      assertThatThrownBy(
-              () ->
-                  service.revokeAllByIntegration(
-                      10, globalAdminPrincipal, "Valid long reason here", clientContext, null))
+      assertThatThrownBy(() ->
+              service.revokeAllByIntegration(
+                  10, globalAdminPrincipal, "Valid long reason here", clientContext, null))
           .isInstanceOf(SystemIntegrationRevocationException.class);
 
       verify(enrollmentRepository, never()).save(any());
@@ -392,10 +388,9 @@ class EnrollmentRevocationServiceTest {
       when(integrationRepository.findById(10)).thenReturn(Optional.of(integration));
       when(integration.getIsSystemIntegration()).thenReturn(true);
 
-      assertThatThrownBy(
-              () ->
-                  service.deactivateAllByIntegration(
-                      10, globalAdminPrincipal, "Optional reason", clientContext, null))
+      assertThatThrownBy(() ->
+              service.deactivateAllByIntegration(
+                  10, globalAdminPrincipal, "Optional reason", clientContext, null))
           .isInstanceOf(SystemIntegrationRevocationException.class);
 
       verify(enrollmentRepository, never()).save(any());

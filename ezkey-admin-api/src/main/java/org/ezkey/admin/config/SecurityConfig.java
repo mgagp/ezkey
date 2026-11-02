@@ -99,47 +99,44 @@ public class SecurityConfig {
         .sessionManagement(
             session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .requestCache(cache -> cache.requestCache(new NullRequestCache()))
-        .authorizeHttpRequests(
-            authz ->
-                authz
-                    // Allow public access to authentication bootstrap endpoints
-                    .requestMatchers(
-                        "/api/v1/admin/auth/activate",
-                        "/api/v1/admin/auth/evaluator-temp",
-                        "/api/v1/admin/auth/login",
-                        "/api/v1/admin/auth/passwordless-wait",
-                        "/api/v1/admin/auth/passwordless-cancel",
-                        "/api/v1/admin/auth/recover")
-                    .permitAll()
-                    // Current session metadata requires an authenticated browser or bearer session
-                    .requestMatchers("/api/v1/admin/auth/me")
-                    .authenticated()
-                    // Logout accepts the token from Authorization or cookie and handles missing
-                    // credentials itself.
-                    .requestMatchers("/api/v1/admin/auth/logout")
-                    .permitAll()
-                    // Allow public access to MFA endpoints (temp token in body)
-                    .requestMatchers("/api/v1/admin/mfa/**")
-                    .permitAll()
-                    // Allow public access to enrollment reset (recovery token in header)
-                    .requestMatchers("/api/v1/admin/enrollments/**")
-                    .permitAll()
-                    // Allow public access to health check endpoints
-                    .requestMatchers("/actuator/**")
-                    .permitAll()
-                    // Allow public access to API documentation
-                    .requestMatchers("/swagger-ui/**", "/api-docs/**")
-                    .permitAll()
-                    // Public instance metadata (login shell, operators)
-                    .requestMatchers("/api/v1/public/**")
-                    .permitAll()
-                    // Require authentication for all other endpoints
-                    .anyRequest()
-                    .authenticated())
-        .exceptionHandling(
-            exceptions ->
-                exceptions.authenticationEntryPoint(
-                    new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+        .authorizeHttpRequests(authz ->
+            authz
+                // Allow public access to authentication bootstrap endpoints
+                .requestMatchers(
+                    "/api/v1/admin/auth/activate",
+                    "/api/v1/admin/auth/evaluator-temp",
+                    "/api/v1/admin/auth/login",
+                    "/api/v1/admin/auth/passwordless-wait",
+                    "/api/v1/admin/auth/passwordless-cancel",
+                    "/api/v1/admin/auth/recover")
+                .permitAll()
+                // Current session metadata requires an authenticated browser or bearer session
+                .requestMatchers("/api/v1/admin/auth/me")
+                .authenticated()
+                // Logout accepts the token from Authorization or cookie and handles missing
+                // credentials itself.
+                .requestMatchers("/api/v1/admin/auth/logout")
+                .permitAll()
+                // Allow public access to MFA endpoints (temp token in body)
+                .requestMatchers("/api/v1/admin/mfa/**")
+                .permitAll()
+                // Allow public access to enrollment reset (recovery token in header)
+                .requestMatchers("/api/v1/admin/enrollments/**")
+                .permitAll()
+                // Allow public access to health check endpoints
+                .requestMatchers("/actuator/**")
+                .permitAll()
+                // Allow public access to API documentation
+                .requestMatchers("/swagger-ui/**", "/api-docs/**")
+                .permitAll()
+                // Public instance metadata (login shell, operators)
+                .requestMatchers("/api/v1/public/**")
+                .permitAll()
+                // Require authentication for all other endpoints
+                .anyRequest()
+                .authenticated())
+        .exceptionHandling(exceptions ->
+            exceptions.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
         .httpBasic(httpBasic -> httpBasic.disable())
         .formLogin(formLogin -> formLogin.disable());
 

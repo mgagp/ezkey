@@ -56,11 +56,10 @@ class EvaluatorSelfRegistrationStartupValidatorTest {
   @Test
   @DisplayName("enforceUrlsWhenEnabled accepts non-blank URLs when enabled")
   void acceptsUrlsWhenEnabled() {
-    assertDoesNotThrow(
-        () ->
-            EvaluatorSelfRegistrationStartupValidator.enforceUrlsWhenEnabled(
-                true,
-                "https://admin-ui.example.local",
-                "https://ezkey.org/community-guided-tour.html"));
+    assertDoesNotThrow(() ->
+        EvaluatorSelfRegistrationStartupValidator.enforceUrlsWhenEnabled(
+            true,
+            "https://admin-ui.example.local",
+            "https://ezkey.org/community-guided-tour.html"));
   }
 }

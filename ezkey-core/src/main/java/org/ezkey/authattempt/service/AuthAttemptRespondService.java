@@ -482,10 +482,9 @@ public class AuthAttemptRespondService {
       AuthAttempt latest =
           authAttemptRepository
               .findById(authAttempt.getAuthAttemptId())
-              .orElseThrow(
-                  () ->
-                      new AuthAttemptStateConflictException(
-                          "Cannot respond to authentication attempt: not found after update"));
+              .orElseThrow(() ->
+                  new AuthAttemptStateConflictException(
+                      "Cannot respond to authentication attempt: not found after update"));
       OffsetDateTime recheckNow = OffsetDateTime.now();
       if (latest.getExpiresAt() != null && !latest.getExpiresAt().isAfter(recheckNow)) {
         throw new AuthAttemptExpiredException(

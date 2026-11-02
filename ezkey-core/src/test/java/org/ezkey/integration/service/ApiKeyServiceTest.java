@@ -125,14 +125,13 @@ class ApiKeyServiceTest {
     // Mock matches() to return true when secret is "testSecret", false otherwise
     lenient()
         .when(passwordEncoder.matches(anyString(), anyString()))
-        .thenAnswer(
-            invocation -> {
-              String rawPassword = invocation.getArgument(0);
-              String encodedPassword = invocation.getArgument(1);
-              // For our test, "testSecret" matches the hash in testApiKey
-              return "testSecret".equals(rawPassword)
-                  && encodedPassword.equals(testApiKey.getSecretKeyHash());
-            });
+        .thenAnswer(invocation -> {
+          String rawPassword = invocation.getArgument(0);
+          String encodedPassword = invocation.getArgument(1);
+          // For our test, "testSecret" matches the hash in testApiKey
+          return "testSecret".equals(rawPassword)
+              && encodedPassword.equals(testApiKey.getSecretKeyHash());
+        });
   }
 
   @Nested

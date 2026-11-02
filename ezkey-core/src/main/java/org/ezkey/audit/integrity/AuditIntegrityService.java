@@ -187,40 +187,39 @@ public class AuditIntegrityService {
 
     return auditLogRepository
         .findById(id)
-        .map(
-            entry -> {
-              Optional<EntryIntegrityViolation> violation =
-                  entryIntegrityViolationClassifier.classifyViolation(entry);
-              if (violation.isEmpty()) {
-                return new IntegrityReport(
-                    1, 1, 0, 0, true, "OK", IntegrityViolationCappedList.uncapped(List.of()));
-              }
-              EntryIntegrityViolation detail = violation.get();
-              boolean unsigned =
-                  EntryHmacViolationCollector.REASON_MISSING_ENTRY_HMAC.equals(detail.reason());
-              if (!unsigned) {
-                logger.warn(
-                    "HMAC verification FAILED for audit_log_id={}, event_type={}, created_at={}",
-                    entry.getAuditLogId(),
-                    entry.getEventType(),
-                    entry.getCreatedAt());
-                logDiagnostics(entry);
-              } else {
-                logger.info("Audit entry id={} has no HMAC signature (unsigned)", id);
-              }
-              String status = unsigned ? "UNSIGNED" : "INTEGRITY_VIOLATION_DETECTED";
-              long invalid = unsigned ? 0L : 1L;
-              long unsignedCount = unsigned ? 1L : 0L;
-              boolean intact = unsigned;
-              return new IntegrityReport(
-                  1,
-                  0,
-                  invalid,
-                  unsignedCount,
-                  intact,
-                  status,
-                  IntegrityViolationCappedList.uncapped(List.of(detail)));
-            })
+        .map(entry -> {
+          Optional<EntryIntegrityViolation> violation =
+              entryIntegrityViolationClassifier.classifyViolation(entry);
+          if (violation.isEmpty()) {
+            return new IntegrityReport(
+                1, 1, 0, 0, true, "OK", IntegrityViolationCappedList.uncapped(List.of()));
+          }
+          EntryIntegrityViolation detail = violation.get();
+          boolean unsigned =
+              EntryHmacViolationCollector.REASON_MISSING_ENTRY_HMAC.equals(detail.reason());
+          if (!unsigned) {
+            logger.warn(
+                "HMAC verification FAILED for audit_log_id={}, event_type={}, created_at={}",
+                entry.getAuditLogId(),
+                entry.getEventType(),
+                entry.getCreatedAt());
+            logDiagnostics(entry);
+          } else {
+            logger.info("Audit entry id={} has no HMAC signature (unsigned)", id);
+          }
+          String status = unsigned ? "UNSIGNED" : "INTEGRITY_VIOLATION_DETECTED";
+          long invalid = unsigned ? 0L : 1L;
+          long unsignedCount = unsigned ? 1L : 0L;
+          boolean intact = unsigned;
+          return new IntegrityReport(
+              1,
+              0,
+              invalid,
+              unsignedCount,
+              intact,
+              status,
+              IntegrityViolationCappedList.uncapped(List.of(detail)));
+        })
         .orElse(
             new IntegrityReport(
                 0, 0, 0, 0, true, "NOT_FOUND", IntegrityViolationCappedList.uncapped(List.of())));

@@ -300,11 +300,10 @@ public class AuditReasonJustificationTest extends AbstractSecurityTest {
 
     String keyMarker = "API key ID: " + apiKeyId;
     return content.stream()
-        .filter(
-            e -> {
-              Object details = e.get("eventDetails");
-              return details != null && details.toString().contains(keyMarker);
-            })
+        .filter(e -> {
+          Object details = e.get("eventDetails");
+          return details != null && details.toString().contains(keyMarker);
+        })
         .findFirst()
         .orElse(null);
   }

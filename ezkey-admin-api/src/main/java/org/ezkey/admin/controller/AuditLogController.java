@@ -731,13 +731,12 @@ public class AuditLogController {
     windowCapProperties.validateSyncWindow(request.from(), request.to());
     boolean raiseAlert = request.raiseAlert() == null || request.raiseAlert();
     var result =
-        withHeavyCryptoGate(
-            () ->
-                retroactiveIntegrityValidationService.runValidation(
-                    request.from(),
-                    request.to(),
-                    RetroactiveIntegrityValidationOptions.operator(
-                        raiseAlert, extractRequesterAdminId())));
+        withHeavyCryptoGate(() ->
+            retroactiveIntegrityValidationService.runValidation(
+                request.from(),
+                request.to(),
+                RetroactiveIntegrityValidationOptions.operator(
+                    raiseAlert, extractRequesterAdminId())));
     return ResponseEntity.ok(RetroactiveIntegrityValidationRunResponse.from(result));
   }
 

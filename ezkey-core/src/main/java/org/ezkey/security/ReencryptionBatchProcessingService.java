@@ -80,10 +80,9 @@ public class ReencryptionBatchProcessingService {
     ReencryptionBatch batch =
         batchRepository
             .findById(batchRef.getBatchId())
-            .orElseThrow(
-                () ->
-                    new IllegalArgumentException(
-                        "Re-encryption batch not found: " + batchRef.getBatchId()));
+            .orElseThrow(() ->
+                new IllegalArgumentException(
+                    "Re-encryption batch not found: " + batchRef.getBatchId()));
 
     logger.info(
         "Processing re-encryption batch {} ({}.{})",
@@ -305,16 +304,15 @@ public class ReencryptionBatchProcessingService {
     managed.setCompletedAt(OffsetDateTime.now());
     batchRepository.save(managed);
 
-    meterRegistry.ifPresent(
-        registry ->
-            registry
-                .counter(
-                    "ezkey.reencryption.batch.failures",
-                    "target_table",
-                    managed.getTargetTable(),
-                    "target_column",
-                    managed.getTargetColumn())
-                .increment());
+    meterRegistry.ifPresent(registry ->
+        registry
+            .counter(
+                "ezkey.reencryption.batch.failures",
+                "target_table",
+                managed.getTargetTable(),
+                "target_column",
+                managed.getTargetColumn())
+            .increment());
 
     auditLogService.log(
         AuditLog.builder()
@@ -341,25 +339,23 @@ public class ReencryptionBatchProcessingService {
   }
 
   private void recordRowMetric(ReencryptionBatch batch) {
-    meterRegistry.ifPresent(
-        registry ->
-            registry
-                .counter(
-                    "ezkey.reencryption.rows.processed",
-                    "target_table",
-                    batch.getTargetTable(),
-                    "target_column",
-                    batch.getTargetColumn())
-                .increment());
+    meterRegistry.ifPresent(registry ->
+        registry
+            .counter(
+                "ezkey.reencryption.rows.processed",
+                "target_table",
+                batch.getTargetTable(),
+                "target_column",
+                batch.getTargetColumn())
+            .increment());
   }
 
   private void recordBatchTimer(ReencryptionBatch batch, long nanos) {
-    meterRegistry.ifPresent(
-        registry ->
-            Timer.builder("ezkey.reencryption.batch.duration")
-                .tag("target_table", batch.getTargetTable())
-                .tag("target_column", batch.getTargetColumn())
-                .register(registry)
-                .record(nanos, TimeUnit.NANOSECONDS));
+    meterRegistry.ifPresent(registry ->
+        Timer.builder("ezkey.reencryption.batch.duration")
+            .tag("target_table", batch.getTargetTable())
+            .tag("target_column", batch.getTargetColumn())
+            .register(registry)
+            .record(nanos, TimeUnit.NANOSECONDS));
   }
 }

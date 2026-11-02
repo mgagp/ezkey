@@ -240,11 +240,10 @@ class AdminProvisioningControllerTest {
       assertEquals(2, responseBody.getTotalElements());
       responseBody
           .getContent()
-          .forEach(
-              admin -> {
-                assertNotNull(admin.tenantId());
-                assertEquals(1, admin.tenantId());
-              });
+          .forEach(admin -> {
+            assertNotNull(admin.tenantId());
+            assertEquals(1, admin.tenantId());
+          });
       verify(provisioningService).listAdmins(eq(1), eq(pageable));
     }
 
@@ -305,11 +304,10 @@ class AdminProvisioningControllerTest {
       // Verify all returned admins belong to tenant 1
       responseBody
           .getContent()
-          .forEach(
-              admin -> {
-                assertNotNull(admin.tenantId());
-                assertEquals(1, admin.tenantId());
-              });
+          .forEach(admin -> {
+            assertNotNull(admin.tenantId());
+            assertEquals(1, admin.tenantId());
+          });
 
       verify(provisioningService).listAdmins(eq(1), eq(pageable));
     }

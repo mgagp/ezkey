@@ -198,27 +198,25 @@ class KeysetBlobCasPostgresTest {
 
       ExecutorService pool = Executors.newFixedThreadPool(2);
       Future<?> futureA =
-          pool.submit(
-              () -> {
-                try {
-                  writerA.rotateKey();
-                } catch (RuntimeException runtimeException) {
-                  throw runtimeException;
-                } catch (Exception e) {
-                  throw new RuntimeException(e);
-                }
-              });
+          pool.submit(() -> {
+            try {
+              writerA.rotateKey();
+            } catch (RuntimeException runtimeException) {
+              throw runtimeException;
+            } catch (Exception e) {
+              throw new RuntimeException(e);
+            }
+          });
       Future<?> futureB =
-          pool.submit(
-              () -> {
-                try {
-                  writerB.rotateKey();
-                } catch (RuntimeException runtimeException) {
-                  throw runtimeException;
-                } catch (Exception e) {
-                  throw new RuntimeException(e);
-                }
-              });
+          pool.submit(() -> {
+            try {
+              writerB.rotateKey();
+            } catch (RuntimeException runtimeException) {
+              throw runtimeException;
+            } catch (Exception e) {
+              throw new RuntimeException(e);
+            }
+          });
 
       assertTrue(
           enteredWindow.await(30, TimeUnit.SECONDS),
@@ -286,27 +284,25 @@ class KeysetBlobCasPostgresTest {
       AtomicReference<Throwable> failureA = new AtomicReference<>();
       AtomicReference<Throwable> failureB = new AtomicReference<>();
       Future<Long> futureA =
-          pool.submit(
-              () -> {
-                start.await();
-                try {
-                  return writerA.rotateKey();
-                } catch (Throwable t) {
-                  failureA.set(t);
-                  throw t;
-                }
-              });
+          pool.submit(() -> {
+            start.await();
+            try {
+              return writerA.rotateKey();
+            } catch (Throwable t) {
+              failureA.set(t);
+              throw t;
+            }
+          });
       Future<Long> futureB =
-          pool.submit(
-              () -> {
-                start.await();
-                try {
-                  return writerB.rotateKey();
-                } catch (Throwable t) {
-                  failureB.set(t);
-                  throw t;
-                }
-              });
+          pool.submit(() -> {
+            start.await();
+            try {
+              return writerB.rotateKey();
+            } catch (Throwable t) {
+              failureB.set(t);
+              throw t;
+            }
+          });
       start.countDown();
 
       boolean aWon = false;

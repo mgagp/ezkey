@@ -696,11 +696,10 @@ public class AdminAuthService {
     AuthAttempt authAttempt =
         authAttemptRepository
             .findById(authAttemptId)
-            .orElseThrow(
-                () -> {
-                  logger.warn("❌ Auth attempt not found for id: {}", authAttemptId);
-                  return new AdminAuthenticationException("Authentication failed");
-                });
+            .orElseThrow(() -> {
+              logger.warn("❌ Auth attempt not found for id: {}", authAttemptId);
+              return new AdminAuthenticationException("Authentication failed");
+            });
 
     if (authAttempt.getWaiterSecretHash() == null
         || waiterSecret == null
@@ -734,18 +733,14 @@ public class AdminAuthService {
     }
     return authAttemptRepository
         .findById(authAttemptId)
-        .flatMap(
-            attempt ->
-                adminRepository
-                    .findByEnrollmentId(attempt.getEnrollmentId())
-                    .map(
-                        admin ->
-                            new AdminAuthAuditContext(
-                                admin.getUsername(),
-                                admin.getAdminId(),
-                                admin.getTenant() != null
-                                    ? admin.getTenant().getTenantId()
-                                    : null)));
+        .flatMap(attempt ->
+            adminRepository
+                .findByEnrollmentId(attempt.getEnrollmentId())
+                .map(admin ->
+                    new AdminAuthAuditContext(
+                        admin.getUsername(),
+                        admin.getAdminId(),
+                        admin.getTenant() != null ? admin.getTenant().getTenantId() : null)));
   }
 
   /**

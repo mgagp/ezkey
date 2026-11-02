@@ -83,11 +83,10 @@ class AuthAttemptServiceChallengeTest {
     // We'll verify this by capturing the saved AuthAttempt
     verify(authAttemptRepository)
         .save(
-            argThat(
-                authAttempt -> {
-                  Integer challenge = authAttempt.getAuthAttemptChallenge();
-                  return challenge != null && challenge.equals(42); // Mocked value for 2 digits
-                }));
+            argThat(authAttempt -> {
+              Integer challenge = authAttempt.getAuthAttemptChallenge();
+              return challenge != null && challenge.equals(42); // Mocked value for 2 digits
+            }));
   }
 
   @Test
@@ -104,11 +103,10 @@ class AuthAttemptServiceChallengeTest {
     // Assert
     verify(authAttemptRepository)
         .save(
-            argThat(
-                authAttempt -> {
-                  Integer challenge = authAttempt.getAuthAttemptChallenge();
-                  return challenge != null && challenge.equals(5); // Mocked value for 1 digit
-                }));
+            argThat(authAttempt -> {
+              Integer challenge = authAttempt.getAuthAttemptChallenge();
+              return challenge != null && challenge.equals(5); // Mocked value for 1 digit
+            }));
   }
 
   @Test
@@ -125,11 +123,10 @@ class AuthAttemptServiceChallengeTest {
     // Assert
     verify(authAttemptRepository)
         .save(
-            argThat(
-                authAttempt -> {
-                  Integer challenge = authAttempt.getAuthAttemptChallenge();
-                  return challenge != null && challenge.equals(123456); // Mocked value for 6 digits
-                }));
+            argThat(authAttempt -> {
+              Integer challenge = authAttempt.getAuthAttemptChallenge();
+              return challenge != null && challenge.equals(123456); // Mocked value for 6 digits
+            }));
   }
 
   @Test
@@ -147,12 +144,11 @@ class AuthAttemptServiceChallengeTest {
     // Assert - should generate 6-digit challenge despite being configured for 8
     verify(authAttemptRepository)
         .save(
-            argThat(
-                authAttempt -> {
-                  Integer challenge = authAttempt.getAuthAttemptChallenge();
-                  return challenge != null
-                      && challenge.equals(123456); // Mocked value for 6 digits (truncated from 8)
-                }));
+            argThat(authAttempt -> {
+              Integer challenge = authAttempt.getAuthAttemptChallenge();
+              return challenge != null
+                  && challenge.equals(123456); // Mocked value for 6 digits (truncated from 8)
+            }));
   }
 
   @Test

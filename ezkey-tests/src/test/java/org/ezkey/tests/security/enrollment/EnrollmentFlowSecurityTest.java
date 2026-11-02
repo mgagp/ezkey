@@ -284,10 +284,9 @@ public class EnrollmentFlowSecurityTest extends AbstractSecurityTest {
           .isNotEmpty();
       boolean hasVerifyFailed =
           auditContent.stream()
-              .anyMatch(
-                  e ->
-                      "enrollment_verify_failed".equals(e.get("eventAction"))
-                          && enrollmentId.equals(e.get("enrollmentId")));
+              .anyMatch(e ->
+                  "enrollment_verify_failed".equals(e.get("eventAction"))
+                      && enrollmentId.equals(e.get("enrollmentId")));
       assertThat(hasVerifyFailed)
           .as(
               "At least one audit entry must have eventAction=enrollment_verify_failed and"

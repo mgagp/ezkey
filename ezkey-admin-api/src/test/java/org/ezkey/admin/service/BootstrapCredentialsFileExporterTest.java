@@ -164,10 +164,9 @@ class BootstrapCredentialsFileExporterTest {
     enrollment.setEnrollmentChallenge(112233);
     String secretCode = "FAIL-CLOSED-CODE-9999-8888-7777-6666";
 
-    assertThatThrownBy(
-            () ->
-                exporter.exportIfEnabled(
-                    enrollment, "proof.token", "admin.docker", List.of(secretCode)))
+    assertThatThrownBy(() ->
+            exporter.exportIfEnabled(
+                enrollment, "proof.token", "admin.docker", List.of(secretCode)))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("could not be persisted")
         .hasMessageContaining("refusing to complete bootstrap")
@@ -206,10 +205,9 @@ class BootstrapCredentialsFileExporterTest {
 
     assertThat(exporter.logNonPosixAllowedStartupWarnIfActive()).isFalse();
 
-    assertThatThrownBy(
-            () ->
-                exporter.exportIfEnabled(
-                    enrollment, "proof.token", "admin.docker", List.of(secretCode)))
+    assertThatThrownBy(() ->
+            exporter.exportIfEnabled(
+                enrollment, "proof.token", "admin.docker", List.of(secretCode)))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("UnsupportedOperationException")
         .hasMessageContaining("refusing to complete bootstrap")
@@ -327,10 +325,9 @@ class BootstrapCredentialsFileExporterTest {
     String secretCode = "WINDOWS-FALLBACK-CODE-5555-6666";
 
     try {
-      assertThatCode(
-              () ->
-                  exporter.exportIfEnabled(
-                      enrollment, "proof.token", "admin.docker", List.of(secretCode)))
+      assertThatCode(() ->
+              exporter.exportIfEnabled(
+                  enrollment, "proof.token", "admin.docker", List.of(secretCode)))
           .doesNotThrowAnyException();
       assertThat(file).exists();
       String joined =
@@ -361,20 +358,18 @@ class BootstrapCredentialsFileExporterTest {
     BootstrapCredentialsFileExporter exporter =
         new BootstrapCredentialsFileExporter(
             exportProperties, new QrCodeProperties(), mfaProperties);
-    exporter.replaceAtomicWriterForTests(
-        (path, json) -> {
-          throw new IllegalArgumentException("jackson-like unchecked (test seam)");
-        });
+    exporter.replaceAtomicWriterForTests((path, json) -> {
+      throw new IllegalArgumentException("jackson-like unchecked (test seam)");
+    });
 
     Enrollment enrollment = new Enrollment();
     enrollment.setEnrollmentId(7);
     enrollment.setEnrollmentChallenge(112233);
     String secretCode = "JACKSON-FAIL-CODE-3333-4444";
 
-    assertThatThrownBy(
-            () ->
-                exporter.exportIfEnabled(
-                    enrollment, "proof.token", "admin.docker", List.of(secretCode)))
+    assertThatThrownBy(() ->
+            exporter.exportIfEnabled(
+                enrollment, "proof.token", "admin.docker", List.of(secretCode)))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("IllegalArgumentException")
         .hasMessageNotContaining(secretCode)

@@ -35,25 +35,23 @@ class IntegrityHeavyCryptoGateTest {
     AtomicReference<Holder> published = new AtomicReference<>();
 
     Thread t1 =
-        new Thread(
-            () -> {
-              ready.countDown();
-              await(start);
-              if (gate.tryEnter(Holder.NIGHTLY)) {
-                wins.incrementAndGet();
-                published.compareAndSet(null, gate.holder());
-              }
-            });
+        new Thread(() -> {
+          ready.countDown();
+          await(start);
+          if (gate.tryEnter(Holder.NIGHTLY)) {
+            wins.incrementAndGet();
+            published.compareAndSet(null, gate.holder());
+          }
+        });
     Thread t2 =
-        new Thread(
-            () -> {
-              ready.countDown();
-              await(start);
-              if (gate.tryEnter(Holder.OPERATOR_JOB)) {
-                wins.incrementAndGet();
-                published.compareAndSet(null, gate.holder());
-              }
-            });
+        new Thread(() -> {
+          ready.countDown();
+          await(start);
+          if (gate.tryEnter(Holder.OPERATOR_JOB)) {
+            wins.incrementAndGet();
+            published.compareAndSet(null, gate.holder());
+          }
+        });
     t1.start();
     t2.start();
     assertTrue(ready.await(5, TimeUnit.SECONDS));

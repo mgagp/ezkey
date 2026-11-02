@@ -176,10 +176,9 @@ class AdminAuthControllerPasswordlessAuditTest {
 
     verify(auditLogService, never())
         .log(
-            org.mockito.ArgumentMatchers.argThat(
-                l ->
-                    AdminAuditConstants.LOGIN_MFA_SESSION_ISSUED.equals(
-                        ((AuditLog) l).getEventAction())));
+            org.mockito.ArgumentMatchers.argThat(l ->
+                AdminAuditConstants.LOGIN_MFA_SESSION_ISSUED.equals(
+                    ((AuditLog) l).getEventAction())));
   }
 
   @Test

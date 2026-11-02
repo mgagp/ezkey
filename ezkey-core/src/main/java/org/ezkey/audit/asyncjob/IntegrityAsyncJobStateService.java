@@ -75,11 +75,10 @@ public class IntegrityAsyncJobStateService {
     jobRepository
         .findById(jobId)
         .filter(j -> j.getStatus() == IntegrityAsyncJobStatus.RUNNING)
-        .ifPresent(
-            j -> {
-              j.setHeartbeatAt(OffsetDateTime.now(ZoneOffset.UTC));
-              jobRepository.save(j);
-            });
+        .ifPresent(j -> {
+          j.setHeartbeatAt(OffsetDateTime.now(ZoneOffset.UTC));
+          jobRepository.save(j);
+        });
   }
 
   /**
@@ -101,24 +100,23 @@ public class IntegrityAsyncJobStateService {
       IntegrityChainVerdictFields chainVerdict) {
     jobRepository
         .findById(jobId)
-        .ifPresent(
-            job -> {
-              if (job.getStatus() != IntegrityAsyncJobStatus.RUNNING) {
-                return;
-              }
-              OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-              job.setStatus(IntegrityAsyncJobStatus.SUCCEEDED);
-              job.setFinishedAt(now);
-              job.setHeartbeatAt(now);
-              job.setResultSummary(truncate(summary, 1024));
-              job.setResultIntact(intact);
-              job.setResultAlertId(alertId);
-              if (chainVerdict != null) {
-                chainVerdict.applyTo(job);
-              }
-              jobRepository.save(job);
-              emitCompleted(job, EventStatus.SUCCESS, summary);
-            });
+        .ifPresent(job -> {
+          if (job.getStatus() != IntegrityAsyncJobStatus.RUNNING) {
+            return;
+          }
+          OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+          job.setStatus(IntegrityAsyncJobStatus.SUCCEEDED);
+          job.setFinishedAt(now);
+          job.setHeartbeatAt(now);
+          job.setResultSummary(truncate(summary, 1024));
+          job.setResultIntact(intact);
+          job.setResultAlertId(alertId);
+          if (chainVerdict != null) {
+            chainVerdict.applyTo(job);
+          }
+          jobRepository.save(job);
+          emitCompleted(job, EventStatus.SUCCESS, summary);
+        });
   }
 
   /**
@@ -131,21 +129,20 @@ public class IntegrityAsyncJobStateService {
   public void markFailed(UUID jobId, String error) {
     jobRepository
         .findById(jobId)
-        .ifPresent(
-            job -> {
-              if (job.getStatus() != IntegrityAsyncJobStatus.RUNNING) {
-                return;
-              }
-              OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-              job.setStatus(IntegrityAsyncJobStatus.FAILED);
-              job.setFinishedAt(now);
-              job.setHeartbeatAt(now);
-              job.setErrorSummary(truncate(error, 512));
-              job.setResultSummary(truncate("Failed: " + error, 1024));
-              job.setResultIntact(false);
-              jobRepository.save(job);
-              emitCompleted(job, EventStatus.FAILURE, error);
-            });
+        .ifPresent(job -> {
+          if (job.getStatus() != IntegrityAsyncJobStatus.RUNNING) {
+            return;
+          }
+          OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+          job.setStatus(IntegrityAsyncJobStatus.FAILED);
+          job.setFinishedAt(now);
+          job.setHeartbeatAt(now);
+          job.setErrorSummary(truncate(error, 512));
+          job.setResultSummary(truncate("Failed: " + error, 1024));
+          job.setResultIntact(false);
+          jobRepository.save(job);
+          emitCompleted(job, EventStatus.FAILURE, error);
+        });
   }
 
   /**

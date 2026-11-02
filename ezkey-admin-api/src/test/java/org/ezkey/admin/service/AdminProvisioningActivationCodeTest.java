@@ -90,14 +90,13 @@ class AdminProvisioningActivationCodeTest {
     when(adminRepository.findById(1)).thenReturn(Optional.of(creator));
     when(tenantRepository.findByIsSystemTenantTrue()).thenReturn(Optional.of(systemTenant));
     when(adminRepository.save(any(EzkeyAdmin.class)))
-        .thenAnswer(
-            invocation -> {
-              EzkeyAdmin admin = invocation.getArgument(0);
-              if (admin.getAdminId() == null) {
-                admin.setAdminId(42);
-              }
-              return admin;
-            });
+        .thenAnswer(invocation -> {
+          EzkeyAdmin admin = invocation.getArgument(0);
+          if (admin.getAdminId() == null) {
+            admin.setAdminId(42);
+          }
+          return admin;
+        });
     when(tokenRepository.save(any(AdminToken.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 

@@ -269,32 +269,30 @@ class LoginControllerChallengeAndSessionTest {
 
     CountDownLatch enteredWait = new CountDownLatch(3);
     when(ezkeyClient.waitForAuthAttempt(eq(7), anyInt(), anyInt()))
-        .thenAnswer(
-            _invocation -> {
-              enteredWait.countDown();
-              assertThat(enteredWait.await(5, TimeUnit.SECONDS))
-                  .as("at least 3 polls should be in waitForAuthAttempt together")
-                  .isTrue();
-              return new AuthAttemptWaitResponse("ACCEPTED", true, false);
-            });
+        .thenAnswer(_invocation -> {
+          enteredWait.countDown();
+          assertThat(enteredWait.await(5, TimeUnit.SECONDS))
+              .as("at least 3 polls should be in waitForAuthAttempt together")
+              .isTrue();
+          return new AuthAttemptWaitResponse("ACCEPTED", true, false);
+        });
 
     ExecutorService pool = Executors.newFixedThreadPool(3);
     List<Future<?>> futures = new ArrayList<>();
     try {
       for (int i = 0; i < 3; i++) {
         futures.add(
-            pool.submit(
-                () -> {
-                  try {
-                    mockMvc
-                        .perform(get("/api/auth-status").session(session))
-                        .andExpect(status().isOk())
-                        .andExpect(jsonPath("$.status").value("accepted"))
-                        .andExpect(jsonPath("$.redirectUrl").value("/dashboard"));
-                  } catch (Exception e) {
-                    throw new RuntimeException(e);
-                  }
-                }));
+            pool.submit(() -> {
+              try {
+                mockMvc
+                    .perform(get("/api/auth-status").session(session))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").value("accepted"))
+                    .andExpect(jsonPath("$.redirectUrl").value("/dashboard"));
+              } catch (Exception e) {
+                throw new RuntimeException(e);
+              }
+            }));
       }
       for (Future<?> future : futures) {
         future.get(15, TimeUnit.SECONDS);
@@ -428,21 +426,20 @@ class LoginControllerChallengeAndSessionTest {
             eq(7),
             eq(LoginController.AUTH_STATUS_WAIT_SECONDS),
             eq(LoginController.AUTH_STATUS_POLL_SECONDS)))
-        .thenAnswer(
-            _invocation -> {
-              int call = waitCalls.incrementAndGet();
-              if (call == 1) {
-                // ~20s wall: SDK read-timeout race (previously aborted challenge-wait).
-                throw new EzkeyException(
-                    "Network error connecting to Ezkey: request timed out",
-                    new HttpTimeoutException("request timed out"));
-              }
-              if (call == 2) {
-                // ~40s wall: still pending after another server wait window.
-                return new AuthAttemptWaitResponse("PENDING", false, true);
-              }
-              return new AuthAttemptWaitResponse("ACCEPTED", true, false);
-            });
+        .thenAnswer(_invocation -> {
+          int call = waitCalls.incrementAndGet();
+          if (call == 1) {
+            // ~20s wall: SDK read-timeout race (previously aborted challenge-wait).
+            throw new EzkeyException(
+                "Network error connecting to Ezkey: request timed out",
+                new HttpTimeoutException("request timed out"));
+          }
+          if (call == 2) {
+            // ~40s wall: still pending after another server wait window.
+            return new AuthAttemptWaitResponse("PENDING", false, true);
+          }
+          return new AuthAttemptWaitResponse("ACCEPTED", true, false);
+        });
 
     mockMvc
         .perform(get("/api/auth-status").session(session))

@@ -342,10 +342,9 @@ public class IntegrityAsyncJobService {
     IntegrityAsyncJob job =
         jobRepository
             .findLatestOperatorJob()
-            .orElseThrow(
-                () ->
-                    new IntegrityAsyncJobAbandonNotAllowedException(
-                        null, "No Integrity async job to abandon"));
+            .orElseThrow(() ->
+                new IntegrityAsyncJobAbandonNotAllowedException(
+                    null, "No Integrity async job to abandon"));
     if (job.getAbandonedAt() != null) {
       return IntegrityAsyncJobResponse.from(job);
     }

@@ -833,15 +833,14 @@ public class ApiKeyController {
             : integrationRepository.findAllByIdWithTenant(integrationIds).stream()
                 .collect(Collectors.toMap(Integration::getId, Function.identity()));
 
-    return page.map(
-        apiKey -> {
-          Integration integration = apiKey.getIntegration();
-          Integration enriched =
-              integration != null && integration.getId() != null
-                  ? integrationsById.get(integration.getId())
-                  : null;
-          return mapToResponseDto(apiKey, enriched);
-        });
+    return page.map(apiKey -> {
+      Integration integration = apiKey.getIntegration();
+      Integration enriched =
+          integration != null && integration.getId() != null
+              ? integrationsById.get(integration.getId())
+              : null;
+      return mapToResponseDto(apiKey, enriched);
+    });
   }
 
   /**
@@ -937,10 +936,8 @@ public class ApiKeyController {
       // Load admin by ID from AdminPrincipal
       return adminRepository
           .findById(adminPrincipal.adminId())
-          .orElseThrow(
-              () ->
-                  new IllegalStateException(
-                      "Admin not found with ID: " + adminPrincipal.adminId()));
+          .orElseThrow(() ->
+              new IllegalStateException("Admin not found with ID: " + adminPrincipal.adminId()));
     }
 
     // Fallback for backward compatibility (should not happen with new auth flow)

@@ -131,13 +131,12 @@ class ApiKeyControllerTest {
     lenient().when(eligibilityService.isApiKeyFullyOperational(any(), any())).thenReturn(true);
     lenient()
         .when(integrationRepository.findAllByIdWithTenant(any()))
-        .thenAnswer(
-            _ -> {
-              Integration integration = new Integration();
-              integration.setId(123);
-              integration.setName("Acme Integration");
-              return List.of(integration);
-            });
+        .thenAnswer(_ -> {
+          Integration integration = new Integration();
+          integration.setId(123);
+          integration.setName("Acme Integration");
+          return List.of(integration);
+        });
     controller =
         new ApiKeyController(
             apiKeyService,
@@ -420,11 +419,10 @@ class ApiKeyControllerTest {
           new org.springframework.data.jpa.domain.Specification[1];
       when(apiKeyRepository.findAll(
               isA(org.springframework.data.jpa.domain.Specification.class), eq(pageable)))
-          .thenAnswer(
-              invocation -> {
-                capturedSpec[0] = invocation.getArgument(0);
-                return new PageImpl<>(mockApiKeys, pageable, 1);
-              });
+          .thenAnswer(invocation -> {
+            capturedSpec[0] = invocation.getArgument(0);
+            return new PageImpl<>(mockApiKeys, pageable, 1);
+          });
 
       // Act
       ResponseEntity<org.springframework.data.domain.Page<ApiKeyResponseDto>> response =

@@ -94,17 +94,15 @@ class AuthAttemptWaitServiceTest {
     ExecutorService pool = Executors.newFixedThreadPool(2);
     try {
       Future<AuthAttemptWaitResponse> f1 =
-          pool.submit(
-              () -> {
-                start.await(2, TimeUnit.SECONDS);
-                return service.waitForResponse(1, new AuthAttemptWaitRequest(1, 1));
-              });
+          pool.submit(() -> {
+            start.await(2, TimeUnit.SECONDS);
+            return service.waitForResponse(1, new AuthAttemptWaitRequest(1, 1));
+          });
       Future<AuthAttemptWaitResponse> f2 =
-          pool.submit(
-              () -> {
-                start.await(2, TimeUnit.SECONDS);
-                return service.waitForResponse(1, new AuthAttemptWaitRequest(1, 1));
-              });
+          pool.submit(() -> {
+            start.await(2, TimeUnit.SECONDS);
+            return service.waitForResponse(1, new AuthAttemptWaitRequest(1, 1));
+          });
       start.countDown();
 
       AuthAttemptWaitResponse r1 = f1.get(5, TimeUnit.SECONDS);

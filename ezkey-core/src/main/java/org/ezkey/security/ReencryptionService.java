@@ -327,10 +327,9 @@ public class ReencryptionService {
       ReencryptionBatch refreshed =
           batchRepository
               .findById(batch.getBatchId())
-              .orElseThrow(
-                  () ->
-                      new IllegalStateException(
-                          "Re-encryption batch missing after processing: " + batch.getBatchId()));
+              .orElseThrow(() ->
+                  new IllegalStateException(
+                      "Re-encryption batch missing after processing: " + batch.getBatchId()));
       if (refreshed.getStatus() == BatchStatus.COMPLETED) {
         batchesProcessed++;
       } else if (refreshed.getStatus() == BatchStatus.FAILED) {
@@ -403,10 +402,9 @@ public class ReencryptionService {
         ReencryptionBatch refreshed =
             batchRepository
                 .findById(batch.getBatchId())
-                .orElseThrow(
-                    () ->
-                        new IllegalStateException(
-                            "Re-encryption batch missing after processing: " + batch.getBatchId()));
+                .orElseThrow(() ->
+                    new IllegalStateException(
+                        "Re-encryption batch missing after processing: " + batch.getBatchId()));
         if (refreshed.getStatus() == BatchStatus.COMPLETED) {
           batchesProcessed++;
         } else if (refreshed.getStatus() == BatchStatus.FAILED) {

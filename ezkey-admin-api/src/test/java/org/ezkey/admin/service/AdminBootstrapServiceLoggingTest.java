@@ -118,11 +118,10 @@ class AdminBootstrapServiceLoggingTest {
             bootstrapCredentialsFileExporter);
 
     when(lockingTaskExecutor.executeWithLock(anyString(), any(Duration.class), any(Runnable.class)))
-        .thenAnswer(
-            invocation -> {
-              invocation.getArgument(2, Runnable.class).run();
-              return true;
-            });
+        .thenAnswer(invocation -> {
+          invocation.getArgument(2, Runnable.class).run();
+          return true;
+        });
 
     lenient()
         .when(bootstrapCredentialsFileExporter.recoveryCodesLogPointer())
@@ -167,12 +166,11 @@ class AdminBootstrapServiceLoggingTest {
     when(qrCodeAsciiRenderer.renderAscii(any())).thenReturn("QRLINE1\nQRLINE2");
 
     when(enrollmentRepository.save(any(Enrollment.class)))
-        .thenAnswer(
-            invocation -> {
-              Enrollment e = invocation.getArgument(0);
-              e.setEnrollmentId(99);
-              return e;
-            });
+        .thenAnswer(invocation -> {
+          Enrollment e = invocation.getArgument(0);
+          e.setEnrollmentId(99);
+          return e;
+        });
     when(adminRepository.save(any(EzkeyAdmin.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -225,12 +223,11 @@ class AdminBootstrapServiceLoggingTest {
     when(signatureService.generateSecureChallenge(6)).thenReturn(CHALLENGE);
 
     when(enrollmentRepository.save(any(Enrollment.class)))
-        .thenAnswer(
-            invocation -> {
-              Enrollment e = invocation.getArgument(0);
-              e.setEnrollmentId(99);
-              return e;
-            });
+        .thenAnswer(invocation -> {
+          Enrollment e = invocation.getArgument(0);
+          e.setEnrollmentId(99);
+          return e;
+        });
 
     AdminRecoveryService.RecoveryCodesResult codes =
         new AdminRecoveryService.RecoveryCodesResult(List.of(RECOVERY_CODE), List.of("$2a$hashed"));

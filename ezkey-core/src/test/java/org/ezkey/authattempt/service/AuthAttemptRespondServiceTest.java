@@ -171,10 +171,9 @@ class AuthAttemptRespondServiceTest {
 
     assertThatThrownBy(() -> respondService.respond(approveRequest(), null))
         .isInstanceOf(AuthRespondRateLimitExceededException.class)
-        .satisfies(
-            ex ->
-                assertThat(((AuthRespondRateLimitExceededException) ex).getRetryAfterSeconds())
-                    .isEqualTo(300L));
+        .satisfies(ex ->
+            assertThat(((AuthRespondRateLimitExceededException) ex).getRetryAfterSeconds())
+                .isEqualTo(300L));
     verify(limiter).tryConsumeAfterOwnership(42);
     verify(authAttemptRepository, never()).updateStatusIfCurrent(any(), any(), any(), any());
     verify(signatureService, never()).signIntegrationPayload(any(), any());
