@@ -10,6 +10,7 @@ Canonical matrix: [`docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md`](../../docs/DATABA
 | [`apply-grants.sh`](apply-grants.sh) | Superuser wrapper: ensure crypto role + grants; `--docker` / `--in-container`; **requires** `EZKEY_DB_CRYPTO_PASSWORD` |
 | [`test-upgrade-crypto-role.sh`](test-upgrade-crypto-role.sh) | Ephemeral Docker proof: pre-PR volume (no crypto role) → grants succeed (#961 B1) |
 | [`verify-grants.sh`](verify-grants.sh) | Smoke-check allowed/denied privileges; `--docker` + `EZKEY_POSTGRES_CONTAINER`; role-login when `EZKEY_DB_*` passwords are set, else catalog fallback as admin/owner (no passwords on argv) |
+| [`verify-grants.test.sh`](verify-grants.test.sh) | Fake psql/docker lock for #1121: credentials off argv, catalog fallback when any role password is absent, crypto catalog fail-closed |
 
 Docker first-boot role creation: [`docker/postgres/init/01-create-roles.sh`](../../docker/postgres/init/01-create-roles.sh).
 

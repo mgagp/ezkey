@@ -86,6 +86,8 @@ jobs:
               - 'scripts/ci-ha-lb-smoke.sh'
               - 'scripts/ci-ha-lb-smoke.test.sh'
               - 'scripts/lib/ci-ha-lb-smoke-lib.sh'
+              - 'scripts/db/verify-grants.sh'
+              - 'scripts/db/verify-grants.test.sh'
               - 'specs/**'
               - '.mvn/**'
             quality-gate:
@@ -275,6 +277,10 @@ jobs:
       # dedicated quality-gate job (Patrick #904 — not buried in Maven).
       - name: HA LB smoke probe retry unit tests (#905 Patrick M2)
         run: bash scripts/ci-ha-lb-smoke.test.sh
+
+      # #1121: role passwords stay off docker exec argv; catalog mode fails closed.
+      - name: verify-grants credential and catalog locks (#1121)
+        run: bash scripts/db/verify-grants.test.sh
 
       # Lot B (code-scanning 2026-10-13): signup URL allowlist + ACME DOM XSS text rendering.
       - name: Community-signup URL allowlist + ACME biz-status XSS tests
