@@ -15,17 +15,21 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
  * Unit tests for {@link ClientIpResolver}: trusted proxy CIDR behaviour and right-to-left
- * X-Forwarded-For resolution (#1140).
+ * X-Forwarded-For resolution (#1140 / follow-ups).
  *
  * @since 2025
  */
@@ -35,6 +39,18 @@ class ClientIpResolverTest {
 
   @Mock private HttpServletRequest request;
 
+  /**
+   * Stubs {@code getHeaders("X-Forwarded-For")} with the given header values (declaration order).
+   */
+  private void stubXffHeaders(String... headerValues) {
+    when(request.getHeaders("X-Forwarded-For"))
+        .thenReturn(Collections.enumeration(List.of(headerValues)));
+  }
+
+  private void stubNoXffHeaders() {
+    when(request.getHeaders("X-Forwarded-For")).thenReturn(Collections.emptyEnumeration());
+  }
+
   @Nested
   @DisplayName("When trusted proxy list is null or empty")
   class EmptyOrNullTrustedList {
@@ -43,7 +59,9 @@ class ClientIpResolverTest {
     @DisplayName("returns only remoteAddr when list is null")
     void nullList_returnsRemoteAddrOnly() {
       when(request.getRemoteAddr()).thenReturn("203.0.113.50");
-      lenient().when(request.getHeader("X-Forwarded-For")).thenReturn("192.168.1.1");
+      lenient()
+          .when(request.getHeaders("X-Forwarded-For"))
+          .thenReturn(Collections.enumeration(List.of("192.168.1.1")));
 
       String result = ClientIpResolver.resolve(request, null);
 
@@ -54,7 +72,9 @@ class ClientIpResolverTest {
     @DisplayName("returns only remoteAddr when list is empty")
     void emptyList_returnsRemoteAddrOnly() {
       when(request.getRemoteAddr()).thenReturn("203.0.113.50");
-      lenient().when(request.getHeader("X-Forwarded-For")).thenReturn("192.168.1.1");
+      lenient()
+          .when(request.getHeaders("X-Forwarded-For"))
+          .thenReturn(Collections.enumeration(List.of("192.168.1.1")));
 
       String result = ClientIpResolver.resolve(request, List.of());
 
@@ -70,7 +90,9 @@ class ClientIpResolverTest {
     @DisplayName("returns remoteAddr and ignores all headers including forged XFF")
     void untrustedRemote_ignoresAllHeaders() {
       when(request.getRemoteAddr()).thenReturn("203.0.113.50");
-      lenient().when(request.getHeader("X-Forwarded-For")).thenReturn("198.51.100.1");
+      lenient()
+          .when(request.getHeaders("X-Forwarded-For"))
+          .thenReturn(Collections.enumeration(List.of("198.51.100.1")));
       lenient().when(request.getHeader("CF-Connecting-IP")).thenReturn("198.51.100.2");
       lenient().when(request.getHeader("X-Real-IP")).thenReturn("198.51.100.3");
 
@@ -89,11 +111,10 @@ class ClientIpResolverTest {
     @DisplayName("ignores leftmost forged XFF entry and keeps rightmost untrusted hop")
     void forgedLeftmostXff_ignored() {
       when(request.getRemoteAddr()).thenReturn("10.1.2.3");
-      when(request.getHeader("X-Forwarded-For")).thenReturn("198.51.100.99, 203.0.113.10");
+      stubXffHeaders("198.51.100.99, 203.0.113.10");
 
       String result = ClientIpResolver.resolve(request, List.of("10.0.0.0/8"));
 
-      // Rightmost untrusted is 203.0.113.10; leftmost forged 198.51.100.99 is never chosen.
       assertThat(result).isEqualTo("203.0.113.10");
     }
 
@@ -101,8 +122,19 @@ class ClientIpResolverTest {
     @DisplayName("chain forged, real, proxy yields real (right-to-left skip trusted)")
     void forgedRealProxy_yieldsReal() {
       when(request.getRemoteAddr()).thenReturn("10.0.0.5");
-      // leftmost forged, then real client, then trusted proxy hop
-      when(request.getHeader("X-Forwarded-For")).thenReturn("198.51.100.1, 203.0.113.40, 10.0.0.9");
+      stubXffHeaders("198.51.100.1, 203.0.113.40, 10.0.0.9");
+
+      String result = ClientIpResolver.resolve(request, List.of("10.0.0.0/8"));
+
+      assertThat(result).isEqualTo("203.0.113.40");
+    }
+
+    @Test
+    @DisplayName("joins multiple X-Forwarded-For header values in order before right-to-left walk")
+    void multipleXffHeaders_joinedInOrder() {
+      when(request.getRemoteAddr()).thenReturn("10.0.0.5");
+      // Two header lines: forged+real, then trusted hop — same as one "forged, real, proxy" chain.
+      stubXffHeaders("198.51.100.1, 203.0.113.40", "10.0.0.9");
 
       String result = ClientIpResolver.resolve(request, List.of("10.0.0.0/8"));
 
@@ -113,9 +145,8 @@ class ClientIpResolverTest {
     @DisplayName("CF-Connecting-IP is ignored when Cloudflare edge setting is off")
     void cfConnectingIp_ignoredWithoutEdgeSetting() {
       when(request.getRemoteAddr()).thenReturn("172.16.0.5");
-      // CF header must not be read when the edge setting is off (strict stubbing).
       lenient().when(request.getHeader("CF-Connecting-IP")).thenReturn("198.51.100.20");
-      when(request.getHeader("X-Forwarded-For")).thenReturn("203.0.113.55");
+      stubXffHeaders("203.0.113.55");
 
       String result = ClientIpResolver.resolve(request, List.of("172.16.0.0/12"), false);
 
@@ -127,7 +158,9 @@ class ClientIpResolverTest {
     void cfConnectingIp_usedWithEdgeSetting() {
       when(request.getRemoteAddr()).thenReturn("172.16.0.5");
       when(request.getHeader("CF-Connecting-IP")).thenReturn("198.51.100.20");
-      lenient().when(request.getHeader("X-Forwarded-For")).thenReturn("203.0.113.55");
+      lenient()
+          .when(request.getHeaders("X-Forwarded-For"))
+          .thenReturn(Collections.enumeration(List.of("203.0.113.55")));
 
       String result = ClientIpResolver.resolve(request, List.of("172.16.0.0/12"), true);
 
@@ -138,9 +171,7 @@ class ClientIpResolverTest {
     @DisplayName("X-Real-IP is ignored even when CF and XFF are absent")
     void xRealIp_neverUsed() {
       when(request.getRemoteAddr()).thenReturn("192.168.1.1");
-      when(request.getHeader("X-Forwarded-For")).thenReturn(null);
-      // Resolver never reads X-Real-IP; stub stays lenient so a regression that reads it fails
-      // the assertion (remoteAddr) rather than UnnecessaryStubbing.
+      stubNoXffHeaders();
       lenient().when(request.getHeader("X-Real-IP")).thenReturn("198.51.100.30");
 
       String result = ClientIpResolver.resolve(request, List.of("192.168.0.0/16"));
@@ -152,7 +183,7 @@ class ClientIpResolverTest {
     @DisplayName("falls back to remoteAddr when XFF entry is malformed")
     void malformedXff_fallbackToRemoteAddr() {
       when(request.getRemoteAddr()).thenReturn("10.0.0.1");
-      when(request.getHeader("X-Forwarded-For")).thenReturn("not-an-ip, 203.0.113.1");
+      stubXffHeaders("not-an-ip, 203.0.113.1");
 
       String result = ClientIpResolver.resolve(request, List.of("10.0.0.0/8"));
 
@@ -163,11 +194,81 @@ class ClientIpResolverTest {
     @DisplayName("falls back to remoteAddr when entire XFF chain is trusted")
     void entireChainTrusted_fallbackToRemoteAddr() {
       when(request.getRemoteAddr()).thenReturn("10.0.0.1");
-      when(request.getHeader("X-Forwarded-For")).thenReturn("10.0.0.8, 10.0.0.9");
+      stubXffHeaders("10.0.0.8, 10.0.0.9");
 
       String result = ClientIpResolver.resolve(request, List.of("10.0.0.0/8"));
 
       assertThat(result).isEqualTo("10.0.0.1");
+    }
+
+    @Test
+    @DisplayName("trims whitespace around XFF entries before validation and selection")
+    void xffEntries_whitespaceTrimmed() {
+      when(request.getRemoteAddr()).thenReturn("10.0.0.5");
+      stubXffHeaders("  198.51.100.1  ,   203.0.113.77  ,  10.0.0.9  ");
+
+      String result = ClientIpResolver.resolve(request, List.of("10.0.0.0/8"));
+
+      assertThat(result).isEqualTo("203.0.113.77");
+    }
+
+    @Test
+    @DisplayName("selects untrusted IPv6 hop when walking XFF right-to-left")
+    void ipv6Xff_rightToLeft() {
+      when(request.getRemoteAddr()).thenReturn("fd00::1");
+      stubXffHeaders("2001:db8::99, 2001:db8::40, fd00::9");
+
+      String result = ClientIpResolver.resolve(request, List.of("fd00::/8"));
+
+      assertThat(result).isEqualTo("2001:db8::40");
+    }
+
+    @Test
+    @DisplayName(
+        "rejects ip:port XFF entry (fail-closed; not normalized) and falls back to remoteAddr")
+    void ipPortForm_rejectedNotNormalized() {
+      when(request.getRemoteAddr()).thenReturn("10.0.0.1");
+      stubXffHeaders("203.0.113.40:8080, 10.0.0.9");
+
+      String result = ClientIpResolver.resolve(request, List.of("10.0.0.0/8"));
+
+      assertThat(result).isEqualTo("10.0.0.1");
+    }
+  }
+
+  @Nested
+  @DisplayName("isValidIp strict literal validation")
+  class StrictIpValidation {
+
+    @ParameterizedTest
+    @ValueSource(strings = {"203.0.113.1", "2001:db8::1", "::1", "  198.51.100.10  "})
+    @DisplayName("accepts IPv4 and IPv6 literals (optional surrounding whitespace)")
+    void acceptsIpLiterals(String candidate) {
+      assertThat(ClientIpResolver.isValidIp(candidate)).isTrue();
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+        strings = {
+          "10.0.0.0/8",
+          "203.0.113.1/32",
+          "*",
+          "example.com",
+          "203.0.113.1:8080",
+          "[2001:db8::1]:8080",
+          "not-an-ip"
+        })
+    @DisplayName("rejects CIDR prefixes, wildcard, hostnames, and ip:port forms")
+    void rejectsNonLiterals(String candidate) {
+      assertThat(ClientIpResolver.isValidIp(candidate)).isFalse();
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {"   "})
+    @DisplayName("rejects null, empty, and blank")
+    void rejectsBlank(String candidate) {
+      assertThat(ClientIpResolver.isValidIp(candidate)).isFalse();
     }
   }
 

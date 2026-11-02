@@ -14,6 +14,7 @@ import inet.ipaddr.IPAddress;
 import inet.ipaddr.IPAddressString;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Collection;
+import java.util.Enumeration;
 
 /**
  * Resolves the client IP address from an HTTP request, optionally trusting proxy headers only when
@@ -25,9 +26,10 @@ import java.util.Collection;
  *   <li>If {@code trustedProxyCidrs} is null or empty: always return {@code
  *       request.getRemoteAddr()} (do not trust any header; prevents spoofing).
  *   <li>If {@code remoteAddr} is not in any trusted CIDR: return remoteAddr and ignore all headers.
- *   <li>If {@code remoteAddr} is trusted: walk {@code X-Forwarded-For} from <b>right to left</b>,
- *       skip each hop that is itself a trusted proxy, and keep the first untrusted entry. Never
- *       take the leftmost entry by default.
+ *   <li>If {@code remoteAddr} is trusted: collect every {@code X-Forwarded-For} header value (via
+ *       {@link HttpServletRequest#getHeaders}), join them in declaration order, then walk the
+ *       combined list from <b>right to left</b>, skip each hop that is itself a trusted proxy, and
+ *       keep the first untrusted entry. Never take the leftmost entry by default.
  *   <li>If any XFF entry is invalid, or the entire chain is trusted: fall back to remoteAddr.
  *   <li>{@code CF-Connecting-IP} is used only when {@code trustCloudflareConnectingIp} is true
  *       (dedicated setting, OFF by default) and the immediate hop is trusted — meaning the operator
@@ -35,8 +37,12 @@ import java.util.Collection;
  *       preferred.
  * </ul>
  *
+ * <p>Hop validation accepts <b>IPv4 or IPv6 literals only</b> (no CIDR prefixes, no {@code *}, no
+ * hostnames). Forms such as {@code ip:port} or {@code [ipv6]:port} are <b>rejected</b>
+ * (fail-closed) rather than normalized — a port suffix is not a client identity for rate-limit /
+ * audit keys.
+ *
  * <p>Uses {@code com.github.seancfoley.ipaddress} for CIDR containment checks (no DNS lookup).
- * Header values are validated as valid IP format before use.
  *
  * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *
@@ -114,9 +120,31 @@ public final class ClientIpResolver {
     }
 
     String fromXff =
-        resolveFromXForwardedFor(
-            request.getHeader(HEADER_X_FORWARDED_FOR), remoteAddr, trustedProxyCidrs);
+        resolveFromXForwardedFor(collectXForwardedFor(request), remoteAddr, trustedProxyCidrs);
     return fromXff != null ? fromXff : remoteAddr;
+  }
+
+  /**
+   * Joins every {@code X-Forwarded-For} header value in declaration order (comma-separated).
+   * Returns null when no non-blank values are present.
+   */
+  private static String collectXForwardedFor(HttpServletRequest request) {
+    Enumeration<String> headers = request.getHeaders(HEADER_X_FORWARDED_FOR);
+    if (headers == null || !headers.hasMoreElements()) {
+      return null;
+    }
+    StringBuilder joined = new StringBuilder();
+    while (headers.hasMoreElements()) {
+      String value = headers.nextElement();
+      if (value == null || value.isBlank()) {
+        continue;
+      }
+      if (joined.length() > 0) {
+        joined.append(',');
+      }
+      joined.append(value.trim());
+    }
+    return joined.length() == 0 ? null : joined.toString();
   }
 
   /**
@@ -124,17 +152,13 @@ public final class ClientIpResolver {
    *
    * @param address IP address to check
    * @param cidrs trusted proxy CIDR or single-IP strings
-   * @return true when address is valid and contained in at least one CIDR
+   * @return true when address is a single IP literal and contained in at least one CIDR
    */
   static boolean isAddressInTrustedProxies(String address, Collection<String> cidrs) {
-    if (address == null || address.isBlank()) {
+    if (!isValidIp(address)) {
       return false;
     }
-    IPAddressString remote = new IPAddressString(address.trim());
-    if (!remote.isValid()) {
-      return false;
-    }
-    IPAddress remoteAddrObj = remote.getAddress();
+    IPAddress remoteAddrObj = new IPAddressString(address.trim()).getAddress();
     if (remoteAddrObj == null) {
       return false;
     }
@@ -183,12 +207,24 @@ public final class ClientIpResolver {
   }
 
   /**
-   * Validates that the string is a valid IP address (IPv4 or IPv6) without performing DNS lookup.
+   * Validates that the string is a single IPv4 or IPv6 <b>literal</b> (no DNS lookup).
+   *
+   * <p>Rejects CIDR prefixes ({@code 10.0.0.0/8}, {@code 203.0.113.1/32}), wildcard {@code *},
+   * hostnames, and {@code ip:port} / {@code [ipv6]:port} forms. Port-bearing forms are rejected
+   * rather than stripped so rate-limit and audit keys never silently absorb a non-identity suffix.
+   *
+   * @param ip candidate address string (leading/trailing whitespace allowed)
+   * @return true only for a single IPv4 or IPv6 literal
    */
-  private static boolean isValidIp(String ip) {
+  static boolean isValidIp(String ip) {
     if (ip == null || ip.isBlank()) {
       return false;
     }
-    return new IPAddressString(ip.trim()).isValid();
+    IPAddressString parsed = new IPAddressString(ip.trim());
+    if (!parsed.isValid() || !parsed.isIPAddress() || parsed.isPrefixed()) {
+      return false;
+    }
+    IPAddress addr = parsed.getAddress();
+    return addr != null && !addr.isMultiple();
   }
 }
