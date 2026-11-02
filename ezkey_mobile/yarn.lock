@@ -6813,7 +6813,7 @@ __metadata:
     eslint: "npm:9.39.4"
     eslint-config-prettier: "npm:10.1.8"
     husky: "npm:9.1.7"
-    i18next: "npm:26.5.11"
+    i18next: "npm:26.5.12"
     jest: "npm:30.5.2"
     js-sha256: "npm:1.0.0"
     lint-staged: "npm:17.6.0"
@@ -6827,8 +6827,8 @@ __metadata:
     react-native-keychain: "npm:10.0.0"
     react-native-nitro-image: "npm:0.15.2"
     react-native-nitro-modules: "npm:0.37.1"
-    react-native-safe-area-context: "npm:5.10.1"
-    react-native-screens: "npm:4.30.0"
+    react-native-safe-area-context: "npm:5.11.0"
+    react-native-screens: "npm:4.30.1"
     react-native-svg: "npm:15.16.0"
     react-native-svg-transformer: "npm:1.5.3"
     react-native-vision-camera: "npm:5.2.3"
@@ -7599,15 +7599,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"i18next@npm:26.5.11":
-  version: 26.5.11
-  resolution: "i18next@npm:26.5.11"
+"i18next@npm:26.5.12":
+  version: 26.5.12
+  resolution: "i18next@npm:26.5.12"
   peerDependencies:
     typescript: ^5 || ^6 || ^7
   peerDependenciesMeta:
     typescript:
       optional: true
-  checksum: 10c0/b2ecb58a38420530d928d93761efc1d4e966f24cf99518df843f5b8797be135d7b6defb01ca97b61bf2bc614a6fab56bd874032b42567ae22cfa84909c2187cd
+  checksum: 10c0/9723eeb9c938a35fa66c555841172de32a51a4216fa2ca3432747bba4bd1644d77301601a16f6f857b842c2b3354128f80dc3608b9059d1be7479b94193ae9b3
   languageName: node
   linkType: hard
 
@@ -10496,26 +10496,26 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-safe-area-context@npm:5.10.1":
-  version: 5.10.1
-  resolution: "react-native-safe-area-context@npm:5.10.1"
+"react-native-safe-area-context@npm:5.11.0":
+  version: 5.11.0
+  resolution: "react-native-safe-area-context@npm:5.11.0"
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: 10c0/8aebfa832d483e385f9848b5ea92ce3e525a44cad5b3b363b5b190c1f559f3f01176f745ff7a2ad0e2191cb3fb2d0be26c8650956640f086562440c869713ec5
+  checksum: 10c0/b36141e17a5cf307a2eb1720b65c161035ac13e0c2e62bdac4dc2639346e9721649f9ae8c0e7a66a8f525cb1c580b3ea73f892167a97df8fea6cd80212703e00
   languageName: node
   linkType: hard
 
-"react-native-screens@npm:4.30.0":
-  version: 4.30.0
-  resolution: "react-native-screens@npm:4.30.0"
+"react-native-screens@npm:4.30.1":
+  version: 4.30.1
+  resolution: "react-native-screens@npm:4.30.1"
   dependencies:
     react-freeze: "npm:^1.0.0"
     warn-once: "npm:^0.1.0"
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: 10c0/9f5d4f0710a67362d4c3df8b998e8cf22d8d8eaa1a1a0185b5a34588b0aa922d346baf22a9e89c43a46f2d0b04c64e9f9e658411114a9e97fd228e29553f6cb8
+  checksum: 10c0/e5ded425ece1819d56fa84dacffa30178a9b9af1e9350ae99f3b78a9cb21795886c6f74ca1fe1b89e7bb65a56733246c40bf57d5b470d9d7bbf10ad0fa117690
   languageName: node
   linkType: hard
 
