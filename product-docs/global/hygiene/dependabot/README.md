@@ -164,6 +164,9 @@ T4/crypto/gates (`#870`/`#878`/`#929`/`#767`/`#653`); Boot 4.1.2 HITL; `#917` DR
 `eslint-plugin-react` / `eslint-plugin-react-native` incompatible; Jest 30 + `@types/jest` 30
 (`#653`) **landed** after 42/323 green without test rewrites — memo
 [`MOBILE_ESLINT10_JEST30_UNBLOCK_MEMO.md`](../../../../ezkey_mobile/docs/MOBILE_ESLINT10_JEST30_UNBLOCK_MEMO.md).
+**2026-11-02 Monday full:** Dependabot queue **empty** (0 open); no merges. Java BOM **4.1.2**
+current; Mobile RN pulse observation-only (hold). **HITL Marc:** Dependabot version-update jobs
+stopped since 2026-10-30 — see [`2026-11-02-pass-1.md`](2026-11-02-pass-1.md).
 
 **2026-10-19 Monday full (rerun):** merged Maven #868/#853, Admin UI #869/#871/#873/#875/#855 + Orval #872 (O0) + #874/#876/#822/#885, mobile lot via hygiene #913 (supersedes #879–#884); held #870 (Tink → Christophe), #877 (react without react-dom), #878 (RN 0.88 line), #767, #717 (post-#702 decision), gates #779/#653; `#627` Pixel smoke still pending — see [`2026-10-19-pass-1.md`](2026-10-19-pass-1.md).
 
