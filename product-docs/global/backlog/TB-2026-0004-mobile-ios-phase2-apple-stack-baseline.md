@@ -76,3 +76,21 @@ This tracer bullet covers what was originally Phase 1 + Phase 2 of the iOS plan.
   (prompt, no-match + cancel → `EZK_AUTH_CANCELLED`, match → downgrade); About screen shows build
   SHA/timestamp. Jest 324/324, `tsc` clean, lint 0 errors.
 - Not proven (device-only): Secure Enclave keys and real biometrics on a physical iPhone.
+
+## Execution notes — step 5, real enrollment and approval on the simulator (2026-11-02)
+
+- Local clean-start stack + Admin UI (`ezkey-admin-ui/start.sh`, port 3090). The maintainer created a
+  demo integration ("Administration") with end user `jean.martin` and an enrollment (#2); the iOS
+  simulator enrolled through the F2a seed (`2|<proofToken>|http://localhost:8080`) and challenge.
+- Server evidence: enrollment #2 `VERIFIED` (Auth API: "Signature validation passed"), device public
+  key stored as SPKI, `device_private_key_storage_tier = NONE` (simulator policy, D2).
+- Approval: the maintainer triggered a test authentication request from the enrollment page (Admin UI)
+  and approved it in the simulator → auth attempt #4 `ACCEPTED`, device proof token recorded, no
+  Auth/Admin API errors. An earlier attempt (#3) expired after 2 minutes (pending requests are pulled
+  from the enrollment detail screen, by design, same as Android).
+- The app's native Ed25519 `verify` gates bind, verify-result and respond (integration signatures):
+  all three passed against real server signatures.
+- Maestro on iOS: `hideKeyboard` fails; the iOS run used a copy of `pilot_enrollment_full_runtime.yaml`
+  that taps the header instead.
+- Still open: Secure Enclave and real biometrics on a physical iPhone (step 6); approval with
+  "Confirm before approvals" enabled (`signWithAuthentication`) not yet exercised end to end.

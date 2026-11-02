@@ -92,7 +92,14 @@ is allowed by ATS (`NSAllowsLocalNetworking`). No ngrok: use localhost.
 
 **Maestro on iOS:** `brew install mobile-dev-inc/tap/maestro`; existing flows using `ezkey.e2e.*`
 test IDs (e.g. `maestro/flows/pilot_enrollment_seed_bypass_runtime.yaml`) run on the booted
-simulator with `maestro --device <simulator-udid> test <flow>`.
+simulator with `maestro --device <simulator-udid> test <flow>`. Maestro's `hideKeyboard` fails on
+iOS: replace it with a tap on a neutral area (e.g. `- tapOn: { point: "50%,8%" }`, the header).
+
+**End-to-end against the local stack (step 5, verified 2026-11-02):** create an enrollment in the
+Admin UI (`ezkey-admin-ui/start.sh`, http://localhost:3090), enroll the simulator with the F2a seed
+`<enrollmentId>|<proofToken>|http://localhost:8080` plus the challenge, then trigger a test
+authentication request from the enrollment page and approve it in the app (enrollment card → check
+pending → Approve). Pending requests expire after 2 minutes and are not pushed to the home screen.
 
 ## Native crypto (`EzkeyCryptoModule`, step 4)
 
