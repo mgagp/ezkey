@@ -123,6 +123,7 @@ for the full description.
 |---|---|---|---|---|
 | `ezkey.trusted-proxies.required` | `boolean` | `false` | optionnel [prod] | When `true`, fail startup if `cidrs` is empty or invalid (SEC-011). Set via **`EZKEY_TRUSTED_PROXIES_REQUIRED=true`** on Docker / Lightsail / `--with-proxy`. |
 | `ezkey.trusted-proxies.cidrs` | `List<String>` | *(empty)* | optionnel | CIDR ranges of trusted reverse proxies. |
+| `ezkey.trusted-proxies.trust-cloudflare-connecting-ip` | `boolean` | `false` | optionnel | Prefer `CF-Connecting-IP` only when the immediate hop is a declared Cloudflare edge (#1140). Default OFF. Env: **`EZKEY_TRUSTED_PROXIES_TRUST_CLOUDFLARE_CONNECTING_IP`**. |
 
 ---
 

@@ -19,16 +19,20 @@ import java.util.Collection;
  * Resolves the client IP address from an HTTP request, optionally trusting proxy headers only when
  * the direct connection comes from a configured trusted proxy (CIDR list).
  *
- * <p><b>Rules:</b>
+ * <p><b>Rules (fail-closed):</b>
  *
  * <ul>
  *   <li>If {@code trustedProxyCidrs} is null or empty: always return {@code
  *       request.getRemoteAddr()} (do not trust any header; prevents spoofing).
- *   <li>If non-empty and {@code remoteAddr} is contained in any CIDR: resolve client IP from
- *       headers in order: CF-Connecting-IP, then X-Forwarded-For (first IP), then X-Real-IP, then
- *       fallback to remoteAddr.
- *   <li>If non-empty but {@code remoteAddr} is not in any CIDR: return remoteAddr only (headers
- *       ignored).
+ *   <li>If {@code remoteAddr} is not in any trusted CIDR: return remoteAddr and ignore all headers.
+ *   <li>If {@code remoteAddr} is trusted: walk {@code X-Forwarded-For} from <b>right to left</b>,
+ *       skip each hop that is itself a trusted proxy, and keep the first untrusted entry. Never
+ *       take the leftmost entry by default.
+ *   <li>If any XFF entry is invalid, or the entire chain is trusted: fall back to remoteAddr.
+ *   <li>{@code CF-Connecting-IP} is used only when {@code trustCloudflareConnectingIp} is true
+ *       (dedicated setting, OFF by default) and the immediate hop is trusted — meaning the operator
+ *       has declared that hop as a Cloudflare edge. {@code X-Real-IP} is ignored and never
+ *       preferred.
  * </ul>
  *
  * <p>Uses {@code com.github.seancfoley.ipaddress} for CIDR containment checks (no DNS lookup).
@@ -45,18 +49,16 @@ public final class ClientIpResolver {
 
   private static final String HEADER_CF_CONNECTING_IP = "CF-Connecting-IP";
   private static final String HEADER_X_FORWARDED_FOR = "X-Forwarded-For";
-  private static final String HEADER_X_REAL_IP = "X-Real-IP";
 
   private ClientIpResolver() {
     // Utility class - no instantiation
   }
 
   /**
-   * Resolves the client IP address from the request.
+   * Resolves the client IP address from the request without trusting {@code CF-Connecting-IP}.
    *
-   * <p>When {@code trustedProxyCidrs} is null or empty, only the direct connection address is used.
-   * When non-empty, proxy headers are trusted only if {@code request.getRemoteAddr()} is contained
-   * in one of the given CIDRs.
+   * <p>Equivalent to {@link #resolve(HttpServletRequest, Collection, boolean)} with {@code
+   * trustCloudflareConnectingIp=false}.
    *
    * @param request the HTTP servlet request (must not be null)
    * @param trustedProxyCidrs optional list of CIDR or single-IP strings (e.g. 10.0.0.0/8,
@@ -65,6 +67,29 @@ public final class ClientIpResolver {
    *     unavailable)
    */
   public static String resolve(HttpServletRequest request, Collection<String> trustedProxyCidrs) {
+    return resolve(request, trustedProxyCidrs, false);
+  }
+
+  /**
+   * Resolves the client IP address from the request.
+   *
+   * <p>When {@code trustedProxyCidrs} is null or empty, only the direct connection address is used.
+   * When non-empty, proxy headers are trusted only if {@code request.getRemoteAddr()} is contained
+   * in one of the given CIDRs. {@code CF-Connecting-IP} is consulted only when {@code
+   * trustCloudflareConnectingIp} is true.
+   *
+   * @param request the HTTP servlet request (must not be null)
+   * @param trustedProxyCidrs optional list of CIDR or single-IP strings; null or empty means do not
+   *     trust any proxy header
+   * @param trustCloudflareConnectingIp when true and remoteAddr is trusted, prefer a valid {@code
+   *     CF-Connecting-IP} before walking X-Forwarded-For; OFF by default at configuration layer
+   * @return the resolved client IP address (never null; may be empty string if remoteAddr is
+   *     unavailable)
+   */
+  public static String resolve(
+      HttpServletRequest request,
+      Collection<String> trustedProxyCidrs,
+      boolean trustCloudflareConnectingIp) {
     if (request == null) {
       return "";
     }
@@ -77,25 +102,42 @@ public final class ClientIpResolver {
       return remoteAddr;
     }
 
-    if (!isRemoteAddrFromTrustedProxy(remoteAddr, trustedProxyCidrs)) {
+    if (!isAddressInTrustedProxies(remoteAddr, trustedProxyCidrs)) {
       return remoteAddr;
     }
 
-    // Trust proxy: resolve from headers in priority order
-    String fromHeader = resolveFromHeaders(request);
-    return fromHeader != null ? fromHeader : remoteAddr;
+    if (trustCloudflareConnectingIp) {
+      String cf = request.getHeader(HEADER_CF_CONNECTING_IP);
+      if (cf != null && !cf.isBlank() && isValidIp(cf.trim())) {
+        return cf.trim();
+      }
+    }
+
+    String fromXff =
+        resolveFromXForwardedFor(
+            request.getHeader(HEADER_X_FORWARDED_FOR), remoteAddr, trustedProxyCidrs);
+    return fromXff != null ? fromXff : remoteAddr;
   }
 
-  /** Returns true if the given remote address is contained in any of the trusted proxy CIDRs. */
-  private static boolean isRemoteAddrFromTrustedProxy(String remoteAddr, Collection<String> cidrs) {
-    if (remoteAddr == null || remoteAddr.isBlank()) {
+  /**
+   * Returns true if the given address is contained in any of the trusted proxy CIDRs.
+   *
+   * @param address IP address to check
+   * @param cidrs trusted proxy CIDR or single-IP strings
+   * @return true when address is valid and contained in at least one CIDR
+   */
+  static boolean isAddressInTrustedProxies(String address, Collection<String> cidrs) {
+    if (address == null || address.isBlank()) {
       return false;
     }
-    IPAddressString remote = new IPAddressString(remoteAddr.trim());
+    IPAddressString remote = new IPAddressString(address.trim());
     if (!remote.isValid()) {
       return false;
     }
     IPAddress remoteAddrObj = remote.getAddress();
+    if (remoteAddrObj == null) {
+      return false;
+    }
 
     for (String cidr : cidrs) {
       if (cidr == null || cidr.isBlank()) {
@@ -114,29 +156,30 @@ public final class ClientIpResolver {
   }
 
   /**
-   * Extracts client IP from proxy headers (CF-Connecting-IP, X-Forwarded-For, X-Real-IP). Returns
-   * null if no valid IP is found in headers.
+   * Walks X-Forwarded-For right-to-left, skipping trusted hops. Returns null when the header is
+   * absent/blank (caller falls back to remoteAddr). Returns {@code remoteAddr} when any entry is
+   * invalid or the entire chain is trusted.
    */
-  private static String resolveFromHeaders(HttpServletRequest request) {
-    String cf = request.getHeader(HEADER_CF_CONNECTING_IP);
-    if (cf != null && !cf.isEmpty() && isValidIp(cf.trim())) {
-      return cf.trim();
+  private static String resolveFromXForwardedFor(
+      String xff, String remoteAddr, Collection<String> trustedProxyCidrs) {
+    if (xff == null || xff.isBlank()) {
+      return null;
     }
 
-    String xff = request.getHeader(HEADER_X_FORWARDED_FOR);
-    if (xff != null && !xff.isEmpty()) {
-      String first = xff.split(",")[0].trim();
-      if (isValidIp(first)) {
-        return first;
+    String[] parts = xff.split(",");
+    for (String part : parts) {
+      if (!isValidIp(part.trim())) {
+        return remoteAddr;
       }
     }
 
-    String xri = request.getHeader(HEADER_X_REAL_IP);
-    if (xri != null && !xri.isEmpty() && isValidIp(xri.trim())) {
-      return xri.trim();
+    for (int i = parts.length - 1; i >= 0; i--) {
+      String hop = parts[i].trim();
+      if (!isAddressInTrustedProxies(hop, trustedProxyCidrs)) {
+        return hop;
+      }
     }
-
-    return null;
+    return remoteAddr;
   }
 
   /**

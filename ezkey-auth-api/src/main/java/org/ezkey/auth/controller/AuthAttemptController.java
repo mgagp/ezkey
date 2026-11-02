@@ -230,7 +230,10 @@ public class AuthAttemptController {
 
     String clientIp =
         AuditHelper.extractClientIp(
-            httpRequest, trustedProxyProperties != null ? trustedProxyProperties.getCidrs() : null);
+            httpRequest,
+            trustedProxyProperties != null ? trustedProxyProperties.getCidrs() : null,
+            trustedProxyProperties != null
+                && trustedProxyProperties.isTrustCloudflareConnectingIp());
     String userAgent = AuditHelper.extractUserAgent(httpRequest);
 
     AuthAttemptPendingResponse response =
@@ -337,7 +340,10 @@ public class AuthAttemptController {
 
     String clientIp =
         AuditHelper.extractClientIp(
-            httpRequest, trustedProxyProperties != null ? trustedProxyProperties.getCidrs() : null);
+            httpRequest,
+            trustedProxyProperties != null ? trustedProxyProperties.getCidrs() : null,
+            trustedProxyProperties != null
+                && trustedProxyProperties.isTrustCloudflareConnectingIp());
     String userAgent = AuditHelper.extractUserAgent(httpRequest);
 
     Integer respondTenantId = resolveTenantIdForAudit(request.authAttemptId());
