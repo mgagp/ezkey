@@ -92,5 +92,7 @@ This tracer bullet covers what was originally Phase 1 + Phase 2 of the iOS plan.
   all three passed against real server signatures.
 - Maestro on iOS: `hideKeyboard` fails; the iOS run used a copy of `pilot_enrollment_full_runtime.yaml`
   that taps the header instead.
-- Still open: Secure Enclave and real biometrics on a physical iPhone (step 6); approval with
-  "Confirm before approvals" enabled (`signWithAuthentication`) not yet exercised end to end.
+- With "Confirm before approvals" enabled: the app showed the Face ID prompt before sending; a
+  simulated matching face let `signWithAuthentication` sign → auth attempt #5 `ACCEPTED`, app shows
+  "Latest response: Approved", no Auth API errors.
+- Still open: Secure Enclave and real biometrics on a physical iPhone (step 6).
