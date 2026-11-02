@@ -18,6 +18,11 @@
 
     <packaging>jar</packaging>
 
+    <properties>
+        <!-- Ship committed root THIRD-PARTY.txt under META-INF/licenses/ in the JAR. -->
+        <ezkey.skip.third-party.licenses.copy>false</ezkey.skip.third-party.licenses.copy>
+    </properties>
+
     <dependencies>
         <!-- Spring Boot Web -->
         <dependency>
