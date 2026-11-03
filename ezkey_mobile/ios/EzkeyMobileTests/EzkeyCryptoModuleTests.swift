@@ -187,7 +187,7 @@ final class EzkeyCryptoModuleTests: XCTestCase {
 
   // MARK: Reinstall purge
 
-  func testPurgeRemovesPreviousInstallationKeysAndSparesOtherServices() throws {
+  func testPurgeRemovesPreviousInstallationKeysAndSparesOtherServices() {
     // Previous installation: a key exists, then UserDefaults is wiped (uninstall).
     let first = makeModule()
     XCTAssertEqual(
@@ -262,7 +262,7 @@ final class EzkeyCryptoModuleTests: XCTestCase {
   }
 
   /// Proves the "Ezkey build info" Run Script wrote the host app's built Info.plist.
-  func testBuildInfoFromRunScript() throws {
+  func testBuildInfoFromRunScript() {
     let module = EzkeyCryptoModule(
       store: EzkeyEnrollmentKeyStore(service: service, defaults: defaults))
     guard case .resolved(let timestamp) = call({ module.getBuildTimestamp($0, reject: $1) }),
