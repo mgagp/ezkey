@@ -29,6 +29,8 @@ import {RootStackParamList} from '../../navigation/types';
 import {EnrollmentScannerModal} from '../../components/EnrollmentScannerModal';
 import PinCodeInput from '../../components/PinCodeInput';
 import {useEnrollmentWizard} from '../../hooks/useEnrollmentWizard';
+import {useAccessibilityAnnouncement} from '../../hooks/useAccessibilityAnnouncement';
+import {colors} from '../../config/theme';
 import {
   buildEnrollmentIdentityDisplay,
   identityDisplayCopy,
@@ -179,6 +181,9 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
     handleScannerDismiss,
   } = useEnrollmentWizard(navigation.popToTop);
 
+  useAccessibilityAnnouncement(bindError ?? cameraError);
+  useAccessibilityAnnouncement(challengeError);
+
   const actionButtons = (containerStyle: ViewStyle) => (
     <View style={containerStyle}>
       <TouchableOpacity
@@ -186,6 +191,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         style={[styles.secondaryButton, secondaryDisabled ? styles.disabledButton : undefined]}
         onPress={handleSecondary}
         disabled={secondaryDisabled}
+        accessibilityRole="button"
         accessibilityState={{disabled: secondaryDisabled}}>
         <Text style={styles.secondaryLabel}>{secondaryLabel}</Text>
       </TouchableOpacity>
@@ -194,7 +200,8 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         style={[styles.primaryButton, primaryDisabled ? styles.disabledButton : undefined]}
         onPress={() => handlePrimary(hasCameraPermission, requestPermission)}
         disabled={primaryDisabled}
-        accessibilityState={{disabled: primaryDisabled}}>
+        accessibilityRole="button"
+        accessibilityState={{disabled: primaryDisabled, busy: isSubmitting}}>
         <Text style={styles.primaryLabel}>{primaryLabel}</Text>
       </TouchableOpacity>
     </View>
@@ -216,7 +223,8 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
           <TouchableOpacity
             testID="ezkey.e2e.enrollmentWizard.back"
             onPress={() => handleBack(navigation.goBack)}
-            style={styles.backButton}>
+            style={styles.backButton}
+            accessibilityRole="button">
             <Text style={styles.backLabel}>{t('enrollmentWizard.back')}</Text>
           </TouchableOpacity>
           <View style={styles.backButton} />
@@ -339,6 +347,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   backButton: {
+    minHeight: 48,
+    justifyContent: 'center',
     paddingVertical: 8,
     paddingHorizontal: 12,
   },
@@ -350,7 +360,7 @@ const styles = StyleSheet.create({
   flowSectionLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#5a7aa8',
+    color: colors.primaryMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 8,
@@ -384,7 +394,7 @@ const styles = StyleSheet.create({
   enrollmentDetailsLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#5a7aa8',
+    color: colors.primaryMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 8,
@@ -566,7 +576,7 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 12,
-    color: '#5a7aa8',
+    color: colors.primaryMuted,
     fontWeight: '500',
     flexShrink: 0,
   },

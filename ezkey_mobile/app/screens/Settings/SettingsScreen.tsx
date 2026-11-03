@@ -119,10 +119,16 @@ export const SettingsScreen: React.FC<Props> = ({navigation}) => {
                 index === settingsItems.length - 1 && styles.itemLast,
                 pressed && styles.itemPressed,
               ]}
-              onPress={() => navigation.navigate(item.key)}>
+              onPress={() => navigation.navigate(item.key)}
+              accessibilityRole="button"
+              accessibilityLabel={
+                item.subtitle != null ? `${item.label}, ${item.subtitle}` : item.label
+              }>
               <Text style={styles.itemLabel}>{item.label}</Text>
               {item.subtitle != null && <Text style={styles.itemSubtitle}>{item.subtitle}</Text>}
-              <Text style={styles.chevron}>›</Text>
+              <Text style={styles.chevron} importantForAccessibility="no" accessibilityElementsHidden>
+                ›
+              </Text>
             </Pressable>
           ))}
         </View>

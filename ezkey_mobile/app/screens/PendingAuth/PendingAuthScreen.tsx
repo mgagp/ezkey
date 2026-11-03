@@ -31,6 +31,8 @@ import {RootStackParamList} from '../../navigation/types';
 import PinCodeInput from '../../components/PinCodeInput';
 import {usePendingAuth, AUTH_CHALLENGE_LENGTH, tracePendingAuthRespond} from '../../hooks/usePendingAuth';
 import {useSensitiveScreen} from '../../hooks/useSensitiveScreen';
+import {useAccessibilityAnnouncement} from '../../hooks/useAccessibilityAnnouncement';
+import {colors} from '../../config/theme';
 import {
   buildEnrollmentIdentityDisplay,
   identityDisplayCopy,
@@ -107,6 +109,9 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
     });
     return unsubscribe;
   }, [navigation, attempt, handleRespond, hasSubmittedServerDecision, isRespondInFlight]);
+
+  useAccessibilityAnnouncement(globalError);
+  useAccessibilityAnnouncement(formError);
 
   const handleInactiveBack = useCallback(() => {
     if (navigation.canGoBack()) {
@@ -212,14 +217,16 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
                 // re-claim pending (would often land on empty while READ still waits) (#833).
                 attempt ? dismissRetryableErrorKeepAttempt : loadPendingAttempt
               }
-              style={styles.secondaryButton}>
+              style={styles.secondaryButton}
+              accessibilityRole="button">
               <Text style={styles.secondaryLabel}>{t('pendingAuth.tryAgain')}</Text>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
               testID="ezkey.e2e.pendingAuth.inactiveBack"
               onPress={handleInactiveBack}
-              style={styles.secondaryButton}>
+              style={styles.secondaryButton}
+              accessibilityRole="button">
               <Text style={styles.secondaryLabel}>{t('common.back')}</Text>
             </TouchableOpacity>
           )}
@@ -230,7 +237,8 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
           <TouchableOpacity
             testID="ezkey.e2e.pendingAuth.checkAgain"
             onPress={loadPendingAttempt}
-            style={styles.checkAgainButton}>
+            style={styles.checkAgainButton}
+            accessibilityRole="button">
             <Text style={styles.checkAgainLabel}>{t('pendingAuth.checkAgain')}</Text>
           </TouchableOpacity>
         </View>
@@ -288,7 +296,9 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
                     await handleRespond(false);
                   }}
                   style={[styles.actionButton, styles.rejectButton]}
-                  disabled={isProcessing}>
+                  disabled={isProcessing}
+                  accessibilityRole="button"
+                  accessibilityState={{disabled: isProcessing}}>
                   <Text style={styles.rejectLabel}>{t('pendingAuth.deny')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -302,7 +312,11 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
                     approveChallengeIncomplete ? styles.approveButtonDisabled : styles.approveButton,
                   ]}
                   disabled={isProcessing || approveChallengeIncomplete}
-                  accessibilityState={{disabled: isProcessing || approveChallengeIncomplete}}>
+                  accessibilityRole="button"
+                  accessibilityState={{
+                    disabled: isProcessing || approveChallengeIncomplete,
+                    busy: isProcessing,
+                  }}>
                   <Text
                     style={
                       approveChallengeIncomplete ? styles.approveLabelDisabled : styles.approveLabel
@@ -390,7 +404,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   checkAgainButton: {
-    backgroundColor: '#3076df',
+    backgroundColor: colors.primary,
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 24,

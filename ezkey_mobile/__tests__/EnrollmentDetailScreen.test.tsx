@@ -8,7 +8,7 @@
  */
 
 import React from 'react';
-import {Text} from 'react-native';
+import {AccessibilityInfo, Text} from 'react-native';
 import renderer from 'react-test-renderer';
 import {EnrollmentDetailScreen} from '../app/screens/EnrollmentDetail';
 import {
@@ -18,6 +18,7 @@ import {
 } from '../app/hooks/useEnrollments';
 import {claimPendingAttempt} from '../app/services/pendingAuth/claimPendingAttempt';
 import {useEnrollmentStore} from '../app/state/enrollmentStore';
+import {getByRole} from '../test-utils/a11yQueries';
 
 jest.mock('../app/hooks/useEnrollments', () => ({
   useEnrollments: jest.fn(),
@@ -257,6 +258,49 @@ describe('EnrollmentDetailScreen', () => {
       .flat()
       .join(' ');
     expect(textContent).toContain('No pending requests');
+  });
+
+  it('exposes Check pending as a button and announces the no-pending feedback', async () => {
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    mockClaimPendingAttempt.mockResolvedValue({kind: 'none'});
+    const {navigation, route} = renderDetail();
+    const tree = await renderScreen(navigation, route);
+
+    expect(getByRole(tree.root, 'button', 'Check pending')).toBeDefined();
+    expect(announce).not.toHaveBeenCalled();
+
+    const checkPending = tree.root.find(
+      node => node.props.testID === 'ezkey.e2e.enrollmentDetail.checkPending',
+    );
+    await renderer.act(async () => {
+      await checkPending.props.onPress();
+    });
+
+    expect(announce).toHaveBeenCalledWith('No pending requests');
+    announce.mockRestore();
+  });
+
+  it('announces a new response result but not the one present on open', async () => {
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    renderer.act(() => {
+      useEnrollmentStore.getState().setRecentAuthResult(enrollmentId, {
+        status: 'approved',
+        completedAt: '2026-11-02T10:00:00.000Z',
+      } as never);
+    });
+    const {navigation, route} = renderDetail();
+    await renderScreen(navigation, route);
+    expect(announce).not.toHaveBeenCalled();
+
+    await renderer.act(async () => {
+      useEnrollmentStore.getState().setRecentAuthResult(enrollmentId, {
+        status: 'rejected',
+        completedAt: '2026-11-02T10:05:00.000Z',
+      } as never);
+    });
+
+    expect(announce).toHaveBeenCalledWith('Rejected');
+    announce.mockRestore();
   });
 
   it('stays on Detail with feedback when claim fails closed', async () => {

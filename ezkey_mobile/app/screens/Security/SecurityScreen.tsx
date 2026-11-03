@@ -109,7 +109,7 @@ export const SecurityScreen: React.FC = () => {
       contentContainerStyle={[styles.content, {paddingBottom: insets.bottom + spacing.xxl}]}
       accessibilityLabel={t('security.title')}>
       <Text style={styles.intro}>{t('security.intro')}</Text>
-      <View style={styles.card}>
+      <View style={styles.card} accessibilityRole="radiogroup">
         {SECURITY_LEVELS.map((level, index) => {
           const selected = level === selectedLevel;
           const unsupported =
@@ -130,13 +130,18 @@ export const SecurityScreen: React.FC = () => {
                 handleSelect(level).catch(() => {});
               }}
               disabled={disabled}
-              accessibilityRole="button"
-              accessibilityState={{selected, disabled}}
+              accessibilityRole="radio"
+              accessibilityState={{checked: selected, disabled}}
               accessibilityLabel={t(copy.title)}>
               <View style={styles.itemContent}>
                 <Text style={styles.itemLabel}>{t(copy.title)}</Text>
                 <Text style={styles.itemBody}>{t(copy.body)}</Text>
-                <Text style={styles.itemSubtitle}>{selected ? t('security.current') : ' '}</Text>
+                <Text
+                  style={styles.itemSubtitle}
+                  importantForAccessibility="no"
+                  accessibilityElementsHidden>
+                  {selected ? t('security.current') : ' '}
+                </Text>
               </View>
               <View style={[styles.radioOuter, selected && styles.radioOuterSelected]}>
                 {selected ? <View style={styles.radioInner} /> : null}
