@@ -7,7 +7,7 @@ Public product hostnames (served vs not served, DNS, expected `/` codes): see
 - **Admin UI** — Cloudflare Pages (not a VM container)
 - **APIs / Demo ACME** — Lightsail Docker host behind Caddy
 
-Normative rules: [`../VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../VERSIONING_AND_DEPLOY_TRACEABILITY.md).
+Normative rules: [`../VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../../VERSIONING_AND_DEPLOY_TRACEABILITY.md).
 
 History of this file (git log) is the deploy history. Update **only after** a successful
 publish — see that doc § *Update procedure*.
@@ -42,6 +42,25 @@ Host OS hygiene lane: [`product-docs/global/hygiene/host-os/README.md`](../../..
 | **Last H3 (major / new instance)** | never |
 | **Last pre-intervention snapshot** | none (0 snapshots verified 2026-10-19; automatic snapshots off) |
 | **Host OS note** | Lane established 2026-10-19 (#909); no H1/H2 executed yet. |
+
+## Transport TLS (post-quantum key exchange)
+
+Hybrid X25519MLKEM768 (classical X25519 + ML-KEM-768) protects recorded HTTPS against a future
+quantum break of the key exchange. It is negotiated per hop only when both ends support it.
+Re-probe after any Caddy image refresh or Cloudflare TLS change:
+`./scripts/lightsail/tls-pq-probe.sh` (edge) and
+`./scripts/lightsail/tls-pq-probe.sh --origin --target community` (origin; rootbeer-local only).
+Map: [`V-2026-09-15-post-quantum-crypto-posture`](../../../product-docs/global/vision/V-2026-09-15-post-quantum-crypto-posture.md) § TLS layer (#1174).
+
+| Field | Value |
+|-------|-------|
+| **Last probe (UTC)** | 2026-11-03T15:29Z (workstation OpenSSL 3.5.7; host OpenSSL 3.5.8) |
+| **Client → Cloudflare edge** | **X25519MLKEM768** on `admin-api`, `auth-api`, `integration-api`, `demo-acme` (`.ezkey.online`); negative control (X25519 only) → X25519. TLS 1.3, `TLS_AES_256_GCM_SHA384`. |
+| **Origin (Caddy accepts)** | **X25519MLKEM768** on the same four SNI names, probed on the host against `127.0.0.1:443`; control → X25519. TLS 1.3, `TLS_AES_128_GCM_SHA256`. |
+| **Cloudflare → origin (Cloudflare chooses)** | Not observable from outside. Cloudflare Automatic Key Exchange prefers X25519MLKEM768 toward origins that support it ([changelog 2026-07-21](https://developers.cloudflare.com/changelog/post/2026-07-21-automatic-origin-key-exchange/), [docs](https://developers.cloudflare.com/ssl/post-quantum-cryptography/pqc-to-origin/)). Documented behaviour + proven origin capability; not directly proven. |
+| **Caddy** | `v2.11.4`, image `caddy:2-alpine` (floating tag), digest `sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b`; community Caddyfile has no `curves` override (Caddy ≥ 2.10 defaults). |
+| **Not covered** | Local `docker-compose.with-proxy.yml` Caddy is plain HTTP (no TLS hop). Ezkey mobile and PIA/SDK client stacks decide their own hop. Admin SSH channel: see note. |
+| **Admin SSH note** | Operator SSH to the host negotiates classical `curve25519-sha256`: host `sshd` (OpenSSH 9.9p1, AL2023 crypto policy `DEFAULT`) does not offer `mlkem768x25519-sha256` / `sntrup761x25519-sha512`. Follow-up: #1177. |
 
 ## Optional tag
 

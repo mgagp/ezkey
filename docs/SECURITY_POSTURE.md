@@ -129,8 +129,11 @@ meant to be linked from trust-facing material without inflating the top-level pi
 - **It does not claim post-quantum resistance.** Device signatures (EC P-256) and integration
   signatures (Ed25519) are pre-quantum: a future quantum computer able to run Shor's algorithm
   could forge them from the public keys. Proof tokens, AES-256-GCM at rest, and HMAC-SHA256 are
-  symmetric and do not rely on elliptic-curve hardness. Whether the TLS edge negotiates a hybrid
-  post-quantum key exchange depends on the deployment and is not yet verified. Recovery-code length
+  symmetric and do not rely on elliptic-curve hardness. Hybrid post-quantum TLS key exchange
+  depends on the deployment: the community instance negotiates X25519MLKEM768 at the Cloudflare
+  edge and its Caddy origin accepts it (probe 2026-11-03,
+  [`lightsail/community/DEPLOYED.md`](lightsail/community/DEPLOYED.md) § Transport TLS); no claim
+  is made for self-hosted edges or for every client stack. Recovery-code length
   (106 bits) is classical hardening, not a post-quantum property. Algorithms:
   [`CRYPTO.md`](CRYPTO.md). Map, decisions and watch list:
   [`V-2026-09-15-post-quantum-crypto-posture`](../product-docs/global/vision/V-2026-09-15-post-quantum-crypto-posture.md).

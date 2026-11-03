@@ -259,7 +259,7 @@
   security: true
   issue: null
   last_review: 2026-10-19
-  notes: ""
+  notes: "Hybrid PQ TLS (X25519MLKEM768) relies on Caddy >= 2.10 defaults and no `curves` override; floating tag, host version + probe recorded in docs/lightsail/community/DEPLOYED.md § Transport TLS (#1174); re-probe with scripts/lightsail/tls-pq-probe.sh after an image refresh"
 
 - id: rocky-linux-pam
   component: Rocky Linux (PAM; root in sshd image)

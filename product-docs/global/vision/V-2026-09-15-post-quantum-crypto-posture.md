@@ -155,8 +155,16 @@ Consequences:
   - iOS app;
   - PIA and SDK JVM clients;
   - the Cloudflare → origin hop.
-- **Status:** server side is probably hybrid, **unverified**. `SECURITY_POSTURE.md` says so.
-- **Next step:** a probe (Path 1).
+- **Status (probe 2026-11-03, #1174):**
+  - **Edge:** X25519MLKEM768 negotiated at the Cloudflare edge on all four public hostnames.
+  - **Origin:** the Caddy origin (v2.11.4) accepts it.
+  - **Negative control:** offering X25519 alone falls back to X25519.
+  - **Cloudflare → origin:** Cloudflare's choice on that hop is documented behaviour (Automatic
+    Key Exchange), not directly proven.
+  - Record: [`docs/lightsail/community/DEPLOYED.md`](../../../docs/lightsail/community/DEPLOYED.md)
+    § Transport TLS. Re-probe: `scripts/lightsail/tls-pq-probe.sh`.
+- **Gap found by the probe session:** the operator SSH channel to the host (deploys, DB tunnel)
+  negotiates classical `curve25519-sha256`. Tracked in #1177.
 
 ## Decisions
 
@@ -175,7 +183,7 @@ Consequences:
 | Path | What | Status / trigger |
 | --- | --- | --- |
 | **0 — Honest claims** | `SECURITY_POSTURE.md`, recovery-code wording, `CRYPTO.md` pointer | **Done** (#1158) |
-| **1 — TLS probe** | OpenSSL 3.5+ `s_client -groups X25519MLKEM768` against the community hostnames and the local Caddy proxy stack, plus `caddy version` on the host. Record the negotiated group in the community deploy ledger. Add a capability note to the Caddy registry entry. | Follow-up issue, to be opened (next step of this review) |
+| **1 — TLS probe** | `scripts/lightsail/tls-pq-probe.sh`: X25519MLKEM768 vs X25519 control at the edge and on the origin, plus Caddy version/digest. Results go to the community deploy ledger; the Caddy registry entry carries a capability note. The local proxy stack is plain HTTP (no TLS hop). | **Done** (#1174, 2026-11-03). Re-probe after Caddy image refreshes. |
 | **2 — Admin crypto exposure** | Characterize what the Admin API enrollment DTO returns at each lifecycle state. Remove crypto material with no operator use (device and integration public keys, and other candidates found by the characterization). Full contract cycle: DTO, OpenAPI, Orval, Admin UI, CLI TUI, Bruno, i18n, community redeploy. | Follow-up issue, to be opened |
 | **3 — Device algorithm identifier** | `deviceKeyAlgorithm` in the signed verify-device line, persisted, fail-closed dispatch | #1165 (`status:needs-challenge`) |
 | **4 — Hybrid signatures** | **Design both sides, implement integration first.** Integration: Ed25519 **and** ML-DSA over the same canonical lines; both must verify; `integrationKeyAlgorithm` becomes e.g. `ed25519+ml-dsa-65`. Device later: hardware P-256 **and** ML-DSA (Keystore / Secure Enclave where available, explicit storage tier otherwise). One flag day: clean start + one mobile release. | **Medium term.** Watch triggers below. Needs a design pack and a written security-owner opinion on mobile crypto libraries. |
@@ -211,7 +219,8 @@ and whenever a mobile minimum-OS change is discussed.
 1. Ezkey mobile minimum OS versus iOS 26 and Android API 37, and the share of active testers
    above each.
 2. Android ML-DSA verification library options, and any independent audit of a JS candidate.
-3. Hybrid TLS status from the Path 1 probe, including after Caddy image refreshes.
+3. Hybrid TLS status: re-run `scripts/lightsail/tls-pq-probe.sh` after Caddy image refreshes or
+   Cloudflare TLS changes.
 4. External horizon: NIST IR 8547 (deprecated after 2030), Canadian ITSM.40.001 (2031 / 2035).
 5. First-adopter discussions. Each one re-opens Path 5 and the agility hooks (#1165,
    [`I-2026-0025`](../backlog/ideas/I-2026-0025-auth-api-protocol-capability-versioning.md)).
@@ -235,8 +244,8 @@ and whenever a mobile minimum-OS change is discussed.
 
 ## Promotion criteria
 
-- Paths 1–3 are tracked as GitHub issues (#1165 open; the probe and Admin exposure issues to
-  open).
+- Paths 1–3 are tracked as GitHub issues (#1174 probe; #1165 device algorithm; the Admin
+  exposure issue to open).
 - Path 4 is promoted to a design pack (`TB-*` or ADR) only when the wake-up rule fires. No
   `TB-*` is opened "for post-quantum" without it.
 - Parent idea
