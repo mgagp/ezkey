@@ -1,0 +1,12 @@
+# Issue template chooser. Default labels on forms use names that already exist
+# in this repository (verified via GitHub Labels API). Agents: five label
+# groups remain mandatory even when using blank issues or non-form clients —
+# see .cursor/rules/github-issue-labels.mdc.
+blank_issues_enabled: true
+contact_links:
+  - name: Issue labeling rules (mandatory)
+    url: https://github.com/mgagp/ezkey/blob/main/.cursor/rules/github-issue-labels.mdc
+    about: Every new issue needs lane, type, component, priority, and status labels — whatever tool creates it (gh, MCP/API, Cursor app, web). Re-read and fix gaps after create.
+  - name: Report a security vulnerability (private)
+    url: https://github.com/mgagp/ezkey/security/advisories/new
+    about: Do not open a public issue for sensitive vulnerability reports. Prefer private vulnerability reporting; see SECURITY.md.

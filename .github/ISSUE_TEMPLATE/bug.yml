@@ -1,0 +1,74 @@
+name: Bug report
+description: Something is broken or behaves incorrectly in Ezkey.
+title: "fix: "
+labels:
+  - "type:bug"
+  - "lane:c"
+  - "priority:p2"
+  - "status:needs-challenge"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. After submit, ensure a `component:*` label is set
+        (forms cannot always attach every group). Labeling rules:
+        [.cursor/rules/github-issue-labels.mdc](https://github.com/mgagp/ezkey/blob/main/.cursor/rules/github-issue-labels.mdc).
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Primary surface (apply the matching `component:*` label after create if needed).
+      options:
+        - admin-api
+        - admin-ui
+        - auth-api
+        - integration-api
+        - crypto-api
+        - core
+        - mobile
+        - demo-device
+        - sdk
+        - pam
+        - site
+        - infra
+        - methodology
+        - other / unsure
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What went wrong in one or two sentences.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps from a clean-start or known baseline when possible.
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Branch/commit, stack mode, browser/device — no secrets or private host details.
+    validations:
+      required: false
