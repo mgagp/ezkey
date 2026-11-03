@@ -8,7 +8,8 @@ its internal data model, and its relationship to the Auth API without reopening 
 
 The current mobile implementation and security posture should be read as **Android-first**.
 The **iOS rebuild is in progress** (issue #152, ADR-MOB-0005); see [IOS_SETUP.md](IOS_SETUP.md) for
-the baseline and known gaps. Reviewers should not treat missing iOS parity as a current defect unless
+the baseline and known gaps, and [IOS_ANDROID_PARITY.md](IOS_ANDROID_PARITY.md) for the
+area-by-area parity checklist. Reviewers should not treat missing iOS parity as a current defect unless
 a document explicitly claims that parity already exists.
 
 Root-level documents remain canonical for shared Ezkey product identity, protocol semantics, cryptographic wire

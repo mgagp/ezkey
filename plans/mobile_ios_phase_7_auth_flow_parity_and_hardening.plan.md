@@ -4,16 +4,16 @@ overview: Complete the iPhone implementation of Ezkey’s core authentication fl
 todos:
   - id: implement-real-pending-respond
     content: Complete the real iPhone implementation of pending and respond on top of the validated crypto and enrollment base.
-    status: pending
+    status: completed
   - id: align-with-android-behavior
     content: Check parity with the Android reference app for crypto use, challenge handling, and signed-result trust checks.
-    status: pending
+    status: completed
   - id: harden-tests-and-docs
     content: Add the smallest high-value test and documentation updates needed to support ongoing iPhone development.
-    status: pending
+    status: completed
   - id: define-post-phase-backlog
     content: Separate true completion items from later enhancements, polish, or release-focused work.
-    status: pending
+    status: completed
 isProject: false
 retrofitted_by: R-2026-0003
 retrofitted_at: 2026-05-24
@@ -48,6 +48,14 @@ Phase 7 is complete when the iPhone app can execute Ezkey’s core mobile flow e
 - Declaring parity based on UI similarity rather than trust-boundary correctness.
 - Carrying temporary development shortcuts into the hardened path.
 - Adding broad low-value tests instead of a few discriminating checks.
+
+## Outcome (2026-11-03, lightened)
+
+- `pending` / `respond`: shared TypeScript, proven end to end on the iOS simulator (step 5).
+- Parity checklist: [`ezkey_mobile/docs/IOS_ANDROID_PARITY.md`](../ezkey_mobile/docs/IOS_ANDROID_PARITY.md).
+- Secrets decision (MOB-017 counterpart): ADR-MOB-0007, Keychain items plus a clear-all sweep.
+- Exit gate met on the simulator only; device behavior (Secure Enclave, Face ID, camera) stays with
+  phase 6, which needs a physical iPhone.
 
 ## Final note
 At this point, future work should split clearly between:

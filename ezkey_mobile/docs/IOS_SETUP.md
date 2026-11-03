@@ -206,8 +206,11 @@ hand. It is how the Crypto group, the test target and the Run Script phase were 
 - **Device-only, not yet proven:** Secure Enclave key generation and signing, tier `STRONG`, real
   Face ID / passcode prompts. Needs a physical iPhone (step 6).
 - **Orphaned secrets after reinstall:** `react-native-keychain` items (enrollment proof token,
-  integration key) also survive uninstall while their AsyncStorage metadata does not. Harmless
-  (unreachable) but residual; deliberately not purged.
-- `sealSecret` / `unsealSecret` / `deleteAllSealKeys`: Android-only by design; JS fallbacks apply.
+  integration key) also survive uninstall while their AsyncStorage metadata does not. Unreachable;
+  removed by the next Danger Zone clear-all, which sweeps every enrollment secret item (ADR-MOB-0007).
+- `sealSecret` / `unsealSecret` / `deleteAllSealKeys`: Android-only by design (iOS keeps secrets as
+  Keychain items, ADR-MOB-0007); JS fallbacks apply.
+
+Area-by-area status against Android: [IOS_ANDROID_PARITY.md](IOS_ANDROID_PARITY.md).
 - `EzkeyPlayUpdateModule`: Google Play in-app updates, Android-only; TypeScript already no-ops on iOS.
 - QR capture untestable on the simulator; use the F2a bypass above.
