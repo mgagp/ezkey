@@ -15,11 +15,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import jakarta.servlet.http.Cookie;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.ezkey.admin.config.AdminBrowserSessionCookieProperties;
+import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.security.AdminAuthRequestAttributes.AuthSource;
 import org.ezkey.admin.service.AdminTokenValidationService;
 import org.ezkey.integration.domain.entity.AdminToken;
@@ -105,5 +108,35 @@ class AdminTokenAuthenticationFilterTest {
     assertThat(request.getAttribute(AdminAuthRequestAttributes.EXPIRES_AT))
         .isEqualTo(updatedExpiresAt);
     assertThat(request.getAttribute(AdminAuthRequestAttributes.USERNAME)).isEqualTo("global.admin");
+  }
+
+  @Test
+  @DisplayName("#1122: activation-code Bearer is rejected before token lookup")
+  void activationCodeBearer_isNeverValidated_andLeavesRequestUnauthenticated() throws Exception {
+    String activationCode = AdminAuditConstants.ACTIVATION_TOKEN_PREFIX + "abc123";
+    MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/integrations");
+    request.addHeader("Authorization", "Bearer " + activationCode);
+
+    filter.doFilter(request, new MockHttpServletResponse(), new MockFilterChain());
+
+    verifyNoInteractions(tokenValidationService);
+    assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+    assertThat(request.getAttribute(AdminAuthRequestAttributes.PLAIN_TOKEN)).isNull();
+  }
+
+  @Test
+  @DisplayName("#1122: activation code in the browser session cookie is rejected too")
+  void activationCodeCookie_isNeverValidated() throws Exception {
+    browserSessionCookieProperties.setBrowserSessionCookieEnabled(true);
+    MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/integrations");
+    request.setCookies(
+        new Cookie(
+            browserSessionCookieProperties.getBrowserSessionCookieName(),
+            AdminAuditConstants.ACTIVATION_TOKEN_PREFIX + "abc123"));
+
+    filter.doFilter(request, new MockHttpServletResponse(), new MockFilterChain());
+
+    verifyNoInteractions(tokenValidationService);
+    assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
   }
 }

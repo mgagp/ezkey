@@ -26,6 +26,7 @@ import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.exception.AuthenticationException;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.integration.domain.AdminTokenPurpose;
 import org.ezkey.integration.domain.IntegrationLifecycleStatus;
 import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
@@ -98,7 +99,11 @@ class AdminProvisioningActivationCompletionTest {
     String tokenHash = SensitiveDataHasher.sha256Hex(activationCode);
     AdminToken token =
         new AdminToken(
-            tokenHash, admin, admin.getAdminType().name(), OffsetDateTime.now().plusDays(1));
+            tokenHash,
+            admin,
+            admin.getAdminType().name(),
+            OffsetDateTime.now().plusDays(1),
+            AdminTokenPurpose.ACTIVATION);
     token.setActive(true);
     token.setTenant(tenant);
 
@@ -138,6 +143,7 @@ class AdminProvisioningActivationCompletionTest {
     assertEquals(null, result.recoveryCodes());
     verify(recoveryService, never()).generateRecoveryCodes();
     verify(tokenRepository).save(any(AdminToken.class));
+    verify(tokenRepository).deactivateTokensForAdminByPurpose(7, AdminTokenPurpose.ACTIVATION);
   }
 
   @Test
@@ -152,7 +158,11 @@ class AdminProvisioningActivationCompletionTest {
     String tokenHash = SensitiveDataHasher.sha256Hex(activationCode);
     AdminToken token =
         new AdminToken(
-            tokenHash, admin, admin.getAdminType().name(), OffsetDateTime.now().minusMinutes(1));
+            tokenHash,
+            admin,
+            admin.getAdminType().name(),
+            OffsetDateTime.now().minusMinutes(1),
+            AdminTokenPurpose.ACTIVATION);
     token.setActive(true);
 
     when(tokenRepository.findByBearerTokenHashAndActiveTrueWithRelations(tokenHash))
@@ -163,5 +173,38 @@ class AdminProvisioningActivationCompletionTest {
             AuthenticationException.class, () -> service.activatePendingAdmin(activationCode));
 
     assertEquals("Activation code has expired", exception.getMessage());
+  }
+
+  @Test
+  @DisplayName("#1122: activatePendingAdmin rejects a matching row whose purpose is not ACTIVATION")
+  void activatePendingAdminRejectsNonActivationPurposeRow() {
+    EzkeyAdmin admin = new EzkeyAdmin("pending.admin", AdminType.GLOBAL_ADMIN);
+    admin.setAdminId(7);
+    admin.setActive(true);
+    admin.setLifecycleStatus(AdminLifecycleStatus.PENDING_ACTIVATION);
+
+    String activationCode = AdminAuditConstants.ACTIVATION_TOKEN_PREFIX + "session123";
+    String tokenHash = SensitiveDataHasher.sha256Hex(activationCode);
+    AdminToken token =
+        new AdminToken(
+            tokenHash,
+            admin,
+            admin.getAdminType().name(),
+            OffsetDateTime.now().plusDays(1),
+            AdminTokenPurpose.SESSION);
+    token.setActive(true);
+
+    when(tokenRepository.findByBearerTokenHashAndActiveTrueWithRelations(tokenHash))
+        .thenReturn(Optional.of(token));
+
+    AuthenticationException exception =
+        assertThrows(
+            AuthenticationException.class, () -> service.activatePendingAdmin(activationCode));
+
+    assertEquals("Invalid activation code", exception.getMessage());
+    assertEquals(AdminLifecycleStatus.PENDING_ACTIVATION, admin.getLifecycleStatus());
+    verify(enrollmentRepository, never()).save(any());
+    verify(tokenRepository, never()).save(any());
+    verify(tokenRepository, never()).deactivateTokensForAdminByPurpose(any(), any());
   }
 }

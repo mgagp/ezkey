@@ -224,6 +224,20 @@ See [`../product-docs/global/normative-posture.md`](../product-docs/global/norma
   `EZKEY_ADMIN_SESSION`; servlet sessions are unused. Fix: `SessionCreationPolicy.STATELESS` +
   `NullRequestCache` on Admin/Integration/Auth/Crypto APIs, plus defense-in-depth
   `Secure`/`SameSite=Strict` on servlet cookie properties when a session is ever created.
+- **2026-11-03:** Deferred-onboarding activation codes (`ezkey_activation_…`) are invite
+  material, never an Admin API session
+  ([#1122](https://github.com/mgagp/ezkey/issues/1122)). Reason: codes were stored with the
+  default `SESSION` purpose and a pending admin has no enrollment, so the code authenticated as a
+  full session (no `/activate`, device bind, MFA or Mode C) and its expiry slid like a session.
+  Fix, fail closed at three layers: codes persist as purpose `ACTIVATION` (absolute TTL, consumed
+  only by `POST /api/v1/admin/auth/activate`); session validation accepts only `SESSION` and
+  `EVALUATOR_TEMP`, rejects any token of a `PENDING_ACTIVATION` admin, and requires a
+  `VERIFIED` enrollment for `SESSION`; the bearer filter refuses the `ezkey_activation_` prefix
+  from header or cookie. `AdminToken` has no default purpose: every mint states one, a null
+  purpose fails fast. A successful `/activate` revokes every other outstanding activation code of
+  that admin. Flyway V26 converts unused active legacy codes to `ACTIVATION` and revokes codes
+  already presented as a bearer; its header documents the manual rollback and an
+  `ezkey_audit_log` query to review what each revoked code was used for.
 
 ## Traceability
 

@@ -62,7 +62,14 @@ public class AdminCorsTestFilterBeans {
     return passThrough(EvaluatorTempAccessFilter.class);
   }
 
-  private static <T extends Filter> T passThrough(Class<T> clazz) {
+  /**
+   * Builds a Mockito filter mock that forwards every request to the next chain element.
+   *
+   * @param clazz filter type to mock
+   * @param <T> filter type
+   * @return pass-through filter mock
+   */
+  public static <T extends Filter> T passThrough(Class<T> clazz) {
     T filter = mock(clazz);
     try {
       lenient()

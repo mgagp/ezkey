@@ -28,6 +28,7 @@ import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.integration.domain.AdminTokenPurpose;
 import org.ezkey.integration.domain.IntegrationLifecycleStatus;
 import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
@@ -605,7 +606,8 @@ public class AdminProvisioningService {
 
     OffsetDateTime expiresAt = OffsetDateTime.now().plus(ACTIVATION_CODE_TTL_DAYS, ChronoUnit.DAYS);
     AdminToken activationToken =
-        new AdminToken(tokenHash, admin, admin.getAdminType().name(), expiresAt);
+        new AdminToken(
+            tokenHash, admin, admin.getAdminType().name(), expiresAt, AdminTokenPurpose.ACTIVATION);
     activationToken.setTenant(admin.getTenant());
     activationToken.setIntegration(admin.getIntegration());
     activationToken.setCreatedAt(OffsetDateTime.now());
@@ -626,7 +628,7 @@ public class AdminProvisioningService {
    *
    * <p>This is the deferred counterpart to immediate onboarding. It validates the one-time token,
    * generates recovery codes, creates the first enrollment, marks the admin active, and deactivates
-   * the activation token.
+   * the presented activation token plus any other outstanding activation code of the same admin.
    *
    * @param activationCode the one-time activation code
    * @return provisioning result with first enrollment credentials and recovery codes
@@ -650,6 +652,10 @@ public class AdminProvisioningService {
         tokenRepository
             .findByBearerTokenHashAndActiveTrueWithRelations(tokenHash)
             .orElseThrow(() -> new AuthenticationException("Invalid activation code"));
+
+    if (activationToken.getTokenPurpose() != AdminTokenPurpose.ACTIVATION) {
+      throw new AuthenticationException("Invalid activation code");
+    }
 
     if (activationToken.getExpiresAt() == null
         || activationToken.getExpiresAt().isBefore(OffsetDateTime.now())) {
@@ -692,11 +698,18 @@ public class AdminProvisioningService {
     activationToken.setLastUsedAt(OffsetDateTime.now());
     tokenRepository.save(activationToken);
 
+    // Activation is one-shot per admin: any other outstanding code must not outlive it (#1122).
+    int siblingCodesRevoked =
+        tokenRepository.deactivateTokensForAdminByPurpose(
+            admin.getAdminId(), AdminTokenPurpose.ACTIVATION);
+
     logger.info(
-        "✅ Pending administrator activated: {} (adminId: {}, enrollmentId: {})",
+        "✅ Pending administrator activated: {} (adminId: {}, enrollmentId: {},"
+            + " otherActivationCodesRevoked: {})",
         result.admin().getUsername(),
         result.admin().getAdminId(),
-        result.enrollment() != null ? result.enrollment().getEnrollmentId() : null);
+        result.enrollment() != null ? result.enrollment().getEnrollmentId() : null,
+        siblingCodesRevoked);
 
     return result;
   }

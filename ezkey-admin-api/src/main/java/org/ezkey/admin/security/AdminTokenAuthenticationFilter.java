@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.ezkey.admin.config.AdminBrowserSessionCookieProperties;
+import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.security.AdminAuthRequestAttributes.AuthSource;
 import org.ezkey.admin.service.AdminTokenValidationService;
 import org.ezkey.integration.domain.entity.AdminToken;
@@ -115,6 +116,11 @@ public class AdminTokenAuthenticationFilter extends OncePerRequestFilter {
 
   private void tryAuthenticateWithPlainToken(
       String token, AuthSource authSource, HttpServletRequest request) {
+    // #1122: activation codes are consumed only by the public activation endpoint (request body).
+    if (token.startsWith(AdminAuditConstants.ACTIVATION_TOKEN_PREFIX)) {
+      logger.warn("❌ Activation code presented as {} credential; not authenticated", authSource);
+      return;
+    }
     try {
       Optional<AdminToken> tokenOptional = tokenValidationService.validateTokenWithRelations(token);
 
