@@ -13,6 +13,7 @@ import {
   supportsSystemAppLanguage,
   writeSystemAppLanguage,
 } from '../services/locale/appLanguage';
+import {setFormattingDeviceLocales} from '../utils/formatDateTime';
 import {resources} from './resources';
 
 let initialized = false;
@@ -56,8 +57,12 @@ export const getLanguagePreference = async (): Promise<LanguagePreference> => {
  * @param preference language setting
  * @returns the locale to render
  */
-export const resolveLocale = async (preference: LanguagePreference): Promise<SupportedLocale> =>
-  preference === 'system' ? pickSupportedLocale(await readDeviceLanguages()) : preference;
+export const resolveLocale = async (preference: LanguagePreference): Promise<SupportedLocale> => {
+  const deviceLanguages = await readDeviceLanguages();
+  // Dates keep the phone's regional variant when it matches the app language (fr-CA → "15 h 34").
+  setFormattingDeviceLocales(deviceLanguages);
+  return preference === 'system' ? pickSupportedLocale(deviceLanguages) : preference;
+};
 
 export const initializeI18n = async () => {
   const locale = await resolveLocale(await getLanguagePreference());
