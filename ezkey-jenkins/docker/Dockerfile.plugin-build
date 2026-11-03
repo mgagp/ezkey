@@ -1,0 +1,50 @@
+# syntax=docker/dockerfile:1
+# Build Jenkins lab plugins with JDK 21 (matches Jenkins LTS plugin target).
+# Host needs only Docker — no local JDK 21 / Maven.
+#
+# BuildKit cache: id=ezkey-jenkins-m2
+# Never rewrites tracked root THIRD-PARTY.txt (license.skipAggregateAddThirdParty).
+#
+# From repo root (preferred via scripts/build-auth-plugin.sh):
+#   DOCKER_BUILDKIT=1 docker build \
+#     -f ezkey-jenkins/docker/Dockerfile.plugin-build \
+#     --build-arg PLUGIN_MODULE=ezkey-lab-auth \
+#     --target export \
+#     -o type=local,dest=ezkey-jenkins/ezkey-lab-auth/target \
+#     .
+
+ARG MAVEN_IMAGE=maven:3.9-eclipse-temurin-21
+FROM ${MAVEN_IMAGE} AS build
+
+ARG PLUGIN_MODULE=ezkey-lab-auth
+WORKDIR /src
+
+# Full checkout context (ignore via docker/plugin-build.dockerignore + --ignorefile, or docker run).
+COPY . .
+
+RUN --mount=type=cache,target=/root/.m2,id=ezkey-jenkins-m2,sharing=shared \
+    set -eux; \
+    mvn -pl ezkey-sdk/java -am package -DskipTests -q \
+      -Dlicense.skipAggregateAddThirdParty=true \
+      -Dlicense.skipAddThirdParty=true \
+      -Dspotless.check.skip=true \
+      -Dcheckstyle.skip=true; \
+    test -f ezkey-sdk/java/target/ezkey-sdk-0.0.1-SNAPSHOT.jar; \
+    mvn install:install-file \
+      -DgroupId=org.ezkey \
+      -DartifactId=ezkey-sdk \
+      -Dversion=0.0.1-SNAPSHOT \
+      -Dpackaging=jar \
+      -Dfile=ezkey-sdk/java/target/ezkey-sdk-0.0.1-SNAPSHOT.jar \
+      -DpomFile=ezkey-jenkins/maven/ezkey-sdk-standalone.pom \
+      -q; \
+    if [ "${PLUGIN_MODULE}" = "ezkey-lab-auth" ]; then \
+      mvn -f ezkey-jenkins/ezkey-lab-auth/pom.xml -s ezkey-jenkins/maven-settings.xml clean test package; \
+    else \
+      mvn -f ezkey-jenkins/ezkey-lab-hello/pom.xml -s ezkey-jenkins/maven-settings.xml clean -DskipTests package; \
+    fi; \
+    test -f "ezkey-jenkins/${PLUGIN_MODULE}/target/${PLUGIN_MODULE}.hpi"
+
+FROM scratch AS export
+ARG PLUGIN_MODULE=ezkey-lab-auth
+COPY --from=build /src/ezkey-jenkins/${PLUGIN_MODULE}/target/${PLUGIN_MODULE}.hpi ./${PLUGIN_MODULE}.hpi

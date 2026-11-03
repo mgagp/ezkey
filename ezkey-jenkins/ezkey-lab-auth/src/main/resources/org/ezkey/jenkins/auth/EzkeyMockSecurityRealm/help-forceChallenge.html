@@ -1,0 +1,7 @@
+<div>
+  When checked, every Integration create sets <code>challengeRequested=true</code> and
+  login fails closed if no challenge code is returned (matrix D in
+  <code>ezkey-jenkins/DESIGN.md</code>). When unchecked (default), the enrollment’s
+  <code>authAttemptChallengeRequired</code> decides whether a code is generated; any
+  returned code is still displayed (matrix A / B).
+</div>

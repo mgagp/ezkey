@@ -50,6 +50,7 @@ jobs:
       ezkey-pam: ${{ steps.resolve.outputs.ezkey-pam }}
       lightsail: ${{ steps.resolve.outputs.lightsail }}
       dart-sdk: ${{ steps.resolve.outputs.dart-sdk }}
+      ezkey-jenkins: ${{ steps.resolve.outputs.ezkey-jenkins }}
       quality-gate: ${{ steps.resolve.outputs.quality-gate }}
       workflows: ${{ steps.resolve.outputs.workflows }}
       heavy: ${{ steps.resolve.outputs.heavy }}
@@ -147,6 +148,8 @@ jobs:
               - 'docs/LOCAL_STACK_PORTS.md'
             dart-sdk:
               - 'ezkey_dart/**'
+            ezkey-jenkins:
+              - 'ezkey-jenkins/**'
 
       # Manual and nightly runs must exercise every suite; path filters alone would
       # skip all and leave ci-gate green with nothing checked.
@@ -164,7 +167,7 @@ jobs:
           if [[ "$event" == "schedule" ]] &&
             (( $(date +%s) - $(git log -1 --format=%ct) > 86400 )); then
             for suite in admin-ui backend mobile mobile-ios cli-python ezkey-pam lightsail \
-              dart-sdk quality-gate workflows; do
+              dart-sdk ezkey-jenkins quality-gate workflows; do
               echo "$suite=false" >> "$GITHUB_OUTPUT"
             done
             echo "Nightly: no commit on main in the last 24 h, nothing to run"
@@ -177,6 +180,7 @@ jobs:
             echo "ezkey-pam=true" >> "$GITHUB_OUTPUT"
             echo "lightsail=true" >> "$GITHUB_OUTPUT"
             echo "dart-sdk=true" >> "$GITHUB_OUTPUT"
+            echo "ezkey-jenkins=true" >> "$GITHUB_OUTPUT"
             echo "quality-gate=true" >> "$GITHUB_OUTPUT"
             echo "workflows=true" >> "$GITHUB_OUTPUT"
             echo "Forced all suites ($event)"
@@ -189,6 +193,7 @@ jobs:
             echo "ezkey-pam=${{ steps.filter.outputs.ezkey-pam }}" >> "$GITHUB_OUTPUT"
             echo "lightsail=${{ steps.filter.outputs.lightsail }}" >> "$GITHUB_OUTPUT"
             echo "dart-sdk=${{ steps.filter.outputs.dart-sdk }}" >> "$GITHUB_OUTPUT"
+            echo "ezkey-jenkins=${{ steps.filter.outputs.ezkey-jenkins }}" >> "$GITHUB_OUTPUT"
             echo "quality-gate=${{ steps.filter.outputs.quality-gate }}" >> "$GITHUB_OUTPUT"
             echo "workflows=${{ steps.filter.outputs.workflows }}" >> "$GITHUB_OUTPUT"
           fi
@@ -467,7 +472,8 @@ jobs:
       (needs.changes.outputs.ezkey-pam == 'true' || needs.changes.outputs.workflows == 'true')
       && needs.changes.outputs.heavy == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    # Stub suites (Docker image + conf-security/timeouts/f9-retry) routinely need >30m on GHA.
+    timeout-minutes: 50
     defaults:
       run:
         working-directory: ezkey-pam
@@ -549,6 +555,22 @@ jobs:
       - name: Format, analyze, unit tests (Docker)
         run: ./ezkey_dart/scripts/test.sh
 
+  # Experimental Jenkins lab plugins (#972): Docker Temurin 21 + mvn test.
+  ezkey-jenkins:
+    name: ezkey-jenkins
+    needs: changes
+    if: needs.changes.outputs.ezkey-jenkins == 'true' || needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: ezkey-lab-auth mvn test (Docker maven:3.9-eclipse-temurin-21)
+        run: ./ezkey-jenkins/scripts/ci-plugin-test.sh
+
   # Quality-gate helpers (HA fake-docker + secret allowlist) — no Docker stack / Maven.
   # Patrick #904: dedicated job so pipefail / #747 detect regressions are not buried in backend.
   quality-gate:
@@ -578,7 +600,7 @@ jobs:
   # failure or cancellation of any needed job fails the gate.
   ci-gate:
     name: ci-gate
-    needs: [changes, admin-ui, backend, licenses-drift, ha-smoke, mobile, mobile-ios, cli-python, ezkey-pam, lightsail, dart-sdk, quality-gate]
+    needs: [changes, admin-ui, backend, licenses-drift, ha-smoke, mobile, mobile-ios, cli-python, ezkey-pam, lightsail, dart-sdk, ezkey-jenkins, quality-gate]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -597,6 +619,7 @@ jobs:
           echo "ezkey-pam=${{ needs.ezkey-pam.result }}"
           echo "lightsail=${{ needs.lightsail.result }}"
           echo "dart-sdk=${{ needs.dart-sdk.result }}"
+          echo "ezkey-jenkins=${{ needs.ezkey-jenkins.result }}"
           echo "quality-gate=${{ needs.quality-gate.result }}"
 
           if [[ "${{ needs.changes.result }}" != "success" ]]; then
@@ -615,6 +638,7 @@ jobs:
             "ezkey-pam:${{ needs.ezkey-pam.result }}" \
             "lightsail:${{ needs.lightsail.result }}" \
             "dart-sdk:${{ needs.dart-sdk.result }}" \
+            "ezkey-jenkins:${{ needs.ezkey-jenkins.result }}" \
             "quality-gate:${{ needs.quality-gate.result }}"; do
             name="${pair%%:*}"
             result="${pair#*:}"
