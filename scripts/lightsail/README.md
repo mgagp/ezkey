@@ -17,6 +17,8 @@ export AWS_PROFILE=ezkey-lightsail
 ./scripts/lightsail/open-ports.sh
 ./scripts/lightsail/bootstrap-host.sh --target community --dry-run
 ./scripts/lightsail/os-patch-check.sh --target community --dry-run
+./scripts/lightsail/tls-pq-probe.sh
+./scripts/lightsail/tls-pq-probe.sh --origin --target community --dry-run
 ./scripts/lightsail/status.sh --help
 ./scripts/lightsail/delete-instance.sh --help
 # Target + delete-guard tests (fake aws; never hits real AWS):
@@ -26,3 +28,9 @@ export AWS_PROFILE=ezkey-lightsail
 Read-only Host OS signal (`os-patch-check.sh`, #909): see
 [`product-docs/global/hygiene/host-os/README.md`](../../product-docs/global/hygiene/host-os/README.md).
 Rootbeer-local only; never updates packages.
+
+Read-only hybrid post-quantum TLS probe (`tls-pq-probe.sh`, #1174): offers only X25519MLKEM768,
+then only X25519 as a negative control, per public hostname (edge) or on the host against
+`127.0.0.1:443` with SNI (`--origin --target community`, plus Caddy version and digest). Needs
+OpenSSL ≥ 3.5. Results go to [`docs/lightsail/community/DEPLOYED.md`](../../docs/lightsail/community/DEPLOYED.md)
+§ Transport TLS. Never changes TLS, Caddy, or Cloudflare configuration.
