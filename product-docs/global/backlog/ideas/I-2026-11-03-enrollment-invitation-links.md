@@ -50,7 +50,7 @@ stay unchanged.
 | Android manifest: launcher filter only | Confirmed. `MainActivity` is already `launchMode="singleTask"` (a warm link arrives as a new intent). | `ezkey_mobile/android/app/src/main/AndroidManifest.xml` |
 | "Expo linking" | **Correction:** the app is bare React Native (no Expo). The path is RN `Linking` + React Navigation `linking` config. iOS has no `CFBundleURLTypes` or associated domains yet. | `ezkey_mobile/package.json`, `ezkey_mobile/app.json`, `ezkey_mobile/ios/` |
 | Showing the server host before confirmation covers phishing | **Correction: not shown today.** `EnrollmentInfoCard` has `showServerUrl` / `serverUrl` props, but its only call site passes neither, so the verify stage shows tenant, account and role labels only. Those labels come from the instance the user is enrolling with, so they prove nothing about who runs it. | `ezkey_mobile/app/screens/EnrollmentWizard/EnrollmentWizardScreen.tsx` L58–L140, L314 |
-| Vision `V-2026-10-27-third-party-authenticator-integration-kit` | Exists **only on the unmerged branch** `feat/1068-dart-sdk-third-party-integration`; not on `main`. Its behavioural contract `docs/CLIENT_BEHAVIOUR_CONTRACT.md` is on `main`. | `git log --all` |
+| Vision `V-2026-10-27-third-party-authenticator-integration-kit` | Confirmed. On `main` since #1187 (2026-11-03, after this inventory). Its behavioural contract `docs/CLIENT_BEHAVIOUR_CONTRACT.md` was already on `main`. | `product-docs/global/vision/` |
 
 Facts found on the touched path (pre-existing conditions):
 
@@ -264,7 +264,7 @@ is dropped. A `critical-review` applies if the priority is set to P1.
 
 ## Links
 
-- Vision (on branch `feat/1068-dart-sdk-third-party-integration`, not on `main` yet):
+- Vision:
   [`V-2026-10-27-third-party-authenticator-integration-kit`](../../vision/V-2026-10-27-third-party-authenticator-integration-kit.md)
 - Related ideas:
   [`I-2026-07-17-desktop-authenticator-reference-app`](I-2026-07-17-desktop-authenticator-reference-app.md),
