@@ -156,6 +156,17 @@ jobs:
           chmod +x gradlew
           ./gradlew :app:testDebugUnitTest --no-daemon --stacktrace
 
+      # In-app Open Source Licenses (#1109): the committed AboutLibraries export must match
+      # the release runtime classpath. js-validate then checks the app snapshot against it.
+      - name: Android license export freshness
+        working-directory: ezkey_mobile/android
+        run: |
+          ./gradlew :app:exportLibraryDefinitions --no-daemon
+          if ! git diff --exit-code -- ../licenses/android-libraries.json; then
+            echo "::error::licenses/android-libraries.json is stale. From ezkey_mobile/: yarn license:android && yarn license:app-data, then commit both files."
+            exit 1
+          fi
+
       - name: Upload unit test report
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7

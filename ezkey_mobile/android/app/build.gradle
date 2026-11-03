@@ -1,3 +1,8 @@
+plugins {
+    // Base plugin only (manual export task); the .android variant would hook into every build.
+    id "com.mikepenz.aboutlibraries.plugin" version "15.3.0"
+}
+
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
@@ -262,6 +267,15 @@ configurations.configureEach {
         }
     }
 }
+
+// Native Android license metadata for the in-app Open Source Licenses screen (#1109).
+// Refresh with `yarn license:android` from ezkey_mobile/, then `yarn license:app-data`.
+// Property access instead of `collect { }`: in Groovy that would call Iterable.collect.
+aboutLibraries.collect.filterVariants.add("release")
+aboutLibraries.export.outputFile = file("../../licenses/android-libraries.json")
+aboutLibraries.export.variant = "release"
+aboutLibraries.export.prettyPrint = true
+aboutLibraries.export.excludeFields.addAll("developers", "funding", "scm", "organization")
 
 // Use JUnit 5 for unit tests
 tasks.withType(Test).configureEach {

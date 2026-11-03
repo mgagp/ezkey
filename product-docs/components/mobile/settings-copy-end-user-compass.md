@@ -142,7 +142,7 @@ Option titles/bodies (`standard*`, `confirmation*`) and error strings: keep (alr
 |------|--------|
 | Language | Keep as-is |
 | Danger zone | Keep (wording already clear) |
-| Open source licenses | End-user intro, no developer instructions; snapshot shown as a date (2026-11-01 review). Full notice format (license texts, transitive and native deps) tracked in [#1109](https://github.com/mgagp/ezkey/issues/1109). |
+| Open source licenses | End-user intro, no developer instructions; snapshot shown as a date (2026-11-01 review). Sections: app libraries, native libraries for the running platform, vendor components (proprietary terms, labelled as such). Each row opens the full license text ([#1109](https://github.com/mgagp/ezkey/issues/1109); iOS natives [#1148](https://github.com/mgagp/ezkey/issues/1148)). |
 | Requirements (in What’s new) | Keep (calibrated) |
 | What’s new eyebrow | **Public alpha** / **Alpha publique**, not a hard-coded version number: the list describes current capabilities, and About owns the exact version (2026-11-01 review). |
 
