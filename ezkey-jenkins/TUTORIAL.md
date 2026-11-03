@@ -117,12 +117,12 @@ a high ReDoS risk on user input. The lab replaces it with a simple character sca
 Effects:
 
 1. Unsecured realm is replaced (login required).
-2. Security realm = **Ezkey Lab Auth (experimental)** with Integration API base URL,
+2. Security realm = **Ezkey (experimental passwordless)** with Integration API base URL,
    key, and secret (`hudson.util.Secret`, concealed in UI, never logged).
 3. Break-glass `admin` / `ezkey-lab-admin` always works without Ezkey (`/login`).
-4. Ezkey MFA users use [`/ezkey-lab-login/`](http://localhost:28080/ezkey-lab-login/) —
-   enter username and click **Envoyer la demande Ezkey**; then match any challenge on
-   Demo Device and Approve or Deny.
+4. Enabled users use [`/ezkey-login/`](http://localhost:28080/ezkey-login/) —
+   enter the username and click **Send Ezkey sign-in request**; type the challenge on
+   the Demo Device, then Approve or Deny. Jenkins' Sign in link opens this page.
 
 Prior-art and Integration API ↔ SDK model: [`DESIGN.md`](DESIGN.md).
 
@@ -139,7 +139,7 @@ Credentials-plugin secret migration deferred (not cheap).
 1. Ezkey stack up (Integration API `:7080`) + Demo Device.
 2. Provision a dedicated lab integration (M5 script below) and `source .ezkey/m5-integration.env`.
 3. `./scripts/build-auth-plugin.sh && ./scripts/configure-mock-auth.sh`
-4. Open `/ezkey-lab-login/` → **Envoyer la demande Ezkey** → note challenge if shown → Approve/Deny.
+4. Open `/ezkey-login/` → **Send Ezkey sign-in request** → type the challenge on the device → Approve/Deny.
 5. Never log the challenge or Integration secret.
 
 ## 10. M5 — dedicated seed + clear login states
@@ -151,15 +151,22 @@ Credentials-plugin secret migration deferred (not cheap).
    # Case A: EZKEY_JENKINS_ENROLLMENT_CHALLENGE_REQUIRED=false ./scripts/m5-provision-lab-integration.sh
    source .ezkey/m5-integration.env
    ./scripts/build-auth-plugin.sh              # Docker JDK 21 — no local Maven/JDK
-   ./scripts/configure-mock-auth.sh            # EZKEY_JENKINS_FORCE_CHALLENGE optional
+   ./scripts/configure-mock-auth.sh            # forceChallenge defaults to true; set EZKEY_JENKINS_ENABLED_USERS
    ./scripts/m4-live-demo.sh approve           # or deny (matrix B with default seed)
-   ./scripts/m5-live-no-challenge.sh           # matrix A without re-provision
+   ./scripts/m6-live-passwordless.sh wrong-code
+   ./scripts/m5-live-no-challenge.sh           # matrix A without re-provision (also sets forceChallenge false)
    ```
 2. Admin login during provision uses system enrollment `#1` (`admin.docker`) only for a token —
-   Jenkins MFA uses the new enrollment id written to the env file (not enrollment `#1`).
-3. UI states on `/ezkey-lab-login/`: **confirm** → **challenge** + **waiting** → **approved** /
+   Jenkins sign-in uses the new enrollment id written to the env file (not enrollment `#1`).
+3. UI states on `/ezkey-login/`: **confirm** → **challenge** + **waiting** → **approved** /
    **denied** / **expired** / **cancelled** (`data-ezkey-lab-state` on each page).
-4. Challenge matrix A/B/D (C out of scope): [`DESIGN.md`](DESIGN.md). Credentials-plugin migration remains deferred.
+4. Challenge matrix A/B/C/D: [`DESIGN.md`](DESIGN.md). Credentials-plugin migration remains deferred.
+
+## 11. M6 — passwordless credibility
+
+`configure-mock-auth.sh` enables `labuser` by default and requires a challenge code.
+Only that user receives a push. A mistyped code (`m6-live-passwordless.sh wrong-code`)
+must leave Jenkins anonymous. JCasC key is `ezkey` under `jenkins.securityRealm`.
 
 ## Out of scope (later milestones)
 

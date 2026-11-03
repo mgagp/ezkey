@@ -11,6 +11,7 @@ roadmap. Success means demonstrable, not shipped.
 | **M3** SDK fit decision | **done** | one-line SDK decision recorded |
 | **M4** real Ezkey Integration round-trip | **done** | confirm → create → challenge → wait; approve + deny |
 | **M5** dedicated seed + UI states; Credentials deferred | **done** | lab integration ≠ system #1; clear login states |
+| **M6** credible passwordless sign-in (#1184) | **done** | enabled users only, challenge on by default, Sign in is Ezkey, cooldown, JCasC |
 
 ## M3 decision (gate)
 
@@ -33,12 +34,14 @@ source .ezkey/m5-integration.env
 ./scripts/configure-mock-auth.sh                               # EZKEY_JENKINS_FORCE_CHALLENGE optional
 ./scripts/m4-live-demo.sh approve                              # matrix B with default seed
 ./scripts/m5-live-no-challenge.sh                              # matrix A (patch enrollment)
-# UI: /ezkey-lab-login/ → Envoyer la demande Ezkey → waiting → result
+./scripts/m6-live-passwordless.sh approve                      # M6: typed challenge
+./scripts/m6-live-passwordless.sh wrong-code                   # mistyped code → no Jenkins session
+# UI: /ezkey-login/ → Send Ezkey sign-in request → waiting → result
 ./scripts/ci-plugin-test.sh                                    # Docker Temurin 21 + mvn test (CI)
 ```
 
 ## Challenge matrix notes
 
-- Lab / unit coverage: **A, B, D**.
-- **C = out of scope** for this lab — no per-login opt-in parameter on the send form
-  (not offered, not tested).
+- Lab / unit coverage: **A, B, C, D**.
+- **C** is the sign-in checkbox "Require a challenge code". It is shown only when an admin turned `forceChallenge` off, and it cannot turn a code off.
+- Default realm setting is `forceChallenge=true` (number matching).

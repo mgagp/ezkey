@@ -15,7 +15,7 @@
   <packaging>hpi</packaging>
 
   <name>Ezkey Lab Auth</name>
-  <description>Experimental SecurityRealm for the ezkey-jenkins lab (#972): break-glass plus Integration API MFA via ezkey-sdk. Not for production.</description>
+  <description>Experimental passwordless SecurityRealm for the ezkey-jenkins lab (#1184): Ezkey is the only factor for enabled users, with a break-glass admin. Not for production.</description>
 
   <properties>
     <revision>0.1.0</revision>
@@ -40,6 +40,11 @@
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-core</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.jenkins</groupId>
+      <artifactId>configuration-as-code</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>

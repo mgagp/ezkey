@@ -5,7 +5,7 @@ uses the Ezkey **Java SDK** against the **Integration API**. Learn by building;
 no production claim; no WebAuthn/FIDO2 equivalence. Keep Jenkins facts in this
 folder; do not fold them into `docs/` or `docker/README.md`.
 
-Tracking: [GitHub #972](https://github.com/mgagp/ezkey/issues/972).
+Tracking: [GitHub #972](https://github.com/mgagp/ezkey/issues/972) (phase 1), [GitHub #1184](https://github.com/mgagp/ezkey/issues/1184) (phase 2, passwordless credibility).
 
 - Status: [`STATUS.md`](STATUS.md)
 - Tutorial: [`TUTORIAL.md`](TUTORIAL.md)
@@ -18,7 +18,7 @@ Tracking: [GitHub #972](https://github.com/mgagp/ezkey/issues/972).
 | `docker-compose.yml` + `scripts/up.sh` | Jenkins LTS (+ Integration API via stack network or `host.docker.internal`) |
 | `ref/jobs/m0-ls/` | Freestyle `ls` smoke job |
 | `ezkey-lab-hello/` | Hello-world build step |
-| `ezkey-lab-auth/` | SecurityRealm + `/ezkey-lab-login/` MFA conversation |
+| `ezkey-lab-auth/` | Passwordless `EzkeySecurityRealm` + `/ezkey-login/` |
 | `scripts/configure-mock-auth.sh` | Install auth `.hpi` and apply realm |
 | `scripts/m5-provision-lab-integration.sh` | Dedicated lab integration + enrollment + API key |
 | `docker/Dockerfile.plugin-build` | JDK 21 Maven image + BuildKit `~/.m2` cache |
@@ -28,7 +28,7 @@ Tracking: [GitHub #972](https://github.com/mgagp/ezkey/issues/972).
 
 - Docker Engine + Compose v2 (**only** — plugin builds use `maven:3.9-eclipse-temurin-21`)
 - Host ports (defaults): `28080` (UI), `50000` (agent)
-- For live MFA: Ezkey stack with Integration API + Demo Device
+- For a live passwordless sign-in: Ezkey stack with Integration API + Demo Device
 
 ## Quick start
 
@@ -38,14 +38,16 @@ cd ezkey-jenkins
 ./scripts/build-auth-plugin.sh          # Docker / BuildKit — no local JDK
 # Live keys (dedicated jenkins-lab integration — not system enrollment #1):
 #   ./scripts/m5-provision-lab-integration.sh && source .ezkey/m5-integration.env
-# Optional: EZKEY_JENKINS_FORCE_CHALLENGE=true|false (default false)
+# Optional: EZKEY_JENKINS_FORCE_CHALLENGE=true|false (default true)
+# Optional: EZKEY_JENKINS_ENABLED_USERS=labuser (comma list; alice=alice-id maps the Integration id)
 ./scripts/configure-mock-auth.sh
 ./scripts/smoke.sh   # break-glass basic auth
 ```
 
-- Break-glass: [http://localhost:28080/login](http://localhost:28080/login) — `admin` / `ezkey-lab-admin`
-- Ezkey MFA: [http://localhost:28080/ezkey-lab-login/](http://localhost:28080/ezkey-lab-login/) —
-  username → **Envoyer la demande Ezkey** → waiting → approved / denied / expired / cancelled
+- Break-glass: [http://localhost:28080/login](http://localhost:28080/login) — `admin` / `ezkey-lab-admin` (works when Ezkey is down)
+- Ezkey: [http://localhost:28080/ezkey-login/](http://localhost:28080/ezkey-login/) —
+  username → **Send Ezkey sign-in request** → type the code on the device → approved / denied / expired / cancelled
+- Live passwordless check: `./scripts/m6-live-passwordless.sh approve|deny|wrong-code`
 
 ## Challenge matrix (see `DESIGN.md`)
 
@@ -53,11 +55,10 @@ cd ezkey-jenkins
 |---|--------------------------|------------------|-----------|
 | **A** | no | false | No code shown |
 | **B** | yes | false | Code displayed |
-| **C** | — | — | **Out of scope** — no per-login opt-in parameter |
-| **D** | — | true | Code forced; missing → deny |
+| **C** | no | false, user checks the box | Code requested for that sign-in only (#1184) |
+| **D** | — | true (default) | Code forced; missing → deny |
 
-Lab-proven / unit-tested cases are **A, B, D**. Case **C** is explicitly out of
-scope (no per-login challenge toggle on the send form).
+`forceChallenge` defaults to **true**. Case C is the sign-in checkbox, and it can only add a code. It is hidden while the realm already requires one.
 
 Default `m5-provision-lab-integration.sh` seeds **matrix B**
 (`authAttemptChallengeRequired=true`). For **matrix A** at provision:

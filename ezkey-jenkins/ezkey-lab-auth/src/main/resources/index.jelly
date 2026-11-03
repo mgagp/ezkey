@@ -1,4 +1,5 @@
 <?jelly escape-by-default='true'?>
 <div>
-    Ezkey lab SecurityRealm (#972): break-glass admin + Integration API MFA via /ezkey-lab-login/. Experimental.
+  Experimental passwordless SecurityRealm (#1184): Ezkey is the only factor for enabled users.
+  Break-glass admin uses the standard Jenkins login. Sign-in URL is /ezkey-login/.
 </div>

@@ -69,7 +69,7 @@ public final class EzkeyLabLoginSupport {
      * @return client aimed at the Integration API
      * @throws IllegalStateException if base URL, integration key, or secret is missing
      */
-    public static EzkeyClient newClient(@NonNull EzkeyMockSecurityRealm realm) {
+    public static EzkeyClient newClient(@NonNull EzkeySecurityRealm realm) {
         Objects.requireNonNull(realm, "realm");
         String base = realm.getEzkeyBaseUrl();
         String key = realm.getIntegrationKey();
@@ -113,7 +113,7 @@ public final class EzkeyLabLoginSupport {
                 Level.INFO,
                 "ezkey-lab Integration create ok authAttemptId={0} user={1} forceChallenge={2}",
                 new Object[] {
-                    created.authAttemptId(), EzkeyMockSecurityRealm.sanitizeForLog(user), forceChallenge
+                    created.authAttemptId(), EzkeySecurityRealm.sanitizeForLog(user), forceChallenge
                 });
 
         try {

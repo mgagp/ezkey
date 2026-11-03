@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Drive Jenkins /ezkey-lab-login/ send → optional challenge → Demo Device approve|deny.
+# Drive Jenkins /ezkey-login/ send → optional challenge → Demo Device approve|deny.
 # Usage: ./scripts/m4-live-demo.sh approve|deny
 # Env: EZKEY_JENKINS_EXPECT_CHALLENGE=true|false (default true) — assert challenge presence.
 set -euo pipefail
@@ -22,19 +22,19 @@ CONFIRM_HTML="$(ezkey_lab_mktemp)"
 WAIT_HTML="$(ezkey_lab_mktemp)"
 trap 'rm -f "$JAR" "$INDEX_HTML" "$CONFIRM_HTML" "$WAIT_HTML"' EXIT
 
-curl -fsS -c "$JAR" -b "$JAR" "${BASE}/ezkey-lab-login/" -o "${INDEX_HTML}" >/dev/null
+curl -fsS -c "$JAR" -b "$JAR" "${BASE}/ezkey-login/" -o "${INDEX_HTML}" >/dev/null
 CRUMB="$(python3 -c "import re; h=open('${INDEX_HTML}').read(); m=re.search(r'name=\"Jenkins-Crumb\"[^>]*value=\"([^\"]+)\"', h); print(m.group(1) if m else '')")"
 test -n "${CRUMB}"
 
 # Prefer new send action; fall back to confirm alias.
-SEND_URL="${BASE}/ezkey-lab-login/send"
+SEND_URL="${BASE}/ezkey-login/send"
 curl -sS -c "$JAR" -b "$JAR" -X POST "${SEND_URL}" \
   -H "Jenkins-Crumb: ${CRUMB}" \
   --data-urlencode "Jenkins-Crumb=${CRUMB}" \
   --data-urlencode "username=${USER}" \
   -o "${CONFIRM_HTML}" -D /tmp/m4-confirm.hdr -w '%{http_code}' >/tmp/m4-confirm.code || true
 if [[ "$(cat /tmp/m4-confirm.code)" != "302" ]]; then
-  curl -sS -c "$JAR" -b "$JAR" -X POST "${BASE}/ezkey-lab-login/confirm" \
+  curl -sS -c "$JAR" -b "$JAR" -X POST "${BASE}/ezkey-login/confirm" \
     -H "Jenkins-Crumb: ${CRUMB}" \
     --data-urlencode "Jenkins-Crumb=${CRUMB}" \
     --data-urlencode "username=${USER}" \
@@ -42,7 +42,7 @@ if [[ "$(cat /tmp/m4-confirm.code)" != "302" ]]; then
 fi
 test "$(cat /tmp/m4-confirm.code)" = "302"
 
-curl -fsS -c "$JAR" -b "$JAR" "${BASE}/ezkey-lab-login/wait" -o "${WAIT_HTML}"
+curl -fsS -c "$JAR" -b "$JAR" "${BASE}/ezkey-login/wait" -o "${WAIT_HTML}"
 CHAL="$(python3 -c "
 import re
 h=open('${WAIT_HTML}').read()
@@ -74,7 +74,7 @@ fi
 
 STATUS=PENDING
 for _ in $(seq 1 40); do
-  STATUS="$(curl -fsS -c "$JAR" -b "$JAR" "${BASE}/ezkey-lab-login/poll")"
+  STATUS="$(curl -fsS -c "$JAR" -b "$JAR" "${BASE}/ezkey-login/poll")"
   echo "poll=${STATUS}"
   case "${STATUS}" in ACCEPTED|REJECTED|EXPIRED|INVALID|CANCELLED) break ;; esac
   sleep 1
