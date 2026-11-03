@@ -102,9 +102,10 @@ public class AdminToken {
   private String adminType;
 
   /**
-   * Purpose of this token: session (full Admin API) or recovery (enrollment reset only).
+   * Purpose of this token: session (full Admin API), recovery (enrollment reset only), temporary
+   * evaluator console, or deferred-onboarding activation code.
    *
-   * <p>Enforced by {@code AdminTokenValidationService} for session authentication (SEC-021).
+   * <p>Enforced by {@code AdminTokenValidationService} for session authentication (SEC-021, #1122).
    */
   @Enumerated(EnumType.STRING)
   @Column(name = "token_purpose", nullable = false, length = 20)
@@ -215,7 +216,7 @@ public class AdminToken {
    * @param admin the administrator who owns this token
    * @param adminType the type of administrator
    * @param expiresAt the expiration timestamp
-   * @param tokenPurpose session vs recovery purpose
+   * @param tokenPurpose token purpose (defaults to session when null)
    */
   public AdminToken(
       String bearerTokenHash,

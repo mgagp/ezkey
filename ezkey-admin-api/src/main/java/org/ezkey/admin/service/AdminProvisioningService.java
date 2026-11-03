@@ -28,6 +28,7 @@ import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.integration.domain.AdminTokenPurpose;
 import org.ezkey.integration.domain.IntegrationLifecycleStatus;
 import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
@@ -605,7 +606,8 @@ public class AdminProvisioningService {
 
     OffsetDateTime expiresAt = OffsetDateTime.now().plus(ACTIVATION_CODE_TTL_DAYS, ChronoUnit.DAYS);
     AdminToken activationToken =
-        new AdminToken(tokenHash, admin, admin.getAdminType().name(), expiresAt);
+        new AdminToken(
+            tokenHash, admin, admin.getAdminType().name(), expiresAt, AdminTokenPurpose.ACTIVATION);
     activationToken.setTenant(admin.getTenant());
     activationToken.setIntegration(admin.getIntegration());
     activationToken.setCreatedAt(OffsetDateTime.now());
@@ -650,6 +652,10 @@ public class AdminProvisioningService {
         tokenRepository
             .findByBearerTokenHashAndActiveTrueWithRelations(tokenHash)
             .orElseThrow(() -> new AuthenticationException("Invalid activation code"));
+
+    if (activationToken.getTokenPurpose() != AdminTokenPurpose.ACTIVATION) {
+      throw new AuthenticationException("Invalid activation code");
+    }
 
     if (activationToken.getExpiresAt() == null
         || activationToken.getExpiresAt().isBefore(OffsetDateTime.now())) {

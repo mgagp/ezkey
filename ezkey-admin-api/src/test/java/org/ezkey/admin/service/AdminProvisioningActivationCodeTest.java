@@ -26,6 +26,7 @@ import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.domain.AdminOnboardingMode;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.integration.domain.AdminTokenPurpose;
 import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminLifecycleStatus;
@@ -122,6 +123,7 @@ class AdminProvisioningActivationCodeTest {
     ArgumentCaptor<AdminToken> tokenCaptor = ArgumentCaptor.forClass(AdminToken.class);
     verify(tokenRepository).save(tokenCaptor.capture());
     assertEquals(42, tokenCaptor.getValue().getAdmin().getAdminId());
+    assertEquals(AdminTokenPurpose.ACTIVATION, tokenCaptor.getValue().getTokenPurpose());
   }
 
   @Test
@@ -176,7 +178,9 @@ class AdminProvisioningActivationCodeTest {
     assertTrue(result.invalidatedPreviousTokens());
     assertEquals(2, result.deactivatedActiveTokenCount());
     verify(tokenRepository).deactivateAllTokensForAdmin(7);
-    verify(tokenRepository).save(any(AdminToken.class));
+    ArgumentCaptor<AdminToken> tokenCaptor = ArgumentCaptor.forClass(AdminToken.class);
+    verify(tokenRepository).save(tokenCaptor.capture());
+    assertEquals(AdminTokenPurpose.ACTIVATION, tokenCaptor.getValue().getTokenPurpose());
   }
 
   @Test

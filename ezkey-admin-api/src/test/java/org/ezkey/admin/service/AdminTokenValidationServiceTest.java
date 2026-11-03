@@ -26,6 +26,7 @@ import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.integration.domain.AdminTokenPurpose;
 import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
+import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminLifecycleStatus;
 import org.ezkey.integration.domain.repository.AdminTokenRepository;
 import org.ezkey.security.SensitiveDataHasher;
 import org.junit.jupiter.api.BeforeEach;
@@ -73,14 +74,57 @@ class AdminTokenValidationServiceTest {
   }
 
   @Test
-  @DisplayName("Should accept token when admin has no enrollment (null)")
-  void validateTokenWithRelations_shouldReturnToken_whenEnrollmentIsNull() {
+  @DisplayName("#1122: Should reject SESSION token when admin has no enrollment (null)")
+  void validateTokenWithRelations_shouldReturnEmpty_whenSessionEnrollmentIsNull() {
     stubValidNonExpiredToken();
     when(admin.getEnrollment()).thenReturn(null);
 
     Optional<AdminToken> result = service.validateTokenWithRelations(TOKEN);
 
-    assertThat(result).isPresent();
+    assertThat(result).isEmpty();
+  }
+
+  @Test
+  @DisplayName("#1122: Should reject SESSION token when admin is PENDING_ACTIVATION")
+  void validateTokenWithRelations_shouldReturnEmpty_whenSessionAdminPendingActivation() {
+    stubValidNonExpiredToken();
+    when(admin.getLifecycleStatus()).thenReturn(AdminLifecycleStatus.PENDING_ACTIVATION);
+
+    Optional<AdminToken> result = service.validateTokenWithRelations(TOKEN);
+
+    assertThat(result).isEmpty();
+    verify(admin, never()).getEnrollment();
+  }
+
+  @Test
+  @DisplayName("#1122: Should reject ACTIVATION-purpose token for Admin API session auth")
+  void validateTokenWithRelations_shouldReturnEmpty_whenTokenPurposeIsActivation() {
+    String hash = SensitiveDataHasher.sha256Hex(TOKEN);
+    when(tokenRepository.findByBearerTokenHashAndActiveTrueWithRelations(eq(hash)))
+        .thenReturn(Optional.of(adminToken));
+    when(adminToken.getTokenPurpose()).thenReturn(AdminTokenPurpose.ACTIVATION);
+
+    Optional<AdminToken> result = service.validateTokenWithRelations(TOKEN);
+
+    assertThat(result).isEmpty();
+    verify(adminToken, never()).getAdmin();
+  }
+
+  @Test
+  @DisplayName("#1122: Should reject EVALUATOR_TEMP token when admin is PENDING_ACTIVATION")
+  void validateTokenWithRelations_shouldReturnEmpty_whenTempAdminPendingActivation() {
+    String hash = SensitiveDataHasher.sha256Hex(TOKEN);
+    when(tokenRepository.findByBearerTokenHashAndActiveTrueWithRelations(eq(hash)))
+        .thenReturn(Optional.of(adminToken));
+    when(adminToken.getTokenPurpose()).thenReturn(AdminTokenPurpose.EVALUATOR_TEMP);
+    when(adminToken.getExpiresAt()).thenReturn(OffsetDateTime.now().plusHours(1));
+    when(adminToken.getAdmin()).thenReturn(admin);
+    when(adminToken.getTenant()).thenReturn(null);
+    when(admin.getLifecycleStatus()).thenReturn(AdminLifecycleStatus.PENDING_ACTIVATION);
+
+    Optional<AdminToken> result = service.validateTokenWithRelations(TOKEN);
+
+    assertThat(result).isEmpty();
   }
 
   @Test
@@ -311,6 +355,21 @@ class AdminTokenValidationServiceTest {
     verify(tokenRepository, never()).save(any());
     verify(adminToken, never()).setLastUsedAt(any());
     verify(adminToken, never()).setExpiresAt(any());
+  }
+
+  @Test
+  @DisplayName("#1122: updateTokenLastUsed(AdminToken) never slides ACTIVATION invite expiry")
+  void updateTokenLastUsed_entityPath_doesNotExtendExpiration_forActivationToken() {
+    OffsetDateTime fixedExpiresAt = OffsetDateTime.now().plusDays(7);
+    when(adminToken.getTokenId()).thenReturn(7);
+    when(adminToken.getTokenPurpose()).thenReturn(AdminTokenPurpose.ACTIVATION);
+    when(adminToken.getExpiresAt()).thenReturn(fixedExpiresAt);
+    when(tokenRepository.touchLastUsedIfActive(eq(7), any(), eq(fixedExpiresAt))).thenReturn(1);
+
+    Optional<OffsetDateTime> result = service.updateTokenLastUsed(adminToken);
+
+    assertThat(result).contains(fixedExpiresAt);
+    verify(rotationProperties, never()).getExpirationHours();
   }
 
   @Test
