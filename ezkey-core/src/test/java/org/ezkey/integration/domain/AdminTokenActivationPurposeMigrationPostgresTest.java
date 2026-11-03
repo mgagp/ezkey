@@ -21,6 +21,8 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -46,6 +48,7 @@ class AdminTokenActivationPurposeMigrationPostgresTest {
   void createV25ShapedTables() throws SQLException {
     execute(
         """
+        DROP TABLE IF EXISTS ezkey_audit_log;
         DROP TABLE IF EXISTS ezkey_admin_tokens;
         DROP TABLE IF EXISTS ezkey_admin;
         CREATE TABLE ezkey_admin (
@@ -59,6 +62,7 @@ class AdminTokenActivationPurposeMigrationPostgresTest {
             token_purpose VARCHAR(20) NOT NULL DEFAULT 'SESSION',
             last_used_at TIMESTAMPTZ,
             active BOOLEAN NOT NULL DEFAULT TRUE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now() - INTERVAL '1 day',
             CONSTRAINT chk_admin_tokens_token_purpose
               CHECK (token_purpose IN ('SESSION', 'RECOVERY', 'EVALUATOR_TEMP'))
         );
@@ -75,6 +79,24 @@ class AdminTokenActivationPurposeMigrationPostgresTest {
           (31, 3, 'SESSION', now(), TRUE),
           (32, 3, 'RECOVERY', NULL, TRUE),
           (41, 4, 'EVALUATOR_TEMP', now(), TRUE);
+        CREATE TABLE ezkey_audit_log (
+            audit_log_id INT PRIMARY KEY,
+            event_type VARCHAR(50) NOT NULL,
+            event_action VARCHAR(100) NOT NULL,
+            event_status VARCHAR(20) NOT NULL,
+            admin_id INT,
+            target_admin_id INT,
+            tenant_id INT,
+            integration_id INT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        );
+        INSERT INTO ezkey_audit_log
+          (audit_log_id, event_type, event_action, event_status, admin_id, target_admin_id)
+        VALUES
+          (501, 'ADMIN', 'CREATE_ADMIN', 'SUCCESS', 2, 7),
+          (502, 'INTEGRATION', 'LIST', 'SUCCESS', 2, NULL),
+          (503, 'ADMIN', 'CREATE_ADMIN', 'SUCCESS', 9, 1),
+          (504, 'ADMIN', 'LOGIN', 'SUCCESS', 3, NULL);
         """);
   }
 
@@ -106,6 +128,42 @@ class AdminTokenActivationPurposeMigrationPostgresTest {
                     + " (100, 1, 'INVITE')"))
         .isInstanceOf(SQLException.class)
         .hasMessageContaining("chk_admin_tokens_token_purpose");
+  }
+
+  @Test
+  @DisplayName("Operator audit query in the V26 header lists only activity of revoked codes")
+  void v26HeaderAuditQueryFindsRevokedCodeActivity() throws Exception {
+    String migration = readMigration();
+    execute(migration);
+
+    try (Connection connection = connect();
+        Statement statement = connection.createStatement();
+        ResultSet rs = statement.executeQuery(headerAuditQuery(migration))) {
+      List<Integer> actors = new ArrayList<>();
+      while (rs.next()) {
+        actors.add(rs.getInt("admin_id"));
+      }
+      assertThat(actors).containsExactly(2, 2);
+    }
+  }
+
+  /** Extracts the commented operator query from the migration header (keeps docs executable). */
+  private static String headerAuditQuery(String migration) {
+    StringBuilder sql = new StringBuilder();
+    boolean inQuery = false;
+    for (String line : migration.split("\\R")) {
+      if (line.startsWith("--   SELECT")) {
+        inQuery = true;
+      }
+      if (inQuery) {
+        sql.append(line.substring("--   ".length())).append('\n');
+        if (line.contains("ORDER BY")) {
+          break;
+        }
+      }
+    }
+    assertThat(sql).as("operator audit query in V26 header").isNotEmpty();
+    return sql.toString().replace(";", "");
   }
 
   private static void assertRow(int tokenId, String purpose, boolean active) throws SQLException {

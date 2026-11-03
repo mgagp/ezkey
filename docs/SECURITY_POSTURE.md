@@ -233,8 +233,11 @@ See [`../product-docs/global/normative-posture.md`](../product-docs/global/norma
   only by `POST /api/v1/admin/auth/activate`); session validation accepts only `SESSION` and
   `EVALUATOR_TEMP`, rejects any token of a `PENDING_ACTIVATION` admin, and requires a
   `VERIFIED` enrollment for `SESSION`; the bearer filter refuses the `ezkey_activation_` prefix
-  from header or cookie. Flyway V26 converts unused active legacy codes to `ACTIVATION` and
-  revokes codes already presented as a bearer.
+  from header or cookie. `AdminToken` has no default purpose: every mint states one, a null
+  purpose fails fast. A successful `/activate` revokes every other outstanding activation code of
+  that admin. Flyway V26 converts unused active legacy codes to `ACTIVATION` and revokes codes
+  already presented as a bearer; its header documents the manual rollback and an
+  `ezkey_audit_log` query to review what each revoked code was used for.
 
 ## Traceability
 
