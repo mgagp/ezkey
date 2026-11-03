@@ -132,7 +132,8 @@ meant to be linked from trust-facing material without inflating the top-level pi
   symmetric and do not rely on elliptic-curve hardness. Whether the TLS edge negotiates a hybrid
   post-quantum key exchange depends on the deployment and is not yet verified. Recovery-code length
   (106 bits) is classical hardening, not a post-quantum property. Algorithms:
-  [`CRYPTO.md`](CRYPTO.md).
+  [`CRYPTO.md`](CRYPTO.md). Map, decisions and watch list:
+  [`V-2026-09-15-post-quantum-crypto-posture`](../product-docs/global/vision/V-2026-09-15-post-quantum-crypto-posture.md).
 - **It does not depend on, or guarantee, any third-party channel.** SMS and email are optional,
   operator-triggered, peripheral capabilities; Ezkey is fully operational without them.
 - **It does not claim guaranteed delivery of every audit event.** Audit writes use a dedicated

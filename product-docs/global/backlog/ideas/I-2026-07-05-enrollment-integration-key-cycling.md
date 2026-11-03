@@ -130,7 +130,7 @@ Move toward `ready` / `TB-*` when:
   [`I-2026-09-15-post-quantum-protocol-evolution`](I-2026-09-15-post-quantum-protocol-evolution.md)
   — this idea stays the **window-management** child, not algorithm replacement.
 - Grill: [`2026-07-05-enrollment-integration-key-cycling-grill-me.md`](../grill-sessions/2026-07-05-enrollment-integration-key-cycling-grill-me.md)
-- Crypto canon: [`docs/CRYPTO.md`](../../../docs/CRYPTO.md), [`docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`](../../../docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md)
-- Lifecycle: [`docs/LIFECYCLE_GOVERNANCE.md`](../../../docs/LIFECYCLE_GOVERNANCE.md)
+- Crypto canon: [`docs/CRYPTO.md`](../../../../docs/CRYPTO.md), [`docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`](../../../../docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md)
+- Lifecycle: [`docs/LIFECYCLE_GOVERNANCE.md`](../../../../docs/LIFECYCLE_GOVERNANCE.md)
 - Protocol versioning: [`I-2026-0025`](I-2026-0025-auth-api-protocol-capability-versioning.md)
-- Contrast: encryption key rotation (platform at-rest) — [`docs/REENCRYPTION_OPERATIONS.md`](../../../docs/REENCRYPTION_OPERATIONS.md) — different domain
+- Contrast: encryption key rotation (platform at-rest) — [`docs/REENCRYPTION_OPERATIONS.md`](../../../../docs/REENCRYPTION_OPERATIONS.md) — different domain
