@@ -201,7 +201,7 @@ flows.
 | Bind/result signatures | Bind and verify responses | Runtime only | Trust checks during enrollment | Not persisted. |
 | `authAttemptProofToken` | Pending response | Runtime only | Signed during respond | One-time token not persisted. |
 | `deviceProofToken` | Locally generated on pending | Runtime only | Signed and sent to `pending` | Fresh proof material for poll cycle. |
-| Sealed-secret storage delegate values | Android: AES/GCM envelopes in AsyncStorage protected by a per-installation Keystore key (`ezkey_seal_{installationScopeId}`, MOB-017). Other platforms: Keychain-backed generic password entries | Platform-aware secure storage wrapper | Protects enrollment proof tokens, integration verification keys, and other small local secrets | The enrollment storage class rehydrates those secure values through this delegate at read time. |
+| Sealed-secret storage delegate values | Android: AES/GCM envelopes in AsyncStorage protected by a per-installation Keystore key (`ezkey_seal_{installationScopeId}`, MOB-017). iOS: one Keychain generic-password item per secret, no seal key (ADR-MOB-0007); clear-all sweeps every enrollment secret item | Platform-aware secure storage wrapper | Protects enrollment proof tokens, integration verification keys, and other small local secrets | The enrollment storage class rehydrates those secure values through this delegate at read time. |
 
 The trust boundary to keep in mind is that the enrollment proof token and integration verification material now live in
 secure storage, while only lower-sensitivity metadata remains in AsyncStorage, and the device private key remains

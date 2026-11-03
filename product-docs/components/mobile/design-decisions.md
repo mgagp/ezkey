@@ -14,6 +14,7 @@ This document records architecture and design decisions **scoped to the mobile a
 | [ADR-MOB-0004](#adr-mob-0004-android-app-level-sealed-secrets) | Android app-level sealed secrets for long-lived enrollment values | accepted | 2026-05-03 |
 | [ADR-MOB-0005](#adr-mob-0005-ios-native-layer-rebuilt-from-clean-scaffold) | iOS native layer rebuilt from clean scaffold, existing code discarded | accepted | 2026-05-24 |
 | [ADR-MOB-0006](#adr-mob-0006-per-installation-android-seal-key) | Per-installation Android seal key, replacing the single app-level seal key | accepted | 2026-07-26 |
+| [ADR-MOB-0007](#adr-mob-0007-ios-keychain-items-instead-of-a-seal-key) | iOS keeps long-lived secrets as Keychain items, no seal key | accepted | 2026-11-03 |
 
 ## ADR-MOB-0001 — No background polling for authentication attempts
 
@@ -277,3 +278,57 @@ product has no production fleet yet.
 - Provenance: `I-2026-07-26-mobile-installation-scoped-seal-key`,
   `TB-2026-07-26-mobile-installation-scoped-seal-key`,
   [MOB-017 campaign note](../../global/hygiene/mobile-protocol-security/2026-07-26-pass-3.md).
+
+## ADR-MOB-0007 — iOS Keychain items instead of a seal key
+
+### Metadata
+
+- **ID:** ADR-MOB-0007.
+- **Date:** 2026-11-03.
+- **Status:** accepted (maintainer decision, iOS rebuild phase 7).
+- **Scope:** component:mobile, platform:iOS.
+
+### Context
+
+ADR-MOB-0004 left non-Android platforms on "their existing secure-storage fallback until parity is
+implemented", and ADR-MOB-0006 (MOB-017) scoped the Android AES seal key to the installation trust
+zone. The rebuilt iOS native layer (ADR-MOB-0005) has no `sealSecret` / `unsealSecret`: the
+enrollment proof token and the integration public key are stored through `react-native-keychain`,
+one generic-password item per secret, `AfterFirstUnlockThisDeviceOnly`. Phase 7 had to decide
+whether iOS needs the Android seal-key model to reach parity.
+
+### Decision
+
+iOS keeps one Keychain item per secret and gets **no seal key**. The item name embeds the
+installation-scoped local enrollment id (MOB-011), so isolation is per enrollment, finer than
+ADR-MOB-0006's per-installation key. To keep Danger Zone clear-all a true local reset (MOB-015),
+clear-all also deletes every Keychain item under the enrollment-secret prefixes, including items no
+metadata points to (corrupt collection, or items left by a previous installation, since Keychain
+items survive uninstall). The sweep is fail-open, like the other clear-all deletions.
+
+### Alternatives Considered
+
+- **Port the AES seal key to Swift (shape parity with Android).** Rejected — the key itself would
+  live in the Keychain, so it adds a layer without a new protection boundary; the Secure Enclave
+  holds P-256 keys only (no AES), and the port would add native code, tests and a migration.
+- **Keychain items, document the orphans, no sweep.** Rejected — clear-all would leave secrets
+  behind on iOS, breaking the MOB-015 contract on that platform.
+
+### Consequences
+
+- **Positive.** No iOS-specific crypto surface for secrets; at-rest protection comes from the OS
+  data-protection classes (device passcode, not synced, not migrated to another device).
+- **Negative.** Orphaned items from a previous installation stay until the next clear-all
+  (unreachable: no metadata and no enrollment key, which is purged on first use).
+- **Boundary.** Local at-rest storage only, as ADR-MOB-0004 and ADR-MOB-0006.
+
+### Impact
+
+- `secureStorage.ts` (`removeAllWithKeyPrefixes`), `enrollmentStorage.ts` (clear-all sweep).
+- Reference: [`../../../ezkey_mobile/docs/IOS_ANDROID_PARITY.md`](../../../ezkey_mobile/docs/IOS_ANDROID_PARITY.md).
+
+### Related Decisions
+
+- iOS counterpart of [ADR-MOB-0004](#adr-mob-0004-android-app-level-sealed-secrets) and
+  [ADR-MOB-0006](#adr-mob-0006-per-installation-android-seal-key); builds on
+  [ADR-MOB-0005](#adr-mob-0005-ios-native-layer-rebuilt-from-clean-scaffold).

@@ -36,7 +36,7 @@ sequenceDiagram
 
 - JavaScript calls are issued through `app/services/crypto/nativeCrypto.ts`.
 - Android uses `Android Keystore` (`AndroidKeyStore`) and requests `StrongBox` when available; one EC P-256 key pair is generated per enrollment, and private key material is not exposed to application code.
-- iOS stores one P-256 key per enrollment as a Keychain item (`org.ezkey.mobile.enrollment-key`, `WhenUnlockedThisDeviceOnly`): a Secure Enclave key on devices, a software key on the simulator. A lazy, fail-closed purge removes keys left by a previous installation (Keychain items survive uninstall). Secure Enclave behaviour on a physical iPhone is not yet verified. `sealSecret` / `unsealSecret` / `deleteAllSealKeys` are deliberately absent on iOS; the JS fallbacks apply (`deleteAllSealKeys` → `false`).
+- iOS stores one P-256 key per enrollment as a Keychain item (`org.ezkey.mobile.enrollment-key`, `WhenUnlockedThisDeviceOnly`): a Secure Enclave key on devices, a software key on the simulator. A lazy, fail-closed purge removes keys left by a previous installation (Keychain items survive uninstall). Secure Enclave behaviour on a physical iPhone is not yet verified. `sealSecret` / `unsealSecret` / `deleteAllSealKeys` are deliberately absent on iOS (secrets are Keychain items, ADR-MOB-0007); the JS fallbacks apply (`deleteAllSealKeys` → `false`) and clear-all sweeps the Keychain secret items instead.
 - Enrollment QR capture uses Vision Camera: ML Kit (`useBarcodeScannerOutput`) on Android, native AVFoundation object output on iOS (`app/components/enrollmentCodeOutput.*.ts`) — there is no custom native QR frame-processor plugin.
 
 Important boundary: `EzkeyCryptoModule` is a **signing and verification** bridge. It does not currently expose a

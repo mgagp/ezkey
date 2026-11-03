@@ -14,6 +14,7 @@ jest.mock('../secureStorage', () => ({
     getItem: jest.fn(),
     setItem: jest.fn(),
     removeItem: jest.fn(),
+    removeAllWithKeyPrefixes: jest.fn(),
   },
 }));
 
@@ -47,6 +48,7 @@ describe('enrollmentStorage', () => {
     mockSecureStorage.getItem.mockResolvedValue(undefined);
     mockSecureStorage.setItem.mockResolvedValue();
     mockSecureStorage.removeItem.mockResolvedValue();
+    mockSecureStorage.removeAllWithKeyPrefixes.mockResolvedValue(0);
     mockDeleteKeyPair.mockResolvedValue(true);
     mockDeleteAllSealKeys.mockResolvedValue(true);
   });
@@ -672,6 +674,35 @@ describe('enrollmentStorage', () => {
         'ezkey-mobile/sealed-secret.ezkey-mobile/integration-public-key.orphan-1',
       ]);
       expect(mockDeleteAllSealKeys).toHaveBeenCalledTimes(1);
+      warnSpy.mockRestore();
+    });
+
+    it('sweeps enrollment secrets left in the Keychain (iOS orphans, ADR-MOB-0007)', async () => {
+      mockAsyncStorage.getItem.mockResolvedValue('{not-valid-json');
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+      await enrollmentStorage.clearAll();
+
+      expect(mockSecureStorage.removeAllWithKeyPrefixes).toHaveBeenCalledWith([
+        'ezkey-mobile/enrollment-proof-token.',
+        'ezkey-mobile/integration-public-key.',
+      ]);
+      warnSpy.mockRestore();
+    });
+
+    it('continues clear-all when the Keychain sweep fails', async () => {
+      mockSecureStorage.removeAllWithKeyPrefixes.mockRejectedValue(new Error('keychain locked'));
+      mockAsyncStorage.getItem.mockResolvedValue(JSON.stringify([]));
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+      await expect(enrollmentStorage.clearAll()).resolves.toBeUndefined();
+
+      expect(mockAsyncStorage.removeItem).toHaveBeenCalledWith('ezkey-mobile/enrollments');
+      expect(mockDeleteAllSealKeys).toHaveBeenCalledTimes(1);
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[enrollmentStorage] Failed to sweep secure-store secret remnants (continuing wipe):',
+        expect.any(Error),
+      );
       warnSpy.mockRestore();
     });
   });
