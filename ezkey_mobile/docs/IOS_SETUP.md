@@ -168,6 +168,10 @@ yarn ios:lint                      # check (strict, non-zero exit on any finding
 bash scripts/ios-lint.sh --fix     # format in place, then check
 ```
 
+Beyond this gate, a punctual curated pass (not CI) adds a SwiftLint opt-in set, Periphery (unused
+code) and Ezkey Semgrep Swift rules: keyword `mobile-doctor-curated`, iOS lane (`yarn doctor:curated`
+on the Mac, after `yarn ios:test`; see `config/mobile-doctor/README.md`).
+
 Every Swift file starts with the repo-standard header (`Ezkey - Open Source Cryptographic MFA
 Platform`, copyright, MIT line, then module and description), mirroring the Kotlin files. Use `///`
 doc comments on types and non-trivial functions.

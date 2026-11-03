@@ -374,7 +374,8 @@ This script is intended as a practical investigation aid, not as a formal crypto
 
 Punctual curated pass — keyword **`mobile-doctor-curated`**.
 
-Runs **react-doctor** + **Semgrep** (Ezkey mobile pack) + **Detekt**, then curates into P1/P2/P3.
+Runs **react-doctor** + **Semgrep** (Ezkey mobile pack, JS/TS + Kotlin + Swift) + **Detekt**, plus
+the iOS lane on macOS (**SwiftLint** curated set + **Periphery**), then curates into P1/P2/P3.
 
 From `ezkey_mobile/`:
 
@@ -383,7 +384,8 @@ yarn doctor:curated
 ./scripts/mobile-doctor-curated.sh
 ```
 
-Optional flags: `--skip-react-doctor`, `--skip-semgrep`, `--skip-detekt`, `--curate-only`.
+Optional flags: `--skip-react-doctor`, `--skip-semgrep`, `--skip-detekt`, `--skip-swiftlint`,
+`--skip-periphery`, `--curate-only`. Periphery reads the index store left by `yarn ios:test`.
 
 Outputs (gitignored under `logs/`):
 

@@ -449,8 +449,8 @@ When the operator asks for a **`dependabot-curated`** pass:
 
 - For Ezkey Mobile (`ezkey_mobile/`) static-analysis hygiene, the shared keyword is
   **`mobile-doctor-curated`**.
-- Purpose: punctual curated pass — react-doctor + Semgrep (Ezkey mobile pack) + Detekt → P1/P2/P3
-  shortlist. **Not** a CI gate and **not** a zero-warning campaign.
+- Purpose: punctual curated pass — react-doctor + Semgrep (Ezkey mobile pack) + Detekt, plus an
+  iOS lane on macOS (SwiftLint curated set + Periphery) → P1/P2/P3 shortlist. **Not** a CI gate and **not** a zero-warning campaign.
 - Default command from `ezkey_mobile/` (Git Bash on Windows):
 
 ```bash
