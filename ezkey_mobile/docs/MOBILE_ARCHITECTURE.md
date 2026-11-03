@@ -96,7 +96,7 @@ Security alignment:
 - **Error handling**: `httpClient` centralizes Axios interceptors; UI layers map server errors to actionable alerts.
 - **Logging**: Development builds prefer `console.warn` / `console.error` to surface non-fatal issues; production logging remains a separate concern.
 - **Localization**: Mobile UI copy is English-only today. The Auth API bind request accepts only `enrollmentId` and `enrollmentProofToken`; integration display strings in the bind response come from the integration record (single locale at the data layer).
-- **Accessibility**: Screens rely on React Native primitives for accessible touch targets; platform-specific audits remain outstanding.
+- **Accessibility**: Android audit 2026-11-02 (Pixel, `uiautomator` tree, 100 % and 200 % text) and fixes in #1155. Custom pressables declare `accessibilityRole` (and `accessibilityState`); results and errors are spoken through `useAccessibilityAnnouncement`; touch targets are at least 48 dp (header back, Settings gear); theme text tokens meet WCAG AA 4.5:1; decorative glyphs are hidden. Jest reaches critical controls by role (`test-utils/a11yQueries.ts`).
 
 ## Testing Strategy
 
