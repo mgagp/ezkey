@@ -69,6 +69,59 @@ Covered by that run, not by reasoning:
 
 **Reasoned, not executed.** Operator `doCancel` never calls `establishLogin` (same outcome as a CANCELLED poll, which is executed). A timing gap between a real create and a decoy can still hint that a username is enabled.
 
+## 2026-11-03 — Live run on Rootbeer (executed)
+
+Clean-start (`ezkey-tests/clean-start.sh`, exit 0). Stack came up healthy.
+`m5-provision-lab-integration.sh` created integration `jenkins-lab` id 2 and
+VERIFIED enrollment 2 for `labuser` with the challenge required. Demo Device
+approved the admin login and bound that enrollment. `configure-mock-auth.sh`
+applied `EzkeySecurityRealm` with `forceChallenge=true`. Break-glass basic auth
+and `/ezkey-login/` both returned 200.
+
+`m6-live-passwordless.sh`, enrollment 2, after the 30 s cooldown between runs:
+
+- approve, displayed `60`, Demo Device typed `60` → poll `ACCEPTED`, Jenkins session for `labuser`
+- deny, displayed `36` → poll `REJECTED`, no Jenkins session
+- wrong-code, displayed `59`, typed `00` → poll `INVALID`, no Jenkins session
+
+**Surprise, executed.** A deny started inside the 30 s cooldown after approve
+showed a two-digit code and Demo Device had no pending attempt. That is the
+decoy. The script comment now says to wait between runs. The cooldown is not
+logged as a different page, which is the point.
+
+**Surprise.** Renaming the realm with no plugin alias made the existing lab
+volume unbootable: `CannotResolveClassException: EzkeyMockSecurityRealm` in
+`config.xml`, exit 5, restart loop. `configure-mock-auth.sh` rewrites that
+class name before restart. That is a volume migration, not a compatibility
+alias in the plugin.
+
+**Surprise.** `build-auth-plugin.sh` re-ran the suite while clean-start was
+loading Docker. One guard test (`waitPageJsStopsOn502AndShowsError`) hit a
+socket timeout. The same suite had just passed 51/51 via `ci-plugin-test.sh`.
+The `.hpi` used for the live run was packaged with `-DskipTests` from that tree.
+
+## Security self-check (quality criteria)
+
+- No Jenkins session without `ACCEPTED`, except break-glass. Executed: approve
+  creates a session; REJECTED, CANCELLED, EXPIRED, INVALID and a missing
+  challenge do not. Break-glass against a dead port is a JenkinsRule test.
+- No push for an unknown or non-enabled user. Executed in JenkinsRule (same
+  wait page, no extra create). Live unknown-user was not repeated.
+- Challenge required by default, fail-closed when missing. Executed in
+  JenkinsRule. Live enrollment required a code, and a mistyped code was `INVALID`.
+- Integration down for an Ezkey user returns the error page and does not call
+  `establishLogin`. Reasoned from `doSend`'s `EzkeyException` catch. The
+  executed down-path test is break-glass, not that catch.
+- Secret not in log records. Executed (`secretIsNotLogged`). Live scripts print
+  the displayed challenge (the operator types it) and do not print the
+  integration secret.
+- Session id rotated on approve. Executed (`acceptedPollRotatesSessionId`).
+- Sign in URL, form round-trip, JCasC. Executed.
+- Break-glass success is logged at WARNING. Reasoned from `authenticate2`;
+  the test checks the login, not the log level.
+- Timing side channel of decoy vs real create. Reasoned, accepted, named in
+  `DESIGN.md`. Not padded.
+
 ## Method friction
 
 - The plan named PR 964. That PR is a merged Acme demo-app change. The Jenkins
@@ -84,3 +137,17 @@ Covered by that run, not by reasoning:
 - Phase 1's PR was conflicting and its body described an intermediate review
   batch, not the milestone state. Closing it before phase 2 kept the next PR
   reviewable. Waiting on `ci-gate` for a 20-commit lab PR is the long pole.
+  On this run `ci-gate` failed because `mobile-ios / ios-xctest` was cancelled
+  near its 50 minute timeout, after `ezkey-jenkins` and `quality-gate` had
+  passed. The Jenkins change was not the red check.
+- Git Bash path conversion is not only Docker's `-w /src`. `docker exec` of
+  `sed` on `/var/jenkins_home/config.xml` was rewritten to
+  `C:/Program Files/Git/var/jenkins_home/config.xml`. `MSYS_NO_PATHCONV=1` on
+  that one command is required. Same class of bug as the plugin test script.
+- `python3` on this workstation is Windows CPython. It decodes files as
+  cp1252 unless `PYTHONUTF8=1`. Jenkins HTML is not cp1252. The live scripts
+  set that variable. A cold agent that only tests the scripts on Linux will
+  not see it.
+- `build-auth-plugin.sh` always runs `clean test package`. Under a concurrent
+  clean-start that retest is not a useful signal. The definition-of-done
+  gate is `ci-plugin-test.sh`, which does not produce the `.hpi`.

@@ -11,6 +11,9 @@ source "${ROOT}/scripts/lib/demo-device-respond.sh"
 # shellcheck source=lib/lab-temp.sh
 source "${ROOT}/scripts/lib/lab-temp.sh"
 
+# Windows Python otherwise decodes Jenkins HTML as cp1252 and dies on the page.
+export PYTHONUTF8=1
+
 MODE="${1:?usage: $0 approve|deny}"
 BASE="${EZKEY_JENKINS_URL:-http://127.0.0.1:28080}"
 USER="${EZKEY_JENKINS_MFA_USER:-labuser}"

@@ -2,6 +2,8 @@
 # Passwordless live check (#1184): Sign in with Ezkey, type the challenge on Demo Device.
 # Usage: ./scripts/m6-live-passwordless.sh approve|deny|wrong-code
 # A wrong code must not create a Jenkins session.
+# Wait 30s between runs for the same user. A second send inside the cooldown
+# shows a decoy code and does not create an attempt, so Demo Device has nothing to answer.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -10,6 +12,9 @@ export EZKEY_JENKINS_ROOT="${ROOT}"
 source "${ROOT}/scripts/lib/demo-device-respond.sh"
 # shellcheck source=lib/lab-temp.sh
 source "${ROOT}/scripts/lib/lab-temp.sh"
+
+# Windows Python otherwise decodes Jenkins HTML as cp1252 and dies on the page.
+export PYTHONUTF8=1
 
 MODE="${1:?usage: $0 approve|deny|wrong-code}"
 BASE="${EZKEY_JENKINS_URL:-http://127.0.0.1:28080}"

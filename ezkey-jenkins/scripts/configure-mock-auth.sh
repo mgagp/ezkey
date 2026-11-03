@@ -24,6 +24,13 @@ docker exec "${CONTAINER}" rm -f \
   /var/jenkins_home/plugins/ezkey-lab-auth.jpi.disabled \
   /var/jenkins_home/plugins/ezkey-lab-auth.hpi.disabled 2>/dev/null || true
 
+# Phase 1 persisted EzkeyMockSecurityRealm. Jenkins refuses to boot if that class is gone.
+# This is a lab volume rewrite, not a plugin compatibility alias.
+echo "Updating a phase-1 realm class name so Jenkins can boot ..."
+MSYS_NO_PATHCONV=1 docker exec "${CONTAINER}" sed -i \
+  's/org.ezkey.jenkins.auth.EzkeyMockSecurityRealm/org.ezkey.jenkins.auth.EzkeySecurityRealm/g' \
+  /var/jenkins_home/config.xml
+
 echo "Restarting ${CONTAINER} ..."
 docker restart "${CONTAINER}" >/dev/null
 
