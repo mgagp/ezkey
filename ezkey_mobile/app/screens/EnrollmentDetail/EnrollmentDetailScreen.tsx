@@ -11,15 +11,7 @@
  */
 
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Button,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import {ActivityIndicator, Alert, Button, Text, TouchableOpacity, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {useTranslation} from 'react-i18next';
 import {
@@ -32,7 +24,7 @@ import {userFacingAuthApiError} from '../../services/api/authApiProblem';
 import {useEnrollmentStore} from '../../state/enrollmentStore';
 import {claimPendingAttempt} from '../../services/pendingAuth/claimPendingAttempt';
 import {useAccessibilityAnnouncement} from '../../hooks/useAccessibilityAnnouncement';
-import {colors} from '../../config/theme';
+import {createThemedStyles} from '../../theme';
 import {
   buildEnrollmentIdentityDisplay,
   identityDisplayCopy,
@@ -47,6 +39,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'EnrollmentDetail'>;
  * @since 2025
  */
 export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => {
+  const styles = useStyles();
   const {t} = useTranslation();
   const {enrollmentId} = route.params;
   const {data, isLoading} = useEnrollments();
@@ -361,7 +354,7 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(colors => ({
   container: {
     flex: 1,
     padding: 20,
@@ -545,4 +538,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.background,
   },
-});
+}));

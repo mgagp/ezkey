@@ -73,6 +73,10 @@ NativeModules.EzkeyWindowSecurityModule = {
   setSensitiveScreen: jest.fn(),
 };
 
+NativeModules.EzkeyAppearanceModule = {
+  setApplicationNightMode: jest.fn(),
+};
+
 NativeModules.EzkeyCryptoModule = {
   generateEnrollmentKeyPair: jest.fn().mockResolvedValue(true),
   getPublicKey: jest.fn().mockResolvedValue(

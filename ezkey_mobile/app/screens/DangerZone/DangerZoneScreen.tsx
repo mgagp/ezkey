@@ -16,7 +16,6 @@ import {
   Alert,
   FlatList,
   ListRenderItemInfo,
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
@@ -28,7 +27,8 @@ import {
   enrollmentStorage,
   EnrollmentMetadataRecord,
 } from '../../services/storage/enrollmentStorage';
-import {borderRadius, colors, spacing, typography} from '../../config/theme';
+import {borderRadius, spacing, typography} from '../../config/theme';
+import {createThemedStyles, useTheme} from '../../theme';
 import {shouldShowInstallationHostHint} from '../../utils/installationMetadata';
 import {
   buildEnrollmentIdentityDisplay,
@@ -215,6 +215,7 @@ const DangerZoneEnrollmentRow = React.memo(function DangerZoneEnrollmentRow({
   deletePending,
   onDelete,
 }: DangerZoneEnrollmentRowProps) {
+  const styles = useStyles();
   const {t} = useTranslation();
 
   const handlePress = useCallback(() => {
@@ -276,6 +277,8 @@ const DangerZoneEnrollmentRow = React.memo(function DangerZoneEnrollmentRow({
  * @since 2025
  */
 export const DangerZoneScreen: React.FC = () => {
+  const {colors} = useTheme();
+  const styles = useStyles();
   const {t} = useTranslation();
   const navigation = useNavigation();
   const {data, isLoading, refetch} = useEnrollments();
@@ -408,7 +411,7 @@ export const DangerZoneScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(colors => ({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -498,7 +501,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: spacing.lg,
     borderRadius: borderRadius.sm,
-    backgroundColor: colors.error,
+    backgroundColor: colors.danger,
     alignSelf: 'flex-start',
   },
   deleteButtonDisabled: {
@@ -507,7 +510,7 @@ const styles = StyleSheet.create({
   deleteLabel: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textOnPrimary,
+    color: colors.textOnDanger,
   },
   empty: {
     padding: spacing.xxl,
@@ -524,7 +527,7 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
   clearAllButton: {
-    backgroundColor: colors.error,
+    backgroundColor: colors.danger,
     borderRadius: borderRadius.md,
     paddingVertical: spacing.md,
     alignItems: 'center',
@@ -535,7 +538,7 @@ const styles = StyleSheet.create({
   clearAllLabel: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textOnPrimary,
+    color: colors.textOnDanger,
   },
   footerHint: {
     marginTop: spacing.md,
@@ -549,4 +552,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.background,
   },
-});
+}));

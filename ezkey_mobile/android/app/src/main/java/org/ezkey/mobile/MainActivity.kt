@@ -13,12 +13,14 @@
 
 package org.ezkey.mobile
 
+import android.content.res.Configuration
 import android.os.Bundle
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
 import com.facebook.react.defaults.DefaultReactActivityDelegate
+import org.ezkey.mobile.appearance.EzkeyAppearanceModule
 
 /**
  * Hosts the Ezkey React Native application surface.
@@ -37,6 +39,18 @@ class MainActivity : ReactActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     installSplashScreen()
     super.onCreate(savedInstanceState)
+    EzkeyAppearanceModule.applySystemBarIcons(this)
+  }
+
+  /**
+   * `uiMode` is in the manifest `configChanges`, so a theme switch does not recreate the
+   * activity: React Native receives the new color scheme here and the bar icons follow it.
+   *
+   * @since 2026
+   */
+  override fun onConfigurationChanged(newConfig: Configuration) {
+    super.onConfigurationChanged(newConfig)
+    EzkeyAppearanceModule.applySystemBarIcons(this)
   }
 
   /**

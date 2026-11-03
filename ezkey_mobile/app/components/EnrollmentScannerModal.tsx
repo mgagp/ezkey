@@ -15,7 +15,7 @@ import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {ActivityIndicator, Modal, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {Camera, useCameraDevice} from 'react-native-vision-camera';
 import {useEnrollmentCodeOutput} from './enrollmentCodeOutput';
-import {colors} from '../config/theme';
+import {createThemedStyles, useTheme} from '../theme';
 
 /**
  * Modal properties for the enrollment QR scanner.
@@ -39,6 +39,8 @@ type Props = {
  * @since 2025
  */
 export const EnrollmentScannerModal: React.FC<Props> = ({visible, onDismiss, onScanned}) => {
+  const {colors} = useTheme();
+  const styles = useStyles();
   const [isActive, setIsActive] = useState(false);
   const lastScannedRef = useRef<string | undefined>(undefined);
   // VisionCamera 5.1+: resolve a concrete CameraDevice. Passing position string
@@ -70,7 +72,7 @@ export const EnrollmentScannerModal: React.FC<Props> = ({visible, onDismiss, onS
     if (device == null) {
       return (
         <View style={styles.cameraPlaceholder}>
-          <ActivityIndicator color={colors.textPrimary} />
+          <ActivityIndicator color={colors.textOnCamera} />
         </View>
       );
     }
@@ -83,7 +85,7 @@ export const EnrollmentScannerModal: React.FC<Props> = ({visible, onDismiss, onS
         outputs={[barcodeOutput]}
       />
     );
-  }, [barcodeOutput, device, isActive]);
+  }, [barcodeOutput, colors.textOnCamera, device, isActive, styles.cameraPlaceholder]);
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onDismiss} transparent>
@@ -105,7 +107,7 @@ export const EnrollmentScannerModal: React.FC<Props> = ({visible, onDismiss, onS
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(colors => ({
   backdrop: {
     flex: 1,
     backgroundColor: colors.overlay,
@@ -155,4 +157,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
-});
+}));

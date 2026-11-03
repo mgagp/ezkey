@@ -1,11 +1,7 @@
 import React from 'react';
-import {
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import {colors, spacing, typography} from '../config/theme';
+import {Text, TouchableOpacity, View} from 'react-native';
+import {spacing, typography} from '../config/theme';
+import {createThemedStyles} from '../theme';
 
 interface Props {
   children: React.ReactNode;
@@ -51,25 +47,30 @@ export class AppErrorBoundary extends React.Component<Props, State> {
       return this.props.children;
     }
 
-    return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Something went wrong{'\n'}Une erreur est survenue</Text>
-        <Text style={styles.subtitle}>
-          The app encountered an unexpected error.{'\n'}L&apos;app a rencontré une erreur inattendue.
-        </Text>
-        <TouchableOpacity
-          style={styles.button}
-          onPress={this.handleRetry}
-          activeOpacity={0.8}
-          accessibilityRole="button">
-          <Text style={styles.buttonText}>Redémarrer / Retry</Text>
-        </TouchableOpacity>
-      </View>
-    );
+    return <ErrorFallback onRetry={this.handleRetry} />;
   }
 }
 
-const styles = StyleSheet.create({
+const ErrorFallback: React.FC<{onRetry: () => void}> = ({onRetry}) => {
+  const styles = useStyles();
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Something went wrong{'\n'}Une erreur est survenue</Text>
+      <Text style={styles.subtitle}>
+        The app encountered an unexpected error.{'\n'}L&apos;app a rencontré une erreur inattendue.
+      </Text>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={onRetry}
+        activeOpacity={0.8}
+        accessibilityRole="button">
+        <Text style={styles.buttonText}>Redémarrer / Retry</Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+const useStyles = createThemedStyles(colors => ({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -103,4 +104,4 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.md,
     fontWeight: typography.fontWeight.semibold,
   },
-});
+}));

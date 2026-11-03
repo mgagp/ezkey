@@ -15,7 +15,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -30,7 +29,7 @@ import {EnrollmentScannerModal} from '../../components/EnrollmentScannerModal';
 import PinCodeInput from '../../components/PinCodeInput';
 import {useEnrollmentWizard} from '../../hooks/useEnrollmentWizard';
 import {useAccessibilityAnnouncement} from '../../hooks/useAccessibilityAnnouncement';
-import {colors} from '../../config/theme';
+import {createThemedStyles, useTheme} from '../../theme';
 import {
   buildEnrollmentIdentityDisplay,
   identityDisplayCopy,
@@ -75,6 +74,7 @@ const EnrollmentInfoCard: React.FC<EnrollmentInfoCardProps> = ({
   serverUrl,
   compact,
 }) => {
+  const styles = useStyles();
   const {t} = useTranslation();
   const copy = identityDisplayCopy(t);
   const identity = buildEnrollmentIdentityDisplay(
@@ -151,6 +151,8 @@ const EnrollmentInfoCard: React.FC<EnrollmentInfoCardProps> = ({
  * @since 2025
  */
 export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
+  const {colors} = useTheme();
+  const styles = useStyles();
   const {t} = useTranslation();
   const {hasPermission: hasCameraPermission, requestPermission} = useCameraPermission();
 
@@ -327,7 +329,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(colors => ({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -583,4 +585,4 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
-});
+}));

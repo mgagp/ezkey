@@ -6,12 +6,13 @@
  */
 
 import React from 'react';
-import {View, Text, StyleSheet, Pressable, ScrollView} from 'react-native';
+import {View, Text, Pressable, ScrollView} from 'react-native';
 import {StackScreenProps} from '@react-navigation/stack';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTranslation} from 'react-i18next';
 import {RootStackParamList} from '../../navigation/types';
-import {borderRadius, colors, spacing, typography} from '../../config/theme';
+import {borderRadius, spacing, typography} from '../../config/theme';
+import {createThemedStyles} from '../../theme';
 import {APP_DISPLAY_NAME} from '../../config/appInfo';
 import {
   DEFAULT_SECURITY_LEVEL,
@@ -29,6 +30,7 @@ type SettingsScreenName =
   | 'DangerZone'
   | 'Licenses'
   | 'Language'
+  | 'Appearance'
   | 'Security';
 
 type SettingsItem = {
@@ -43,6 +45,7 @@ type SettingsItem = {
  * @since 2025
  */
 export const SettingsScreen: React.FC<Props> = ({navigation}) => {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const {t} = useTranslation();
   const [securityLevel, setSecurityLevel] = React.useState<SecurityLevel>(
@@ -83,6 +86,11 @@ export const SettingsScreen: React.FC<Props> = ({navigation}) => {
       key: 'Language',
       label: t('settings.languageLabel'),
       subtitle: t('settings.languageSubtitle'),
+    },
+    {
+      key: 'Appearance',
+      label: t('settings.appearanceLabel'),
+      subtitle: t('settings.appearanceSubtitle'),
     },
     {
       key: 'Security',
@@ -143,7 +151,7 @@ export const SettingsScreen: React.FC<Props> = ({navigation}) => {
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(colors => ({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -209,4 +217,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     opacity: 0.7,
   },
-});
+}));

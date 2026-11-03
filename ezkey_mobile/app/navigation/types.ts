@@ -14,4 +14,5 @@ export type RootStackParamList = {
   LicenseDetail: {id: string};
   DangerZone: undefined;
   Language: undefined;
+  Appearance: undefined;
 };

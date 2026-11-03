@@ -6,12 +6,13 @@
  */
 
 import React from 'react';
-import {Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {Linking, ScrollView, Text, TouchableOpacity, View} from 'react-native';
 import {StackScreenProps} from '@react-navigation/stack';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTranslation} from 'react-i18next';
 import {RootStackParamList} from '../../navigation/types';
-import {borderRadius, colors, spacing, typography} from '../../config/theme';
+import {borderRadius, spacing, typography} from '../../config/theme';
+import {createThemedStyles} from '../../theme';
 import {getLicenseEntry, getLicenseTexts, nativeCoordinates} from './licenseData';
 
 type Props = StackScreenProps<RootStackParamList, 'LicenseDetail'>;
@@ -23,6 +24,7 @@ type Props = StackScreenProps<RootStackParamList, 'LicenseDetail'>;
  * @since 2026
  */
 export const LicenseDetailScreen: React.FC<Props> = ({route}) => {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const {t} = useTranslation();
   const entry = getLicenseEntry(route.params.id);
@@ -99,7 +101,7 @@ export const LicenseDetailScreen: React.FC<Props> = ({route}) => {
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(colors => ({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -166,4 +168,4 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     lineHeight: 18,
   },
-});
+}));
