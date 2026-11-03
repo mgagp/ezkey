@@ -216,6 +216,7 @@ describe('authentication continuity (pending linked to respond)', () => {
       goBack: jest.fn(),
       canGoBack: jest.fn().mockReturnValue(true),
       // PendingAuthScreen registers beforeRemove → Auth API deny on leave (#831).
+      isFocused: jest.fn(() => true),
       addListener: jest.fn(() => jest.fn()),
       dispatch: jest.fn(),
     };
@@ -278,6 +279,7 @@ describe('authentication continuity (pending linked to respond)', () => {
       navigate: jest.fn(),
       goBack: jest.fn(),
       canGoBack: jest.fn().mockReturnValue(true),
+      isFocused: jest.fn(() => true),
       addListener: jest.fn((event: string, handler: (e: never) => void) => {
         if (event === 'beforeRemove') {
           beforeRemoveHandlers.push(handler as never);
@@ -353,6 +355,7 @@ describe('authentication continuity (pending linked to respond)', () => {
       navigate: jest.fn(),
       goBack: jest.fn(),
       canGoBack: jest.fn().mockReturnValue(true),
+      isFocused: jest.fn(() => true),
       addListener: jest.fn(() => jest.fn()),
       dispatch: jest.fn(),
     };
@@ -414,6 +417,7 @@ describe('authentication continuity (pending linked to respond)', () => {
       navigate: jest.fn(),
       goBack: jest.fn(),
       canGoBack: jest.fn().mockReturnValue(true),
+      isFocused: jest.fn(() => true),
       addListener: jest.fn(() => jest.fn()),
       dispatch: jest.fn(),
     };

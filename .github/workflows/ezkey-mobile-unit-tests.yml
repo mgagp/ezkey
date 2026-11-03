@@ -180,6 +180,18 @@ jobs:
             exit 1
           fi
 
+      # Backup / transfer exclusion (#1154): Keystore keys never move, so app data must not either.
+      - name: Guard — backup and transfer excluded
+        working-directory: ezkey_mobile/android
+        run: |
+          manifest=app/build/intermediates/merged_manifest/release/processReleaseMainManifest/AndroidManifest.xml
+          grep -q 'android:allowBackup="false"' "$manifest" || { echo "::error::allowBackup must stay false (#1154)."; exit 1; }
+          grep -q 'android:dataExtractionRules="@xml/data_extraction_rules"' "$manifest" || { echo "::error::dataExtractionRules missing from the release manifest (#1154)."; exit 1; }
+          rules=app/src/main/res/xml/data_extraction_rules.xml
+          for section in cloud-backup device-transfer cross-platform-transfer; do
+            grep -q "<${section}" "$rules" || { echo "::error::${section} section missing in ${rules} (#1154)."; exit 1; }
+          done
+
       - name: Upload unit test report
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7

@@ -11,6 +11,7 @@ and `package.json` before each listing update. This is not legal advice.
 | `INTERNET` | Auth API calls for enrollment bind/verify and pending/respond. |
 | `CAMERA` | Scan enrollment QR codes only. Images are not stored. |
 | `USE_BIOMETRIC` | Optional local "confirm before approvals" on this device. Not sent to any server. |
+| `HIDE_OVERLAY_WINDOWS` | Hides other apps' overlays while the Approve / Deny screen is shown (tapjacking defense, #1154). Normal permission, no user prompt. |
 
 Merged from libraries (present in the release APK dump, not declared in our manifest):
 
@@ -68,6 +69,15 @@ CI (`mobile-ios`, `scripts/ios-privacy-check.sh`) fails if a known telemetry pod
 - Optional Play update "dismissed versionCode" in AsyncStorage
 
 These stay on the phone unless the user deletes enrollments or uses Danger Zone clear-all.
+
+They are never backed up or transferred. `android:allowBackup="false"` covers Android 11 and
+earlier semantics, and `res/xml/data_extraction_rules.xml` excludes every domain from cloud
+backup, device-to-device transfer and cross-platform transfer (#1154). Keystore keys cannot leave
+the phone, so a copied enrollment list would only show enrollments that cannot sign; on a new
+phone the user re-enrolls.
+
+The Approve / Deny screen sets `FLAG_SECURE` while focused (no screenshot, screen recording or
+Recents thumbnail of a pending request); the rest of the app stays capturable.
 
 ## Data transmitted to the operator's installation
 

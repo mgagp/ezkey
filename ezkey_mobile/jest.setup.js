@@ -69,6 +69,10 @@ NativeModules.EzkeyPlayUpdateModule = {
   startFlexibleUpdate: jest.fn().mockResolvedValue(false),
 };
 
+NativeModules.EzkeyWindowSecurityModule = {
+  setSensitiveScreen: jest.fn(),
+};
+
 NativeModules.EzkeyCryptoModule = {
   generateEnrollmentKeyPair: jest.fn().mockResolvedValue(true),
   getPublicKey: jest.fn().mockResolvedValue(

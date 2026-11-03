@@ -30,6 +30,7 @@ import {env} from '../../config/env';
 import {RootStackParamList} from '../../navigation/types';
 import PinCodeInput from '../../components/PinCodeInput';
 import {usePendingAuth, AUTH_CHALLENGE_LENGTH, tracePendingAuthRespond} from '../../hooks/usePendingAuth';
+import {useSensitiveScreen} from '../../hooks/useSensitiveScreen';
 import {
   buildEnrollmentIdentityDisplay,
   identityDisplayCopy,
@@ -47,6 +48,9 @@ type Props = NativeStackScreenProps<RootStackParamList, 'PendingAuth'>;
 export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
   const {t} = useTranslation();
   const {enrollmentId, initialAttempt} = route.params;
+
+  // No screenshots, overlays or obscured touches while a decision is on screen (#1154).
+  useSensitiveScreen(navigation);
 
   const navigateToEnrollmentDetail = useCallback(
     () => navigation.navigate('EnrollmentDetail', {enrollmentId}),
