@@ -10,7 +10,9 @@
 # Discovery order:
 #   1. EZKEY_ANDROID_JAVA_HOME (explicit override; must contain bin/java)
 #   2. macOS: /usr/libexec/java_home -v 17
-#   3. Versionless + glob candidates on Windows / Linux / macOS (prefer major 17)
+#   3. Versionless + glob candidates on Windows / Linux / macOS (prefer major 17), including
+#      sdkman (~/.sdkman/candidates/java/17.*) and the macOS Android Studio JBR. Only majors 17
+#      and 21 are accepted, so a newer JBR (Android Studio 2026.2 ships JDK 25) is skipped.
 #   4. Android Studio JBR (17 preferred, else 21)
 #
 # Usage:
@@ -95,8 +97,11 @@ _resolve_android_jdk() {
     /usr/lib/jvm/java-17-temurin* \
     /usr/lib/jvm/jdk-17* \
     /Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home \
+    /Library/Java/JavaVirtualMachines/temurin-17*.jdk/Contents/Home \
+    "${HOME}"/.sdkman/candidates/java/17.* \
     /opt/homebrew/opt/openjdk@17 \
-    /usr/local/opt/openjdk@17; do
+    /usr/local/opt/openjdk@17 \
+    /Applications/Android\ Studio.app/Contents/jbr/Contents/Home; do
     if [[ -d "$candidate" ]] && _has_java "$candidate"; then
       if ! _list_has "$ordered" "$candidate"; then
         ordered="${ordered}${ordered:+$'\n'}${candidate}"
@@ -148,6 +153,16 @@ fi
 
 export JAVA_HOME="$_jdk"
 export PATH="${JAVA_HOME}/bin:${PATH}"
+
+# Android SDK: Android Studio's macOS default when neither variable is set, so Gradle and adb
+# work without a shell-profile edit. Windows / Linux keep their explicit ANDROID_HOME.
+if [[ -z "${ANDROID_HOME:-}" && -z "${ANDROID_SDK_ROOT:-}" && "$OSTYPE" == "darwin"* \
+  && -d "${HOME}/Library/Android/sdk" ]]; then
+  export ANDROID_HOME="${HOME}/Library/Android/sdk"
+fi
+if [[ -n "${ANDROID_HOME:-}" && -d "${ANDROID_HOME}/platform-tools" ]]; then
+  export PATH="${ANDROID_HOME}/platform-tools:${PATH}"
+fi
 
 if [[ "${1:-}" == "--print" ]]; then
   echo "${JAVA_HOME}"

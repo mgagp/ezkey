@@ -108,6 +108,13 @@ A warm `assembleRelease` or a debug install does **not** prove a Play AAB. When 
 
 **Do not improvise `JAVA_HOME` or bare `./gradlew` on Windows.** The maintainer PATH often exposes **JDK 25** (`C:\Tools\jdk-25…`), which breaks React Native 0.87 Android (`Unsupported class file major version 69`, `com.facebook.react.settings` plugin errors). Android Studio JBR is also **not** always at `C:\Program Files\Android\Android Studio\jbr` (this workstation uses `Android Studio1\jbr`).
 
+**macOS (#1175):** `resolve-android-jdk.sh` finds a JDK 17 under `~/.sdkman/candidates/java/17.*`,
+`/Library/Java/JavaVirtualMachines/temurin-17*`, or the Android Studio JBR when it is 17 or 21 (Android
+Studio 2026.2 ships JDK 25, which is skipped). It also exports `ANDROID_HOME=~/Library/Android/sdk`
+when unset and puts `adb` on `PATH`, so no shell-profile edit is needed. Emulator: AVD
+`ezkey_pixel_9a` (Android 37, arm64), boot headless with
+`$ANDROID_HOME/emulator/emulator -avd ezkey_pixel_9a -no-window -no-audio`.
+
 ### Mandatory agent workflow
 
 1. **Git Bash** from `ezkey_mobile/` (not bare PowerShell for Gradle). Yarn scripts that invoke `.sh` go through `scripts/run-with-git-bash.mjs` so Windows does not pick WSL `System32\bash.exe`.
