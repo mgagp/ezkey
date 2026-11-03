@@ -98,15 +98,7 @@ public class AdminTokenValidationService {
       if (tokenOptional.isPresent()) {
         AdminToken adminToken = tokenOptional.get();
 
-        // SEC-021: recovery tokens must not authenticate as Admin API sessions
-        if (adminToken.getTokenPurpose() == AdminTokenPurpose.RECOVERY) {
-          logger.warn(
-              "❌ Token rejected: recovery-purpose token cannot authenticate ordinary Admin API"
-                  + " requests");
-          return Optional.empty();
-        }
-
-        // #1122: allowlist, so activation codes and any future purpose fail closed.
+        // Allowlist (SEC-021, #1122): RECOVERY, ACTIVATION and any future purpose fail closed.
         if (adminToken.getTokenPurpose() != AdminTokenPurpose.SESSION
             && adminToken.getTokenPurpose() != AdminTokenPurpose.EVALUATOR_TEMP) {
           logger.warn(

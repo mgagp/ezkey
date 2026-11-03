@@ -14,6 +14,7 @@ package org.ezkey.admin.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -97,16 +98,24 @@ class AdminTokenValidationServiceTest {
   }
 
   @Test
-  @DisplayName("#1122: Should reject ACTIVATION-purpose token for Admin API session auth")
+  @DisplayName("#1122: Control — fully valid fixture is accepted when the purpose is SESSION")
+  void validateTokenWithRelations_fullyValidFixture_isAccepted_whenPurposeIsSession() {
+    stubFullyValidTokenWithPurpose(AdminTokenPurpose.SESSION);
+
+    Optional<AdminToken> result = service.validateTokenWithRelations(TOKEN);
+
+    assertThat(result).containsSame(adminToken);
+  }
+
+  @Test
+  @DisplayName("#1122: Should reject a valid, non-expired ACTIVATION token (purpose allowlist)")
   void validateTokenWithRelations_shouldReturnEmpty_whenTokenPurposeIsActivation() {
-    String hash = SensitiveDataHasher.sha256Hex(TOKEN);
-    when(tokenRepository.findByBearerTokenHashAndActiveTrueWithRelations(eq(hash)))
-        .thenReturn(Optional.of(adminToken));
-    when(adminToken.getTokenPurpose()).thenReturn(AdminTokenPurpose.ACTIVATION);
+    stubFullyValidTokenWithPurpose(AdminTokenPurpose.ACTIVATION);
 
     Optional<AdminToken> result = service.validateTokenWithRelations(TOKEN);
 
     assertThat(result).isEmpty();
+    verify(adminToken, never()).getExpiresAt();
     verify(adminToken, never()).getAdmin();
   }
 
@@ -166,16 +175,14 @@ class AdminTokenValidationServiceTest {
   }
 
   @Test
-  @DisplayName("SEC-021: Should reject RECOVERY-purpose token for ordinary session auth")
+  @DisplayName("SEC-021: Should reject a valid, non-expired RECOVERY token (purpose allowlist)")
   void validateTokenWithRelations_shouldReturnEmpty_whenTokenPurposeIsRecovery() {
-    String hash = SensitiveDataHasher.sha256Hex(TOKEN);
-    when(tokenRepository.findByBearerTokenHashAndActiveTrueWithRelations(eq(hash)))
-        .thenReturn(Optional.of(adminToken));
-    when(adminToken.getTokenPurpose()).thenReturn(AdminTokenPurpose.RECOVERY);
+    stubFullyValidTokenWithPurpose(AdminTokenPurpose.RECOVERY);
 
     Optional<AdminToken> result = service.validateTokenWithRelations(TOKEN);
 
     assertThat(result).isEmpty();
+    verify(adminToken, never()).getExpiresAt();
     verify(adminToken, never()).getAdmin();
   }
 
@@ -414,5 +421,29 @@ class AdminTokenValidationServiceTest {
     when(adminToken.getExpiresAt()).thenReturn(OffsetDateTime.now().plusHours(1));
     when(adminToken.getAdmin()).thenReturn(admin);
     when(adminToken.getTenant()).thenReturn(null);
+  }
+
+  /**
+   * Stubs a token that passes every check except the purpose allowlist: live, non-expired, ACTIVE
+   * admin with an active VERIFIED enrollment, no inactive tenant. Downstream stubs are lenient
+   * because the allowlist rejects before reading them; without the allowlist they are read and the
+   * token is accepted, which is what makes the purpose tests fail on that mutation.
+   *
+   * @param purpose token purpose under test
+   */
+  private void stubFullyValidTokenWithPurpose(AdminTokenPurpose purpose) {
+    String hash = SensitiveDataHasher.sha256Hex(TOKEN);
+    when(tokenRepository.findByBearerTokenHashAndActiveTrueWithRelations(eq(hash)))
+        .thenReturn(Optional.of(adminToken));
+    when(adminToken.getTokenPurpose()).thenReturn(purpose);
+    lenient().when(adminToken.getExpiresAt()).thenReturn(OffsetDateTime.now().plusHours(1));
+    lenient().when(adminToken.getAdmin()).thenReturn(admin);
+    lenient().when(adminToken.getTenant()).thenReturn(null);
+    lenient().when(admin.getUsername()).thenReturn("verified.admin");
+    lenient().when(admin.getActive()).thenReturn(true);
+    lenient().when(admin.getLifecycleStatus()).thenReturn(AdminLifecycleStatus.ACTIVE);
+    lenient().when(admin.getEnrollment()).thenReturn(enrollment);
+    lenient().when(enrollment.getActive()).thenReturn(true);
+    lenient().when(enrollment.getStatus()).thenReturn(EnrollmentStatus.VERIFIED);
   }
 }
