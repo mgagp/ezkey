@@ -126,6 +126,13 @@ meant to be linked from trust-facing material without inflating the top-level pi
   see "What it aims to do." Until then, integrity evidence lives on the same host as the data.
 - **It does not claim standards equivalence or certification.** Ezkey is not WebAuthn/FIDO2, not a
   passkey compatibility layer, and makes no SOC 2 / formal-attestation equivalence claim.
+- **It does not claim post-quantum resistance.** Device signatures (EC P-256) and integration
+  signatures (Ed25519) are pre-quantum: a future quantum computer able to run Shor's algorithm
+  could forge them from the public keys. Proof tokens, AES-256-GCM at rest, and HMAC-SHA256 are
+  symmetric and do not rely on elliptic-curve hardness. Whether the TLS edge negotiates a hybrid
+  post-quantum key exchange depends on the deployment and is not yet verified. Recovery-code length
+  (106 bits) is classical hardening, not a post-quantum property. Algorithms:
+  [`CRYPTO.md`](CRYPTO.md).
 - **It does not depend on, or guarantee, any third-party channel.** SMS and email are optional,
   operator-triggered, peripheral capabilities; Ezkey is fully operational without them.
 - **It does not claim guaranteed delivery of every audit event.** Audit writes use a dedicated
@@ -180,6 +187,7 @@ accepts the host-boundary limit described above.
 | "Detects accidental corruption and DB-level tampering via nightly cryptographic validation." | "Detects any tampering, including by a compromised host." |
 | "Audit rows that were stored are sealed and tamper-evident; write failures are logged and do not block business operations." | "Guaranteed audit delivery for every security-relevant operation" / "comprehensive audit trail with no omissions." |
 | "Self-hosted, opinionated, stronger than passwords and classic TOTP for backend-oriented contexts." | Formal attestation chains, SOC 2 equivalence, or certification-grade assurance. |
+| "Proof tokens and at-rest AES-256/HMAC-SHA256 are symmetric and do not rely on elliptic-curve hardness." | "Post-quantum MFA" / "quantum-resistant" signatures, recovery codes, or protocol (device P-256 and integration Ed25519 are pre-quantum). |
 
 SOC 2 remains a **reference vocabulary** for operational discipline, not a certification target.
 See [`../product-docs/global/normative-posture.md`](../product-docs/global/normative-posture.md).

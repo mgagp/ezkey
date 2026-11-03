@@ -534,7 +534,8 @@ POST /api/v1/admin/auth/login
 **Entropy:** 106 bits
 - 10^32 possible combinations
 - At 1 million attempts/second: 3 × 10^18 years to brute force
-- Resistant to quantum attacks (>100 bits recommended)
+- High-entropy, single-use break-glass secret (classical hardening; not a post-quantum claim — see
+  [`SECURITY_POSTURE.md`](SECURITY_POSTURE.md))
 
 **Storage:** BCrypt hashed (work factor 10)
 
