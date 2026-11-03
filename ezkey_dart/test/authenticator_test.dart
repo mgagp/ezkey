@@ -6,6 +6,7 @@ import 'package:http/testing.dart';
 import 'package:test/test.dart';
 
 import 'support/fake_ezkey_server.dart';
+import 'support/high_s.dart';
 
 Matcher _integrity(EzkeyIntegrityCheck check) => throwsA(
   isA<EzkeyIntegrityException>().having((e) => e.check, 'check', check),
@@ -283,6 +284,73 @@ void main() {
     });
   });
 
+  group('platform key store returning high-S signatures (SEC-012)', () {
+    late HighSKeyStore highS;
+    late EzkeyAuthenticator platformLike;
+
+    setUp(() {
+      highS = HighSKeyStore();
+      platformLike = EzkeyAuthenticator(
+        keyStore: highS,
+        enrollmentStore: InMemoryEnrollmentStore(),
+        httpClient: server.client,
+        clock: () => server.now,
+      );
+    });
+
+    test(
+      'enroll, claim and approve succeed: every signature is normalized',
+      () async {
+        final invitation = server.invite();
+        final enrollment = await platformLike.enroll(
+          codeFor(invitation),
+          enrollmentChallenge: invitation.challenge,
+        );
+        final created = server.createAttempt(invitation.id);
+        final attempt = (await platformLike.checkPending(enrollment))!;
+        final outcome = await platformLike.approve(enrollment, attempt);
+        expect(outcome.result, AuthAttemptResult.approved);
+        expect(created.state, 'ACCEPTED');
+        expect(highS.signCount, 3);
+        for (final body in server.requestBodies) {
+          for (final field in <String>[
+            'enrollmentProofTokenSigned',
+            'deviceProofTokenSigned',
+            'authAttemptProofTokenSignedByDevice',
+          ]) {
+            if (body[field] is String) {
+              expect(
+                isLowSEcdsaDerSignature(body[field] as String),
+                isTrue,
+                reason: field,
+              );
+            }
+          }
+        }
+      },
+    );
+
+    test(
+      'a malformed key-store signature is a local error and sends nothing',
+      () async {
+        final invitation = server.invite();
+        final enrollment = await platformLike.enroll(
+          codeFor(invitation),
+          enrollmentChallenge: invitation.challenge,
+        );
+        server.createAttempt(invitation.id);
+        final attempt = (await platformLike.checkPending(enrollment))!;
+        highS.overrideSignature = 'not-a-signature';
+        await expectLater(
+          platformLike.deny(enrollment, attempt),
+          throwsA(isA<EzkeyLocalStateException>()),
+        );
+        expect(attempt.decisionState, AuthAttemptDecisionState.open);
+        expect(server.countRequests(AuthApiPaths.respond), 0);
+      },
+    );
+  });
+
   group('auth attempts', () {
     late FakeEnrollment invitation;
     late EzkeyEnrollment enrollment;
@@ -426,22 +494,239 @@ void main() {
       );
     });
 
-    test('respond twice -> state conflict (final)', () async {
-      server.createAttempt(invitation.id);
-      final attempt = (await auth.checkPending(enrollment))!;
-      await auth.approve(enrollment, attempt);
-      await expectLater(
-        auth.approve(enrollment, attempt),
-        throwsA(
-          isA<EzkeyApiException>()
-              .having(
-                (e) => e.kind,
-                'kind',
-                EzkeyProblemKind.authAttemptStateConflict,
-              )
-              .having((e) => e.isAttemptNoLongerActionable, 'final', isTrue)
-              .having((e) => e.retryable, 'retryable', isFalse),
-        ),
+    test(
+      'respond twice: refused locally; the server also refuses a copy',
+      () async {
+        server.createAttempt(invitation.id);
+        final attempt = (await auth.checkPending(enrollment))!;
+        await auth.approve(enrollment, attempt);
+        expect(attempt.decisionState, AuthAttemptDecisionState.locked);
+        await expectLater(
+          auth.deny(enrollment, attempt),
+          throwsA(isA<EzkeyValidationException>()),
+        );
+        expect(server.countRequests(AuthApiPaths.respond), 1);
+
+        // Server guarantee, independent of the client lock: a second decision is a final 409.
+        final copy = PendingAuthAttempt(
+          enrollmentLocalId: attempt.enrollmentLocalId,
+          authAttemptId: attempt.authAttemptId,
+          authAttemptProofToken: attempt.authAttemptProofToken,
+          challengeRequired: attempt.challengeRequired,
+          receivedAt: attempt.receivedAt,
+        );
+        await expectLater(
+          auth.approve(enrollment, copy),
+          throwsA(
+            isA<EzkeyApiException>()
+                .having(
+                  (e) => e.kind,
+                  'kind',
+                  EzkeyProblemKind.authAttemptStateConflict,
+                )
+                .having((e) => e.isAttemptNoLongerActionable, 'final', isTrue)
+                .having((e) => e.retryable, 'retryable', isFalse),
+          ),
+        );
+        expect(copy.decisionState, AuthAttemptDecisionState.locked);
+      },
+    );
+
+    group('decision lock and unknown outcome (contract §2)', () {
+      Matcher outcomeUnknown<T extends EzkeyException>({
+        required bool accepted,
+      }) => throwsA(
+        isA<EzkeyRespondOutcomeUnknownException>()
+            .having((e) => e.accepted, 'accepted', accepted)
+            .having((e) => e.retryable, 'retryable', isFalse)
+            .having((e) => e.cause, 'cause', isA<T>()),
+      );
+
+      test('a claimed attempt starts open', () async {
+        server.createAttempt(invitation.id);
+        final attempt = (await auth.checkPending(enrollment))!;
+        expect(attempt.decisionState, AuthAttemptDecisionState.open);
+        expect(attempt.canDecide, isTrue);
+      });
+
+      test(
+        'a racing second decision is refused while the first is in flight',
+        () async {
+          final created = server.createAttempt(invitation.id);
+          final attempt = (await auth.checkPending(enrollment))!;
+          final approving = auth.approve(enrollment, attempt);
+          expect(attempt.decisionState, AuthAttemptDecisionState.sending);
+          expect(attempt.canDecide, isFalse);
+          await expectLater(
+            auth.deny(enrollment, attempt),
+            throwsA(isA<EzkeyValidationException>()),
+          );
+          expect((await approving).result, AuthAttemptResult.approved);
+          expect(created.state, 'ACCEPTED');
+          expect(server.countRequests(AuthApiPaths.respond), 1);
+        },
+      );
+
+      test(
+        'connection cut after the server recorded the decision -> unknown, locked',
+        () async {
+          final created = server.createAttempt(invitation.id);
+          final cutAfterSend = EzkeyAuthenticator(
+            keyStore: keys,
+            enrollmentStore: store,
+            httpClient: MockClient((request) async {
+              final response = await server.handle(request);
+              if (request.url.path == AuthApiPaths.respond) {
+                throw http.ClientException('connection reset', request.url);
+              }
+              return response;
+            }),
+            clock: () => server.now,
+          );
+          final attempt = (await cutAfterSend.checkPending(enrollment))!;
+          await expectLater(
+            cutAfterSend.approve(enrollment, attempt),
+            outcomeUnknown<EzkeyNetworkException>(accepted: true),
+          );
+          expect(created.state, 'ACCEPTED');
+          expect(attempt.decisionState, AuthAttemptDecisionState.locked);
+          // No leave-as-deny and no second decision after an unknown outcome (Q10).
+          await expectLater(
+            cutAfterSend.deny(enrollment, attempt),
+            throwsA(isA<EzkeyValidationException>()),
+          );
+          expect(server.countRequests(AuthApiPaths.respond), 1);
+        },
+      );
+
+      test('transport failure on respond -> unknown, locked', () async {
+        server.createAttempt(invitation.id);
+        final attempt = (await auth.checkPending(enrollment))!;
+        server.failTransportOn = AuthApiPaths.respond;
+        await expectLater(
+          auth.deny(enrollment, attempt),
+          outcomeUnknown<EzkeyNetworkException>(accepted: false),
+        );
+        expect(attempt.decisionState, AuthAttemptDecisionState.locked);
+      });
+
+      test('ambiguous 5xx on respond -> unknown, locked', () async {
+        for (final status in <int>[500, 502]) {
+          server.forcedProblem = null;
+          server.createAttempt(invitation.id);
+          final attempt = (await auth.checkPending(enrollment))!;
+          server.forcedProblem = (
+            path: AuthApiPaths.respond,
+            status: status,
+            type:
+                status == 500
+                    ? 'https://ezkey.io/problems/auth/internal-error'
+                    : 'https://example.org/proxy-error',
+          );
+          await expectLater(
+            auth.approve(enrollment, attempt),
+            outcomeUnknown<EzkeyApiException>(accepted: true),
+            reason: 'HTTP $status',
+          );
+          expect(attempt.decisionState, AuthAttemptDecisionState.locked);
+        }
+      });
+
+      test(
+        '503 signing unavailable reopens the attempt; a retry succeeds',
+        () async {
+          server.createAttempt(invitation.id);
+          final attempt = (await auth.checkPending(enrollment))!;
+          server.forcedProblem = (
+            path: AuthApiPaths.respond,
+            status: 503,
+            type:
+                'https://ezkey.io/problems/auth/integration-signing-unavailable',
+          );
+          await expectLater(
+            auth.approve(enrollment, attempt),
+            _api(EzkeyProblemKind.integrationSigningUnavailable),
+          );
+          expect(attempt.decisionState, AuthAttemptDecisionState.open);
+          server.forcedProblem = null;
+          expect(
+            (await auth.approve(enrollment, attempt)).result,
+            AuthAttemptResult.approved,
+          );
+        },
+      );
+
+      test('429 reopens the attempt', () async {
+        server.createAttempt(invitation.id);
+        final attempt = (await auth.checkPending(enrollment))!;
+        server.forcedProblem = (
+          path: AuthApiPaths.respond,
+          status: 429,
+          type: 'https://example.org/rate-limit',
+        );
+        await expectLater(
+          auth.deny(enrollment, attempt),
+          _api(EzkeyProblemKind.rateLimited),
+        );
+        expect(attempt.decisionState, AuthAttemptDecisionState.open);
+      });
+
+      test('final 409 locks the attempt', () async {
+        final created = server.createAttempt(invitation.id);
+        final attempt = (await auth.checkPending(enrollment))!;
+        server.cancel(created.id);
+        await expectLater(
+          auth.approve(enrollment, attempt),
+          _api(EzkeyProblemKind.authAttemptStateConflict),
+        );
+        expect(attempt.decisionState, AuthAttemptDecisionState.locked);
+      });
+
+      test(
+        'integrity failure after HTTP 200 locks the attempt (Q2, Q9)',
+        () async {
+          server.createAttempt(invitation.id);
+          final attempt = (await auth.checkPending(enrollment))!;
+          server.mutateResponse =
+              (path, body) => body..['authAttemptResult'] = 'DENIED';
+          await expectLater(
+            auth.approve(enrollment, attempt),
+            _integrity(EzkeyIntegrityCheck.respondSignature),
+          );
+          expect(attempt.decisionState, AuthAttemptDecisionState.locked);
+        },
+      );
+
+      test(
+        'signing failure sends nothing and keeps the attempt open',
+        () async {
+          server.createAttempt(invitation.id);
+          final attempt = (await auth.checkPending(enrollment))!;
+          await keys.deleteKeyPair(enrollment.deviceKeyAlias);
+          await expectLater(
+            auth.approve(enrollment, attempt),
+            throwsA(isA<EzkeyException>()),
+          );
+          expect(attempt.decisionState, AuthAttemptDecisionState.open);
+          expect(server.countRequests(AuthApiPaths.respond), 0);
+        },
+      );
+
+      test(
+        'a newer attempt is not blocked by the lock of an older one (Q13)',
+        () async {
+          server.createAttempt(invitation.id);
+          final older = (await auth.checkPending(enrollment))!;
+          await auth.deny(enrollment, older);
+          server.createAttempt(invitation.id);
+          final newer = (await auth.checkPending(enrollment))!;
+          expect(older.canDecide, isFalse);
+          expect(newer.canDecide, isTrue);
+          expect(
+            (await auth.approve(enrollment, newer)).result,
+            AuthAttemptResult.approved,
+          );
+        },
       );
     });
 

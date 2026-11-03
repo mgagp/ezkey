@@ -800,9 +800,9 @@ Client implication (see also [`CLIENT_BEHAVIOUR_CONTRACT.md`](CLIENT_BEHAVIOUR_C
   return terminal **409** (for example wrong challenge already committed `INVALID` before signing
   failed). Do not treat 503 as proof that nothing was committed.
 - After send, classified **4xx** / **429** with a body keep catalog retryability (not UNKNOWN).
-- **Known gap:** neither the Dart SDK nor the RN reference app fully implements UNKNOWN for
-  ambiguous 5xx; the SDK also marks lost `respond` transport as `retryable`. Code follow-up
-  (#1052 plan).
+- **Known gap:** the React Native reference app does not lock on ambiguous 5xx after `respond`
+  was sent (#1052 plan). The Dart SDK (`ezkey_dart` 0.3.0, #1068) does: lost transport and
+  ambiguous 5xx become `EzkeyRespondOutcomeUnknownException` with the attempt locked.
 - Surface final failures clearly and let the integrating system initiate a new auth attempt.
 
 ## Request And Response Canonicalization Checklist
@@ -888,8 +888,8 @@ guidance for authenticator UIs; always prefer local copy keyed by `type`.
 
 | `type` suffix (under `https://ezkey.io/problems/` unless noted) | HTTP | Client action | SDK (`EzkeyProblemKind`) |
 | --- | --- | --- | --- |
-| `auth/resource-not-found` | 404 | Generic not-found / unreachable; do not enumerate | **Unmapped** → `unknown` |
-| `auth/method-not-allowed` | 405 | Treat as client bug / unreachable; respect `Allow` if present | **Unmapped** → `unknown` |
+| `auth/resource-not-found` | 404 | Generic not-found / unreachable; do not enumerate | `resourceNotFound` |
+| `auth/method-not-allowed` | 405 | Treat as client bug / unreachable; respect `Allow` if present | `methodNotAllowed` |
 | `auth/enrollment-already-bound` | 409 | Invitation consumed; stop bind | `enrollmentAlreadyBound` |
 | `auth/enrollment-binding-failed` | 400 | Bad invitation; allow re-scan | `enrollmentBindingFailed` |
 | `auth/enrollment-invitation-expired` | 400 | Invitation expired; new QR required | `enrollmentInvitationExpired` |
@@ -905,7 +905,7 @@ guidance for authenticator UIs; always prefer local copy keyed by `type`.
 | `auth/integration-signing-unavailable` | 503 | Retryable (#844); a retry may return terminal **409** (e.g. `INVALID` already committed) | `integrationSigningUnavailable` |
 | `auth/validation-failed` | 400 | Fix request fields | `validationFailed` |
 | `auth/invalid-request-body` | 400 | Fix JSON body | `validationFailed` |
-| `auth/internal-error` | 500 | Generic failure; after `respond` was sent, **SHOULD** treat as UNKNOWN (extension of Q10; SDK marks retryable — known gap) | `internalError` |
+| `auth/internal-error` | 500 | Generic failure; after `respond` was sent, treat as UNKNOWN (extension of Q10). `EzkeyAuthenticator` locks and throws `EzkeyRespondOutcomeUnknownException`. `EzkeyApiException.retryable` stays true for callers that handle the HTTP error themselves | `internalError` |
 | `system/audit-chain-heartbeat-degraded` | 503 | Retry later (`Retry-After`); new pending claims blocked | `auditChainDegraded` |
 
 † `auth-attempt-respond-failed` is in the catalog; no dedicated handler emits it on current `main` —
@@ -914,8 +914,8 @@ if observed, treat as a non-retryable respond failure.
 **HTTP 429** on Auth device POSTs uses an **empty body** (filter), not a catalog `type`. Clients
 **SHOULD** honour `Retry-After` and use generic rate-limit copy.
 
-The two **unmapped** SDK types (`resource-not-found`, `method-not-allowed`) currently fall through
-to `EzkeyProblemKind.unknown`. Mapping them is a code follow-up (#1052).
+All 19 catalog types map to an `EzkeyProblemKind` (`ezkey_dart` 0.3.0, #1068), including
+`resourceNotFound` and `methodNotAllowed`.
 
 ## Local Validation With Docker
 

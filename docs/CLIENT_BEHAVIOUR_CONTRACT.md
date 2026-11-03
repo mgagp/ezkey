@@ -94,17 +94,17 @@ UI (Retry / leave-as-deny that looks actionable) and an unnecessary second HTTP 
 6. **MUST** scope the lock per `authAttemptId` so a later pending attempt with a different id is
    not blocked. **Basis: client invariant**. **Q13**.
 
-### Known gap (code follow-up, not this docs PR)
+### Known gap (reference app)
 
-Neither current client fully implements rules 2.3–2.4:
+Rules 2.3–2.4:
 
-- **Dart SDK** (`ezkey_dart`): lost `respond` transport → `EzkeyNetworkException` with
-  `retryable: true`; many 5xx kinds also `retryable`.
+- **Dart SDK** (`ezkey_dart` 0.3.0, #1068): implemented. A lost `respond` transport or an
+  ambiguous 5xx throws `EzkeyRespondOutcomeUnknownException` and locks the attempt. Typed 503s
+  (`integration-signing-unavailable`, `audit-chain-heartbeat-degraded`) and 429 stay retryable
+  and reopen it.
 - **React Native reference app** (`usePendingAuth.ts`): locks on transport-without-HTTP-response
   (Q10) and on non-retryable catalog errors, but does **not** lock on retryable 5xx (including
-  ambiguous 5xx after send).
-
-Docs state the contract; SDK and app behaviour changes are separate code follow-ups (#1052 plan).
+  ambiguous 5xx after send). That app follow-up remains (#1052 plan).
 
 ---
 

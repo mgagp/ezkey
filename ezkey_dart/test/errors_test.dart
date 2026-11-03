@@ -64,9 +64,16 @@ void main() {
       '${base}validation-failed': EzkeyProblemKind.validationFailed,
       '${base}invalid-request-body': EzkeyProblemKind.validationFailed,
       '${base}internal-error': EzkeyProblemKind.internalError,
+      '${base}resource-not-found': EzkeyProblemKind.resourceNotFound,
+      '${base}method-not-allowed': EzkeyProblemKind.methodNotAllowed,
       'https://ezkey.io/problems/system/audit-chain-heartbeat-degraded':
           EzkeyProblemKind.auditChainDegraded,
     };
+
+    test('covers the 19 types of the server AuthApiProblemCatalog', () {
+      // Mirror of ezkey-auth-api/.../exception/AuthApiProblemCatalog.java; update both together.
+      expect(cases, hasLength(19));
+    });
 
     test('maps every Auth API catalog type', () {
       cases.forEach(
@@ -114,6 +121,16 @@ void main() {
     expect(apiError(502, null).retryable, isTrue);
     expect(apiError(400, null).retryable, isFalse);
     expect(apiError(400, '${base}enrollment-verify-failed').retryable, isFalse);
+    expect(apiError(404, '${base}resource-not-found').retryable, isFalse);
+    expect(apiError(405, '${base}method-not-allowed').retryable, isFalse);
+    expect(
+      const EzkeyRespondOutcomeUnknownException(
+        authAttemptId: 7,
+        accepted: true,
+        cause: EzkeyNetworkException('timeout'),
+      ).retryable,
+      isFalse,
+    );
     expect(const EzkeyNetworkException('timeout').retryable, isTrue);
     expect(
       const EzkeyIntegrityException(
@@ -142,8 +159,19 @@ void main() {
       EzkeyNetworkException() => 'network',
       EzkeyLocalStateException() => 'local',
       EzkeyApiException() => 'api',
+      EzkeyRespondOutcomeUnknownException() => 'unknown outcome',
     };
     expect(describe(const EzkeyLocalStateException('x')), 'local');
     expect(describe(apiError(500, null)), 'api');
+    expect(
+      describe(
+        EzkeyRespondOutcomeUnknownException(
+          authAttemptId: 7,
+          accepted: true,
+          cause: apiError(500, null),
+        ),
+      ),
+      'unknown outcome',
+    );
   });
 }
