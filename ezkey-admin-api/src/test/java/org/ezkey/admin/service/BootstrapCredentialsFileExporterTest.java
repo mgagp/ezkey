@@ -13,7 +13,7 @@ package org.ezkey.admin.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assumptions.assumingThat;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
@@ -48,7 +48,7 @@ class BootstrapCredentialsFileExporterTest {
   @TempDir Path tempDir;
 
   @Test
-  void exportWritesRecoveryCodesWithOwnerOnlyPermissions() throws Exception {
+  void exportWritesRecoveryCodesToCredentialsFile() throws Exception {
     Path file = tempDir.resolve("bootstrap-credentials.json");
     BootstrapExportProperties exportProperties = new BootstrapExportProperties();
     exportProperties.setEnabled(true);
@@ -75,16 +75,41 @@ class BootstrapCredentialsFileExporterTest {
     assertThat(json.get("enrollmentId").asInt()).isEqualTo(7);
     assertThat(json.get("enrollmentProofToken").asString()).isEqualTo("proof.tokenValue");
     assertThat(json.get("recoveryCodes").get(0).asString()).isEqualTo("AAAA-BBBB-CCCC-DDDD");
+  }
 
-    // 0600 contract stays enforced where the filesystem exposes POSIX attributes.
-    assumingThat(
+  /**
+   * Owner-only {@code 0600} file mode. Aborts on filesystems without a POSIX attribute view so
+   * Surefire reports the skip (not a silent {@code assumingThat}).
+   */
+  @Test
+  void exportWritesCredentialsFileWithOwnerOnlyPosixPermissions() throws Exception {
+    assumeTrue(
         supportsPosixFileAttributeView(),
-        () -> {
-          Set<PosixFilePermission> perms = Files.getPosixFilePermissions(file);
-          assertThat(perms)
-              .isEqualTo(
-                  EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
-        });
+        "POSIX file attribute view required for owner-only 0600 assertion");
+
+    Path file = tempDir.resolve("bootstrap-credentials.json");
+    BootstrapExportProperties exportProperties = new BootstrapExportProperties();
+    exportProperties.setEnabled(true);
+    exportProperties.setPath(file.toString());
+    // No allowNonPosixPermissions: this is the POSIX permission contract, not content portability.
+
+    AdminMfaProperties mfaProperties = new AdminMfaProperties();
+    mfaProperties.getBootstrap().setCredentialsOutputMode(BootstrapCredentialsOutputMode.FULL);
+
+    BootstrapCredentialsFileExporter exporter =
+        new BootstrapCredentialsFileExporter(
+            exportProperties, new QrCodeProperties(), mfaProperties);
+
+    Enrollment enrollment = new Enrollment();
+    enrollment.setEnrollmentId(7);
+    enrollment.setEnrollmentChallenge(112233);
+
+    exporter.exportIfEnabled(
+        enrollment, "proof.tokenValue", "admin.docker", List.of("AAAA-BBBB-CCCC-DDDD"));
+
+    Set<PosixFilePermission> perms = Files.getPosixFilePermissions(file);
+    assertThat(perms)
+        .isEqualTo(EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
   }
 
   @Test
@@ -115,10 +140,14 @@ class BootstrapCredentialsFileExporterTest {
     assertThat(json.has("enrollmentProofToken")).isFalse();
     assertThat(json.has("enrollmentChallengeCode")).isFalse();
     assertThat(json.get("recoveryCodes").get(0).asString()).isEqualTo("ZZZZ-YYYY-XXXX-WWWW");
-    assertThat(exporter.recoveryCodesLogPointer()).contains(file.toString());
-    assumingThat(
-        supportsPosixFileAttributeView(),
-        () -> assertThat(exporter.recoveryCodesLogPointer()).contains("0600"));
+    // recoveryCodesLogPointer() is a log/operator hint (path + mode label), not file mode bits.
+    String logPointer = exporter.recoveryCodesLogPointer();
+    assertThat(logPointer).contains(file.toString());
+    if (supportsPosixFileAttributeView()) {
+      assertThat(logPointer).contains("0600");
+    } else {
+      assertThat(logPointer).contains("non-POSIX fallback");
+    }
   }
 
   @Test
