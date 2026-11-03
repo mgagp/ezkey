@@ -96,14 +96,24 @@ ain't broken, don't fix it" unless the finding is a real defect.
    `ezkey_mobile/docs/IOS_SETUP.md`.
 5. First dated campaign note (HITL, one finding at a time), then fixes on their own hygiene PR.
 
-## Go / No-Go checklist (operator)
+## Go / No-Go checklist (operator) — Go 2026-11-03 (Marc)
 
-- [ ] Extend `mobile-doctor-curated` (no new keyword)
-- [ ] SwiftLint curated opt-in set — keep
-- [ ] Periphery — trial on the first run
-- [ ] Semgrep Ezkey Swift rules — keep, 4–6 rules
-- [ ] `swiftlint analyze` — defer; remove the dead `analyzer_rules` entry
-- [ ] MobSF — defer to the App Store release lane
+- [x] Extend `mobile-doctor-curated` (no new keyword)
+- [x] SwiftLint curated opt-in set — keep
+- [x] Periphery — trial on the first run
+- [x] Semgrep Ezkey Swift rules — keep, 4–6 rules
+- [x] `swiftlint analyze` — defer; remove the dead `analyzer_rules` entry
+- [x] MobSF — defer to the App Store release lane
+
+## First run (2026-11-03, tooling PR)
+
+| Tool | Findings | Note |
+|------|----------|------|
+| Periphery 3.8.0 | 3 | No flood with `--retain-objc-accessible` (6.9 s on the existing index store). `EZK_VERIFY_ERROR` never used; `isLowS` / `flipS` used by tests only. Kept. |
+| SwiftLint curated set (15 rules) | 24 | Mostly React Native bridge signatures (`@escaping` resolve/reject, framework-required parameters): triage material, not bulk fixes. |
+| Semgrep Ezkey Swift rules (5) | 0 | 5 Swift files scanned; fixtures 5/5. The rules guard future changes. |
+
+Triage happens in the first dated campaign note, one finding at a time.
 
 ## Links
 

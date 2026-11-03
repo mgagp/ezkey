@@ -1,0 +1,25 @@
+# SwiftLint rules for the mobile-doctor-curated iOS lane only (not CI). The CI set
+# (ios/.swiftlint.yml, `yarn ios:lint --strict`) already holds the code at zero findings, so this
+# file adds only opt-in rules that lean towards correctness. Style rules are left out on purpose:
+# with every opt-in rule enabled, ~90% of 1,100 findings contradicted swift-format (evaluation:
+# product-docs/global/mobile-ios-doctor-curated-evaluation-2026-11-03.md).
+# Paths are relative to this file.
+included:
+  - ../../ios/EzkeyMobile
+  - ../../ios/EzkeyMobileTests
+only_rules:
+  - async_without_await
+  - discouraged_assert
+  - discouraged_optional_boolean
+  - discouraged_optional_collection
+  - empty_xctest_method
+  - fatal_error_message
+  - implicitly_unwrapped_optional
+  - legacy_objc_type
+  - unhandled_throwing_task
+  - unneeded_escaping
+  - unneeded_throws_rethrows
+  - unowned_variable_capture
+  - unused_parameter
+  - weak_delegate
+  - xct_specific_matcher

@@ -23,5 +23,5 @@ opt_in_rules:
   - empty_count
   - explicit_init
   - force_unwrapping
-analyzer_rules:
-  - unused_import
+# No analyzer_rules: `swiftlint analyze` needs a compiler log and never ran. Unused code is
+# covered by Periphery in the mobile-doctor-curated iOS lane (#1161).

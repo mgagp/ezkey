@@ -90,3 +90,35 @@ rules:
     severity: ERROR
     message: Avoid insecure cipher mode (AES/ECB/PKCS5Padding).
     pattern: Cipher.getInstance("AES/ECB/PKCS5Padding")
+
+  # iOS native layer (Swift). Semgrep CE parses Swift, but the framework-aware Swift rules are in
+  # the commercial tier, so these are Ezkey's own. Fixtures: mobile-security.swift (semgrep --test).
+  - id: ezkey-swift-keychain-accessible-not-this-device-only
+    languages: [swift]
+    severity: ERROR
+    message: Keychain items must use a ...ThisDeviceOnly accessibility class (not synced, not migrated to another device).
+    pattern-regex: 'kSecAttrAccessible(?:Always|AfterFirstUnlock|WhenUnlocked)(?!ThisDeviceOnly)(?![A-Za-z])'
+
+  - id: ezkey-swift-keychain-synchronizable
+    languages: [swift]
+    severity: ERROR
+    message: Do not mark Keychain items synchronizable; enrollment keys and secrets stay on this device.
+    pattern-regex: 'kSecAttrSynchronizable'
+
+  - id: ezkey-swift-libc-random
+    languages: [swift]
+    severity: ERROR
+    message: libc rand()/random()/drand48() are not cryptographically secure; use SecRandomCopyBytes and check its status.
+    pattern-regex: '(?<![.\w])(?:rand|random|srand|srandom|drand48|srand48)\s*\('
+
+  - id: ezkey-swift-sensitive-log-content
+    languages: [swift]
+    severity: ERROR
+    message: Avoid logging sensitive auth/crypto data from the iOS native layer.
+    pattern-regex: '(?i)(?:(?<![.\w])(?:print|debugPrint|dump|NSLog|os_log)|logger\.\w+)\s*\(.*(?:proofToken|privateKey|signature|integrationPublicKey|secret)'
+
+  - id: ezkey-swift-biometrics-only-policy
+    languages: [swift]
+    severity: WARNING
+    message: The local-auth contract is .deviceOwnerAuthentication (biometrics with passcode fallback, Android parity); biometrics-only locks out users without Face ID / Touch ID.
+    pattern-regex: 'deviceOwnerAuthenticationWithBiometrics'

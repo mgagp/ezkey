@@ -216,8 +216,9 @@ StrongBox physical checklist (MOB-006): [`docs/MOBILE_STRONGBOX_MANUAL_CHECKLIST
 ## Mobile doctor-curated pass
 
 - Keyword for humans and agents: **`mobile-doctor-curated`**.
-- Purpose: a **punctual** React Native + Kotlin hygiene pass (react-doctor + Semgrep + Detekt →
-  curated P1/P2/P3 shortlist). **Not** a CI gate and **not** a zero-warning campaign.
+- Purpose: a **punctual** React Native + Kotlin + Swift hygiene pass (react-doctor + Semgrep +
+  Detekt, plus the iOS lane on macOS: SwiftLint curated set + Periphery → curated P1/P2/P3
+  shortlist). **Not** a CI gate and **not** a zero-warning campaign.
 - Default commands from `ezkey_mobile/`:
 
 ```bash
@@ -225,7 +226,9 @@ yarn doctor:curated
 ./scripts/mobile-doctor-curated.sh
 ```
 
-  Optional: `--skip-react-doctor`, `--skip-semgrep`, `--skip-detekt`, `--curate-only`.
+  Optional: `--skip-react-doctor`, `--skip-semgrep`, `--skip-detekt`, `--skip-swiftlint`,
+  `--skip-periphery`, `--curate-only`. iOS lane: `brew install swiftlint periphery`, and run
+  `yarn ios:test` first when Swift changed (Periphery reads its index store).
 - Outputs under `logs/mobile-doctor/` (gitignored via root `logs/`):
   - `mobile-doctor.curated.md` — human-readable shortlist + planning contract
   - `mobile-doctor.curated.json` — machine-readable summary
