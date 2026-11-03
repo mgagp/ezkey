@@ -143,6 +143,7 @@ class AdminProvisioningActivationCompletionTest {
     assertEquals(null, result.recoveryCodes());
     verify(recoveryService, never()).generateRecoveryCodes();
     verify(tokenRepository).save(any(AdminToken.class));
+    verify(tokenRepository).deactivateTokensForAdminByPurpose(7, AdminTokenPurpose.ACTIVATION);
   }
 
   @Test
@@ -204,5 +205,6 @@ class AdminProvisioningActivationCompletionTest {
     assertEquals(AdminLifecycleStatus.PENDING_ACTIVATION, admin.getLifecycleStatus());
     verify(enrollmentRepository, never()).save(any());
     verify(tokenRepository, never()).save(any());
+    verify(tokenRepository, never()).deactivateTokensForAdminByPurpose(any(), any());
   }
 }

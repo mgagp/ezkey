@@ -628,7 +628,7 @@ public class AdminProvisioningService {
    *
    * <p>This is the deferred counterpart to immediate onboarding. It validates the one-time token,
    * generates recovery codes, creates the first enrollment, marks the admin active, and deactivates
-   * the activation token.
+   * the presented activation token plus any other outstanding activation code of the same admin.
    *
    * @param activationCode the one-time activation code
    * @return provisioning result with first enrollment credentials and recovery codes
@@ -698,11 +698,18 @@ public class AdminProvisioningService {
     activationToken.setLastUsedAt(OffsetDateTime.now());
     tokenRepository.save(activationToken);
 
+    // Activation is one-shot per admin: any other outstanding code must not outlive it (#1122).
+    int siblingCodesRevoked =
+        tokenRepository.deactivateTokensForAdminByPurpose(
+            admin.getAdminId(), AdminTokenPurpose.ACTIVATION);
+
     logger.info(
-        "✅ Pending administrator activated: {} (adminId: {}, enrollmentId: {})",
+        "✅ Pending administrator activated: {} (adminId: {}, enrollmentId: {},"
+            + " otherActivationCodesRevoked: {})",
         result.admin().getUsername(),
         result.admin().getAdminId(),
-        result.enrollment() != null ? result.enrollment().getEnrollmentId() : null);
+        result.enrollment() != null ? result.enrollment().getEnrollmentId() : null,
+        siblingCodesRevoked);
 
     return result;
   }

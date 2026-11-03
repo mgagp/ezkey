@@ -11,6 +11,7 @@
 package org.ezkey.admin.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -36,6 +37,7 @@ import org.ezkey.admin.config.SecurityConfig;
 import org.ezkey.admin.config.TrustedProxyConfig;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.domain.AdminOnboardingMode;
+import org.ezkey.admin.exception.AuthenticationException;
 import org.ezkey.admin.security.AccessControlService;
 import org.ezkey.admin.security.AdminCookieCsrfFilter;
 import org.ezkey.admin.security.AdminPrincipal;
@@ -154,6 +156,21 @@ class ActivationCodeBearerSecurityWebMvcTest {
           return token;
         });
     when(tokenRepository.touchLastUsedIfActive(anyInt(), any(), any())).thenReturn(1);
+    when(tokenRepository.deactivateTokensForAdminByPurpose(anyInt(), any()))
+        .thenAnswer(invocation -> {
+          Integer adminId = invocation.getArgument(0);
+          AdminTokenPurpose purpose = invocation.getArgument(1);
+          int revoked = 0;
+          for (AdminToken token : tokensByHash.values()) {
+            if (Boolean.TRUE.equals(token.getActive())
+                && token.getTokenPurpose() == purpose
+                && adminId.equals(token.getAdmin().getAdminId())) {
+              token.setActive(false);
+              revoked++;
+            }
+          }
+          return revoked;
+        });
     when(integrationService.findByFilters(any(), any(), eq(false), any(), any(), any(), any()))
         .thenReturn(Page.empty());
 
@@ -306,6 +323,56 @@ class ActivationCodeBearerSecurityWebMvcTest {
         .andExpect(status().isOk());
   }
 
+  @Test
+  @DisplayName(
+      "Unprefixed ACTIVATION / RECOVERY token of an MFA-verified admin returns 401 (allowlist"
+          + " only)")
+  void nonSessionPurposeWithoutActivationPrefixIsUnauthorizedForVerifiedAdmin() throws Exception {
+    String activationCode = mintEvaluatorActivationCode();
+    EzkeyAdmin admin = realProvisioningService.activatePendingAdmin(activationCode).admin();
+    admin.getEnrollment().setStatus(EnrollmentStatus.VERIFIED);
+
+    String unprefixedActivation = storeToken(admin, AdminTokenPurpose.ACTIVATION);
+    String unprefixedRecovery = storeToken(admin, AdminTokenPurpose.RECOVERY);
+    String control = storeToken(admin, AdminTokenPurpose.SESSION);
+    assertThat(unprefixedActivation).doesNotStartWith(AdminAuditConstants.ACTIVATION_TOKEN_PREFIX);
+
+    mockMvc
+        .perform(get(INTEGRATIONS_PATH).header("Authorization", "Bearer " + unprefixedActivation))
+        .andExpect(status().isUnauthorized());
+    mockMvc
+        .perform(get(INTEGRATIONS_PATH).header("Authorization", "Bearer " + unprefixedRecovery))
+        .andExpect(status().isUnauthorized());
+    mockMvc
+        .perform(get(INTEGRATIONS_PATH).header("Authorization", "Bearer " + control))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  @DisplayName("Successful /activate revokes every other outstanding activation code of the admin")
+  void activationRevokesSiblingActivationCodes() throws Exception {
+    String presentedCode = mintEvaluatorActivationCode();
+    EzkeyAdmin pendingAdmin =
+        tokensByHash.get(SensitiveDataHasher.sha256Hex(presentedCode)).getAdmin();
+    String siblingCode =
+        storeToken(
+            pendingAdmin,
+            AdminTokenPurpose.ACTIVATION,
+            AdminAuditConstants.ACTIVATION_TOKEN_PREFIX + "sibling");
+    AdminToken siblingRow = tokensByHash.get(SensitiveDataHasher.sha256Hex(siblingCode));
+    assertThat(siblingRow.getActive()).isTrue();
+
+    realProvisioningService.activatePendingAdmin(presentedCode);
+
+    assertThat(siblingRow.getActive()).isFalse();
+    assertThatThrownBy(() -> realProvisioningService.activatePendingAdmin(siblingCode))
+        .isInstanceOf(AuthenticationException.class)
+        .hasMessage("Invalid activation code");
+    mockMvc
+        .perform(get(INTEGRATIONS_PATH).header("Authorization", "Bearer " + siblingCode))
+        .andExpect(status().isUnauthorized());
+  }
+
   private String mintEvaluatorActivationCode() {
     AdminProvisioningService.ProvisioningResult result =
         realProvisioningService.createTenantAdmin(
@@ -325,7 +392,11 @@ class ActivationCodeBearerSecurityWebMvcTest {
   }
 
   private String storeToken(EzkeyAdmin admin, AdminTokenPurpose purpose) {
-    String plain = "ezkey_" + UUID.randomUUID().toString().replace("-", "");
+    return storeToken(admin, purpose, "ezkey_");
+  }
+
+  private String storeToken(EzkeyAdmin admin, AdminTokenPurpose purpose, String prefix) {
+    String plain = prefix + UUID.randomUUID().toString().replace("-", "");
     AdminToken token =
         new AdminToken(
             SensitiveDataHasher.sha256Hex(plain),
