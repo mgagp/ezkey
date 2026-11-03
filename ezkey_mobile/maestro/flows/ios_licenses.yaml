@@ -30,7 +30,7 @@ appId: org.ezkey.mobile
     visible: "Apache-2.0"
     timeout: 10000
 - takeScreenshot: lic3_folly
-- tapOn: "(Open Source Licenses|Licences open source), back"
+- tapOn: "Back|Retour"   # header back button, localized label since #1176
 - scrollUntilVisible:
     element: "glog version.*"
     timeout: 20000
