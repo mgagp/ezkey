@@ -47,5 +47,12 @@ echo "Installing release APK: ${APK}"
 adb install -r "$APK"
 
 echo "Launching ${PKG}..."
-adb shell monkey -p "${PKG}" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1 || true
+# am start on the resolved launcher activity: `monkey` exits -5 without launching on Android 17
+# (API 37) images. Falls back to monkey when the activity cannot be resolved.
+launcher="$(adb shell cmd package resolve-activity --brief -c android.intent.category.LAUNCHER "${PKG}" 2>/dev/null | tail -1 | tr -d '\r')"
+if [[ "$launcher" == "${PKG}/"* ]]; then
+  adb shell am start -n "$launcher" >/dev/null 2>&1 || true
+else
+  adb shell monkey -p "${PKG}" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1 || true
+fi
 echo "Done. Release build installed (offline-capable, no Metro required)."
