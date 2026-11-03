@@ -7,11 +7,11 @@
 - **Status:** `draft`
 - **Lane:** program (SDK contract + new canonical docs + first external consumer; not hygiene)
 - **Created at:** `2026-10-27`
-- **Updated at:** `2026-10-27` (status after #1053)
+- **Updated at:** `2026-11-03` (SDK 0.3.0 landing, #1068)
 - **Captured by:** Marc (owner)
 - **Priority:** to be set by Marc at triage
 - **First consumer:** the Open Authenticator fork `mgagp/openauthenticator` (Flutter, Android first)
-- **Does not edit:** vision index, backlog index (left to the PR that lands this note)
+- **Does not edit:** vision index (`product-orientation-notes.md` is updated post-merge on `main` only), backlog index
 
 ## Intent
 
@@ -110,11 +110,11 @@ Each step is small, reviewable, and leaves the corpus consistent on its own.
    RFC 2119 keywords with a server / client-invariant **Basis** on every MUST).
 3. **SDK code follow-up** in `ezkey_dart`: UNKNOWN outcome for a `respond` sent without an HTTP
    answer (contract §2.3) and for ambiguous 5xx (§2.4, keeping 503 retryable), the two unmapped
-   problem types, and SDK tests for each. *Done in the working tree as `ezkey_dart` 0.3.0,
-   pending its PR.* Once it lands, the docs outside the SDK folder that still describe the SDK
-   gap need a touch: `docs/CLIENT_BEHAVIOUR_CONTRACT.md` § Known gap (Dart part) and the SDK
-   column of the `docs/MOBILE_DEVELOPER_GUIDE.md` problem-type table. Then the **conformance
-   checklist** (contract rule → SDK API or app duty → proving test).
+   problem types, and SDK tests for each. *Done as `ezkey_dart` 0.3.0 in #1068.* The same change
+   updates the docs outside the SDK folder that described the SDK gap:
+   `docs/CLIENT_BEHAVIOUR_CONTRACT.md` § Known gap (Dart part) and the SDK column of the
+   `docs/MOBILE_DEVELOPER_GUIDE.md` problem-type table. The **conformance checklist** (contract
+   rule → SDK API or app duty → proving test) remains a later step.
 4. **Tracer bullet in Open Authenticator** (`TB-*`): Android key store channel, enrollment, one
    approval, outcome screens, against the local stack. Every friction point becomes a contract or
    SDK change, not a fork-side workaround.
