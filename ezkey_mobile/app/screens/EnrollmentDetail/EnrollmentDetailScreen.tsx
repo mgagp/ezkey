@@ -14,6 +14,7 @@ import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {ActivityIndicator, Alert, Button, Text, TouchableOpacity, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {useTranslation} from 'react-i18next';
+import {formatDateTime} from '../../utils/formatDateTime';
 import {
   useDeleteEnrollment,
   useEnrollments,
@@ -40,7 +41,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'EnrollmentDetail'>;
  */
 export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => {
   const styles = useStyles();
-  const {t} = useTranslation();
+  const {t, i18n} = useTranslation();
   const {enrollmentId} = route.params;
   const {data, isLoading} = useEnrollments();
   const deleteEnrollment = useDeleteEnrollment();
@@ -253,10 +254,7 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
     );
   }
 
-  const lastStr = new Date(enrollment.lastActivityAt).toLocaleString(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  });
+  const lastStr = formatDateTime(enrollment.lastActivityAt, i18n.language);
   const resolvedIdentity =
     identity ??
     buildEnrollmentIdentityDisplay(
@@ -265,10 +263,7 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
       identityDisplayCopy(t),
     );
   const recentResultTimeStr = recentAuthResult
-    ? new Date(recentAuthResult.completedAt).toLocaleString(undefined, {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-      })
+    ? formatDateTime(recentAuthResult.completedAt, i18n.language)
     : undefined;
   const recentResultBadgeStyle = recentAuthResult
     ? recentAuthResult.status === 'approved'

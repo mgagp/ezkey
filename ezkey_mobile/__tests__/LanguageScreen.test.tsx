@@ -2,107 +2,79 @@ import React from 'react';
 import {Alert, Text} from 'react-native';
 import renderer from 'react-test-renderer';
 import {LanguageScreen} from '../app/screens/Language';
-import {changeAppLanguage, i18n} from '../app/i18n';
-import {localeStorage} from '../app/services/storage/localeStorage';
+import {changeAppLanguage, getLanguagePreference} from '../app/i18n';
 
 jest.mock('../app/i18n', () => ({
   ...jest.requireActual('../app/i18n'),
   changeAppLanguage: jest.fn(),
-  i18n: {
-    language: 'en',
-    resolvedLanguage: 'en',
-  },
+  getLanguagePreference: jest.fn(),
 }));
 
 const mockChangeAppLanguage = jest.mocked(changeAppLanguage);
-let getLocaleSpy: jest.SpiedFunction<typeof localeStorage.getLocale>;
+const mockGetLanguagePreference = jest.mocked(getLanguagePreference);
+
+const render = async () => {
+  let tree: renderer.ReactTestRenderer;
+  await renderer.act(async () => {
+    tree = renderer.create(<LanguageScreen />);
+  });
+  return tree!;
+};
+
+const option = (tree: renderer.ReactTestRenderer, label: string) =>
+  tree.root.findAll(
+    node => typeof node.props.onPress === 'function' && node.props.accessibilityLabel === label,
+  )[0];
 
 describe('LanguageScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockChangeAppLanguage.mockResolvedValue('fr');
-    getLocaleSpy = jest.spyOn(localeStorage, 'getLocale').mockResolvedValue('en');
-    i18n.language = 'en';
-    i18n.resolvedLanguage = 'en';
+    mockGetLanguagePreference.mockResolvedValue('system');
   });
 
-  it('shows English as the current language initially', async () => {
-    let tree: renderer.ReactTestRenderer;
+  it('offers System default, English and French, with System default current by default', async () => {
+    const tree = await render();
 
-    await renderer.act(async () => {
-      tree = renderer.create(<LanguageScreen />);
-    });
-
-    const textContent = tree!.root.findAllByType(Text).map(node => node.props.children).flat().join(' ');
-
+    const textContent = tree.root.findAllByType(Text).map(node => node.props.children).flat().join(' ');
+    expect(textContent).toContain('System default');
     expect(textContent).toContain('English');
-    expect(textContent).toContain('Current language');
     expect(textContent).toContain('French');
-  });
-
-  it('hydrates the persisted locale on mount', async () => {
-    getLocaleSpy.mockResolvedValue('fr');
-
-    let tree: renderer.ReactTestRenderer;
-
-    await renderer.act(async () => {
-      tree = renderer.create(<LanguageScreen />);
+    expect(option(tree, 'System default').props.accessibilityState).toEqual({
+      checked: true,
+      disabled: false,
     });
-
-    const textContent = tree!.root.findAllByType(Text).map(node => node.props.children).flat().join(' ');
-
-    expect(textContent).toContain('French');
-    expect(textContent).toContain('Current language');
   });
 
-  it('persists the selected language without a restart alert', async () => {
+  it('shows the saved language as current', async () => {
+    mockGetLanguagePreference.mockResolvedValue('fr');
+
+    const tree = await render();
+
+    expect(option(tree, 'French').props.accessibilityState).toEqual({checked: true, disabled: false});
+  });
+
+  it('applies the selected language without a restart alert', async () => {
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
-    let tree: renderer.ReactTestRenderer;
+    const tree = await render();
 
     await renderer.act(async () => {
-      tree = renderer.create(<LanguageScreen />);
-    });
-
-    const frenchButton = tree!.root.findAll(
-      node =>
-        typeof node.props.onPress === 'function' &&
-        node.props.accessibilityLabel === 'French',
-    )[0];
-
-    expect(frenchButton).toBeDefined();
-
-    await renderer.act(async () => {
-      frenchButton!.props.onPress();
+      option(tree, 'French').props.onPress();
     });
 
     expect(mockChangeAppLanguage).toHaveBeenCalledWith('fr');
     expect(alertSpy).not.toHaveBeenCalled();
-
     alertSpy.mockRestore();
   });
 
-  it('does not persist when reselecting the current language', async () => {
-    getLocaleSpy.mockResolvedValue('fr');
-    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
-    let tree: renderer.ReactTestRenderer;
+  it('does not apply anything when reselecting the current language', async () => {
+    mockGetLanguagePreference.mockResolvedValue('fr');
+    const tree = await render();
 
     await renderer.act(async () => {
-      tree = renderer.create(<LanguageScreen />);
-    });
-
-    const frenchButton = tree!.root.findAll(
-      node =>
-        typeof node.props.onPress === 'function' &&
-        node.props.accessibilityLabel === 'French',
-    )[0];
-
-    await renderer.act(async () => {
-      frenchButton!.props.onPress();
+      option(tree, 'French').props.onPress();
     });
 
     expect(mockChangeAppLanguage).not.toHaveBeenCalled();
-    expect(alertSpy).not.toHaveBeenCalled();
-
-    alertSpy.mockRestore();
   });
 });

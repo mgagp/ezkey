@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Languages offered in Android Settings → App languages (Android 13+); keep in sync with
+     SUPPORTED_LOCALES in app/services/storage/localeStorage.ts (#1157). -->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en" />
+    <locale android:name="fr" />
+</locale-config>
