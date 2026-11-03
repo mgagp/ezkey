@@ -122,6 +122,16 @@ The `.hpi` used for the live run was packaged with `-DskipTests` from that tree.
 - Timing side channel of decoy vs real create. Reasoned, accepted, named in
   `DESIGN.md`. Not padded.
 
+## 2026-11-03 — Phase 1 merged
+
+PR #974 squash-merged as `ce289aab`. `ci-gate` went green after a rerun of
+`mobile-ios / ios-xctest`. The first attempt was cancelled near the 50 minute
+job timeout. `ezkey-jenkins` and `quality-gate` were already green.
+
+Phase 2 was rebased onto that squash with `git rebase --onto origin/main cbd6d6666`.
+A plain `git rebase origin/main` tried to replay all 21 phase-1 commits, because
+a squash merge does not make those commits ancestors of `main`.
+
 ## Method friction
 
 - The plan named PR 964. That PR is a merged Acme demo-app change. The Jenkins
