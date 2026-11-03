@@ -69,6 +69,10 @@ NativeModules.EzkeyPlayUpdateModule = {
   startFlexibleUpdate: jest.fn().mockResolvedValue(false),
 };
 
+NativeModules.EzkeyWindowSecurityModule = {
+  setSensitiveScreen: jest.fn(),
+};
+
 NativeModules.EzkeyCryptoModule = {
   generateEnrollmentKeyPair: jest.fn().mockResolvedValue(true),
   getPublicKey: jest.fn().mockResolvedValue(
@@ -104,6 +108,8 @@ NativeModules.EzkeyCryptoModule = {
 jest.mock('react-native-vision-camera', () => ({
   Camera: 'Camera',
   useCameraDevice: jest.fn(() => undefined),
+  useObjectOutput: jest.fn(() => ({})),
+  isScannedCode: jest.fn(() => true),
   useCameraPermission: jest.fn(() => ({
     hasPermission: true,
     requestPermission: jest.fn().mockResolvedValue(true),

@@ -90,23 +90,21 @@ class KeyRotationServiceTransactionBoundaryTest {
     AtomicReference<EncryptionKey> savedPrimary = new AtomicReference<>();
     when(keyRepository.count()).thenReturn(0L);
     when(keyRepository.findByKeyStatus(EncryptionKey.KeyStatus.PRIMARY))
-        .thenAnswer(
-            _ -> {
-              EncryptionKey saved = savedPrimary.get();
-              return saved == null ? List.of() : List.of(saved);
-            });
+        .thenAnswer(_ -> {
+          EncryptionKey saved = savedPrimary.get();
+          return saved == null ? List.of() : List.of(saved);
+        });
     when(keyRepository.findById(PRIMARY_KEY_ID)).thenReturn(Optional.empty());
     when(keyRepository.save(any(EncryptionKey.class)))
-        .thenAnswer(
-            invocation -> {
-              assertTrue(
-                  TransactionSynchronizationManager.isActualTransactionActive(),
-                  "Keyset sync save must run inside the public initializeKeysetSync()"
-                      + " @Transactional boundary (TX-002)");
-              EncryptionKey key = invocation.getArgument(0);
-              savedPrimary.set(key);
-              return key;
-            });
+        .thenAnswer(invocation -> {
+          assertTrue(
+              TransactionSynchronizationManager.isActualTransactionActive(),
+              "Keyset sync save must run inside the public initializeKeysetSync()"
+                  + " @Transactional boundary (TX-002)");
+          EncryptionKey key = invocation.getArgument(0);
+          savedPrimary.set(key);
+          return key;
+        });
   }
 
   @Test

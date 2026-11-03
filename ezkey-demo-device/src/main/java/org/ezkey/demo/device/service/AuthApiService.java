@@ -99,9 +99,8 @@ public class AuthApiService {
             .timeout(Duration.ofSeconds(15));
 
     return responseMono
-        .doOnSuccess(
-            _ ->
-                logger.info("Verify API completed for enrollment {}", requestDto.getEnrollmentId()))
+        .doOnSuccess(_ ->
+            logger.info("Verify API completed for enrollment {}", requestDto.getEnrollmentId()))
         .doOnError(
             e -> logger.error("Verify failed for enrollment {}", requestDto.getEnrollmentId(), e))
         .onErrorResume(WebClientResponseException.class, ex -> Mono.error(ex))
@@ -136,10 +135,8 @@ public class AuthApiService {
             .map(AuthApiService::toPendingAuthPull);
 
     return responseMono
-        .doOnSuccess(
-            _ ->
-                logger.info(
-                    "Pending API completed for enrollment {}", requestDto.getEnrollmentId()))
+        .doOnSuccess(_ ->
+            logger.info("Pending API completed for enrollment {}", requestDto.getEnrollmentId()))
         .doOnError(
             e -> logger.error("Pending failed for enrollment {}", requestDto.getEnrollmentId(), e))
         .onErrorResume(
@@ -188,14 +185,11 @@ public class AuthApiService {
             .timeout(Duration.ofSeconds(15));
 
     return responseMono
-        .doOnSuccess(
-            _ ->
-                logger.info(
-                    "Respond API completed for authAttemptId {}", requestDto.getAuthAttemptId()))
-        .doOnError(
-            e ->
-                logger.error(
-                    "Respond failed for authAttemptId {}", requestDto.getAuthAttemptId(), e))
+        .doOnSuccess(_ ->
+            logger.info(
+                "Respond API completed for authAttemptId {}", requestDto.getAuthAttemptId()))
+        .doOnError(e ->
+            logger.error("Respond failed for authAttemptId {}", requestDto.getAuthAttemptId(), e))
         .onErrorResume(WebClientResponseException.class, ex -> Mono.error(ex))
         .onErrorResume(Exception.class, ex -> Mono.error(ex));
   }

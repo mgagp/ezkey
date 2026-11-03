@@ -31,6 +31,8 @@ import {RootStackParamList} from '../../navigation/types';
 import {userFacingAuthApiError} from '../../services/api/authApiProblem';
 import {useEnrollmentStore} from '../../state/enrollmentStore';
 import {claimPendingAttempt} from '../../services/pendingAuth/claimPendingAttempt';
+import {useAccessibilityAnnouncement} from '../../hooks/useAccessibilityAnnouncement';
+import {colors} from '../../config/theme';
 import {
   buildEnrollmentIdentityDisplay,
   identityDisplayCopy,
@@ -57,6 +59,21 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
   const targetId = enrollmentId ?? selectedId;
   const [isCheckingPending, setIsCheckingPending] = useState(false);
   const [inlineFeedback, setInlineFeedback] = useState<string | undefined>();
+  const recentResultStatusLabel = recentAuthResult
+    ? recentAuthResult.status === 'approved'
+      ? t('enrollmentDetail.recentActionApproved')
+      : recentAuthResult.status === 'rejected'
+        ? t('enrollmentDetail.recentActionRejected')
+        : t('enrollmentDetail.recentActionFailed')
+    : undefined;
+
+  useAccessibilityAnnouncement(
+    recentAuthResult?.status === 'failed' && recentAuthResult.message
+      ? `${recentResultStatusLabel}. ${recentAuthResult.message}`
+      : recentResultStatusLabel,
+    recentAuthResult?.completedAt,
+  );
+  useAccessibilityAnnouncement(inlineFeedback);
 
   const enrollment = useMemo(() => {
     if (!targetId || !data) {
@@ -260,13 +277,6 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
         timeStyle: 'short',
       })
     : undefined;
-  const recentResultStatusLabel = recentAuthResult
-    ? recentAuthResult.status === 'approved'
-      ? t('enrollmentDetail.recentActionApproved')
-      : recentAuthResult.status === 'rejected'
-        ? t('enrollmentDetail.recentActionRejected')
-        : t('enrollmentDetail.recentActionFailed')
-    : undefined;
   const recentResultBadgeStyle = recentAuthResult
     ? recentAuthResult.status === 'approved'
       ? styles.recentActionBadgeApproved
@@ -321,7 +331,9 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
         testID="ezkey.e2e.enrollmentDetail.checkPending"
         style={[styles.primaryButton, isCheckingPending ? styles.disabledButton : undefined]}
         onPress={handleCheckPending}
-        disabled={isCheckingPending}>
+        disabled={isCheckingPending}
+        accessibilityRole="button"
+        accessibilityState={{disabled: isCheckingPending, busy: isCheckingPending}}>
         <Text style={styles.primaryLabel}>
           {isCheckingPending ? t('enrollmentDetail.checkingPending') : t('enrollmentDetail.checkPending')}
         </Text>
@@ -354,39 +366,39 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     gap: 16,
-    backgroundColor: '#0b0d11',
+    backgroundColor: colors.background,
   },
   identityZone: {
-    backgroundColor: '#151923',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(54, 115, 223, 0.15)',
+    borderColor: colors.border,
   },
   installationLine: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#dfe6f7',
+    color: colors.textBody,
   },
   integrationName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#f4f7ff',
+    color: colors.textPrimary,
   },
   tenantLine: {
     fontSize: 14,
-    color: '#9aa3b6',
+    color: colors.textMuted,
     marginTop: 6,
   },
   tenantDescriptionLine: {
     fontSize: 13,
-    color: '#7d8699',
+    color: colors.textSubtle,
     marginTop: 4,
     lineHeight: 18,
   },
   deviceLine: {
     fontSize: 13,
-    color: '#c2c8d5',
+    color: colors.textSecondary,
     marginTop: 6,
   },
   metaZone: {
@@ -395,43 +407,43 @@ const styles = StyleSheet.create({
   },
   metaLine: {
     fontSize: 12,
-    color: '#9aa3b6',
+    color: colors.textMuted,
     lineHeight: 18,
   },
   serverZone: {
-    backgroundColor: '#0f1628',
+    backgroundColor: colors.surfaceMuted,
     borderRadius: 8,
     padding: 12,
     borderWidth: 1,
-    borderColor: 'rgba(54, 115, 223, 0.2)',
+    borderColor: colors.borderStrong,
   },
   serverLabel: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#5a7aa8',
+    color: colors.primaryMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 4,
   },
   serverValue: {
     fontSize: 12,
-    color: '#5a9cf7',
+    color: colors.primaryLight,
   },
   feedbackBanner: {
-    backgroundColor: 'rgba(54, 115, 223, 0.12)',
+    backgroundColor: colors.primaryTint,
     borderLeftWidth: 4,
-    borderLeftColor: '#5a9cf7',
+    borderLeftColor: colors.primaryLight,
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
   },
   feedbackText: {
     fontSize: 14,
-    color: '#d6e6ff',
+    color: colors.textAccent,
     lineHeight: 20,
   },
   primaryButton: {
-    backgroundColor: '#3076df',
+    backgroundColor: colors.primary,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
@@ -443,14 +455,14 @@ const styles = StyleSheet.create({
   primaryLabel: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#ffffff',
+    color: colors.textOnPrimary,
   },
   recentActionCard: {
-    backgroundColor: '#151923',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(54, 115, 223, 0.18)',
+    borderColor: colors.borderCard,
     gap: 8,
   },
   recentActionEyebrow: {
@@ -458,35 +470,35 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.4,
-    color: '#9aa3b6',
+    color: colors.textMuted,
   },
   recentActionTitleLine: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#f4f7ff',
+    color: colors.textPrimary,
   },
   recentActionBadgeApproved: {
-    color: '#61d095',
+    color: colors.success,
   },
   recentActionBadgeRejected: {
-    color: '#ff8d8d',
+    color: colors.errorSoft,
   },
   recentActionBadgeFailed: {
-    color: '#f5c26b',
+    color: colors.caution,
   },
   recentActionMessage: {
     fontSize: 14,
     lineHeight: 20,
-    color: '#dfe6f7',
+    color: colors.textBody,
   },
   recentActionMeta: {
     fontSize: 13,
-    color: '#9aa3b6',
+    color: colors.textMuted,
   },
   unusableBanner: {
-    backgroundColor: 'rgba(245, 194, 107, 0.08)',
+    backgroundColor: colors.cautionBg,
     borderLeftWidth: 4,
-    borderLeftColor: '#f5c26b',
+    borderLeftColor: colors.caution,
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
@@ -495,15 +507,15 @@ const styles = StyleSheet.create({
   unusableTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#f5c26b',
+    color: colors.caution,
   },
   unusableBody: {
     fontSize: 14,
-    color: '#dfe6f7',
+    color: colors.textBody,
     lineHeight: 20,
   },
   removeButton: {
-    backgroundColor: '#c24b4b',
+    backgroundColor: colors.danger,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
@@ -512,7 +524,7 @@ const styles = StyleSheet.create({
   removeLabel: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#ffffff',
+    color: colors.textOnDanger,
   },
   missingContainer: {
     flex: 1,
@@ -520,17 +532,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 24,
     gap: 16,
-    backgroundColor: '#0b0d11',
+    backgroundColor: colors.background,
   },
   missingText: {
     fontSize: 16,
-    color: '#f4f7ff',
+    color: colors.textPrimary,
     textAlign: 'center',
   },
   loadingContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0b0d11',
+    backgroundColor: colors.background,
   },
 });

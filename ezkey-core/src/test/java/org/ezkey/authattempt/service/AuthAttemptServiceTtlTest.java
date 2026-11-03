@@ -153,12 +153,11 @@ class AuthAttemptServiceTtlTest {
         .thenReturn(Collections.emptyList());
     when(signatureService.generateProofToken()).thenReturn("proof");
     when(authAttemptRepository.save(any(AuthAttempt.class)))
-        .thenAnswer(
-            invocation -> {
-              AuthAttempt saved = invocation.getArgument(0);
-              saved.setAuthAttemptId(99);
-              return saved;
-            });
+        .thenAnswer(invocation -> {
+          AuthAttempt saved = invocation.getArgument(0);
+          saved.setAuthAttemptId(99);
+          return saved;
+        });
 
     AuthAttemptCreateResponse response = authAttemptService.create(createRequest(30));
 
@@ -173,13 +172,12 @@ class AuthAttemptServiceTtlTest {
         .thenReturn(Collections.emptyList());
     when(signatureService.generateProofToken()).thenReturn("proof");
     when(authAttemptRepository.save(any(AuthAttempt.class)))
-        .thenAnswer(
-            invocation -> {
-              AuthAttempt saved = invocation.getArgument(0);
-              saved.setAuthAttemptId(42);
-              assertThat(saved.getExpiresAt()).isNotNull();
-              return saved;
-            });
+        .thenAnswer(invocation -> {
+          AuthAttempt saved = invocation.getArgument(0);
+          saved.setAuthAttemptId(42);
+          assertThat(saved.getExpiresAt()).isNotNull();
+          return saved;
+        });
   }
 
   private static AuthAttemptCreateRequest createRequest(Integer ttlSeconds) {

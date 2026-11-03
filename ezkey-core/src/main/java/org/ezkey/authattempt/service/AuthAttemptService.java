@@ -392,10 +392,9 @@ public class AuthAttemptService {
     Enrollment enrollment =
         enrollmentRepository
             .findById(authRequest.getEnrollmentId())
-            .orElseThrow(
-                () ->
-                    new AuthAttemptCreateValidationException(
-                        "Enrollment not found for ID: " + authRequest.getEnrollmentId()));
+            .orElseThrow(() ->
+                new AuthAttemptCreateValidationException(
+                    "Enrollment not found for ID: " + authRequest.getEnrollmentId()));
 
     // Security gate: reject auth attempts for inactive or non-verified enrollments.
     // This covers enrollments that have been administratively deactivated or revoked.

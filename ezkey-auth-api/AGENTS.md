@@ -72,6 +72,10 @@ caught, logged, and re-thrown — the audit log is the primary observability mec
 
 ## Security invariants
 
+- Challenge-code direction / MFA fatigue / number matching →
+  [`docs/SECURITY_POSTURE.md`](../docs/SECURITY_POSTURE.md) § Challenge-code direction
+  (Decision #960); inverted mode parked:
+  [`I-2026-10-21-inverted-challenge-code-mode`](../product-docs/global/backlog/ideas/I-2026-10-21-inverted-challenge-code-mode.md).
 - Enrollment bind has a **read-once guarantee**: once bound, the proof token cannot be reused.
   The `findAndLockUnreadById` native query enforces this with `SELECT FOR NO KEY UPDATE`.
 - Device public keys are uniqueness-checked by SHA-256 hash (`Enrollment.devicePublicKeyHash`)

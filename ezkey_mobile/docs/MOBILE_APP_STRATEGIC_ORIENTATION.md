@@ -30,12 +30,13 @@ text that still shows an old option is the path that was considered.
 | Baseline | Notes |
 | --- | --- |
 | Language | English — matches `ezkey_mobile/docs/` convention. |
-| Code truth | **Branch of PR [#833](https://github.com/mgagp/ezkey/pull/833) @ `fcc31fbf`** (not yet an ancestor of `main`). Line citations for leave-as-deny / race guards are from that tip. |
-| Phase 0 gate | **All Phase 0 mobile behavior items are conditional on #833 merging** (otherwise Findings 3–5 line numbers and leave semantics do not apply on `main`). |
+| Code truth | PR [#833](https://github.com/mgagp/ezkey/pull/833) **merged 2026-10-16**. Leave-as-deny / race guards are on `main`. Historical line citations in findings below may still name tip `fcc31fbf`. |
+| Phase 0 gate | **Satisfied for leave-as-deny** (#833 on `main`). Remaining honesty / Q11 app-code items are ordinary follow-ups, not gated on that merge. |
 | Closed-test link | **Decided (Question 6).** No deadline on internal testers. Ship the confirmed honesty set together, done properly, before widening [#711](https://github.com/mgagp/ezkey/issues/711). Do not cut it down to a minimal pair. Declined items stay declined. |
 | Method | Observed behavior (file:line) → signal → impact → options → recommendation (or open disagreement). |
 | FSM nature | The FSM is **descriptive of current hooks/flags**, not an implemented state machine in code (Patrick). |
-| Repo-as-memory | Once Marc **decides**, behavior locks land in `MOBILE_APP_STATE_MACHINE.md` + `MOBILE_FUNCTIONAL_FLOWS.md`; 409 / pending `expiresAt` wire semantics in `docs/ENDPOINT.md`. **Undecided items are not recorded as decisions.** |
+| Repo-as-memory | Behavior locks land in `MOBILE_APP_STATE_MACHINE.md` + `MOBILE_FUNCTIONAL_FLOWS.md` + [`docs/CLIENT_BEHAVIOUR_CONTRACT.md`](../../docs/CLIENT_BEHAVIOUR_CONTRACT.md); 409 / pending expiry wire semantics in `docs/ENDPOINT.md`. |
+| TTL (post-#895) | Per-request floor **15**, hard ceiling **120**; property default **120** (Bean Validation 30–600, startup clamp → effective configured default **30–120**). |
 
 ---
 
@@ -267,15 +268,20 @@ declined. They are not part of the set.
 
 **Decided 2026-10-15** (Marc). Issue [#834](https://github.com/mgagp/ezkey/issues/834).
 
-`POST /api/v1/auth-attempts/respond` returns **409** with one problem type,
-`auth-attempt-state-conflict`, when the attempt is not found, still `PENDING`, has expired, was
-cancelled, is already decided, or was superseded (#844 Marc m1 on #833 — same wire type; server
-logs keep the cause). That collapse is intentional (also anti-enumeration of sequential ids). The
-phone maps that type to one sentence: the request is no longer active. Back only. No Try again.
+`POST /api/v1/auth-attempts/respond` returns **409** with problem type
+`auth-attempt-state-conflict` when the attempt is not found, still `PENDING`, was cancelled, is
+already decided, or was superseded (#844 Marc m1 on #833 — same wire type; server logs keep the
+cause). That collapse is intentional (also anti-enumeration of sequential ids). The phone maps that
+type to one sentence: the request is no longer active. Back only. No Try again.
+
+**Amended #895:** wall-clock expiry after ownership proof uses a **distinct** type
+`auth-attempt-expired` (still **409**, still Back only; clients **MAY** use distinct “expired”
+copy). Do not reopen splitting of the remaining `auth-attempt-state-conflict` causes.
 
 The person sees which cause it was on the integrating application: the countdown finished, they
-cancelled, the sign-in already completed, or the request never became actionable. Splitting the
-problem type so the phone can retell that would duplicate the other screen.
+cancelled, the sign-in already completed, or the request never became actionable. Splitting
+`auth-attempt-state-conflict` so the phone can retell those causes would duplicate the other
+screen.
 
 A lost approve response, where a session may already exist, is not this case. That stays
 Question 10. This sentence ships with the confirmed honesty set before testers are widened
@@ -283,10 +289,11 @@ Question 10. This sentence ships with the confirmed honesty set before testers a
 
 **Locked**
 
-- Keep a single problem type for not-found, still `PENDING`, expired, cancelled, already decided,
-  and superseded (#844 m1 / #833).
-- One user sentence. Back only. Not a retryable error.
-- Do not add distinct problem types for those causes.
+- Keep a single problem type for not-found, still `PENDING`, cancelled, already decided, and
+  superseded (#844 m1 / #833).
+- **Amended #895:** expiry is `auth-attempt-expired`, not folded into state-conflict.
+- One user sentence for state-conflict. Back only. Not a retryable error.
+- Do not add further distinct problem types for the collapsed state-conflict causes.
 
 ### Decision — Question 9 — Point at the sign-in screen, not at a tenant name
 
@@ -366,9 +373,10 @@ no resume machinery in this set. The person lets the countdown finish on the int
 application, or cancels there. Reopen a mechanism only if a real incident requires it. A bad
 pending signature is the same kind of limit, already decided in Question 4.
 
-Figures of **120 seconds** in this review are the **default**, used to illustrate that window. They
-are not a fixed product constant. `ezkey.core.auth-attempt.ttl-seconds` is configurable from **30**
-to **600** seconds (`EzkeyCoreProperties`, default 120). An operator can choose another lifetime.
+Figures of **120 seconds** in this review are the **default / ceiling**, used to illustrate that
+window. They are not a free-form product constant. Applied create TTL is **15–120 s** since #895
+(`min(request|default, 120)`). `ezkey.core.auth-attempt.ttl-seconds` still has Bean Validation
+30–600, but values above 120 clamp to 120 at startup.
 
 **Deployment note (not a fix here).** Public hosts on Cloudflare Free, including the community
 instance, are cut at the origin after **100 seconds** (HTTP **524**, not raisable). That fact is
@@ -383,8 +391,8 @@ default or the proxy.
 - The `READ`-until-expiry window after a killed app, a backgrounded `respond`, or a lifetime that
   ends during Approve biometric is an accepted limit.
 - No protocol and no automatic resume unless a real incident requires it.
-- “120 seconds” in these notes means the default of `ezkey.core.auth-attempt.ttl-seconds` (range
-  30–600).
+- “120 seconds” in these notes means the default / ceiling of applied attempt TTL (**15–120** since
+  #895).
 
 **Noted for later deployment**
 
@@ -500,15 +508,15 @@ L511–512). Not “usually benign.”
 | A. Keep allow-leave; document | — | — |
 | C. Suppress post-success navigate if screen unfocused / unmounted | Julie (Walk proof), Patrick (Phase 0, ~3 lines) | **Disagreement on phase** |
 
-**Note:** Patrick marks this (and Findings 9 lock-reset / uncertain-decision handling below) as
-**being fixed in #833 itself** — track there; do not duplicate a competing mobile PR until #833
-lands.
+**Note (historical):** Patrick marked this (and Findings 9 lock-reset / uncertain-decision handling)
+as fixed inside #833. **#833 merged 2026-10-16** — do not open a duplicate competing PR for that
+train.
 
 ### Recommendation
 
 **Decided** in [Order — decisions first, then re-read #833](#order--decisions-first-then-re-read-833).
-Suppress the extra `goBack` inside #833 before that pull request merges. A device walk checks the
-fix. Do not open a second pull request.
+Suppress the extra `goBack` (shipped with #833). A device walk checks the fix. Do not open a
+second pull request.
 
 ---
 
@@ -556,9 +564,9 @@ event until a real incident. Never an unsigned refusal. Calm copy, no signature 
 
 ### Recommendation
 
-**When #833 merges:** cut over `MOBILE_FUNCTIONAL_FLOWS` / screens in that same change set and
-remove the “pending #833” hedges. Until then the hedges stay, because `main` does not yet refuse
-on leave. See [Order — decisions first, then re-read #833](#order--decisions-first-then-re-read-833).
+**Done for leave-as-deny:** #833 merged 2026-10-16. Sibling flows/screens/FSM should describe
+leave-as-deny on `main` (corpus refresh also tracked under [#1052](https://github.com/mgagp/ezkey/issues/1052)).
+See [Order — decisions first, then re-read #833](#order--decisions-first-then-re-read-833).
 
 ---
 
@@ -575,8 +583,9 @@ once Marc decides; land semantics in `docs/ENDPOINT.md`).
 ### Recommendation
 
 **Decided** in [Decision — Question 8](#decision--question-8--one-sentence-when-the-request-is-no-longer-active).
-Map the existing problem type. One sentence: the request is no longer active. Back only. Do not
-split types. The lost-response case stays Question 10.
+Map `auth-attempt-state-conflict`. One sentence: the request is no longer active. Back only. Do not
+split that type’s collapsed causes. **Amended #895:** wall-clock expiry is
+`auth-attempt-expired` (distinct type; still Back only). The lost-response case stays Question 10.
 
 ---
 
@@ -641,9 +650,9 @@ verified.
 
 **Decided** in [Decision — Question 12](#decision--question-12--the-read-window-is-a-known-limit).
 Known limit. No protocol and no resume unless a real incident requires it. “120 seconds” is the
-default of a configurable lifetime (30–600). Cloudflare Free’s 100-second cut is a deployment note
-for the community instance, not a change in this review. Deep links stay unchecked; they are not
-part of this decision.
+default / ceiling of applied lifetime (**15–120** since #895). Cloudflare Free’s 100-second cut is
+a deployment note for the community instance, not a change in this review. Deep links stay
+unchecked; they are not part of this decision.
 
 ---
 
@@ -693,7 +702,7 @@ decided share it.
 | Fail-closed pending calmer copy | 0 | S | Low | behavior locked (Q4) | mobile | Mobile: fail-closed pending copy without crypto jargon |
 | Rename `createdAt` → `checkedAt` | 0 | S | Low | — | mobile | Mobile: PendingAttempt.checkedAt |
 | Sibling doc cutover leave-as-deny | 0 | S | Low | #833 merge | docs | Docs: flows/screens match leave-as-deny |
-| Document stranded READ / process death / lifetime-during-biometric limits | 0 | S | Low | behavior locked (Q12); bad-sig window locked (Q4) | docs | Docs: READ-until-expiry is a known limit. 120 s is the default (30–600). Cloudflare Free 100 s is a community-deploy note |
+| Document stranded READ / process death / lifetime-during-biometric limits | 0 | S | Low | behavior locked (Q12); bad-sig window locked (Q4) | docs | Docs: READ-until-expiry is a known limit. Applied TTL 15–120 s (default/ceiling 120). Cloudflare Free 100 s is a community-deploy note |
 | Reset decision lock per `authAttemptId` | 0 | S | Med | behavior locked (Q13); **fixing in #833** | mobile | (track #833 — do not duplicate) |
 | Suppress goBack if unmounted / unfocused | 0 | S | Med | **fixing in #833** (Patrick) | mobile | (track #833 — do not duplicate) |
 | Auth API: pending relative expiry (`expiresInSeconds` or `expiresAt`+`serverNow`) | Declined (Q1, Q14) | — | — | — | — | Do not add a pending expiry field, unsigned or inside the signed payload |
@@ -714,11 +723,11 @@ decided share it.
 5. **Decided.** A permanent line under Approve and Deny: leaving this screen declines the request. No dialog. The live approval screen has room for it. See [Decision — Question 5](#decision--question-5--a-permanent-line-under-the-actions). It ships with the confirmed set before #711 widens (Question 6).
 6. **Decided.** No deadline on internal testers. Implement the full set of practices this review confirms, properly, before widening #711. Do not cut that set down. Declined options stay declined. See [Decision — Question 6](#decision--question-6--ship-the-confirmed-honesty-set-before-widening-testers).
 7. **Closed by Question 1.** There is no mobile timer, so neither an always-on line nor a near-expiry line.
-8. **Decided.** One sentence for `auth-attempt-state-conflict`: the request is no longer active. Back only. Do not split not-found / PENDING / expired / cancelled / already-decided / superseded into separate problem types (#844 m1). See [Decision — Question 8](#decision--question-8--one-sentence-when-the-request-is-no-longer-active). A lost approve response stays Question 10. Missing integration signing key is **503** retryable (rollback), documented on #833/#844 — not a Q8 split.
+8. **Decided.** One sentence for `auth-attempt-state-conflict`: the request is no longer active. Back only. Do not split not-found / PENDING / cancelled / already-decided / superseded into separate problem types (#844 m1). **Amended #895:** wall-clock expiry is distinct `auth-attempt-expired` (still Back only). See [Decision — Question 8](#decision--question-8--one-sentence-when-the-request-is-no-longer-active). A lost approve response stays Question 10. Missing integration signing key is **503** retryable (a later retry may hit terminal 409), documented on #833/#844 — not a Q8 split.
 9. **Decided.** The unverified-confirmation sentence may say to check the sign-in where it was started. It does not name a tenant or an organization. Back only. See [Decision — Question 9](#decision--question-9--point-at-the-sign-in-screen-not-at-a-tenant-name).
 10. **Decided.** A lost `respond` response shows that the result is uncertain and points at the sign-in screen. Not a failure. No retry that sends another decision. Idempotent `respond` is deferred and not specified. See [Decision — Question 10](#decision--question-10--uncertain-result-then-look-at-the-sign-in-screen).
 11. **Decided.** Protected mode asks for biometric or device credential on Approve only. Deny and leave-as-deny sign the refusal without that prompt. See [Decision — Question 11](#decision--question-11--biometric-only-when-approving).
-12. **Decided.** A `READ` window until expiry, after a killed or backgrounded app or when the lifetime ends during Approve biometric, is an accepted limit. No protocol unless a real incident requires it. “120 seconds” is the default of `ezkey.core.auth-attempt.ttl-seconds` (30–600). Cloudflare Free cuts the origin at 100 seconds; note that for the community instance, without changing it here. See [Decision — Question 12](#decision--question-12--the-read-window-is-a-known-limit).
+12. **Decided.** A `READ` window until expiry, after a killed or backgrounded app or when the lifetime ends during Approve biometric, is an accepted limit. No protocol unless a real incident requires it. Applied TTL is **15–120 s** (default/ceiling 120; #895). Cloudflare Free cuts the origin at 100 seconds; note that for the community instance, without changing it here. See [Decision — Question 12](#decision--question-12--the-read-window-is-a-known-limit).
 13. **Decided / delivered on #833.** The processed-decision lock is per `authAttemptId` (`serverDecisionAttemptIdRef`). A lost response stays the Question 10 sentence (UncertainDecision). A later 409 stays the Question 8 sentence. See [Decision — Question 13](#decision--question-13--the-decision-lock-follows-the-attempt).
 14. **Decided.** No expiry field on the pending response, neither unsigned for display nor inside the signed payload. The countdown stays on the integrating application (Question 1). See [Decision — Question 14](#decision--question-14--no-expiry-field-on-the-pending-response).
 
@@ -810,7 +819,8 @@ Repo-as-memory: behavior decisions belong in FSM + functional flows; 409/`expire
 - Question 6 decided 2026-10-15: no deadline on #711. The confirmed honesty set ships together,
   done properly, before testers are widened. Declined options stay out.
 - Question 8 decided 2026-10-15: one `auth-attempt-state-conflict` type and one “no longer active”
-  sentence, Back only. No distinct types for expired, cancelled, or already decided. Locked in the
+  sentence, Back only for `auth-attempt-state-conflict`. **Amended #895:** wall-clock expiry uses
+  distinct `auth-attempt-expired` (clients MAY use expired copy; still Back only). Locked in the
   FSM, functional flows, and `docs/ENDPOINT.md`.
 - Question 10 decided 2026-10-15: a lost `respond` response is an uncertain result and points at
   the sign-in screen. Not a failure. No retry that sends another decision. Idempotent `respond`
@@ -819,11 +829,12 @@ Repo-as-memory: behavior decisions belong in FSM + functional flows; 409/`expire
   leave-as-deny sign without that prompt. Locked in the FSM, functional flows, and screens doc.
 - Question 12 decided 2026-10-15: `READ` until expiry after process death or a lifetime that ends
   during Approve biometric is an accepted limit. No protocol unless a real incident requires it.
-  120 seconds is the default of `ezkey.core.auth-attempt.ttl-seconds` (range 30–600). Cloudflare
-  Free’s 100-second origin timeout is a deployment note for the community instance, not a change
-  here. Locked in the FSM and functional flows.
-- Question 13 decided 2026-10-15: the processed-decision lock is per `authAttemptId`. Track the
-  fix on #833; do not duplicate it. No third sentence beyond Questions 8 and 10. Locked in the
+  Applied TTL is **15–120 s** (default/ceiling 120; #895). Cloudflare Free’s 100-second origin
+  timeout is a deployment note for the community instance, not a change here. Locked in the FSM
+  and functional flows.
+- Question 13 decided 2026-10-15: the processed-decision lock is per `authAttemptId`. Delivered
+  with #833 (merged 2026-10-16); do not duplicate it. No third sentence beyond Questions 8 and 10.
+  Locked in the
   FSM and functional flows.
 - Question 14 decided 2026-10-15: no expiry field on Auth API pending, unsigned or inside the
   signed payload. Confirms Question 1. Locked in the FSM, functional flows, and
@@ -831,20 +842,21 @@ Repo-as-memory: behavior decisions belong in FSM + functional flows; 409/`expire
 
 ## Order — decisions first, then re-read #833
 
+**Status update (2026-10-27, #1052):** PR [#833](https://github.com/mgagp/ezkey/pull/833)
+**merged 2026-10-16**. Leave-as-deny is on `main`. The historical ordering text below is retained
+for decision trace. **Q11** (biometric / device credential on Approve only) remains **decided but
+not fully shipped** in reference app code — tracked as a code follow-up.
+
 **Decided 2026-10-15** (Marc). Keep pull request
 [#833](https://github.com/mgagp/ezkey/pull/833) pending until this note is merged to `main`. Then
 re-read #833 against these decisions before merging it.
 
-This note is the intent. #833 is the behavior branch those decisions were read against
-(`fcc31fbf`), and it is not on `main` yet. Merging the note first gives the re-read a fixed
-canon. The note stays honest that, until #833 merges, `main` still leaves a loaded screen without
-sending a refusal. Line citations are the `fcc31fbf` snapshot. Refresh them when #833 changes. Do
-not hold this note for that refresh.
+This note is the intent. Pull request 833 was the behavior branch those decisions were read against
+(`fcc31fbf`). Merging the note first gave the re-read a fixed canon. Historical honesty: before
+that PR merged, `main` left a loaded screen without sending a refusal.
 
-#833’s leave path calls the same respond as Deny and can open a biometric prompt. Question 11
-forbids that prompt on Deny and on leave. The re-read must align #833 with that before merge.
-Shipping the prompt and removing it immediately after would contradict the permanent line that
-leaving declines.
+That PR’s leave path calls the same respond as Deny. Question 11 forbids a biometric prompt on
+Deny and on leave; align app code with that (code follow-up if still prompting on Deny).
 
 ### Three follow-ups
 
@@ -856,9 +868,8 @@ leaving declines.
    implementation pass, not as a gate on #833. The field is the local claim time. The old name
    reads like server creation time and would invite the phone countdown Questions 1 and 14
    refused.
-3. **Sibling docs that still say leave waits for expiry (Finding 7).** Cut them over in the same
-   change set that merges #833. Until then, the hedges in this note are correct, because `main`
-   does not yet send a refusal on leave.
+3. **Sibling docs that still say leave waits for expiry (Finding 7).** Cut over after #833 merge
+   (docs refresh under #1052). Hedges that said “until #833 merges” are obsolete.
 
 ### After this note is on main
 

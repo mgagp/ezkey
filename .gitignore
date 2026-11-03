@@ -2,6 +2,8 @@
 # Général
 # ==========================
 .env
+!.env.example
+api-key*.env
 *.log
 *.tmp
 *.bak
@@ -152,3 +154,6 @@ experimental-hybrid/lightsail/.local/
 *play*publisher*.json
 
 .playwright-mcp/
+
+# Claude Code per-user settings
+.claude/settings.local.json

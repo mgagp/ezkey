@@ -28,7 +28,7 @@ import {
   getRolling24HoursWindowIso,
 } from '@/lib/dashboard-drilldown-links';
 import { search2 } from '@/generated/admin-api/auth-attempts/auth-attempts';
-import type { AuthAttemptDto, PagedModelAuthAttemptDto, Search2Params } from '@/generated/admin-api/model';
+import type { AuthAttemptDto, Search2Params } from '@/generated/admin-api/model';
 
 const AUTH_STATUSES = ['PENDING', 'READ', 'ACCEPTED', 'REJECTED', 'EXPIRED', 'INVALID'] as const;
 
@@ -238,9 +238,9 @@ export default function AuthAttemptsPage() {
           ...p,
           createdAfter: w.createdAfter,
           createdBefore: w.createdBefore,
-        }) as Promise<PagedModelAuthAttemptDto>;
+        });
       }
-      return search2(p) as Promise<PagedModelAuthAttemptDto>;
+      return search2(p);
     },
   });
 

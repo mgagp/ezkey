@@ -30,7 +30,7 @@ import { buildListDetailNavState } from '@/lib/list-detail-navigation';
 import { isPhoneNumberInputValid, normalizePhoneNumberInput } from '@/lib/phone-number';
 import { formatDate } from '@/lib/utils';
 import { useCreateTenant, listTenants } from '@/generated/admin-api/tenants/tenants';
-import type { PagedModelTenantResponseDto, TenantResponseDto } from '@/generated/admin-api/model';
+import type { TenantResponseDto } from '@/generated/admin-api/model';
 
 // ── Create dialog ─────────────────────────────────────────────────────────────
 
@@ -252,7 +252,7 @@ export default function TenantsPage() {
       tenantName: debouncedName || undefined,
       active: activeFilter === 'all' ? undefined : activeFilter === 'active',
     },
-    fetchPage: (params) => listTenants(params) as Promise<PagedModelTenantResponseDto>,
+    fetchPage: (params) => listTenants(params),
     defaultSort: 'createdAt,DESC',
   });
 

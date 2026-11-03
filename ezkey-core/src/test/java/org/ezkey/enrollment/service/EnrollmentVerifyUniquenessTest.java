@@ -235,13 +235,12 @@ class EnrollmentVerifyUniquenessTest {
 
     // Mock markAsVerified - enrollment will be saved
     when(enrollmentRepository.saveAndFlush(any(Enrollment.class)))
-        .thenAnswer(
-            invocation -> {
-              Enrollment saved = invocation.getArgument(0);
-              saved.setStatus(EnrollmentStatus.VERIFIED);
-              saved.setActive(true);
-              return saved;
-            });
+        .thenAnswer(invocation -> {
+          Enrollment saved = invocation.getArgument(0);
+          saved.setStatus(EnrollmentStatus.VERIFIED);
+          saved.setActive(true);
+          return saved;
+        });
 
     // Act
     var response = enrollmentVerifyService.verify(verifyRequest);

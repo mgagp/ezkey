@@ -13,12 +13,14 @@ package org.ezkey.admin.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
@@ -46,11 +48,13 @@ class BootstrapCredentialsFileExporterTest {
   @TempDir Path tempDir;
 
   @Test
-  void exportWritesRecoveryCodesWithOwnerOnlyPermissions() throws Exception {
+  void exportWritesRecoveryCodesToCredentialsFile() throws Exception {
     Path file = tempDir.resolve("bootstrap-credentials.json");
     BootstrapExportProperties exportProperties = new BootstrapExportProperties();
     exportProperties.setEnabled(true);
     exportProperties.setPath(file.toString());
+    // Content coverage must run on NTFS; production still fail-closes unless this is set.
+    allowNonPosixForPortableContentTests(exportProperties);
 
     AdminMfaProperties mfaProperties = new AdminMfaProperties();
     mfaProperties.getBootstrap().setCredentialsOutputMode(BootstrapCredentialsOutputMode.FULL);
@@ -71,14 +75,41 @@ class BootstrapCredentialsFileExporterTest {
     assertThat(json.get("enrollmentId").asInt()).isEqualTo(7);
     assertThat(json.get("enrollmentProofToken").asString()).isEqualTo("proof.tokenValue");
     assertThat(json.get("recoveryCodes").get(0).asString()).isEqualTo("AAAA-BBBB-CCCC-DDDD");
+  }
 
-    try {
-      Set<PosixFilePermission> perms = Files.getPosixFilePermissions(file);
-      assertThat(perms)
-          .isEqualTo(EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
-    } catch (UnsupportedOperationException ignored) {
-      // Non-POSIX CI hosts: content assertions above still apply
-    }
+  /**
+   * Owner-only {@code 0600} file mode. Aborts on filesystems without a POSIX attribute view so
+   * Surefire reports the skip (not a silent {@code assumingThat}).
+   */
+  @Test
+  void exportWritesCredentialsFileWithOwnerOnlyPosixPermissions() throws Exception {
+    assumeTrue(
+        supportsPosixFileAttributeView(),
+        "POSIX file attribute view required for owner-only 0600 assertion");
+
+    Path file = tempDir.resolve("bootstrap-credentials.json");
+    BootstrapExportProperties exportProperties = new BootstrapExportProperties();
+    exportProperties.setEnabled(true);
+    exportProperties.setPath(file.toString());
+    // No allowNonPosixPermissions: this is the POSIX permission contract, not content portability.
+
+    AdminMfaProperties mfaProperties = new AdminMfaProperties();
+    mfaProperties.getBootstrap().setCredentialsOutputMode(BootstrapCredentialsOutputMode.FULL);
+
+    BootstrapCredentialsFileExporter exporter =
+        new BootstrapCredentialsFileExporter(
+            exportProperties, new QrCodeProperties(), mfaProperties);
+
+    Enrollment enrollment = new Enrollment();
+    enrollment.setEnrollmentId(7);
+    enrollment.setEnrollmentChallenge(112233);
+
+    exporter.exportIfEnabled(
+        enrollment, "proof.tokenValue", "admin.docker", List.of("AAAA-BBBB-CCCC-DDDD"));
+
+    Set<PosixFilePermission> perms = Files.getPosixFilePermissions(file);
+    assertThat(perms)
+        .isEqualTo(EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
   }
 
   @Test
@@ -87,6 +118,7 @@ class BootstrapCredentialsFileExporterTest {
     BootstrapExportProperties exportProperties = new BootstrapExportProperties();
     exportProperties.setEnabled(true);
     exportProperties.setPath(file.toString());
+    allowNonPosixForPortableContentTests(exportProperties);
 
     AdminMfaProperties mfaProperties = new AdminMfaProperties();
     mfaProperties
@@ -108,7 +140,14 @@ class BootstrapCredentialsFileExporterTest {
     assertThat(json.has("enrollmentProofToken")).isFalse();
     assertThat(json.has("enrollmentChallengeCode")).isFalse();
     assertThat(json.get("recoveryCodes").get(0).asString()).isEqualTo("ZZZZ-YYYY-XXXX-WWWW");
-    assertThat(exporter.recoveryCodesLogPointer()).contains("0600");
+    // recoveryCodesLogPointer() is a log/operator hint (path + mode label), not file mode bits.
+    String logPointer = exporter.recoveryCodesLogPointer();
+    assertThat(logPointer).contains(file.toString());
+    if (supportsPosixFileAttributeView()) {
+      assertThat(logPointer).contains("0600");
+    } else {
+      assertThat(logPointer).contains("non-POSIX fallback");
+    }
   }
 
   @Test
@@ -117,6 +156,7 @@ class BootstrapCredentialsFileExporterTest {
     BootstrapExportProperties exportProperties = new BootstrapExportProperties();
     exportProperties.setEnabled(true);
     exportProperties.setPath(file.toString());
+    allowNonPosixForPortableContentTests(exportProperties);
 
     AdminMfaProperties mfaProperties = new AdminMfaProperties();
     mfaProperties.getBootstrap().setCredentialsOutputMode(BootstrapCredentialsOutputMode.FULL);
@@ -151,6 +191,8 @@ class BootstrapCredentialsFileExporterTest {
     BootstrapExportProperties exportProperties = new BootstrapExportProperties();
     exportProperties.setEnabled(true);
     exportProperties.setPath(asDirectory.toString());
+    // Reach the directory-path failure on NTFS (not the unrelated POSIX fail-closed path).
+    allowNonPosixForPortableContentTests(exportProperties);
     AdminMfaProperties mfaProperties = new AdminMfaProperties();
     mfaProperties
         .getBootstrap()
@@ -164,10 +206,9 @@ class BootstrapCredentialsFileExporterTest {
     enrollment.setEnrollmentChallenge(112233);
     String secretCode = "FAIL-CLOSED-CODE-9999-8888-7777-6666";
 
-    assertThatThrownBy(
-            () ->
-                exporter.exportIfEnabled(
-                    enrollment, "proof.token", "admin.docker", List.of(secretCode)))
+    assertThatThrownBy(() ->
+            exporter.exportIfEnabled(
+                enrollment, "proof.token", "admin.docker", List.of(secretCode)))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("could not be persisted")
         .hasMessageContaining("refusing to complete bootstrap")
@@ -206,10 +247,9 @@ class BootstrapCredentialsFileExporterTest {
 
     assertThat(exporter.logNonPosixAllowedStartupWarnIfActive()).isFalse();
 
-    assertThatThrownBy(
-            () ->
-                exporter.exportIfEnabled(
-                    enrollment, "proof.token", "admin.docker", List.of(secretCode)))
+    assertThatThrownBy(() ->
+            exporter.exportIfEnabled(
+                enrollment, "proof.token", "admin.docker", List.of(secretCode)))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("UnsupportedOperationException")
         .hasMessageContaining("refusing to complete bootstrap")
@@ -327,10 +367,9 @@ class BootstrapCredentialsFileExporterTest {
     String secretCode = "WINDOWS-FALLBACK-CODE-5555-6666";
 
     try {
-      assertThatCode(
-              () ->
-                  exporter.exportIfEnabled(
-                      enrollment, "proof.token", "admin.docker", List.of(secretCode)))
+      assertThatCode(() ->
+              exporter.exportIfEnabled(
+                  enrollment, "proof.token", "admin.docker", List.of(secretCode)))
           .doesNotThrowAnyException();
       assertThat(file).exists();
       String joined =
@@ -361,20 +400,18 @@ class BootstrapCredentialsFileExporterTest {
     BootstrapCredentialsFileExporter exporter =
         new BootstrapCredentialsFileExporter(
             exportProperties, new QrCodeProperties(), mfaProperties);
-    exporter.replaceAtomicWriterForTests(
-        (path, json) -> {
-          throw new IllegalArgumentException("jackson-like unchecked (test seam)");
-        });
+    exporter.replaceAtomicWriterForTests((path, json) -> {
+      throw new IllegalArgumentException("jackson-like unchecked (test seam)");
+    });
 
     Enrollment enrollment = new Enrollment();
     enrollment.setEnrollmentId(7);
     enrollment.setEnrollmentChallenge(112233);
     String secretCode = "JACKSON-FAIL-CODE-3333-4444";
 
-    assertThatThrownBy(
-            () ->
-                exporter.exportIfEnabled(
-                    enrollment, "proof.token", "admin.docker", List.of(secretCode)))
+    assertThatThrownBy(() ->
+            exporter.exportIfEnabled(
+                enrollment, "proof.token", "admin.docker", List.of(secretCode)))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("IllegalArgumentException")
         .hasMessageNotContaining(secretCode)
@@ -458,10 +495,32 @@ class BootstrapCredentialsFileExporterTest {
     BootstrapExportProperties exportProperties = new BootstrapExportProperties();
     exportProperties.setEnabled(true);
     exportProperties.setPath(file.toString());
+    allowNonPosixForPortableContentTests(exportProperties);
     AdminMfaProperties mfaProperties = new AdminMfaProperties();
     mfaProperties.getBootstrap().setCredentialsOutputMode(BootstrapCredentialsOutputMode.FULL);
     return new BootstrapCredentialsFileExporter(
         exportProperties, new QrCodeProperties(), mfaProperties);
+  }
+
+  /**
+   * Opt in for content/redaction coverage on filesystems without POSIX attributes (e.g. Windows
+   * NTFS). Production remains fail-closed unless this property is set; the dedicated guardrail test
+   * keeps that contract.
+   *
+   * @param exportProperties export properties under test
+   */
+  private static void allowNonPosixForPortableContentTests(
+      BootstrapExportProperties exportProperties) {
+    exportProperties.setAllowNonPosixPermissions(true);
+  }
+
+  /**
+   * Whether the default filesystem exposes the POSIX attribute view (owner-only 0600 assertions).
+   *
+   * @return {@code true} when POSIX file permissions can be read/asserted
+   */
+  private static boolean supportsPosixFileAttributeView() {
+    return FileSystems.getDefault().supportedFileAttributeViews().contains("posix");
   }
 
   private static List<Path> keptCopies(Path directory) throws Exception {

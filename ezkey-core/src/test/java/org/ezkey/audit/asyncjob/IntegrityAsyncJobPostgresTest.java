@@ -199,19 +199,17 @@ class IntegrityAsyncJobPostgresTest {
     assertThat(current.get().trigger()).isEqualTo(IntegrityAsyncJobTrigger.MANUAL);
 
     // Escape-sticky Start refuse must cite the operator EXPIRED, not the newer nightly.
-    assertThatThrownBy(
-            () ->
-                jobService.start(
-                    new org.ezkey.audit.dto.IntegrityAsyncJobStartRequest(
-                        IntegrityAsyncJobType.VERIFY_CHAIN_RANGE, older, older.plusHours(1), null),
-                    1,
-                    "admin.docker"))
+    assertThatThrownBy(() ->
+            jobService.start(
+                new org.ezkey.audit.dto.IntegrityAsyncJobStartRequest(
+                    IntegrityAsyncJobType.VERIFY_CHAIN_RANGE, older, older.plusHours(1), null),
+                1,
+                "admin.docker"))
         .isInstanceOf(IntegrityAsyncJobBusyException.class)
-        .satisfies(
-            ex -> {
-              IntegrityAsyncJobBusyException busy = (IntegrityAsyncJobBusyException) ex;
-              assertThat(busy.getCurrentJob().getJobId()).isEqualTo(expiredOperator.getJobId());
-            });
+        .satisfies(ex -> {
+          IntegrityAsyncJobBusyException busy = (IntegrityAsyncJobBusyException) ex;
+          assertThat(busy.getCurrentJob().getJobId()).isEqualTo(expiredOperator.getJobId());
+        });
 
     var abandoned = jobService.abandon(7);
     assertThat(abandoned.jobId()).isEqualTo(expiredOperator.getJobId());
@@ -313,45 +311,42 @@ class IntegrityAsyncJobPostgresTest {
     assertThat(abandonedAt).isNotNull();
 
     // Nightly RUNNING rejected.
-    assertThatThrownBy(
-            () ->
-                jdbc.update(
-                    """
-                    INSERT INTO ezkey_integrity_async_job (
-                      job_id, slot_key, job_type, status, "trigger", started_by_admin_id,
-                      started_by_username, started_at, heartbeat_at)
-                    VALUES (?, 'GLOBAL', 'RUN_VALIDATION', 'RUNNING', 'NIGHTLY', NULL,
-                      'system', NOW(), NOW())
-                    """,
-                    UUID.randomUUID()))
+    assertThatThrownBy(() ->
+            jdbc.update(
+                """
+                INSERT INTO ezkey_integrity_async_job (
+                  job_id, slot_key, job_type, status, "trigger", started_by_admin_id,
+                  started_by_username, started_at, heartbeat_at)
+                VALUES (?, 'GLOBAL', 'RUN_VALIDATION', 'RUNNING', 'NIGHTLY', NULL,
+                  'system', NOW(), NOW())
+                """,
+                UUID.randomUUID()))
         .hasMessageContaining("chk_integrity_async_job_nightly_terminal");
 
     // Nightly with admin id rejected.
-    assertThatThrownBy(
-            () ->
-                jdbc.update(
-                    """
-                    INSERT INTO ezkey_integrity_async_job (
-                      job_id, slot_key, job_type, status, "trigger", started_by_admin_id,
-                      started_by_username, started_at, heartbeat_at, finished_at)
-                    VALUES (?, 'GLOBAL', 'RUN_VALIDATION', 'SUCCEEDED', 'NIGHTLY', 1,
-                      'system', NOW(), NOW(), NOW())
-                    """,
-                    UUID.randomUUID()))
+    assertThatThrownBy(() ->
+            jdbc.update(
+                """
+                INSERT INTO ezkey_integrity_async_job (
+                  job_id, slot_key, job_type, status, "trigger", started_by_admin_id,
+                  started_by_username, started_at, heartbeat_at, finished_at)
+                VALUES (?, 'GLOBAL', 'RUN_VALIDATION', 'SUCCEEDED', 'NIGHTLY', 1,
+                  'system', NOW(), NOW(), NOW())
+                """,
+                UUID.randomUUID()))
         .hasMessageContaining("chk_integrity_async_job_nightly_admin");
 
     // Bad chain_status rejected.
-    assertThatThrownBy(
-            () ->
-                jdbc.update(
-                    """
-                    INSERT INTO ezkey_integrity_async_job (
-                      job_id, slot_key, job_type, status, "trigger", started_by_admin_id,
-                      started_by_username, started_at, heartbeat_at, finished_at, chain_status)
-                    VALUES (?, 'GLOBAL', 'VERIFY_CHAIN_RANGE', 'SUCCEEDED', 'MANUAL', 1,
-                      'admin.docker', NOW(), NOW(), NOW(), 'BOGUS')
-                    """,
-                    UUID.randomUUID()))
+    assertThatThrownBy(() ->
+            jdbc.update(
+                """
+                INSERT INTO ezkey_integrity_async_job (
+                  job_id, slot_key, job_type, status, "trigger", started_by_admin_id,
+                  started_by_username, started_at, heartbeat_at, finished_at, chain_status)
+                VALUES (?, 'GLOBAL', 'VERIFY_CHAIN_RANGE', 'SUCCEEDED', 'MANUAL', 1,
+                  'admin.docker', NOW(), NOW(), NOW(), 'BOGUS')
+                """,
+                UUID.randomUUID()))
         .hasMessageContaining("chk_integrity_async_job_chain_status");
   }
 

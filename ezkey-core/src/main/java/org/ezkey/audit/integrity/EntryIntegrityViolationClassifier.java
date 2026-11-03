@@ -147,9 +147,8 @@ public class EntryIntegrityViolationClassifier {
    */
   public Optional<EntryClassification> classify(AuditLog entry) {
     return classifyViolation(entry)
-        .map(
-            violation ->
-                new EntryClassification(violation, isAlertEligible(entry), isExplained(entry)));
+        .map(violation ->
+            new EntryClassification(violation, isAlertEligible(entry), isExplained(entry)));
   }
 
   /**

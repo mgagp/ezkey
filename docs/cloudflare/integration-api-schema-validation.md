@@ -135,7 +135,7 @@ Two RFC 9457-shaped JSON bodies can come back from
 
 **Origin (Integration API)** — the request reached Spring. `type` is under
 `https://ezkey.io/problems/`. Clients should show origin `detail` only when `type` starts with
-that prefix.
+that prefix. (**Admin / Integration API only; device clients: contract section 7.**)
 
 **Cloudflare edge** — API Shield / WAF blocked before origin. Schema **Block** on a type
 mismatch returns HTTP **403** Error **1020**. Clients that send `Accept: application/json` or

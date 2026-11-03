@@ -50,11 +50,22 @@ public class TinkEncryptionHealthIndicator implements HealthIndicator {
     }
 
     boolean initialized = keyManager.isInitialized();
+    boolean reloadDegraded = keyManager.isKeysetReloadDegraded();
+    if (initialized && reloadDegraded) {
+      return Health.down()
+          .withDetail("enabled", true)
+          .withDetail("required", properties.isRequired())
+          .withDetail("initialized", true)
+          .withDetail("keysetReloadDegraded", true)
+          .withDetail("status", "KEYSET_RELOAD_DEGRADED")
+          .build();
+    }
     Health.Builder builder = initialized ? Health.up() : Health.down();
     return builder
         .withDetail("enabled", true)
         .withDetail("required", properties.isRequired())
         .withDetail("initialized", initialized)
+        .withDetail("keysetReloadDegraded", false)
         .withDetail("status", initialized ? "READY" : "NOT_INITIALIZED")
         .build();
   }

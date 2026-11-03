@@ -386,6 +386,7 @@ const InstallationSection: React.FC<InstallationSectionProps> = ({
         style={styles.installationHeader}
         onPress={() => onToggle(group.installation.id)}
         accessibilityRole="button"
+        accessibilityState={{expanded}}
         accessibilityLabel={t('home.installationLabel', {name: group.installation.name})}
         accessibilityHint={
           expanded ? t('home.collapseInstallation') : t('home.expandInstallation')
@@ -399,7 +400,12 @@ const InstallationSection: React.FC<InstallationSectionProps> = ({
             <Text style={styles.installationHost}>{group.installation.host}</Text>
           ) : null}
         </View>
-        <Text style={styles.installationToggle}>{expanded ? '−' : '+'}</Text>
+        <Text
+          style={styles.installationToggle}
+          importantForAccessibility="no"
+          accessibilityElementsHidden>
+          {expanded ? '−' : '+'}
+        </Text>
       </TouchableOpacity>
       {expanded ? (
         <View style={styles.installationBody}>
@@ -601,7 +607,7 @@ const styles = StyleSheet.create({
   tenantDivider: {
     height: 1,
     marginTop: spacing.sm + 2,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: colors.divider,
   },
   card: {
     backgroundColor: colors.surfaceElevated,
@@ -628,9 +634,9 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   unusableNotice: {
-    backgroundColor: 'rgba(245, 194, 107, 0.08)',
+    backgroundColor: colors.cautionBg,
     borderWidth: 1,
-    borderColor: 'rgba(245, 194, 107, 0.35)',
+    borderColor: colors.cautionBorder,
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
     gap: spacing.xs,
@@ -647,7 +653,7 @@ const styles = StyleSheet.create({
   },
   cardBroken: {
     borderWidth: 1,
-    borderColor: 'rgba(245, 194, 107, 0.45)',
+    borderColor: colors.cautionBorderStrong,
   },
   brokenBadge: {
     alignSelf: 'flex-start',
@@ -655,9 +661,9 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.semibold,
     color: colors.warning,
-    backgroundColor: 'rgba(245, 194, 107, 0.12)',
+    backgroundColor: colors.cautionBgStrong,
     borderWidth: 1,
-    borderColor: 'rgba(245, 194, 107, 0.35)',
+    borderColor: colors.cautionBorder,
     borderRadius: borderRadius.xl,
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
@@ -742,7 +748,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 4,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.25,
     shadowRadius: 4,

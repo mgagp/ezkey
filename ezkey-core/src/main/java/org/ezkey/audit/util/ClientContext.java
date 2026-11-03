@@ -21,8 +21,8 @@ import java.util.Collection;
  * trail purposes across all API modules.
  *
  * <p><b>IP Extraction (when trusted proxies are configured):</b> Uses {@link ClientIpResolver} so
- * that proxy headers (CF-Connecting-IP, X-Forwarded-For, X-Real-IP) are only trusted when the
- * direct connection comes from a configured CIDR. Otherwise only the remote address is used.
+ * that X-Forwarded-For is walked right-to-left (skipping trusted hops) only when the direct
+ * connection comes from a configured CIDR. Otherwise only the remote address is used.
  *
  * <p><b>Example Usage:</b>
  *

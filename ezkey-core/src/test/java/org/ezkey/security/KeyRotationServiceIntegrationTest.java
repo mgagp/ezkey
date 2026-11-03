@@ -107,6 +107,10 @@ class KeyRotationServiceIntegrationTest {
 
   @BeforeEach
   void setUp() throws Exception {
+    // Reset flags mutated by individual tests (Patrick n3 / #961).
+    tinkProperties.setEnabled(true);
+    tinkProperties.getRotation().setEnabled(true);
+
     // Setup mock key management behavior
     org.mockito.Mockito.when(keyManagementOperations.isInitialized()).thenReturn(true);
     org.mockito.Mockito.when(keyManagementOperations.getCurrentPrimaryKeyId())
@@ -293,11 +297,10 @@ class KeyRotationServiceIntegrationTest {
     tinkProperties.getRotation().setEnabled(false);
 
     // Act & Assert - Should not throw exception, but rotation should be skipped
-    assertDoesNotThrow(
-        () -> {
-          // The scheduled job would skip rotation, but manual rotation would fail
-          // This test verifies the service handles disabled state gracefully
-        });
+    assertDoesNotThrow(() -> {
+      // The scheduled job would skip rotation, but manual rotation would fail
+      // This test verifies the service handles disabled state gracefully
+    });
   }
 
   @Test

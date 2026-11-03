@@ -63,6 +63,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -287,7 +288,10 @@ public class ApiKeyController {
               .eventDetails("API key ID: " + result.getApiKeyId())
               .build());
 
-      return ResponseEntity.status(HttpStatus.CREATED).body(response);
+      // Secret is shown once in the body; never allow intermediary caches to store it.
+      return ResponseEntity.status(HttpStatus.CREATED)
+          .cacheControl(CacheControl.noStore())
+          .body(response);
 
     } catch (IllegalArgumentException e) {
       logger.warn("API key creation failed - Bad request: {}", e.getMessage());
@@ -829,15 +833,14 @@ public class ApiKeyController {
             : integrationRepository.findAllByIdWithTenant(integrationIds).stream()
                 .collect(Collectors.toMap(Integration::getId, Function.identity()));
 
-    return page.map(
-        apiKey -> {
-          Integration integration = apiKey.getIntegration();
-          Integration enriched =
-              integration != null && integration.getId() != null
-                  ? integrationsById.get(integration.getId())
-                  : null;
-          return mapToResponseDto(apiKey, enriched);
-        });
+    return page.map(apiKey -> {
+      Integration integration = apiKey.getIntegration();
+      Integration enriched =
+          integration != null && integration.getId() != null
+              ? integrationsById.get(integration.getId())
+              : null;
+      return mapToResponseDto(apiKey, enriched);
+    });
   }
 
   /**
@@ -933,10 +936,8 @@ public class ApiKeyController {
       // Load admin by ID from AdminPrincipal
       return adminRepository
           .findById(adminPrincipal.adminId())
-          .orElseThrow(
-              () ->
-                  new IllegalStateException(
-                      "Admin not found with ID: " + adminPrincipal.adminId()));
+          .orElseThrow(() ->
+              new IllegalStateException("Admin not found with ID: " + adminPrincipal.adminId()));
     }
 
     // Fallback for backward compatibility (should not happen with new auth flow)

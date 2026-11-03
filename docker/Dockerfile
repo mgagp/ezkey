@@ -52,6 +52,9 @@ COPY ezkey-sdk/java/src ./ezkey-sdk/java/src
 COPY ezkey-demo-device/src ./ezkey-demo-device/src
 COPY ezkey-demo-app-acme/src ./ezkey-demo-app-acme/src
 COPY ezkey-demo-app-acme/config ./ezkey-demo-app-acme/config
+# Committed root license inventory — packaged into META-INF/licenses/ for shipped JARs
+# (maven-resources-plugin copy-resources; not regenerated during the image build).
+COPY THIRD-PARTY.txt ./THIRD-PARTY.txt
 
 # Build all modules in one go (this creates all JARs)
 # Using BuildKit cache mount - cache persists between builds and is shared across parallel builds
@@ -181,8 +184,9 @@ COPY --chown=spring:spring --from=build /build/ezkey-crypto-api/target/*.jar app
 COPY --chown=spring:spring --from=build /build/ezkey-crypto-api/config ./config
 USER spring:spring
 EXPOSE 9090 9091
+# Liveness only — encryption readiness is a separate actuator group (ADR-0016 Q1).
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD curl -f http://localhost:9091/actuator/health || exit 1
+  CMD curl -f http://localhost:9091/actuator/health/liveness || exit 1
 ENTRYPOINT ["java", "-jar", "app.jar"]
 
 # ============================================

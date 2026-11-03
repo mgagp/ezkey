@@ -36,7 +36,18 @@
 - inputText: "${ENROLLMENT_ID}|${ENROLLMENT_PROOF_TOKEN}|${ENROLLMENT_AUTH_URL}"
 - waitForAnimationToEnd:
     timeout: 1500
-- hideKeyboard
+# hideKeyboard fails on iOS (Maestro): Android keeps it, iOS taps a neutral header area (#1175).
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          point: "50%,8%"
 - tapOn:
     id: "ezkey.e2e.enrollmentWizard.controlledBypassSeed"
     point: "50%,50%"
@@ -54,7 +65,18 @@
 - inputText: "${ENROLLMENT_CHALLENGE}"
 - waitForAnimationToEnd:
     timeout: 1500
-- hideKeyboard
+# hideKeyboard fails on iOS (Maestro): Android keeps it, iOS taps a neutral header area (#1175).
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          point: "50%,8%"
 - tapOn:
     id: "ezkey.e2e.enrollmentWizard.verifyStep"
     point: 50%, 10%

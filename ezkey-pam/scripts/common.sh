@@ -48,6 +48,16 @@ load_env_file "${ENV_FILE}"
 SSH_USER="${EZKEY_SSH_USER:-${SSH_USER}}"
 SSH_PORT="${EZKEY_PAM_SSH_PORT:-${SSH_PORT}}"
 
+# #1016 N6: portable artifact default (not a host-specific /opt/cursor path).
+# Override with EZKEY_PAM_ARTIFACT_DIR when a campaign host wants another dir.
+ezkey_pam_artifact_dir() {
+  if [ -n "${EZKEY_PAM_ARTIFACT_DIR:-}" ]; then
+    printf '%s' "${EZKEY_PAM_ARTIFACT_DIR}"
+    return
+  fi
+  printf '%s' "${PAM_ROOT}/runtime/artifacts"
+}
+
 json_get() {
   local json="$1"
   local path="$2"
@@ -192,6 +202,9 @@ ezkey_ssh_kbdint_autoenter() {
 
   # First visible prompt → ok (pre-create). Later challenge line → bare Enter
   # (#982 tier 1). Cooldown covers OpenSSH multitry (#907 F9 / #975 D4).
+  # Prefer the *latest* prompt (#995): after a challenge round the log still
+  # contains "Ezkey challenge code:" from earlier; whole-log matching would
+  # send Enter on the next pre-create "Type ok" and block F9 multitry creates.
   for i in $(seq 1 600); do
     if ! kill -0 "${bg}" 2>/dev/null; then
       break
@@ -199,10 +212,20 @@ ezkey_ssh_kbdint_autoenter() {
     since_enter=$((since_enter + 1))
     if ezkey_ssh_capture_has_prewait_prompt "${log}" && [ "${since_enter}" -ge 15 ]; then
       flat="$(tr -cd '\11\12\15\40-\176' <"${log}" 2>/dev/null || true)"
-      if echo "${flat}" | grep -q 'Ezkey challenge code:'; then
-        printf 'enter\n' >"${ctrl}" 2>/dev/null || true
+      # grep exit 1 (no match) must not abort under set -e + pipefail: the
+      # first pre-create round has Type ok only, no challenge line yet.
+      last_chal_n="$(echo "${flat}" \
+        | grep -nE 'Ezkey challenge code:|Approve on your phone, then press Enter' \
+        | tail -1 | cut -d: -f1)" || true
+      last_ok_n="$(echo "${flat}" \
+        | grep -nE 'Type ok and press Enter to request device approval|SSH login for user ' \
+        | tail -1 | cut -d: -f1)" || true
+      last_chal_n="${last_chal_n:-0}"
+      last_ok_n="${last_ok_n:-0}"
+      if [ "${last_chal_n}" -gt "${last_ok_n}" ]; then
+        ezkey_ctrl_write "${ctrl}" "enter"
       else
-        printf 'ok\n' >"${ctrl}" 2>/dev/null || true
+        ezkey_ctrl_write "${ctrl}" "ok"
       fi
       since_enter=0
     fi
@@ -227,4 +250,21 @@ ezkey_mk_ctrl_fifo() {
   fifo="${dir}/enter.fifo"
   mkfifo "${fifo}"
   printf '%s\n' "${fifo}"
+}
+
+# Write a control command to a capture fifo without hanging when the reader
+# (ssh-pty-capture.py) has already exited (#1054 probe 4 flake: O_WRONLY open
+# on a FIFO with no reader blocks forever).
+# #1067 nit: a mutant that drops this timeout can leave harness bash stuck on
+# the FIFO after the probe wall fires — the external suite `timeout` is then
+# authoritative (smaller fix than killing the script process group).
+ezkey_ctrl_write() {
+  local fifo="$1"
+  local msg="$2"
+  if [ -z "${fifo}" ] || [ ! -p "${fifo}" ]; then
+    return 0
+  fi
+  # timeout bounds the open(2); printf failure is non-fatal.
+  timeout 1s sh -c 'printf "%s\n" "$1" >"$2"' _ "${msg}" "${fifo}" \
+    >/dev/null 2>&1 || true
 }

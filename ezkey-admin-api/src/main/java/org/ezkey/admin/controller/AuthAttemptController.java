@@ -913,15 +913,12 @@ public class AuthAttemptController {
             : integrationRepository.findAllByIdWithTenant(integrationIds).stream()
                 .collect(Collectors.toMap(Integration::getId, Function.identity()));
 
-    return page.map(
-        attempt -> {
-          Enrollment enrollment =
-              attempt.getEnrollmentId() != null
-                  ? enrollmentsById.get(attempt.getEnrollmentId())
-                  : null;
-          Integration integration = resolveIntegrationForEnrollment(enrollment, integrationsById);
-          return authAttemptMapper.toDtoWithLabels(attempt, enrollment, integration);
-        });
+    return page.map(attempt -> {
+      Enrollment enrollment =
+          attempt.getEnrollmentId() != null ? enrollmentsById.get(attempt.getEnrollmentId()) : null;
+      Integration integration = resolveIntegrationForEnrollment(enrollment, integrationsById);
+      return authAttemptMapper.toDtoWithLabels(attempt, enrollment, integration);
+    });
   }
 
   /**

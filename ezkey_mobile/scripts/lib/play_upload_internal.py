@@ -731,6 +731,137 @@ def main(argv: list[str] | None = None) -> int:
     )
 
 
+def _parser_edge_self_checks(check) -> None:
+    """Offline edges the Play preflight depends on and the proto fixture does not hit."""
+
+    def enc_varint(value: int) -> bytes:
+        out = bytearray()
+        while True:
+            byte = value & 0x7F
+            value >>= 7
+            if value:
+                out.append(byte | 0x80)
+            else:
+                out.append(byte)
+                return bytes(out)
+
+    def enc_len(field: int, payload: bytes) -> bytes:
+        return enc_varint((field << 3) | _WIRE_LEN) + enc_varint(len(payload)) + payload
+
+    def enc_var(field: int, value: int) -> bytes:
+        return enc_varint((field << 3) | _WIRE_VARINT) + enc_varint(value)
+
+    def node_with_attribute(attribute: bytes) -> bytes:
+        return enc_len(1, enc_len(4, attribute))
+
+    check(
+        "highest_version_code skips non-integers",
+        highest_version_code_from_tracks(
+            {
+                "tracks": [
+                    {"releases": [{"versionCodes": ["nope", None, "", "7", "3"]}]}
+                ]
+            }
+        )
+        == 7,
+    )
+    check(
+        "blank release name is None",
+        parse_version_name_from_release_name("   ") is None,
+    )
+    check(
+        "missing release name is None",
+        parse_version_name_from_release_name(None) is None,
+    )
+
+    try:
+        version_info_from_manifest_bytes(b"ab")
+        check("manifest shorter than 4 bytes raises", False)
+    except ValueError as exc:
+        check("manifest shorter than 4 bytes raises", "too small" in str(exc))
+
+    truncated = enc_varint((1 << 3) | _WIRE_LEN) + enc_varint(20) + b"\x01\x02"
+    try:
+        version_info_from_manifest_bytes(truncated)
+        check("truncated protobuf manifest raises", False)
+    except ValueError as exc:
+        check("truncated protobuf manifest raises", "truncated" in str(exc))
+
+    hex_string = node_with_attribute(
+        enc_len(2, b"versionCode") + enc_len(3, b"0x2a")
+    )
+    check(
+        "versionCode from hex string 0x2a",
+        version_info_from_manifest_bytes(hex_string).version_code == 42,
+    )
+
+    def compiled_code(primitive_field: int, primitive_value: int) -> VersionInfo:
+        item = enc_len(7, enc_var(primitive_field, primitive_value))
+        attr = enc_var(5, _VERSION_CODE_ATTR) + enc_len(6, item)
+        return version_info_from_manifest_bytes(node_with_attribute(attr))
+
+    check(
+        "versionCode from current primitive field 6",
+        compiled_code(6, 42).version_code == 42,
+    )
+    check(
+        "versionCode from legacy primitive field 4",
+        compiled_code(4, 9).version_code == 9,
+    )
+    check(
+        "versionCode from hex primitive field 7",
+        compiled_code(7, 0x2A).version_code == 42,
+    )
+    check(
+        "decimal primitive field 6 is signed int32",
+        compiled_code(6, 0xFFFFFFFF).version_code == -1,
+    )
+
+    name_item = enc_len(2, enc_len(1, b"1.2.3-alpha"))
+    name_attr = enc_len(2, b"versionName") + enc_len(6, name_item)
+    code_attr = enc_len(2, b"versionCode") + enc_len(3, b"7")
+    child = enc_len(1, enc_len(4, name_attr))
+    parent = enc_len(4, code_attr) + enc_len(5, child)
+    merged = version_info_from_manifest_bytes(enc_len(1, parent))
+    check(
+        "child versionName fills when parent has only versionCode",
+        merged.version_name == "1.2.3-alpha",
+    )
+    check("parent versionCode is kept", merged.version_code == 7)
+
+    child_code = enc_len(2, b"versionCode") + enc_len(3, b"9")
+    child_node = enc_len(1, enc_len(4, child_code))
+    parent_wins = enc_len(4, code_attr) + enc_len(5, child_node)
+    check(
+        "parent versionCode wins over a child versionCode",
+        version_info_from_manifest_bytes(enc_len(1, parent_wins)).version_code == 7,
+    )
+
+    inner = b""
+    for _ in range(70):
+        inner = enc_len(5, enc_len(1, inner))
+    try:
+        version_info_from_manifest_bytes(enc_len(1, inner))
+        check("protobuf XmlNode nesting over 64 raises", False)
+    except ValueError as exc:
+        check("protobuf XmlNode nesting over 64 raises", "nesting too deep" in str(exc))
+
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        aab = Path(tmp) / "empty.aab"
+        with zipfile.ZipFile(aab, "w") as zf:
+            zf.writestr("META-INF/MANIFEST.MF", b"Manifest-Version: 1.0\n")
+        try:
+            read_version_info_from_aab(aab)
+            check("AAB missing AndroidManifest raises", False)
+        except ValueError as exc:
+            check(
+                "AAB missing AndroidManifest raises",
+                "AndroidManifest.xml" in str(exc),
+            )
+
+
 def _fixture_proto_manifest_path() -> Path:
     return Path(__file__).resolve().parent.parent / "fixtures" / (
         "aab-proto-manifest-vc42.bin"
@@ -825,6 +956,7 @@ def _self_test() -> int:
         )
         == {"0.1.0-alpha"},
     )
+    _parser_edge_self_checks(check)
 
     fixture = _fixture_proto_manifest_path()
     check("proto fixture file exists", fixture.is_file())

@@ -766,18 +766,17 @@ public class AdminAuthController {
           authService.waitForPasswordlessAuth(
               request.authAttemptId(), request.challengeCode(), request.waiterSecret());
 
-      auditCtx.ifPresent(
-          ctx ->
-              auditLogService.log(
-                  AuditHelper.createAdminAudit(
-                          context,
-                          EventType.ADMIN_LOGIN,
-                          AdminAuditConstants.LOGIN_MFA_SESSION_ISSUED,
-                          ctx.tenantId())
-                      .eventStatus(EventStatus.SUCCESS)
-                      .adminId(ctx.adminId())
-                      .eventDetails("Username: " + ctx.username())
-                      .build()));
+      auditCtx.ifPresent(ctx ->
+          auditLogService.log(
+              AuditHelper.createAdminAudit(
+                      context,
+                      EventType.ADMIN_LOGIN,
+                      AdminAuditConstants.LOGIN_MFA_SESSION_ISSUED,
+                      ctx.tenantId())
+                  .eventStatus(EventStatus.SUCCESS)
+                  .adminId(ctx.adminId())
+                  .eventDetails("Username: " + ctx.username())
+                  .build()));
 
       logger.info("✅ Passwordless authentication successful");
       return ResponseEntity.ok(wrapWithSessionCookie(response, httpResponse));

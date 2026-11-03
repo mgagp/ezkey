@@ -46,15 +46,14 @@ public final class AuditHelper {
    * @return client IP address or null if request is null
    */
   public static String extractClientIp(HttpServletRequest request) {
-    return extractClientIp(request, null);
+    return extractClientIp(request, null, false);
   }
 
   /**
    * Extract client IP address from HTTP request with optional trusted-proxy CIDR list.
    *
-   * <p>Uses {@link ClientIpResolver#resolve} so that proxy headers (CF-Connecting-IP,
-   * X-Forwarded-For, X-Real-IP) are only trusted when the direct connection is from one of the
-   * given CIDRs.
+   * <p>Does not trust {@code CF-Connecting-IP}. Prefer {@link #extractClientIp(HttpServletRequest,
+   * Collection, boolean)} when the Cloudflare edge setting is available.
    *
    * @param request the HTTP servlet request
    * @param trustedProxyCidrs optional list of CIDR or single-IP strings; null or empty means only
@@ -63,11 +62,27 @@ public final class AuditHelper {
    */
   public static String extractClientIp(
       HttpServletRequest request, Collection<String> trustedProxyCidrs) {
+    return extractClientIp(request, trustedProxyCidrs, false);
+  }
+
+  /**
+   * Extract client IP address from HTTP request with trusted-proxy CIDRs and optional Cloudflare
+   * edge trust.
+   *
+   * @param request the HTTP servlet request
+   * @param trustedProxyCidrs optional list of CIDR or single-IP strings; null or empty means only
+   *     remoteAddr is used
+   * @param trustCloudflareConnectingIp when true and remoteAddr is trusted, prefer CF-Connecting-IP
+   * @return client IP address or null if request is null
+   */
+  public static String extractClientIp(
+      HttpServletRequest request,
+      Collection<String> trustedProxyCidrs,
+      boolean trustCloudflareConnectingIp) {
     if (request == null) {
       return null;
     }
-    String resolved = ClientIpResolver.resolve(request, trustedProxyCidrs);
-    return resolved != null ? resolved : null;
+    return ClientIpResolver.resolve(request, trustedProxyCidrs, trustCloudflareConnectingIp);
   }
 
   /**

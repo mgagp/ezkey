@@ -120,6 +120,25 @@ allowlist_reason() {
 
 # Prefer a usable readelf on PATH, then NDK llvm prebuilt (Linux + Windows Git Bash).
 # On Windows the NDK ships llvm-readelf.exe — command -v llvm-readelf alone misses it.
+# zipalign.exe under build-tools has the same gap.
+
+# Git Bash often has no ANDROID_HOME. Fall back to the default Windows SDK layout.
+android_sdk_root() {
+  local root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+  if [[ -n "$root" && -d "$root" ]]; then
+    printf '%s\n' "$root"
+    return 0
+  fi
+  local local_app="${LOCALAPPDATA:-}"
+  if [[ -n "$local_app" ]] && command -v cygpath >/dev/null 2>&1; then
+    local_app="$(cygpath -u "$local_app" 2>/dev/null || true)"
+  fi
+  if [[ -n "$local_app" && -d "${local_app}/Android/Sdk" ]]; then
+    printf '%s\n' "${local_app}/Android/Sdk"
+    return 0
+  fi
+  return 1
+}
 is_usable_bin() {
   local p="$1"
   [[ -n "$p" && -f "$p" ]] || return 1
@@ -140,7 +159,8 @@ find_readelf() {
     fi
   done
 
-  local sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+  local sdk_root=""
+  sdk_root="$(android_sdk_root || true)"
   local ndk_root=""
   if [[ -n "$sdk_root" && -d "${sdk_root}/ndk" ]]; then
     ndk_root="$(find "${sdk_root}/ndk" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort -V | tail -1 || true)"
@@ -172,17 +192,28 @@ find_readelf() {
 }
 
 find_zipalign() {
-  if command -v zipalign >/dev/null 2>&1; then
-    command -v zipalign
-    return 0
-  fi
-  local sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+  local name resolved
+  # Git Bash: command -v zipalign misses zipalign.exe, and .exe often has no Unix +x.
+  for name in zipalign zipalign.exe; do
+    resolved="$(command -v "$name" 2>/dev/null || true)"
+    if is_usable_bin "$resolved"; then
+      printf '%s\n' "$resolved"
+      return 0
+    fi
+  done
+
+  local sdk_root=""
+  sdk_root="$(android_sdk_root || true)"
   if [[ -z "$sdk_root" || ! -d "${sdk_root}/build-tools" ]]; then
     return 1
   fi
   local candidate
-  candidate="$(find "${sdk_root}/build-tools" -type f -name zipalign 2>/dev/null | sort -V | tail -1 || true)"
-  if [[ -n "$candidate" && -x "$candidate" ]]; then
+  candidate="$(
+    find "${sdk_root}/build-tools" -type f \
+      \( -name zipalign -o -name zipalign.exe \) 2>/dev/null \
+      | sort -V | tail -1 || true
+  )"
+  if is_usable_bin "$candidate"; then
     printf '%s\n' "$candidate"
     return 0
   fi
@@ -334,9 +365,10 @@ done
 ZIPALIGN_STATUS="skipped (AAB)"
 if [[ "$EXT_LOWER" == "apk" ]]; then
   ZIPALIGN_BIN="$(find_zipalign)" || {
-    echo "error: zipalign required for APK check (install Android build-tools 35+)" >&2
+    echo "error: zipalign required for APK check (build-tools 35+; on Windows Git Bash: zipalign.exe)" >&2
     exit 2
   }
+  echo "    zipalign: ${ZIPALIGN_BIN}"
   echo "==> zipalign -c -P 16 -v 4"
   if "$ZIPALIGN_BIN" -c -P 16 -v 4 "$ARTIFACT_ABS"; then
     ZIPALIGN_STATUS="PASS"

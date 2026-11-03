@@ -23,7 +23,11 @@ const sealedStorageKeyFor = (key: string) => `${SEALED_SECRET_PREFIX}.${key}`;
 
 type KeychainLike = Pick<
   typeof Keychain,
-  'setGenericPassword' | 'getGenericPassword' | 'resetGenericPassword' | 'ACCESSIBLE'
+  | 'setGenericPassword'
+  | 'getGenericPassword'
+  | 'resetGenericPassword'
+  | 'getAllGenericPasswordServices'
+  | 'ACCESSIBLE'
 >;
 
 type MetadataStore = Pick<typeof AsyncStorage, 'setItem' | 'getItem' | 'removeItem'>;
@@ -114,6 +118,25 @@ class SecureStorageDelegate {
     }
 
     await this.keychain.resetGenericPassword({service: serviceFor(key)});
+  }
+
+  /**
+   * Deletes every Keychain item whose logical key starts with one of the given prefixes, including
+   * items no metadata points to any more: Keychain items survive app uninstall on iOS and outlive a
+   * corrupt enrollment collection (clear-all true local reset, MOB-015; ADR-MOB-0007). Sealed
+   * AsyncStorage payloads are not touched here; the caller sweeps those.
+   *
+   * @param keyPrefixes logical key prefixes (e.g. `ezkey-mobile/enrollment-proof-token.`)
+   * @return number of Keychain items deleted
+   */
+  async removeAllWithKeyPrefixes(keyPrefixes: string[]): Promise<number> {
+    const servicePrefixes = keyPrefixes.map(serviceFor);
+    const services = await this.keychain.getAllGenericPasswordServices();
+    const matching = services.filter(service =>
+      servicePrefixes.some(prefix => service.startsWith(prefix)),
+    );
+    await Promise.all(matching.map(service => this.keychain.resetGenericPassword({service})));
+    return matching.length;
   }
 }
 

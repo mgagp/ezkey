@@ -31,9 +31,17 @@ Goal: new images that speak **blob-only** boot against the **existing** blob and
 
 1. **Record baseline** in the operator notes (not in public chat): deploy SHA from `DEPLOYED.md`, blob `version`, ordered list of **kids** (unsigned primary + enabled ids from Admin encryption-key UI or a SELECT on `ezkey_encryption_key` metadata only), and a **canary** plan (§2.3).
 2. **Snapshot / tag rollback image** if the current Lightsail/deploy practice still tags `rollback-pre-<sha>` (see ledger notes).
-3. **Deploy** Admin → Auth → Integration (same compose rolling habit as today). Admin writer must become healthy first so peripherals can pass bootstrap-wait.
-4. **Do not** delete `master.key`. **Do not** truncate `ezkey_keyset_blob`.
-5. **Leftover keyset file:** after healthy boot + canary, rename in place to a non-runtime name (e.g. `keyset.json.encrypted.orphaned-<date>`) with mode `600`, leave on the volume until one more successful restart; then optional delete. APIs must ignore it (DB-only code). Prefer rename-over-delete so rollback still has a file if an emergency temporary FILE hotfix were ever needed (should be unnecessary).
+3. **DB roles / grants (Patrick B1):** community volumes created from `main` may **lack** `ezkey_crypto`. Init scripts do not re-run on an existing Postgres volume. Before or as part of deploy, ensure `EZKEY_DB_CRYPTO_PASSWORD` is set in Lightsail `.env` (**no default** — compose fails closed if unset) and let `db-grants` run `apply-grants.sh`, which creates `ezkey_crypto` idempotently when missing (`ensure-crypto-role.sql`). Lab proof: `./scripts/db/test-upgrade-crypto-role.sh`. crypto-api itself is **not** on the community compose; the role still must exist so `ON_ERROR_STOP` grants do not abort.
+4. **Deploy** Admin → Auth → Integration (same compose rolling habit as today). Admin writer must become healthy first so peripherals can pass bootstrap-wait.
+5. **Do not** delete `master.key`. **Do not** truncate `ezkey_keyset_blob`.
+6. **Leftover keyset file:** after healthy boot + canary, rename in place to a non-runtime name (e.g. `keyset.json.encrypted.orphaned-<date>`) with mode `600`, leave on the volume until one more successful restart; then optional delete. APIs must ignore it (DB-only code). Prefer rename-over-delete so rollback still has a file if an emergency temporary FILE hotfix were ever needed (should be unnecessary).
+
+### 2.1a Pre-PR volume + `ezkey_crypto` (B1)
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| `db-grants` aborts on first `GRANT`/`REVOKE … ezkey_crypto` | Role missing on volume initialized before ADR-0016 | `apply-grants.sh` ensures the role (password from `EZKEY_DB_CRYPTO_PASSWORD` only — never a SQL default) |
+| Lightsail compose refuses to start | `EZKEY_DB_CRYPTO_PASSWORD` unset | Set in private `.env` (no default in Lightsail compose — Patrick m3) |
 
 ### 2.2 Pre-checks (gate deploy)
 

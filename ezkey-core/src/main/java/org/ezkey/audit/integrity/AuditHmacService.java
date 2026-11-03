@@ -15,6 +15,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -23,6 +25,8 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
+import java.util.EnumSet;
+import java.util.Set;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import org.ezkey.audit.domain.entity.AuditLog;
@@ -329,8 +333,10 @@ public class AuditHmacService {
   /**
    * Generates a new 256-bit HMAC key file at the specified path.
    *
-   * <p>Creates parent directories if they do not exist and writes a Base64-encoded 32-byte key.
-   * This auto-generation mirrors the Tink master key behavior for first-startup convenience.
+   * <p>Creates parent directories if they do not exist and writes a Base64-encoded 32-byte key with
+   * POSIX mode {@code 600} when the filesystem supports it (same bar as {@code master.key};
+   * ADR-0016 §2.9). On Windows, POSIX permissions are skipped — operators should apply an ACL
+   * equivalent.
    *
    * @param path the file path to write the key to
    * @throws IOException if the file cannot be written
@@ -340,7 +346,67 @@ public class AuditHmacService {
     byte[] keyBytes = new byte[32];
     new SecureRandom().nextBytes(keyBytes);
     String keyBase64 = Base64.getEncoder().encodeToString(keyBytes);
-    Files.writeString(path, keyBase64, StandardCharsets.UTF_8);
-    logger.info("Generated new audit HMAC key file: {}", path);
+    // Create with owner-only mode when POSIX supports it so the file is never world-readable
+    // under a brief umask window before chmod (ADR-0016 §2.9 / review nit).
+    try {
+      Files.createFile(
+          path,
+          PosixFilePermissions.asFileAttribute(
+              EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE)));
+      Files.writeString(path, keyBase64, StandardCharsets.UTF_8);
+    } catch (UnsupportedOperationException e) {
+      Files.writeString(path, keyBase64, StandardCharsets.UTF_8);
+    }
+    applyOwnerReadWriteOnly(path);
+    logger.info("Generated new audit HMAC key file: {} (mode 600 when POSIX)", path);
+  }
+
+  /**
+   * Restricts the HMAC key file to owner read/write only on POSIX filesystems.
+   *
+   * <p>Fail-closed on POSIX {@link IOException}: the key file is deleted and the error rethrown so
+   * a world-readable HMAC key is never left on disk after a failed chmod (#961 Patrick m4). Windows
+   * (no POSIX permissions) skips with a debug log — operators apply an ACL equivalent.
+   *
+   * @param path the key file path
+   * @throws IOException when POSIX mode {@code 600} cannot be applied
+   */
+  void applyOwnerReadWriteOnly(Path path) throws IOException {
+    try {
+      applyPosixOwnerReadWrite(path);
+      logger.debug(
+          "Set audit HMAC key permissions to {}",
+          PosixFilePermissions.toString(
+              EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE)));
+    } catch (UnsupportedOperationException e) {
+      logger.debug(
+          "POSIX permissions not supported for audit HMAC key at {} (Windows ACL equivalent)",
+          path);
+    } catch (IOException e) {
+      try {
+        Files.deleteIfExists(path);
+      } catch (IOException deleteFailure) {
+        logger.error(
+            "Failed to remove audit HMAC key after chmod failure at {}: {}",
+            path,
+            deleteFailure.getMessage());
+      }
+      throw new IOException(
+          "Refusing to keep audit HMAC key without mode 600 at " + path + ": " + e.getMessage(), e);
+    }
+  }
+
+  /**
+   * Applies owner-only POSIX mode {@code 600}. Package-visible for tests that simulate chmod
+   * failure while the key file still exists (#961 P-M4).
+   *
+   * @param path key file path
+   * @throws IOException if POSIX permissions cannot be set
+   * @throws UnsupportedOperationException when the filesystem has no POSIX view
+   */
+  void applyPosixOwnerReadWrite(Path path) throws IOException {
+    Set<PosixFilePermission> perms =
+        EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
+    Files.setPosixFilePermissions(path, perms);
   }
 }

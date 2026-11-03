@@ -839,18 +839,16 @@ public class KeyRotationService {
     if (oldPrimaryKeyId != null && !oldPrimaryKeyId.equals(newPrimaryKeyId)) {
       keyRepository
           .findById(oldPrimaryKeyId)
-          .ifPresent(
-              oldKey -> {
-                if (oldKey.getKeyStatus() == KeyStatus.PRIMARY) {
-                  logger.debug(
-                      "Demoting old primary key {} to ENABLED",
-                      Long.toUnsignedString(oldPrimaryKeyId));
-                  oldKey.setKeyStatus(KeyStatus.ENABLED);
-                  oldKey.setPromotedPrimaryAt(null);
-                  migrationScopeService.applyDemotionBaseline(oldKey);
-                  keyRepository.save(oldKey);
-                }
-              });
+          .ifPresent(oldKey -> {
+            if (oldKey.getKeyStatus() == KeyStatus.PRIMARY) {
+              logger.debug(
+                  "Demoting old primary key {} to ENABLED", Long.toUnsignedString(oldPrimaryKeyId));
+              oldKey.setKeyStatus(KeyStatus.ENABLED);
+              oldKey.setPromotedPrimaryAt(null);
+              migrationScopeService.applyDemotionBaseline(oldKey);
+              keyRepository.save(oldKey);
+            }
+          });
     }
 
     // FOURTH: Sync all other keys in keyset (ensure they are ENABLED, not PRIMARY)

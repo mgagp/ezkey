@@ -10,6 +10,11 @@ name: ezkey_mobile unit tests
 
 on:
   workflow_call:
+    inputs:
+      run-heavy:
+        description: Run the release-build 16 KB alignment gate (ci.yml skips it on the post-merge push)
+        type: boolean
+        default: true
   workflow_dispatch:
 
 permissions:
@@ -151,6 +156,42 @@ jobs:
           chmod +x gradlew
           ./gradlew :app:testDebugUnitTest --no-daemon --stacktrace
 
+      # In-app Open Source Licenses (#1109): the committed AboutLibraries export must match
+      # the release runtime classpath. js-validate then checks the app snapshot against it.
+      - name: Android license export freshness
+        working-directory: ezkey_mobile/android
+        run: |
+          ./gradlew :app:exportLibraryDefinitions --no-daemon
+          if ! git diff --exit-code -- ../licenses/android-libraries.json; then
+            echo "::error::licenses/android-libraries.json is stale. From ezkey_mobile/: yarn license:android && yarn license:app-data, then commit both files."
+            exit 1
+          fi
+
+      # No-analytics claim (#1147): ML Kit's datatransport must have no upload backend
+      # registered in the merged release manifest (app manifest removes CCT).
+      - name: Guard — no datatransport upload backend
+        working-directory: ezkey_mobile/android
+        run: |
+          ./gradlew :app:processReleaseMainManifest --no-daemon
+          manifest=app/build/intermediates/merged_manifest/release/processReleaseMainManifest/AndroidManifest.xml
+          test -f "$manifest"
+          if grep -n 'android:name="backend:' "$manifest"; then
+            echo "::error::A datatransport upload backend is registered in the release manifest. ML Kit telemetry would reach Google; see the TransportBackendDiscovery note in app/src/main/AndroidManifest.xml (#1147)."
+            exit 1
+          fi
+
+      # Backup / transfer exclusion (#1154): Keystore keys never move, so app data must not either.
+      - name: Guard — backup and transfer excluded
+        working-directory: ezkey_mobile/android
+        run: |
+          manifest=app/build/intermediates/merged_manifest/release/processReleaseMainManifest/AndroidManifest.xml
+          grep -q 'android:allowBackup="false"' "$manifest" || { echo "::error::allowBackup must stay false (#1154)."; exit 1; }
+          grep -q 'android:dataExtractionRules="@xml/data_extraction_rules"' "$manifest" || { echo "::error::dataExtractionRules missing from the release manifest (#1154)."; exit 1; }
+          rules=app/src/main/res/xml/data_extraction_rules.xml
+          for section in cloud-backup device-transfer cross-platform-transfer; do
+            grep -q "<${section}" "$rules" || { echo "::error::${section} section missing in ${rules} (#1154)."; exit 1; }
+          done
+
       - name: Upload unit test report
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
@@ -162,6 +203,8 @@ jobs:
   # 16 KB page-size gate (#659): release APK must pass ELF PT_LOAD + GNU_RELRO checks
   # (RN 0.87.1 Maven prebuilts may be allowlisted residuals only). No useLegacyPackaging.
   android-16kb-alignment:
+    # Direct workflow_dispatch has no inputs: null != false, so the gate runs.
+    if: inputs.run-heavy != false
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:

@@ -23,6 +23,8 @@ MANIFEST
 
 # Virtual environments
 .env
+!.env.example
+api-key*.env
 .venv
 env/
 venv/

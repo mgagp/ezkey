@@ -144,11 +144,10 @@ public class AuditEntryIntegrityConciliationService {
     conciliationRepository
         .findByAuditLogIdAndStatus(
             entry.getAuditLogId(), AuditEntryIntegrityConciliationStatus.ACTIVE)
-        .ifPresent(
-            prior -> {
-              prior.setStatus(AuditEntryIntegrityConciliationStatus.SUPERSEDED);
-              conciliationRepository.save(prior);
-            });
+        .ifPresent(prior -> {
+          prior.setStatus(AuditEntryIntegrityConciliationStatus.SUPERSEDED);
+          conciliationRepository.save(prior);
+        });
 
     OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
     String fingerprint = computeObservedStateFingerprint(entry);

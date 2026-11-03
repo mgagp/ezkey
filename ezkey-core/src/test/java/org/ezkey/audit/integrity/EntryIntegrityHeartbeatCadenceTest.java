@@ -47,18 +47,17 @@ class EntryIntegrityHeartbeatCadenceTest {
   void collectRangeViolations_heartbeatOncePerPage() {
     when(conciliationService.findActiveByAuditLogId(anyLong())).thenReturn(Optional.empty());
     when(auditLogRepository.findAll(any(Specification.class), any(Pageable.class)))
-        .thenAnswer(
-            inv -> {
-              Pageable pageable = inv.getArgument(1);
-              int page = pageable.getPageNumber();
-              if (page == 0) {
-                return new PageImpl<>(List.of(minimalLog(1L)), PageRequest.of(0, 500), 501);
-              }
-              if (page == 1) {
-                return new PageImpl<>(List.of(minimalLog(2L)), PageRequest.of(1, 500), 501);
-              }
-              return new PageImpl<>(List.of(), PageRequest.of(page, 500), 501);
-            });
+        .thenAnswer(inv -> {
+          Pageable pageable = inv.getArgument(1);
+          int page = pageable.getPageNumber();
+          if (page == 0) {
+            return new PageImpl<>(List.of(minimalLog(1L)), PageRequest.of(0, 500), 501);
+          }
+          if (page == 1) {
+            return new PageImpl<>(List.of(minimalLog(2L)), PageRequest.of(1, 500), 501);
+          }
+          return new PageImpl<>(List.of(), PageRequest.of(page, 500), 501);
+        });
 
     EntryIntegrityViolationClassifier classifier =
         new EntryIntegrityViolationClassifier(auditHmacService, conciliationService);

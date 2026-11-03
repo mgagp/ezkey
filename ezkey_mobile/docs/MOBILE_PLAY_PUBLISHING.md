@@ -36,6 +36,9 @@ Delivery is **AAB** (not APK). Play App Signing holds the app-signing key; you k
 
 - [x] **Data safety** answers drafted from real permissions and storage: [`MOBILE_PLAY_DATA_SAFETY.md`](MOBILE_PLAY_DATA_SAFETY.md). Paste into Play Console at submit time.
 - [x] No analytics / advertising SDKs in the current dependency set; **no surprise** telemetry.
+  The one SDK that would phone home (ML Kit usage metrics, via the QR scanner) has its upload
+  backend removed in the app manifest and guarded in CI; see
+  [`MOBILE_PLAY_DATA_SAFETY.md`](MOBILE_PLAY_DATA_SAFETY.md) § Third-party SDK telemetry (#1147).
 
 ## Technical
 
@@ -77,7 +80,7 @@ Before each Play upload:
 4. If dependencies changed, run `yarn license:app-data` and commit the JSON snapshot.
 5. Build the signed AAB (`./scripts/build-install-release-clean.sh` or `yarn android:bundle:release` with JDK 17).
 
-**Upload history:** vc4 = `0.1.0-alpha` (internal; same name as vc3 — why the policy exists). **vc5 = `0.1.1-alpha`** (patch; first upload under the policy). Do not reuse a `versionCode`.
+**Upload history:** vc4 = `0.1.0-alpha` (internal; same name as vc3 — why the policy exists). vc5 = `0.1.1-alpha` (patch; first upload under the policy). **vc6 = `0.1.2-alpha`** (patch; code-entry keypad fix #1082 on RN 0.88.1). Do not reuse a `versionCode`.
 
 ## Upload signed AAB to internal testing (CLI)
 
@@ -117,21 +120,39 @@ Each track has one active release; a new upload on that track replaces the previ
 ## In-app third-party licenses snapshot
 
 The Licenses screen reads the committed snapshot
-[`app/data/thirdPartyLicenses.json`](../app/data/thirdPartyLicenses.json), generated from
-`package.json` `dependencies` only:
+[`app/data/thirdPartyLicenses.json`](../app/data/thirdPartyLicenses.json). Each row opens the
+full license text, bundled in the app (works offline); vendor components (Google ML Kit, Play
+services, Play Core) sit in their own section with a link to their terms (#1109). Sources:
+
+| Section | Source | Refresh |
+|---------|--------|---------|
+| App libraries (JS) | Packages Metro actually puts in a release bundle, per platform (sourcemaps of `react-native bundle --dev false`), not `package.json` alone | `yarn license:app-data` |
+| Android libraries + vendor components | [`licenses/android-libraries.json`](../licenses/android-libraries.json), AboutLibraries export of the release runtime classpath; `react-android` and Hermes are added from their npm packages (RN injects their version, so the export omits them) | `yarn license:android` (JDK 17), then `yarn license:app-data` |
+| iOS libraries (#1148) | [`ios/Podfile.lock`](../ios/Podfile.lock): React Native (`React-Core`) and Hermes (`hermes-engine`), described from their npm packages. Pods from npm libraries (VisionCamera, Nitro, Keychain…) are already covered by their JS entry. The CocoaPods acknowledgements are **not** used: they cover 10 of 99 pods | `bundle exec pod install` on the Mac, then `yarn license:app-data` |
+| C/C++ libraries inside React Native (both platforms) | Folly, glog, {fmt}, double-conversion, fast_float, Boost (+ SocketRocket on iOS), compiled into `react-android` / `ReactNativeDependencies.xcframework`, which ship no license file. Upstream texts committed under [`licenses/texts/`](../licenses/texts/) (fetched at the pinned tag); versions read from `react-native/gradle/libs.versions.toml` (Android) and `ios/Podfile.lock` (iOS) | automatic on an RN bump; re-check the texts on a major version change (`RN_BUNDLED_NATIVE` in the generator) |
+
+License text comes from the package's own `LICENSE` file, else the file of a sibling package from
+the same repository (monorepos such as `@react-native/*`), else the standard MIT text with the
+`author` from `package.json`.
 
 ```bash
 cd ezkey_mobile
 yarn install --immutable
+yarn license:android   # only when native Android deps changed (Gradle, or an RN bump)
 yarn license:app-data
 ```
 
-CI (`ezkey-mobile-unit-tests` → `js-validate` → `yarn license:ci`) runs:
+CI runs:
 
-1. `yarn license:check` — direct dependency license allowlist.
-2. Snapshot freshness — regenerates the JSON and fails if the committed file differs, **ignoring
-   `generatedAt`** so timestamp-only drift does not fail. On failure it prints a concise
-   package-level diff (added / removed / version or license changes).
+1. `yarn license:check` (`js-validate`) — direct dependency license allowlist.
+2. Snapshot freshness (`js-validate`) — regenerates the JSON and fails if the committed file
+   differs, **ignoring `generatedAt`** so timestamp-only drift does not fail. On failure it prints a
+   concise package-level diff (added / removed / version or license changes).
+3. Android export freshness (`android-jvm-unit-tests`) — re-runs the AboutLibraries export and
+   fails if `licenses/android-libraries.json` changed.
+4. `Podfile.lock` freshness (`mobile-ios`, macOS) — runs `pod install` and fails if
+   `ios/Podfile.lock` changed, so the iOS section cannot lag behind a native dependency change
+   made without the Mac.
 
 When the freshness check fails (including on Dependabot PRs): run `yarn install --immutable` then
 `yarn license:app-data` from `ezkey_mobile/` and commit `app/data/thirdPartyLicenses.json` on the

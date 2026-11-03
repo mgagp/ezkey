@@ -2,11 +2,14 @@
 # Forced Auth-first keyset readiness (ADR-0012 / TB-2026-08-28).
 # Starts Auth without Admin (compose --no-deps). A lucky clean-start is not proof.
 #
+# LAB / DEV ONLY — deletes ezkey_keyset_blob. Never run against Lightsail / production.
+#
 # Usage:
 #   ./scripts/repro-auth-keyset-readiness.sh
 #   ./scripts/repro-auth-keyset-readiness.sh negative
 #   ./scripts/repro-auth-keyset-readiness.sh positive
 #   ./scripts/repro-auth-keyset-readiness.sh --build
+#   EZKEY_REPRO_I_UNDERSTAND_LAB_ONLY=1 ./scripts/repro-auth-keyset-readiness.sh
 #
 # Prerequisites: Docker; images that include this change; existing master key in
 # ezkey_encryption-secrets. Does not generate keys and does not TRUNCATE
@@ -87,7 +90,24 @@ wait_for_postgres() {
   exit 1
 }
 
+require_lab_only_confirmation() {
+  if [[ "${EZKEY_REPRO_I_UNDERSTAND_LAB_ONLY:-}" == "1" ]]; then
+    return 0
+  fi
+  if [[ ! -t 0 ]]; then
+    echo "FAIL: lab-only guard — set EZKEY_REPRO_I_UNDERSTAND_LAB_ONLY=1 to DELETE ezkey_keyset_blob (dev repro only)." >&2
+    exit 1
+  fi
+  echo "WARNING: this lab repro DELETEs ezkey_keyset_blob. Never use on Lightsail / production." >&2
+  read -r -p "Type LAB-ONLY to continue: " answer
+  if [[ "${answer}" != "LAB-ONLY" ]]; then
+    echo "Aborted." >&2
+    exit 1
+  fi
+}
+
 delete_keyset_blob_only() {
+  require_lab_only_confirmation
   docker exec "${POSTGRES_CONTAINER}" \
     psql -U postgres -d ezkey_db -v ON_ERROR_STOP=1 \
     -c "DELETE FROM ezkey_keyset_blob;"

@@ -6,7 +6,7 @@
 -- ---------------------------------------------------------------------------
 -- Schema usage
 -- ---------------------------------------------------------------------------
-GRANT USAGE ON SCHEMA public TO ezkey_admin, ezkey_auth, ezkey_integration;
+GRANT USAGE ON SCHEMA public TO ezkey_admin, ezkey_auth, ezkey_integration, ezkey_crypto;
 
 -- ---------------------------------------------------------------------------
 -- Ensure partition helper is owned by migrate role (SECURITY DEFINER)
@@ -30,8 +30,10 @@ GRANT EXECUTE ON FUNCTION create_monthly_partition(TEXT, TEXT, TIMESTAMPTZ, TIME
 -- ---------------------------------------------------------------------------
 -- Reset table privileges for app roles (idempotent re-apply)
 -- ---------------------------------------------------------------------------
-REVOKE ALL ON ALL TABLES IN SCHEMA public FROM ezkey_admin, ezkey_auth, ezkey_integration;
-REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM ezkey_admin, ezkey_auth, ezkey_integration;
+REVOKE ALL ON ALL TABLES IN SCHEMA public
+  FROM ezkey_admin, ezkey_auth, ezkey_integration, ezkey_crypto;
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA public
+  FROM ezkey_admin, ezkey_auth, ezkey_integration, ezkey_crypto;
 
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public
   TO ezkey_admin, ezkey_auth, ezkey_integration;
@@ -123,6 +125,12 @@ GRANT SELECT, INSERT, UPDATE ON TABLE
 TO ezkey_integration;
 
 -- ---------------------------------------------------------------------------
+-- ezkey_crypto — crypto-api lab stack: SELECT only on keyset blob (ADR-0016)
+-- No grant on ezkey_encryption_key or any other table (design §2.5 / §2.6).
+-- ---------------------------------------------------------------------------
+GRANT SELECT ON TABLE ezkey_keyset_blob TO ezkey_crypto;
+
+-- ---------------------------------------------------------------------------
 -- Flyway history — migrate role only (no app access)
 -- ---------------------------------------------------------------------------
 DO $$
@@ -131,7 +139,8 @@ BEGIN
     SELECT 1 FROM information_schema.tables
     WHERE table_schema = 'public' AND table_name = 'flyway_schema_history'
   ) THEN
-    REVOKE ALL ON TABLE flyway_schema_history FROM ezkey_admin, ezkey_auth, ezkey_integration;
+    REVOKE ALL ON TABLE flyway_schema_history
+      FROM ezkey_admin, ezkey_auth, ezkey_integration, ezkey_crypto;
   END IF;
 END
 $$;

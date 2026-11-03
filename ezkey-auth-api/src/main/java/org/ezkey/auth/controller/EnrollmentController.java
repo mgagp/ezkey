@@ -218,7 +218,10 @@ public class EnrollmentController {
 
     String clientIp =
         AuditHelper.extractClientIp(
-            httpRequest, trustedProxyProperties != null ? trustedProxyProperties.getCidrs() : null);
+            httpRequest,
+            trustedProxyProperties != null ? trustedProxyProperties.getCidrs() : null,
+            trustedProxyProperties != null
+                && trustedProxyProperties.isTrustCloudflareConnectingIp());
     String userAgent = AuditHelper.extractUserAgent(httpRequest);
 
     // Validation: enrollmentId + enrollmentProofToken required
@@ -360,7 +363,10 @@ public class EnrollmentController {
 
     String clientIp =
         AuditHelper.extractClientIp(
-            httpRequest, trustedProxyProperties != null ? trustedProxyProperties.getCidrs() : null);
+            httpRequest,
+            trustedProxyProperties != null ? trustedProxyProperties.getCidrs() : null,
+            trustedProxyProperties != null
+                && trustedProxyProperties.isTrustCloudflareConnectingIp());
     String userAgent = AuditHelper.extractUserAgent(httpRequest);
     Integer verifyTenantId = resolveTenantIdForAudit(req.enrollmentId());
 

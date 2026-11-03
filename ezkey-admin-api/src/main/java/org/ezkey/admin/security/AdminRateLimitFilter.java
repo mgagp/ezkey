@@ -216,7 +216,11 @@ public class AdminRateLimitFilter implements Filter {
   private void enforceLoginRateLimit(
       HttpServletRequest req, HttpServletResponse res, FilterChain chain)
       throws IOException, ServletException {
-    String clientId = ClientIpResolver.resolve(req, trustedProxyProperties.getCidrs());
+    String clientId =
+        ClientIpResolver.resolve(
+            req,
+            trustedProxyProperties.getCidrs(),
+            trustedProxyProperties.isTrustCloudflareConnectingIp());
     String clientIdForLog = LogSanitizer.sanitizeForLog(clientId);
 
     if (isBlocked(clientId)) {
@@ -278,7 +282,11 @@ public class AdminRateLimitFilter implements Filter {
   private void enforcePasswordlessWaitRateLimit(
       HttpServletRequest req, HttpServletResponse res, FilterChain chain)
       throws IOException, ServletException {
-    String clientId = ClientIpResolver.resolve(req, trustedProxyProperties.getCidrs());
+    String clientId =
+        ClientIpResolver.resolve(
+            req,
+            trustedProxyProperties.getCidrs(),
+            trustedProxyProperties.isTrustCloudflareConnectingIp());
     String clientIdForLog = LogSanitizer.sanitizeForLog(clientId);
 
     byte[] body = readBodyCapped(req.getInputStream(), MAX_WAIT_BODY_BYTES);

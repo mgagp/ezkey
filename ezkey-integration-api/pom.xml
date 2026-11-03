@@ -19,6 +19,8 @@
 
   <properties>
     <m2e.apt.activation>jdt_apt</m2e.apt.activation>
+    <!-- Ship committed root THIRD-PARTY.txt under META-INF/licenses/ in the JAR. -->
+    <ezkey.skip.third-party.licenses.copy>false</ezkey.skip.third-party.licenses.copy>
   </properties>
 
   <dependencies>

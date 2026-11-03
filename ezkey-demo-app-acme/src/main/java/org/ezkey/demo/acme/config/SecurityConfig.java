@@ -54,16 +54,14 @@ public class SecurityConfig {
     csrfRepository.setHeaderName("X-CSRF-TOKEN");
 
     http.authorizeHttpRequests(authz -> authz.anyRequest().permitAll())
-        .csrf(
-            csrf ->
-                csrf.csrfTokenRequestHandler(csrfHandler)
-                    .csrfTokenRepository(csrfRepository)
-                    .ignoringRequestMatchers("/actuator/**"))
+        .csrf(csrf ->
+            csrf.csrfTokenRequestHandler(csrfHandler)
+                .csrfTokenRepository(csrfRepository)
+                .ignoringRequestMatchers("/actuator/**"))
         .exceptionHandling(
             exceptions -> exceptions.accessDeniedHandler(new LoginCsrfAccessDeniedHandler()))
-        .headers(
-            headers ->
-                headers.referrerPolicy(referrer -> referrer.policy(ReferrerPolicy.NO_REFERRER)))
+        .headers(headers ->
+            headers.referrerPolicy(referrer -> referrer.policy(ReferrerPolicy.NO_REFERRER)))
         .httpBasic(AbstractHttpConfigurer::disable)
         .formLogin(AbstractHttpConfigurer::disable)
         .logout(AbstractHttpConfigurer::disable);

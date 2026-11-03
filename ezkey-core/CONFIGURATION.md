@@ -12,11 +12,12 @@ instance metadata. Applications that depend on ezkey-core declare these properti
 | Property | Docker env var | Default | Obligation |
 |---|---|---|---|
 | `ezkey.encryption.enabled` | — | `true` | optionnel |
-| `ezkey.encryption.required` | `EZKEY_ENCRYPTION_REQUIRED` | `false` | optionnel [prod] / **true [docker]** |
+| `ezkey.encryption.required` | `EZKEY_ENCRYPTION_REQUIRED` | `true` | optionnel [prod] / **true [docker]** |
 | `ezkey.encryption.master-key-file` | — | *(null)* | requis [docker] |
-| `ezkey.encryption.keyset-file` | — | *(null)* | requis [docker] lors du mode FILE/HYBRID |
+| `ezkey.encryption.keyset-file` | — | *(null)* | unused at runtime (ADR-0016); retained for config compatibility only |
 | `ezkey.encryption.algorithm` | — | `AES256_GCM` | optionnel |
-| `ezkey.encryption.keyset.storage-mode` | — | `DATABASE` | optionnel |
+| `ezkey.encryption.keyset.storage-mode` | — | `DATABASE` | optionnel (DATABASE only) |
+| `ezkey.encryption.keyset.version-check-interval` | — | `PT5S` | optionnel (clamped ≤ 5 s) |
 | `ezkey.encryption.keyset.writer` | `EZKEY_ENCRYPTION_KEYSET_WRITER` | `false` | **true [admin]** |
 | `ezkey.encryption.keyset.bootstrap-wait` | `EZKEY_ENCRYPTION_KEYSET_BOOTSTRAP_WAIT` | `PT90S` | optionnel |
 | `ezkey.audit.integrity.enabled` | — | `true` | optionnel |
@@ -85,13 +86,26 @@ version check so encrypt/decrypt does not serialize on DB sync. See
 Admin-only materialization of the blob and of `ezkey_encryption_key` metadata:
 [ADR-0012](../product-docs/global/architecture-decisions.md#adr-0012-admin-owned-keyset-materialization).
 
-**HA keyset sync (operator summary):** Use `storage-mode=DATABASE` so `ezkey_keyset_blob` is the
-shared source of truth across Admin/Auth/Integration instances. On introduce, a new key stays
-`PENDING` for `rotation.sync-window-seconds` before promotion to `PRIMARY`, giving instances time
-to reload the updated keyset (async check in ADR-0008) while encrypt still uses the previous
-primary; Tink can decrypt with older ENABLED keys throughout. In the Docker stack the mode remains
-`DATABASE`, but the shared `encryption-secrets` volume also mounts the keyset file as a
-cache/backup path — do not treat that shared file alone as the multi-instance sync contract.
+**HA keyset sync (operator summary):** `storage-mode=DATABASE` only (ADR-0016). `ezkey_keyset_blob`
+is the sole runtime source of truth across Admin/Auth/Integration (and lab crypto-api). On introduce,
+a new key stays `PENDING` for `rotation.sync-window-seconds` before promotion to `PRIMARY`, giving
+instances time to reload the updated keyset (async check ≤ 5 s in ADR-0008 / ADR-0016) while encrypt
+still uses the previous primary; Tink can decrypt with older ENABLED keys throughout. The shared
+`encryption-secrets` volume holds **`master.key` and `audit-hmac.key` only** — not keyset-file
+authority.
+
+**crypto-api (local clean-start lab only):** `DATABASE`, `writer=false`, read-only DataSource with
+SELECT-only DB role on `ezkey_keyset_blob`. AEAD recovery reloads the blob. Not deployed on
+Lightsail / ezkey.online. See ADR-0016 and design pack §2.5.
+
+**Windows native checklist** (`application-windows.properties`):
+
+| Property | Admin | Auth |
+|----------|-------|------|
+| `ezkey.encryption.keyset.storage-mode` | `DATABASE` | `DATABASE` |
+| `ezkey.encryption.keyset.writer` | `true` | `false` |
+| `ezkey.encryption.keyset.degraded-mode-enabled` | `false` | `false` |
+| `ezkey.encryption.required` | `true` | `true` |
 
 **Defined in:** `TinkProperties`
 
@@ -100,25 +114,25 @@ cache/backup path — do not treat that shared file alone as the multi-instance 
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
 | `ezkey.encryption.enabled` | `boolean` | `true` | optionnel | Enable/disable encryption at rest. |
-| `ezkey.encryption.required` | `boolean` | `false` | optionnel [prod] / **requis [docker]** | When `true`, fail startup if encryption is enabled but Tink cannot initialize (SEC-002). Also fail-closed on **read** and **write** of at-rest fields via `AtRestEncryptionAccess` (ApiKey, Enrollment, AuthAttempt). Docker profile sets `true`. |
+| `ezkey.encryption.required` | `boolean` | `true` | optionnel [prod] / **requis [docker]** | When `true`, fail startup if encryption is enabled but Tink cannot initialize (SEC-002). Also fail-closed on **read** and **write** of at-rest fields via `AtRestEncryptionAccess` (ApiKey, Enrollment, AuthAttempt). Default `true` (#961 C-M1); set `false` only for explicit degraded lab tests. |
 | `ezkey.encryption.master-key-file` | `String` | *(null)* | requis [docker] | Path to the Base64-encoded 256-bit master key file (e.g. `/etc/ezkey/secrets/master.key`). |
-| `ezkey.encryption.keyset-file` | `String` | *(null)* | requis [docker] en mode FILE/HYBRID | Path to the encrypted Tink keyset file (e.g. `/etc/ezkey/keysets/keyset.json.encrypted`). |
+| `ezkey.encryption.keyset-file` | `String` | *(null)* | unused at runtime | Legacy path property; API processes do not read/write a keyset file after ADR-0016. |
 | `ezkey.encryption.algorithm` | `String` | `AES256_GCM` | optionnel | AEAD algorithm. Accepted values: `AES256_GCM`, `CHACHA20_POLY1305`. |
 
 #### Keyset Storage (`ezkey.encryption.keyset.*`)
 
-In `DATABASE` and `HYBRID` modes, `ezkey_keyset_blob.keyset_data` stores Tink's
-encrypted-keyset JSON envelope directly. The key material remains encrypted by the configured
-master key; Tink envelope metadata such as key IDs and primary-key status may remain visible and is
-treated as non-secret operational metadata.
+`ezkey_keyset_blob.keyset_data` stores Tink's encrypted-keyset JSON envelope. The key material
+remains encrypted by the configured master key; Tink envelope metadata such as key IDs (**kids**)
+and primary-key status may remain visible and is treated as non-secret operational metadata.
 
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
-| `ezkey.encryption.keyset.storage-mode` | `StorageMode` | `DATABASE` | optionnel | Enum: `FILE` (file only), `DATABASE` (DB as source of truth), `HYBRID` (both, DB preferred). Use `DATABASE` in multi-instance deployments. |
-| `ezkey.encryption.keyset.writer` | `boolean` | `false` | **requis [admin]** | When `true`, this process may upsert `ezkey_keyset_blob` and `ezkey_encryption_key` metadata. Admin API sets `true`. Auth/Integration keep the default `false` (ADR-0012). Do not reuse `rotation.enabled`. |
-| `ezkey.encryption.keyset.bootstrap-wait` | `Duration` | `PT90S` | optionnel | How long a non-writer waits for `ezkey_keyset_blob` on DATABASE/HYBRID boot before fail-closed (`required=true`). |
+| `ezkey.encryption.keyset.storage-mode` | `StorageMode` | `DATABASE` | optionnel | **DATABASE only** after ADR-0016 (`FILE` / `HYBRID` removed). |
+| `ezkey.encryption.keyset.writer` | `boolean` | `false` | **requis [admin]** | When `true`, this process may upsert `ezkey_keyset_blob` and `ezkey_encryption_key` metadata. Admin API sets `true`. Auth/Integration/crypto-api keep `false` (ADR-0012). Do not reuse `rotation.enabled`. |
+| `ezkey.encryption.keyset.bootstrap-wait` | `Duration` | `PT90S` | optionnel | How long a non-writer waits for `ezkey_keyset_blob` on boot before fail-closed (`required=true`). |
 | `ezkey.encryption.keyset.bootstrap-poll-interval` | `Duration` | `PT1S` | optionnel | Sleep between blob polls during `bootstrap-wait`. Tests may use a millisecond interval. |
-| `ezkey.encryption.keyset.degraded-mode-enabled` | `boolean` | `false` | optionnel | When true, a decryption failure triggers a DB reload and a read-only degraded mode instead of a hard failure. |
+| `ezkey.encryption.keyset.version-check-interval` | `Duration` | `PT5S` | optionnel | Async DB version-check tick. Hard upper bound **5 s** (clamped). |
+| `ezkey.encryption.keyset.degraded-mode-enabled` | `boolean` | `false` | optionnel | When true, a decryption failure triggers a DB reload path; decrypt itself remains fail-closed (never returns ciphertext as plaintext). |
 | `ezkey.encryption.keyset.max-reload-retries` | `int` | `1` | optionnel | Maximum keyset reload attempts on decryption failure. |
 
 #### Key Rotation (`ezkey.encryption.rotation.*`)
@@ -160,9 +174,9 @@ treated as non-secret operational metadata.
 ezkey.encryption.enabled=true
 ezkey.encryption.required=true
 ezkey.encryption.master-key-file=/etc/ezkey/secrets/master.key
-ezkey.encryption.keyset-file=/etc/ezkey/keysets/keyset.json.encrypted
 ezkey.encryption.algorithm=AES256_GCM
 ezkey.encryption.keyset.storage-mode=DATABASE
+ezkey.encryption.keyset.writer=true
 ```
 
 ---
@@ -399,16 +413,18 @@ is not set in that profile (Java class default applies).
 
 ### `ezkey.encryption.*`
 
-| Property | default | docker | docker-test | native (admin-api) |
+| Property | default | docker | docker-test | windows (admin / auth) |
 |---|---|---|---|---|
 | `enabled` | `true` | `true` | `true` | `true` |
-| `master-key-file` | *(null)* | `/etc/ezkey/secrets/master.key` | `/etc/ezkey/secrets/master.key` | *(null)* |
-| `keyset-file` | *(null)* | `/etc/ezkey/keysets/keyset.json.encrypted` | `/etc/ezkey/keysets/keyset.json.encrypted` | *(null)* |
+| `required` | `false` | `true` | `true` | `true` |
+| `master-key-file` | *(null)* | `/etc/ezkey/secrets/master.key` | `/etc/ezkey/secrets/master.key` | ProgramData path |
+| `keyset-file` | *(null)* | unused at runtime | unused at runtime | unused at runtime |
 | `algorithm` | `AES256_GCM` | `AES256_GCM` | `AES256_GCM` | `AES256_GCM` |
-| `keyset.storage-mode` | `DATABASE` | `DATABASE` | `DATABASE` | `FILE` |
-| `rotation.enabled` | `true` | `true` (admin) / `false` (auth, int) | `true` | `true` |
+| `keyset.storage-mode` | `DATABASE` | `DATABASE` | `DATABASE` | `DATABASE` |
+| `keyset.writer` | `false` | `true` (admin) / `false` (auth, int, crypto) | `true` (admin) | `true` / `false` |
+| `rotation.enabled` | `true` | `true` (admin) / `false` (auth, int) | `true` | `true` (admin) |
 | `rotation.schedule` | `0 0 2 * * ?` | `0 0 2 * * ?` | `0 */5 * * * ?` | `0 0 2 * * ?` |
-| `reencryption.enabled` | `true` | `true` (admin) / `false` (auth, int) | `true` | `true` |
+| `reencryption.enabled` | `true` | `true` (admin) / `false` (auth, int) | `true` | `true` (admin) |
 | `reencryption.batch-size` | `500` | `500` | `500` | `500` |
 
 ### `ezkey.audit.integrity.*`

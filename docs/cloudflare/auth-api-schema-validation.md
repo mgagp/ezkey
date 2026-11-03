@@ -174,9 +174,11 @@ Operator / Bruno: this distinction is the check. End-user apps (mobile, Demo Dev
 **not** special-case 1020 copy, `what_you_should_do`, or `ray_id` as Auth API domain errors. A
 well-formed client must not produce a schema violation; if one appears in production it is schema
 drift or an edge false positive (keep mitigation **None**, fix the packaged spec). Client-facing
-attribution for later mobile work: show Auth `detail` only when `type` starts with
-`https://ezkey.io/problems/`; otherwise a generic unreachable / request-failed string. Do not
-retry 1020 (`retryable: false`).
+attribution for authenticator clients: branch on HTTP status and `type`; **do not display**
+`detail` or `title` verbatim — map Ezkey `type` under `https://ezkey.io/problems/` to local copy;
+otherwise a generic unreachable / request-failed string
+([`CLIENT_BEHAVIOUR_CONTRACT.md`](../CLIENT_BEHAVIOUR_CONTRACT.md) §7). Do not retry 1020
+(`retryable: false`).
 
 Cloudflare format and `Accept` negotiation:
 [Error responses](https://developers.cloudflare.com/fundamentals/reference/error-responses/).

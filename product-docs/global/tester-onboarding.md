@@ -57,20 +57,23 @@ Contenu :
 
 ### Étape 6 : lien Acme
 
-Dans l'`application.properties` de l'Acme communautaire, ajouter un bloc :
+Dans l'`application.properties` de l'Acme communautaire (volume externe, pas l'image), ajouter un
+bloc de quatre lignes. Le slot n'utilise **pas** l'UUID du tenant : il porte la **clé
+d'intégration** et la **clé secrète** du tenant (étape 5), plus un code aléatoire et un libellé.
 
 ```properties
-ezkey.access-codes.<slot>.code=<code aléatoire>
+ezkey.access-codes.<slot>.code=<openssl rand -hex 16>
 ezkey.access-codes.<slot>.integration-key=<clé d'intégration du tenant>
-ezkey.access-codes.<slot>.secret-key=<ne jamais copier ici>
+ezkey.access-codes.<slot>.secret-key=<clé secrète du tenant — jamais dans le chat>
 ezkey.access-codes.<slot>.label=<court libellé, ex. prénom du testeur>
 ```
 
-- Le tenant visé est celui de l'étape 5 (son UUID).
-- Le code doit être vraiment aléatoire : la validation refuse un code simple comme « ABC ».
-- Redémarrer l'Acme après la modification.
-- Les valeurs réelles ne vont jamais dans le dépôt, un courriel ou QA Sphere, sauf le code
-  d'accès lui-même, envoyé au testeur seulement.
+- Édition : en tant que `spring`, sauvegarde `.bak`, écriture atomique (temp + `mv`), puis
+  **redémarrage du seul conteneur Acme** (les slots sont lus au démarrage JVM). Procédure Edgar :
+  [`docs/lightsail/acme-access-code-runbook.md`](../../docs/lightsail/acme-access-code-runbook.md).
+- Le code doit être 32–64 hex minuscules ; un code simple comme « ABC » fait échouer le démarrage.
+- La **clé secrète** ne va jamais dans le chat, un courriel, QA Sphere ou ce dépôt. Seul le lien
+  `/t/<code>` (et le `user_identifier`) partent au testeur.
 
 ### Étape 7 : courriel de tests
 

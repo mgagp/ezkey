@@ -81,16 +81,15 @@ class NightlyIntegrityValidationSchedulerTest {
 
     verify(validationService)
         .validateWindow(
-            argThat(
-                windowEnd -> {
-                  OffsetDateTime expected =
-                      AuditChainScheduler.roundDownToWindow(OffsetDateTime.now(ZoneOffset.UTC), 5);
-                  long deltaSeconds = Math.abs(ChronoUnit.SECONDS.between(windowEnd, expected));
-                  return deltaSeconds < 300
-                      && windowEnd.getSecond() == 0
-                      && windowEnd.getNano() == 0
-                      && windowEnd.getMinute() % 5 == 0;
-                }));
+            argThat(windowEnd -> {
+              OffsetDateTime expected =
+                  AuditChainScheduler.roundDownToWindow(OffsetDateTime.now(ZoneOffset.UTC), 5);
+              long deltaSeconds = Math.abs(ChronoUnit.SECONDS.between(windowEnd, expected));
+              return deltaSeconds < 300
+                  && windowEnd.getSecond() == 0
+                  && windowEnd.getNano() == 0
+                  && windowEnd.getMinute() % 5 == 0;
+            }));
     verify(nightlyTerminalService).tryInsertNightlyTerminalSucceeded(any());
     verify(jobLastRunService)
         .recordSuccess(eq(ScheduledJobKey.NIGHTLY_INTEGRITY_VALIDATION), any());

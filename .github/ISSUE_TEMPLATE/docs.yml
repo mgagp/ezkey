@@ -1,0 +1,46 @@
+name: Documentation
+description: Docs, product-docs, or operator guidance improvements.
+title: "docs: "
+labels:
+  - "type:docs"
+  - "lane:a"
+  - "priority:p3"
+  - "status:needs-challenge"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for documentation gaps or corrections. After submit, ensure a `component:*`
+        label is set. Labeling rules:
+        [.cursor/rules/github-issue-labels.mdc](https://github.com/mgagp/ezkey/blob/main/.cursor/rules/github-issue-labels.mdc).
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Primary docs surface (apply the matching `component:*` label after create if needed).
+      options:
+        - methodology
+        - site
+        - admin-ui
+        - admin-api
+        - auth-api
+        - mobile
+        - core
+        - infra
+        - other / unsure
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: What should change
+      description: Which doc or page, and what is missing or wrong.
+    validations:
+      required: true
+  - type: textarea
+    id: links
+    attributes:
+      label: Relevant paths or links
+      description: Repo-relative paths preferred (e.g. `docs/DEVELOPMENT.md`).
+    validations:
+      required: false

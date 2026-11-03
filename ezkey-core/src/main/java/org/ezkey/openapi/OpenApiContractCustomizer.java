@@ -127,14 +127,13 @@ public final class OpenApiContractCustomizer implements OpenApiCustomizer {
     }
     openApi
         .getPaths()
-        .forEach(
-            (path, item) -> {
-              if (path == null || item == null) {
-                return;
-              }
-              item.readOperationsMap()
-                  .forEach((method, operation) -> customiseOperation(path, method, operation));
-            });
+        .forEach((path, item) -> {
+          if (path == null || item == null) {
+            return;
+          }
+          item.readOperationsMap()
+              .forEach((method, operation) -> customiseOperation(path, method, operation));
+        });
   }
 
   private void customiseOperation(String path, PathItem.HttpMethod method, Operation operation) {

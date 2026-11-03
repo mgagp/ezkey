@@ -18,6 +18,7 @@ import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.integration.domain.AdminTokenPurpose;
 import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
+import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminLifecycleStatus;
 import org.ezkey.integration.domain.repository.AdminTokenRepository;
 import org.ezkey.security.SensitiveDataHasher;
 import org.slf4j.Logger;
@@ -97,11 +98,12 @@ public class AdminTokenValidationService {
       if (tokenOptional.isPresent()) {
         AdminToken adminToken = tokenOptional.get();
 
-        // SEC-021: recovery tokens must not authenticate as Admin API sessions
-        if (adminToken.getTokenPurpose() == AdminTokenPurpose.RECOVERY) {
+        // Allowlist (SEC-021, #1122): RECOVERY, ACTIVATION and any future purpose fail closed.
+        if (adminToken.getTokenPurpose() != AdminTokenPurpose.SESSION
+            && adminToken.getTokenPurpose() != AdminTokenPurpose.EVALUATOR_TEMP) {
           logger.warn(
-              "❌ Token rejected: recovery-purpose token cannot authenticate ordinary Admin API"
-                  + " requests");
+              "❌ Token rejected: {}-purpose token cannot authenticate Admin API requests",
+              adminToken.getTokenPurpose());
           return Optional.empty();
         }
 
@@ -120,6 +122,12 @@ public class AdminTokenValidationService {
             return Optional.empty();
           }
 
+          // #1122: a pending admin has not completed /activate; no purpose may authenticate.
+          if (admin.getLifecycleStatus() == AdminLifecycleStatus.PENDING_ACTIVATION) {
+            logger.warn("❌ Token rejected: admin is pending activation: {}", admin.getUsername());
+            return Optional.empty();
+          }
+
           // Check if the admin's enrollment is still active.
           // Defence-in-depth: EnrollmentRevocationService already invalidates tokens
           // immediately on revocation, but this guard catches any window where the
@@ -131,8 +139,13 @@ public class AdminTokenValidationService {
             return Optional.empty();
           }
 
+          // SESSION requires a device-bound MFA enrollment; only EVALUATOR_TEMP runs pre-bind.
+          if (adminToken.getTokenPurpose() == AdminTokenPurpose.SESSION && enrollment == null) {
+            logger.warn("❌ Token rejected: no enrollment for admin: {}", admin.getUsername());
+            return Optional.empty();
+          }
+
           if (adminToken.getTokenPurpose() == AdminTokenPurpose.SESSION
-              && enrollment != null
               && !EnrollmentStatus.VERIFIED.equals(enrollment.getStatus())) {
             logger.warn(
                 "❌ Token rejected: enrollment is not verified for admin: {}", admin.getUsername());
@@ -206,8 +219,9 @@ public class AdminTokenValidationService {
    * Open Session in View, merging the loaded row can write {@code active=true} and revive a token
    * revoked concurrently by logout, login rotation, or deactivation.
    *
-   * <p>For SESSION tokens, expiration is extended to now + expirationHours. Recovery and
-   * EVALUATOR_TEMP tokens keep the loaded expiration (SEC-021 / Mode C absolute TTL).
+   * <p>For SESSION tokens, expiration is extended to now + expirationHours. Recovery,
+   * EVALUATOR_TEMP and ACTIVATION tokens keep the loaded expiration (SEC-021 / Mode C / #1122
+   * absolute TTL).
    *
    * @param adminToken the loaded token entity (id and purpose are read; the instance is not saved)
    * @return updated expiration when an active row was touched; empty if the token is null, has no

@@ -42,7 +42,6 @@ import {
 } from '@/generated/admin-api/tenants/tenants';
 import type {
   AdminResponseDto,
-  PagedModelAdminResponseDto,
   TenantResponseDto,
   TenantUpdateRequestDto,
 } from '@/generated/admin-api/model';
@@ -368,7 +367,7 @@ export default function TenantDetailPage() {
     queryKey: ['admins', 'for-tenant', tenantId],
     baseParams: { tenantId: isNaN(tenantId) ? undefined : tenantId },
     defaultSize: 10,
-    fetchPage: (params) => listAdmins(params) as Promise<PagedModelAdminResponseDto>,
+    fetchPage: (params) => listAdmins(params),
   });
 
   const adminColumns: ColumnDef<AdminResponseDto>[] = useMemo(

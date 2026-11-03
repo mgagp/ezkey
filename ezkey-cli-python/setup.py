@@ -39,7 +39,7 @@ setup(
         "requests>=2.34.2",
         "colorama>=0.4.6",
         "pyperclip>=1.11.0",
-        "textual>=0.38.0",
+        "textual>=8.2.8",
     ],
     entry_points={
         "console_scripts": [

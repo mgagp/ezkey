@@ -27,17 +27,20 @@ export const HeaderSettingsButton: React.FC<Props> = ({onPress}) => {
       onPress={onPress}
       style={styles.button}
       accessibilityRole="button"
-      accessibilityLabel={t('navigation.settings')}
-      hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-      <Text style={styles.icon}>⚙</Text>
+      accessibilityLabel={t('navigation.settings')}>
+      <Text style={styles.icon} importantForAccessibility="no" accessibilityElementsHidden>
+        ⚙
+      </Text>
     </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
   button: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
+    minWidth: 48,
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: spacing.xs,
   },
   icon: {

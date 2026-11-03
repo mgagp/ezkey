@@ -122,11 +122,24 @@ Campaign notes: [`product-docs/global/hygiene/javamelody/`](../product-docs/glob
 Keyword: **`quality-gate`**. On-demand cloud-agent orchestrator for tip health between merge
 batches. Runs clean-start HA + JavaMelody, unit/functional/elective/Playwright, operational churn,
 then [`stack-health-check.sh`](stack-health-check.sh). Not a CI gate. See root
-[`AGENTS.md`](../AGENTS.md) § Quality gate.
+[`AGENTS.md`](../AGENTS.md) § Quality gate. Requires **Bash >= 4** (associative arrays);
+on macOS use Homebrew bash (`brew install bash`) via `#!/usr/bin/env bash` or `bash` from
+PATH — not `/bin/bash` (system 3.2). `#747` retry scans admin-api logs with
+`docker logs --since` (phase start − 5 s backoff; no `tail` cap; `grep -F` without `-q`
+under `pipefail`; HA `5e` proves SIGPIPE with `seq` after the signature); `now_ms`
+validates GNU `date +%s%3N` digits before falling back to `python3` / `node` / whole
+seconds (BSD `date` on macOS). `#915` lot 1: portable `sed '$d'` for phase rewrite,
+Surefire summary excludes `Time elapsed` class lines, compose bound uses
+`timeout`/`gtimeout` or warns unbound. `#915` defect 3: `--no-clean-start` does not
+`docker compose down -v` (reuses stack) and skips `unit-tests` for stack-up RAM.
+`#915` defect 6: Playwright regenerates the Orval client (`generate:api`) first so a
+stale gitignored client cannot false-RED the suite.
+CI job `quality-gate` runs the HA helper tests.
 
 ```bash
 ./scripts/quality-gate.sh
 ./scripts/quality-gate.sh --churn-minutes 5
+./scripts/quality-gate-ha.test.sh   # fake-docker HA helpers (incl. #747 detect / now_ms)
 ./scripts/stack-health-check.sh
 ```
 
@@ -157,6 +170,11 @@ export AWS_PROFILE=ezkey-lightsail
 (`--target community` required; #812): system-release, `dnf check-release-update`, Critical/Important
 updateinfo, `needs-restarting -r`, kernel, `docker ps`. Never updates packages or reboots. Canon:
 [`product-docs/global/hygiene/host-os/README.md`](../product-docs/global/hygiene/host-os/README.md)
+
+[`lightsail/tls-pq-probe.sh`](lightsail/tls-pq-probe.sh) — **read-only** hybrid post-quantum TLS
+key-exchange probe (#1174): X25519MLKEM768 vs X25519 negative control per hostname, at the edge
+(default) or on the host (`--origin --target community`, plus Caddy version/digest). Results:
+[`docs/lightsail/community/DEPLOYED.md`](../docs/lightsail/community/DEPLOYED.md) § Transport TLS.
 (#909). Rootbeer-local agents only (cloud agents have no SSH route).
 
 App layer remains [`experimental-hybrid/lightsail/`](../experimental-hybrid/lightsail/); image push reuses [`experimental-hybrid/scripts/export-backend-images-to-lightsail.sh`](../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) with **`--target community`** — no silent SSH host default (#812). Community `--sync-operator-files` installs `Caddyfile.ezkey-online` under that same remote basename (compose bind mount — #863). Do not put community-only secrets or ezkey.online-only DNS checklists into the public compose tree.

@@ -24,6 +24,7 @@ Root [`PRD.md`](PRD.md) is a **stub** that points at `product-intent.md` (canon 
 | Product intent, thesis, audience | [`product-docs/global/product-intent.md`](product-docs/global/product-intent.md) |
 | Priority / what to implement next | [`product-docs/global/vision/V-2026-09-26-public-alpha-posture-closeout.md`](product-docs/global/vision/V-2026-09-26-public-alpha-posture-closeout.md), [`product-docs/global/backlog/index.md`](product-docs/global/backlog/index.md) (historical Waves A–C + freeze D: [`product-docs/global/operational-readiness-prioritization-2026-09.md`](product-docs/global/operational-readiness-prioritization-2026-09.md)) |
 | Protocol crypto (Auth API ↔ mobile / Demo Device) | [`docs/CRYPTO.md`](docs/CRYPTO.md), [`docs/ENROLLMENT_SIGNATURE_PAYLOAD.md`](docs/ENROLLMENT_SIGNATURE_PAYLOAD.md), [`docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`](docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md); relevant **section** of [`docs/ENDPOINT.md`](docs/ENDPOINT.md) only |
+| Challenge-code direction / MFA fatigue / number matching | [`docs/SECURITY_POSTURE.md`](docs/SECURITY_POSTURE.md) § Challenge-code direction (Decision #960); inverted mode parked: [`I-2026-10-21-inverted-challenge-code-mode`](product-docs/global/backlog/ideas/I-2026-10-21-inverted-challenge-code-mode.md) |
 | At-rest encryption / Tink keyset storage | [`docs/SECURITY_POSTURE.md`](docs/SECURITY_POSTURE.md), [`ezkey-core/CONFIGURATION.md`](ezkey-core/CONFIGURATION.md) § Encryption at Rest, [`product-docs/global/architecture-decisions.md`](product-docs/global/architecture-decisions.md) ADR-0008 + ADR-0011 |
 | Logging / log-injection hardening | Caller-controlled value → `org.ezkey.util.LogSanitizer.sanitizeForLog`; secrets never logged at any level; prove on runtime output (log-capture test). Mandate and SLAs: [`docs/SECURITY_POSTURE.md`](docs/SECURITY_POSTURE.md) § Code scanning policy. Production wrap backlog: [#801](https://github.com/mgagp/ezkey/issues/801). |
 | Normative posture | [`product-docs/global/normative-posture.md`](product-docs/global/normative-posture.md) — operational discipline; mapping vocabulary lives only there. Honest claims: [`docs/SECURITY_POSTURE.md`](docs/SECURITY_POSTURE.md) |
@@ -448,8 +449,8 @@ When the operator asks for a **`dependabot-curated`** pass:
 
 - For Ezkey Mobile (`ezkey_mobile/`) static-analysis hygiene, the shared keyword is
   **`mobile-doctor-curated`**.
-- Purpose: punctual curated pass — react-doctor + Semgrep (Ezkey mobile pack) + Detekt → P1/P2/P3
-  shortlist. **Not** a CI gate and **not** a zero-warning campaign.
+- Purpose: punctual curated pass — react-doctor + Semgrep (Ezkey mobile pack) + Detekt, plus an
+  iOS lane on macOS (SwiftLint curated set + Periphery) → P1/P2/P3 shortlist. **Not** a CI gate and **not** a zero-warning campaign.
 - Default command from `ezkey_mobile/` (Git Bash on Windows):
 
 ```bash
@@ -606,8 +607,21 @@ program slice whether an issue helps — retroactive issues are valid.
 When opening a GitHub issue (operator request, program slice visibility, or retroactive board
 anchor):
 
-1. Apply **all five label groups** via `gh issue create --label ...` (lane, type, component, priority, status) — see [`.cursor/rules/github-issue-labels.mdc`](.cursor/rules/github-issue-labels.mdc).
-2. Verify with `gh issue view <N> --json labels` before reporting the issue URL.
+**Review existing labels first.** Before creating an issue, list the repo labels
+(`gh label list`, or `GET /repos/{owner}/{repo}/labels`) and apply every label that fits.
+Create a new label only when none of the existing ones fit, and justify that new label in the
+issue body.
+
+**Tool-agnostic:** the five label groups (lane, type, component, priority, status) are mandatory
+**regardless of creation tool** — `gh`, GitHub MCP/API, Cursor app, or web UI. Prefer attaching
+labels in the same create call when the tool supports it. After create, **re-read the issue and
+add any missing labels** before reporting the URL; MCP/Cursor/web creates often omit labels even
+when intended. See [`.cursor/rules/github-issue-labels.mdc`](.cursor/rules/github-issue-labels.mdc).
+
+1. Apply **all five label groups** (lane, type, component, priority, status) at create time when
+   the client allows it (e.g. `gh issue create --label ...`, API `labels`, issue-form defaults).
+2. Verify with `gh issue view <N> --json labels` (or MCP/API equivalent) and patch gaps before
+   reporting the issue URL.
 3. Record `#NNN` (and label list) in `I-*` / `TB-*` metadata.
 
 An unlabeled issue is **incomplete** — same severity as missing TB traceability.

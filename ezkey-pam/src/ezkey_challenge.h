@@ -18,13 +18,16 @@
 int ezkey_challenge_in_range(long challenge);
 
 /**
- * Pre-wait prompt decision after create (#975 / #941 / #982).
+ * Pre-wait prompt decision after create (#975 / #941 / #982 / #995).
  *
- * Show the challenge code whenever the create response contains a valid
- * value (host requested it, or enrollment requires it), regardless of the
- * host `challenge_requested` flag. Fail closed only when the host requested
- * a challenge and none came back. Otherwise skip the post-create prompt
- * (no-challenge path: pre-create confirm already ran).
+ * Precedence (connector vs enrollment):
+ * - When the create response carries a valid challenge (0..99), show it —
+ *   enrollment `authAttemptChallengeRequired` wins on the server even if the
+ *   connector sent `challengeRequested=false`.
+ * - Host/connector `challenge_requested=true` (compiled-in and sample conf
+ *   default since #995) only *asks* for a code; missing/out-of-range → fail
+ *   closed. `false` means "not requested by the connector", not "forbid a
+ *   code".
  *
  * @param challenge_requested host conf challenge_requested (0/1)
  * @param challenge create response authAttemptChallenge, or -1 if absent

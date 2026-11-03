@@ -112,7 +112,11 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
           String password = parts[1];
 
           if (username.startsWith(INTEGRATION_KEY_PREFIX)) {
-            String clientIp = ClientIpResolver.resolve(request, trustedProxyProperties.getCidrs());
+            String clientIp =
+                ClientIpResolver.resolve(
+                    request,
+                    trustedProxyProperties.getCidrs(),
+                    trustedProxyProperties.isTrustCloudflareConnectingIp());
             String clientIpForLog = LogSanitizer.sanitizeForLog(clientIp);
 
             logger.debug(

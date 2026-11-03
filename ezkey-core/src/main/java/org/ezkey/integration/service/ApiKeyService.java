@@ -152,10 +152,9 @@ public class ApiKeyService {
     Integration integration =
         integrationRepository
             .findById(integrationId)
-            .orElseThrow(
-                () ->
-                    new ApiKeyCreateValidationException(
-                        "Integration not found with ID: " + integrationId));
+            .orElseThrow(() ->
+                new ApiKeyCreateValidationException(
+                    "Integration not found with ID: " + integrationId));
 
     if (!integration.isOperational()) {
       throw new ApiKeyCreateValidationException(

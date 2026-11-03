@@ -434,7 +434,17 @@ Living entry points: this section, root `AGENTS.md` § Local Maven version prope
 
 PR and `main` pushes run the aggregate workflow [`.github/workflows/ci.yml`](../.github/workflows/ci.yml).
 A `changes` job (path filter) decides which suites run. Unrelated areas are **skipped**, not left
-pending. Manual `workflow_dispatch` forces **every** suite. The final job **`ci-gate`**
+pending. Manual `workflow_dispatch` and the **nightly schedule** on `main` (UTC 07:23, no-op when
+`main` had no commit in the last 24 h) force **every** suite. A change to `ci.yml` runs every job;
+a change to a reusable workflow runs only the job that calls it.
+
+**Heavy jobs skip the post-merge push.** `ha-smoke`, `ezkey-pam`, `mobile-ios` and the mobile
+`android-16kb-alignment` job run on pull requests (where they gate the change) and nightly, but not
+on the push to `main` that follows a merge, which would repeat the PR run. The ruleset does not
+require branches to be up to date, so a merge of a stale PR is caught by the nightly run at the
+latest. Rationale: proportionality review 2026-11-02 (~300 CI runs per week).
+
+The final job **`ci-gate`**
 (`if: always()`) fails if any needed job failed or was cancelled, and **passes when those jobs
 were skipped**. That is the single check **required** on `main` via repository ruleset
 **Basic protection** (context `ci-gate` only; verified 2026-10-14). Do not require path-filtered
@@ -444,11 +454,12 @@ inventory and improvement plan:
 
 | Job | When it runs | What it checks |
 |-----|--------------|----------------|
-| `changes` | Always | Path filter outputs (`admin-ui`, `backend`, `mobile`, `workflows`); all forced on `workflow_dispatch` |
-| `admin-ui` | `ezkey-admin-ui/**`, `specs/**`, or any `.github/workflows/**` change | `cmp` of `specs/admin-api/openapi-spec.json` vs `ezkey-admin-ui/openapi-spec.json`; Node from root `.nvmrc` (24 LTS); `npm ci`; `generate:api`; `tsc -b`; lint; Vitest; `vite build`; no-demo assert on `dist/` |
+| `changes` | Always | Path filter outputs (one per suite, plus `workflows` = `ci.yml` and `heavy` = not a push); all forced on `workflow_dispatch` and nightly |
+| `admin-ui` | `ezkey-admin-ui/**`, `specs/**`, or a `ci.yml` change | `cmp` of `specs/admin-api/openapi-spec.json` vs `ezkey-admin-ui/openapi-spec.json`; Node from root `.nvmrc` (24 LTS); `npm ci`; `generate:api`; `tsc -b`; lint; Vitest; `vite build`; no-demo assert on `dist/` |
 | `backend` | Java reactor paths / root `pom.xml` / `scripts/build.sh` / `.mvn/**` / `docker/**` or workflows | JDK 25; install `checkstyle-config`; `spotless:check`; Checkstyle; full-reactor `install -DskipTests` (so `ezkey-tests` **compiles**); `test -pl '!ezkey-tests'` (H2 unit tests; **does not run** the Docker `ezkey-tests` suite) |
-| `ha-smoke` | Same path filter as `backend` (or workflows) | Live HA clean-start + HTTP probes through each HAProxy LB (and crypto management); expect documented status codes, never 503 (#905). Script: `scripts/ci-ha-lb-smoke.sh` |
-| `mobile` | `ezkey_mobile/**` or workflows | Calls reusable [`.github/workflows/ezkey-mobile-unit-tests.yml`](../.github/workflows/ezkey-mobile-unit-tests.yml): Yarn validate, Android JVM unit tests, **16 KB APK alignment** |
+| `ha-smoke` | Same path filter as `backend` (or `ci.yml`); PRs and nightly only | Live HA clean-start + HTTP probes through each HAProxy LB (and crypto management); expect documented status codes, never 503 (#905). Script: `scripts/ci-ha-lb-smoke.sh` |
+| `mobile` | `ezkey_mobile/**`, its reusable workflow, or `ci.yml` | Calls reusable [`.github/workflows/ezkey-mobile-unit-tests.yml`](../.github/workflows/ezkey-mobile-unit-tests.yml): Yarn validate, Android JVM unit tests, **16 KB APK alignment** (PRs and nightly only) |
+| `mobile-ios` | iOS native surface (`ezkey_mobile/ios/**`, `package.json`, `yarn.lock`, `Gemfile*`, `scripts/ios-*.sh`), its reusable workflow, or `ci.yml`; PRs and nightly only | Calls reusable [`.github/workflows/ezkey-mobile-ios.yml`](../.github/workflows/ezkey-mobile-ios.yml) on `macos-26`: `yarn ios:lint` (swift-format + SwiftLint, strict), `pod install`, `yarn ios:test` (simulator build + XCTest) |
 | `dart-sdk` | `ezkey_dart/**` or workflows | Experimental Dart SDK offline gate in a pinned `dart` image: `ezkey_dart/scripts/test.sh` (format check, `analyze --fatal-infos`, unit tests). The live-stack suite `ezkey_dart/scripts/e2e.sh` stays local ([`ezkey_dart/README.md`](../ezkey_dart/README.md) §6) |
 | `ci-gate` | Always | Aggregate pass/fail for the jobs above |
 

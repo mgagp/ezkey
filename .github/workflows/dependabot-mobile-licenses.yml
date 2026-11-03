@@ -1,0 +1,93 @@
+# Regenerate ezkey_mobile/app/data/thirdPartyLicenses.json on Dependabot PRs that touch
+# ezkey_mobile/package.json or yarn.lock (Dependabot never regenerates it, so
+# `mobile / js-validate` -> `yarn license:ci` went red and needed a manual Mac push).
+# Decision: Marc 2026-10-30 (hygiene inflow reduction).
+#
+# Token notes:
+# - Dependabot-triggered `pull_request` runs get a read-only GITHUB_TOKEN unless the
+#   workflow raises it via `permissions:` (allowed for Dependabot; no secrets exposed).
+# - A push made with GITHUB_TOKEN does NOT retrigger `pull_request` workflows. We
+#   therefore dispatch CI (`workflow_dispatch`, which GITHUB_TOKEN may trigger) on the
+#   PR branch so the new head gets a `ci-gate` check run. The PR's checks tab shows the
+#   dispatch run, not a pull_request run.
+# - Install runs with --mode=skip-build (no lifecycle scripts) since the job holds a
+#   write token. Only same-repo branches authored by dependabot[bot] are processed.
+name: dependabot-mobile-licenses
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "ezkey_mobile/package.json"
+      - "ezkey_mobile/yarn.lock"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependabot-mobile-licenses-${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  regenerate:
+    if: >-
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      # Needed to dispatch ci.yml/codeql.yml because GITHUB_TOKEN pushes do not
+      # retrigger pull_request CI.
+      actions: write
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: ".nvmrc"
+
+      - name: Install (immutable, no lifecycle scripts)
+        working-directory: ezkey_mobile
+        run: |
+          corepack enable
+          corepack yarn install --immutable --mode=skip-build
+
+      - name: Regenerate third-party licenses snapshot
+        working-directory: ezkey_mobile
+        run: corepack yarn license:app-data
+
+      - name: Commit and push if changed
+        id: push
+        env:
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet -- ezkey_mobile/app/data/thirdPartyLicenses.json; then
+            echo "Licenses snapshot already fresh."
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ezkey_mobile/app/data/thirdPartyLicenses.json
+          git commit -m "chore(mobile): regenerate third-party licenses snapshot"
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push origin "HEAD:${BRANCH}"
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch CI on new head (GITHUB_TOKEN pushes do not retrigger pull_request)
+        if: steps.push.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          gh workflow run ci.yml --repo "${GITHUB_REPOSITORY}" --ref "${BRANCH}"
+          gh workflow run codeql.yml --repo "${GITHUB_REPOSITORY}" --ref "${BRANCH}" || \
+            echo "::warning::codeql.yml has no workflow_dispatch; CodeQL check will be missing on the new head."

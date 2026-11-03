@@ -35,52 +35,48 @@ class AuthAttemptCreateRequestDtoStrictTtlTest {
   @Test
   @DisplayName("ttlSeconds=20.5 (float) → Jackson fails")
   void ttlSeconds_float_rejected() {
-    assertThatThrownBy(
-            () ->
-                mapper.readValue(
-                    """
-                    {"enrollmentId":1,"challengeRequested":false,"ttlSeconds":20.5}
-                    """,
-                    AuthAttemptCreateRequestDto.class))
+    assertThatThrownBy(() ->
+            mapper.readValue(
+                """
+                {"enrollmentId":1,"challengeRequested":false,"ttlSeconds":20.5}
+                """,
+                AuthAttemptCreateRequestDto.class))
         .isInstanceOf(JacksonException.class);
   }
 
   @Test
   @DisplayName("ttlSeconds=\"20\" (string) → Jackson fails")
   void ttlSeconds_string_rejected() {
-    assertThatThrownBy(
-            () ->
-                mapper.readValue(
-                    """
-                    {"enrollmentId":1,"challengeRequested":false,"ttlSeconds":"20"}
-                    """,
-                    AuthAttemptCreateRequestDto.class))
+    assertThatThrownBy(() ->
+            mapper.readValue(
+                """
+                {"enrollmentId":1,"challengeRequested":false,"ttlSeconds":"20"}
+                """,
+                AuthAttemptCreateRequestDto.class))
         .isInstanceOf(JacksonException.class);
   }
 
   @Test
   @DisplayName("ttlSeconds=true (boolean) → Jackson fails")
   void ttlSeconds_boolean_rejected() {
-    assertThatThrownBy(
-            () ->
-                mapper.readValue(
-                    """
-                    {"enrollmentId":1,"challengeRequested":false,"ttlSeconds":true}
-                    """,
-                    AuthAttemptCreateRequestDto.class))
+    assertThatThrownBy(() ->
+            mapper.readValue(
+                """
+                {"enrollmentId":1,"challengeRequested":false,"ttlSeconds":true}
+                """,
+                AuthAttemptCreateRequestDto.class))
         .isInstanceOf(JacksonException.class);
   }
 
   @Test
   @DisplayName("ttlSeconds=null (explicit) → Jackson fails")
   void ttlSeconds_explicitNull_rejected() {
-    assertThatThrownBy(
-            () ->
-                mapper.readValue(
-                    """
-                    {"enrollmentId":1,"challengeRequested":false,"ttlSeconds":null}
-                    """,
-                    AuthAttemptCreateRequestDto.class))
+    assertThatThrownBy(() ->
+            mapper.readValue(
+                """
+                {"enrollmentId":1,"challengeRequested":false,"ttlSeconds":null}
+                """,
+                AuthAttemptCreateRequestDto.class))
         .isInstanceOf(JacksonException.class);
   }
 

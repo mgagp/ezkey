@@ -5,9 +5,12 @@ Canonical matrix: [`docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md`](../../docs/DATABA
 | Script | Purpose |
 |--------|---------|
 | [`create-roles.sh`](create-roles.sh) | Bootstrap/rotate LOGIN roles on an existing Postgres; requires `postgres` or equivalent role-management authority |
-| [`apply-grants.sql`](apply-grants.sql) | Idempotent runtime DML grants and default privileges; also used by Compose `db-grants` |
-| [`apply-grants.sh`](apply-grants.sh) | Superuser wrapper for the grant policy; `--docker` uses `docker exec` |
-| [`verify-grants.sh`](verify-grants.sh) | Connect as each application role and smoke-check allowed/denied privileges; `--docker` supported |
+| [`ensure-crypto-role.sql`](ensure-crypto-role.sql) | Idempotent `ezkey_crypto` create for upgrade volumes (invoked by `apply-grants.sh`; password via `set_config`, no default) |
+| [`apply-grants.sql`](apply-grants.sql) | Idempotent runtime DML grants and default privileges |
+| [`apply-grants.sh`](apply-grants.sh) | Superuser wrapper: ensure crypto role + grants; `--docker` / `--in-container`; **requires** `EZKEY_DB_CRYPTO_PASSWORD` |
+| [`test-upgrade-crypto-role.sh`](test-upgrade-crypto-role.sh) | Ephemeral Docker proof: pre-PR volume (no crypto role) → grants succeed (#961 B1) |
+| [`verify-grants.sh`](verify-grants.sh) | Smoke-check allowed/denied privileges; `--docker` + `EZKEY_POSTGRES_CONTAINER`; role-login when `EZKEY_DB_*` passwords are set, else catalog fallback as admin/owner (no passwords on argv) |
+| [`verify-grants.test.sh`](verify-grants.test.sh) | Fake psql/docker lock for #1121: credentials off argv, catalog fallback when any role password is absent, crypto catalog fail-closed |
 
 Docker first-boot role creation: [`docker/postgres/init/01-create-roles.sh`](../../docker/postgres/init/01-create-roles.sh).
 
@@ -24,7 +27,12 @@ Docker first-boot role creation: [`docker/postgres/init/01-create-roles.sh`](../
 ./scripts/db/apply-grants.sh
 
 # 4. Optional boundary smoke test.
+# Prefer exporting EZKEY_DB_* role passwords for per-role login smoke.
+# If those are unset, the script falls back to catalog checks as PGUSER/PGPASSWORD
+# (or POSTGRES_USER/POSTGRES_PASSWORD). Credentials are passed via environment only.
 ./scripts/db/verify-grants.sh
+# Docker / Lightsail:
+# EZKEY_POSTGRES_CONTAINER=ezkey-exp-postgres ./scripts/db/verify-grants.sh --docker
 ```
 
 The Flyway CLI and grant scripts are intentionally separate:
@@ -47,5 +55,18 @@ The role bootstrap recognizes:
 - `EZKEY_DB_ADMIN_PASSWORD`
 - `EZKEY_DB_AUTH_PASSWORD`
 - `EZKEY_DB_INTEGRATION_PASSWORD`
+- `EZKEY_DB_CRYPTO_PASSWORD` — **required** by `apply-grants.sh` (no default on the grants/upgrade path)
+
+`verify-grants.sh` also accepts Compose-style `POSTGRES_USER` / `POSTGRES_PASSWORD` as
+fallbacks for the admin/owner login, and `EZKEY_POSTGRES_CONTAINER` in `--docker` mode.
+Role passwords are optional for verify: when all five `EZKEY_DB_*` passwords are present it
+connects as each role; otherwise it verifies via `has_table_privilege` /
+`information_schema.role_table_grants` (including `ezkey_keyset_blob`) as the admin/owner.
+Passwords are never placed on process argv (`docker exec -e PGPASSWORD` name-only form).
 
 Do not use runtime API credentials for Flyway. Do not use `ezkey_migrate` as an API datasource.
+
+**Note (role creation / PL/pgSQL):** a failing dynamic `CREATE ROLE … PASSWORD` can echo the
+SQL (including the password literal) in PostgreSQL `CONTEXT` on stderr or in the server log.
+`apply-grants.sh` uses `PERFORM set_config` + `format(%L)` and does not print query results; still
+treat DB server logs as sensitive when diagnosing role-create failures.

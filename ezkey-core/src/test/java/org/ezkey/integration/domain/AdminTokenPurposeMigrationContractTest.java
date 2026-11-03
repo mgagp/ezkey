@@ -25,7 +25,8 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Contract: Java {@link AdminTokenPurpose} values must be allowed by the latest Flyway CHECK on
- * {@code ezkey_admin_tokens.token_purpose}. Catches the V18→mint gap (EVALUATOR_TEMP missing).
+ * {@code ezkey_admin_tokens.token_purpose}. Catches the V18→mint gap (EVALUATOR_TEMP missing) and
+ * the same gap for ACTIVATION (V26, #1122).
  *
  * @since 2026
  */
@@ -37,14 +38,13 @@ class AdminTokenPurposeMigrationContractTest {
           Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
   @Test
-  @DisplayName("V23 CHECK allows every AdminTokenPurpose enum constant including EVALUATOR_TEMP")
-  void v23CheckAllowsAllEnumPurposes() throws IOException {
-    String sql =
-        readClasspathResource("db/migration/V23__widen_admin_token_purpose_for_evaluator_temp.sql");
+  @DisplayName("V26 CHECK allows every AdminTokenPurpose enum constant including ACTIVATION")
+  void latestCheckAllowsAllEnumPurposes() throws IOException {
+    String sql = readClasspathResource("db/migration/V26__admin_token_activation_purpose.sql");
 
     Matcher matcher = CHECK_IN_CLAUSE.matcher(sql);
     assertThat(matcher.find())
-        .as("V23 must redefine chk_admin_tokens_token_purpose with an IN (...) list")
+        .as("V26 must redefine chk_admin_tokens_token_purpose with an IN (...) list")
         .isTrue();
 
     Set<String> allowed =
@@ -58,7 +58,7 @@ class AdminTokenPurposeMigrationContractTest {
         Arrays.stream(AdminTokenPurpose.values()).map(Enum::name).collect(Collectors.toSet());
 
     assertThat(allowed).containsExactlyInAnyOrderElementsOf(enumNames);
-    assertThat(allowed).contains("EVALUATOR_TEMP", "SESSION", "RECOVERY");
+    assertThat(allowed).contains("EVALUATOR_TEMP", "SESSION", "RECOVERY", "ACTIVATION");
     assertThat(sql)
         .containsIgnoringCase("DROP CONSTRAINT IF EXISTS chk_admin_tokens_token_purpose");
   }

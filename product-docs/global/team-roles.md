@@ -15,5 +15,5 @@ Roles may be played by a human or an AI agent. The owner (**Marc**) decides merg
 | **Carl** | Performance |
 | **Alex** | Product direction |
 | **Audrey** | Product communication |
-| **Clementine** | Editorial |
+| **Clémentine** | Editorial |
 | **Justin** | Android builds / devices |

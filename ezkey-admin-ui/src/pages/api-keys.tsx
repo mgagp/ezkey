@@ -38,7 +38,6 @@ import {
 import type {
   ApiKeyCreateResponseDto,
   ApiKeyResponseDto,
-  PagedModelApiKeyResponseDto,
 } from '@/generated/admin-api/model';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -491,14 +490,14 @@ export default function ApiKeysPage() {
           size: params.size,
           sort: params.sort,
           active: params.active,
-        }) as Promise<PagedModelApiKeyResponseDto>;
+        });
       }
       return listAllApiKeys({
         ...params,
         integrationId: params.integrationId,
         active: params.active,
         description: params.description,
-      }) as Promise<PagedModelApiKeyResponseDto>;
+      });
     },
     defaultSort: 'createdAt,DESC',
   });

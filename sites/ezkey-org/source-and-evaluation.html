@@ -199,6 +199,200 @@
             .container { padding: 20px; }
             .page-panel { padding: 28px 22px 32px; }
         }
+        /* Entry-page components on the gradient (see AGENTS.md § Entry pages vs document pages). */
+        .cta-row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+            margin: 4px 0 18px;
+        }
+
+        .page-panel a.btn {
+            display: inline-block;
+            padding: 11px 20px;
+            border-radius: 10px;
+            font-size: 0.98rem;
+            font-weight: 700;
+            text-decoration: none;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+        }
+
+        .page-panel a.btn:focus-visible {
+            outline: 3px solid #fde68a;
+            outline-offset: 2px;
+        }
+
+        .page-panel a.btn-primary {
+            background: #fff;
+            color: #4a3f9e;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+        }
+
+        .page-panel a.btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
+        }
+
+        .page-panel a.btn-secondary {
+            color: #fff;
+            border: 2px solid rgba(255, 255, 255, 0.55);
+        }
+
+        .page-panel a.btn-secondary:hover {
+            border-color: #fff;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .status-line {
+            max-width: 640px;
+            margin: 0 auto 8px;
+            padding: 10px 14px;
+            background: rgba(0, 0, 0, 0.18);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-left: 4px solid #fbbf24;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            line-height: 1.45;
+            color: rgba(255, 255, 255, 0.95);
+        }
+
+        .page-panel .status-line p {
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        .status-line .status-label {
+            display: block;
+            font-size: 0.7rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: #fde68a;
+            margin-bottom: 4px;
+        }
+
+        .glass-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 14px;
+            margin: 8px 0 6px;
+        }
+
+        .glass-card {
+            display: flex;
+            flex-direction: column;
+            padding: 18px 18px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            border-radius: 16px;
+        }
+
+        .glass-card .card-eyebrow {
+            font-size: 0.7rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: #fde68a;
+            margin-bottom: 6px;
+        }
+
+        .glass-card .card-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+
+        .page-panel .glass-card p {
+            font-size: 0.94rem;
+            flex: 1;
+            margin-bottom: 10px;
+        }
+
+        .page-panel .glass-card .card-foot {
+            flex: 0;
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        .steps {
+            list-style: none;
+            counter-reset: step;
+            display: grid;
+            gap: 14px;
+            margin: 10px 0 14px;
+        }
+
+        .page-panel .steps li {
+            counter-increment: step;
+            position: relative;
+            padding: 4px 0 4px 48px;
+            min-height: 36px;
+            margin: 0;
+        }
+
+        .steps li::before {
+            content: counter(step);
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: #fff;
+            color: #5b4bb5;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .steps .step-title {
+            display: block;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .steps .step-desc {
+            font-size: 0.95rem;
+            color: rgba(255, 255, 255, 0.88);
+        }
+
+        .page-panel pre {
+            margin: 8px 0 4px;
+            padding: 10px 14px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+
+        .page-panel pre code {
+            color: #fef3c7;
+            font-size: 0.92rem;
+        }
+
+        .page-panel .sibling-note {
+            font-size: 0.95rem;
+        }
+
+        .security-box {
+            margin-top: 26px;
+            padding: 16px 18px;
+            background: rgba(0, 0, 0, 0.14);
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            border-left: 4px solid #fbbf24;
+            border-radius: 10px;
+        }
+
+        .page-panel .security-box h2 {
+            margin-top: 0;
+        }
+
+        .page-panel .security-box p {
+            margin-bottom: 0;
+            font-size: 0.96rem;
+        }
     </style>
 </head>
 <body>
@@ -234,24 +428,84 @@
             <span class="section-eyebrow">Evaluation</span>
             <h1>Source code &amp; evaluation</h1>
             <p class="page-intro">
-                Ezkey is <strong>open source</strong> under the <strong>MIT</strong> License. The main repository is <strong>public</strong> on GitHub:
-                <a href="https://github.com/mgagp/ezkey" rel="noopener noreferrer">https://github.com/mgagp/ezkey</a>.
+                Ezkey is open source under the MIT License, and the main repository is public on GitHub. Evaluate the source and the docs, run the stack yourself, or try the live community instance.
             </p>
-            <p class="page-intro" style="margin-bottom:0;">
-                The project remains <strong>alpha</strong> — not production-ready. There are <strong>no published release packages</strong> yet (no GitHub Releases or installable binaries to consume). Evaluate the source, the docs, a local stack, or the live community instance; do not treat Ezkey as a drop-in replacement for Duo, Okta, or Keycloak.
-            </p>
+            <div class="cta-row">
+                <a class="btn btn-primary" href="https://github.com/mgagp/ezkey" rel="noopener noreferrer">Open the repository on GitHub</a>
+                <a class="btn btn-secondary" href="/community-instance.html">Try the community instance</a>
+            </div>
+            <div class="status-line">
+                <span class="status-label">Alpha</span>
+                <p>Not production-ready, and no published release packages yet (no GitHub Releases or installable binaries). Ezkey is not a drop-in replacement for Duo, Okta, or Keycloak.</p>
+            </div>
 
-            <h2 id="documentation">Documentation</h2>
-            <p>Canonical technical documentation (architecture, APIs, configuration, operations) lives in the repository — start from the <a href="https://github.com/mgagp/ezkey#documentation" rel="noopener noreferrer">README Documentation section</a> and the in-repo <code>docs/</code> tree. This site publishes <a href="/api-docs.html">API Docs</a>, <a href="/community-instance.html">community</a> pages, <a href="/monthly-digest.html">Monthly digests</a>, and <a href="/articles.html">Articles &amp; notes</a> as evaluation aids — not a full substitute for the in-repo docs.</p>
+            <h2>Two ways to evaluate</h2>
+            <div class="glass-grid">
+                <div class="glass-card">
+                    <span class="card-eyebrow">On your machine</span>
+                    <span class="card-title">Run locally</span>
+                    <p>Clone the public repository and start the full developer stack with one script.</p>
+                    <p class="card-foot"><a href="#run-locally">Steps below</a></p>
+                </div>
+                <div class="glass-card">
+                    <span class="card-eyebrow">Alpha · ezkey.online</span>
+                    <span class="card-title">Community instance</span>
+                    <p>A live alpha evaluation without standing up a stack: limited access, a guided tour.</p>
+                    <p class="card-foot"><a href="/community-instance.html">About the community instance</a></p>
+                </div>
+            </div>
 
             <h2 id="run-locally">Run locally</h2>
-            <p>Clone the public repository and follow the Quick Start in the <a href="https://github.com/mgagp/ezkey#quick-start" rel="noopener noreferrer">README</a>. The supported developer stack path is the Bash clean start:</p>
-            <p><code>./ezkey-tests/clean-start.sh</code></p>
-            <p>Further notes live under <code>ezkey-tests/README.md</code> and <code>docker/README.md</code> in the repo. On Windows, use Git Bash.</p>
-            <p>If you prefer a live alpha evaluation without standing up a stack, use the <strong>community instance</strong> on ezkey.online — see <a href="/community-instance.html">Community instance — alpha on ezkey.online</a>.</p>
+            <ol class="steps">
+                <li>
+                    <span class="step-title">Clone the public repository</span>
+                    <span class="step-desc"><a href="https://github.com/mgagp/ezkey" rel="noopener noreferrer">github.com/mgagp/ezkey</a>, then follow the Quick Start in the <a href="https://github.com/mgagp/ezkey#quick-start" rel="noopener noreferrer">README</a>.</span>
+                </li>
+                <li>
+                    <span class="step-title">Run the clean start</span>
+                    <span class="step-desc">The supported developer stack path is a Bash script. On Windows, use Git Bash.</span>
+                    <pre><code>./ezkey-tests/clean-start.sh</code></pre>
+                </li>
+                <li>
+                    <span class="step-title">Go further</span>
+                    <span class="step-desc">Further notes live under <code>ezkey-tests/README.md</code> and <code>docker/README.md</code> in the repository.</span>
+                </li>
+            </ol>
+            <p class="sibling-note">Prefer not to run a stack? <a href="/community-instance.html">Try the community instance on ezkey.online</a>.</p>
 
-            <h2>Security contact</h2>
-            <p>For suspected vulnerabilities, use <a href="mailto:security@ezkey.org">security@ezkey.org</a>. The project&rsquo;s <a href="https://github.com/mgagp/ezkey/blob/main/SECURITY.md" rel="noopener noreferrer">SECURITY.md</a> policy lives in the public repository; the email remains valid either way. Do not use public GitHub issues for vulnerability reports.</p>
+            <h2 id="documentation">Documentation</h2>
+            <p>Canonical technical documentation (architecture, APIs, configuration, operations) lives in the repository. This site adds evaluation aids, not a full substitute for the in-repo docs.</p>
+            <div class="glass-grid">
+                <div class="glass-card">
+                    <span class="card-eyebrow">Start here</span>
+                    <span class="card-title">README · Documentation</span>
+                    <p>The map of the in-repo documentation.</p>
+                    <p class="card-foot"><a href="https://github.com/mgagp/ezkey#documentation" rel="noopener noreferrer">Open the README section</a></p>
+                </div>
+                <div class="glass-card">
+                    <span class="card-eyebrow">In the repository</span>
+                    <span class="card-title">The <code>docs/</code> tree</span>
+                    <p>Architecture, APIs, configuration and operations, in full.</p>
+                    <p class="card-foot"><a href="https://github.com/mgagp/ezkey/tree/main/docs" rel="noopener noreferrer">Browse docs/</a></p>
+                </div>
+                <div class="glass-card">
+                    <span class="card-eyebrow">On this site</span>
+                    <span class="card-title">API Docs</span>
+                    <p>Reference pages for the Admin, Auth and Integration APIs.</p>
+                    <p class="card-foot"><a href="/api-docs.html">Open API Docs</a></p>
+                </div>
+                <div class="glass-card">
+                    <span class="card-eyebrow">On this site</span>
+                    <span class="card-title">Context</span>
+                    <p>What changed each month, and why the project works the way it does.</p>
+                    <p class="card-foot"><a href="/monthly-digest.html">Monthly digests</a> · <a href="/articles.html">Articles</a></p>
+                </div>
+            </div>
+
+            <div class="security-box">
+                <h2>Security contact</h2>
+                <p>For suspected vulnerabilities, use <a href="mailto:security@ezkey.org">security@ezkey.org</a>, not public GitHub issues. The <a href="https://github.com/mgagp/ezkey/blob/main/SECURITY.md" rel="noopener noreferrer">SECURITY.md</a> policy lives in the public repository; the email remains valid either way.</p>
+            </div>
         </div>
 
         <p style="text-align:center;margin-bottom:20px;"><a href="/" style="color:rgba(255,255,255,0.9);font-weight:600;text-decoration:underline;">← Back to home</a></p>

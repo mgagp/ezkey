@@ -24,7 +24,7 @@ PORT="${SSH_PORT}"
 STUB_PORT="${EZKEY_STUB_PORT:-18082}"
 STUB_PID_FILE="/tmp/ezkey-pam-stub-f9.pid"
 STUB_REQ_LOG="/tmp/ezkey-pam-stub-f9-reqs.log"
-ARTIFACT_DIR="${EZKEY_PAM_ARTIFACT_DIR:-/opt/cursor/artifacts}"
+ARTIFACT_DIR="$(ezkey_pam_artifact_dir)"
 mkdir -p "${ARTIFACT_DIR}"
 PROOF="${ARTIFACT_DIR}/pam-f9-retry.log"
 PASS=0
@@ -121,6 +121,9 @@ count_cancels() {
 }
 
 # --- Case A: multitry sshd — F9 recreates (Match forgotten) ---
+# Runs with connector default challenge_requested=true (#995); autoenter
+# answers latest prompt (ok then challenge Enter) so each MaxAuthTries round
+# can create again after REJECTED.
 start_stub rejected
 point_conf_at_stub 15
 install_sshd_cfg "${SCRIPT_DIR}/../sshd_config.f9-multitry"

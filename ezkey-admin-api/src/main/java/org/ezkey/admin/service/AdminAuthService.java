@@ -696,11 +696,10 @@ public class AdminAuthService {
     AuthAttempt authAttempt =
         authAttemptRepository
             .findById(authAttemptId)
-            .orElseThrow(
-                () -> {
-                  logger.warn("❌ Auth attempt not found for id: {}", authAttemptId);
-                  return new AdminAuthenticationException("Authentication failed");
-                });
+            .orElseThrow(() -> {
+              logger.warn("❌ Auth attempt not found for id: {}", authAttemptId);
+              return new AdminAuthenticationException("Authentication failed");
+            });
 
     if (authAttempt.getWaiterSecretHash() == null
         || waiterSecret == null
@@ -734,56 +733,14 @@ public class AdminAuthService {
     }
     return authAttemptRepository
         .findById(authAttemptId)
-        .flatMap(
-            attempt ->
-                adminRepository
-                    .findByEnrollmentId(attempt.getEnrollmentId())
-                    .map(
-                        admin ->
-                            new AdminAuthAuditContext(
-                                admin.getUsername(),
-                                admin.getAdminId(),
-                                admin.getTenant() != null
-                                    ? admin.getTenant().getTenantId()
-                                    : null)));
-  }
-
-  /**
-   * Validate bearer token.
-   *
-   * <p>This method validates a bearer token and returns the associated administrator information if
-   * the token is valid and not expired.
-   *
-   * @param bearerToken the bearer token to validate
-   * @return EzkeyAdmin if token is valid, null otherwise
-   */
-  @Transactional(readOnly = true)
-  public EzkeyAdmin validateToken(String bearerToken) {
-    try {
-      String hash = SensitiveDataHasher.sha256Hex(bearerToken);
-      if (hash == null) {
-        return null;
-      }
-      AdminToken token = tokenRepository.findByBearerTokenHashAndActiveTrue(hash).orElse(null);
-
-      if (token == null) {
-        return null;
-      }
-
-      // Check if token is expired
-      if (token.getExpiresAt().isBefore(OffsetDateTime.now())) {
-        return null;
-      }
-
-      // Update last used timestamp
-      token.setLastUsedAt(OffsetDateTime.now());
-      tokenRepository.save(token);
-
-      return token.getAdmin();
-
-    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
-      return null;
-    }
+        .flatMap(attempt ->
+            adminRepository
+                .findByEnrollmentId(attempt.getEnrollmentId())
+                .map(admin ->
+                    new AdminAuthAuditContext(
+                        admin.getUsername(),
+                        admin.getAdminId(),
+                        admin.getTenant() != null ? admin.getTenant().getTenantId() : null)));
   }
 
   /**

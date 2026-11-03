@@ -1,0 +1,41 @@
+# iOS simulator (#1148): Settings → Open Source Licenses shows App + iOS libraries (no vendor
+# section), and the C/C++ libraries bundled by React Native open their full license text.
+# Debug build + Metro, no backend needed: maestro test maestro/flows/ios_licenses.yaml
+# (The license body is not exposed to the accessibility tree: Jest checks the texts.)
+appId: org.ezkey.mobile
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "Settings|Paramètres"
+    timeout: 60000
+- tapOn: "Settings|Paramètres"
+- scrollUntilVisible:
+    element: "(Open Source Licenses|Licences open source).*"
+- tapOn: "(Open Source Licenses|Licences open source).*"
+- extendedWaitUntil:
+    visible: "App libraries|.*applications.*|Bibliothèques.*"
+    timeout: 15000
+- takeScreenshot: lic1_top
+- assertNotVisible: "Vendor components|Composants.*fournisseur.*"
+- scrollUntilVisible:
+    element: "iOS libraries|Bibliothèques iOS"
+    timeout: 60000
+    speed: 90
+- takeScreenshot: lic2_ios_section
+- scrollUntilVisible:
+    element: "Folly version.*"
+    timeout: 20000
+- tapOn: "Folly version.*"
+- extendedWaitUntil:
+    visible: "Apache-2.0"
+    timeout: 10000
+- takeScreenshot: lic3_folly
+- tapOn: "Back|Retour"   # header back button, localized label since #1176
+- scrollUntilVisible:
+    element: "glog version.*"
+    timeout: 20000
+- tapOn: "glog version.*"
+- extendedWaitUntil:
+    visible: "BSD-3-Clause"
+    timeout: 10000
+- takeScreenshot: lic4_glog

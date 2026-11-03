@@ -199,14 +199,13 @@ class IntegrationApiAuthAttemptControllerTest {
         "Enrollment is not active for authentication. Enrollment ID: 123", exception.getMessage());
     verify(auditLogService)
         .log(
-            argThat(
-                (AuditLog auditLog) ->
-                    auditLog.getEventStatus() == EventStatus.FAILURE
-                        && "auth_attempt_creation_failed".equals(auditLog.getEventAction())
-                        && "Enrollment is not active for authentication. Enrollment ID: 123"
-                            .equals(auditLog.getErrorMessage())
-                        && Integer.valueOf(123).equals(auditLog.getEnrollmentId())
-                        && Integer.valueOf(77).equals(auditLog.getIntegrationId())));
+            argThat((AuditLog auditLog) ->
+                auditLog.getEventStatus() == EventStatus.FAILURE
+                    && "auth_attempt_creation_failed".equals(auditLog.getEventAction())
+                    && "Enrollment is not active for authentication. Enrollment ID: 123"
+                        .equals(auditLog.getErrorMessage())
+                    && Integer.valueOf(123).equals(auditLog.getEnrollmentId())
+                    && Integer.valueOf(77).equals(auditLog.getIntegrationId())));
   }
 
   private void setupApiKeyAuthentication(Integer integrationId) {

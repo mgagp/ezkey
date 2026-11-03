@@ -19,7 +19,7 @@ PORT="${SSH_PORT}"
 STUB_PORT="${EZKEY_STUB_PORT:-18081}"
 STUB_PID_FILE="/tmp/ezkey-pam-stub-tmo.pid"
 STUB_REQ_LOG="/tmp/ezkey-pam-stub-reqs.log"
-ARTIFACT_DIR="${EZKEY_PAM_ARTIFACT_DIR:-/opt/cursor/artifacts}"
+ARTIFACT_DIR="$(ezkey_pam_artifact_dir)"
 mkdir -p "${ARTIFACT_DIR}"
 PROOF="${ARTIFACT_DIR}/pam-timeouts.log"
 PASS=0
@@ -154,7 +154,9 @@ echo "=== PAM timeout inventory tests (#895 PR-B) ===" | tee "${PROOF}"
   echo "  wait effective              min(conf, applied_ttl, rem-CURL_SLACK); chunked ≤5s (#907)"
   echo "  curl /wait slack 15         EZKEY_CURL_WAIT_SLACK (cancel margin inside)"
   echo "  Enter measure               pre-create EZKEY_MAX_ENTER_SECS 25; challenge=rem budget (#982 B1)"
-  echo "  wait SIGTERM                absorbed only during /wait (flag); restore after"
+  echo "  wait SIGTERM                absorbed only while ezkey_in_wait=1 (flag→cancel)"
+  echo "  non-wait SIGTERM            SIGNAL emit + SIG_DFL + raise (prompts/create) #1011"
+  echo "  EZKEY_DIAG_LINE_MAX 768     ezkey_diag.h (worst-case attempt line ~416)"
   echo "  LoginGraceTime 120          sshd_config (runbook: >= 120 s)"
   echo "  Auth /pending rate          10/min (ezkey.rate-limit.pending.*)"
 } | tee -a "${PROOF}"
@@ -701,14 +703,16 @@ OUT="$(docker exec "${CONTAINER}" sh -c 'cat /var/log/ezkey-pam/debug.out' || tr
 WAIT_LEFT="$(echo "${OUT}" | grep -oE 'wait_left_[0-9]+' | tail -n1 | cut -d_ -f3 || true)"
 echo "nochal-delayed-enter chunk=${GOT_TO} wait_left=${WAIT_LEFT} sent_ttl=${GOT_TTL} ssh_rc=${SSH_RC} attempt=${ATTEMPT}" \
   | tee -a "${PROOF}"
-# B1: TTL is computed after ok, so ~8s typing shrinks both wait_left and sent ttl.
-if echo "${ATTEMPT}" | grep -Eq 'result=(SUCCESS|UNAVAIL|DENIED|TIMEOUT|EXPIRED)' \
+# B1 / #1016 P2: TTL shrinks after ok; require real SUCCESS (ACCEPTED branch
+# inverted must fail — do not accept UNAVAIL|DENIED|TIMEOUT|EXPIRED here).
+if echo "${ATTEMPT}" | grep -q 'result=SUCCESS' \
+  && [ "${SSH_RC}" -eq 0 ] \
   && [ -n "${WAIT_LEFT}" ] && [ "${WAIT_LEFT}" -lt 90 ] && [ "${WAIT_LEFT}" -ge 70 ] \
   && [ -n "${GOT_TTL}" ] && [ "${GOT_TTL}" -le 85 ] && [ "${GOT_TTL}" -ge 70 ] \
   && [ -n "${GOT_TO}" ] && [ "${GOT_TO}" -le 5 ]; then
-  ok "no-challenge delayed Enter ${DELAY_SECS}s → wait_left=${WAIT_LEFT} sent_ttl=${GOT_TTL} (both shrunk) + chunk≤5"
+  ok "no-challenge delayed Enter ${DELAY_SECS}s → SUCCESS ssh_rc=0 wait_left=${WAIT_LEFT} sent_ttl=${GOT_TTL} + chunk≤5"
 else
-  fail "no-challenge delayed Enter expected wait_left/ttl in [70,85] + chunk≤5, got wait_left='${WAIT_LEFT}' ttl='${GOT_TTL}' chunk='${GOT_TO}' ${ATTEMPT}"
+  fail "no-challenge delayed Enter expected SUCCESS+ssh_rc=0 + wait_left/ttl in [70,85] + chunk≤5, got ssh_rc=${SSH_RC} wait_left='${WAIT_LEFT}' ttl='${GOT_TTL}' chunk='${GOT_TO}' ${ATTEMPT}"
 fi
 stop_stub
 restore_conf
@@ -1193,7 +1197,7 @@ fi
 stop_stub
 restore_conf
 
-# --- #975 D4: ssh -T </dev/null → UNAVAIL + **zero** stub creates ---
+# --- #975 D4: ssh -T </dev/null → CONFIRM + **zero** stub creates (#1011) ---
 # Confirm-before-create: empty EOF never reaches POST /auth-attempts.
 start_stub ok
 docker exec "${CONTAINER}" sh -c \
@@ -1234,13 +1238,15 @@ echo "d4_rc=${d4_rc} creates=${CREATES_D4} attempt=${ATTEMPT_D4}" | tee -a "${PR
 echo "d4_err=${ERR_D4}" | tee -a "${PROOF}"
 if [ "${d4_rc}" -ne 0 ] \
   && [ "${CREATES_D4}" -eq 0 ] \
-  && echo "${ATTEMPT_D4}" | grep -q 'result=UNAVAIL' \
+  && echo "${ATTEMPT_D4}" | grep -q 'result=CONFIRM' \
+  && echo "${ATTEMPT_D4}" | grep -q 'reason=empty_confirm' \
+  && echo "${ATTEMPT_D4}" | grep -q 'stage=confirm' \
   && echo "${ERR_D4}" | grep -Eq 'pre-wait confirm missing|empty/EOF|not ok'; then
-  ok "#975 D4 ssh -T </dev/null → UNAVAIL + zero creates"
+  ok "#975 D4 ssh -T </dev/null → CONFIRM + zero creates (#1011)"
 else
-  fail "#975 D4 expected UNAVAIL+0 creates (rc=${d4_rc} creates=${CREATES_D4}): ${ATTEMPT_D4}"
+  fail "#975 D4 expected CONFIRM+0 creates (rc=${d4_rc} creates=${CREATES_D4}): ${ATTEMPT_D4}"
 fi
-# Bare Enter on a PTY (empty) → UNAVAIL + zero creates.
+# Bare Enter on a PTY (empty) → CONFIRM + zero creates.
 docker exec "${CONTAINER}" sh -c ": >'${STUB_REQ_LOG}'"
 SSH_LOG_D4E="${ARTIFACT_DIR}/pam-timeouts-d4-bare-enter.log"
 SSH_CTRL_D4E="$(ezkey_mk_ctrl_fifo)"
@@ -1276,10 +1282,11 @@ CREATES_D4E="${CREATES_D4E:-0}"
 echo "d4_bare_enter_rc=${d4e_rc} creates=${CREATES_D4E} attempt=${ATTEMPT_D4E}" \
   | tee -a "${PROOF}"
 if [ "${d4e_rc}" -ne 0 ] && [ "${CREATES_D4E}" -eq 0 ] \
-  && echo "${ATTEMPT_D4E}" | grep -q 'result=UNAVAIL'; then
-  ok "#975 D4 bare Enter → UNAVAIL + zero creates"
+  && echo "${ATTEMPT_D4E}" | grep -q 'result=CONFIRM' \
+  && echo "${ATTEMPT_D4E}" | grep -q 'reason=empty_confirm'; then
+  ok "#975 D4 bare Enter → CONFIRM + zero creates (#1011)"
 else
-  fail "#975 D4 bare Enter expected UNAVAIL+0 creates (rc=${d4e_rc} creates=${CREATES_D4E})"
+  fail "#975 D4 bare Enter expected CONFIRM+0 creates (rc=${d4e_rc} creates=${CREATES_D4E}): ${ATTEMPT_D4E}"
 fi
 stop_stub
 restore_conf
@@ -1402,10 +1409,11 @@ CREATES_S3="${CREATES_S3:-0}"
 ATTEMPT_S3="$(last_attempt_line)"
 echo "s3_rc=${s3_rc} creates=${CREATES_S3} attempt=${ATTEMPT_S3}" | tee -a "${PROOF}"
 if [ "${s3_rc}" -ne 0 ] && [ "${CREATES_S3}" -eq 0 ] \
-  && echo "${ATTEMPT_S3}" | grep -q 'result=UNAVAIL'; then
-  ok "S3 batch + enrollment challenge → UNAVAIL + zero creates"
+  && echo "${ATTEMPT_S3}" | grep -q 'result=CONFIRM' \
+  && echo "${ATTEMPT_S3}" | grep -q 'reason=empty_confirm'; then
+  ok "S3 batch + enrollment challenge → CONFIRM + zero creates (#1011)"
 else
-  fail "S3 expected UNAVAIL+0 creates (rc=${s3_rc} creates=${CREATES_S3}): ${ATTEMPT_S3}"
+  fail "S3 expected CONFIRM+0 creates (rc=${s3_rc} creates=${CREATES_S3}): ${ATTEMPT_S3}"
 fi
 stop_stub
 restore_conf
@@ -1659,11 +1667,12 @@ ERR_982B="$(docker exec "${CONTAINER}" sh -c 'tail -n 5 /var/log/ezkey-pam/debug
 echo "982_batch rc=${batch_982_rc} creates=${CREATES_982B} attempt=${ATTEMPT_982BATCH}" \
   | tee -a "${PROOF}"
 if [ "${batch_982_rc}" -ne 0 ] && [ "${CREATES_982B}" -eq 0 ] \
-  && echo "${ATTEMPT_982BATCH}" | grep -q 'result=UNAVAIL' \
+  && echo "${ATTEMPT_982BATCH}" | grep -q 'result=CONFIRM' \
+  && echo "${ATTEMPT_982BATCH}" | grep -q 'reason=empty_confirm' \
   && echo "${ERR_982B}" | grep -Eqi 'confirm missing or not ok|empty/EOF'; then
-  ok "#982 batch empty reply → UNAVAIL + 0 creates + typed confirm error"
+  ok "#982 batch empty reply → CONFIRM + 0 creates + typed confirm error (#1011)"
 else
-  fail "#982 batch expected UNAVAIL+0 creates+typed err (rc=${batch_982_rc} creates=${CREATES_982B}): ${ATTEMPT_982BATCH} / ${ERR_982B}"
+  fail "#982 batch expected CONFIRM+0 creates+typed err (rc=${batch_982_rc} creates=${CREATES_982B}): ${ATTEMPT_982BATCH} / ${ERR_982B}"
 fi
 stop_stub
 restore_conf
@@ -1688,8 +1697,25 @@ if grep -q 'ttlSeconds' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'EZKEY_WAIT_CHUNK_SECS 5' "${SCRIPT_DIR}/../src/ezkey_config.h" \
   && grep -q 'EZKEY_INTERRUPT_CANCEL_MAX 5' "${SCRIPT_DIR}/../src/ezkey_config.h" \
   && grep -q 'EZKEY_AUTH_BUDGET_SECS 105' "${SCRIPT_DIR}/../src/ezkey_config.h" \
-  && grep -q 'cancel=%s' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
-  && grep -q 'ezkey_sigterm_wait' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
+  && grep -qE 'cancel=%s timeoutSeconds=%s' "${SCRIPT_DIR}/../src/ezkey_diag.c" \
+  && grep -qE '"stage=%s reason=%s' "${SCRIPT_DIR}/../src/ezkey_diag.c" \
+  && grep -qE 'LOG_AUTHPRIV[[:space:]]*\|[[:space:]]*LOG_INFO' "${SCRIPT_DIR}/../src/ezkey_diag.c" \
+  && grep -qE 'SOCK_DGRAM[[:space:]]*\|[[:space:]]*SOCK_CLOEXEC[[:space:]]*\|[[:space:]]*SOCK_NONBLOCK' \
+       "${SCRIPT_DIR}/../src/ezkey_diag.c" \
+  && grep -qE 'ezkey_sigterm_handler' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
+  && grep -qE '^[[:space:]]*\(void\)ezkey_diag_emit_signal_safe[[:space:]]*\(' \
+       "${SCRIPT_DIR}/../src/pam_ezkey.c" \
+  && grep -qE 'ezkey_in_wait[[:space:]]*!=' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
+  && grep -qE 'raise[[:space:]]*\([[:space:]]*SIGTERM[[:space:]]*\)' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
+  && awk '/Chunked \/wait/,/^[[:space:]]*ezkey_in_wait[[:space:]]*=[[:space:]]*1[[:space:]]*;/' \
+       "${SCRIPT_DIR}/../src/pam_ezkey.c" | grep -qE 'ezkey_wait_entry_abort_raised[[:space:]]*\(' \
+  && grep -qE 'abort_flag[[:space:]]*!=[[:space:]]*0' \
+       "${SCRIPT_DIR}/../src/ezkey_wait_entry.h" \
+  && ! awk '/Chunked \/wait/,/^[[:space:]]*ezkey_in_wait[[:space:]]*=[[:space:]]*1[[:space:]]*;/' \
+       "${SCRIPT_DIR}/../src/pam_ezkey.c" | grep -qE 'ezkey_wait_abort[[:space:]]*=[[:space:]]*0' \
+  && grep -qE 'fcntl[[:space:]]*\([^,]+,[[:space:]]*F_SETFL[[:space:]]*,.*O_NONBLOCK' \
+       "${SCRIPT_DIR}/../src/ezkey_diag.c" \
+  && grep -qE 'ezkey_diag_syslog_snap_publish' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'ezkey_format_waiting_prompt' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'ezkey_challenge_display_ok' "${SCRIPT_DIR}/../src/pam_ezkey.c" \
   && grep -q 'ezkey_prewait_prompt_mode' "${SCRIPT_DIR}/../src/pam_ezkey.c" \

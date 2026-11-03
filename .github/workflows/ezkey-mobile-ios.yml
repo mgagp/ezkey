@@ -1,0 +1,128 @@
+# ezkey_mobile iOS native layer (#152): Swift lint (swift-format + SwiftLint, strict), Podfile.lock
+# freshness + privacy-manifest telemetry guard (#1148, #1147), simulator
+# build + hosted XCTest target (EzkeyMobileTests: crypto codec, Keychain store, bridge module).
+#
+# Invoked from the aggregate CI workflow, path-filtered on the iOS native surface only (ios/**,
+# native dependency manifests, the iOS scripts), or manually via workflow_dispatch. JS-only
+# changes stay on the Linux mobile jobs: a Debug simulator build does not bundle JS.
+#
+# Runner: macos-26 (stable image, Xcode 26.x default). Local development uses Xcode 27 (iOS 27
+# simulator), so CI also proves the code still builds on the previous toolchain. The Xcode 27
+# image is preview-only on GitHub (Nov 2026); revisit when a stable image ships it.
+# Same commands as local: yarn ios:lint, yarn ios:test (see ezkey_mobile/docs/IOS_SETUP.md).
+name: ezkey_mobile iOS
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ezkey-mobile-ios-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  # Pinned so a SwiftLint release cannot turn the strict lint red on its own (local: 0.65.1).
+  SWIFTLINT_VERSION: 0.65.1
+  SWIFTLINT_SHA256: c1e429b0599cf1b516f369a2d9ec04eaf0e436f3c12b637df8851fa52ff694d0
+
+jobs:
+  ios-xctest:
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Toolchain versions
+        run: |
+          xcodebuild -version
+          xcrun swift-format --version
+
+      - name: Install SwiftLint (pinned, checksum-verified)
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/swiftlint"
+          mkdir -p "$dir"
+          curl -fsSL -o "$dir/swiftlint.zip" \
+            "https://github.com/realm/SwiftLint/releases/download/${SWIFTLINT_VERSION}/portable_swiftlint.zip"
+          echo "${SWIFTLINT_SHA256}  $dir/swiftlint.zip" | shasum -a 256 -c -
+          unzip -q -o "$dir/swiftlint.zip" -d "$dir"
+          echo "$dir" >> "$GITHUB_PATH"
+
+      # Fast failure before the long dependency + build steps.
+      - name: Swift lint (yarn ios:lint)
+        working-directory: ezkey_mobile
+        run: bash scripts/ios-lint.sh
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Enable Corepack (Yarn 4)
+        run: corepack enable
+
+      - name: Cache Yarn (Berry)
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: |
+            ezkey_mobile/.yarn/cache
+          key: ${{ runner.os }}-ezkey-mobile-yarn-${{ hashFiles('ezkey_mobile/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-ezkey-mobile-yarn-
+
+      - name: Install ezkey_mobile dependencies
+        working-directory: ezkey_mobile
+        run: yarn install --immutable
+
+      # CocoaPods version comes from ezkey_mobile/Gemfile.lock; Ruby matches its RUBY VERSION.
+      - name: Set up Ruby (bundler cache)
+        uses: ruby/setup-ruby@de492cf36cbab201753d720ce4f4e336cd688c94 # v1.336.0
+        with:
+          ruby-version: '4.0.9'
+          working-directory: ezkey_mobile
+          bundler-cache: true
+
+      - name: Install pods
+        working-directory: ezkey_mobile/ios
+        run: bundle exec pod install
+
+      # Podfile.lock feeds the in-app iOS license list (#1148); a native dependency changed
+      # without `pod install` on the Mac would leave it, and the list, stale.
+      - name: Guard — Podfile.lock matches pod install
+        working-directory: ezkey_mobile
+        run: |
+          if ! git diff --exit-code -- ios/Podfile.lock; then
+            echo "::error::ios/Podfile.lock is stale: run (cd ios && bundle exec pod install), then yarn license:app-data, and commit both"
+            exit 1
+          fi
+
+      # iOS counterpart of the Android datatransport guard (#1147): no telemetry pod, and no
+      # privacy manifest (app or pod) declaring tracking or data collection.
+      - name: Guard — no telemetry (privacy manifests)
+        working-directory: ezkey_mobile
+        run: bash scripts/ios-privacy-check.sh
+
+      - name: Build + XCTest (yarn ios:test)
+        working-directory: ezkey_mobile
+        env:
+          RESULT_BUNDLE_PATH: ${{ runner.temp }}/EzkeyMobileTests.xcresult
+        run: bash scripts/ios-test.sh
+
+      - name: Upload XCTest result bundle
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: ezkey-mobile-ios-xcresult
+          path: ${{ runner.temp }}/EzkeyMobileTests.xcresult
+          retention-days: 7
+          if-no-files-found: ignore

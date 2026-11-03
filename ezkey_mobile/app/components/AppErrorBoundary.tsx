@@ -57,7 +57,11 @@ export class AppErrorBoundary extends React.Component<Props, State> {
         <Text style={styles.subtitle}>
           The app encountered an unexpected error.{'\n'}L&apos;app a rencontré une erreur inattendue.
         </Text>
-        <TouchableOpacity style={styles.button} onPress={this.handleRetry} activeOpacity={0.8}>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={this.handleRetry}
+          activeOpacity={0.8}
+          accessibilityRole="button">
           <Text style={styles.buttonText}>Redémarrer / Retry</Text>
         </TouchableOpacity>
       </View>

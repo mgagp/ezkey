@@ -140,7 +140,9 @@ The check extracts `arm64-v8a` / `x86_64` `.so` files and fails the build if:
 Standalone: `./scripts/check-16kb-alignment.sh path/to/app-release.apk|aab`.
 
 Requires `llvm-readelf` / `readelf` on PATH, or the NDK copy (`llvm-readelf` on Linux,
-`llvm-readelf.exe` under `prebuilt/windows-x86_64/bin` on Windows Git Bash).
+`llvm-readelf.exe` under `prebuilt/windows-x86_64/bin` on Windows Git Bash). APK checks
+also need `zipalign` from build-tools 35+ (`zipalign.exe` on Windows; the script probes
+`ANDROID_HOME` / `ANDROID_SDK_ROOT`, then `%LOCALAPPDATA%\Android\Sdk`).
 
 Policy: [`docs/MOBILE_ANDROID_PLATFORM_SUPPORT.md`](../docs/MOBILE_ANDROID_PLATFORM_SUPPORT.md)
 § *16 KB page-size gate*. Do **not** set `useLegacyPackaging=true` as a workaround.
@@ -156,8 +158,15 @@ base that changed `package.json` / `yarn.lock` — CI tests the **merge commit**
 
 ```bash
 yarn install --immutable
+yarn license:android   # only when native Android deps changed (Gradle, or an RN bump)
 yarn license:app-data
 ```
+
+`license:app-data` (`generate-third-party-licenses.mjs`) bundles the app with Metro for Android
+and iOS (about a minute) to list the JS packages actually shipped, then merges the native
+exports under `licenses/`, the iOS entries from `ios/Podfile.lock`, and the C/C++ libraries
+compiled into React Native (texts in `licenses/texts/`). Runs on any OS; no `pod install` needed. `license:android` (`export-android-licenses.sh`) runs the
+AboutLibraries Gradle export with JDK 17.
 
 Freshness ignores `generatedAt` only. On failure it prints a concise package-level
 diff (added / removed / version or license changes). See
@@ -365,7 +374,8 @@ This script is intended as a practical investigation aid, not as a formal crypto
 
 Punctual curated pass — keyword **`mobile-doctor-curated`**.
 
-Runs **react-doctor** + **Semgrep** (Ezkey mobile pack) + **Detekt**, then curates into P1/P2/P3.
+Runs **react-doctor** + **Semgrep** (Ezkey mobile pack, JS/TS + Kotlin + Swift) + **Detekt**, plus
+the iOS lane on macOS (**SwiftLint** curated set + **Periphery**), then curates into P1/P2/P3.
 
 From `ezkey_mobile/`:
 
@@ -374,7 +384,8 @@ yarn doctor:curated
 ./scripts/mobile-doctor-curated.sh
 ```
 
-Optional flags: `--skip-react-doctor`, `--skip-semgrep`, `--skip-detekt`, `--curate-only`.
+Optional flags: `--skip-react-doctor`, `--skip-semgrep`, `--skip-detekt`, `--skip-swiftlint`,
+`--skip-periphery`, `--curate-only`. Periphery reads the index store left by `yarn ios:test`.
 
 Outputs (gitignored under `logs/`):
 

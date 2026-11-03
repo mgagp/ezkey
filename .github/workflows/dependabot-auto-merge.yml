@@ -1,0 +1,97 @@
+# Auto-merge Dependabot semver-PATCH PRs once required checks are green.
+# Decision: Marc 2026-10-30 (hygiene inflow reduction). Exclusions: crypto libs
+# (Christophe reviews), Docker / docker-compose images, Gradle / Android Gradle,
+# RN-core / vision-camera groups, and any PR labelled deferred:* or hitl*.
+#
+# Safety: `gh pr merge --auto` only waits if `main` REQUIRES status checks. If no
+# required check is configured, GitHub would merge immediately, so this workflow
+# refuses to enable auto-merge unless `main` has at least one required status check.
+# Prefer repository rulesets (GET .../rules/branches/main, type required_status_checks)
+# — this repo uses an active ruleset for `ci-gate`, not classic branch protection —
+# and fall back to classic protection contexts when present. Repo setting
+# "Allow auto-merge" must be on.
+name: dependabot-auto-merge
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  auto-merge:
+    if: >-
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Dependabot metadata
+        id: meta
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+
+      - name: Decide eligibility
+        id: gate
+        env:
+          UPDATE_TYPE: ${{ steps.meta.outputs.update-type }}
+          ECOSYSTEM: ${{ steps.meta.outputs.package-ecosystem }}
+          DEPS: ${{ steps.meta.outputs.dependency-names }}
+          GROUP: ${{ steps.meta.outputs.dependency-group }}
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: |
+          reason=""
+          [ "$UPDATE_TYPE" = "version-update:semver-patch" ] || reason="update-type=$UPDATE_TYPE"
+          case "$ECOSYSTEM" in docker|docker_compose|docker-compose|gradle) reason="ecosystem=$ECOSYSTEM";; esac
+          case "$GROUP" in mobile-rn-core|mobile-vision-camera|android-gradle-*|docker-*|compose-*) reason="group=$GROUP";; esac
+          if echo "$LABELS" | grep -Eiq '(^|,)(deferred:|hitl)'; then reason="labels=$LABELS"; fi
+          # Crypto libraries: never auto-merged (Christophe reviews).
+          # Keep list in sync with skill + hygiene README wording (exact tokens).
+          if echo "$DEPS" | grep -Eiq 'tink|bouncycastle|bcprov|bcpkix|bcutil|conscrypt|crypto|sha256|sha2|sodium|@noble/|jose|jsonwebtoken|jwt|keychain|biometric'; then
+            reason="crypto deps=$DEPS"
+          fi
+          if [ -n "$reason" ]; then
+            echo "Not eligible: $reason"
+            echo "eligible=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Eligible: $DEPS ($UPDATE_TYPE, $ECOSYSTEM)"
+            echo "eligible=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Require status checks on main (fail-safe)
+        if: steps.gate.outputs.eligible == 'true'
+        id: protect
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # Rulesets first (active on this repo for ci-gate). Count contexts, not
+          # merely the presence of a required_status_checks rule with an empty list.
+          n=$(gh api "repos/${GITHUB_REPOSITORY}/rules/branches/main" \
+                --jq '[.[] | select(.type=="required_status_checks") | .parameters.required_status_checks[]?.context // empty] | length' \
+                2>/dev/null || true)
+          n=${n:-0}
+          # Classic branch protection fallback (often 403 / absent when only rulesets apply).
+          m=$(gh api "repos/${GITHUB_REPOSITORY}/branches/main/protection" \
+                --jq '.required_status_checks.contexts | length' \
+                2>/dev/null || true)
+          m=${m:-0}
+          echo "ruleset_required_contexts=$n classic_required_contexts=$m"
+          if [ "$n" -gt 0 ] || [ "$m" -gt 0 ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::main has no required status checks (ruleset or classic); refusing to enable auto-merge (it would merge before CI)."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Enable auto-merge (squash, pinned to head)
+        if: steps.gate.outputs.eligible == 'true' && steps.protect.outputs.ok == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: gh pr merge --auto --squash --match-head-commit "$HEAD_SHA" "$PR_URL"

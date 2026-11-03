@@ -9,6 +9,13 @@
 #
 # c-cpp: build-mode manual compiles ezkey-pam so pam_ezkey.c is extracted into
 # the CodeQL database (build-mode none does not reliably scan compiled C).
+#
+# Proportionality (2026-11-02): on pull requests and pushes, only the languages
+# whose files changed are analyzed (job `changes`). The weekly schedule and
+# workflow_dispatch analyze every language. A language skipped on a push keeps
+# its previous analysis on main; the CodeQL check may then note a configuration
+# missing on the PR, which is informational. A change to the CodeQL setup itself
+# (.github/codeql/**, this file) analyzes every language.
 name: CodeQL
 
 on:
@@ -25,8 +32,82 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    name: changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.resolve.outputs.matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Detect changed paths
+        id: filter
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        with:
+          filters: |
+            setup:
+              - '.github/codeql/**'
+              - '.github/workflows/codeql.yml'
+            java-kotlin:
+              - '**/*.java'
+              - '**/*.kt'
+              - '**/*.kts'
+              - '**/pom.xml'
+            javascript-typescript:
+              - '**/*.js'
+              - '**/*.jsx'
+              - '**/*.mjs'
+              - '**/*.cjs'
+              - '**/*.ts'
+              - '**/*.tsx'
+              - '**/*.html'
+              - '**/package.json'
+            python:
+              - '**/*.py'
+              - '**/pyproject.toml'
+              - '**/requirements*.txt'
+            c-cpp:
+              - 'ezkey-pam/**'
+            actions:
+              - '.github/workflows/**'
+              - '.github/actions/**'
+
+      - name: Resolve language matrix
+        id: resolve
+        env:
+          EVENT: ${{ github.event_name }}
+          SETUP: ${{ steps.filter.outputs.setup }}
+          JAVA: ${{ steps.filter.outputs.java-kotlin }}
+          JS: ${{ steps.filter.outputs.javascript-typescript }}
+          PY: ${{ steps.filter.outputs.python }}
+          CPP: ${{ steps.filter.outputs.c-cpp }}
+          ACTIONS: ${{ steps.filter.outputs.actions }}
+        run: |
+          set -euo pipefail
+          all=false
+          if [[ "$EVENT" != "pull_request" && "$EVENT" != "push" ]] || [[ "$SETUP" == "true" ]]; then
+            all=true
+          fi
+          entries=()
+          add() { entries+=("{\"language\":\"$1\",\"build-mode\":\"$2\"}"); }
+          if [[ "$all" == "true" || "$JAVA" == "true" ]]; then add java-kotlin none; fi
+          if [[ "$all" == "true" || "$JS" == "true" ]]; then add javascript-typescript none; fi
+          if [[ "$all" == "true" || "$PY" == "true" ]]; then add python none; fi
+          if [[ "$all" == "true" || "$CPP" == "true" ]]; then add c-cpp manual; fi
+          if [[ "$all" == "true" || "$ACTIONS" == "true" ]]; then add actions none; fi
+          matrix="[$(IFS=,; echo "${entries[*]:-}")]"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "CodeQL languages ($EVENT): $matrix"
+
   analyze:
     name: Analyze (${{ matrix.language }})
+    needs: changes
+    if: needs.changes.outputs.matrix != '[]'
     runs-on: ubuntu-24.04
     timeout-minutes: ${{ matrix.language == 'c-cpp' && 360 || 120 }}
     permissions:
@@ -36,17 +117,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - language: java-kotlin
-            build-mode: none
-          - language: javascript-typescript
-            build-mode: none
-          - language: python
-            build-mode: none
-          - language: c-cpp
-            build-mode: manual
-          - language: actions
-            build-mode: none
+        include: ${{ fromJSON(needs.changes.outputs.matrix) }}
 
     steps:
       - name: Checkout
@@ -55,7 +126,7 @@ jobs:
           persist-credentials: false
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
+        uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
@@ -71,7 +142,7 @@ jobs:
           make -C ezkey-pam clean all
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
+        uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           category: "/language:${{ matrix.language }}"
         env:

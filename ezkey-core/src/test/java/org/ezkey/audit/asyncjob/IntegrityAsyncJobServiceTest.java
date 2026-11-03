@@ -134,12 +134,11 @@ class IntegrityAsyncJobServiceTest {
     when(heavyCryptoGate.isBusy()).thenReturn(false);
     AtomicReference<IntegrityAsyncJob> saved = new AtomicReference<>();
     when(jobRepository.saveAndFlush(any()))
-        .thenAnswer(
-            inv -> {
-              IntegrityAsyncJob job = inv.getArgument(0);
-              saved.set(job);
-              return job;
-            });
+        .thenAnswer(inv -> {
+          IntegrityAsyncJob job = inv.getArgument(0);
+          saved.set(job);
+          return job;
+        });
 
     OffsetDateTime from = OffsetDateTime.parse("2026-01-01T00:00:00Z");
     IntegrityAsyncJobStartRequest request =
@@ -216,12 +215,11 @@ class IntegrityAsyncJobServiceTest {
         .validateOperatorWindow(any(), any());
     AtomicReference<IntegrityAsyncJob> saved = new AtomicReference<>();
     when(jobRepository.saveAndFlush(any()))
-        .thenAnswer(
-            inv -> {
-              IntegrityAsyncJob job = inv.getArgument(0);
-              saved.set(job);
-              return job;
-            });
+        .thenAnswer(inv -> {
+          IntegrityAsyncJob job = inv.getArgument(0);
+          saved.set(job);
+          return job;
+        });
 
     OffsetDateTime from = OffsetDateTime.parse("2026-01-01T00:00:00Z");
     IntegrityAsyncJobStartRequest request =
@@ -369,12 +367,11 @@ class IntegrityAsyncJobServiceTest {
     when(heavyCryptoGate.isBusy()).thenReturn(false);
     AtomicReference<IntegrityAsyncJob> saved = new AtomicReference<>();
     when(jobRepository.saveAndFlush(any()))
-        .thenAnswer(
-            inv -> {
-              IntegrityAsyncJob job = inv.getArgument(0);
-              saved.set(job);
-              return job;
-            });
+        .thenAnswer(inv -> {
+          IntegrityAsyncJob job = inv.getArgument(0);
+          saved.set(job);
+          return job;
+        });
 
     IntegrityAsyncJobStartRequest request =
         new IntegrityAsyncJobStartRequest(
@@ -499,12 +496,11 @@ class IntegrityAsyncJobServiceTest {
     when(heavyCryptoGate.isBusy()).thenReturn(false);
     AtomicReference<IntegrityAsyncJob> saved = new AtomicReference<>();
     when(jobRepository.saveAndFlush(any()))
-        .thenAnswer(
-            inv -> {
-              IntegrityAsyncJob job = inv.getArgument(0);
-              saved.set(job);
-              return job;
-            });
+        .thenAnswer(inv -> {
+          IntegrityAsyncJob job = inv.getArgument(0);
+          saved.set(job);
+          return job;
+        });
 
     IntegrityAsyncJobStartRequest request =
         new IntegrityAsyncJobStartRequest(
@@ -557,12 +553,11 @@ class IntegrityAsyncJobServiceTest {
       when(heavyCryptoGate.isBusy()).thenReturn(false);
       AtomicReference<IntegrityAsyncJob> saved = new AtomicReference<>();
       when(jobRepository.saveAndFlush(any()))
-          .thenAnswer(
-              inv -> {
-                IntegrityAsyncJob job = inv.getArgument(0);
-                saved.set(job);
-                return job;
-              });
+          .thenAnswer(inv -> {
+            IntegrityAsyncJob job = inv.getArgument(0);
+            saved.set(job);
+            return job;
+          });
       when(jobRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
       when(jobRepository.findById(any())).thenAnswer(inv -> Optional.ofNullable(saved.get()));
 
@@ -632,12 +627,11 @@ class IntegrityAsyncJobServiceTest {
       when(heavyCryptoGate.tryEnter(IntegrityHeavyCryptoGate.Holder.OPERATOR_JOB)).thenReturn(true);
       AtomicReference<IntegrityAsyncJob> saved = new AtomicReference<>();
       when(jobRepository.saveAndFlush(any()))
-          .thenAnswer(
-              inv -> {
-                IntegrityAsyncJob job = inv.getArgument(0);
-                saved.set(job);
-                return job;
-              });
+          .thenAnswer(inv -> {
+            IntegrityAsyncJob job = inv.getArgument(0);
+            saved.set(job);
+            return job;
+          });
       when(jobRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
       when(jobRepository.findById(any())).thenAnswer(inv -> Optional.ofNullable(saved.get()));
 
@@ -729,12 +723,11 @@ class IntegrityAsyncJobServiceTest {
       when(heavyCryptoGate.tryEnter(IntegrityHeavyCryptoGate.Holder.OPERATOR_JOB)).thenReturn(true);
       AtomicReference<IntegrityAsyncJob> saved = new AtomicReference<>();
       when(jobRepository.saveAndFlush(any()))
-          .thenAnswer(
-              inv -> {
-                IntegrityAsyncJob job = inv.getArgument(0);
-                saved.set(job);
-                return job;
-              });
+          .thenAnswer(inv -> {
+            IntegrityAsyncJob job = inv.getArgument(0);
+            saved.set(job);
+            return job;
+          });
       when(jobRepository.findById(any())).thenAnswer(inv -> Optional.ofNullable(saved.get()));
       org.mockito.Mockito.doThrow(new DataAccessResourceFailureException("heartbeat write failed"))
           .when(stateService)
@@ -785,12 +778,11 @@ class IntegrityAsyncJobServiceTest {
     when(heavyCryptoGate.isBusy()).thenReturn(false);
     AtomicReference<IntegrityAsyncJob> saved = new AtomicReference<>();
     when(jobRepository.saveAndFlush(any()))
-        .thenAnswer(
-            inv -> {
-              IntegrityAsyncJob job = inv.getArgument(0);
-              saved.set(job);
-              return job;
-            });
+        .thenAnswer(inv -> {
+          IntegrityAsyncJob job = inv.getArgument(0);
+          saved.set(job);
+          return job;
+        });
 
     IntegrityAsyncJobStartRequest request =
         new IntegrityAsyncJobStartRequest(

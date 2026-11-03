@@ -134,10 +134,8 @@ public class DashboardService {
         CompletableFuture.supplyAsync(() -> buildAuth24hStats(tenantId, since24h));
 
     CompletableFuture<List<DashboardRecentActivityItemDto>> recentActivityFuture =
-        CompletableFuture.supplyAsync(
-            () ->
-                buildRecentActivity(
-                    tenantId, PageRequest.of(0, RECENT_ACTIVITY_SIZE, createdAtDesc)));
+        CompletableFuture.supplyAsync(() ->
+            buildRecentActivity(tenantId, PageRequest.of(0, RECENT_ACTIVITY_SIZE, createdAtDesc)));
 
     CompletableFuture<Long> openAlertCountFuture =
         principal.isGlobalAdmin()
@@ -195,10 +193,9 @@ public class DashboardService {
       ScheduledJobLastRun row =
           scheduledJobLastRunRepository
               .findById(key)
-              .orElseThrow(
-                  () ->
-                      new IllegalStateException(
-                          "Missing scheduled job registry row for key: " + key.name()));
+              .orElseThrow(() ->
+                  new IllegalStateException(
+                      "Missing scheduled job registry row for key: " + key.name()));
       rows.add(toJobRowDto(row));
     }
     return rows;

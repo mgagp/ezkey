@@ -62,13 +62,12 @@ class IntegrityWindowCapPropertiesTest {
   @Test
   @DisplayName("binding defaults when unset")
   void binding_defaults() {
-    contextRunner.run(
-        context -> {
-          assertNull(context.getStartupFailure());
-          IntegrityWindowCapProperties bound = context.getBean(IntegrityWindowCapProperties.class);
-          assertEquals(92, bound.getMaxWindowDays());
-          assertEquals(8, bound.getMaxSyncWindowDays());
-        });
+    contextRunner.run(context -> {
+      assertNull(context.getStartupFailure());
+      IntegrityWindowCapProperties bound = context.getBean(IntegrityWindowCapProperties.class);
+      assertEquals(92, bound.getMaxWindowDays());
+      assertEquals(8, bound.getMaxSyncWindowDays());
+    });
   }
 
   @Test
@@ -76,12 +75,11 @@ class IntegrityWindowCapPropertiesTest {
   void binding_asyncZeroRejected() {
     contextRunner
         .withPropertyValues("ezkey.audit.integrity.max-window-days=0")
-        .run(
-            context -> {
-              Throwable failure = context.getStartupFailure();
-              assertNotNull(failure, "zero must fail startup");
-              assertInstanceOf(ConfigurationPropertiesBindException.class, failure);
-            });
+        .run(context -> {
+          Throwable failure = context.getStartupFailure();
+          assertNotNull(failure, "zero must fail startup");
+          assertInstanceOf(ConfigurationPropertiesBindException.class, failure);
+        });
   }
 
   @Test
@@ -89,12 +87,11 @@ class IntegrityWindowCapPropertiesTest {
   void binding_syncZeroRejected() {
     contextRunner
         .withPropertyValues("ezkey.audit.integrity.max-sync-window-days=0")
-        .run(
-            context -> {
-              Throwable failure = context.getStartupFailure();
-              assertNotNull(failure, "zero must fail startup");
-              assertInstanceOf(ConfigurationPropertiesBindException.class, failure);
-            });
+        .run(context -> {
+          Throwable failure = context.getStartupFailure();
+          assertNotNull(failure, "zero must fail startup");
+          assertInstanceOf(ConfigurationPropertiesBindException.class, failure);
+        });
   }
 
   @Test
@@ -102,12 +99,11 @@ class IntegrityWindowCapPropertiesTest {
   void binding_asyncEmptyRejected() {
     contextRunner
         .withPropertyValues("ezkey.audit.integrity.max-window-days=")
-        .run(
-            context -> {
-              Throwable failure = context.getStartupFailure();
-              assertNotNull(failure, "empty binding must fail startup");
-              assertInstanceOf(ConfigurationPropertiesBindException.class, failure);
-            });
+        .run(context -> {
+          Throwable failure = context.getStartupFailure();
+          assertNotNull(failure, "empty binding must fail startup");
+          assertInstanceOf(ConfigurationPropertiesBindException.class, failure);
+        });
   }
 
   @Test
@@ -115,12 +111,11 @@ class IntegrityWindowCapPropertiesTest {
   void binding_syncEmptyRejected() {
     contextRunner
         .withPropertyValues("ezkey.audit.integrity.max-sync-window-days=")
-        .run(
-            context -> {
-              Throwable failure = context.getStartupFailure();
-              assertNotNull(failure, "empty binding must fail startup");
-              assertInstanceOf(ConfigurationPropertiesBindException.class, failure);
-            });
+        .run(context -> {
+          Throwable failure = context.getStartupFailure();
+          assertNotNull(failure, "empty binding must fail startup");
+          assertInstanceOf(ConfigurationPropertiesBindException.class, failure);
+        });
   }
 
   @Test
@@ -128,12 +123,11 @@ class IntegrityWindowCapPropertiesTest {
   void binding_asyncAboveMaxRejected() {
     contextRunner
         .withPropertyValues("ezkey.audit.integrity.max-window-days=367")
-        .run(
-            context -> {
-              Throwable failure = context.getStartupFailure();
-              assertNotNull(failure, "367 must fail startup");
-              assertInstanceOf(ConfigurationPropertiesBindException.class, failure);
-            });
+        .run(context -> {
+          Throwable failure = context.getStartupFailure();
+          assertNotNull(failure, "367 must fail startup");
+          assertInstanceOf(ConfigurationPropertiesBindException.class, failure);
+        });
   }
 
   @Test
@@ -141,14 +135,12 @@ class IntegrityWindowCapPropertiesTest {
   void binding_asyncMaxAccepted() {
     contextRunner
         .withPropertyValues("ezkey.audit.integrity.max-window-days=366")
-        .run(
-            context -> {
-              assertNull(context.getStartupFailure());
-              IntegrityWindowCapProperties bound =
-                  context.getBean(IntegrityWindowCapProperties.class);
-              assertEquals(366, bound.getMaxWindowDays());
-              assertEquals(8, bound.getMaxSyncWindowDays());
-            });
+        .run(context -> {
+          assertNull(context.getStartupFailure());
+          IntegrityWindowCapProperties bound = context.getBean(IntegrityWindowCapProperties.class);
+          assertEquals(366, bound.getMaxWindowDays());
+          assertEquals(8, bound.getMaxSyncWindowDays());
+        });
   }
 
   @Test
@@ -158,13 +150,12 @@ class IntegrityWindowCapPropertiesTest {
         .withPropertyValues(
             "ezkey.audit.integrity.max-window-days=7",
             "ezkey.audit.integrity.max-sync-window-days=8")
-        .run(
-            context -> {
-              Throwable failure = context.getStartupFailure();
-              assertNotNull(failure, "async < sync must fail startup");
-              assertInstanceOf(ConfigurationPropertiesBindException.class, failure);
-              assertTrue(rootMessage(failure).contains("max-window-days"));
-            });
+        .run(context -> {
+          Throwable failure = context.getStartupFailure();
+          assertNotNull(failure, "async < sync must fail startup");
+          assertInstanceOf(ConfigurationPropertiesBindException.class, failure);
+          assertTrue(rootMessage(failure).contains("max-window-days"));
+        });
   }
 
   @Test
@@ -174,14 +165,12 @@ class IntegrityWindowCapPropertiesTest {
         .withPropertyValues(
             "ezkey.audit.integrity.max-window-days=8",
             "ezkey.audit.integrity.max-sync-window-days=8")
-        .run(
-            context -> {
-              assertNull(context.getStartupFailure());
-              IntegrityWindowCapProperties bound =
-                  context.getBean(IntegrityWindowCapProperties.class);
-              assertEquals(8, bound.getMaxWindowDays());
-              assertEquals(8, bound.getMaxSyncWindowDays());
-            });
+        .run(context -> {
+          assertNull(context.getStartupFailure());
+          IntegrityWindowCapProperties bound = context.getBean(IntegrityWindowCapProperties.class);
+          assertEquals(8, bound.getMaxWindowDays());
+          assertEquals(8, bound.getMaxSyncWindowDays());
+        });
   }
 
   @Test
@@ -271,19 +260,17 @@ class IntegrityWindowCapPropertiesTest {
   void legacyVerifyReportKeyAsProperty_failsStartup() {
     contextRunner
         .withPropertyValues("ezkey.audit.integrity.verify-report.max-window-hours=48")
-        .run(
-            context -> {
-              Throwable failure = context.getStartupFailure();
-              assertNotNull(failure);
-              String message = rootMessage(failure);
-              assertTrue(
-                  message.contains(
-                      IntegrityWindowCapLegacyPropertyGuard.LEGACY_VERIFY_REPORT_MAX_WINDOW_HOURS));
-              assertTrue(
-                  message.contains(
-                      IntegrityWindowCapLegacyPropertyGuard.REPLACEMENT_MAX_WINDOW_DAYS));
-              assertTrue(!message.contains("48"));
-            });
+        .run(context -> {
+          Throwable failure = context.getStartupFailure();
+          assertNotNull(failure);
+          String message = rootMessage(failure);
+          assertTrue(
+              message.contains(
+                  IntegrityWindowCapLegacyPropertyGuard.LEGACY_VERIFY_REPORT_MAX_WINDOW_HOURS));
+          assertTrue(
+              message.contains(IntegrityWindowCapLegacyPropertyGuard.REPLACEMENT_MAX_WINDOW_DAYS));
+          assertTrue(!message.contains("48"));
+        });
   }
 
   @Test

@@ -403,8 +403,19 @@ assert_stdout_contains "os-patch-check community host" "ezkey-online"
 assert_stdout_contains "os-patch-check read-only label" "[read-only]"
 assert_stdout_contains "os-patch-check mentions check-release-update" "dnf check-release-update"
 assert_stdout_contains "os-patch-check mentions updateinfo" "dnf updateinfo list"
+assert_stdout_contains "os-patch-check severity loop" "for sev in Critical Important"
+assert_stdout_contains "os-patch-check one severity per dnf call" '--sec-severity="${sev}"'
 assert_stdout_contains "os-patch-check mentions needs-restarting" "needs-restarting -r"
+assert_stdout_contains "os-patch-check reboot-required message" "reboot is required"
+assert_stdout_contains "os-patch-check no-reboot message" "no reboot required"
 assert_stdout_contains "os-patch-check mentions docker ps" "docker ps"
+if grep -E -- '--sec-severity=[A-Za-z]+,' "${OUT}"; then
+  echo "FAIL: os-patch-check must not pass comma-separated --sec-severity to dnf" >&2
+  fail=$((fail + 1))
+else
+  echo "PASS: os-patch-check does not use comma-separated --sec-severity"
+  pass=$((pass + 1))
+fi
 if grep -Eqi 'dnf (update|upgrade) -y' "${OUT}"; then
   echo "FAIL: os-patch-check dry-run must not include mutating dnf update/upgrade -y" >&2
   grep -Ei 'dnf (update|upgrade)' "${OUT}" >&2 || true

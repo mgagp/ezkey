@@ -19,11 +19,13 @@ import org.springframework.context.annotation.FilterType;
 /**
  * Main Spring Boot application for Ezkey Crypto API.
  *
- * <p>This application provides cryptographic endpoints for testing and integration.
+ * <p>This application provides cryptographic endpoints for testing and integration. It runs only in
+ * the disposable local clean-start stack (ADR-0016 §2.5.1) — not on Lightsail / ezkey.online.
  *
- * <p>Key rotation and the full re-encryption pipeline (batch jobs, JPA repositories) are excluded
- * from component scan: Crypto API has no database and only needs {@link
- * org.ezkey.security.EncryptionService} and related primitives.
+ * <p>A read-only DataSource (role {@code ezkey_crypto}) loads {@code ezkey_keyset_blob} via {@link
+ * org.ezkey.security.domain.repository.KeysetBlobRepository} for {@link
+ * org.ezkey.security.EncryptionService}. Key rotation and the full re-encryption pipeline (batch
+ * jobs and write-path services) are excluded from component scan.
  *
  * @since 2025
  */
@@ -38,6 +40,10 @@ import org.springframework.context.annotation.FilterType;
       "org.ezkey.security", //
     },
     excludeFilters = {
+      // JPA for KeysetBlob is auto-config only (after DataSource) — see CryptoJpaConfig.
+      @ComponentScan.Filter(
+          type = FilterType.REGEX,
+          pattern = "org\\.ezkey\\.crypto\\.autoconfigure\\..*"),
       @ComponentScan.Filter(
           type = FilterType.ASSIGNABLE_TYPE,
           classes = {

@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { search } from '@/generated/admin-api/integrations/integrations';
-import type { IntegrationResponseDto, PagedModelIntegrationResponseDto } from '@/generated/admin-api/model';
+import type { IntegrationResponseDto } from '@/generated/admin-api/model';
+import { orvalPagedBody } from '@/hooks/use-paginated-orval';
 
 /** Returns the best display name for an integration, trying English first, then French, then code. */
 export function getIntegrationName(integration: IntegrationResponseDto): string {
@@ -19,7 +20,7 @@ export function useIntegrations(): {
 } {
   const { data, isLoading } = useQuery({
     queryKey: ['integrations-all'],
-    queryFn: () => search({ size: 100 }) as Promise<PagedModelIntegrationResponseDto>,
+    queryFn: () => orvalPagedBody<IntegrationResponseDto>(search({ size: 100 })),
     staleTime: 60_000,
   });
 

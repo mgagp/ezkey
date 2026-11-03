@@ -5,7 +5,7 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Test: DemoAppAcmeEntrypointScriptTest
- * Description: Entrypoint creates config at 0600 and always re-chmods existing volumes.
+ * Description: Entrypoint creates config at 0600, umask 077, fail-closes if mode cannot be set.
  */
 
 package org.ezkey.demo.acme.docker;
@@ -29,14 +29,18 @@ class DemoAppAcmeEntrypointScriptTest {
   @TempDir Path tempDir;
 
   @Test
-  void entrypointSourceUsesChmod600OnceWithWarnOnFailure() throws IOException {
+  void entrypointSourceFailClosesOnChmodFailureWithUmask077() throws IOException {
     Path script = resolveEntrypoint();
     String content = Files.readString(script, StandardCharsets.UTF_8);
-    assertThat(content).contains("chmod 600 /app/config/application.properties");
-    assertThat(content).contains("WARN: could not chmod 600");
-    assertThat(content.split("chmod 600", -1)).hasSize(3);
+    assertThat(content).contains("umask 077");
+    assertThat(content).contains("chmod 600 \"$CONFIG\"");
+    assertThat(content).contains("exit 1");
+    assertThat(content).contains("stat -c '%a'");
+    assertThat(content).doesNotContain("WARN: could not chmod 600");
     assertThat(content).doesNotContain("chmod 644");
-    assertThat(content).doesNotContain("2>/dev/null || true");
+    // chmod itself must not be swallowed; busybox stat may use "2>/dev/null || true".
+    assertThat(content).doesNotContain("chmod 600 \"$CONFIG\" 2>/dev/null");
+    assertThat(content).doesNotContain("chmod 600 \"$CONFIG\" || true");
 
     Path dockerfile = resolveDockerfile();
     String dockerContent = Files.readString(dockerfile, StandardCharsets.UTF_8);
@@ -51,7 +55,10 @@ class DemoAppAcmeEntrypointScriptTest {
     Path configDir = appRoot.resolve("config");
     Files.createDirectories(configDir);
     Path configFile = configDir.resolve("application.properties");
-    Files.writeString(configFile, "ezkey.integration-key=\n", StandardCharsets.UTF_8);
+    Files.writeString(
+        configFile,
+        "ezkey.integration-key=\nezkey.access-codes.demo.code=0123456789abcdef0123456789abcdef\n",
+        StandardCharsets.UTF_8);
     Files.setPosixFilePermissions(
         configFile,
         Set.of(
@@ -70,6 +77,45 @@ class DemoAppAcmeEntrypointScriptTest {
             PosixFilePermission.OWNER_EXECUTE));
     Files.writeString(appRoot.resolve("app.jar"), "noop", StandardCharsets.UTF_8);
 
+    Process process = runAdaptedEntrypoint(appRoot, configFile, false);
+    assertThat(process.exitValue()).isZero();
+
+    Set<PosixFilePermission> perms = Files.getPosixFilePermissions(configFile);
+    assertThat(perms)
+        .containsExactlyInAnyOrder(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
+  }
+
+  @Test
+  @EnabledOnOs({OS.LINUX, OS.MAC})
+  void entrypointExitsNonZeroWhenChmodFails() throws Exception {
+    Path appRoot = tempDir.resolve("fail-app");
+    Path configDir = appRoot.resolve("config");
+    Files.createDirectories(configDir);
+    Path configFile = configDir.resolve("application.properties");
+    Files.writeString(configFile, "ezkey.integration-key=\n", StandardCharsets.UTF_8);
+    Files.setPosixFilePermissions(
+        configFile, Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
+
+    Path javaWrapper = appRoot.resolve("java");
+    Files.writeString(javaWrapper, "#!/bin/sh\nexit 0\n", StandardCharsets.UTF_8);
+    Files.setPosixFilePermissions(
+        javaWrapper,
+        Set.of(
+            PosixFilePermission.OWNER_READ,
+            PosixFilePermission.OWNER_WRITE,
+            PosixFilePermission.OWNER_EXECUTE));
+    Files.writeString(appRoot.resolve("app.jar"), "noop", StandardCharsets.UTF_8);
+
+    Process process = runAdaptedEntrypoint(appRoot, configFile, true);
+    assertThat(process.exitValue()).isNotZero();
+  }
+
+  /**
+   * @param forceChmodFailure when true, replace {@code chmod 600} with {@code false} so the
+   *     fail-closed {@code exit 1} path is exercised
+   */
+  private Process runAdaptedEntrypoint(Path appRoot, Path configFile, boolean forceChmodFailure)
+      throws Exception {
     Path script = resolveEntrypoint();
     Path localScript = appRoot.resolve("entrypoint.sh");
     String adapted =
@@ -79,6 +125,9 @@ class DemoAppAcmeEntrypointScriptTest {
                 "/app/config-template.properties",
                 appRoot.resolve("template.properties").toString())
             .replace("/app/app.jar", appRoot.resolve("app.jar").toString());
+    if (forceChmodFailure) {
+      adapted = adapted.replace("chmod 600 \"$CONFIG\"", "false # chmod 600 \"$CONFIG\"");
+    }
     Files.writeString(localScript, adapted, StandardCharsets.UTF_8);
 
     ProcessBuilder builder = new ProcessBuilder("/bin/sh", localScript.toAbsolutePath().toString());
@@ -88,11 +137,7 @@ class DemoAppAcmeEntrypointScriptTest {
     Process process = builder.start();
     boolean finished = process.waitFor(10, TimeUnit.SECONDS);
     assertThat(finished).isTrue();
-    assertThat(process.exitValue()).isZero();
-
-    Set<PosixFilePermission> perms = Files.getPosixFilePermissions(configFile);
-    assertThat(perms)
-        .containsExactlyInAnyOrder(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
+    return process;
   }
 
   private static Path resolveEntrypoint() {

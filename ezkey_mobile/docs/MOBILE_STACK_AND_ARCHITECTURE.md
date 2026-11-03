@@ -26,7 +26,7 @@ screen-by-screen behavior already covered by the flow and mapping documents.
 | Durable metadata storage | AsyncStorage-backed enrollment metadata collection and preferences | Persist local enrollment metadata, installation metadata, and language preference | Wrapped by `enrollmentStorage` and preference-specific storage facades. |
 | Secure item storage | `react-native-keychain` wrapper | Device-local secure storage for small secret values such as enrollment proof tokens | Used by `enrollmentStorage` as the secure delegate; private key path remains native. |
 | Device crypto | Native bridge (`EzkeyCryptoModule`) | Key generation, signing, public key retrieval, proof token generation | Android path is the current reference-strength implementation. |
-| QR capture | Vision Camera 5 + `react-native-vision-camera-barcode-scanner` (ML Kit) | QR-first enrollment via `useBarcodeScannerOutput` | Android-first reference; iOS uses same ML Kit path. |
+| QR capture | Vision Camera 5 (Android: `react-native-vision-camera-barcode-scanner` / ML Kit; iOS: native `useObjectOutput` / AVFoundation) | QR-first enrollment via platform hook `useEnrollmentCodeOutput` | ML Kit is not linked on iOS (no arm64 simulator slice); see `IOS_SETUP.md`. |
 | Testing | Jest; Maestro for real-device pilot | Unit/component coverage plus optional device flows | Layer contract: [`MOBILE_TEST_STRATEGY.md`](MOBILE_TEST_STRATEGY.md). Native instrumented crypto tests are separate (`yarn android:test:instrumented:crypto`). |
 
 ## Stack modernization program (2026-05-29)
@@ -101,7 +101,7 @@ does **not** use the enrollment private key itself to unwrap all other local sec
 | `app/services/crypto` | Native crypto abstraction and payload helpers | Owns device signing, verification, and payload construction. |
 | `app/utils` | Focused derivation logic and formatting helpers | Installation metadata normalization, tenant grouping, proof token generation, URL validation. |
 | `android` | Android native project | Current reference-strength native crypto path (`org.ezkey.mobile.crypto`). QR enrollment uses Vision Camera + ML Kit from JS. |
-| `ios` | iOS native project | Native parity is in progress and documented conservatively. |
+| `ios` | iOS native project | Clean RN 0.88.1 scaffold (ADR-MOB-0005), iOS 15.5+; native parity in progress — see `IOS_SETUP.md`. |
 | `docs` | Mobile-specific documentation | Primary conceptual corpus plus supporting technical and operational notes. |
 
 ## Data Flow Across UI, Hooks, API, Storage, and Native Crypto

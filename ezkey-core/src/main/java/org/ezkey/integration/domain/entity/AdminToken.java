@@ -22,6 +22,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
+import java.util.Objects;
 import org.ezkey.integration.domain.AdminTokenPurpose;
 
 /**
@@ -102,13 +103,16 @@ public class AdminToken {
   private String adminType;
 
   /**
-   * Purpose of this token: session (full Admin API) or recovery (enrollment reset only).
+   * Purpose of this token: session (full Admin API), recovery (enrollment reset only), temporary
+   * evaluator console, or deferred-onboarding activation code.
    *
-   * <p>Enforced by {@code AdminTokenValidationService} for session authentication (SEC-021).
+   * <p>Enforced by {@code AdminTokenValidationService} for session authentication (SEC-021, #1122).
+   * Deliberately has no default: every mint must state its purpose, so a forgotten purpose fails
+   * instead of silently producing a full session token.
    */
   @Enumerated(EnumType.STRING)
   @Column(name = "token_purpose", nullable = false, length = 20)
-  private AdminTokenPurpose tokenPurpose = AdminTokenPurpose.SESSION;
+  private AdminTokenPurpose tokenPurpose;
 
   /**
    * Reference to the tenant associated with this token.
@@ -193,29 +197,16 @@ public class AdminToken {
   }
 
   /**
-   * Constructs a new admin token with the specified details.
-   *
-   * <p>This constructor creates a new admin token with the SHA-256 hash of the bearer token,
-   * administrator, and expiration time. The plain token is never stored.
-   *
-   * @param bearerTokenHash the SHA-256 hash (hex) of the bearer token
-   * @param admin the administrator who owns this token
-   * @param adminType the type of administrator
-   * @param expiresAt the expiration timestamp
-   */
-  public AdminToken(
-      String bearerTokenHash, EzkeyAdmin admin, String adminType, OffsetDateTime expiresAt) {
-    this(bearerTokenHash, admin, adminType, expiresAt, AdminTokenPurpose.SESSION);
-  }
-
-  /**
    * Constructs a new admin token with an explicit purpose.
    *
+   * <p>The plain token is never stored, only its SHA-256 hash.
+   *
    * @param bearerTokenHash the SHA-256 hash (hex) of the bearer token
    * @param admin the administrator who owns this token
    * @param adminType the type of administrator
    * @param expiresAt the expiration timestamp
-   * @param tokenPurpose session vs recovery purpose
+   * @param tokenPurpose token purpose; mandatory
+   * @throws NullPointerException if {@code tokenPurpose} is null
    */
   public AdminToken(
       String bearerTokenHash,
@@ -227,7 +218,7 @@ public class AdminToken {
     this.admin = admin;
     this.adminType = adminType;
     this.expiresAt = expiresAt;
-    this.tokenPurpose = tokenPurpose != null ? tokenPurpose : AdminTokenPurpose.SESSION;
+    this.tokenPurpose = Objects.requireNonNull(tokenPurpose, "tokenPurpose");
     this.createdAt = OffsetDateTime.now();
     this.active = true;
   }
@@ -316,10 +307,11 @@ public class AdminToken {
   /**
    * Sets the token purpose.
    *
-   * @param tokenPurpose the token purpose
+   * @param tokenPurpose the token purpose; mandatory
+   * @throws NullPointerException if {@code tokenPurpose} is null
    */
   public void setTokenPurpose(AdminTokenPurpose tokenPurpose) {
-    this.tokenPurpose = tokenPurpose;
+    this.tokenPurpose = Objects.requireNonNull(tokenPurpose, "tokenPurpose");
   }
 
   /**

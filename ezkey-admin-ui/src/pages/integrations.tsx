@@ -29,7 +29,7 @@ import { buildListDetailNavState } from '@/lib/list-detail-navigation';
 import { formatDate } from '@/lib/utils';
 import { INTEGRATION_LIFECYCLE_FILTER_PARAM } from '@/lib/dashboard-drilldown-links';
 import { create, search } from '@/generated/admin-api/integrations/integrations';
-import type { IntegrationCreateRequestDto, IntegrationCreateResponseDto, IntegrationResponseDto, PagedModelIntegrationResponseDto } from '@/generated/admin-api/model';
+import type { IntegrationCreateRequestDto, IntegrationCreateResponseDto, IntegrationResponseDto } from '@/generated/admin-api/model';
 
 type IntegrationListFilter = 'active' | 'retired' | 'all';
 
@@ -197,7 +197,7 @@ export default function IntegrationsPage() {
       lifecycleStatus: lifecycleFilter === 'retired' ? 'RETIRED' : undefined,
       includeRetired: lifecycleFilter === 'all' ? true : undefined,
     },
-    fetchPage: (params) => search(params) as Promise<PagedModelIntegrationResponseDto>,
+    fetchPage: (params) => search(params),
   });
 
   const columns: ColumnDef<IntegrationResponseDto>[] = useMemo(() => {

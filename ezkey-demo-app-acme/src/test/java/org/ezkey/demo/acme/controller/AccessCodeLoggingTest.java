@@ -5,7 +5,7 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Test: AccessCodeLoggingTest
- * Description: Access codes and challenge values must not appear in INFO logs.
+ * Description: Access codes, secrets, and challenge values must not appear in INFO logs.
  */
 
 package org.ezkey.demo.acme.controller;
@@ -64,6 +64,8 @@ class AccessCodeLoggingTest {
 
   @Test
   void shouldNotLogAccessCodeOnSuccessfulActivation() throws Exception {
+    // Controller activation logs label only; it never reads resolveCredentials / the secret.
+    // Secret omission on slot load is covered in AccessCodeServiceTest.
     AccessCodeService accessCodeService = mock(AccessCodeService.class);
     DemoApiKeyConfigService demoApiKeyConfigService = mock(DemoApiKeyConfigService.class);
     DemoRateLimitService demoRateLimitService = mock(DemoRateLimitService.class);

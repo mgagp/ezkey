@@ -28,7 +28,7 @@ When the SPA and API are on **different origins**, the browser requires CORS. Th
 **After you know the Admin UI origin** (Cloudflare Pages preview URL, custom domain, or both):
 
 1. Set **`EZKEY_ADMIN_CORS_ALLOWED_ORIGINS`** to a **comma-separated** list of exact origins (scheme + host + port, **no path**), for example:
-   - `https://ezkey-admin-ui.pages.dev`
+   - `https://admin-ui-ezkey-online.pages.dev`
    - `https://<preview-id>.<project>.pages.dev`
    - `https://admin-ui.ezkey.online` (custom domain; see DNS example below)
 2. Restart the Admin API container (or process) on the instance so the new env is applied.
@@ -75,7 +75,7 @@ Publish **`dist/`** contents to Pages (not the whole monorepo).
 
 Add **`VITE_API_BASE_URL`** in the repo-root `.env` (or export it) before `--build`. Deploy scripts **require** it and exit ≠ 0 if missing — there is no product default hostname. Template: **[`.env.example`](../../.env.example)** at the repo root (commented community examples). Committed Vite mode file [`ezkey-admin-ui/.env.cloudflare`](../../ezkey-admin-ui/.env.cloudflare) also uses commented examples only.
 
-Create a **dedicated** Pages project (do not reuse `ezkey-org`). Example project name: `ezkey-admin-ui`.
+Create a **dedicated** Pages project (do not reuse `ezkey-org`). Community example project name: `admin-ui-ezkey-online` (`ezkey-admin-ui` is the retired EXP1 project — #863).
 
 **Preview (Wrangler):**
 
@@ -110,13 +110,13 @@ Without `--build`, still set `CLOUDFLARE_PAGES_PROJECT` and ensure `dist/` is al
 
 The **marketing** apex uses its own Pages project and CNAME (e.g. `ezkey.org` → `ezkey-teaser.pages.dev` — see [ezkey-org-site.md](ezkey-org-site.md)). That is **not** the Admin UI.
 
-For **`https://admin-ui.ezkey.online`** pointing at the **`ezkey-admin-ui`** Pages project, a typical record is:
+For **`https://admin-ui.ezkey.online`** pointing at the **`admin-ui-ezkey-online`** Pages project, a typical record is:
 
 | Type | Name | Target | Proxy |
 |------|------|--------|--------|
-| CNAME | `admin-ui` | `ezkey-admin-ui.pages.dev` | Proxied |
+| CNAME | `admin-ui` | `admin-ui-ezkey-online.pages.dev` | Proxied |
 
-Also add **`admin-ui.ezkey.online`** under **Workers & Pages → ezkey-admin-ui → Custom domains** so TLS and routing are correct (Cloudflare may create or align the DNS record).
+Also add **`admin-ui.ezkey.online`** under **Workers & Pages → admin-ui-ezkey-online → Custom domains** so TLS and routing are correct (Cloudflare may create or align the DNS record).
 
 ## 4. TLS version (minimum 1.3) — Admin UI edge
 

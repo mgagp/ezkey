@@ -148,8 +148,9 @@ public class AdminRecoveryService {
    * Generate a single recovery code in format XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX.
    *
    * <p>Uses SecureRandom for cryptographic security. Format uses digits only (0-9) for unambiguous
-   * entry. 32 digits provide 106 bits of entropy - paranoia-level security resistant to brute force
-   * and quantum attacks.
+   * entry. 32 digits provide 106 bits of entropy: a high-entropy, single-use break-glass secret
+   * that resists brute force. This is classical hardening, not a post-quantum claim (see
+   * docs/SECURITY_POSTURE.md).
    *
    * <p>Security: 10^32 combinations = ~3 × 10^18 years at 1M attempts/sec
    *
@@ -298,10 +299,9 @@ public class AdminRecoveryService {
     AdminToken token =
         tokenRepository
             .findByBearerTokenHashAndActiveTrue(tokenHash)
-            .orElseThrow(
-                () ->
-                    new org.ezkey.admin.exception.AuthenticationException(
-                        "Invalid or expired recovery token"));
+            .orElseThrow(() ->
+                new org.ezkey.admin.exception.AuthenticationException(
+                    "Invalid or expired recovery token"));
 
     // 3. Check expiration
     if (token.getExpiresAt().isBefore(OffsetDateTime.now())) {
@@ -336,14 +336,13 @@ public class AdminRecoveryService {
     }
     tokenRepository
         .findByBearerTokenHashAndActiveTrue(tokenHash)
-        .ifPresent(
-            token -> {
-              token.setActive(false);
-              tokenRepository.save(token);
-              logger.info(
-                  "✅ Recovery token deactivated after enrollment reset for admin: {}",
-                  token.getAdmin() != null ? token.getAdmin().getUsername() : "unknown");
-            });
+        .ifPresent(token -> {
+          token.setActive(false);
+          tokenRepository.save(token);
+          logger.info(
+              "✅ Recovery token deactivated after enrollment reset for admin: {}",
+              token.getAdmin() != null ? token.getAdmin().getUsername() : "unknown");
+        });
   }
 
   /**

@@ -20,6 +20,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  ViewStyle,
 } from 'react-native';
 import {StackScreenProps} from '@react-navigation/stack';
 import {useTranslation} from 'react-i18next';
@@ -28,6 +29,8 @@ import {RootStackParamList} from '../../navigation/types';
 import {EnrollmentScannerModal} from '../../components/EnrollmentScannerModal';
 import PinCodeInput from '../../components/PinCodeInput';
 import {useEnrollmentWizard} from '../../hooks/useEnrollmentWizard';
+import {useAccessibilityAnnouncement} from '../../hooks/useAccessibilityAnnouncement';
+import {colors} from '../../config/theme';
 import {
   buildEnrollmentIdentityDisplay,
   identityDisplayCopy,
@@ -178,6 +181,32 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
     handleScannerDismiss,
   } = useEnrollmentWizard(navigation.popToTop);
 
+  useAccessibilityAnnouncement(bindError ?? cameraError);
+  useAccessibilityAnnouncement(challengeError);
+
+  const actionButtons = (containerStyle: ViewStyle) => (
+    <View style={containerStyle}>
+      <TouchableOpacity
+        testID="ezkey.e2e.enrollmentWizard.secondaryAction"
+        style={[styles.secondaryButton, secondaryDisabled ? styles.disabledButton : undefined]}
+        onPress={handleSecondary}
+        disabled={secondaryDisabled}
+        accessibilityRole="button"
+        accessibilityState={{disabled: secondaryDisabled}}>
+        <Text style={styles.secondaryLabel}>{secondaryLabel}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        testID="ezkey.e2e.enrollmentWizard.primaryAction"
+        style={[styles.primaryButton, primaryDisabled ? styles.disabledButton : undefined]}
+        onPress={() => handlePrimary(hasCameraPermission, requestPermission)}
+        disabled={primaryDisabled}
+        accessibilityRole="button"
+        accessibilityState={{disabled: primaryDisabled, busy: isSubmitting}}>
+        <Text style={styles.primaryLabel}>{primaryLabel}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <>
     <KeyboardAvoidingView
@@ -194,7 +223,8 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
           <TouchableOpacity
             testID="ezkey.e2e.enrollmentWizard.back"
             onPress={() => handleBack(navigation.goBack)}
-            style={styles.backButton}>
+            style={styles.backButton}
+            accessibilityRole="button">
             <Text style={styles.backLabel}>{t('enrollmentWizard.back')}</Text>
           </TouchableOpacity>
           <View style={styles.backButton} />
@@ -218,7 +248,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
                       value={controlledBypassSeedInput}
                       onChangeText={setControlledBypassSeedInput}
                       placeholder={t('enrollmentWizard.controlledBypassInputPlaceholder')}
-                      placeholderTextColor="#7f8da6"
+                      placeholderTextColor={colors.textSubtle}
                       autoCapitalize="none"
                       autoCorrect={false}
                       style={styles.bypassInput}
@@ -271,6 +301,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
                     <Text style={styles.errorBannerText}>{challengeError}</Text>
                   </View>
                 ) : null}
+                {actionButtons(styles.actionsInline)}
               </View>
               <Text style={styles.enrollmentDetailsLabel}>{t('enrollmentWizard.enrollmentDetails')}</Text>
               {controlledBypassUsed ? (
@@ -285,22 +316,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
           ) : null}
         </View>
       </ScrollView>
-      <View style={styles.actions}>
-        <TouchableOpacity
-          testID="ezkey.e2e.enrollmentWizard.secondaryAction"
-          style={[styles.secondaryButton, secondaryDisabled ? styles.disabledButton : undefined]}
-          onPress={handleSecondary}
-          disabled={secondaryDisabled}>
-          <Text style={styles.secondaryLabel}>{secondaryLabel}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          testID="ezkey.e2e.enrollmentWizard.primaryAction"
-          style={[styles.primaryButton, primaryDisabled ? styles.disabledButton : undefined]}
-          onPress={() => handlePrimary(hasCameraPermission, requestPermission)}
-          disabled={primaryDisabled}>
-          <Text style={styles.primaryLabel}>{primaryLabel}</Text>
-        </TouchableOpacity>
-      </View>
+      {hasDraft ? null : actionButtons(styles.actions)}
     </KeyboardAvoidingView>
       <EnrollmentScannerModal
         visible={scannerVisible}
@@ -314,7 +330,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0b0d11',
+    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
@@ -331,26 +347,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   backButton: {
+    minHeight: 48,
+    justifyContent: 'center',
     paddingVertical: 8,
     paddingHorizontal: 12,
   },
   backLabel: {
-    color: '#5a9cf7',
+    color: colors.primaryLight,
     fontSize: 14,
     fontWeight: '500',
   },
   flowSectionLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#5a7aa8',
+    color: colors.primaryMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 8,
-  },
-  flowDivider: {
-    height: 1,
-    backgroundColor: 'rgba(54, 115, 223, 0.12)',
-    marginVertical: 24,
   },
   stepContainer: {
     flexGrow: 1,
@@ -363,20 +376,20 @@ const styles = StyleSheet.create({
   challengeHeading: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#f4f7ff',
+    color: colors.textPrimary,
     marginBottom: 8,
     lineHeight: 24,
   },
   challengeHint: {
     fontSize: 14,
-    color: '#9aa3b6',
+    color: colors.textMuted,
     marginBottom: 16,
     lineHeight: 20,
   },
   enrollmentDetailsLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#5a7aa8',
+    color: colors.primaryMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 8,
@@ -384,11 +397,11 @@ const styles = StyleSheet.create({
   stepTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#f4f7ff',
+    color: colors.textPrimary,
   },
   stepDescription: {
     fontSize: 14,
-    color: '#c2c8d5',
+    color: colors.textSecondary,
     marginTop: 8,
     marginBottom: 24,
   },
@@ -398,19 +411,19 @@ const styles = StyleSheet.create({
   },
   bypassButton: {
     borderWidth: 1,
-    borderColor: '#4f8ff8',
+    borderColor: colors.harnessAccent,
     borderRadius: 10,
     paddingVertical: 10,
     paddingHorizontal: 12,
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(79, 143, 248, 0.08)',
+    backgroundColor: colors.harnessAccentBg,
   },
   bypassInput: {
-    backgroundColor: '#151923',
+    backgroundColor: colors.surface,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(79, 143, 248, 0.32)',
-    color: '#d7e6ff',
+    borderColor: colors.harnessAccentBorder,
+    color: colors.textAccent,
     fontSize: 12,
     lineHeight: 18,
     minHeight: 44,
@@ -418,12 +431,12 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   bypassButtonLabel: {
-    color: '#9ec2ff',
+    color: colors.harnessAccentText,
     fontSize: 13,
     fontWeight: '600',
   },
   bypassHint: {
-    color: '#7f8da6',
+    color: colors.textSubtle,
     fontSize: 12,
     lineHeight: 18,
   },
@@ -433,84 +446,28 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingVertical: 4,
     paddingHorizontal: 10,
-    backgroundColor: 'rgba(242, 168, 67, 0.18)',
+    backgroundColor: colors.harnessWarningBg,
     borderWidth: 1,
-    borderColor: 'rgba(242, 168, 67, 0.5)',
+    borderColor: colors.harnessWarningBorder,
   },
   bypassActiveBadgeLabel: {
-    color: '#ffd58f',
+    color: colors.harnessWarningText,
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.3,
     textTransform: 'uppercase',
   },
-  form: {
-    width: '100%',
-    gap: 12,
-  },
-  inputLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#c2c8d5',
-  },
-  input: {
-    backgroundColor: '#151923',
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    color: '#f4f7ff',
-    fontSize: 16,
-  },
-  challengeContainer: {
-    position: 'relative',
-  },
-  challengeBoxes: {
-    flexDirection: 'row',
-    gap: 8,
-    justifyContent: 'center',
-  },
-  challengeBox: {
-    width: 44,
-    height: 52,
-    borderRadius: 10,
-    backgroundColor: '#151923',
-    borderWidth: 3,
-    borderColor: 'rgba(54, 115, 223, 0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  challengeBoxFilled: {
-    borderColor: 'rgba(54, 115, 223, 0.85)',
-  },
-  challengeDigit: {
-    fontSize: 28,
-    fontWeight: '600',
-    color: '#f4f7ff',
-  },
-  challengeInputHidden: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    opacity: 0,
-    fontSize: 1,
-  },
-  formError: {
-    fontSize: 13,
-    color: '#ff7878',
-  },
   errorBanner: {
-    backgroundColor: 'rgba(255, 120, 120, 0.15)',
+    backgroundColor: colors.errorBg,
     borderLeftWidth: 4,
-    borderLeftColor: '#ff6666',
+    borderLeftColor: colors.error,
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
     marginTop: 4,
   },
   errorBannerText: {
-    color: '#ff7878',
+    color: colors.errorLight,
     fontSize: 13,
     lineHeight: 18,
   },
@@ -519,9 +476,9 @@ const styles = StyleSheet.create({
   },
   infoCard: {
     borderRadius: 12,
-    backgroundColor: '#111620',
+    backgroundColor: colors.surfaceInfo,
     borderWidth: 1,
-    borderColor: 'rgba(54, 115, 223, 0.18)',
+    borderColor: colors.borderCard,
     overflow: 'hidden',
     marginTop: 8,
   },
@@ -529,7 +486,7 @@ const styles = StyleSheet.create({
     marginTop: 0,
   },
   infoCardHeader: {
-    backgroundColor: 'rgba(54, 115, 223, 0.12)',
+    backgroundColor: colors.primaryTint,
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
@@ -539,7 +496,7 @@ const styles = StyleSheet.create({
   infoCardTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#cdd9f7',
+    color: colors.textInfoTitle,
   },
   infoCardBody: {
     paddingHorizontal: 16,
@@ -558,31 +515,31 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 12,
-    color: '#5a7aa8',
+    color: colors.primaryMuted,
     fontWeight: '500',
     flexShrink: 0,
   },
   infoValue: {
     fontSize: 12,
-    color: '#c2c8d5',
+    color: colors.textSecondary,
     textAlign: 'right',
     flexShrink: 1,
   },
   infoValueMuted: {
     fontSize: 11,
-    color: '#6b7a96',
+    color: colors.textSubtle,
     marginTop: 2,
     textAlign: 'right',
   },
   infoValueSmall: {
     fontSize: 11,
-    color: '#c2c8d5',
+    color: colors.textSecondary,
     textAlign: 'right',
     flexShrink: 1,
   },
   infoDivider: {
     height: 1,
-    backgroundColor: 'rgba(54, 115, 223, 0.1)',
+    backgroundColor: colors.dividerAccent,
     marginVertical: 2,
   },
   actions: {
@@ -592,32 +549,37 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
     paddingTop: 12,
   },
+  actionsInline: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
+  },
   primaryButton: {
     flex: 1,
-    backgroundColor: '#3673df',
+    backgroundColor: colors.primary,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
   },
   secondaryButton: {
     flex: 1,
-    backgroundColor: '#151923',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(54, 115, 223, 0.3)',
+    borderColor: colors.borderControl,
   },
   disabledButton: {
     opacity: 0.5,
   },
   secondaryLabel: {
-    color: '#9aa3b6',
+    color: colors.textMuted,
     fontSize: 15,
     fontWeight: '600',
   },
   primaryLabel: {
-    color: '#ffffff',
+    color: colors.textOnPrimary,
     fontSize: 15,
     fontWeight: '600',
   },

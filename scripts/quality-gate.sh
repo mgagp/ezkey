@@ -1,19 +1,22 @@
 #!/usr/bin/env bash
 #
 # quality-gate — on-demand full-suite gate.
-# Cloud agent tooling; Git Bash best-effort, untested on macOS.
+# Requires Bash >= 4 (associative arrays / declare -A). On macOS: brew install bash,
+# then launch via #!/usr/bin/env bash or `bash` from PATH — not /bin/bash (system 3.2).
+# Cloud agent tooling (Linux, Git Bash, Homebrew bash on macOS).
 #
 # Phase order (unit tests before stack — memory headroom on ~16Gi VMs):
 #   preflight → unit-tests → clean-start HA+JM (+gate memory overlay)
-#   → post-clean-health → functional → elective → docker-start restore
-#   → Playwright → churn-init → 2× churn → health → REPORT.md + summary.json
+#   → post-clean-health → c1-rate-limit (#912 Auth overlay only) → functional
+#   → elective → docker-start restore → Playwright → churn-init → 2× churn
+#   → health → REPORT.md + summary.json
 #
 # Exit codes:
 #   0 = GO
 #   1 = NO-GO (any RED)
 #   3 = GO with reservations (AMBER only; HA valid; no skipped phases)
 #   4 = INCONCLUSIVE (HA invalid and/or any skipped phase)
-#   2 = usage / bad args
+#   2 = usage / bad args (also Bash < 4)
 # API replica check covers the 7 HA API JVMs (admin/auth/integration ×2 + crypto).
 # demo-device / demo-app-acme are excluded: not LB replicas; mem-sampled only.
 #
@@ -23,6 +26,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
 
+# Bash >= 4 guard (must parse under Bash 3.2). Same check auto-runs when the HA
+# lib is sourced alone; QUALITY_GATE_BASH_MAJOR overrides the detected major for tests.
 # shellcheck source=lib/quality-gate-ha.sh
 source "$SCRIPT_DIR/lib/quality-gate-ha.sh"
 
@@ -51,7 +56,8 @@ SHEDLOCK_KILL_MISSING=0
 SHEDLOCK_RESTORE_OK=0
 
 GATE_OVERLAY="$REPO_ROOT/docker/docker-compose.ha.quality-gate.yml"
-PHASES="preflight unit-tests clean-start post-clean-health functional-tests elective-tests playwright churn-init churn health"
+C1_OVERLAY="$REPO_ROOT/ezkey-tests/gate-c1/docker-compose.ha.gate-c1-test.yml"
+PHASES="preflight unit-tests clean-start post-clean-health c1-rate-limit functional-tests elective-tests playwright churn-init churn health"
 
 HA_REPLICAS="ezkey-admin-api-1 ezkey-admin-api-2 ezkey-auth-api-1 ezkey-auth-api-2 ezkey-integration-api-1 ezkey-integration-api-2 ezkey-crypto-api-ha"
 MEM_SAMPLE_CONTAINERS="$HA_REPLICAS ezkey-demo-device-ha ezkey-demo-app-acme-ha"
@@ -62,7 +68,8 @@ Usage: ./scripts/quality-gate.sh [options]
 
   --churn-minutes N   Minutes per concurrent churn shell (default: 5)
   --skip PHASE        Skip a phase (repeatable)
-  --no-clean-start    Skip clean-start (reuse running stack)
+  --no-clean-start    Reuse running stack (no compose down -v); skip
+                      unit-tests, clean-start, post-clean-health (exit 4)
   -h, --help          Show this help
 
 Docs: product-docs/global/hygiene/quality-gate/README.md
@@ -73,7 +80,8 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --churn-minutes) CHURN_MINUTES="${2:-}"; shift 2 ;;
     --skip) SKIP_PHASES="${SKIP_PHASES} ${2:-}"; shift 2 ;;
-    --no-clean-start) NO_CLEAN_START=1; SKIP_PHASES="${SKIP_PHASES} clean-start post-clean-health"; shift ;;
+    # Skip unit-tests too: stack stays up and gate RAM headroom is tight (#915).
+    --no-clean-start) NO_CLEAN_START=1; SKIP_PHASES="${SKIP_PHASES} unit-tests clean-start post-clean-health"; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown argument: $1" >&2; usage >&2; exit 2 ;;
   esac
@@ -154,7 +162,7 @@ cleanup_churn() {
 }
 trap cleanup_churn INT TERM EXIT
 
-now_ms() { date +%s%3N 2>/dev/null || node -e 'console.log(Date.now())'; }
+# now_ms — defined in lib/quality-gate-ha.sh (portable; BSD date safe).
 duration_ms() { echo $(($2 - $1)); }
 ms_to_human() {
   local ms="${1:-0}"
@@ -181,18 +189,6 @@ health_env() {
   export COMPOSE_RETRY_FIRED
 }
 
-parse_surefire_counts() {
-  local log="$1" run=0 failed=0 errors=0 skipped=0 line sum_run=0 sum_f=0 sum_e=0 sum_s=0 found=0
-  while IFS= read -r line; do
-    if [[ "$line" =~ Tests\ run:\ *([0-9]+),\ *Failures:\ *([0-9]+),\ *Errors:\ *([0-9]+),\ *Skipped:\ *([0-9]+) ]]; then
-      sum_run=$((sum_run + BASH_REMATCH[1])); sum_f=$((sum_f + BASH_REMATCH[2]))
-      sum_e=$((sum_e + BASH_REMATCH[3])); sum_s=$((sum_s + BASH_REMATCH[4])); found=1
-      run="${BASH_REMATCH[1]}"; failed="${BASH_REMATCH[2]}"; errors="${BASH_REMATCH[3]}"; skipped="${BASH_REMATCH[4]}"
-    fi
-  done < <(grep -E 'Tests run:' "$log" 2>/dev/null || true)
-  if [[ $found -eq 1 && $sum_run -ge $run ]]; then echo "$sum_run $sum_f $sum_e $sum_s"; else echo "$run $failed $errors $skipped"; fi
-}
-
 stack_up() {
   curl -sf http://127.0.0.1:9080/api/v1/public/instance-info >/dev/null 2>&1 \
     && curl -sf http://127.0.0.1:8084/actuator/health >/dev/null 2>&1
@@ -213,26 +209,6 @@ stop_stacks() {
   $ha down -v --remove-orphans 2>/dev/null || true
   docker compose -f docker/docker-compose.yml down -v --remove-orphans 2>/dev/null || true
   docker rm -f ezkey-javamelody-collector ezkey-javamelody-collector-ha >/dev/null 2>&1 || true
-}
-
-# Rewrite last phases.tsv row: optional new verdict + note.
-rewrite_last_phase() {
-  local new_verdict="${1:-}" note="${2:-}"
-  local tmp last name ver code dur log counts
-  tmp="$(mktemp)"
-  head -n -1 "$PHASE_TSV" >"$tmp"
-  last="$(tail -1 "$PHASE_TSV")"
-  name="$(echo "$last" | cut -f1)"
-  ver="$(echo "$last" | cut -f2)"
-  code="$(echo "$last" | cut -f3)"
-  dur="$(echo "$last" | cut -f4)"
-  log="$(echo "$last" | cut -f5)"
-  counts="$(echo "$last" | cut -f6)"
-  [[ -n "$new_verdict" ]] && ver="$new_verdict"
-  [[ -z "$note" ]] && note="$(echo "$last" | cut -f7)"
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-    "$name" "$ver" "$code" "$dur" "$log" "$counts" "$note" >>"$tmp"
-  mv "$tmp" "$PHASE_TSV"
 }
 
 docker_mem_total_mib() {
@@ -264,7 +240,13 @@ run_phase_preflight() {
     echo "=== preflight ==="
     echo "git_sha: $FULL_SHA"
     echo "date_utc: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-    stop_stacks
+    # --no-clean-start must not destroy volumes (#915 defect 3).
+    if [[ "$NO_CLEAN_START" -eq 1 ]]; then
+      echo "reusing running stack"
+      note="tip + docker MemTotal vs gate memory budget; reusing running stack"
+    else
+      stop_stacks
+    fi
     local mem_total budget
     mem_total="$(docker_mem_total_mib)"
     budget="$(gate_memory_budget_mib)"
@@ -279,7 +261,11 @@ run_phase_preflight() {
     fi
     command -v docker >/dev/null || { echo FATAL: docker missing; code=1; verdict=RED; }
     command -v node >/dev/null || { echo FATAL: node missing; code=1; verdict=RED; }
-    echo "phase_order: unit-tests before stack (intentional RAM headroom)"
+    if [[ "$NO_CLEAN_START" -eq 1 ]]; then
+      echo "phase_order: unit-tests skipped (--no-clean-start; stack-up RAM)"
+    else
+      echo "phase_order: unit-tests before stack (intentional RAM headroom)"
+    fi
   } >"$log" 2>&1 || code=$?
   end="$(now_ms)"
   [[ "$code" -ne 0 ]] && verdict=RED
@@ -303,7 +289,8 @@ run_phase_unit_tests() {
 }
 
 ha_compose_retry() {
-  # Only for #747 encryption_key_pkey race. Bound compose up with timeout.
+  # Only for #747 encryption_key_pkey race. Bound compose up when timeout/gtimeout
+  # exists (stock macOS has neither — #915); else warn and run unbound.
   COMPOSE_RETRY_FIRED=1
   local compose i h1 h2
   compose="$(ha_compose_cmd)"
@@ -313,7 +300,8 @@ ha_compose_retry() {
     echo "HA compose retry $i (#747): admin-1=$h1 admin-2=$h2"
     if [[ "$h1" == "healthy" && "$h2" == "healthy" ]]; then
       echo "Resuming compose up -d (timeout 180s) — AMBER #747"
-      timeout 180 env SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-docker,docker-dev,docker-test}" \
+      # shellcheck disable=SC2086
+      quality_gate_run_bounded 180 env SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-docker,docker-dev,docker-test}" \
         EZKEY_ENABLE_JAVA_MELODY=true $compose up -d || return 1
       return 0
     fi
@@ -325,7 +313,9 @@ ha_compose_retry() {
 run_phase_clean_start() {
   local log="$RUN_DIR/phases/clean-start.log" start end code=0 verdict=GREEN
   local note="HA + JavaMelody + gate memory overlay"
+  local phase_since
   COMPOSE_RETRY_FIRED=0
+  phase_since="$(iso_now)"
   start="$(now_ms)"
   {
     echo "=== clean-start HA + JavaMelody + quality-gate memory overlay ==="
@@ -335,11 +325,9 @@ run_phase_clean_start() {
     ./ezkey-tests/clean-start.sh --ha --with-java-melody
     local cs=$?
     if [[ "$cs" -ne 0 ]]; then
-      local keyset=0
-      # Log file is mid-write under this redirection; also inspect admin replica logs.
-      docker logs ezkey-admin-api-1 2>&1 | tail -400 | grep -q 'ezkey_encryption_key_pkey' && keyset=1
-      docker logs ezkey-admin-api-2 2>&1 | tail -400 | grep -q 'ezkey_encryption_key_pkey' && keyset=1
-      if [[ "$keyset" -eq 1 ]]; then
+      # Phase log is mid-write under this redirection; inspect admin replica logs
+      # since phase start (full --since window, no tail cap — #747 / macOS).
+      if detect_encryption_key_pkey_race "$phase_since"; then
         echo "Detected #747 keyset race — temporary compose retry"
         ha_compose_retry || true
       else
@@ -406,6 +394,69 @@ run_phase_post_clean_health() {
   return "$code"
 }
 
+# #912 C1: enable Auth API rate limit (low respond thresholds) only for the
+# gate-c1 tagged test, then restore docker-test (limits off) before functional.
+# AdminRateLimitFilter stays OFF the whole time (docker-test on admin-api).
+#
+# Fail-closed: deploy-grep guard and overlay-on run in a `( set -e; … )` subshell
+# (set -e is ignored inside `{ … } || code=$?` — Security B1 on #1097).
+run_phase_c1_rate_limit() {
+  local log="$RUN_DIR/phases/c1-rate-limit.log" start end code=0
+  local note="#912 C1 Auth rate-limit overlay (Admin filter OFF)"
+  local c1_on=0
+  start="$(now_ms)"
+
+  _qg_c1_restore_limits_off() {
+    if [[ "${c1_on:-0}" -ne 1 ]]; then
+      return 0
+    fi
+    {
+      echo "=== c1-rate-limit restore (Auth limits off) ==="
+      export SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-docker,docker-dev,docker-test}"
+      export GATE_OVERLAY
+      quality_gate_c1_set_auth_rate_limit off
+    } >>"$log" 2>&1 || code=1
+    c1_on=0
+  }
+
+  # INT/TERM: restore Auth limits OFF before the global churn cleanup trap.
+  trap '_qg_c1_restore_limits_off; cleanup_churn' INT TERM
+
+  # Setup must fail hard (guard / missing overlay / overlay-on).
+  # Run `( set -e; … )` as a statement (capture $? after) — NOT as an `if`
+  # condition: bash disables set -e for the entire if-condition command list,
+  # including nested subshells (Security B1 on #1097).
+  local setup_ec=0
+  (
+    set -e
+    echo "=== c1-rate-limit (#912) ==="
+    quality_gate_assert_gate_c1_overlay_not_in_deploy
+    [[ -f "$C1_OVERLAY" ]] || { echo "FATAL: missing $C1_OVERLAY"; false; }
+    # Keep docker-test so AdminRateLimitFilter remains disabled (#1095 lesson).
+    export SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-docker,docker-dev,docker-test}"
+    export GATE_OVERLAY
+    quality_gate_c1_set_auth_rate_limit on
+  ) >"$log" 2>&1
+  setup_ec=$?
+  if [[ "$setup_ec" -ne 0 ]]; then
+    code=$setup_ec
+  else
+    c1_on=1
+    {
+      export MAVEN_OPTS="${MAVEN_OPTS:--Xmx1024m}"
+      mvn test -pl ezkey-tests -P gate-c1-tests
+    } >>"$log" 2>&1 || code=$?
+  fi
+
+  _qg_c1_restore_limits_off
+  trap cleanup_churn INT TERM EXIT
+
+  end="$(now_ms)"
+  record_phase c1-rate-limit "$([[ $code -eq 0 ]] && echo GREEN || echo RED)" "$code" \
+    "$(duration_ms "$start" "$end")" "$log" "$(parse_surefire_counts "$log")" "$note"
+  return "$code"
+}
+
 run_maven_phase() {
   local name="$1" cmd="$2" note="$3"
   local log="$RUN_DIR/phases/${name}.log" start end code=0
@@ -423,6 +474,8 @@ run_maven_phase() {
 
 run_phase_playwright() {
   local log="$RUN_DIR/phases/playwright.log" start end code=0 results="$RUN_DIR/playwright-results"
+  local note="Admin UI e2e (Orval generate:api then Playwright)"
+  local admin_ui_ready=1
   mkdir -p "$results"
   start="$(now_ms)"
   {
@@ -431,14 +484,44 @@ run_phase_playwright() {
       local pids; pids="$(lsof -t -i:4173 2>/dev/null || true)"
       [[ -n "$pids" ]] && kill $pids 2>/dev/null || true
     fi
-    EZKEY_BROWSER_TEST_RESULTS_DIR="$results" ./ezkey-admin-ui/scripts/run-ui-tests.sh
+    # Orval client under src/generated/ is gitignored; only build:cloudflare
+    # regenerates it. A stale local client caused false RED Playwright results
+    # (#915 defect 6). Fail closed: never run UI tests after a failed generate.
+    # Fresh worktree often has no ezkey-admin-ui/node_modules, so generate:api
+    # fails with "orval: command not found" and Playwright goes RED in 0s (#915).
+    admin_ui_ready=1
+    if [[ ! -d ezkey-admin-ui/node_modules \
+       || ! -e ezkey-admin-ui/node_modules/.bin/orval ]]; then
+      echo "=== npm ci (Admin UI deps missing) ==="
+      if ! (cd ezkey-admin-ui && npm ci); then
+        echo "FATAL: npm ci failed in ezkey-admin-ui — refusing Playwright (deps unavailable) (#915)"
+        note="npm ci failed; Playwright not run"
+        admin_ui_ready=0
+      fi
+    fi
+    if [[ "$admin_ui_ready" -eq 1 ]]; then
+      echo "=== Orval generate:api ==="
+      if (cd ezkey-admin-ui && npm run generate:api); then
+        # Screenshot smokes resolve via EZKEY_PLAYWRIGHT_ARTIFACTS_DIR (else
+        # EZKEY_BROWSER_TEST_RESULTS_DIR); never hardcode /opt/cursor (#915).
+        EZKEY_BROWSER_TEST_RESULTS_DIR="$results" \
+          EZKEY_PLAYWRIGHT_ARTIFACTS_DIR="$results" \
+          ./ezkey-admin-ui/scripts/run-ui-tests.sh
+      else
+        echo "FATAL: npm run generate:api failed — refusing Playwright with a stale Orval client (#915)"
+        note="Orval generate:api failed; Playwright not run"
+        false
+      fi
+    else
+      false
+    fi
   } >"$log" 2>&1 || code=$?
   end="$(now_ms)"
   local counts="-"
   grep -Eq '[0-9]+ passed' "$log" 2>/dev/null \
     && counts="$(grep -E '[0-9]+ (passed|failed|skipped|flaky)' "$log" | tail -3 | tr '\n' ' ')"
   record_phase playwright "$([[ $code -eq 0 ]] && echo GREEN || echo RED)" "$code" \
-    "$(duration_ms "$start" "$end")" "$log" "$counts" "Admin UI e2e"
+    "$(duration_ms "$start" "$end")" "$log" "$counts" "$note"
   return "$code"
 }
 
@@ -542,6 +625,7 @@ for phase in $PHASES; do
     unit-tests) run_phase_unit_tests || true ;;
     clean-start) run_phase_clean_start || true ;;
     post-clean-health) run_phase_post_clean_health || true ;;
+    c1-rate-limit) run_phase_c1_rate_limit || true ;;
     functional-tests) run_maven_phase functional-tests "mvn test -pl ezkey-tests -P all-tests" "all-tests" || true ;;
     elective-tests)
       # Bound ShedLock die-event proof to the elective window (not GATE_STARTED_AT /
@@ -564,7 +648,10 @@ for phase in $PHASES; do
   last_verdict="$(tail -1 "$PHASE_TSV" | cut -f2)"
   if [[ "$last_verdict" == "RED" ]]; then
     OVERALL_RED=1
-    if [[ "$phase" == "preflight" || "$phase" == "unit-tests" || "$phase" == "clean-start" ]]; then
+    # c1-rate-limit fail-fast: a failed restore would leave Auth limits ON and
+    # recreate #1095 (suite-wide 429 / AdminRateLimitFilter) in functional.
+    if [[ "$phase" == "preflight" || "$phase" == "unit-tests" || "$phase" == "clean-start" \
+       || "$phase" == "c1-rate-limit" ]]; then
       echo "[$KEYWORD] fail-fast: $phase RED — stopping"
       break
     fi

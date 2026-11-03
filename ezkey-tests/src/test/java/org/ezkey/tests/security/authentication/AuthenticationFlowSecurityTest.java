@@ -21,6 +21,7 @@ import io.restassured.response.Response;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
+import org.ezkey.tests.config.GateC1RateLimitThresholds;
 import org.ezkey.tests.security.AbstractSecurityTest;
 import org.ezkey.tests.tags.TestTags;
 import org.ezkey.tests.util.CryptoApiClient.EcP256KeyPair;
@@ -506,38 +507,59 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
   }
 
   /**
-   * #912 C1: requires {@code ezkey.rate-limit.enabled=true} (e.g. {@code ./clean-start.sh
-   * --prod-safe}). B's invalid respond must not burn A's per-id budget; A's first valid approve is
-   * 200. Proof rate-limit is active: reset row to READ and a second valid owner respond must be
-   * HTTP 429 with positive {@code Retry-After} (post-ownership budget 1 / 5 min).
+   * #912 C1: Auth respond rate-limit ownership isolation (quality-gate {@code gate-c1} overlay).
+   *
+   * <p>Third party and owner share the same source IP / network path; they differ only by device
+   * identity/key. Thresholds come from {@code ezkey-tests/gate-c1/rate-limit-thresholds.properties}
+   * (no magic numbers). With the limiter disabled this test must FAIL on the 429 proof — never
+   * skip/assume success.
+   *
+   * <p>Asserts both: (1) third-party invalid responds through {@code ownership429ProbeAttempts()}
+   * (replicas × respondRequests + 1) stay 409 — covering HA in-memory buckets — then A's legitimate
+   * respond on the same challenge succeeds; (2) after that debit, a further ownership-proven
+   * respond reaches HTTP 429 with {@code Retry-After} inside the configured window (limiter
+   * actually ON).
    */
   @Test
+  @Tag(TestTags.GATE_C1)
   @DisplayName("Invalid third-party respond must not exhaust owner per-id rate limit (#912 C1)")
   public void testInvalidThirdPartyRespondDoesNotExhaustOwnerRateLimit() {
+    GateC1RateLimitThresholds thresholds = GateC1RateLimitThresholds.load();
+    final String adminToken;
     try {
-      String adminToken = authTokenManager.getAdminToken();
-      configureForAdminApi(dockerStackConfig);
+      adminToken = authTokenManager.getAdminToken();
+    } catch (IllegalStateException e) {
+      org.junit.jupiter.api.Assumptions.assumeTrue(
+          false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
+      return;
+    }
 
-      Integer integrationId = testDataFactory.createIntegration();
-      String suffix = String.valueOf(System.nanoTime());
-      VerifiedEnrollmentFixture owner =
-          createVerifiedEnrollment(integrationId, adminToken, "Owner RL " + suffix);
-      VerifiedEnrollmentFixture otherDevice =
-          createVerifiedEnrollment(integrationId, adminToken, "Other RL " + suffix);
-      Integer authAttemptId = testDataFactory.createAuthAttempt(owner.enrollmentId(), false);
-      PendingAttemptFixture pendingAttempt = claimPendingAttempt(owner, authAttemptId);
+    configureForAdminApi(dockerStackConfig);
 
-      String foreignSignature =
-          cryptoApiClient.signData(
-              pendingAttempt.authAttemptProofToken() + "|true",
-              otherDevice.deviceKeyPair().privateKey());
+    Integer integrationId = testDataFactory.createIntegration();
+    String suffix = String.valueOf(System.nanoTime());
+    VerifiedEnrollmentFixture owner =
+        createVerifiedEnrollment(integrationId, adminToken, "Owner RL " + suffix);
+    VerifiedEnrollmentFixture otherDevice =
+        createVerifiedEnrollment(integrationId, adminToken, "Other RL " + suffix);
+    Integer authAttemptId = testDataFactory.createAuthAttempt(owner.enrollmentId(), false);
+    PendingAttemptFixture pendingAttempt = claimPendingAttempt(owner, authAttemptId);
 
-      configureForAuthApi(dockerStackConfig);
-      Map<String, Object> bRequest = new HashMap<>();
-      bRequest.put("authAttemptId", authAttemptId);
-      bRequest.put("authAttemptAccepted", true);
-      bRequest.put("authAttemptProofTokenSignedByDevice", foreignSignature);
+    String foreignSignature =
+        cryptoApiClient.signData(
+            pendingAttempt.authAttemptProofToken() + "|true",
+            otherDevice.deviceKeyPair().privateKey());
 
+    configureForAuthApi(dockerStackConfig);
+    Map<String, Object> bRequest = new HashMap<>();
+    bRequest.put("authAttemptId", authAttemptId);
+    bRequest.put("authAttemptAccepted", true);
+    bRequest.put("authAttemptProofTokenSignedByDevice", foreignSignature);
+
+    // HA in-memory buckets: fire replicas×respondRequests+1 third-party invalids (same IP as
+    // owner). Ownership isolation keeps these at 409; a shared pre-ownership bucket would 429.
+    int bAttempts = thresholds.ownership429ProbeAttempts();
+    for (int i = 1; i <= bAttempts; i++) {
       Response bResponse =
           given()
               .contentType(ContentType.JSON)
@@ -549,47 +571,68 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
               .response();
 
       assertThat(bResponse.statusCode())
-          .as("B invalid signature must be 409 before ownership (got %s)", bResponse.statusCode())
+          .as(
+              "B invalid signature #%s/%s must be 409 before ownership (got %s Retry-After=%s)."
+                  + " Same source IP as owner; fail-ip ceiling=%s/%s min;"
+                  + " authApiReplicas=%s respondRequests=%s",
+              i,
+              bAttempts,
+              bResponse.statusCode(),
+              bResponse.getHeader("Retry-After"),
+              thresholds.failIpRequests(),
+              thresholds.failIpWindowMinutes(),
+              thresholds.authApiReplicas(),
+              thresholds.respondRequests())
           .isEqualTo(409);
       assertThat(bResponse.jsonPath().getString("type")).endsWith("/auth-attempt-state-conflict");
+    }
 
-      String ownerSignature =
-          cryptoApiClient.signData(
-              pendingAttempt.authAttemptProofToken() + "|true", owner.deviceKeyPair().privateKey());
+    String ownerSignature =
+        cryptoApiClient.signData(
+            pendingAttempt.authAttemptProofToken() + "|true", owner.deviceKeyPair().privateKey());
 
-      Map<String, Object> aRequest = new HashMap<>();
-      aRequest.put("authAttemptId", authAttemptId);
-      aRequest.put("authAttemptAccepted", true);
-      aRequest.put("authAttemptProofTokenSignedByDevice", ownerSignature);
+    Map<String, Object> aRequest = new HashMap<>();
+    aRequest.put("authAttemptId", authAttemptId);
+    aRequest.put("authAttemptAccepted", true);
+    aRequest.put("authAttemptProofTokenSignedByDevice", ownerSignature);
 
-      Response aResponse =
-          given()
-              .contentType(ContentType.JSON)
-              .body(aRequest)
-              .when()
-              .post("/auth-attempts/respond")
-              .then()
-              .extract()
-              .response();
+    Response aResponse =
+        given()
+            .contentType(ContentType.JSON)
+            .body(aRequest)
+            .when()
+            .post("/auth-attempts/respond")
+            .then()
+            .extract()
+            .response();
 
-      assertThat(aResponse.statusCode())
-          .as(
-              "A valid respond must not be 429 after B burned the per-id bucket (got HTTP %s"
-                  + " body=%s Retry-After=%s)",
-              aResponse.statusCode(), aResponse.asString(), aResponse.getHeader("Retry-After"))
-          .isEqualTo(200);
-      assertThat(aResponse.jsonPath().getString("authAttemptResult")).isEqualTo("APPROVED");
+    assertThat(aResponse.statusCode())
+        .as(
+            "A valid respond must succeed after B's %s invalids"
+                + " (got HTTP %s body=%s Retry-After=%s)",
+            bAttempts,
+            aResponse.statusCode(),
+            aResponse.asString(),
+            aResponse.getHeader("Retry-After"))
+        .isEqualTo(200);
+    assertThat(aResponse.jsonPath().getString("authAttemptResult")).isEqualTo("APPROVED");
 
-      // Prove rate-limit is actually on: first valid respond consumed the per-id token. Force the
-      // row back to READ so a second ownership-proven respond reaches the limiter (not status 409).
+    // Prove rate-limit is actually on (negative control when overlay absent → FAIL here).
+    // First valid respond consumed one per-id token on whichever HA replica handled it.
+    // Probe until 429 (in-memory buckets are per replica — see thresholds.authApiReplicas).
+    Response a2Response = null;
+    int probes = thresholds.ownership429ProbeAttempts();
+    for (int probe = 1; probe <= probes; probe++) {
       boolean reset =
           databaseHelper.executeUpdate(
               "UPDATE ezkey_auth_attempt SET auth_attempt_status = 'READ'"
                   + " WHERE auth_attempt_id = "
                   + authAttemptId);
-      assertThat(reset).as("DB reset to READ for rate-limit proof").isTrue();
+      assertThat(reset)
+          .as("DB reset to READ for rate-limit proof (probe %s/%s)", probe, probes)
+          .isTrue();
 
-      Response a2Response =
+      a2Response =
           given()
               .contentType(ContentType.JSON)
               .body(aRequest)
@@ -599,21 +642,40 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
               .extract()
               .response();
 
+      if (a2Response.statusCode() == 429) {
+        break;
+      }
       assertThat(a2Response.statusCode())
           .as(
-              "Rate-limit must be active: second valid respond on same id → 429 (got HTTP %s"
-                  + " body=%s Retry-After=%s). Start stack with ./clean-start.sh --prod-safe",
-              a2Response.statusCode(), a2Response.asString(), a2Response.getHeader("Retry-After"))
-          .isEqualTo(429);
-      assertThat(a2Response.asString()).isEmpty();
-      long retryAfter = Long.parseLong(a2Response.getHeader("Retry-After"));
-      assertThat(retryAfter)
-          .as("Retry-After must be a positive refill delay in seconds")
-          .isBetween(1L, 5L * 60L);
-    } catch (IllegalStateException e) {
-      org.junit.jupiter.api.Assumptions.assumeTrue(
-          false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
+              "Ownership probe %s/%s: expected 429 (limiter on) or 200 (other HA replica"
+                  + " still has budget); got HTTP %s body=%s Retry-After=%s. Apply"
+                  + " ezkey-tests/gate-c1 overlay (quality-gate c1-rate-limit phase).",
+              probe,
+              probes,
+              a2Response.statusCode(),
+              a2Response.asString(),
+              a2Response.getHeader("Retry-After"))
+          .isEqualTo(200);
     }
+
+    assertThat(a2Response).as("ownership 429 probe must produce a response").isNotNull();
+    assertThat(a2Response.statusCode())
+        .as(
+            "Rate-limit must be active: ownership-proven respond on same id → 429 within"
+                + " %s probes (got HTTP %s body=%s Retry-After=%s). Without the gate-c1"
+                + " overlay this assertion must FAIL (never skip).",
+            probes,
+            a2Response.statusCode(),
+            a2Response.asString(),
+            a2Response.getHeader("Retry-After"))
+        .isEqualTo(429);
+    assertThat(a2Response.asString()).isEmpty();
+    long retryAfter = Long.parseLong(a2Response.getHeader("Retry-After"));
+    assertThat(retryAfter)
+        .as(
+            "Retry-After must be a positive refill delay within respond.window-minutes=%s",
+            thresholds.respondWindowMinutes())
+        .isBetween(1L, thresholds.respondWindowSeconds());
   }
 
   @Test

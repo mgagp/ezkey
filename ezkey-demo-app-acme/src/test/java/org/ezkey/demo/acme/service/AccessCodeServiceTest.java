@@ -13,23 +13,67 @@ package org.ezkey.demo.acme.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import org.ezkey.demo.acme.config.AcmeProperties;
 import org.ezkey.demo.acme.config.AcmeProperties.AccessCodeSlotProperties;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 
 class AccessCodeServiceTest {
 
   private static final String CODE_A = "0123456789abcdef0123456789abcdef";
   private static final String CODE_B = "fedcba9876543210fedcba9876543210";
+  private static final String SECRET = "ezkey_skey_must_never_appear_in_logs_958";
 
   @Test
   void shouldFailFastWhenCodeTooShort() {
     AccessCodeService service = new AccessCodeService(new AcmeProperties());
     Map<String, AccessCodeSlotProperties> slots = new LinkedHashMap<>();
     slots.put("short", slot("abcd", "ikey", "skey", "Short"));
+
+    assertThatThrownBy(() -> service.loadSlots(slots))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("invalid code");
+  }
+
+  @Test
+  void shouldFailFastWhenCodeIs31HexChars() {
+    AccessCodeService service = new AccessCodeService(new AcmeProperties());
+    Map<String, AccessCodeSlotProperties> slots = new LinkedHashMap<>();
+    slots.put("almost", slot("0123456789abcdef0123456789abcde", "ikey", "skey", "Almost"));
+
+    assertThatThrownBy(() -> service.loadSlots(slots))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("invalid code");
+  }
+
+  @Test
+  void shouldFailFastWhenCodeHasUppercaseHex() {
+    AccessCodeService service = new AccessCodeService(new AcmeProperties());
+    Map<String, AccessCodeSlotProperties> slots = new LinkedHashMap<>();
+    slots.put("upper", slot("0123456789ABCDEF0123456789ABCDEF", "ikey", "skey", "Upper"));
+
+    assertThatThrownBy(() -> service.loadSlots(slots))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("invalid code");
+  }
+
+  @Test
+  void shouldFailFastWhenCodeExceeds64HexChars() {
+    AccessCodeService service = new AccessCodeService(new AcmeProperties());
+    Map<String, AccessCodeSlotProperties> slots = new LinkedHashMap<>();
+    slots.put(
+        "long",
+        slot(
+            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0",
+            "ikey",
+            "skey",
+            "TooLong"));
 
     assertThatThrownBy(() -> service.loadSlots(slots))
         .isInstanceOf(IllegalStateException.class)
@@ -77,6 +121,30 @@ class AccessCodeServiceTest {
     AccessCodeService service = loadTwoSlots();
     // Uppercase hex is a different digest than the stored lowercase code.
     assertThat(service.findSlotIdByCode(CODE_A.toUpperCase())).isEmpty();
+  }
+
+  @Test
+  void shouldNotLogCodeOrSecretWhenLoadingSlots() {
+    Logger logger = (Logger) LoggerFactory.getLogger(AccessCodeService.class);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    logger.addAppender(appender);
+    try {
+      AccessCodeService service = new AccessCodeService(new AcmeProperties());
+      Map<String, AccessCodeSlotProperties> slots = new LinkedHashMap<>();
+      slots.put("northwind", slot(CODE_A, "ezkey_ikey_test", SECRET, "Northwind Portal"));
+      service.loadSlots(slots);
+
+      String joined =
+          appender.list.stream()
+              .map(ILoggingEvent::getFormattedMessage)
+              .reduce("", (a, b) -> a + "\n" + b);
+      assertThat(joined).doesNotContain(CODE_A);
+      assertThat(joined).doesNotContain(SECRET);
+      assertThat(joined).contains("Northwind Portal");
+    } finally {
+      logger.detachAppender(appender);
+    }
   }
 
   private static AccessCodeService loadTwoSlots() {

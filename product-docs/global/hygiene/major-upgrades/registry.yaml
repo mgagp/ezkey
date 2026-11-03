@@ -35,19 +35,18 @@
   component: HAProxy (local HA stack; absent from Lightsail)
   owner: fred
   eol_slug: haproxy
-  current: "2.9"
+  current: "3.4"
   sources:
-    - { file: docker/docker-compose.ha.yml, expect: "haproxy:2.9-alpine" }
-  eol: 2025-03-21
+    - { file: docker/docker-compose.ha.yml, expect: "haproxy:3.4-alpine" }
+  eol: 2031-04-01
   target: "3.4" # LTS since 2026-06-03 (3.4.7 at review); EOL 2031-04-01
-  decision: plan
+  decision: keep
   security: true
-  issue: null
-  last_review: 2026-10-19
+  issue: 1134
+  last_review: 2026-11-02
   notes: >
-    EOL overdue since 2025-03-21 (~19 months). Loudest register debt. Dedicated
-    issue for 3.4 LTS when Marc funds; Christophe opinion required. No bump in
-    Oct 2026 quarterly docs PR.
+    Bumped 2.9→3.4 LTS (tag+digest) 2026-11-02 because 2.9 EOL 2025-03-21 (#1134);
+    Christophe conditions held; local HA only (not Lightsail).
 
 - id: alpine-bootstrap-init
   component: Alpine (bootstrap-init image)
@@ -126,19 +125,23 @@
   component: React Native
   owner: fred
   eol_slug: react-native
-  current: "0.87"
+  current: "0.88"
   sources:
-    - { file: ezkey_mobile/package.json, expect: '"react-native": "0.87' }
+    - { file: ezkey_mobile/package.json, expect: '"react-native": "0.88' }
   eol: null # API returns false while supported; prior 2027-02-01 estimate withdrawn 2026-10-19
-  target: "0.88 / 0.89"
-  decision: plan
+  target: "0.89"
+  decision: keep
   security: true
   warn_months: 3
   issue: null
-  last_review: 2026-10-19
+  last_review: 2026-10-30
   notes: >
-    Plan T1 2027; dedicated issue + Pixel smoke pattern #627 before line move.
-    Marc go required. endoflife.date still reports eol:false / support:true for 0.87.
+    Line move 0.87.1 → 0.88.1 on the local mobile train (2026-10-30), Marc go.
+    Template diff is iOS SceneDelegate only; Android Gradle pins unchanged.
+    Presets aligned to 0.88.1 (Dependabot #1107 had react-native 0.88.0 against
+    presets 0.88.1). React stays 19.3.0, matching the 0.88.1 template.
+    Security-owner written opinion is still owed before this lands on main.
+    Next line is 0.89. Pixel smoke follows pattern #627.
 
 - id: node
   component: Node.js (repository reference)
@@ -256,7 +259,7 @@
   security: true
   issue: null
   last_review: 2026-10-19
-  notes: ""
+  notes: "Hybrid PQ TLS (X25519MLKEM768) relies on Caddy >= 2.10 defaults and no `curves` override; floating tag, host version + probe recorded in docs/lightsail/community/DEPLOYED.md § Transport TLS (#1174); re-probe with scripts/lightsail/tls-pq-probe.sh after an image refresh"
 
 - id: rocky-linux-pam
   component: Rocky Linux (PAM; root in sshd image)
@@ -422,16 +425,16 @@
   component: Conscrypt (Android)
   owner: fred
   eol_slug: null
-  current: "2.7"
+  current: "2.8"
   sources:
-    - { file: ezkey_mobile/android/app/build.gradle, expect: "org.conscrypt:conscrypt-android:2.7." }
+    - { file: ezkey_mobile/android/app/build.gradle, expect: "org.conscrypt:conscrypt-android:2.8." }
   eol: null
-  target: "2.7"
+  target: "2.8"
   decision: keep
   security: true
   issue: null
-  last_review: 2026-10-19
-  notes: "In register because Gradle majors ignored per #712; 2.7.x required for 16 KB gate (#659)"
+  last_review: 2026-10-30
+  notes: "In register because Gradle majors ignored per #712. 2.8.0 keeps the 16 KB GNU_RELRO alignment that 2.5.3 failed (#659); CI gate passed on #1062. Local cold AAB rechecks at the end of the mobile train."
 
 - id: androidx-biometric
   component: AndroidX Biometric

@@ -1,0 +1,81 @@
+# Nudge unlabeled issues toward the mandatory five label groups.
+#
+# Triggered on issue open. Does not rename or delete labels. Does not checkout
+# the repo. Never interpolates issue title/body into a shell command — all
+# decisions use the github-script action context/API only.
+#
+# If type:, lane:, or component: is missing → ensure status:needs-challenge and
+# comment with a link to .cursor/rules/github-issue-labels.mdc.
+# If author is cursor[bot] → also ensure security:vuln-scanner (label already
+# exists in this repo; no create-if-missing).
+name: Issue label hygiene
+
+on:
+  issues:
+    types: [opened]
+
+permissions: {}
+
+jobs:
+  label-hygiene:
+    name: label-hygiene
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Ensure challenge status and scanner label
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const labels = (issue.labels || []).map((l) => l.name);
+            const hasPrefix = (prefix) => labels.some((n) => n.startsWith(prefix));
+            const missingType = !hasPrefix('type:');
+            const missingLane = !hasPrefix('lane:');
+            const missingComponent = !hasPrefix('component:');
+            const needsChallengeNudge = missingType || missingLane || missingComponent;
+            const authorLogin = issue.user && issue.user.login ? issue.user.login : '';
+            const isCursorBot = authorLogin === 'cursor[bot]';
+
+            const toAdd = [];
+            if (needsChallengeNudge && !labels.includes('status:needs-challenge')) {
+              toAdd.push('status:needs-challenge');
+            }
+            if (isCursorBot && !labels.includes('security:vuln-scanner')) {
+              toAdd.push('security:vuln-scanner');
+            }
+
+            if (toAdd.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: toAdd,
+              });
+            }
+
+            if (needsChallengeNudge) {
+              const missing = [];
+              if (missingType) missing.push('type:*');
+              if (missingLane) missing.push('lane:*');
+              if (missingComponent) missing.push('component:*');
+              const ruleUrl =
+                'https://github.com/mgagp/ezkey/blob/main/.cursor/rules/github-issue-labels.mdc';
+              const body = [
+                'This issue is missing one or more mandatory label groups: `' +
+                  missing.join('`, `') +
+                  '`.',
+                '',
+                'Ezkey requires **lane**, **type**, **component**, **priority**, and **status** on every new issue, regardless of creation tool (`gh`, GitHub MCP/API, Cursor app, or web).',
+                '',
+                'Please add the missing labels (and keep or set `status:needs-challenge` until triage). Rule: ' +
+                  ruleUrl,
+              ].join('\n');
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body,
+              });
+            }

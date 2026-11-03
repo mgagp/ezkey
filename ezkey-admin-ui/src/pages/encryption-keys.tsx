@@ -51,8 +51,6 @@ import {
 import type {
   EncryptionKeyResponse,
   KeyRotationResponse,
-  PagedModelEncryptionKeyResponse,
-  PagedModelReencryptionBatchResponse,
   ReencryptionBatchResponse,
   ReencryptionTriggerResponse,
   ReencryptionKeyResponse,
@@ -665,7 +663,7 @@ function ReencryptionBatchesSection({ reencryptionEnabled }: { reencryptionEnabl
       createdAfter: apiDateParams.createdAfter,
       createdBefore: apiDateParams.createdBefore,
     },
-    fetchPage: (params) => listBatches(params) as Promise<PagedModelReencryptionBatchResponse>,
+    fetchPage: (params) => listBatches(params),
     defaultSort: 'createdAt,DESC',
     defaultSize: 20,
     enabled: expanded,
@@ -1108,8 +1106,7 @@ export default function EncryptionKeysPage() {
     baseParams: {
       keyStatus: keyStatusFilter === 'all' ? undefined : keyStatusFilter,
     },
-    fetchPage: (params) =>
-      listKeys(params) as Promise<PagedModelEncryptionKeyResponse>,
+    fetchPage: (params) => listKeys(params),
     defaultSort: 'introducedAt,DESC',
     defaultSize: 20,
   });
