@@ -1,4 +1,4 @@
-# Maestro — Android real-device pilot (`TB-2026-0002`)
+# Maestro — Android real-device and emulator pilot (`TB-2026-0002`, #1175)
 
 Maestro drives **critical-path UI** on a **physical Android device** (`adb`). Backend setup and queueing of pending auth attempts stay with the **clean-start Docker stack** and **`ezkey-tests` JUnit** building blocks. Do not re-queue attempts in Admin UI when using the campaign runner.
 
@@ -11,7 +11,21 @@ From the **repository root** (Git Bash):
 ./ezkey-tests/scripts/run-mobile-real-device.sh --bootstrap-f2a --auth-url https://your-auth-host.example --scenarios approve,deny,skip-consume --iterations 4 --seed 42
 ```
 
-`--auth-url` must be reachable **from the phone** (LAN IP, ngrok, or `EZKEY_QR_AUTH_BASE_URL`), not `localhost`.
+`--auth-url` must be reachable **from the phone**. Preferred: **`http://localhost:8080`**. For a
+`localhost` / `127.0.0.1` URL the runner applies `adb reverse` before each step (USB or wireless ADB;
+a wireless reconnect drops the mapping, hence every iteration), so the Android emulator and a phone
+reach the local Docker stack at the same URL as the iOS simulator, with no LAN exposure and no
+ngrok (#1175). A LAN IP or `EZKEY_QR_AUTH_BASE_URL` still works.
+
+**Mac quick start (Android emulator, verified 2026-11-03):** clean-start the stack, boot the AVD
+headless (`$ANDROID_HOME/emulator/emulator -avd ezkey_pixel_9a -no-window -no-audio`), install the
+debug APK (`ezkey_mobile/scripts/build-install-debug-clean.sh`, F2a flags in `.env`), run
+`mvn install -DskipTests` once (the JUnit helpers), then:
+
+```bash
+./ezkey-tests/scripts/run-mobile-real-device.sh --bootstrap-f2a --auth-url http://localhost:8080 \
+  --scenarios approve,approve-challenge,deny,skip-consume --iterations 4 --seed 7
+```
 
 Maven profile: `-P mobile-real-device-tests` (excluded from default Surefire).
 
@@ -31,7 +45,7 @@ Single-flow inventory still uses `scripts/run-real-device-pilot-maestro.sh` belo
 - **JDK / Android**: debug or release APK installed on the device (`org.ezkey.mobile`).
 - **`adb`**: one device in `device` state (`adb devices`).
 - **Maestro CLI**: [Maestro installation](https://docs.maestro.dev/getting-started/installing-maestro).
-- **Shell**: Git Bash on Windows (repo convention); use `scripts/run-real-device-pilot-maestro.sh`.
+- **Shell**: Git Bash on Windows (repo convention), bash on macOS; use `scripts/run-real-device-pilot-maestro.sh`.
 - **Screen stay-awake**: campaigns and the Maestro wrapper keep the display on for the run, then restore the previous settings on `EXIT` / `INT` / `TERM`. See **Screen stay-awake** below.
 - **Enrollment**: complete enrollment once (QR/bootstrap). Note the numeric **server enrollment id** from Admin UI or API. Home `testID` is `ezkey.e2e.home.enrollment.<serverId>` (not the local `i{hex}_e{serverId}` storage handle). Until a debug APK with that testID is installed, Maestro flows also match the local-handle form. That row exists in the accessibility tree **only when its installation section is expanded** (see **Home list** below).
 
