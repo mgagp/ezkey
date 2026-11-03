@@ -13,12 +13,14 @@ package org.ezkey.admin.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assumptions.assumingThat;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
@@ -51,6 +53,8 @@ class BootstrapCredentialsFileExporterTest {
     BootstrapExportProperties exportProperties = new BootstrapExportProperties();
     exportProperties.setEnabled(true);
     exportProperties.setPath(file.toString());
+    // Content coverage must run on NTFS; production still fail-closes unless this is set.
+    allowNonPosixForPortableContentTests(exportProperties);
 
     AdminMfaProperties mfaProperties = new AdminMfaProperties();
     mfaProperties.getBootstrap().setCredentialsOutputMode(BootstrapCredentialsOutputMode.FULL);
@@ -72,13 +76,15 @@ class BootstrapCredentialsFileExporterTest {
     assertThat(json.get("enrollmentProofToken").asString()).isEqualTo("proof.tokenValue");
     assertThat(json.get("recoveryCodes").get(0).asString()).isEqualTo("AAAA-BBBB-CCCC-DDDD");
 
-    try {
-      Set<PosixFilePermission> perms = Files.getPosixFilePermissions(file);
-      assertThat(perms)
-          .isEqualTo(EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
-    } catch (UnsupportedOperationException ignored) {
-      // Non-POSIX CI hosts: content assertions above still apply
-    }
+    // 0600 contract stays enforced where the filesystem exposes POSIX attributes.
+    assumingThat(
+        supportsPosixFileAttributeView(),
+        () -> {
+          Set<PosixFilePermission> perms = Files.getPosixFilePermissions(file);
+          assertThat(perms)
+              .isEqualTo(
+                  EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
+        });
   }
 
   @Test
@@ -87,6 +93,7 @@ class BootstrapCredentialsFileExporterTest {
     BootstrapExportProperties exportProperties = new BootstrapExportProperties();
     exportProperties.setEnabled(true);
     exportProperties.setPath(file.toString());
+    allowNonPosixForPortableContentTests(exportProperties);
 
     AdminMfaProperties mfaProperties = new AdminMfaProperties();
     mfaProperties
@@ -108,7 +115,10 @@ class BootstrapCredentialsFileExporterTest {
     assertThat(json.has("enrollmentProofToken")).isFalse();
     assertThat(json.has("enrollmentChallengeCode")).isFalse();
     assertThat(json.get("recoveryCodes").get(0).asString()).isEqualTo("ZZZZ-YYYY-XXXX-WWWW");
-    assertThat(exporter.recoveryCodesLogPointer()).contains("0600");
+    assertThat(exporter.recoveryCodesLogPointer()).contains(file.toString());
+    assumingThat(
+        supportsPosixFileAttributeView(),
+        () -> assertThat(exporter.recoveryCodesLogPointer()).contains("0600"));
   }
 
   @Test
@@ -117,6 +127,7 @@ class BootstrapCredentialsFileExporterTest {
     BootstrapExportProperties exportProperties = new BootstrapExportProperties();
     exportProperties.setEnabled(true);
     exportProperties.setPath(file.toString());
+    allowNonPosixForPortableContentTests(exportProperties);
 
     AdminMfaProperties mfaProperties = new AdminMfaProperties();
     mfaProperties.getBootstrap().setCredentialsOutputMode(BootstrapCredentialsOutputMode.FULL);
@@ -151,6 +162,8 @@ class BootstrapCredentialsFileExporterTest {
     BootstrapExportProperties exportProperties = new BootstrapExportProperties();
     exportProperties.setEnabled(true);
     exportProperties.setPath(asDirectory.toString());
+    // Reach the directory-path failure on NTFS (not the unrelated POSIX fail-closed path).
+    allowNonPosixForPortableContentTests(exportProperties);
     AdminMfaProperties mfaProperties = new AdminMfaProperties();
     mfaProperties
         .getBootstrap()
@@ -453,10 +466,32 @@ class BootstrapCredentialsFileExporterTest {
     BootstrapExportProperties exportProperties = new BootstrapExportProperties();
     exportProperties.setEnabled(true);
     exportProperties.setPath(file.toString());
+    allowNonPosixForPortableContentTests(exportProperties);
     AdminMfaProperties mfaProperties = new AdminMfaProperties();
     mfaProperties.getBootstrap().setCredentialsOutputMode(BootstrapCredentialsOutputMode.FULL);
     return new BootstrapCredentialsFileExporter(
         exportProperties, new QrCodeProperties(), mfaProperties);
+  }
+
+  /**
+   * Opt in for content/redaction coverage on filesystems without POSIX attributes (e.g. Windows
+   * NTFS). Production remains fail-closed unless this property is set; the dedicated guardrail test
+   * keeps that contract.
+   *
+   * @param exportProperties export properties under test
+   */
+  private static void allowNonPosixForPortableContentTests(
+      BootstrapExportProperties exportProperties) {
+    exportProperties.setAllowNonPosixPermissions(true);
+  }
+
+  /**
+   * Whether the default filesystem exposes the POSIX attribute view (owner-only 0600 assertions).
+   *
+   * @return {@code true} when POSIX file permissions can be read/asserted
+   */
+  private static boolean supportsPosixFileAttributeView() {
+    return FileSystems.getDefault().supportedFileAttributeViews().contains("posix");
   }
 
   private static List<Path> keptCopies(Path directory) throws Exception {

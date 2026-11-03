@@ -67,6 +67,8 @@ class BootstrapCredentialsBindSecretRedactorTest {
     exportProperties = new BootstrapExportProperties();
     exportProperties.setEnabled(true);
     exportProperties.setPath(credentialsFile.toString());
+    // Content/redaction coverage must run on NTFS; production still fail-closes unless set.
+    exportProperties.setAllowNonPosixPermissions(true);
 
     initialGlobalAdminProperties = new InitialGlobalAdminProperties();
     initialGlobalAdminProperties.setUsername(USERNAME);
@@ -189,6 +191,7 @@ class BootstrapCredentialsBindSecretRedactorTest {
   }
 
   private void seedCredentialsFile(Enrollment enrollment) {
+    // Relies on setAllowNonPosixPermissions(true) in setUp so seeding works without POSIX 0600.
     exporter.exportIfEnabled(
         enrollment, "proof.tokenValue", USERNAME, List.of("AAAA-BBBB-CCCC-DDDD"));
   }
