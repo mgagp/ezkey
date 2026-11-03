@@ -272,7 +272,8 @@ function runPeriphery() {
     );
     return;
   }
-  const indexTime = statSync(INDEX_STORE_PATH).mtimeMs;
+  // The DataStore directory's own mtime does not move on incremental indexing: use its newest file.
+  const indexTime = newestMtime(INDEX_STORE_PATH);
   const newestSwift = Math.max(0, ...SWIFT_SOURCE_DIRS.flatMap(swiftMtimes));
   if (newestSwift > indexTime) {
     console.warn(
@@ -309,6 +310,17 @@ function runPeriphery() {
   }
   writeFileSync(join(RAW_DIR, 'periphery.json'), `${JSON.stringify(findings, null, 2)}\n`, 'utf8');
   console.log(`[${KEYWORD}] Periphery raw written (${findings.length} findings).`);
+}
+
+function newestMtime(dir) {
+  let newest = 0;
+  for (const name of readdirSync(dir, {recursive: true})) {
+    const time = statSync(join(dir, String(name))).mtimeMs;
+    if (time > newest) {
+      newest = time;
+    }
+  }
+  return newest;
 }
 
 function swiftMtimes(dir) {
@@ -524,6 +536,10 @@ function loadSuppressions(path) {
           .trim()
           .replace(/\\/g, '/')
           .toLowerCase(),
+        // Optional: narrows a suppression to one symbol (e.g. Periphery reports per declaration).
+        messageFragment: String(entry.messageFragment || '')
+          .trim()
+          .toLowerCase(),
       }))
       .filter(entry => entry.rule);
   } catch {
@@ -549,6 +565,14 @@ function matchSuppression(diagnostic, suppressions) {
       continue;
     }
     if (suppression.pathFragment && !file.includes(suppression.pathFragment)) {
+      continue;
+    }
+    if (
+      suppression.messageFragment &&
+      !String(diagnostic.message || '')
+        .toLowerCase()
+        .includes(suppression.messageFragment)
+    ) {
       continue;
     }
     return suppression;
