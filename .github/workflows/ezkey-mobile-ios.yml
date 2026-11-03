@@ -1,4 +1,5 @@
-# ezkey_mobile iOS native layer (#152): Swift lint (swift-format + SwiftLint, strict) + simulator
+# ezkey_mobile iOS native layer (#152): Swift lint (swift-format + SwiftLint, strict), Podfile.lock
+# freshness + privacy-manifest telemetry guard (#1148, #1147), simulator
 # build + hosted XCTest target (EzkeyMobileTests: crypto codec, Keychain store, bridge module).
 #
 # Invoked from the aggregate CI workflow, path-filtered on the iOS native surface only (ios/**,
@@ -94,6 +95,22 @@ jobs:
       - name: Install pods
         working-directory: ezkey_mobile/ios
         run: bundle exec pod install
+
+      # Podfile.lock feeds the in-app iOS license list (#1148); a native dependency changed
+      # without `pod install` on the Mac would leave it, and the list, stale.
+      - name: Guard — Podfile.lock matches pod install
+        working-directory: ezkey_mobile
+        run: |
+          if ! git diff --exit-code -- ios/Podfile.lock; then
+            echo "::error::ios/Podfile.lock is stale: run (cd ios && bundle exec pod install), then yarn license:app-data, and commit both"
+            exit 1
+          fi
+
+      # iOS counterpart of the Android datatransport guard (#1147): no telemetry pod, and no
+      # privacy manifest (app or pod) declaring tracking or data collection.
+      - name: Guard — no telemetry (privacy manifests)
+        working-directory: ezkey_mobile
+        run: bash scripts/ios-privacy-check.sh
 
       - name: Build + XCTest (yarn ios:test)
         working-directory: ezkey_mobile
