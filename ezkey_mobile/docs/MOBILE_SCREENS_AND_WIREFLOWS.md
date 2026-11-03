@@ -24,6 +24,7 @@ flowchart TD
   Settings --> ReleaseNotes
   Settings --> About
   Settings --> Language
+  Settings --> Appearance
   Settings --> DangerZone
   Settings --> Licenses
   PendingAuth --> EnrollmentDetail
@@ -40,7 +41,8 @@ server context, and Pending Authentication owns polling plus approve/deny. The a
 | Enrollment Wizard | Bind and verify a new enrollment from QR payload | Scan QR, bind, enter challenge, complete enrollment | `enrollmentsApi`, `instanceInfoApi`, `cryptoService`, save mutation | Yes |
 | Enrollment Detail | Show selected enrollment identity, own auth polling entry, and surface the latest local response summary | Check pending | `useEnrollments`, navigation store, volatile recent-auth summary state | Yes |
 | Pending Authentication | Poll for pending auth, verify context, approve or deny | Check again, approve, deny | `authAttemptsApi`, `cryptoService`, payload builders | Yes |
-| Settings | Secondary navigation hub | Open What's new, About, Language, Security, Danger Zone, or Licenses | Navigation only | No |
+| Settings | Secondary navigation hub | Open What's new, About, Language, Appearance, Security, Danger Zone, or Licenses | Navigation only | No |
+| Appearance | Choose Light, Dark, or System default theme (#1156) | Pick a theme; applies immediately, no restart | `appearanceStorage`, `app/services/appearance`, `EzkeyAppearanceModule` (Android per-app night mode) | No |
 | What's new | Current experimental-release notes (bundled copy) | Open ezkey.org | i18n `releaseNotes.*` | No |
 | Security | Manage the local approval-confirmation preference | Switch between Standard and Confirm before approvals | `securityPreferenceStorage`, native device confirmation for downgrade protection | No |
 | About | Show app metadata and project link | Open `ezkey.org` | Native build timestamp, app info constants | No |
@@ -196,9 +198,10 @@ for request context and respond submission, then returns control to Enrollment D
 
 | Screen | Purpose | Why secondary | Notes |
 | --- | --- | --- | --- |
-| Settings | Single hub for app-adjacent actions | Does not participate in enrollment/auth protocol flow directly | Routes to About, Language, Security, Danger Zone, and Licenses. |
+| Settings | Single hub for app-adjacent actions | Does not participate in enrollment/auth protocol flow directly | Routes to About, Language, Appearance, Security, Danger Zone, and Licenses. |
 | Security | Local security preference for this phone | Secondary preference surface, but security-sensitive when lowering protection | The app requires device confirmation before saving a downgrade from protected mode to standard. |
 | Language | Manual language selection | Secondary preference only | Persists English/French selection and applies it immediately via i18next (no app restart). |
+| Appearance | Light / Dark / System default theme | Secondary preference only | Persists the choice (default System default) and applies it immediately; System default follows the phone's dark theme live. Both palettes meet WCAG AA text contrast (`__tests__/themeContrast.test.ts`). |
 | About | App metadata and project context | Informational only | Shows version, native build timestamp, MIT/open-source note, and link to `ezkey.org`. |
 | Danger Zone | Destructive local maintenance | Explicitly separated to avoid accidental deletion in the main flow | Supports deleting one enrollment or clearing all local enrollment data. |
 | Licenses | Third-party package inventory | Compliance/information surface only | Reads generated JSON snapshot from `yarn license:app-data`. |
@@ -243,6 +246,7 @@ flowchart TD
   Settings --> ReleaseNotes
   Settings --> About
   Settings --> Language
+  Settings --> Appearance
   Settings --> DangerZone
   Settings --> Licenses
 ```

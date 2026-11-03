@@ -16,14 +16,7 @@
  */
 
 import React, {useCallback, useEffect} from 'react';
-import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import {ActivityIndicator, ScrollView, Text, TouchableOpacity, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {useTranslation} from 'react-i18next';
 import {env} from '../../config/env';
@@ -32,7 +25,7 @@ import PinCodeInput from '../../components/PinCodeInput';
 import {usePendingAuth, AUTH_CHALLENGE_LENGTH, tracePendingAuthRespond} from '../../hooks/usePendingAuth';
 import {useSensitiveScreen} from '../../hooks/useSensitiveScreen';
 import {useAccessibilityAnnouncement} from '../../hooks/useAccessibilityAnnouncement';
-import {colors} from '../../config/theme';
+import {createThemedStyles} from '../../theme';
 import {
   buildEnrollmentIdentityDisplay,
   identityDisplayCopy,
@@ -48,6 +41,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'PendingAuth'>;
  * @since 2025
  */
 export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
+  const styles = useStyles();
   const {t} = useTranslation();
   const {enrollmentId, initialAttempt} = route.params;
 
@@ -348,7 +342,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(colors => ({
   container: {
     flex: 1,
     padding: 24,
@@ -579,4 +573,4 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
     marginTop: 2,
   },
-});
+}));

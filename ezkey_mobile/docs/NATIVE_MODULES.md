@@ -19,6 +19,8 @@
 | `EzkeyPlayUpdatePackage` | Android (Kotlin) | Registers Play update module with React Native | `android/app/src/main/java/org/ezkey/mobile/play/EzkeyPlayUpdatePackage.kt` |
 | `EzkeyWindowSecurityModule` | Android (Kotlin) | While the pending-auth screen is focused: `FLAG_SECURE`, hidden third-party overlays, touches dropped when the window is obscured (#1154); fail-open. JS: `app/hooks/useSensitiveScreen.ts` | `android/app/src/main/java/org/ezkey/mobile/security/EzkeyWindowSecurityModule.kt` |
 | `EzkeyWindowSecurityPackage` | Android (Kotlin) | Registers window security module with React Native | `android/app/src/main/java/org/ezkey/mobile/security/EzkeyWindowSecurityPackage.kt` |
+| `EzkeyAppearanceModule` | Android (Kotlin) | Per-app night mode (`UiModeManager#setApplicationNightMode`) for the Appearance setting, so the splash and system dialogs match from the next cold start; `MainActivity` keeps status / navigation bar icons readable on theme switches (#1156); fail-open. JS: `app/services/appearance/appearance.ts` | `android/app/src/main/java/org/ezkey/mobile/appearance/EzkeyAppearanceModule.kt` |
+| `EzkeyAppearancePackage` | Android (Kotlin) | Registers the appearance module with React Native | `android/app/src/main/java/org/ezkey/mobile/appearance/EzkeyAppearancePackage.kt` |
 | `EzkeyCryptoModule` (extern) | iOS (Objective-C) | `RCT_EXTERN_MODULE` / `RCT_EXTERN_METHOD` declarations exposing the Swift module | `ios/EzkeyMobile/Crypto/EzkeyCryptoModule.m` |
 
 ## Communication Flow

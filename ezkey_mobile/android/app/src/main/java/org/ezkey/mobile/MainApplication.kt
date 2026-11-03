@@ -13,6 +13,7 @@
 package org.ezkey.mobile
 
 import android.app.Application
+import org.ezkey.mobile.appearance.EzkeyAppearancePackage
 import org.ezkey.mobile.crypto.EzkeyCryptoPackage
 import org.ezkey.mobile.play.EzkeyPlayUpdatePackage
 import org.ezkey.mobile.security.EzkeyWindowSecurityPackage
@@ -45,6 +46,7 @@ class MainApplication : Application(), ReactApplication {
               add(EzkeyCryptoPackage())
               add(EzkeyPlayUpdatePackage())
               add(EzkeyWindowSecurityPackage())
+              add(EzkeyAppearancePackage())
             }
 
         override fun getJSMainModuleName(): String = "index"

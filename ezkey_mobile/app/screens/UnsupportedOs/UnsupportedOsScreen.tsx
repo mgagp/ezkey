@@ -6,10 +6,11 @@
  */
 
 import React from 'react';
-import {StyleSheet, Text, View} from 'react-native';
+import {Text, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTranslation} from 'react-i18next';
-import {colors, spacing, typography} from '../../config/theme';
+import {spacing, typography} from '../../config/theme';
+import {createThemedStyles} from '../../theme';
 import {ANDROID_PRODUCT_MIN_SDK} from '../../utils/androidOsSupport';
 
 /**
@@ -19,6 +20,7 @@ import {ANDROID_PRODUCT_MIN_SDK} from '../../utils/androidOsSupport';
  * @since 2026
  */
 export const UnsupportedOsScreen: React.FC = () => {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const {t} = useTranslation();
 
@@ -42,7 +44,7 @@ export const UnsupportedOsScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(colors => ({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -65,4 +67,4 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     lineHeight: 22,
   },
-});
+}));

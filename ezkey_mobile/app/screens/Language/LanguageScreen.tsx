@@ -1,11 +1,5 @@
 import React, {useEffect, useState} from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import {Pressable, ScrollView, Text, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTranslation} from 'react-i18next';
 import {changeAppLanguage, i18n, SupportedLocale} from '../../i18n';
@@ -15,7 +9,8 @@ import {
   normalizeLocale,
   SUPPORTED_LOCALES,
 } from '../../services/storage/localeStorage';
-import {borderRadius, colors, spacing, typography} from '../../config/theme';
+import {borderRadius, spacing, typography} from '../../config/theme';
+import {createThemedStyles} from '../../theme';
 
 const localeLabels: Record<SupportedLocale, string> = {
   en: 'locale.english',
@@ -30,6 +25,7 @@ const localeLabels: Record<SupportedLocale, string> = {
  * @since 2025
  */
 export const LanguageScreen: React.FC = () => {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const {t} = useTranslation();
   const [selectedLocale, setSelectedLocale] = useState<SupportedLocale>(
@@ -113,7 +109,7 @@ export const LanguageScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(colors => ({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -185,4 +181,4 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: colors.primaryLight,
   },
-});
+}));

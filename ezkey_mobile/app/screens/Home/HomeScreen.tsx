@@ -12,15 +12,7 @@
  */
 
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import {ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useNavigation} from '@react-navigation/native';
 import {StackNavigationProp} from '@react-navigation/stack';
@@ -43,7 +35,8 @@ import {
   identityDisplayCopy,
   shouldShowHomeTenantSection,
 } from '../../utils/enrollmentDisplay';
-import {borderRadius, colors, spacing, typography} from '../../config/theme';
+import {borderRadius, spacing, typography} from '../../config/theme';
+import {createThemedStyles, useTheme} from '../../theme';
 import {
   checkFlexiblePlayUpdate,
   getDismissedPlayUpdateVersionCode,
@@ -77,6 +70,8 @@ type HomeNavigation = StackNavigationProp<RootStackParamList, 'Home'>;
  * @since 2025
  */
 export const HomeScreen: React.FC = () => {
+  const {colors} = useTheme();
+  const styles = useStyles();
   const {t} = useTranslation();
   const navigation = useNavigation<HomeNavigation>();
   const insets = useSafeAreaInsets();
@@ -289,6 +284,7 @@ export const HomeScreen: React.FC = () => {
  * @since 2025
  */
 const EmptyState: React.FC = () => {
+  const styles = useStyles();
   const {t} = useTranslation();
 
   return (
@@ -314,6 +310,7 @@ const EmptyState: React.FC = () => {
  * @since 2026
  */
 const UnusableLocalDataNotice: React.FC = () => {
+  const styles = useStyles();
   const {t} = useTranslation();
 
   return (
@@ -344,6 +341,7 @@ const TenantSectionHeader: React.FC<TenantSectionHeaderProps> = ({
   tenantName,
   tenantDescription,
 }) => {
+  const styles = useStyles();
   const {t} = useTranslation();
 
   return (
@@ -377,6 +375,7 @@ const InstallationSection: React.FC<InstallationSectionProps> = ({
   brokenIds,
   onRemoveBroken,
 }) => {
+  const styles = useStyles();
   const {t} = useTranslation();
 
   return (
@@ -472,6 +471,7 @@ const EnrollmentListItem: React.FC<EnrollmentListItemProps> = ({
   broken,
   onRemove,
 }) => {
+  const styles = useStyles();
   const {t} = useTranslation();
   const card = buildHomeCardLabels(
     enrollment,
@@ -521,7 +521,7 @@ const EnrollmentListItem: React.FC<EnrollmentListItemProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(colors => ({
   container: {
     flex: 1,
     paddingHorizontal: spacing.lg,
@@ -680,12 +680,12 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: spacing.lg,
     borderRadius: borderRadius.sm,
-    backgroundColor: colors.error,
+    backgroundColor: colors.danger,
   },
   brokenRemoveLabel: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textOnPrimary,
+    color: colors.textOnDanger,
   },
   emptyState: {
     flex: 1,
@@ -759,4 +759,4 @@ const styles = StyleSheet.create({
     color: colors.textOnPrimary,
     lineHeight: 32,
   },
-});
+}));

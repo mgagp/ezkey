@@ -6,12 +6,13 @@
  */
 
 import React, {useMemo} from 'react';
-import {Platform, Pressable, SectionList, StyleSheet, Text, View} from 'react-native';
+import {Platform, Pressable, SectionList, Text, View} from 'react-native';
 import {StackScreenProps} from '@react-navigation/stack';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTranslation} from 'react-i18next';
 import {RootStackParamList} from '../../navigation/types';
-import {colors, spacing, typography, borderRadius} from '../../config/theme';
+import {spacing, typography, borderRadius} from '../../config/theme';
+import {createThemedStyles} from '../../theme';
 import {
   LICENSE_SNAPSHOT_DATE,
   LicenseEntry,
@@ -37,6 +38,7 @@ type LicenseSection = {
  * @since 2025
  */
 export const LicensesScreen: React.FC<Props> = ({navigation}) => {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const {t} = useTranslation();
   const platform = Platform.OS === 'ios' ? 'ios' : 'android';
@@ -129,7 +131,7 @@ export const LicensesScreen: React.FC<Props> = ({navigation}) => {
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(colors => ({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -207,4 +209,4 @@ const styles = StyleSheet.create({
     maxWidth: '38%',
     textAlign: 'right',
   },
-});
+}));

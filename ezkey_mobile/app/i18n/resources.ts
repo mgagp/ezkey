@@ -24,6 +24,7 @@ export const resources = {
         licenseDetail: 'License',
         dangerZone: 'Danger Zone',
         language: 'Language',
+        appearance: 'Appearance',
       },
       settings: {
         general: 'General',
@@ -35,6 +36,8 @@ export const resources = {
         comingSoonSubtitle: 'What we plan next for this app',
         languageLabel: 'Language',
         languageSubtitle: 'English by default; French available',
+        appearanceLabel: 'Appearance',
+        appearanceSubtitle: 'Light, dark, or the system setting',
         securityLabel: 'Security',
         securitySubtitleStandard: 'No extra confirmation before responding',
         securitySubtitleProtected: 'Ask for device confirmation before approving or denying',
@@ -119,6 +122,15 @@ export const resources = {
         english: 'English',
         french: 'French',
         current: 'Current language',
+      },
+      appearance: {
+        title: 'Appearance',
+        intro:
+          'Choose how the app looks. System default follows the dark theme setting of this phone.',
+        system: 'System default',
+        light: 'Light',
+        dark: 'Dark',
+        current: 'Current setting',
       },
       about: {
         accessibilityLabel: 'About Ezkey Authenticator',
@@ -418,6 +430,7 @@ export const resources = {
         licenseDetail: 'Licence',
         dangerZone: 'Zone dangereuse',
         language: 'Langue',
+        appearance: 'Apparence',
       },
       settings: {
         general: 'Général',
@@ -429,6 +442,8 @@ export const resources = {
         comingSoonSubtitle: 'Ce que nous prévoyons ensuite pour cette application',
         languageLabel: 'Langue',
         languageSubtitle: 'Anglais par défaut; français disponible',
+        appearanceLabel: 'Apparence',
+        appearanceSubtitle: 'Clair, sombre ou réglage du système',
         securityLabel: 'Sécurité',
         securitySubtitleStandard: 'Aucune confirmation supplémentaire avant de répondre',
         securitySubtitleProtected: 'Demander une confirmation de l’appareil avant d’approuver ou de refuser',
@@ -515,6 +530,15 @@ export const resources = {
         english: 'Anglais',
         french: 'Français',
         current: 'Langue actuelle',
+      },
+      appearance: {
+        title: 'Apparence',
+        intro:
+          'Choisissez l’apparence de l’application. Par défaut du système suit le réglage du thème sombre de ce téléphone.',
+        system: 'Par défaut du système',
+        light: 'Clair',
+        dark: 'Sombre',
+        current: 'Réglage actuel',
       },
       about: {
         accessibilityLabel: 'À propos de l’authentificateur Ezkey',
