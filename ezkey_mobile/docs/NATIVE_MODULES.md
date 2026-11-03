@@ -17,6 +17,8 @@
 | `EzkeyCryptoModule` | iOS (Swift) | EC P-256 enrollment keys (Secure Enclave on device, software on simulator), low-S signing, Ed25519 verify, proof token, build info, LocalAuthentication gate. No seal/unseal (Keychain via `react-native-keychain`) | `ios/EzkeyMobile/Crypto/EzkeyCryptoModule.swift` (+ `EzkeyEnrollmentKeyStore.swift`, `EzkeyCryptoCodec.swift`) |
 | `EzkeyCryptoPackage` | Android (Kotlin) | Registers crypto module with React Native | `android/app/src/main/java/org/ezkey/mobile/crypto/EzkeyCryptoPackage.kt` |
 | `EzkeyPlayUpdatePackage` | Android (Kotlin) | Registers Play update module with React Native | `android/app/src/main/java/org/ezkey/mobile/play/EzkeyPlayUpdatePackage.kt` |
+| `EzkeyWindowSecurityModule` | Android (Kotlin) | While the pending-auth screen is focused: `FLAG_SECURE`, hidden third-party overlays, touches dropped when the window is obscured (#1154); fail-open. JS: `app/hooks/useSensitiveScreen.ts` | `android/app/src/main/java/org/ezkey/mobile/security/EzkeyWindowSecurityModule.kt` |
+| `EzkeyWindowSecurityPackage` | Android (Kotlin) | Registers window security module with React Native | `android/app/src/main/java/org/ezkey/mobile/security/EzkeyWindowSecurityPackage.kt` |
 | `EzkeyCryptoModule` (extern) | iOS (Objective-C) | `RCT_EXTERN_MODULE` / `RCT_EXTERN_METHOD` declarations exposing the Swift module | `ios/EzkeyMobile/Crypto/EzkeyCryptoModule.m` |
 
 ## Communication Flow
