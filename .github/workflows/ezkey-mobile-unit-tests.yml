@@ -167,6 +167,19 @@ jobs:
             exit 1
           fi
 
+      # No-analytics claim (#1147): ML Kit's datatransport must have no upload backend
+      # registered in the merged release manifest (app manifest removes CCT).
+      - name: Guard — no datatransport upload backend
+        working-directory: ezkey_mobile/android
+        run: |
+          ./gradlew :app:processReleaseMainManifest --no-daemon
+          manifest=app/build/intermediates/merged_manifest/release/processReleaseMainManifest/AndroidManifest.xml
+          test -f "$manifest"
+          if grep -n 'android:name="backend:' "$manifest"; then
+            echo "::error::A datatransport upload backend is registered in the release manifest. ML Kit telemetry would reach Google; see the TransportBackendDiscovery note in app/src/main/AndroidManifest.xml (#1147)."
+            exit 1
+          fi
+
       - name: Upload unit test report
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
