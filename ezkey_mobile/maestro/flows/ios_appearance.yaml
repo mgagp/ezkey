@@ -1,0 +1,57 @@
+# Settings → Appearance (#1156, #1188): the choice applies at once and survives a cold start.
+# The screenshots after the restart show the first frame on the saved palette (iOS: SceneDelegate
+# applies it before React Native starts). Debug build + Metro, no backend needed:
+#   maestro test maestro/flows/ios_appearance.yaml
+# Ends on System default (the app default). iOS exposes the radio state in the accessibility
+# value ("radio button, checked"), not in Maestro's `checked` attribute.
+appId: org.ezkey.mobile
+---
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible: "Settings|Paramètres"
+    timeout: 60000
+- tapOn: "Settings|Paramètres"
+- tapOn: "(Appearance|Apparence).*"
+- extendedWaitUntil:
+    visible:
+      id: "ezkey.appearance.light"
+    timeout: 10000
+- tapOn:
+    id: "ezkey.appearance.light"
+- assertVisible:
+    id: "ezkey.appearance.light"
+    text: ".*, (checked|coché)"
+- takeScreenshot: appearance1_light
+- launchApp:
+    stopApp: true
+- takeScreenshot: appearance2_light_first_frame
+- extendedWaitUntil:
+    visible: "Settings|Paramètres"
+    timeout: 60000
+- tapOn: "Settings|Paramètres"
+- tapOn: "(Appearance|Apparence).*"
+- assertVisible:
+    id: "ezkey.appearance.light"
+    text: ".*, (checked|coché)"
+- tapOn:
+    id: "ezkey.appearance.dark"
+- assertVisible:
+    id: "ezkey.appearance.dark"
+    text: ".*, (checked|coché)"
+- launchApp:
+    stopApp: true
+- takeScreenshot: appearance3_dark_first_frame
+- extendedWaitUntil:
+    visible: "Settings|Paramètres"
+    timeout: 60000
+- tapOn: "Settings|Paramètres"
+- tapOn: "(Appearance|Apparence).*"
+- assertVisible:
+    id: "ezkey.appearance.dark"
+    text: ".*, (checked|coché)"
+- tapOn:
+    id: "ezkey.appearance.system"
+- assertVisible:
+    id: "ezkey.appearance.system"
+    text: ".*, (checked|coché)"

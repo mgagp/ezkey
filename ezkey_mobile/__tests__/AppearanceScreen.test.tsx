@@ -1,5 +1,5 @@
 import React from 'react';
-import {Appearance, NativeModules, Platform, StyleSheet} from 'react-native';
+import {Appearance, NativeModules, StyleSheet} from 'react-native';
 import renderer from 'react-test-renderer';
 import {AppearanceScreen} from '../app/screens/Appearance';
 import {appearanceStorage} from '../app/services/storage/appearanceStorage';
@@ -8,7 +8,6 @@ import {ThemeProvider} from '../app/theme';
 import {getByRole, queryAllByRole} from '../test-utils/a11yQueries';
 
 describe('AppearanceScreen', () => {
-  const originalOs = Platform.OS;
   let setAppearanceSpy: jest.SpiedFunction<typeof appearanceStorage.setAppearance>;
   let setColorSchemeSpy: jest.SpiedFunction<typeof Appearance.setColorScheme>;
 
@@ -17,14 +16,6 @@ describe('AppearanceScreen', () => {
     jest.spyOn(appearanceStorage, 'getAppearance').mockResolvedValue('system');
     setAppearanceSpy = jest.spyOn(appearanceStorage, 'setAppearance').mockResolvedValue();
     setColorSchemeSpy = jest.spyOn(Appearance, 'setColorScheme').mockImplementation(jest.fn());
-  });
-
-  beforeAll(() => {
-    Object.defineProperty(Platform, 'OS', {configurable: true, writable: true, value: 'android'});
-  });
-
-  afterAll(() => {
-    Object.defineProperty(Platform, 'OS', {configurable: true, writable: true, value: originalOs});
   });
 
   const render = async () => {

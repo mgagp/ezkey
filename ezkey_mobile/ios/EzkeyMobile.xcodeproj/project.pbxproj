@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		E7A10C0011880000000000B1 /* EzkeyAppearanceModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A10C0011880000000000A1 /* EzkeyAppearanceModule.swift */; };
+		E7A10C0011880000000000B2 /* EzkeyAppearanceModule.m in Sources */ = {isa = PBXBuildFile; fileRef = E7A10C0011880000000000A2 /* EzkeyAppearanceModule.m */; };
+		E7A10C0011880000000000B3 /* EzkeyAppearanceModuleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A10C0011880000000000A3 /* EzkeyAppearanceModuleTests.swift */; };
 		0C80B921A6F3F58F76C31292 /* libPods-EzkeyMobile.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5DCACB8F33CDC322A6C60F78 /* libPods-EzkeyMobile.a */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		4AEE0A2B59D204E3BBFEB722 /* EzkeyCryptoCodecTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55142AD87C02D0067B6DCF65 /* EzkeyCryptoCodecTests.swift */; };
@@ -35,6 +38,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		E7A10C0011880000000000A1 /* EzkeyAppearanceModule.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EzkeyAppearanceModule.swift; sourceTree = "<group>"; };
+		E7A10C0011880000000000A2 /* EzkeyAppearanceModule.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = EzkeyAppearanceModule.m; sourceTree = "<group>"; };
+		E7A10C0011880000000000A3 /* EzkeyAppearanceModuleTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EzkeyAppearanceModuleTests.swift; sourceTree = "<group>"; };
 		064DE6915EA94F63203EEB15 /* Pods-EzkeyMobileTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-EzkeyMobileTests.release.xcconfig"; path = "Target Support Files/Pods-EzkeyMobileTests/Pods-EzkeyMobileTests.release.xcconfig"; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* EzkeyMobile.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EzkeyMobile.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = EzkeyMobile/Images.xcassets; sourceTree = "<group>"; };
@@ -83,6 +89,16 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		E7A10C0011880000000000C1 /* Appearance */ = {
+			isa = PBXGroup;
+			children = (
+				E7A10C0011880000000000A1 /* EzkeyAppearanceModule.swift */,
+				E7A10C0011880000000000A2 /* EzkeyAppearanceModule.m */,
+			);
+			name = Appearance;
+			path = EzkeyMobile/Appearance;
+			sourceTree = "<group>";
+		};
 		13B07FAE1A68108700A75B9A /* EzkeyMobile */ = {
 			isa = PBXGroup;
 			children = (
@@ -93,6 +109,7 @@
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
 				DDABE96671C1B3017D9E2B21 /* Crypto */,
+				E7A10C0011880000000000C1 /* Appearance */,
 			);
 			name = EzkeyMobile;
 			sourceTree = "<group>";
@@ -145,6 +162,7 @@
 				55142AD87C02D0067B6DCF65 /* EzkeyCryptoCodecTests.swift */,
 				C0F32CA9DF947881159B2E79 /* EzkeyCryptoModuleTests.swift */,
 				FB81FEDD9B7461C30F6A7B7B /* EzkeyReinstallPurgeProbeTests.swift */,
+				E7A10C0011880000000000A3 /* EzkeyAppearanceModuleTests.swift */,
 			);
 			name = EzkeyMobileTests;
 			path = EzkeyMobileTests;
@@ -408,6 +426,8 @@
 				F1F9487687C11D908FE04836 /* EzkeyCryptoModule.m in Sources */,
 				E1299E35A3C7BDC2C9E05B1F /* EzkeyCryptoCodec.swift in Sources */,
 				A1499064379938F64CD2CC72 /* EzkeyEnrollmentKeyStore.swift in Sources */,
+				E7A10C0011880000000000B1 /* EzkeyAppearanceModule.swift in Sources */,
+				E7A10C0011880000000000B2 /* EzkeyAppearanceModule.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -418,6 +438,7 @@
 				4AEE0A2B59D204E3BBFEB722 /* EzkeyCryptoCodecTests.swift in Sources */,
 				BC0DD3C7005571FF633D74DB /* EzkeyCryptoModuleTests.swift in Sources */,
 				A2438B61A3262A6C009200D8 /* EzkeyReinstallPurgeProbeTests.swift in Sources */,
+				E7A10C0011880000000000B3 /* EzkeyAppearanceModuleTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -42,7 +42,7 @@ server context, and Pending Authentication owns polling plus approve/deny. The a
 | Enrollment Detail | Show selected enrollment identity, own auth polling entry, and surface the latest local response summary | Check pending | `useEnrollments`, navigation store, volatile recent-auth summary state | Yes |
 | Pending Authentication | Poll for pending auth, verify context, approve or deny | Check again, approve, deny | `authAttemptsApi`, `cryptoService`, payload builders | Yes |
 | Settings | Secondary navigation hub | Open What's new, About, Language, Appearance, Security, Danger Zone, or Licenses | Navigation only | No |
-| Appearance | Choose Light, Dark, or System default theme (#1156) | Pick a theme; applies immediately, no restart | `appearanceStorage`, `app/services/appearance`, `EzkeyAppearanceModule` (Android per-app night mode) | No |
+| Appearance | Choose Light, Dark, or System default theme (#1156) | Pick a theme; applies immediately, no restart | `appearanceStorage`, `app/services/appearance`, `EzkeyAppearanceModule` (Android per-app night mode; iOS `UserDefaults` applied by `SceneDelegate`, #1188) | No |
 | What's new | Current experimental-release notes (bundled copy) | Open ezkey.org | i18n `releaseNotes.*` | No |
 | Security | Manage the local approval-confirmation preference | Switch between Standard and Confirm before approvals | `securityPreferenceStorage`, native device confirmation for downgrade protection | No |
 | About | Show app metadata and project link | Open `ezkey.org` | Native build timestamp, app info constants | No |
