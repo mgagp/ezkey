@@ -54,6 +54,12 @@ deleted instead of sent; the QR scanner itself is unaffected. CI fails if any da
 backend reappears in the merged release manifest (#1147). Play builds up to versionCode 6 shipped
 with the backend enabled (internal and closed testing tracks, one tester at the time).
 
+**iOS:** ML Kit is not linked (the QR code is decoded with AVFoundation). No analytics or telemetry
+SDK is installed, and every privacy manifest shipped (the app's `PrivacyInfo.xcprivacy` and each
+pod's, including those inside prebuilt xcframeworks) declares no tracking and no collected data.
+CI (`mobile-ios`, `scripts/ios-privacy-check.sh`) fails if a known telemetry pod appears in
+`ios/Podfile.lock` or a privacy manifest starts declaring tracking or collection.
+
 ## Data stored on the device (not "collected" by Ezkey.org)
 
 - Enrollment metadata and sealed local secrets (`enrollmentProofToken`, integration public key)

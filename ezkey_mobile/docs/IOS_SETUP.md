@@ -94,6 +94,8 @@ is allowed by ATS (`NSAllowsLocalNetworking`). No ngrok: use localhost.
 test IDs (e.g. `maestro/flows/pilot_enrollment_seed_bypass_runtime.yaml`) run on the booted
 simulator with `maestro --device <simulator-udid> test <flow>`. Maestro's `hideKeyboard` fails on
 iOS: replace it with a tap on a neutral area (e.g. `- tapOn: { point: "50%,8%" }`, the header).
+`maestro/flows/ios_licenses.yaml` (no backend needed) walks Settings → Open Source Licenses and
+opens two C/C++ entries; Maestro's `back` does nothing on iOS, tap the header back button instead.
 
 **End-to-end against the local stack (step 5, verified 2026-11-02):** create an enrollment in the
 Admin UI (`ezkey-admin-ui/start.sh`, http://localhost:3090), enroll the simulator with the F2a seed
@@ -172,8 +174,11 @@ doc comments on types and non-trivial functions.
 
 ### CI (macOS runner)
 
-`.github/workflows/ezkey-mobile-ios.yml` (job `mobile-ios`, part of `ci-gate`) runs `yarn ios:lint`
-then `yarn ios:test` on `macos-26`. It triggers only on the iOS native surface (`ios/**`,
+`.github/workflows/ezkey-mobile-ios.yml` (job `mobile-ios`, part of `ci-gate`) runs on `macos-26`:
+`yarn ios:lint`, `pod install`, two guards, then `yarn ios:test`. The guards: `ios/Podfile.lock`
+must be unchanged by `pod install` (it feeds the in-app iOS license list, #1148), and
+`scripts/ios-privacy-check.sh` fails on a known telemetry pod or a privacy manifest declaring
+tracking or collected data (iOS counterpart of the Android datatransport guard, #1147). It triggers only on the iOS native surface (`ios/**`,
 `package.json`, `yarn.lock`, `Gemfile*`, `scripts/ios-*.sh`), its own workflow or `ci.yml`; JS-only
 changes stay on the Linux jobs (a Debug simulator build does not bundle JS). It runs on pull
 requests and nightly on `main`, not on the post-merge push (~22 min, of which ~18 build). The repository is public, so

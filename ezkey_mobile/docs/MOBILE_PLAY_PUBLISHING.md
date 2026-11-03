@@ -128,7 +128,8 @@ services, Play Core) sit in their own section with a link to their terms (#1109)
 |---------|--------|---------|
 | App libraries (JS) | Packages Metro actually puts in a release bundle, per platform (sourcemaps of `react-native bundle --dev false`), not `package.json` alone | `yarn license:app-data` |
 | Android libraries + vendor components | [`licenses/android-libraries.json`](../licenses/android-libraries.json), AboutLibraries export of the release runtime classpath; `react-android` and Hermes are added from their npm packages (RN injects their version, so the export omits them) | `yarn license:android` (JDK 17), then `yarn license:app-data` |
-| iOS libraries | `licenses/ios-libraries.json`, same shape as the Android export — #1148 | Mac |
+| iOS libraries (#1148) | [`ios/Podfile.lock`](../ios/Podfile.lock): React Native (`React-Core`) and Hermes (`hermes-engine`), described from their npm packages. Pods from npm libraries (VisionCamera, Nitro, Keychain…) are already covered by their JS entry. The CocoaPods acknowledgements are **not** used: they cover 10 of 99 pods | `bundle exec pod install` on the Mac, then `yarn license:app-data` |
+| C/C++ libraries inside React Native (both platforms) | Folly, glog, {fmt}, double-conversion, fast_float, Boost (+ SocketRocket on iOS), compiled into `react-android` / `ReactNativeDependencies.xcframework`, which ship no license file. Upstream texts committed under [`licenses/texts/`](../licenses/texts/) (fetched at the pinned tag); versions read from `react-native/gradle/libs.versions.toml` (Android) and `ios/Podfile.lock` (iOS) | automatic on an RN bump; re-check the texts on a major version change (`RN_BUNDLED_NATIVE` in the generator) |
 
 License text comes from the package's own `LICENSE` file, else the file of a sibling package from
 the same repository (monorepos such as `@react-native/*`), else the standard MIT text with the
@@ -149,6 +150,9 @@ CI runs:
    concise package-level diff (added / removed / version or license changes).
 3. Android export freshness (`android-jvm-unit-tests`) — re-runs the AboutLibraries export and
    fails if `licenses/android-libraries.json` changed.
+4. `Podfile.lock` freshness (`mobile-ios`, macOS) — runs `pod install` and fails if
+   `ios/Podfile.lock` changed, so the iOS section cannot lag behind a native dependency change
+   made without the Mac.
 
 When the freshness check fails (including on Dependabot PRs): run `yarn install --immutable` then
 `yarn license:app-data` from `ezkey_mobile/` and commit `app/data/thirdPartyLicenses.json` on the

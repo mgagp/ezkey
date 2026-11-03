@@ -164,7 +164,8 @@ yarn license:app-data
 
 `license:app-data` (`generate-third-party-licenses.mjs`) bundles the app with Metro for Android
 and iOS (about a minute) to list the JS packages actually shipped, then merges the native
-exports under `licenses/`. `license:android` (`export-android-licenses.sh`) runs the
+exports under `licenses/`, the iOS entries from `ios/Podfile.lock`, and the C/C++ libraries
+compiled into React Native (texts in `licenses/texts/`). Runs on any OS; no `pod install` needed. `license:android` (`export-android-licenses.sh`) runs the
 AboutLibraries Gradle export with JDK 17.
 
 Freshness ignores `generatedAt` only. On failure it prints a concise package-level
