@@ -38,33 +38,53 @@ appId: org.ezkey.mobile
     visible:
       id: "ezkey.e2e.pendingAuth.challengeDigits"
     timeout: 90000
-## Tap center of the challenge control so the hit targets the full-area hidden TextInput overlay (RN often omits a separate EditText resource-id in the hierarchy).
-- tapOn:
-    id: "ezkey.e2e.pendingAuth.challengeDigits"
-    point: "50%,50%"
-    retryTapIfNoChange: true
-- waitForAnimationToEnd:
-    timeout: 1500
-- inputText: "${CHALLENGE_CODE}"
-- waitForAnimationToEnd:
-    timeout: 3000
-## Let the soft keyboard settle before Approve (avoids taps that do not reach the TouchableOpacity handler).
-- waitForAnimationToEnd:
-    timeout: 2500
-## Blur the challenge field: logcat often shows the EditText as visible:false while Maestro polls; tapping the scroll area moves focus before Approve.
-- tapOn:
-    id: "ezkey.e2e.pendingAuth.attemptScroll"
-    point: "50%,15%"
-- waitForAnimationToEnd:
-    timeout: 800
-- extendedWaitUntil:
-    visible:
-      id: "ezkey.e2e.pendingAuth.approve"
-    timeout: 10000
-- tapOn:
-    id: "ezkey.e2e.pendingAuth.approve"
-    point: "50%,50%"
-    retryTapIfNoChange: true
+## Android: tuned sequence (hidden EditText, soft keyboard, blur before Approve). iOS: one tap focuses
+## the hidden TextInput; the Android retry / blur taps left the digits empty there (#1175).
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      ## Tap center of the challenge control so the hit targets the full-area hidden TextInput overlay (RN often omits a separate EditText resource-id in the hierarchy).
+      - tapOn:
+          id: "ezkey.e2e.pendingAuth.challengeDigits"
+          point: "50%,50%"
+          retryTapIfNoChange: true
+      - waitForAnimationToEnd:
+          timeout: 1500
+      - inputText: "${CHALLENGE_CODE}"
+      - waitForAnimationToEnd:
+          timeout: 3000
+      ## Let the soft keyboard settle before Approve (avoids taps that do not reach the TouchableOpacity handler).
+      - waitForAnimationToEnd:
+          timeout: 2500
+      ## Blur the challenge field: logcat often shows the EditText as visible:false while Maestro polls; tapping the scroll area moves focus before Approve.
+      - tapOn:
+          id: "ezkey.e2e.pendingAuth.attemptScroll"
+          point: "50%,15%"
+      - waitForAnimationToEnd:
+          timeout: 800
+      - extendedWaitUntil:
+          visible:
+            id: "ezkey.e2e.pendingAuth.approve"
+          timeout: 10000
+      - tapOn:
+          id: "ezkey.e2e.pendingAuth.approve"
+          point: "50%,50%"
+          retryTapIfNoChange: true
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          id: "ezkey.e2e.pendingAuth.challengeDigits"
+          point: "50%,50%"
+      - waitForAnimationToEnd:
+          timeout: 1500
+      - inputText: "${CHALLENGE_CODE}"
+      - waitForAnimationToEnd:
+          timeout: 1500
+      - tapOn:
+          id: "ezkey.e2e.pendingAuth.approve"
 - waitForAnimationToEnd:
     timeout: 3000
 - extendedWaitUntil:
