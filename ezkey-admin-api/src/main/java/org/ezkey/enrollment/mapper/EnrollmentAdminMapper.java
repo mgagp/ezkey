@@ -87,6 +87,17 @@ public interface EnrollmentAdminMapper {
    */
   @Mapping(source = "status", target = "enrollmentStatus")
   @Mapping(source = "active", target = "enrollmentActive")
+  // #1180: bind secrets only while CREATED (QR / manual channel); never decrypted otherwise.
+  @Mapping(
+      target = "enrollmentProofToken",
+      expression =
+          "java(EnrollmentStatus.CREATED.equals(entity.getStatus())"
+              + " ? entity.getEnrollmentProofToken() : null)")
+  @Mapping(
+      target = "enrollmentChallenge",
+      expression =
+          "java(EnrollmentStatus.CREATED.equals(entity.getStatus())"
+              + " ? entity.getEnrollmentChallenge() : null)")
   @Mapping(target = "integrationName", ignore = true)
   @Mapping(target = "tenantId", ignore = true)
   @Mapping(target = "tenantName", ignore = true)
@@ -161,8 +172,6 @@ public interface EnrollmentAdminMapper {
         base.enrollmentChallenge(),
         base.enrollmentProofToken(),
         base.authAttemptChallengeRequired(),
-        base.integrationPublicKey(),
-        base.devicePublicKey(),
         base.devicePrivateKeyStorageTier(),
         base.verifiedAt(),
         base.expiresAt(),

@@ -47,8 +47,6 @@ class AuthAttemptDtoTest {
 
   private static final Integer TEST_CHALLENGE = 789012;
 
-  private static final String TEST_PROOF_TOKEN = "EZK-XYZ789-ABC123";
-
   private static final OffsetDateTime TEST_CREATED_AT =
       OffsetDateTime.of(2025, 1, 27, 10, 30, 0, 0, ZoneOffset.ofHours(1));
 
@@ -65,7 +63,6 @@ class AuthAttemptDtoTest {
             TEST_ENROLLMENT_ID,
             TEST_STATUS,
             TEST_CHALLENGE,
-            TEST_PROOF_TOKEN,
             TEST_CREATED_AT,
             TEST_EXPIRES_AT,
             null,
@@ -81,7 +78,6 @@ class AuthAttemptDtoTest {
     assertThat(dto.enrollmentId()).isEqualTo(TEST_ENROLLMENT_ID);
     assertThat(dto.authAttemptStatus()).isEqualTo(TEST_STATUS);
     assertThat(dto.authAttemptChallenge()).isEqualTo(TEST_CHALLENGE);
-    assertThat(dto.authAttemptProofToken()).isEqualTo(TEST_PROOF_TOKEN);
     assertThat(dto.createdAt()).isEqualTo(TEST_CREATED_AT);
     assertThat(dto.expiresAt()).isEqualTo(TEST_EXPIRES_AT);
   }
@@ -92,14 +88,13 @@ class AuthAttemptDtoTest {
     // Act
     AuthAttemptDto dto =
         new AuthAttemptDto(
-            null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+            null, null, null, null, null, null, null, null, null, null, null, null, null);
 
     // Assert
     assertThat(dto.authAttemptId()).isNull();
     assertThat(dto.enrollmentId()).isNull();
     assertThat(dto.authAttemptStatus()).isNull();
     assertThat(dto.authAttemptChallenge()).isNull();
-    assertThat(dto.authAttemptProofToken()).isNull();
     assertThat(dto.createdAt()).isNull();
     assertThat(dto.expiresAt()).isNull();
   }
@@ -115,7 +110,6 @@ class AuthAttemptDtoTest {
               TEST_ENROLLMENT_ID,
               status,
               TEST_CHALLENGE,
-              TEST_PROOF_TOKEN,
               TEST_CREATED_AT,
               TEST_EXPIRES_AT,
               null,
@@ -140,7 +134,6 @@ class AuthAttemptDtoTest {
             Integer.MIN_VALUE,
             TEST_STATUS,
             Integer.MIN_VALUE,
-            TEST_PROOF_TOKEN,
             TEST_CREATED_AT,
             TEST_EXPIRES_AT,
             null,
@@ -161,7 +154,6 @@ class AuthAttemptDtoTest {
             Integer.MAX_VALUE,
             TEST_STATUS,
             Integer.MAX_VALUE,
-            TEST_PROOF_TOKEN,
             TEST_CREATED_AT,
             TEST_EXPIRES_AT,
             null,
@@ -182,7 +174,6 @@ class AuthAttemptDtoTest {
             0,
             TEST_STATUS,
             0,
-            TEST_PROOF_TOKEN,
             TEST_CREATED_AT,
             TEST_EXPIRES_AT,
             null,
@@ -198,49 +189,6 @@ class AuthAttemptDtoTest {
   }
 
   @Test
-  @DisplayName("Should handle empty and special strings for proof token")
-  void shouldHandleSpecialStrings() {
-    // Empty string
-    AuthAttemptDto dtoEmpty =
-        new AuthAttemptDto(
-            TEST_AUTH_ATTEMPT_ID,
-            TEST_ENROLLMENT_ID,
-            TEST_STATUS,
-            TEST_CHALLENGE,
-            "",
-            TEST_CREATED_AT,
-            TEST_EXPIRES_AT,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null);
-    assertThat(dtoEmpty.authAttemptProofToken()).isEmpty();
-
-    // Very long string
-    String longToken = "A".repeat(1000);
-    AuthAttemptDto dtoLong =
-        new AuthAttemptDto(
-            TEST_AUTH_ATTEMPT_ID,
-            TEST_ENROLLMENT_ID,
-            TEST_STATUS,
-            TEST_CHALLENGE,
-            longToken,
-            TEST_CREATED_AT,
-            TEST_EXPIRES_AT,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null);
-    assertThat(dtoLong.authAttemptProofToken()).hasSize(1000);
-  }
-
-  @Test
   @DisplayName("Should handle different timezones for timestamps")
   void shouldHandleDifferentTimezones() {
     // UTC timezone
@@ -251,7 +199,6 @@ class AuthAttemptDtoTest {
             TEST_ENROLLMENT_ID,
             TEST_STATUS,
             TEST_CHALLENGE,
-            TEST_PROOF_TOKEN,
             utcTime,
             utcTime,
             null,
@@ -273,7 +220,6 @@ class AuthAttemptDtoTest {
             TEST_ENROLLMENT_ID,
             TEST_STATUS,
             TEST_CHALLENGE,
-            TEST_PROOF_TOKEN,
             negativeOffset,
             negativeOffset,
             null,
@@ -296,7 +242,6 @@ class AuthAttemptDtoTest {
             TEST_ENROLLMENT_ID,
             TEST_STATUS,
             TEST_CHALLENGE,
-            TEST_PROOF_TOKEN,
             TEST_CREATED_AT,
             TEST_EXPIRES_AT,
             null,
@@ -313,7 +258,6 @@ class AuthAttemptDtoTest {
             TEST_ENROLLMENT_ID,
             TEST_STATUS,
             TEST_CHALLENGE,
-            TEST_PROOF_TOKEN,
             TEST_CREATED_AT,
             TEST_EXPIRES_AT,
             null,
@@ -330,7 +274,6 @@ class AuthAttemptDtoTest {
             TEST_ENROLLMENT_ID,
             TEST_STATUS,
             TEST_CHALLENGE,
-            TEST_PROOF_TOKEN,
             TEST_CREATED_AT,
             TEST_EXPIRES_AT,
             null,
@@ -357,7 +300,6 @@ class AuthAttemptDtoTest {
             TEST_ENROLLMENT_ID,
             TEST_STATUS,
             TEST_CHALLENGE,
-            TEST_PROOF_TOKEN,
             TEST_CREATED_AT,
             TEST_EXPIRES_AT,
             null,
@@ -376,7 +318,6 @@ class AuthAttemptDtoTest {
     assertThat(toString).contains("enrollmentId=" + TEST_ENROLLMENT_ID);
     assertThat(toString).contains("authAttemptStatus=" + TEST_STATUS);
     assertThat(toString).contains("authAttemptChallenge=" + TEST_CHALLENGE);
-    assertThat(toString).contains("authAttemptProofToken=" + TEST_PROOF_TOKEN);
   }
 
   @Test
@@ -389,7 +330,6 @@ class AuthAttemptDtoTest {
             TEST_ENROLLMENT_ID,
             AuthAttemptStatus.PENDING,
             TEST_CHALLENGE,
-            TEST_PROOF_TOKEN,
             TEST_CREATED_AT,
             TEST_EXPIRES_AT,
             null,
@@ -408,7 +348,6 @@ class AuthAttemptDtoTest {
             TEST_ENROLLMENT_ID,
             AuthAttemptStatus.ACCEPTED,
             TEST_CHALLENGE,
-            TEST_PROOF_TOKEN,
             TEST_CREATED_AT,
             TEST_EXPIRES_AT,
             null,
@@ -427,7 +366,6 @@ class AuthAttemptDtoTest {
             TEST_ENROLLMENT_ID,
             AuthAttemptStatus.REJECTED,
             TEST_CHALLENGE,
-            TEST_PROOF_TOKEN,
             TEST_CREATED_AT,
             TEST_EXPIRES_AT,
             null,
@@ -446,7 +384,6 @@ class AuthAttemptDtoTest {
             TEST_ENROLLMENT_ID,
             AuthAttemptStatus.EXPIRED,
             TEST_CHALLENGE,
-            TEST_PROOF_TOKEN,
             TEST_CREATED_AT,
             TEST_EXPIRES_AT,
             null,

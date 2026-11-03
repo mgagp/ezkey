@@ -122,7 +122,6 @@ class AuthAttemptControllerTest {
             enrollmentId, // enrollmentId
             status, // status
             123456, // challenge
-            "token", // proof token
             now, // createdAt
             now.plusMinutes(5), // expiresAt
             null,
@@ -186,7 +185,6 @@ class AuthAttemptControllerTest {
             100,
             AuthAttemptStatus.PENDING,
             123456,
-            "token",
             OffsetDateTime.now(),
             OffsetDateTime.now().plusMinutes(5),
             null,
@@ -246,7 +244,6 @@ class AuthAttemptControllerTest {
             100, // enrollmentId
             AuthAttemptStatus.PENDING, // status
             123456, // challenge
-            "token", // proof token
             OffsetDateTime.now(), // createdAt
             OffsetDateTime.now().plusMinutes(5), // expiresAt
             null,
@@ -303,7 +300,6 @@ class AuthAttemptControllerTest {
             100, // enrollmentId
             AuthAttemptStatus.PENDING, // status
             123456, // challenge
-            "token", // proof token
             OffsetDateTime.now(), // createdAt
             OffsetDateTime.now().plusMinutes(5), // expiresAt
             null,
