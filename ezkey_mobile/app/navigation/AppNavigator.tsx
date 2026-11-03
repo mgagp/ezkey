@@ -1,5 +1,7 @@
 import React from 'react';
-import {createStackNavigator} from '@react-navigation/stack';
+import {StyleSheet} from 'react-native';
+import {HeaderBackButton} from '@react-navigation/elements';
+import {createStackNavigator, StackNavigationOptions} from '@react-navigation/stack';
 import {EnrollmentDetailScreen} from '../screens/EnrollmentDetail';
 import {HomeScreen} from '../screens/Home';
 import {PendingAuthScreen} from '../screens/PendingAuth';
@@ -19,18 +21,29 @@ import {useTranslation} from 'react-i18next';
 
 const Stack = createStackNavigator<RootStackParamList>();
 
-const stackScreenOptions = {
+type HeaderLeftProps = Parameters<NonNullable<StackNavigationOptions['headerLeft']>>[0];
+
+/** Default back button with a 48 dp touch and accessibility target (#1155). */
+const renderHeaderBack = (props: HeaderLeftProps) =>
+  props.canGoBack ? <HeaderBackButton {...props} style={styles.headerBack} /> : null;
+
+const baseScreenOptions = {
   headerStyle: {backgroundColor: colors.surface},
   headerTintColor: colors.textPrimary,
   headerTitleStyle: {fontWeight: '600' as const, fontSize: 18, color: colors.textPrimary},
   cardStyle: {backgroundColor: colors.background},
+  headerLeft: renderHeaderBack,
 };
 
 export const AppNavigator: React.FC = () => {
   const {t} = useTranslation();
+  const screenOptions = React.useMemo(
+    () => ({...baseScreenOptions, headerBackAccessibilityLabel: t('common.back')}),
+    [t],
+  );
 
   return (
-    <Stack.Navigator screenOptions={stackScreenOptions}>
+    <Stack.Navigator screenOptions={screenOptions}>
       <Stack.Screen
         name="Home"
         component={HomeScreen}
@@ -103,3 +116,13 @@ export const AppNavigator: React.FC = () => {
     </Stack.Navigator>
   );
 };
+
+const styles = StyleSheet.create({
+  headerBack: {
+    minWidth: 48,
+    minHeight: 48,
+    justifyContent: 'center',
+    marginHorizontal: 4,
+    marginVertical: 0,
+  },
+});

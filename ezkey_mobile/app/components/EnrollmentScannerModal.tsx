@@ -91,7 +91,10 @@ export const EnrollmentScannerModal: React.FC<Props> = ({visible, onDismiss, onS
           <Text style={styles.title}>Scan enrollment QR</Text>
           <View style={styles.cameraContainer}>{content}</View>
           <View style={styles.actions}>
-            <TouchableOpacity onPress={onDismiss} style={styles.buttonSecondary}>
+            <TouchableOpacity
+              onPress={onDismiss}
+              style={styles.buttonSecondary}
+              accessibilityRole="button">
               <Text style={styles.buttonSecondaryLabel}>Cancel</Text>
             </TouchableOpacity>
           </View>

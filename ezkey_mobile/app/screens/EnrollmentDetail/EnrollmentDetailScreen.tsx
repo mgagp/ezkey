@@ -31,6 +31,8 @@ import {RootStackParamList} from '../../navigation/types';
 import {userFacingAuthApiError} from '../../services/api/authApiProblem';
 import {useEnrollmentStore} from '../../state/enrollmentStore';
 import {claimPendingAttempt} from '../../services/pendingAuth/claimPendingAttempt';
+import {useAccessibilityAnnouncement} from '../../hooks/useAccessibilityAnnouncement';
+import {colors} from '../../config/theme';
 import {
   buildEnrollmentIdentityDisplay,
   identityDisplayCopy,
@@ -57,6 +59,21 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
   const targetId = enrollmentId ?? selectedId;
   const [isCheckingPending, setIsCheckingPending] = useState(false);
   const [inlineFeedback, setInlineFeedback] = useState<string | undefined>();
+  const recentResultStatusLabel = recentAuthResult
+    ? recentAuthResult.status === 'approved'
+      ? t('enrollmentDetail.recentActionApproved')
+      : recentAuthResult.status === 'rejected'
+        ? t('enrollmentDetail.recentActionRejected')
+        : t('enrollmentDetail.recentActionFailed')
+    : undefined;
+
+  useAccessibilityAnnouncement(
+    recentAuthResult?.status === 'failed' && recentAuthResult.message
+      ? `${recentResultStatusLabel}. ${recentAuthResult.message}`
+      : recentResultStatusLabel,
+    recentAuthResult?.completedAt,
+  );
+  useAccessibilityAnnouncement(inlineFeedback);
 
   const enrollment = useMemo(() => {
     if (!targetId || !data) {
@@ -260,13 +277,6 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
         timeStyle: 'short',
       })
     : undefined;
-  const recentResultStatusLabel = recentAuthResult
-    ? recentAuthResult.status === 'approved'
-      ? t('enrollmentDetail.recentActionApproved')
-      : recentAuthResult.status === 'rejected'
-        ? t('enrollmentDetail.recentActionRejected')
-        : t('enrollmentDetail.recentActionFailed')
-    : undefined;
   const recentResultBadgeStyle = recentAuthResult
     ? recentAuthResult.status === 'approved'
       ? styles.recentActionBadgeApproved
@@ -321,7 +331,9 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
         testID="ezkey.e2e.enrollmentDetail.checkPending"
         style={[styles.primaryButton, isCheckingPending ? styles.disabledButton : undefined]}
         onPress={handleCheckPending}
-        disabled={isCheckingPending}>
+        disabled={isCheckingPending}
+        accessibilityRole="button"
+        accessibilityState={{disabled: isCheckingPending, busy: isCheckingPending}}>
         <Text style={styles.primaryLabel}>
           {isCheckingPending ? t('enrollmentDetail.checkingPending') : t('enrollmentDetail.checkPending')}
         </Text>
@@ -408,7 +420,7 @@ const styles = StyleSheet.create({
   serverLabel: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#5a7aa8',
+    color: colors.primaryMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 4,
@@ -431,7 +443,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   primaryButton: {
-    backgroundColor: '#3076df',
+    backgroundColor: colors.primary,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',

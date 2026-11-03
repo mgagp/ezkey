@@ -9,9 +9,11 @@ export const colors = {
   surfaceElevated: '#1c2230',
   surfaceMuted: '#0f1628',
 
-  primary: '#3076DF',
+  /** White text on primary: 4.82:1 (WCAG AA, #1155). */
+  primary: '#2E6FD6',
   primaryLight: '#5a9cf7',
-  primaryMuted: '#5a7aa8',
+  /** Small text on background / surface / surfaceElevated: ≥ 4.88:1 (#1155). */
+  primaryMuted: '#7090C0',
 
   textPrimary: '#f4f7ff',
   textSecondary: '#c2c8d5',

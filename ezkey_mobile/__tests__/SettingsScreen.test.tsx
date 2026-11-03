@@ -2,6 +2,7 @@ import React from 'react';
 import {Text} from 'react-native';
 import renderer from 'react-test-renderer';
 import {SettingsScreen} from '../app/screens/Settings';
+import {getByRole, queryAllByRole} from '../test-utils/a11yQueries';
 
 describe('SettingsScreen', () => {
   it('renders the release notes entry and routes to the release notes screen', async () => {
@@ -130,5 +131,23 @@ describe('SettingsScreen', () => {
     });
 
     expect(navigate).toHaveBeenCalledWith('Security');
+  });
+
+  it('exposes every settings row as a button named by its label and subtitle', async () => {
+    let tree: renderer.ReactTestRenderer;
+    await renderer.act(async () => {
+      tree = renderer.create(
+        <SettingsScreen
+          navigation={{navigate: jest.fn()} as never}
+          route={{key: 'Settings-key', name: 'Settings'} as never}
+        />,
+      );
+    });
+
+    const rows = queryAllByRole(tree!.root, 'button');
+    expect(rows.length).toBeGreaterThanOrEqual(6);
+    expect(getByRole(tree!.root, 'button', /^Language, /)).toBeDefined();
+    // The decorative chevron must not be part of the spoken name (#1155).
+    rows.forEach(row => expect(row.props.accessibilityLabel).not.toContain('›'));
   });
 });

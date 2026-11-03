@@ -386,6 +386,7 @@ const InstallationSection: React.FC<InstallationSectionProps> = ({
         style={styles.installationHeader}
         onPress={() => onToggle(group.installation.id)}
         accessibilityRole="button"
+        accessibilityState={{expanded}}
         accessibilityLabel={t('home.installationLabel', {name: group.installation.name})}
         accessibilityHint={
           expanded ? t('home.collapseInstallation') : t('home.expandInstallation')
@@ -399,7 +400,12 @@ const InstallationSection: React.FC<InstallationSectionProps> = ({
             <Text style={styles.installationHost}>{group.installation.host}</Text>
           ) : null}
         </View>
-        <Text style={styles.installationToggle}>{expanded ? '−' : '+'}</Text>
+        <Text
+          style={styles.installationToggle}
+          importantForAccessibility="no"
+          accessibilityElementsHidden>
+          {expanded ? '−' : '+'}
+        </Text>
       </TouchableOpacity>
       {expanded ? (
         <View style={styles.installationBody}>

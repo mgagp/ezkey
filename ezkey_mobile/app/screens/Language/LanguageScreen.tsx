@@ -72,7 +72,7 @@ export const LanguageScreen: React.FC = () => {
       contentContainerStyle={[styles.content, {paddingBottom: insets.bottom + spacing.xxl}]}
       accessibilityLabel={t('locale.title')}>
       <Text style={styles.intro}>{t('locale.intro')}</Text>
-      <View style={styles.card}>
+      <View style={styles.card} accessibilityRole="radiogroup">
         {SUPPORTED_LOCALES.map((locale, index) => {
           const selected = locale === selectedLocale;
           const disabled = pendingLocale != null;
@@ -90,12 +90,15 @@ export const LanguageScreen: React.FC = () => {
                 handleSelect(locale).catch(() => {});
               }}
               disabled={disabled}
-              accessibilityRole="button"
-              accessibilityState={{selected, disabled}}
+              accessibilityRole="radio"
+              accessibilityState={{checked: selected, disabled}}
               accessibilityLabel={t(localeLabels[locale])}>
               <View style={styles.itemContent}>
                 <Text style={styles.itemLabel}>{t(localeLabels[locale])}</Text>
-                <Text style={styles.itemSubtitle}>
+                <Text
+                  style={styles.itemSubtitle}
+                  importantForAccessibility="no"
+                  accessibilityElementsHidden>
                   {selected ? t('locale.current') : ' '}
                 </Text>
               </View>
