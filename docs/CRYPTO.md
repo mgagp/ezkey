@@ -13,7 +13,7 @@ The mobile app verifies **integration** signatures with **Ed25519** (`Integratio
 
 **Decision record:** [ADR-0006](../product-docs/global/architecture-decisions.md#adr-0006-dual-signing-algorithms-device-ec-p256-integration-ed25519) (why device and integration use different algorithms).
 
-**Post-quantum posture:** both device EC P-256 and integration Ed25519 are pre-quantum (Shor). Do not read this guide as a post-quantum resistance claim; honest-claims canon lives in [`SECURITY_POSTURE.md`](SECURITY_POSTURE.md).
+**Post-quantum posture:** both device EC P-256 and integration Ed25519 are pre-quantum (Shor). Do not read this guide as a post-quantum resistance claim; honest-claims canon lives in [`SECURITY_POSTURE.md`](SECURITY_POSTURE.md); evolution map and watch list in [`V-2026-09-15-post-quantum-crypto-posture`](../product-docs/global/vision/V-2026-09-15-post-quantum-crypto-posture.md).
 
 ## Device: EC P-256 (secp256r1)
 

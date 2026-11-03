@@ -205,7 +205,10 @@ The **`db-grants`** service uses the same Postgres image tag
 
 On the full Monday `dependabot-curated` pass in January, April, July, and October (or a dedicated
 Marc-approved session), Fred walks the registry: refresh `eol` / `last_review`, open or update
-plan issues, and surface `accept-risk` expiry to Christophe and Marc.
+plan issues, and surface `accept-risk` expiry to Christophe and Marc. The same walk re-checks
+the post-quantum watch list (mobile minimum OS vs iOS 26 / Android API 37, Caddy hybrid TLS) in
+[`V-2026-09-15-post-quantum-crypto-posture`](../../vision/V-2026-09-15-post-quantum-crypto-posture.md)
+§ Watch list — a pointer, not a registry entry.
 
 Dated campaign notes live next to this README (for example
 [`2026-10-19-quarterly-review.md`](2026-10-19-quarterly-review.md)). A short pointer may also

@@ -74,5 +74,9 @@ Promote to active design / execution when:
 - [`docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`](../../../docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md)
 - [`docs/LIFECYCLE_GOVERNANCE.md`](../../../docs/LIFECYCLE_GOVERNANCE.md)
 - [`operational-readiness-prioritization-2026-09.md`](../operational-readiness-prioritization-2026-09.md)
-- Prior analytical context: post-quantum status review (2026-07-05 operator session; not yet a
-  standalone canon doc)
+- Prior analytical context: post-quantum status review (2026-07-05 operator session) — now
+  standalone orientation:
+  [`V-2026-09-15-post-quantum-crypto-posture`](V-2026-09-15-post-quantum-crypto-posture.md)
+  (parent program:
+  [`I-2026-09-15-post-quantum-protocol-evolution`](../backlog/ideas/I-2026-09-15-post-quantum-protocol-evolution.md)).
+  This cycling vision remains the **window-management** slice, not the PQ algorithm program.
