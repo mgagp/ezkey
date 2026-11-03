@@ -612,8 +612,16 @@ anchor):
 Create a new label only when none of the existing ones fit, and justify that new label in the
 issue body.
 
-1. Apply **all five label groups** via `gh issue create --label ...` (lane, type, component, priority, status) — see [`.cursor/rules/github-issue-labels.mdc`](.cursor/rules/github-issue-labels.mdc).
-2. Verify with `gh issue view <N> --json labels` before reporting the issue URL.
+**Tool-agnostic:** the five label groups (lane, type, component, priority, status) are mandatory
+**regardless of creation tool** — `gh`, GitHub MCP/API, Cursor app, or web UI. Prefer attaching
+labels in the same create call when the tool supports it. After create, **re-read the issue and
+add any missing labels** before reporting the URL; MCP/Cursor/web creates often omit labels even
+when intended. See [`.cursor/rules/github-issue-labels.mdc`](.cursor/rules/github-issue-labels.mdc).
+
+1. Apply **all five label groups** (lane, type, component, priority, status) at create time when
+   the client allows it (e.g. `gh issue create --label ...`, API `labels`, issue-form defaults).
+2. Verify with `gh issue view <N> --json labels` (or MCP/API equivalent) and patch gaps before
+   reporting the issue URL.
 3. Record `#NNN` (and label list) in `I-*` / `TB-*` metadata.
 
 An unlabeled issue is **incomplete** — same severity as missing TB traceability.

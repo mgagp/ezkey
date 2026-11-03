@@ -1,0 +1,70 @@
+name: Security (non-sensitive)
+description: Security hardening or process — not a private vulnerability disclosure.
+title: "security: "
+labels:
+  - "type:security"
+  - "lane:d"
+  - "priority:p1"
+  - "status:needs-challenge"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Sensitive vulnerabilities — do not use this form
+
+        **Do not open a public GitHub issue for security vulnerabilities.**
+
+        Report privately via GitHub’s **Report a vulnerability** form:
+
+        https://github.com/mgagp/ezkey/security/advisories/new
+
+        Or see [SECURITY.md](https://github.com/mgagp/ezkey/blob/main/SECURITY.md) (email
+        fallback when the form is unavailable).
+
+        Use this public template only for **non-sensitive** security hygiene (hardening ideas,
+        scanner follow-ups that are already public, process gaps) — never for exploit details,
+        credentials, or undisclosed vulns.
+
+        Labeling rules:
+        [.cursor/rules/github-issue-labels.mdc](https://github.com/mgagp/ezkey/blob/main/.cursor/rules/github-issue-labels.mdc).
+  - type: checkboxes
+    id: not-sensitive
+    attributes:
+      label: Confirmation
+      options:
+        - label: This is not a sensitive vulnerability disclosure (I read SECURITY.md / will use private reporting for vulns).
+          required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Primary surface (apply the matching `component:*` label after create if needed).
+      options:
+        - admin-api
+        - admin-ui
+        - auth-api
+        - integration-api
+        - crypto-api
+        - core
+        - mobile
+        - demo-device
+        - sdk
+        - pam
+        - infra
+        - other / unsure
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Non-sensitive description of the hardening request or public finding.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Why it matters; link public PRs/issues if useful. No exploit payloads or secrets.
+    validations:
+      required: false
