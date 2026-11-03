@@ -36,6 +36,9 @@ Delivery is **AAB** (not APK). Play App Signing holds the app-signing key; you k
 
 - [x] **Data safety** answers drafted from real permissions and storage: [`MOBILE_PLAY_DATA_SAFETY.md`](MOBILE_PLAY_DATA_SAFETY.md). Paste into Play Console at submit time.
 - [x] No analytics / advertising SDKs in the current dependency set; **no surprise** telemetry.
+  The one SDK that would phone home (ML Kit usage metrics, via the QR scanner) has its upload
+  backend removed in the app manifest and guarded in CI; see
+  [`MOBILE_PLAY_DATA_SAFETY.md`](MOBILE_PLAY_DATA_SAFETY.md) § Third-party SDK telemetry (#1147).
 
 ## Technical
 

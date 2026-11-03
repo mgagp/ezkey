@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.CAMERA" />
@@ -25,5 +26,19 @@
             <category android:name="android.intent.category.LAUNCHER" />
         </intent-filter>
       </activity>
+
+      <!--
+        ML Kit (QR scanner) sends usage metrics to Google through datatransport's CCT backend.
+        Without a registered backend, datatransport drops queued events instead of uploading
+        them; scanning stays on-device and unaffected. Keep the scheduler service and receiver:
+        datatransport still schedules jobs against them. Guarded in CI (#1147).
+      -->
+      <service
+        android:name="com.google.android.datatransport.runtime.backends.TransportBackendDiscovery"
+        android:exported="false">
+        <meta-data
+          android:name="backend:com.google.android.datatransport.cct.CctBackendFactory"
+          tools:node="remove" />
+      </service>
     </application>
 </manifest>

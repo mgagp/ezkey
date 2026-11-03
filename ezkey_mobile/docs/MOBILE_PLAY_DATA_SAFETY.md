@@ -38,8 +38,21 @@ backend for this app.
 | Calendar | Not collected | — |
 | Contacts | Not collected | — |
 | App activity | Not collected by the publisher | Pending auth is **pull-based** (user opens the app and checks). No background tracking. |
-| App info and performance | Not collected | No Crashlytics / analytics SDK. |
-| Device or other IDs | Not collected for advertising | Device cryptographic keys stay in Android Keystore. No advertising ID. |
+| App info and performance | Not collected | No Crashlytics / analytics SDK. ML Kit usage metrics are blocked on-device (see below). |
+| Device or other IDs | Not collected | Device cryptographic keys stay in Android Keystore. No advertising ID. ML Kit's per-installation id is never uploaded (see below). |
+
+### Third-party SDK telemetry (ML Kit)
+
+Play counts data an SDK sends as data the app collects. The Android QR scanner uses Google ML
+Kit, whose [data disclosure](https://developers.google.com/ml-kit/android-data-disclosure)
+lists diagnostics and usage metrics (device model, OS, app version, per-installation id,
+latency, error codes) sent through `com.google.android.datatransport`. Scanned images and QR
+content never leave the device.
+
+The app manifest removes datatransport's only upload backend (CCT), so queued events are
+deleted instead of sent; the QR scanner itself is unaffected. CI fails if any datatransport
+backend reappears in the merged release manifest (#1147). Play builds up to versionCode 6 shipped
+with the backend enabled (internal and closed testing tracks, one tester at the time).
 
 ## Data stored on the device (not "collected" by Ezkey.org)
 
