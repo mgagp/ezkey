@@ -700,6 +700,10 @@ Creates the first enrollment and returns bind credentials. This is **not**
 `POST /api/v1/admins/{id}/activate` (operator reactivation of a deactivated admin). It is also
 **not** recovery (`POST /recover`).
 
+The activation code is accepted **only** in this request body. Presented as
+`Authorization: Bearer` (or as the session cookie) on any Admin API route it never
+authenticates (HTTP 401), and its expiry never slides (#1122).
+
 **Request:**
 ```http
 POST /api/v1/admin/auth/activate
