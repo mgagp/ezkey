@@ -10,6 +10,7 @@
 #   - Maven parent <revision>+<changelist> is the source of truth (e.g. 0.2.0-SNAPSHOT).
 #   - npm packages (Admin UI, JS SDK, generated clients) use the Maven string as-is.
 #   - .NET PackageVersion uses the Maven string as-is (NuGet prerelease label).
+#     AssemblyVersion / FileVersion are numeric only (no -SNAPSHOT).
 #   - Python (PEP 440) maps trailing -SNAPSHOT → .dev0 (e.g. 0.2.0.dev0).
 #   - Mobile package.json / Android versionName strip trailing -SNAPSHOT only.
 #   - Android versionCode is raised to at least EZKEY_ANDROID_VERSION_CODE_MIN (never lowered).
@@ -109,9 +110,18 @@ maybe_write "ezkey-cli-python/setup.py" "$cur" "$PYTHON_VERSION" \
 
 # --- .NET ---
 CSPROJ="${ROOT}/ezkey-sdk/dotnet/src/EzkeySdk/EzkeySdk.csproj"
+DOTNET_ASSEMBLY="$(ezkey_dotnet_assembly_file_version "$MAVEN_VERSION")"
 cur="$(ezkey_read_csproj_package_version "$CSPROJ")"
-maybe_write "ezkey-sdk/dotnet/.../EzkeySdk.csproj PackageVersion" "$cur" "$NPM_VERSION" \
-  ezkey_set_csproj_package_version "$CSPROJ" "$NPM_VERSION"
+cur_asm="$(ezkey_read_csproj_element "$CSPROJ" AssemblyVersion 2>/dev/null || echo "")"
+cur_file="$(ezkey_read_csproj_element "$CSPROJ" FileVersion 2>/dev/null || echo "")"
+if [[ "$cur" != "$NPM_VERSION" || "$cur_asm" != "$DOTNET_ASSEMBLY" || "$cur_file" != "$DOTNET_ASSEMBLY" ]]; then
+  maybe_write "ezkey-sdk/dotnet/.../EzkeySdk.csproj versions" \
+    "PackageVersion=${cur};AssemblyVersion=${cur_asm};FileVersion=${cur_file}" \
+    "PackageVersion=${NPM_VERSION};AssemblyVersion=${DOTNET_ASSEMBLY};FileVersion=${DOTNET_ASSEMBLY}" \
+    ezkey_set_csproj_versions "$CSPROJ" "$NPM_VERSION" "$DOTNET_ASSEMBLY"
+else
+  echo "unchanged: ezkey-sdk/dotnet/.../EzkeySdk.csproj versions = PackageVersion=${NPM_VERSION}; AssemblyVersion/FileVersion=${DOTNET_ASSEMBLY}"
+fi
 
 # --- Jenkins lab: consume Java SDK at the product Maven version (plugin own SemVer stays separate) ---
 JENKINS_AUTH_POM="${ROOT}/ezkey-jenkins/ezkey-lab-auth/pom.xml"

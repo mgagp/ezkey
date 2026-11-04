@@ -31,12 +31,12 @@ echo "Expected Python (PEP 440):      ${PYTHON_VERSION}"
 echo "Expected Android versionName:   ${ANDROID_NAME}"
 echo "Android versionCode floor:      ${EZKEY_ANDROID_VERSION_CODE_MIN} (must be > 6)"
 
-# --- Parent revision train ---
+# --- Parent revision train (expected value from product-version.sh, not hard-coded here) ---
 IFS=$'\t' read -r revision _changelist < <(ezkey_read_pom_ci_versions "$POM")
-if [[ "$revision" != "0.2.0" ]]; then
-  fail "Parent <revision> must be 0.2.0 for the current product train (got ${revision})"
+if [[ "$revision" != "${EZKEY_PRODUCT_REVISION}" ]]; then
+  fail "Parent <revision> must be ${EZKEY_PRODUCT_REVISION} for the current product train (got ${revision}; see EZKEY_PRODUCT_REVISION in scripts/lib/product-version.sh)"
 else
-  ok "parent <revision> = ${revision}"
+  ok "parent <revision> = ${revision} (matches EZKEY_PRODUCT_REVISION)"
 fi
 
 # --- Product reactor modules (parent = ezkey-parent) must inherit CI-friendly version ---
@@ -101,10 +101,28 @@ check_eq "ezkey-cli-python/setup.py (ezkey-cli)" \
   "$(ezkey_read_setup_py_version "${ROOT}/ezkey-cli-python/setup.py")" "$PYTHON_VERSION"
 
 # --- .NET ---
+# PackageVersion may carry -SNAPSHOT (NuGet prerelease). AssemblyVersion / FileVersion must not.
+CSPROJ="${ROOT}/ezkey-sdk/dotnet/src/EzkeySdk/EzkeySdk.csproj"
+DOTNET_ASSEMBLY="$(ezkey_dotnet_assembly_file_version "$MAVEN_VERSION")"
 check_eq "Ezkey.Sdk PackageVersion" \
-  "$(ezkey_read_csproj_package_version "${ROOT}/ezkey-sdk/dotnet/src/EzkeySdk/EzkeySdk.csproj")" "$NPM_VERSION"
+  "$(ezkey_read_csproj_package_version "$CSPROJ")" "$NPM_VERSION"
+check_eq "Ezkey.Sdk AssemblyVersion" \
+  "$(ezkey_read_csproj_element "$CSPROJ" AssemblyVersion)" "$DOTNET_ASSEMBLY"
+check_eq "Ezkey.Sdk FileVersion" \
+  "$(ezkey_read_csproj_element "$CSPROJ" FileVersion)" "$DOTNET_ASSEMBLY"
+for av_tag in AssemblyVersion FileVersion; do
+  av_val="$(ezkey_read_csproj_element "$CSPROJ" "$av_tag")"
+  if [[ "${av_val^^}" == *SNAPSHOT* ]]; then
+    fail "Ezkey.Sdk ${av_tag}='${av_val}' must not contain SNAPSHOT (NuGet label belongs on PackageVersion only)"
+  else
+    ok "Ezkey.Sdk ${av_tag} has no SNAPSHOT"
+  fi
+done
 
-# --- Jenkins lab consumes Java SDK at product Maven version (plugin own SemVer is independent) ---
+# --- Jenkins lab ---
+# ADR-0017 exception (#1211): Jenkins lab plugins (ezkey-lab-auth / ezkey-lab-hello) keep their
+# own HPI SemVer outside the product line. This gate only checks that lab scripts/POMs consume
+# the Java SDK at the product Maven coordinate — not that plugin <version> matches 0.2.0.
 JENKINS_AUTH_POM="${ROOT}/ezkey-jenkins/ezkey-lab-auth/pom.xml"
 if [[ -f "$JENKINS_AUTH_POM" ]]; then
   jver="$(python3 - "$JENKINS_AUTH_POM" <<'PY'

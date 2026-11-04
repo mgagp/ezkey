@@ -1177,6 +1177,15 @@ POM / npm / SDK / Android / CLI alignment tooling is implemented in
 [`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../../docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md)
 § Alignment mechanisms.
 
+**Exception — Jenkins lab plugin SemVer.** The experimental Jenkins lab plugins under
+`ezkey-jenkins/` (`ezkey-lab-auth`, `ezkey-lab-hello`) keep their **own** plugin SemVer
+(e.g. `0.1.0-SNAPSHOT` on the HPI artifact). They are lab-only Jenkins artifacts **outside** the
+product ship set; forcing them onto the monorepo product line would couple an experimental
+SecurityRealm to every product cut. They **do** consume the Java SDK at the product Maven
+coordinate (`ezkey.sdk.version` / install-file pins), which the version-alignment gate checks.
+**Trace:** Jenkins lab plugin SemVer stays independent; SDK consume pins follow the product line —
+[#1211](https://github.com/mgagp/ezkey/issues/1211) step 2.
+
 ### Alternatives Considered
 
 - **Per-module / per-surface SemVer.** Rejected — a single ship event would need many tags and
@@ -1187,6 +1196,8 @@ POM / npm / SDK / Android / CLI alignment tooling is implemented in
   public-alpha posture.
 - **Defer any product version until registries publish.** Rejected — OpenSSF and operator clarity
   need a named product version before the first annotated tag; SHA remains the live deploy SOOT.
+- **Fold Jenkins lab HPI SemVer into the product line.** Rejected for now — lab SecurityRealm
+  outside the product ship set; SDK pins still follow the product coordinate (#1211 step 2).
 
 ### Consequences
 
@@ -1195,6 +1206,7 @@ POM / npm / SDK / Android / CLI alignment tooling is implemented in
 - **Negative.** Surfaces that historically drifted (e.g. mobile Play uploads) must eventually
   follow the shared product line; independent cadence requires an explicit later decision.
 - **Neutral.** `methodology/*` and `deploy/*` tags continue unchanged and are not product versions.
+  Jenkins lab plugin SemVer remains an explicit exception (see Decision).
 
 ### Impact
 

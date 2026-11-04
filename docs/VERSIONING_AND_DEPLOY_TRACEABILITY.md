@@ -59,22 +59,27 @@ Parent POM CI-friendly properties are the **single source of truth**:
 
 | Property | Dev default | Role |
 |----------|-------------|------|
-| `revision` | `0.2.0` | Product SemVer core (local branch isolation may append `-<branch>` via `scripts/mvn-branch.sh`) |
-| `changelist` | `-SNAPSHOT` | Dev suffix; clear for a release cut |
+| `revision` | `0.2.0` (`EZKEY_PRODUCT_REVISION` in `scripts/lib/product-version.sh`) | Product SemVer core; alignment gate reads the expected train from that constant |
+| `changelist` | `-SNAPSHOT` | Dev suffix; clear for a release cut on main |
 
 Full Maven coordinate = `${revision}${changelist}` (e.g. `0.2.0-SNAPSHOT`).
 `flatten-maven-plugin` (`resolveCiFriendliesOnly`) resolves those placeholders in installed POMs.
 Do not embed custom properties inside `<version>` — flatten would leave them unresolved.
 
+`scripts/mvn-branch.sh` (local feature builds): off `main`/`master`, always keep `-SNAPSHOT`
+(e.g. `0.2.0-<branch>-SNAPSHOT`). Empty changelist off main is refused — never emit a
+release-looking local coordinate.
+
 | Surface | Mapped form | Notes |
 |---------|-------------|-------|
 | Maven reactor modules | inherit `${revision}${changelist}` | No hard-coded module versions |
 | npm (Admin UI, `ezkey-javascript-sdk`, generated `ezkey-admin-client` / `ezkey-auth-client`) | Maven string as-is | e.g. `0.2.0-SNAPSHOT` |
-| .NET `Ezkey.Sdk` `PackageVersion` | Maven string as-is | NuGet prerelease label |
+| .NET `Ezkey.Sdk` `PackageVersion` | Maven string as-is | NuGet prerelease label; **only** place `-SNAPSHOT` is allowed |
+| .NET `AssemblyVersion` / `FileVersion` | numeric `major.minor.patch.0` | e.g. `0.2.0.0` — never include `-SNAPSHOT` |
 | Python (`ezkey-python-sdk`, `ezkey-cli`) | `-SNAPSHOT` → `.dev0` (PEP 440) | e.g. `0.2.0.dev0` |
 | Mobile `package.json` / Android `versionName` | strip trailing `-SNAPSHOT` only | e.g. `0.2.0`; keep `-alpha.N` when present |
 | Android `versionCode` | monotonic integer **> 6** | Floor `7` for the `0.2.0` train (Play already shipped vc6) |
-| Jenkins lab `ezkey.sdk.version` + install-file pins | Maven string | Lab **plugin** SemVer stays independent |
+| Jenkins lab `ezkey.sdk.version` + install-file pins | Maven string | Lab **plugin** HPI SemVer stays independent (ADR-0017 exception / #1211) |
 
 **Commands:**
 
