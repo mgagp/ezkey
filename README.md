@@ -4,6 +4,9 @@
 [![CodeQL](https://github.com/mgagp/ezkey/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/mgagp/ezkey/actions/workflows/codeql.yml)
 [![License: MIT](https://img.shields.io/github/license/mgagp/ezkey)](LICENSE)
 [![Security Policy](https://img.shields.io/badge/security-policy-blue)](SECURITY.md)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/mgagp/ezkey/badge)](https://scorecard.dev/viewer/?uri=github.com/mgagp/ezkey)
+[![Java](https://img.shields.io/badge/Java-25-orange?logo=openjdk)](pom.xml)
+[![Dependabot](https://img.shields.io/badge/dependabot-enabled-brightgreen?logo=dependabot)](.github/dependabot.yml)
 
 <img src="logo.svg" alt="Ezkey Logo" width="200">
 
