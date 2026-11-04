@@ -175,7 +175,7 @@ alerts + dependency-review land). Record the choice in the Monday campaign note 
 | Peer review | Soft process (“Manual Review”); **not** ruleset-enforced (solo: author cannot approve own PR) |
 | Dependabot curation | [#678](https://github.com/mgagp/ezkey/pull/678) risk model: tiers **T1–T4**; Orval **O0–O3** grid; Docker + Android Gradle under HITL until [#702](https://github.com/mgagp/ezkey/pull/702); labels `deferred:later-train` and `deferred:rn-upgrade`; weekday **autonomous light** passes for **T1–T3** and Orval **O0/O1**. Canon: [`product-docs/global/hygiene/dependabot/`](../../product-docs/global/hygiene/dependabot/) + skill `dependabot-curated` |
 | CodeQL triage | Hygiene lane `product-docs/global/hygiene/code-scanning/` + SLAs in `SECURITY_POSTURE` |
-| Deploy traceability | Git SHA ledger ([`VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../VERSIONING_AND_DEPLOY_TRACEABILITY.md)); **no** GitHub Releases / signed publish train yet |
+| Deploy traceability | Git SHA ledger + monorepo product SemVer decision (ADR-0017 / [#1211](https://github.com/mgagp/ezkey/issues/1211); [`VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../VERSIONING_AND_DEPLOY_TRACEABILITY.md)); **no** GitHub Releases / signed publish train yet |
 | Labels | Rich lane/type/component/priority/status set (verified via `gh label list`) |
 | Stale bot | Not present (diminishing returns) |
 

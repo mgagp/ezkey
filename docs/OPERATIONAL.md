@@ -4,7 +4,7 @@
 
 This document provides operational guidance for deploying and configuring Ezkey in production environments. It covers security considerations, performance tuning, monitoring, and infrastructure-specific configurations.
 
-**Public maturity and “what is live”:** Ezkey’s operator-facing claim is **Public alpha**; technical identity is the **git SHA**. See [`VERSIONING_AND_DEPLOY_TRACEABILITY.md`](VERSIONING_AND_DEPLOY_TRACEABILITY.md). The community/Lightsail live ledger is [`lightsail/community/DEPLOYED.md`](lightsail/community/DEPLOYED.md) (update after a successful publish).
+**Public maturity and “what is live”:** Ezkey’s operator-facing claim is **Public alpha**; technical identity of a live deploy is the **git SHA** (complements a product SemVer tag when one exists — ADR-0017 / #1211). See [`VERSIONING_AND_DEPLOY_TRACEABILITY.md`](VERSIONING_AND_DEPLOY_TRACEABILITY.md). The community/Lightsail live ledger is [`lightsail/community/DEPLOYED.md`](lightsail/community/DEPLOYED.md) (update after a successful publish).
 
 ## Production security posture (docker / community)
 

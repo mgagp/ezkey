@@ -33,6 +33,7 @@ Each decision is recorded with enough context to be understood years later: why 
 | [ADR-0014](#adr-0014-qa-sphere-for-test-execution-tracking) | QA Sphere for test execution tracking | accepted | 2026-10-13 |
 | [ADR-0015](#adr-0015-management-port-separation-actuator-javamelody) | Management port separation (Actuator / JavaMelody) | accepted | 2026-10-19 |
 | [ADR-0016](#adr-0016-keyset-blob-single-source-of-truth) | Keyset blob as single source of truth | accepted | 2026-10-21 |
+| [ADR-0017](#adr-0017-product-versioning-one-semver-for-the-monorepo) | Product versioning — one SemVer for the monorepo | accepted | 2026-11-04 |
 
 ## ADR-0001 — Backend-first cryptographic protocol
 
@@ -1132,3 +1133,74 @@ divergence between file and blob (blockers B2, B5, B6). Real deployments already
   [ADR-0011](#adr-0011-tink-native-database-keyset-envelope),
   [ADR-0012](#adr-0012-admin-owned-keyset-materialization).
 - Complements always-on encryption work in [#942](https://github.com/mgagp/ezkey/issues/942).
+
+## ADR-0017 — Product versioning — one SemVer for the monorepo
+
+### Metadata
+
+- **ID:** ADR-0017.
+- **Date:** 2026-11-04.
+- **Status:** accepted.
+- **Scope:** global.
+- **Owners:** Product / release (Marc).
+- **Trace:** [#1211](https://github.com/mgagp/ezkey/issues/1211) step 1.
+
+### Context
+
+Ezkey is a monorepo (backends, Admin UI, demo surfaces, CLI, PAM, mobile) with no product
+releases yet. Deploy identity today is the git SHA
+([`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../../docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md)).
+Existing tags such as `methodology/*` and `deploy/*` are not product versions. OpenSSF Best
+Practices asks for SemVer and unique version tags; the project needs a minimal solo-maintainer
+scheme before tooling or the first tag.
+
+### Decision
+
+Ezkey uses **Semantic Versioning** with **one product version for the whole monorepo**
+(backends, Admin UI, demo, CLI, PAM, mobile). The product starts at **`0.1.0`**. While the line
+is **`0.x`**, there is **no stability promise** (lab / public-alpha posture).
+
+**Trace:** One SemVer for the whole monorepo starting at `0.1.0` (0.x = no stability) —
+a tag must name everything shipped together; per-module versions are too costly for a solo
+maintainer — Marc, 2026-11-04, [#1211](https://github.com/mgagp/ezkey/issues/1211).
+
+Operational detail for tags, non-product namespaces, mobile `versionName` / `versionCode`, and
+SHA complementarity lives in
+[`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../../docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md).
+POM / npm / alignment mechanisms are deferred to [#1211](https://github.com/mgagp/ezkey/issues/1211)
+step 2.
+
+### Alternatives Considered
+
+- **Per-module / per-surface SemVer.** Rejected — a single ship event would need many tags and
+  constant alignment work; too expensive for a solo maintainer.
+- **Start at `1.0.0`.** Rejected — would imply a stability promise Ezkey does not make in lab /
+  public-alpha posture.
+- **Defer any product version until registries publish.** Rejected — OpenSSF and operator clarity
+  need a named product version before the first annotated tag; SHA remains the live deploy SOOT.
+
+### Consequences
+
+- **Positive.** One tag can name everything that ships together; docs and OpenSSF answers stay
+  simple; SHA ledger remains valid until and after the first product tag.
+- **Negative.** Surfaces that historically drifted (e.g. mobile Play uploads) must eventually
+  follow the shared product line; independent cadence requires an explicit later decision.
+- **Neutral.** `methodology/*` and `deploy/*` tags continue unchanged and are not product versions.
+
+### Impact
+
+- All shippable surfaces in the monorepo.
+- [`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../../docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md),
+  release checklist work under [#1211](https://github.com/mgagp/ezkey/issues/1211), mobile Play
+  version policy docs.
+
+### Validation
+
+- Docs-only for step 1 (this ADR + versioning doc). No tag and no release in this change.
+- Later steps of [#1211](https://github.com/mgagp/ezkey/issues/1211) prove alignment tooling and
+  the first annotated `v*` tag.
+
+### Related Decisions
+
+- Complements deploy SHA ledger conventions in
+  [`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../../docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md).
