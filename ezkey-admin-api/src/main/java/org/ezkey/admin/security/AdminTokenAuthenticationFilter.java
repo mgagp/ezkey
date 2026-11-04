@@ -119,6 +119,8 @@ public class AdminTokenAuthenticationFilter extends OncePerRequestFilter {
     // #1122: activation codes are consumed only by the public activation endpoint (request body).
     if (token.startsWith(AdminAuditConstants.ACTIVATION_TOKEN_PREFIX)) {
       logger.warn("❌ Activation code presented as {} credential; not authenticated", authSource);
+      // Do not leave a prior principal in place (would surface as 403 instead of 401).
+      SecurityContextHolder.clearContext();
       return;
     }
     try {
