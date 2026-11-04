@@ -1171,8 +1171,11 @@ Marc, 2026-11-04, [#1211](https://github.com/mgagp/ezkey/issues/1211).
 Operational detail for tags, non-product namespaces, mobile `versionName` / `versionCode`, and
 SHA complementarity lives in
 [`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../../docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md).
-POM / npm / alignment mechanisms are deferred to [#1211](https://github.com/mgagp/ezkey/issues/1211)
-step 2.
+POM / npm / SDK / Android / CLI alignment tooling is implemented in
+[#1211](https://github.com/mgagp/ezkey/issues/1211) step 2 (`scripts/sync-version.sh`,
+`scripts/check-version-alignment.sh`); see
+[`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../../docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md)
+§ Alignment mechanisms.
 
 ### Alternatives Considered
 

@@ -51,13 +51,13 @@ ezkey_jenkins_docker_build_plugin() {
           -Dlicense.skipAddThirdParty=true \
           -Dspotless.check.skip=true \
           -Dcheckstyle.skip=true
-        test -f ezkey-sdk/java/target/ezkey-sdk-0.0.1-SNAPSHOT.jar
+        test -f ezkey-sdk/java/target/ezkey-sdk-0.2.0-SNAPSHOT.jar
         mvn install:install-file \
           -DgroupId=org.ezkey \
           -DartifactId=ezkey-sdk \
-          -Dversion=0.0.1-SNAPSHOT \
+          -Dversion=0.2.0-SNAPSHOT \
           -Dpackaging=jar \
-          -Dfile=ezkey-sdk/java/target/ezkey-sdk-0.0.1-SNAPSHOT.jar \
+          -Dfile=ezkey-sdk/java/target/ezkey-sdk-0.2.0-SNAPSHOT.jar \
           -DpomFile=ezkey-jenkins/maven/ezkey-sdk-standalone.pom \
           -q
         if [ "${PLUGIN_MODULE}" = "ezkey-lab-auth" ]; then

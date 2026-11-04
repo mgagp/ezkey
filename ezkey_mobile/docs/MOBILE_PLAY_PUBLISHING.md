@@ -80,23 +80,30 @@ tied to the monorepo product line; Console still needs both code and name to tel
 `0.1.0-alpha` while alpha showed hand-named `3 (0.1.0-alpha)` — same `versionName` as vc3, so the
 Console could not tell the uploads apart. Name releases with both code and name.
 
-POM / npm / package alignment automation is deferred to [#1211](https://github.com/mgagp/ezkey/issues/1211)
-step 2; until then, keep `package.json` `"version"` and Play uploads consistent with the product
-line by hand when cutting a product-aligned build.
+Align from the monorepo parent POM (strips Maven `-SNAPSHOT` for `versionName`):
+
+```bash
+./scripts/sync-version.sh
+./scripts/check-version-alignment.sh
+```
+
+`versionCode` must stay **strictly greater than 6** (Play already shipped vc6). The sync script
+raises the workspace floor to **7** when needed; bump further before each Play upload if Console
+already has that integer.
 
 ### Version bump recipe
 
 Before each Play upload:
 
 1. Open Play Console → the Ezkey app → **App bundle explorer**. Note the highest published `versionCode`.
-2. If the workspace `versionCode` is **not** greater than that number, bump it in `android/app/build.gradle`.
-3. Set `ezkey_mobile/package.json` `"version"` to the current product `X.Y.Z` (or matching pre-release) when this upload is meant to track that product cut.
+2. Run `./scripts/sync-version.sh` so `package.json` / `versionName` match the parent POM product SemVer.
+3. If the workspace `versionCode` is **not** greater than the Console high-water mark, bump it in `android/app/build.gradle` (must remain > 6).
 4. If dependencies changed, run `yarn license:app-data` and commit the JSON snapshot.
 5. Build the signed AAB (`./scripts/build-install-release-clean.sh` or `yarn android:bundle:release` with JDK 17).
 
 **Upload history (pre–ADR-0017):** vc4 = `0.1.0-alpha` (internal; same name as vc3 — why the
 `versionCode` in the release name exists). vc5 = `0.1.1-alpha`. **vc6 = `0.1.2-alpha`** (#1082 on
-RN 0.88.1). Do not reuse a `versionCode`.
+RN 0.88.1). Product line `0.2.0` starts at **vc7**. Do not reuse a `versionCode`.
 
 ## Upload signed AAB to internal testing (CLI)
 

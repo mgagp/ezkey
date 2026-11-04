@@ -33,6 +33,8 @@ pom.xml.releaseBackup
 pom.xml.versionsBackup
 pom.xml.next
 release.properties
+.flattened-pom.xml
+**/\.flattened-pom.xml
 
 # Gradle
 .gradle/
