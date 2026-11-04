@@ -20,7 +20,7 @@ It also includes an Admin UI for human administration, giving operators a direct
 
 ## Status
 
-Ezkey is in **public alpha**. This repository is the product source; there are **no published release packages** yet (no GitHub Releases / installable binaries to consume). Technical identity of a live deploy is the **git SHA** — see [`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md). Pull-request and `main` feedback from GitHub Actions is described in [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) § Continuous Integration (required-check candidate: `ci-gate`).
+Ezkey is in **public alpha**. This repository is the product source; there are **no published release packages** yet (no GitHub Releases / installable binaries to consume). Product SemVer is **one version for the whole monorepo** (starts at `0.2.0`; first `v*` tag not cut yet) — live deploy identity remains the **git SHA**. See [`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md) and [ADR-0017](product-docs/global/architecture-decisions.md#adr-0017-product-versioning-one-semver-for-the-monorepo) ([#1211](https://github.com/mgagp/ezkey/issues/1211)). Pull-request and `main` feedback from GitHub Actions is described in [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) § Continuous Integration (required-check candidate: `ci-gate`).
 
 **Try the live stack** via the community path on [ezkey.org](https://ezkey.org/) — [community instance](https://ezkey.org/community-instance.html) and [community guided tour](https://ezkey.org/community-guided-tour.html) (French under `/fr/`).
 

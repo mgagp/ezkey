@@ -1,28 +1,89 @@
 # Versioning and deploy traceability
 
-Normative convention for how Ezkey talks about its maturity and how operators record
-what is live on a deploy surface. Sibling ops context: [`OPERATIONAL.md`](OPERATIONAL.md),
+Normative convention for how Ezkey talks about its maturity, how product versions are named,
+and how operators record what is live on a deploy surface. Sibling ops context:
+[`OPERATIONAL.md`](OPERATIONAL.md),
 [`lightsail/community-host.md`](lightsail/community-host.md).
+
+**Architecture decision:** [ADR-0017](../product-docs/global/architecture-decisions.md#adr-0017-product-versioning-one-semver-for-the-monorepo)
+(one SemVer for the whole monorepo). Issue:
+[#1211](https://github.com/mgagp/ezkey/issues/1211).
+
+## Product version (SemVer)
+
+| Rule | Detail |
+|------|--------|
+| **Scheme** | [Semantic Versioning](https://semver.org/) |
+| **Scope** | **One** product version for the **whole monorepo** (backends, Admin UI, demo, CLI, PAM, mobile) |
+| **Start** | `0.2.0` |
+| **0.x meaning** | No stability promise (lab / public-alpha posture) |
+
+**Trace:** First product version is `0.2.0`, not `0.1.0` — Play already shipped
+`versionName` `0.1.2-alpha`, and the mobile version must not go backwards —
+Marc, 2026-11-04, [#1211](https://github.com/mgagp/ezkey/issues/1211).
+
+**Trace:** Product tags are annotated `vX.Y.Z` on `main` (optional `-alpha.N` pre-release) —
+names the whole ship set; keeps tag grammar distinct from other namespaces —
+Marc / [#1211](https://github.com/mgagp/ezkey/issues/1211).
+
+| Kind | Form | Notes |
+|------|------|-------|
+| **Product tag** | Annotated git tag `vX.Y.Z` on `main` | Optional pre-release: `vX.Y.Z-alpha.N`. Not cut in ADR step 1; first tag is a later [#1211](https://github.com/mgagp/ezkey/issues/1211) step. |
+| **Not a product version** | `methodology/*` | Methodology pack releases; keep as-is. |
+| **Not a product version** | `deploy/*` | Movable deploy pointers (e.g. `deploy/community`); keep as-is. |
+
+**Trace:** Existing `methodology/*` and `deploy/*` tags stay and are **not** product versions —
+avoids conflating method/deploy pointers with the product line —
+[#1211](https://github.com/mgagp/ezkey/issues/1211).
+
+### Mobile (`versionName` / `versionCode`)
+
+| Field | Rule |
+|-------|------|
+| **`versionName`** | Equals the product version `X.Y.Z` (same string as the SemVer without the leading `v`; use a matching pre-release suffix when the product tag does). |
+| **`versionCode`** | Monotonic increasing integer (Play requirement). |
+
+**Trace:** Mobile `versionName` = product `X.Y.Z` with a monotonic `versionCode` — keeps the store
+upload identity tied to the monorepo product line; an own mobile cadence later would be a
+**separate** decision — [#1211](https://github.com/mgagp/ezkey/issues/1211).
+
+### SHA complementarity
+
+**Trace:** Git **SHA** deploy traceability stays and **complements** the product tag — the live
+ledger remains the source of truth for what is running; the tag names a release cut, not a
+substitute for the ledger — [#1211](https://github.com/mgagp/ezkey/issues/1211).
+
+### Alignment mechanisms (deferred)
+
+**Trace:** POM, npm, and alignment-script mechanisms are deferred to
+[#1211](https://github.com/mgagp/ezkey/issues/1211) **step 2** — step 1 records the versioning
+decision only; no implementation detail here.
 
 ## Product claims (operator / public)
 
 | Layer | Rule |
 |-------|------|
 | **Public / operator claim** | **Public alpha** (French: **Alpha publique**). Honest pre-release language. |
-| **Technical identity** | **Git commit SHA** of the deployed tree (full SHA in the ledger; short SHA in UI chrome). |
-| **Not yet** | No GitHub Releases, no product semver tags (`v0.x`), no “stable release” numbering until there are published artefacts (JAR / Docker image / mobile store build). |
+| **Technical identity (live deploy)** | **Git commit SHA** of the deployed tree (full SHA in the ledger; short SHA in UI chrome). Complements a product tag when one exists for that cut. |
+| **Product version** | SemVer for the monorepo per ADR-0017 (`0.2.0` start). First annotated `v*` tag and GitHub Release are **not** cut in this docs step. |
+| **Not yet** | No GitHub Releases and no published installable artefacts (JAR / Docker image / store build) until later [#1211](https://github.com/mgagp/ezkey/issues/1211) steps. Do not imply a “stable release” from a bare `v1.x` style claim while the line is `0.x`. |
 
 ### Forbidden / discouraged chrome
 
-- Do **not** show bare `v0.1.0` (reads like a stable release).
-- Do **not** invent a parallel marketing version such as `0.0.0-alpha`.
+A git tag such as `v0.2.0` is the correct product-tag form; the UI must never show bare
+`v0.2.0` alone (keep the public-alpha framing and SHA chrome below).
+
+- Do **not** show bare `v0.2.0` alone in operator chrome (reads like a finished stable release).
+- Do **not** invent a parallel marketing version such as `0.0.0-alpha` beside the product SemVer.
 - Acceptable UI chrome (preference order):
   1. `Public alpha · <sha7>` / `Alpha publique · <sha7>`
   2. `alpha · <sha7>`
-  3. At worst `0.1.0-alpha · <sha7>` — still **never** `v0.1.0` alone
+  3. At worst `0.2.0-alpha · <sha7>` — still **never** `v0.2.0` alone without the public-alpha
+     framing
 
-Maven / npm module versions remain **internal build identity**. Do not conflate them with the
-public alpha label. (`ezkey-admin-ui/package.json` may say `0.0.0` — that is npm scaffolding,
+Until [#1211](https://github.com/mgagp/ezkey/issues/1211) step 2 lands, Maven / npm module versions
+may still diverge from the product SemVer; treat them as **internal build identity**, not as a
+second public claim. (`ezkey-admin-ui/package.json` may say `0.0.0` — that is npm scaffolding,
 not a product claim.)
 
 ## Source of truth for “what is live”
@@ -42,7 +103,7 @@ As operated today (Seb read-only inventory of ezkey.online):
 |-------|---------------|-------------------|
 | **Admin UI** | **Cloudflare Pages** (not a Lightsail container) | Record the **git SHA of the tree that was built and published** to Pages. Pages deploy id alone is not enough unless mapped back to that SHA. |
 | **APIs / Demo ACME** | Lightsail Docker VM | Images tagged `*:latest` are **not** deploy traceability. Ledger must record the **full git SHA** that produced (or was intended for) those images. Rolling / compose builds also stamp OCI `org.opencontainers.image.revision` via `OCI_IMAGE_REVISION` (#814; see [`experimental-hybrid/BACKEND_ROLLING_UPDATE.md`](../experimental-hybrid/BACKEND_ROLLING_UPDATE.md)). |
-| **Demo ACME / health / actuator** | same VM | Typically expose **no** product version string — do not invent one. |
+| **Demo ACME / health / actuator** | same VM | Typically expose **no** product version string — do not invent one until step 2 exposes a shared runtime version. |
 
 Closing the pre-convention gap: until the first post-publish ledger row exists, live SHA is
 **unknown** even if containers are `latest`. The procedure below is how that gap is closed.
@@ -69,6 +130,7 @@ Do **not** treat Docker image tag `:latest` (or npm `0.0.0`) as a substitute for
 ## Optional deploy tags
 
 Tags are a **convenience** for `git show deploy/community`, not the SOOT.
+They are **not** product versions (see Product version above).
 
 | Tag | Meaning |
 |-----|---------|
@@ -118,6 +180,6 @@ export VITE_GIT_SHA="$(git rev-parse --short=7 HEAD)"
 
 ## Out of scope here
 
-- Creating GitHub Releases or product semver tags
+- Creating the first annotated product tag or GitHub Release (later [#1211](https://github.com/mgagp/ezkey/issues/1211) steps)
+- POM / npm / mobile alignment tooling (step 2 of [#1211](https://github.com/mgagp/ezkey/issues/1211))
 - Changing live DNS / Cloudflare / Lightsail without a separate ops go-ahead
-- Rewriting Maven `revision` / module versions to match the public alpha label
