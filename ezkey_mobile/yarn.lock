@@ -3966,25 +3966,25 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/query-core@npm:5.105.0":
-  version: 5.105.0
-  resolution: "@tanstack/query-core@npm:5.105.0"
-  checksum: 10c0/1b4baa128a95810b677d93f91156e3d32eb07dbe9e062fe0a2651089569f3fca275e43dc9fe569efd55b9e5a00d0d2e18b78de6fa9ed65b1ad54f24e5a90106e
+"@tanstack/query-core@npm:5.105.1":
+  version: 5.105.1
+  resolution: "@tanstack/query-core@npm:5.105.1"
+  checksum: 10c0/2e13312a127e82a54024230ccb3e3644141cebb51719443767de39e90188f9b235b87abd2c0074addd02bf226f9eebf0371fc3e39577bbfaa19545cd4402b5de
   languageName: node
   linkType: hard
 
-"@tanstack/react-query@npm:5.105.0":
-  version: 5.105.0
-  resolution: "@tanstack/react-query@npm:5.105.0"
+"@tanstack/react-query@npm:5.105.1":
+  version: 5.105.1
+  resolution: "@tanstack/react-query@npm:5.105.1"
   dependencies:
-    "@tanstack/query-core": "npm:5.105.0"
+    "@tanstack/query-core": "npm:5.105.1"
   peerDependencies:
     "@types/react": ^18 || ^19
     react: ^18 || ^19
   peerDependenciesMeta:
     "@types/react":
       optional: true
-  checksum: 10c0/7c9e8d073a0a9192937d0996b18ff6c27a769efb93a3a9cf6cf31c811c9187229573c0746849f1f99c0c96af63e7d738c475e445e53cea6c3a8b0718d8b16f7d
+  checksum: 10c0/2cb228aa68476e743b3a39fc6e657aa6f8f8226427f3d92940feda671b147cd5ac417477f48eba670a360f1c563dc1f51c6a5dc2e43203d5d47f2b299a432a0b
   languageName: node
   linkType: hard
 
@@ -6806,7 +6806,7 @@ __metadata:
     "@react-navigation/native-stack": "npm:7.21.0"
     "@react-navigation/stack": "npm:7.12.1"
     "@rnx-kit/third-party-notices": "npm:3.0.4"
-    "@tanstack/react-query": "npm:5.105.0"
+    "@tanstack/react-query": "npm:5.105.1"
     "@types/jest": "npm:30.0.0"
     "@types/react": "npm:19.3.0"
     "@types/react-test-renderer": "npm:19.3.0"
@@ -6814,22 +6814,22 @@ __metadata:
     eslint: "npm:9.39.4"
     eslint-config-prettier: "npm:10.1.8"
     husky: "npm:9.1.7"
-    i18next: "npm:26.5.11"
+    i18next: "npm:26.6.0"
     jest: "npm:30.5.2"
     js-sha256: "npm:1.0.0"
     lint-staged: "npm:17.6.0"
     orval: "npm:8.45.0"
     prettier: "npm:3.9.10"
     react: "npm:19.3.0"
-    react-i18next: "npm:17.1.9"
+    react-i18next: "npm:17.1.10"
     react-native: "npm:0.88.1"
     react-native-config: "npm:1.7.2"
     react-native-gesture-handler: "npm:3.4.0"
     react-native-keychain: "npm:10.0.0"
     react-native-nitro-image: "npm:0.15.2"
     react-native-nitro-modules: "npm:0.37.1"
-    react-native-safe-area-context: "npm:5.10.1"
-    react-native-screens: "npm:4.30.0"
+    react-native-safe-area-context: "npm:5.11.0"
+    react-native-screens: "npm:4.30.1"
     react-native-svg: "npm:15.16.0"
     react-native-svg-transformer: "npm:1.5.3"
     react-native-vision-camera: "npm:5.2.3"
@@ -7600,15 +7600,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"i18next@npm:26.5.11":
-  version: 26.5.11
-  resolution: "i18next@npm:26.5.11"
+"i18next@npm:26.6.0":
+  version: 26.6.0
+  resolution: "i18next@npm:26.6.0"
   peerDependencies:
     typescript: ^5 || ^6 || ^7
   peerDependenciesMeta:
     typescript:
       optional: true
-  checksum: 10c0/b2ecb58a38420530d928d93761efc1d4e966f24cf99518df843f5b8797be135d7b6defb01ca97b61bf2bc614a6fab56bd874032b42567ae22cfa84909c2187cd
+  checksum: 10c0/865e3fe8a414436f8b8033a0ef5947a2233b043e78a770a0d66261e5f1dd7777c6cd89a101fc34215a328aa1d5876f768a9005da5495052ffaf6464aaa89c5d8
   languageName: node
   linkType: hard
 
@@ -10396,9 +10396,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-i18next@npm:17.1.9":
-  version: 17.1.9
-  resolution: "react-i18next@npm:17.1.9"
+"react-i18next@npm:17.1.10":
+  version: 17.1.10
+  resolution: "react-i18next@npm:17.1.10"
   dependencies:
     "@babel/runtime": "npm:^7.29.7"
     html-parse-stringify: "npm:^4.0.1"
@@ -10414,7 +10414,7 @@ __metadata:
       optional: true
     typescript:
       optional: true
-  checksum: 10c0/f3c263df1d152a6a757cd47895c86568fa36cd583ac659276afa9c5a97e6babd72e3197f22587862f7382de628428e39f757b6d67ad03ebbfd333296237d44d7
+  checksum: 10c0/8c03c2b27bf4d4861926d5629221e3c6b3e502213030c7667b1563ac6a67451ace96c3f52eddb44d7ff02db64a140d4d502d8113d4c364f485b946d2ba44ea0a
   languageName: node
   linkType: hard
 
@@ -10497,26 +10497,26 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-safe-area-context@npm:5.10.1":
-  version: 5.10.1
-  resolution: "react-native-safe-area-context@npm:5.10.1"
+"react-native-safe-area-context@npm:5.11.0":
+  version: 5.11.0
+  resolution: "react-native-safe-area-context@npm:5.11.0"
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: 10c0/8aebfa832d483e385f9848b5ea92ce3e525a44cad5b3b363b5b190c1f559f3f01176f745ff7a2ad0e2191cb3fb2d0be26c8650956640f086562440c869713ec5
+  checksum: 10c0/b36141e17a5cf307a2eb1720b65c161035ac13e0c2e62bdac4dc2639346e9721649f9ae8c0e7a66a8f525cb1c580b3ea73f892167a97df8fea6cd80212703e00
   languageName: node
   linkType: hard
 
-"react-native-screens@npm:4.30.0":
-  version: 4.30.0
-  resolution: "react-native-screens@npm:4.30.0"
+"react-native-screens@npm:4.30.1":
+  version: 4.30.1
+  resolution: "react-native-screens@npm:4.30.1"
   dependencies:
     react-freeze: "npm:^1.0.0"
     warn-once: "npm:^0.1.0"
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: 10c0/9f5d4f0710a67362d4c3df8b998e8cf22d8d8eaa1a1a0185b5a34588b0aa922d346baf22a9e89c43a46f2d0b04c64e9f9e658411114a9e97fd228e29553f6cb8
+  checksum: 10c0/e5ded425ece1819d56fa84dacffa30178a9b9af1e9350ae99f3b78a9cb21795886c6f74ca1fe1b89e7bb65a56733246c40bf57d5b470d9d7bbf10ad0fa117690
   languageName: node
   linkType: hard
 
