@@ -58,7 +58,21 @@ for i in $(seq 1 60); do
   fi
   sleep 1
 done
-docker exec "${CONTAINER}" /opt/pam-ezkey/test/test_pam.sh || true
+# Installation smoke only. Connectivity to Integration API is expected to FAIL
+# here: CI points EZKEY_INTEGRATION_API_URL at a closed port (no Ezkey stack).
+# Tolerate only that one [FAIL]; any other install-smoke [FAIL] aborts CI M1.
+# Later steps retarget pam_ezkey.conf at the in-container stub.
+set +e
+SMOKE_OUT="$(docker exec "${CONTAINER}" /opt/pam-ezkey/test/test_pam.sh 2>&1)"
+set -e
+printf '%s\n' "${SMOKE_OUT}"
+SMOKE_BAD="$(printf '%s\n' "${SMOKE_OUT}" | grep '\[FAIL\]' \
+  | grep -v 'Integration API not reachable' || true)"
+if [ -n "${SMOKE_BAD}" ]; then
+  echo "CI M1: unexpected test_pam.sh failure(s):" >&2
+  printf '%s\n' "${SMOKE_BAD}" >&2
+  exit 1
+fi
 
 # #1016 T2: Rocky runtime has rsyslog → /dev/log; require the live path (no SKIP).
 echo "== CI M1: test_diag_harness with EZKEY_PAM_REQUIRE_DEVLOG=1 (T2) =="
