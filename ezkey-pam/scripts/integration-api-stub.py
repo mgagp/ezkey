@@ -13,7 +13,9 @@ Modes (EZKEY_STUB_MODE):
   pending        — POST 201; GET wait sleeps for ?timeout= then PENDING + timeoutReached
   hold           — POST 201 (+ challenge when requested); GET wait blocks until
                    EZKEY_STUB_RELEASE_PATH exists (deterministic gate), then
-                   ACCEPTED + HOLD_RELEASE marker in req log. Probe 2 releases
+                   ACCEPTED + HOLD_RELEASE marker in req log. Caps at
+                   EZKEY_STUB_HOLD_MAX_SECS (default 120) → PENDING/timeoutReached
+                   so a stranded hold cannot block forever. Probe 2 releases
                    only after client kill + pam gone (proves no late SUCCESS).
   expired        — POST 201; GET wait → EXPIRED
   rejected       — POST 201; GET wait → REJECTED
@@ -57,6 +59,8 @@ RELEASE_PATH = os.environ.get(
     "EZKEY_STUB_RELEASE_PATH", "/tmp/ezkey-pam-stub-release"
 )
 HOLD_POLL_SECS = float(os.environ.get("EZKEY_STUB_HOLD_POLL_SECS", "0.05"))
+# Bound so a stranded hold (harness crash / missed release) cannot block forever.
+HOLD_MAX_SECS = float(os.environ.get("EZKEY_STUB_HOLD_MAX_SECS", "120"))
 
 LEGACY_CREATE_MODES = frozenset(
     {"legacy_create", "legacy_rejected", "legacy_pending"}
@@ -291,9 +295,24 @@ class Handler(BaseHTTPRequestHandler):
             # Deterministic gate: park until the harness creates RELEASE_PATH.
             # Probe 2 releases only after client kill + pam-gone so ACCEPTED
             # cannot race the kill, yet success_n=0 is still a PAM proof
-            # (stub will ACCEPTED once released).
+            # (stub will ACCEPTED once released). HOLD_MAX_SECS caps a stranded
+            # hold outside the harness trap (Patrick #1197 craft).
             started = time.time()
             while not os.path.exists(RELEASE_PATH):
+                if (time.time() - started) >= HOLD_MAX_SECS:
+                    waited = max(0, int(time.time() - started))
+                    _log_req("HOLD_TIMEOUT", self.path)
+                    self._json(
+                        200,
+                        {
+                            "authAttempt": 9001,
+                            "status": "PENDING",
+                            "completed": False,
+                            "timeoutReached": True,
+                            "waitDuration": waited,
+                        },
+                    )
+                    return
                 time.sleep(HOLD_POLL_SECS)
             waited = max(0, int(time.time() - started))
             _log_req("HOLD_RELEASE", self.path)
@@ -336,7 +355,8 @@ def main() -> None:
     print(
         f"stub mode={MODE} listening on :{PORT} req_log={REQ_LOG} "
         f"applied_ttl={APPLIED_TTL} ttl_cap={GLOBAL_TTL_CAP} "
-        f"accept_delay={ACCEPT_DELAY} release_path={RELEASE_PATH}",
+        f"accept_delay={ACCEPT_DELAY} release_path={RELEASE_PATH} "
+        f"hold_max_secs={HOLD_MAX_SECS}",
         flush=True,
     )
     server.serve_forever()

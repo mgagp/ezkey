@@ -379,14 +379,25 @@ probe_kill_at_challenge() {
   # Wait until challenge is the latest prompt and create has landed. Do not
   # wait for /wait — Enter must not have been sent; hold is the safety net if
   # a spurious Enter races ahead of the kill.
+  local chal_ready=0
   for i in $(seq 1 80); do
     if capture_at_challenge_prompt "${log}" \
       && docker exec "${CONTAINER}" sh -c \
         "grep -q 'POST .*/auth-attempts' '${STUB_REQ_LOG}' 2>/dev/null"; then
+      chal_ready=1
       break
     fi
     sleep 0.1
   done
+  if [ "${chal_ready}" -ne 1 ]; then
+    ezkey_ctrl_write "${ctrl}" "quit"
+    kill "${ssh_pid}" 2>/dev/null || true
+    wait "${ssh_pid}" 2>/dev/null || true
+    rm -rf "${ctrl_dir}"
+    fail "probe2: challenge prompt + create not ready before kill window"
+    stop_stub
+    return
+  fi
   local pids
   pids="$(pam_pids)"
   echo "probe2 pam_pids=${pids:-none}" | tee -a "${PROOF}"
