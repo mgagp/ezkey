@@ -15,8 +15,12 @@ and how operators record what is live on a deploy surface. Sibling ops context:
 |------|--------|
 | **Scheme** | [Semantic Versioning](https://semver.org/) |
 | **Scope** | **One** product version for the **whole monorepo** (backends, Admin UI, demo, CLI, PAM, mobile) |
-| **Start** | `0.1.0` |
+| **Start** | `0.2.0` |
 | **0.x meaning** | No stability promise (lab / public-alpha posture) |
+
+**Trace:** First product version is `0.2.0`, not `0.1.0` — Play already shipped
+`versionName` `0.1.2-alpha`, and the mobile version must not go backwards —
+Marc, 2026-11-04, [#1211](https://github.com/mgagp/ezkey/issues/1211).
 
 **Trace:** Product tags are annotated `vX.Y.Z` on `main` (optional `-alpha.N` pre-release) —
 names the whole ship set; keeps tag grammar distinct from other namespaces —
@@ -61,17 +65,20 @@ decision only; no implementation detail here.
 |-------|------|
 | **Public / operator claim** | **Public alpha** (French: **Alpha publique**). Honest pre-release language. |
 | **Technical identity (live deploy)** | **Git commit SHA** of the deployed tree (full SHA in the ledger; short SHA in UI chrome). Complements a product tag when one exists for that cut. |
-| **Product version** | SemVer for the monorepo per ADR-0017 (`0.1.0` start). First annotated `v*` tag and GitHub Release are **not** cut in this docs step. |
+| **Product version** | SemVer for the monorepo per ADR-0017 (`0.2.0` start). First annotated `v*` tag and GitHub Release are **not** cut in this docs step. |
 | **Not yet** | No GitHub Releases and no published installable artefacts (JAR / Docker image / store build) until later [#1211](https://github.com/mgagp/ezkey/issues/1211) steps. Do not imply a “stable release” from a bare `v1.x` style claim while the line is `0.x`. |
 
 ### Forbidden / discouraged chrome
 
-- Do **not** show bare `v0.1.0` alone in operator chrome (reads like a finished stable release).
+A git tag such as `v0.2.0` is the correct product-tag form; the UI must never show bare
+`v0.2.0` alone (keep the public-alpha framing and SHA chrome below).
+
+- Do **not** show bare `v0.2.0` alone in operator chrome (reads like a finished stable release).
 - Do **not** invent a parallel marketing version such as `0.0.0-alpha` beside the product SemVer.
 - Acceptable UI chrome (preference order):
   1. `Public alpha · <sha7>` / `Alpha publique · <sha7>`
   2. `alpha · <sha7>`
-  3. At worst `0.1.0-alpha · <sha7>` — still **never** `v0.1.0` alone without the public-alpha
+  3. At worst `0.2.0-alpha · <sha7>` — still **never** `v0.2.0` alone without the public-alpha
      framing
 
 Until [#1211](https://github.com/mgagp/ezkey/issues/1211) step 2 lands, Maven / npm module versions

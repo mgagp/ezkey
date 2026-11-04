@@ -1157,12 +1157,16 @@ scheme before tooling or the first tag.
 ### Decision
 
 Ezkey uses **Semantic Versioning** with **one product version for the whole monorepo**
-(backends, Admin UI, demo, CLI, PAM, mobile). The product starts at **`0.1.0`**. While the line
+(backends, Admin UI, demo, CLI, PAM, mobile). The product starts at **`0.2.0`**. While the line
 is **`0.x`**, there is **no stability promise** (lab / public-alpha posture).
 
-**Trace:** One SemVer for the whole monorepo starting at `0.1.0` (0.x = no stability) —
+**Trace:** One SemVer for the whole monorepo starting at `0.2.0` (0.x = no stability) —
 a tag must name everything shipped together; per-module versions are too costly for a solo
 maintainer — Marc, 2026-11-04, [#1211](https://github.com/mgagp/ezkey/issues/1211).
+
+**Trace:** First product version is `0.2.0`, not `0.1.0` — Play already shipped
+`versionName` `0.1.2-alpha`, and the mobile version must not go backwards —
+Marc, 2026-11-04, [#1211](https://github.com/mgagp/ezkey/issues/1211).
 
 Operational detail for tags, non-product namespaces, mobile `versionName` / `versionCode`, and
 SHA complementarity lives in
@@ -1174,6 +1178,8 @@ step 2.
 
 - **Per-module / per-surface SemVer.** Rejected — a single ship event would need many tags and
   constant alignment work; too expensive for a solo maintainer.
+- **Start at `0.1.0`.** Rejected — Play already shipped `versionName` `0.1.2-alpha`; the mobile
+  (and therefore monorepo) product line must not go backwards.
 - **Start at `1.0.0`.** Rejected — would imply a stability promise Ezkey does not make in lab /
   public-alpha posture.
 - **Defer any product version until registries publish.** Rejected — OpenSSF and operator clarity

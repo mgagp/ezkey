@@ -68,9 +68,9 @@ mobile; an own cadence later would be a **separate** decision.
 
 | Field | Where | Rule |
 |-------|--------|------|
-| **`versionName`** | `ezkey_mobile/package.json` `"version"` | Equals the product version `X.Y.Z` (optional matching pre-release suffix when the product tag uses one, e.g. `0.1.0-alpha.1`). Gradle injects this as Android `versionName`; Settings/About show the same string. |
+| **`versionName`** | `ezkey_mobile/package.json` `"version"` | Equals the product version `X.Y.Z` (optional matching pre-release suffix when the product tag uses one, e.g. `0.2.0-alpha.1`). Product line starts at `0.2.0` because Play already shipped `0.1.2-alpha` (must not go backwards; ADR-0017 / [#1211](https://github.com/mgagp/ezkey/issues/1211)). Gradle injects this as Android `versionName`; Settings/About show the same string. |
 | **`versionCode`** | `android/app/build.gradle` | Strictly increasing integer per Play upload (hard requirement). Monotonic; independent of SemVer patch bumps. |
-| **Play release name** | set by `play-upload-internal.sh` | `'<versionCode> (<versionName>)'` (e.g. `4 (0.1.0)`). Override with `--release-name` only when needed. |
+| **Play release name** | set by `play-upload-internal.sh` | `'<versionCode> (<versionName>)'` (e.g. `7 (0.2.0)`). Override with `--release-name` only when needed. |
 
 **Trace:** Mobile `versionName` = product `X.Y.Z` with monotonic `versionCode` — store uploads stay
 tied to the monorepo product line; Console still needs both code and name to tell uploads apart —
