@@ -46,7 +46,8 @@ five language analyses uploaded on `main` at that commit.
 | `.github/ISSUE_TEMPLATE/` | **No** | Directory absent (see diminishing-returns). |
 | [`SECURITY.md`](../../SECURITY.md) | Yes | Private vulnerability reporting URL; lists CI / CodeQL / Dependabot / secret scanning practices. Last updated **2026-10-14** (#808). |
 | [`docs/SECURITY_POSTURE.md`](../SECURITY_POSTURE.md) | Yes | Honest product security claims + § Code scanning policy (SLAs, dismiss rules). |
-| Scorecard / dependency-review / SBOM / provenance / release / harden-runner workflows | **No** | Not in `.github/workflows/`. |
+| [`.github/workflows/scorecard.yml`](../../.github/workflows/scorecard.yml) | Yes | OpenSSF Scorecard (`ossf/scorecard-action`); push/`main` + weekly cron + `branch_protection_rule` + `workflow_dispatch`; `publish_results: true`; SARIF → code scanning. README badge deferred to a follow-up after first publish. |
+| dependency-review / SBOM / provenance / release / harden-runner workflows | **No** | Not in `.github/workflows/`. |
 
 #### 1.1.1 Maven dependency submission
 
@@ -239,7 +240,7 @@ Value: evaluator / supply-chain / operator impact (High / Med / Low).
 | G5 | Ruleset: require **PR** before merge (no approval) | Status checks only; admin bypass always | Require a pull request **without** required approvals (solo: author cannot approve own PR). Approvals stay soft / #787 | S–M | Med | **P2** |
 | G9 | `delete_branch_on_merge` | false | Enable for hygiene | S | Low | P2 |
 | G10 | Prefer squash-only (or document merge strategy) | All three merge methods on | Pick one preferred; disable others or document | S | Low | P2 |
-| G12 | Scorecard workflow + badge | Absent | Scheduled Scorecard; publish badge in README | M | Med | P2 |
+| G12 | Scorecard workflow + badge | Workflow present (`scorecard.yml`); badge still absent | Keep scheduled Scorecard; add README badge after first successful publish | M | Med | P2 (workflow done; badge follow-up) |
 | G14 | Container image CVE scanning | Docker Dependabot version bumps only | Trivy/Grype job or registry scan; not a substitute for alerts | M | Med | P2 |
 | G15 | SBOM generation (CycloneDX/SPDX) | Absent | Generate on `main` / release tags; attach artifacts | M | Med | P2 |
 | G17 | Android Lint in CI | Unit tests + 16 KB only | Add `lintDebug` (or release lint) to mobile workflow | M | Med | P2 |
@@ -283,8 +284,8 @@ verified toggles.
    manifests**; fail on **high/critical** (G7 before G6).
 2. **Ruleset: require a pull request** before merge to `main`, **without** required approvals
    (Marc) — solo maintainer cannot approve PRs opened as `mgagp` (G5 → P2).
-3. **OpenSSF Scorecard** scheduled workflow + README badge (Fred); triage with Christophe (no 10/10
-   campaign).
+3. **OpenSSF Scorecard** — workflow landed (`scorecard.yml`); README badge still follow-up after
+   first publish (Fred); triage with Christophe (no 10/10 campaign).
 4. **Optional hygiene:** `delete_branch_on_merge`; document preferred merge method; decide
    `allow_auto_merge` T1-only vs never (Marc + Fred).
 5. **Mobile:** Android Lint job or step (Justin + Fred) (G17).
