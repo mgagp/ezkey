@@ -19,6 +19,9 @@ class SceneDelegate: RCTDefaultReactNativeFactoryDelegate, UIWindowSceneDelegate
     dependencyProvider = RCTAppDependencyProvider()
     reactNativeFactory = RCTReactNativeFactory(delegate: self)
     window = UIWindow(windowScene: windowScene)
+    // Saved Appearance choice (#1188) before React Native starts, so the first frame already
+    // uses the chosen palette (Android: per-app night mode, EzkeyAppearanceModule).
+    window?.overrideUserInterfaceStyle = EzkeyAppearanceModule.savedInterfaceStyle()
 
     #if DEBUG
       let devMenuConfiguration = RCTDevMenuConfiguration(

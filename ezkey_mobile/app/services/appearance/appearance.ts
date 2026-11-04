@@ -5,12 +5,14 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Module: appearance
- * Description: Applies the Appearance setting to React Native and, on Android, to the per-app
- *              night mode so the splash screen and system dialogs match on next launch (#1156).
+ * Description: Applies the Appearance setting to React Native and to the native side, so the
+ *              next cold start matches before JavaScript runs (#1156, #1188): Android per-app night
+ *              mode (splash and system dialogs); iOS UserDefaults read by SceneDelegate (the iOS
+ *              launch screen itself always follows the system).
  * @since 2026
  */
 
-import {Appearance, NativeModules, Platform} from 'react-native';
+import {Appearance, NativeModules} from 'react-native';
 import {
   AppearancePreference,
   appearanceStorage,
@@ -23,8 +25,9 @@ type NativeShape = {
 const native = NativeModules.EzkeyAppearanceModule as NativeShape | undefined;
 
 /**
- * Applies a preference for the current session. `useColorScheme()` updates immediately; on
- * Android the per-app night mode is also set, which the system keeps across launches.
+ * Applies a preference for the current session. `useColorScheme()` updates immediately; the
+ * native module also keeps it for the next cold start (Android per-app night mode, iOS
+ * UserDefaults).
  *
  * Fail-open: a native failure is logged and the in-app theme still switches.
  *
@@ -33,13 +36,13 @@ const native = NativeModules.EzkeyAppearanceModule as NativeShape | undefined;
  */
 export const applyAppearance = (preference: AppearancePreference): void => {
   Appearance.setColorScheme(preference === 'system' ? 'unspecified' : preference);
-  if (Platform.OS !== 'android' || native?.setApplicationNightMode == null) {
+  if (native?.setApplicationNightMode == null) {
     return;
   }
   try {
     native.setApplicationNightMode(preference);
   } catch (error) {
-    console.warn('[appearance] Failed to set the application night mode:', error);
+    console.warn('[appearance] Failed to save the native appearance:', error);
   }
 };
 

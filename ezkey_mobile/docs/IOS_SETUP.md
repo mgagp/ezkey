@@ -96,6 +96,9 @@ simulator with `maestro --device <simulator-udid> test <flow>`. Maestro's `hideK
 iOS: replace it with a tap on a neutral area (e.g. `- tapOn: { point: "50%,8%" }`, the header).
 `maestro/flows/ios_licenses.yaml` (no backend needed) walks Settings → Open Source Licenses and
 opens two C/C++ entries; Maestro's `back` does nothing on iOS, tap the header back button instead.
+`maestro/flows/ios_appearance.yaml` (no backend needed) checks Settings → Appearance and that the
+choice survives a cold start; iOS exposes the radio state in the accessibility value
+(`"radio button, checked"`), not in Maestro's `checked` attribute.
 
 **End-to-end against the local stack (step 5, verified 2026-11-02):** create an enrollment in the
 Admin UI (`ezkey-admin-ui/start.sh`, http://localhost:3090), enroll the simulator with the F2a seed

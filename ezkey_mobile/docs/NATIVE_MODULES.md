@@ -21,6 +21,8 @@
 | `EzkeyWindowSecurityPackage` | Android (Kotlin) | Registers window security module with React Native | `android/app/src/main/java/org/ezkey/mobile/security/EzkeyWindowSecurityPackage.kt` |
 | `EzkeyAppearanceModule` | Android (Kotlin) | Per-app night mode (`UiModeManager#setApplicationNightMode`) for the Appearance setting, so the splash and system dialogs match from the next cold start; `MainActivity` keeps status / navigation bar icons readable on theme switches (#1156); fail-open. JS: `app/services/appearance/appearance.ts` | `android/app/src/main/java/org/ezkey/mobile/appearance/EzkeyAppearanceModule.kt` |
 | `EzkeyAppearancePackage` | Android (Kotlin) | Registers the appearance module with React Native | `android/app/src/main/java/org/ezkey/mobile/appearance/EzkeyAppearancePackage.kt` |
+| `EzkeyAppearanceModule` | iOS (Swift) | Same name and method as Android: `setApplicationNightMode` keeps the choice in `UserDefaults`; `SceneDelegate` applies it to the window (`overrideUserInterfaceStyle`) before React Native starts, so the first frame uses the chosen palette (#1188); fail-open. The launch screen follows the system appearance (iOS limit) | `ios/EzkeyMobile/Appearance/EzkeyAppearanceModule.swift` |
+| `EzkeyAppearanceModule` (extern) | iOS (Objective-C) | `RCT_EXTERN_MODULE` / `RCT_EXTERN_METHOD` declaration exposing the Swift module | `ios/EzkeyMobile/Appearance/EzkeyAppearanceModule.m` |
 | `EzkeyCryptoModule` (extern) | iOS (Objective-C) | `RCT_EXTERN_MODULE` / `RCT_EXTERN_METHOD` declarations exposing the Swift module | `ios/EzkeyMobile/Crypto/EzkeyCryptoModule.m` |
 
 ## Communication Flow
