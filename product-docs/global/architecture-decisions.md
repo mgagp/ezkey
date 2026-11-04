@@ -33,6 +33,7 @@ Each decision is recorded with enough context to be understood years later: why 
 | [ADR-0014](#adr-0014-qa-sphere-for-test-execution-tracking) | QA Sphere for test execution tracking | accepted | 2026-10-13 |
 | [ADR-0015](#adr-0015-management-port-separation-actuator-javamelody) | Management port separation (Actuator / JavaMelody) | accepted | 2026-10-19 |
 | [ADR-0016](#adr-0016-keyset-blob-single-source-of-truth) | Keyset blob as single source of truth | accepted | 2026-10-21 |
+| [ADR-0017](#adr-0017--connector-spi-for-external-services) | Connector SPI for external services | proposed | 2026-11-04 |
 
 ## ADR-0001 — Backend-first cryptographic protocol
 
@@ -1132,3 +1133,74 @@ divergence between file and blob (blockers B2, B5, B6). Real deployments already
   [ADR-0011](#adr-0011-tink-native-database-keyset-envelope),
   [ADR-0012](#adr-0012-admin-owned-keyset-materialization).
 - Complements always-on encryption work in [#942](https://github.com/mgagp/ezkey/issues/942).
+
+## ADR-0017 — Connector SPI for external services
+
+### Metadata
+
+- **ID:** ADR-0017.
+- **Date:** 2026-11-04.
+- **Status:** proposed (Marc's decisions recorded on GitHub
+  [#1206](https://github.com/mgagp/ezkey/issues/1206); moves to accepted at the gate on
+  [#1207](https://github.com/mgagp/ezkey/issues/1207)).
+- **Scope:** global.
+- **Owners:** Platform architecture / security.
+- **Decision pack:** [`decisions/2026-11-04-connector-spi/`](decisions/2026-11-04-connector-spi/README.md).
+
+### Context
+
+Design principle #16 sends optional third-party capabilities through an SPI, but `V-2026-0005` kept
+email in the core with Java Mail, and `V-2026-0007` defined an HTTP adapter for SMS only. Directory
+sync (Active Directory, LDAP) had no model, and its data flows the opposite way from delivery. The
+Admin API machine-to-machine hatch was removed on purpose (`I-2026-08-29`).
+
+### Decision
+
+1. **Connectors are separate processes reached over versioned HTTP contracts.** Ezkey remains fully
+   operational with none configured.
+2. **Email is a connector, like SMS.** There is one principle, and no email library in the core.
+3. **Direction follows the family.** Ezkey calls delivery connectors, synchronously and on operator
+   action. Directory connectors call Ezkey, with outbound connections only.
+4. **Provider credentials stay on the connector side.** Ezkey holds only what it needs to reach or
+   authenticate a connector.
+5. **One message never carries both factors.** Email carries the QR; the challenge stays on screen or
+   goes by SMS later. The core enforces this.
+6. **Connector code incubates in the monorepo** under `ezkey-connectors/`. Extraction is a later question.
+7. **Families share conventions, not a framework.** Each family has its own small contract.
+
+### Alternatives Considered
+
+- **Email in the core.** Simpler to deploy, but leaves two models and would not test the SPI on a real
+  case. Rejected by Marc on 2026-11-04.
+- **Shared database.** Couples connectors to the schema and requires wide privileges. Rejected.
+- **Message queue.** New infrastructure for an SME, against principle #7. Rejected; reopen on real volume.
+- **In-process plugins.** Brings vendor SDKs and secrets into the API process. Rejected.
+- **Connector polling Ezkey for delivery jobs.** Requires stored jobs holding secret material. Rejected for now.
+- **Secrets stored in Ezkey.** Allows configuration in the Admin UI, but requires a vault and enlarges
+  the impact of a compromised database. Rejected.
+
+### Consequences
+
+- **Positive.** The core stays vendor-free, a compromised Ezkey database reveals no provider credential,
+  and a mock connector gives CI, QA and prototypes one fixture.
+- **Negative.** One more container for an operator who wants email, two places to configure, and a new
+  contract to version.
+- **Neutral.** Integrated delivery stays first-class. `V-2026-0007` keeps its HTTP adapter decision.
+  Automatic sending remains out of scope until a dedicated decision.
+
+### Impact
+
+- **Affected components.** `admin-api`, `admin-ui`, `infra`, `docs`, new `ezkey-connectors/`; later a new
+  inbound surface and enrollment schema changes for directories.
+- **Affected boundaries.** A new outbound trust boundary (delivery) now; a new inbound machine boundary later.
+
+### Validation
+
+- Mock connector scenarios run as a CI gate: send, provider error, timeout, rejected credential, no connector.
+- Log-capture tests prove that no bearer material is logged.
+- Real proof: a QR received by email enrolls a phone, locally and then on the community instance.
+
+### Related Decisions
+
+- Refines design principle #16; supersedes the email transport in `V-2026-0005`; keeps `V-2026-0007`.
+- Related: ADR-0016 (existing at-rest encryption, reused for any connector credential Ezkey stores).

@@ -39,6 +39,7 @@ remains orthogonal to the closed September operability program. Wave B closeout:
 | Folder | Issue | Note |
 |--------|-------|------|
 | [`ezkey-jenkins/`](../../../ezkey-jenkins/) | [#972](https://github.com/mgagp/ezkey/issues/972) | Jenkins auth plugin lab (Integration API ↔ Java SDK); experimental; independent compose — does not delay community-alpha |
+| `ezkey-connectors/` (from step 3) | [#1206](https://github.com/mgagp/ezkey/issues/1206) | Connector SPI for external services: email first, then SMS and directory; connectors are lab, core changes keep normal rigor. [`V-2026-11-04-connector-spi`](../vision/V-2026-11-04-connector-spi.md), [pack](../decisions/2026-11-04-connector-spi/README.md) |
 
 ## Active ideas
 
@@ -60,8 +61,8 @@ remains orthogonal to the closed September operability program. Wave B closeout:
 | `I-2026-0019` | Android real-device mobile functional tests | `active` | `P1` | `ezkey-mobile`, `ezkey-tests`, `auth-api`, `admin-api`, `docker` | `2026-06-26` |
 | `I-2026-0020` | Integration ecosystem shell catalog & publish workflow | `captured` | `P2` | `docs`, GitHub ecosystem, `product-docs (traceability)` | `2026-05-11` |
 | `I-2026-0022` | Admin API scheduled jobs catalog (living document) | `incubating` | `P2` | `admin-api`, `docs` | `2026-05-24` |
-| `I-2026-0023` | Email channel R1: optional operator-triggered delivery | `incubating` | `P2` | `admin-api`, `admin-ui`, `infra`, `docs` | `2026-07-25` |
-| `I-2026-0024` | SMS channel R1: HTTP adapter SPI + optional operator send | `incubating` | `P2` | `admin-api`, `admin-ui`, `infra`, `docs` | `2026-05-24` |
+| `I-2026-0023` | Email channel R1: optional operator-triggered delivery | `incubating` | `P2` | `admin-api`, `admin-ui`, `infra`, `docs` | `2026-11-04` |
+| `I-2026-0024` | SMS channel R1: HTTP adapter SPI + optional operator send | `incubating` | `P2` | `admin-api`, `admin-ui`, `infra`, `docs` | `2026-11-04` |
 | `I-2026-0025` | Auth API protocol capability versioning | `incubating` | `P2` | `auth-api`, `mobile`, `admin-api`, `docs` | `2026-05-24` |
 | `I-2026-0027` | iOS app implementation — fresh native rebuild | `ready` | `P1` | `mobile` | `2026-05-24` |
 | `I-2026-05-23-exp1-anonymous-evaluator-onboarding` | EXP1 anonymous evaluator onboarding | `active` | `P2` | `admin-api`, `admin-ui`, `ezkey-org`, `infra (community)`, `docs` | `2026-05-23` |

@@ -6,6 +6,8 @@ Ezkey stays **self-contained** in this monorepo. Integration repos remain **thin
 
 **Terminology note:** Prefer **integration repository** or **ecosystem repository** here. Do not confuse these with operational **“peripheral” APIs** described in audit-chain heartbeat wording in [`AUDIT_LOG_INTEGRITY.md`](AUDIT_LOG_INTEGRITY.md).
 
+**Incubation (2026-11-04, #1206):** connector code starts in this monorepo under `ezkey-connectors/`, like the SDKs, PAM and Jenkins. A separate repository is a later question. See [`V-2026-11-04-connector-spi`](../product-docs/global/vision/V-2026-11-04-connector-spi.md) and [ADR-0017](../product-docs/global/architecture-decisions.md#adr-0017--connector-spi-for-external-services).
+
 ## Naming convention
 
 Repositories follow:
@@ -15,7 +17,7 @@ Repositories follow:
 | Segment | Role | Examples |
 |--------|------|----------|
 | `ezkey-` | Organization-level prefix | (fixed) |
-| `<integration-family>` | Ezkey capability extended | `sms`, `directory`, optionally `email` |
+| `<integration-family>` | Ezkey capability extended | `email`, `sms`, `directory` |
 | `<vendor-or-tech>` | Vendor or neutral technology token | `twilio`, `aws-sns`, `microsoft-ad`, `ldap` |
 | `<qualifier>` | Disambiguation only when needed | Rare |
 
@@ -35,7 +37,7 @@ Use **canonical vendor spelling** in names (e.g. `twilio`).
 
 ## Email stance
 
-Operational email remains **in-core** today (Java Mail and configuration—see **`V-2026-0005`** in [`product-orientation-notes.md`](../product-docs/global/vision/product-orientation-notes.md)). This catalog **does not** list a transactional-email shell unless product direction explicitly adds out-of-core API providers alongside that model.
+Email is a connector, like SMS (Marc, 2026-11-04, #1206; [ADR-0017](../product-docs/global/architecture-decisions.md#adr-0017--connector-spi-for-external-services)). Ezkey sends no email today. The first implementation is SMTP, incubating in the monorepo; no separate repository exists yet.
 
 ## Curated shell list (planned integration repos)
 

@@ -1,0 +1,276 @@
+# Decision pack — Connector SPI for external services
+
+## Metadata
+
+- **Date:** 2026-11-04
+- **Status:** analysis for review; ADR-0017 is `proposed` until the gate on [#1207](https://github.com/mgagp/ezkey/issues/1207)
+- **Scope:** how optional external services (email, SMS, directories) connect to an Ezkey base
+- **Related ADR:** [ADR-0017](../../architecture-decisions.md#adr-0017--connector-spi-for-external-services)
+- **Vision:** [`V-2026-11-04-connector-spi`](../../vision/V-2026-11-04-connector-spi.md)
+- **GitHub:** [#1206](https://github.com/mgagp/ezkey/issues/1206) (program), [#1207](https://github.com/mgagp/ezkey/issues/1207) (this step)
+- **Captured by:** Marc
+- **Non-goals of this pack:** the OpenAPI contract (step 2), any code, a generic plugin framework
+
+## The short version
+
+1. **A connector is a separate process that talks to Ezkey over versioned HTTP.** Ezkey runs fully
+   without one; on-screen QR and challenge stay a valid posture.
+2. **Two families flow in opposite directions.** Ezkey calls a delivery connector when an operator
+   sends. A directory connector calls Ezkey on its own schedule.
+3. **Provider secrets stay in the connector.** Ezkey never holds a Twilio token, an SMTP password or
+   a directory bind password.
+4. **One message never carries both factors.** Email carries the QR. The challenge stays on screen,
+   or goes by SMS later.
+5. **Build the mechanism with a mock first,** then email, then the community instance. SMS and
+   directory follow as separate decisions.
+
+## Concepts
+
+```mermaid
+flowchart LR
+  subgraph base["Ezkey base: complete with no connector"]
+    UI["Admin UI<br/>on-screen QR and challenge"]
+    ADM["Admin API<br/>delivery port"]
+    INB["Inbound connector surface<br/>(later, location open)"]
+    DB[("PostgreSQL<br/>connector URL and credential only")]
+    UI --> ADM
+    ADM --> DB
+    INB --> DB
+  end
+
+  subgraph delivery["Delivery family: Ezkey calls"]
+    MOCK["Mock connector<br/>test scenarios"]
+    SMTP["Email connector<br/>SMTP credentials"]
+    TW["SMS connector<br/>Twilio credentials"]
+  end
+
+  subgraph directory["Directory family: connector calls"]
+    AD["Directory connector<br/>bind credentials"]
+  end
+
+  ADM -- "delivery job" --> MOCK
+  ADM -- "delivery job" --> SMTP
+  ADM -. "later" .-> TW
+  SMTP --> MAIL["Mail provider"]
+  TW -.-> SMSP["SMS provider"]
+  AD -. "later: reconcile batch" .-> INB
+  CORP["Active Directory or LDAP"] -. "periodic read" .-> AD
+```
+
+Audit archive export ([`V-2026-06-28`](../../vision/V-2026-06-28-audit-archive-export-spi.md)) follows
+the same principle but stays deferred. It is not folded into this work.
+
+### What the families share, and what they do not
+
+**Shared conventions:** optional by configuration, versioned HTTP contract, per-connector credential,
+health and capability check, provider secrets outside Ezkey, audit of the actions Ezkey takes, no
+vendor SDK in the core.
+
+**Not shared:** payloads, direction and failure posture. Each family gets its own small contract.
+A generic plugin framework would be accidental complexity for two families (principles #2 and #14).
+
+### Terminology
+
+Use **connector** for the running component. In this codebase, *integration* already means a domain
+entity and *peripheral* appears in the audit heartbeat wording
+([`docs/ECOSYSTEM_REPOSITORIES.md`](../../../../docs/ECOSYSTEM_REPOSITORIES.md)). **SPI** names the
+contract here, not Java's `ServiceLoader`.
+
+## Flow: send the QR by email
+
+```mermaid
+sequenceDiagram
+  actor Op as Operator
+  participant UI as Admin UI
+  participant API as Admin API
+  participant C as Email connector
+  participant M as Mail provider
+  actor U as End user
+
+  Op->>UI: Send by email
+  UI->>API: Send request for a CREATED enrollment
+  API->>API: Check role and enrollment state, render QR
+  API->>C: Delivery job: recipient, QR, no challenge
+  C->>M: Send with connector-held credentials
+  alt Accepted
+    M-->>C: Accepted
+    C-->>API: Accepted, provider reference
+    API-->>UI: Sent, audit recorded
+    M-->>U: Email with QR
+    Op->>U: Challenge through another channel
+  else Failure or timeout
+    C-->>API: Error
+    API-->>UI: Clear error, audit recorded
+    Note over UI: QR and challenge stay available on screen
+  end
+```
+
+"Accepted" means the provider took the message, not that the user received it.
+
+## Flow: directory reconcile (later)
+
+```mermaid
+sequenceDiagram
+  participant D as Active Directory or LDAP
+  participant C as Directory connector
+  participant API as Inbound connector surface
+  participant E as Enrollments
+
+  loop Every few hours
+    C->>D: Read the configured subtree or group
+    D-->>C: Entries
+    C->>API: Reconcile batch with stable external ids
+    API->>API: Compare with the known state, compute the plan
+    alt Plan within the safety threshold
+      API->>E: Apply the mapped changes, audited
+      API-->>C: Summary
+    else Mass change detected
+      API-->>C: Refused, nothing applied, alert raised
+    end
+  end
+```
+
+The connector only opens outbound connections. It can sit inside the company network, and Ezkey never
+receives directory credentials. Duo's on-premises directory sync relies on a similar local proxy.
+
+### Mapping directory state to the enrollment lifecycle
+
+Checked against [`docs/LIFECYCLE_GOVERNANCE.md`](../../../../docs/LIFECYCLE_GOVERNANCE.md) § 3.3.
+
+| Directory event | Enrollment state | Proposed effect | Note |
+|-----------------|------------------|-----------------|------|
+| New entry in scope | None | Create a `CREATED` enrollment | Sending the invitation needs a later auto-send decision |
+| Account disabled | `VERIFIED` + active | Deactivate | Reversible; a disabled account may come back |
+| Account re-enabled | `VERIFIED` + inactive | Reactivate **only if the connector deactivated it** | An operator's investigation hold must survive |
+| Removed, past a grace period | `VERIFIED` | Revoke with a reason | Governance: revoke when the user has left |
+| Removed or disabled | `CREATED` or `BOUND` | **Open** | Deactivate and revoke are `VERIFIED`-only today |
+| Any | Admin MFA enrollment | **Never touched** | Prevents locking administrators out |
+
+**Safety rails, all required before a real directory:** a dry-run preview, a threshold that refuses a
+mass change (a wrong filter or an empty read must not deactivate everyone), and an alert when the
+connector goes silent, because leavers then stay active.
+
+## Options for the exchange mechanism
+
+Marc asked whether exchanges go through the database, a message queue or a REST surface. The
+2026-05-19 SMS decisions chose an HTTP adapter for delivery. The directory family is the new signal
+that justified looking again.
+
+| Option | Delivery | Directory | Verdict |
+|--------|----------|-----------|---------|
+| **REST, direction chosen per family** | Immediate error for the operator | Outbound-only from the customer network | **Retained** |
+| Shared database | Polling; no immediate error | Connector needs database access from the customer network | Rejected: couples connectors to the schema, wide privileges |
+| Message queue | Needs a result channel for the error | Works, but crosses the network boundary | Rejected: new infrastructure for an SME, against principle #7. Reopen on real volume |
+| In-process plugin | Immediate | Would put directory access inside the API | Rejected: vendor SDKs and secrets in the API process, image rebuilds |
+| Connector polls Ezkey for delivery jobs | Works behind NAT | Same direction as directory | Rejected for now: needs a stored job, which means stored secret material |
+
+Email in the core (the earlier `V-2026-0005` stance) was also set aside: simpler to deploy, but it
+would leave two models and would not test the SPI on a real case (Marc, 2026-11-04).
+
+## Secrets and parameters
+
+| Item | Lives in | Set by |
+|------|----------|--------|
+| Provider credentials (SMTP, Twilio, directory bind) | Connector environment or Docker secrets | Whoever deploys the connector |
+| Connector settings (sender, search base, schedule) | Connector configuration | Same |
+| Connector URL and credential for Ezkey to call it | Ezkey configuration: properties first, a table with the existing encryption if an Admin UI screen is added | Global Admin |
+| Inbound credential for a directory connector | Ezkey, stored hashed like API keys; scoped to its tenant | Global Admin |
+
+**Cost of this choice:** the operator configures two places, and provider secrets cannot be typed into
+the Admin UI. **Benefit:** no secret vault to build, and a compromised Ezkey database reveals no
+provider credential.
+
+## Security invariants
+
+1. **One message, one factor.** The core refuses a job that combines the QR and the challenge. This is
+   a rule in the core, not a connector convention.
+2. **Send only while `CREATED`.** The proof token is a bearer secret until bind. This matches the
+   exposure rule proposed in [#1180](https://github.com/mgagp/ezkey/issues/1180), still open.
+3. **No stored job.** The send is synchronous and operator-triggered, so no outbox holds secret
+   material. A later auto-send decision must reopen this explicitly.
+4. **Nothing sensitive in logs,** on either side, including connector debug logs. Prove it with
+   log-capture tests.
+5. **The connector keeps nothing.** It holds the material only for the duration of the send.
+6. **Transport:** a private Docker network or TLS, plus an authenticated caller. Step 2 picks the
+   scheme.
+
+**Exposure that remains, stated honestly:** the QR sits in a mailbox and at the mail provider. Read-once
+bind, the invitation window and the separate one-shot challenge bound the risk; the token also outlives
+the invitation as a low-impact identifier
+([`I-2026-11-03`](../../backlog/ideas/I-2026-11-03-enrollment-invitation-links.md)). Mail gateways may
+also strip or flag images, and a QR in an email resembles QR phishing, so the message wording matters.
+
+## Failure postures (principle #17)
+
+| Situation | Posture | Behavior |
+|-----------|---------|----------|
+| Delivery connector absent | Fail-open | Integrated delivery; no send button |
+| Send fails or times out | Fail-open, visible | Clear error, audit entry, on-screen material stays available |
+| Directory connector silent | Fail-open, visible | Nothing changes; staleness alert |
+| Directory read looks wrong | Fail-closed | Mass change refused, nothing applied, alert |
+| Connector credential rejected | Fail-closed | Call refused and logged |
+
+Ezkey makes one attempt per operator click, with a short timeout; retries remain the operator's choice.
+
+## Impact by step
+
+| Surface | Steps 3–5 (delivery) | Later (directory) |
+|---------|----------------------|-------------------|
+| **Database** | None expected beyond audit entries; connector settings start as properties | External source and stable id on enrollments; a non-admin actor, because `*_by_admin_id` columns assume a person; sync run history |
+| **Admin API** | Send endpoint, capability read for the UI | None: the machine-to-machine hatch stays removed (`I-2026-08-29`) |
+| **Admin UI** | Send button, error, updated integrated-delivery copy | Sync status, dry-run review |
+| **Connector contract** | Delivery job, health and capabilities | Reconcile batch and result |
+| **Inbound surface** | None | New, location open (see below) |
+| **Operations** | Compose profile, `CONFIGURATION.md` | Deployment guide for the customer network |
+| **CI** | Mock scenarios and a path-filtered job | OpenLDAP scenarios |
+
+## Evolution
+
+```mermaid
+flowchart TD
+  S1["1 Analysis and ADR"] --> S2["2 Delivery contract and directory sketch"]
+  S2 --> S3["3 Delivery port and mock connector"]
+  S3 --> S4["4 Docker scenarios and CI gate"]
+  S4 --> S5["5 SMTP connector with Mailpit, Admin UI send"]
+  S5 --> S6["6 Real trial with a Google account"]
+  S6 --> S7["7 Community instance"]
+  S7 -. "separate decision" .-> SMS["SMS: challenge by Twilio"]
+  S7 -. "separate decision" .-> DIR["Directory: OpenLDAP, then Active Directory"]
+  DIR -. "needs its own security review" .-> AUTO["Automatic invitation on sync"]
+```
+
+The mock connector is the long-term test tool as well as the first step: it plays success, provider
+error, timeout and rejected credential, so CI, QA and new connector prototypes share one fixture.
+
+## Open questions for step 2
+
+1. **Authentication** between Ezkey and a delivery connector: bearer token, signed request or mTLS?
+2. **QR format in the job:** the core renders a PNG (leading option: it already owns QR generation and
+   the connector then never parses the payload) or passes the payload?
+3. **Recipient:** `contact_email` only, or can the operator type an address at send time?
+4. **Audit:** what is recorded for the recipient, given it is personal data?
+5. **Scope of the first slice:** end-user enrollments only (leading option), with admin activation
+   added afterward?
+6. **Contract versioning** and what the health check returns.
+
+## Open questions for the directory phase
+
+1. Where the inbound surface lives: a dedicated module, or a separate path on the Integration API,
+   which is today's only machine-to-machine boundary. Not the Admin API.
+2. A directory-shaped API, or one aligned with SCIM, which Microsoft Entra ID can push natively.
+3. How a directory scope maps to tenant and integration, since an enrollment belongs to one integration.
+4. What happens to `CREATED` and `BOUND` enrollments of a person who left.
+
+## Interactions to watch
+
+- **Invitation links** ([`I-2026-11-03`](../../backlog/ideas/I-2026-11-03-enrollment-invitation-links.md),
+  [#1185](https://github.com/mgagp/ezkey/issues/1185)): a QR in an email cannot be scanned from the
+  phone reading that email. A link would solve that later, so the delivery job should leave room for it.
+- **Exposure rule** ([#1180](https://github.com/mgagp/ezkey/issues/1180)): the send path must follow it.
+
+## To verify when the step arrives
+
+- **Step 6:** Google's current terms, limits and authentication options for sending from a dedicated
+  account. A personal mailbox is not assumed to suit the public instance.
+- **Step 7:** outbound port rules on Lightsail, and sender-domain authentication (SPF, DKIM) for
+  deliverability.

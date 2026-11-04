@@ -7,4 +7,5 @@ sections). Packs hold inventory, options, and test/phasing notes that would bloa
 | Pack | ADR | Status |
 |------|-----|--------|
 | [`2026-09-16-admin-role-umbrella/`](2026-09-16-admin-role-umbrella/README.md) | [ADR-0013](../architecture-decisions.md#adr-0013-admin-role-admin-umbrella-keep-vs-split) | proposed |
+| [`2026-11-04-connector-spi/`](2026-11-04-connector-spi/README.md) | [ADR-0017](../architecture-decisions.md#adr-0017--connector-spi-for-external-services) | proposed |
 | [`2026-10-21-keyset-storage-strategy/`](2026-10-21-keyset-storage-strategy/README.md) | [ADR-0016](../architecture-decisions.md#adr-0016-keyset-blob-single-source-of-truth) | proposed (direction adopted on [#952](https://github.com/mgagp/ezkey/issues/952)) |

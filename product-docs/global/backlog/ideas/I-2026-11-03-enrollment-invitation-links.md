@@ -266,6 +266,8 @@ is dropped. A `critical-review` applies if the priority is set to P1.
 
 - Vision:
   [`V-2026-10-27-third-party-authenticator-integration-kit`](../../vision/V-2026-10-27-third-party-authenticator-integration-kit.md)
+- Email sending now has its own program: [`V-2026-11-04-connector-spi`](../../vision/V-2026-11-04-connector-spi.md)
+  (`#1206`). It stays out of scope here, and a link is its natural later complement.
 - Related ideas:
   [`I-2026-07-17-desktop-authenticator-reference-app`](I-2026-07-17-desktop-authenticator-reference-app.md),
   [`I-2026-06-18-demo-device-qr-auth-url-parity`](I-2026-06-18-demo-device-qr-auth-url-parity.md),

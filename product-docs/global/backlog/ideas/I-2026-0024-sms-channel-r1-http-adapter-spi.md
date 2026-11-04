@@ -6,8 +6,8 @@
 - **Status:** `incubating`
 - **Priority:** `P2`
 - **Created at:** `2026-05-19`
-- **Updated at:** `2026-05-24`
-- **Last reviewed at:** `2026-05-24`
+- **Updated at:** `2026-11-04`
+- **Last reviewed at:** `2026-11-04`
 - **Phase tags:** `P1-operability`
 - **Component tags:** `admin-api`, `admin-ui`, `infra`, `docs`, peripheral (`ezkey-sms-twilio`)
 - **Captured by:** Marc
@@ -18,7 +18,7 @@ Implement the **R1 SMS channel slice** from `V-2026-0007`: optional **operator-t
 
 ## Problem and value
 
-- **Problem:** SMS requires external vendors; must not pollute core like email (Java Mail). Need minimal SPI and same operational posture as email (integrated vs assisted delivery).
+- **Problem:** SMS requires external vendors; must stay out of the core, like email (`V-2026-11-04-connector-spi`). Need minimal SPI and same operational posture as email (integrated vs assisted delivery).
 - **Expected value:** Optional separated channel for PME; core stays lean; Twilio (or similar) isolated in peripheral repo.
 
 ## Grilling decisions (2026-05-19)
@@ -48,6 +48,7 @@ Move to `ready` when SPI contract sketch + adapter OpenAPI/minimal doc exists. D
 
 - Vision: `V-2026-0007`
 - Parallel: `V-2026-0005`, `I-2026-0023`
+- Common approach: `V-2026-11-04-connector-spi`; SMS follows the community instance step of `#1206`
 - Grill: `../grill-sessions/blitz-2026-05-08-2-D5-sms-grill-me.md`
 - Geometries: [`../../operator-alignment-guide.md`](../../operator-alignment-guide.md)
 - Ecosystem: `I-2026-0020`

@@ -10,6 +10,11 @@
 | **Status** | `complete` |
 | **Date** | `2026-05-19` |
 
+> **Amended 2026-11-04 (Marc, `#1206`):** email goes through a connector
+> (`V-2026-11-04-connector-spi`, ADR-0017), and SMTP credentials stay with it. The email carries the
+> QR, never the challenge. `smtp-assisted-delivery` reads as `email-assisted-delivery`. The other
+> decisions below stand.
+
 ## Settled decisions
 
 ### R1 scope — all workflows optional
