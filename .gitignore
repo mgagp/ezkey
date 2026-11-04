@@ -139,6 +139,9 @@ ezkey-admin-ui/test-results/
 /origin.pem
 .wrangler/cache/pages.json
 
+# Bruno local env (copy from local.bru.example; may hold device/integration keys)
+bruno/environments/local.bru
+
 # Historical leftover after Bruno migration — banner only
 /postman/**
 !/postman/README.md
