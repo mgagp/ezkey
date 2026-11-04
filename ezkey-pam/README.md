@@ -129,7 +129,8 @@ exercised here.
   message, `ok` prompt, `challenge_requested` / `debug` toggles.
 - Sample conf comment: `challenge_requested` default **true**.
 - Probes: `scripts/test-signal-probes.sh` (client kill / TERM at prompt, create,
-  wait) in CI M1.
+  wait) in CI M1. Probe 2 uses stub mode `hold` so GET `/wait` cannot ACCEPTED-race
+  the client kill (deterministic release-file gate; harness never releases).
 
 ## What changed in 2.2.14 (#995 — challenge requested by default)
 

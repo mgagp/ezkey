@@ -58,6 +58,11 @@ for i in $(seq 1 60); do
   fi
   sleep 1
 done
+# Installation smoke only. Connectivity to Integration API is expected to FAIL
+# here: CI points EZKEY_INTEGRATION_API_URL at a closed port (no Ezkey stack).
+# test_pam.sh prints "[FAIL] Integration API not reachable …" — that is
+# intentional and must not fail the stub suite (|| true). Later steps retarget
+# pam_ezkey.conf at the in-container stub (18080/18081/…).
 docker exec "${CONTAINER}" /opt/pam-ezkey/test/test_pam.sh || true
 
 # #1016 T2: Rocky runtime has rsyslog → /dev/log; require the live path (no SKIP).

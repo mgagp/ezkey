@@ -14,6 +14,11 @@
 # fires, but harness bash can still sit on the FIFO until the *external*
 # `timeout` (that outer timeout is authoritative for this class — we do not
 # kill the script process group).
+#
+# Probe 2 (challenge-prompt client kill): stub mode=hold parks GET /wait until
+# EZKEY_STUB_RELEASE_PATH exists. The harness never creates that file, so
+# ACCEPTED cannot race the kill (CI flake on mode=ok: SUCCESS in ~300ms before
+# client kill). Assertion stays strict: SIGNAL + stage=challenge + no SUCCESS.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -28,6 +33,7 @@ BACKUP="/tmp/pam_ezkey.conf.signal-probes.bak"
 STUB_PORT=18080
 STUB_PID_FILE="/tmp/ezkey-pam-stub-signal.pid"
 STUB_REQ_LOG="/tmp/ezkey-pam-stub-signal-reqs.log"
+STUB_RELEASE_PATH="/tmp/ezkey-pam-stub-signal-release"
 ARTIFACT_DIR="$(ezkey_pam_artifact_dir)"
 mkdir -p "${ARTIFACT_DIR}"
 PROOF="${ARTIFACT_DIR}/pam-signal-probes.log"
@@ -81,10 +87,12 @@ start_stub() {
   local mode="$1"
   local slow="${2:-3}"
   stop_stub
-  docker exec "${CONTAINER}" sh -c "rm -f '${STUB_REQ_LOG}'; : >'${STUB_REQ_LOG}'" || true
+  docker exec "${CONTAINER}" sh -c \
+    "rm -f '${STUB_REQ_LOG}' '${STUB_RELEASE_PATH}'; : >'${STUB_REQ_LOG}'" || true
   docker exec -d "${CONTAINER}" sh -c \
     "EZKEY_STUB_MODE='${mode}' EZKEY_STUB_PORT='${STUB_PORT}' EZKEY_STUB_SLOW_SECS='${slow}' \
      EZKEY_STUB_REQ_LOG='${STUB_REQ_LOG}' \
+     EZKEY_STUB_RELEASE_PATH='${STUB_RELEASE_PATH}' \
      python3 /opt/pam-ezkey/scripts/integration-api-stub.py \
      >/tmp/ezkey-pam-stub-signal.log 2>&1 & echo \$! >'${STUB_PID_FILE}'"
   local i
@@ -94,6 +102,23 @@ start_stub() {
   done
   fail "stub did not listen on ${STUB_PORT}"
   return 1
+}
+
+# True when the latest prompt in the capture is the post-create challenge line
+# (not the pre-create Type-ok confirm). Mirrors ezkey_ssh_kbdint_autoenter.
+capture_at_challenge_prompt() {
+  local log="$1"
+  local flat last_chal_n last_ok_n
+  flat="$(tr -cd '\11\12\15\40-\176' <"${log}" 2>/dev/null || true)"
+  last_chal_n="$(echo "${flat}" \
+    | grep -nE 'Ezkey challenge code:|Approve on your phone, then press Enter' \
+    | tail -1 | cut -d: -f1)" || true
+  last_ok_n="$(echo "${flat}" \
+    | grep -nE 'Type ok and press Enter to request device approval|SSH login for user ' \
+    | tail -1 | cut -d: -f1)" || true
+  last_chal_n="${last_chal_n:-0}"
+  last_ok_n="${last_ok_n:-0}"
+  [ "${last_chal_n}" -gt "${last_ok_n}" ]
 }
 
 point_conf() {
@@ -317,7 +342,8 @@ probe_kill_at_ok() {
 probe_kill_at_challenge() {
   echo "" | tee -a "${PROOF}"
   echo "--- Probe 2: client kill at challenge prompt ---" | tee -a "${PROOF}"
-  start_stub ok
+  # hold: GET /wait never ACCEPTs unless RELEASE_PATH is created (we do not).
+  start_stub hold
   point_conf 45 true
   local before_n
   before_n="$(count_attempt_matches 'pam_ezkey: attempt ')"
@@ -340,21 +366,26 @@ probe_kill_at_challenge() {
   set -e
 
   local i
+  # Pre-create confirm only — do not treat a challenge line as the ok prompt.
   for i in $(seq 1 80); do
-    if ezkey_ssh_capture_has_prewait_prompt "${log}"; then
+    if grep -Eqi 'Type ok and press Enter to request device approval' "${log}" \
+      2>/dev/null; then
       ezkey_ctrl_write "${ctrl}" "ok"
       break
     fi
     sleep 0.1
   done
-  # Wait for challenge digits prompt (second prompt).
+  # Wait until challenge is the latest prompt and create has landed. Do not
+  # wait for /wait — Enter must not have been sent; hold is the safety net if
+  # a spurious Enter races ahead of the kill.
   for i in $(seq 1 80); do
-    if grep -Eqi 'challenge|Approve on your phone' "${log}" 2>/dev/null; then
+    if capture_at_challenge_prompt "${log}" \
+      && docker exec "${CONTAINER}" sh -c \
+        "grep -q 'POST .*/auth-attempts' '${STUB_REQ_LOG}' 2>/dev/null"; then
       break
     fi
     sleep 0.1
   done
-  sleep 0.2
   local pids
   pids="$(pam_pids)"
   echo "probe2 pam_pids=${pids:-none}" | tee -a "${PROOF}"
@@ -388,6 +419,8 @@ probe_kill_at_challenge() {
   signal_n="${signal_n:-0}"
   success_n="${success_n:-0}"
   echo "probe2 gone_ms=${gone} signal_n=${signal_n} success_n=${success_n} attempt=${attempt}" \
+    | tee -a "${PROOF}"
+  echo "probe2 note: stub mode=hold (no RELEASE_PATH) — ACCEPTED cannot race kill" \
     | tee -a "${PROOF}"
 
   if [ "${gone}" != "-1" ] && [ "${gone}" -lt "${PAM_GONE_MAX_MS}" ] \
