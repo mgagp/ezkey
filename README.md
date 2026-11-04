@@ -1,6 +1,9 @@
 # Ezkey
 
 [![CI](https://github.com/mgagp/ezkey/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/mgagp/ezkey/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/mgagp/ezkey/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/mgagp/ezkey/actions/workflows/codeql.yml)
+[![License: MIT](https://img.shields.io/github/license/mgagp/ezkey)](LICENSE)
+[![Security Policy](https://img.shields.io/badge/security-policy-blue)](SECURITY.md)
 
 <img src="logo.svg" alt="Ezkey Logo" width="200">
 
