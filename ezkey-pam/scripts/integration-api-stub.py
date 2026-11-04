@@ -12,8 +12,9 @@ Modes (EZKEY_STUB_MODE):
   slow_create    — sleep then 201 (for api_timeout)
   pending        — POST 201; GET wait sleeps for ?timeout= then PENDING + timeoutReached
   hold           — POST 201 (+ challenge when requested); GET wait blocks until
-                   EZKEY_STUB_RELEASE_PATH exists (deterministic gate). Used by
-                   signal-probes probe 2 so ACCEPTED cannot race the client kill.
+                   EZKEY_STUB_RELEASE_PATH exists (deterministic gate), then
+                   ACCEPTED + HOLD_RELEASE marker in req log. Probe 2 releases
+                   only after client kill + pam gone (proves no late SUCCESS).
   expired        — POST 201; GET wait → EXPIRED
   rejected       — POST 201; GET wait → REJECTED
   legacy_create  — ignore request ttlSeconds; response has neither timeoutSeconds nor expiresAt
@@ -288,12 +289,14 @@ class Handler(BaseHTTPRequestHandler):
             return
         if MODE == "hold":
             # Deterministic gate: park until the harness creates RELEASE_PATH.
-            # Signal-probes probe 2 never creates it — client kill must win
-            # before ACCEPTED can race in (CI flake on stub mode=ok).
+            # Probe 2 releases only after client kill + pam-gone so ACCEPTED
+            # cannot race the kill, yet success_n=0 is still a PAM proof
+            # (stub will ACCEPTED once released).
             started = time.time()
             while not os.path.exists(RELEASE_PATH):
                 time.sleep(HOLD_POLL_SECS)
             waited = max(0, int(time.time() - started))
+            _log_req("HOLD_RELEASE", self.path)
             self._json(
                 200,
                 {

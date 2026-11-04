@@ -16,9 +16,10 @@
 # kill the script process group).
 #
 # Probe 2 (challenge-prompt client kill): stub mode=hold parks GET /wait until
-# EZKEY_STUB_RELEASE_PATH exists. The harness never creates that file, so
-# ACCEPTED cannot race the kill (CI flake on mode=ok: SUCCESS in ~300ms before
-# client kill). Assertion stays strict: SIGNAL + stage=challenge + no SUCCESS.
+# EZKEY_STUB_RELEASE_PATH exists. Harness releases only AFTER client kill +
+# pam-gone (removes pre-kill ACCEPTED flake on mode=ok) then re-checks
+# success_n=0 so the stub can ACCEPTED without vacuous "no SUCCESS". Assertion
+# stays strict: SIGNAL + stage=challenge + no SUCCESS.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -342,7 +343,7 @@ probe_kill_at_ok() {
 probe_kill_at_challenge() {
   echo "" | tee -a "${PROOF}"
   echo "--- Probe 2: client kill at challenge prompt ---" | tee -a "${PROOF}"
-  # hold: GET /wait never ACCEPTs unless RELEASE_PATH is created (we do not).
+  # hold: park GET /wait until RELEASE_PATH; release only after kill + pam-gone.
   start_stub hold
   point_conf 45 true
   local before_n
@@ -406,6 +407,22 @@ probe_kill_at_challenge() {
   wait "${ssh_pid}" 2>/dev/null || true
   rm -rf "${ctrl_dir}"
 
+  # Christophe #1197: release after kill + pam-gone so ACCEPTED is possible but
+  # cannot race the kill; success_n=0 remains a PAM proof, not a vacuous stub.
+  docker exec "${CONTAINER}" sh -c "touch '${STUB_RELEASE_PATH}'" >/dev/null 2>&1 || true
+  echo "probe2 release after kill" | tee -a "${PROOF}"
+  local release_seen=0
+  for i in $(seq 1 20); do
+    if docker exec "${CONTAINER}" sh -c \
+      "grep -q '^HOLD_RELEASE ' '${STUB_REQ_LOG}' 2>/dev/null"; then
+      release_seen=1
+      break
+    fi
+    sleep 0.05
+  done
+  echo "probe2 hold_release_seen=${release_seen} (1=pending /wait served; 0=no wait + ~1s bound)" \
+    | tee -a "${PROOF}"
+
   sleep 0.3
   local attempt
   attempt="$(last_attempt)"
@@ -419,8 +436,6 @@ probe_kill_at_challenge() {
   signal_n="${signal_n:-0}"
   success_n="${success_n:-0}"
   echo "probe2 gone_ms=${gone} signal_n=${signal_n} success_n=${success_n} attempt=${attempt}" \
-    | tee -a "${PROOF}"
-  echo "probe2 note: stub mode=hold (no RELEASE_PATH) — ACCEPTED cannot race kill" \
     | tee -a "${PROOF}"
 
   if [ "${gone}" != "-1" ] && [ "${gone}" -lt "${PAM_GONE_MAX_MS}" ] \
