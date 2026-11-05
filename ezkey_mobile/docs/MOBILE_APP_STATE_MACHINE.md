@@ -84,6 +84,10 @@ have both the QR and the challenge in hand before scanning.
   their own phone. Separate channels are the ideal, not a requirement, and showing both on screen while
   reading the code aloud stays valid. Ezkey draws security boundaries without dogmatism.
 
+**During the session:** the operator can still read the challenge while the enrollment is `BOUND`,
+because verify runs at that state. Before giving it after a scan, they confirm who they are speaking
+to: a device has already scanned.
+
 **If the session is abandoned after bind:** the phone discards its in-memory draft, the server stays
 `BOUND`, and a new scan is refused ("Enrollment already bound by a device"). For an end-user enrollment,
 the operator deletes it and creates a new one. Reset applies only to an admin's own enrollment, with a
