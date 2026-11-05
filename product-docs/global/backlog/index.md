@@ -166,6 +166,7 @@ remains orthogonal to the closed September operability program. Wave B closeout:
 
 | ID | Title | Reason | Next review |
 |----|-------|--------|-------------|
+| `I-2026-11-05-privacy-obligations-reminder` | Privacy obligations: what to pick up if Ezkey meets real use | **Parked** 2026-11-05 — proportionate reminder; reopen on a real adopter or personal data beyond lab use | On trigger |
 | `I-2026-0009` | Global controllers registry | **Dropped** 2026-05-24 — living registry downscoped; drop rationale in [`ideas/I-2026-0009-global-controllers-registry.md`](ideas/I-2026-0009-global-controllers-registry.md); archived stub [`api-controllers-registry.md`](../api-controllers-registry.md) | n/a |
 | `I-2026-0031` | SDK dogfood: first-party consumption and honest narrative | **Parked** 2026-06-30 — pre-analysis complete (layers A/B, no Admin UI → Integration SDK); deferred for September operable-release focus. Insight: [`grill-sessions/2026-06-30-sdk-dogfood-grill-me.md`](grill-sessions/2026-06-30-sdk-dogfood-grill-me.md). `I-2026-0004` unchanged. | post–Sept 2026 milestone or distribution trigger |
 | `I-2026-07-05-distilled-admin-platform-starter` | Distilled admin platform starter (`ezkey-app-starter`) | **Parked** 2026-07-05 — grill complete (D1–D10); external greenfield starter, not lite platform. Insight: [`grill-sessions/2026-07-05-distilled-admin-platform-starter-grill-me.md`](grill-sessions/2026-07-05-distilled-admin-platform-starter-grill-me.md). | post–Sept 2026 milestone or distribution trigger |
