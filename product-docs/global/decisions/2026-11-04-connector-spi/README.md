@@ -369,6 +369,9 @@ error, timeout and rejected credential, so CI, QA and new connector prototypes s
   [#1185](https://github.com/mgagp/ezkey/issues/1185)): a QR in an email cannot be scanned from the
   phone reading that email. A link would solve that later, so the delivery job should leave room for it.
 - **Exposure rule** ([#1180](https://github.com/mgagp/ezkey/issues/1180)): the send path follows its proof token rule; its challenge rule needs the correction in invariant 2. At `BOUND`, the operator screen should say a device has already scanned and remind them to confirm who they are speaking to.
+- **Burning an invitation** ([#1024](https://github.com/mgagp/ezkey/issues/1024)): an unauthenticated verify
+  can invalidate a pending enrollment, and email lengthens how long a QR waits. Fixed on its own track,
+  promptly, whatever the state of this program (Marc, 2026-11-05).
 - **Later, no decision yet:** a shorter window after bind on the server, and a simpler recovery after
   an abandoned bind than delete and recreate.
 

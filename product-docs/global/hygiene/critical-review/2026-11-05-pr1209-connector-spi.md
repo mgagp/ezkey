@@ -10,7 +10,7 @@
 - **Angle:** first opening to real-world services: trust boundaries, SME operability, step order, directory mapping, claims against code
 - **Launcher:** Marc
 - **Verdict:** GO with amendments
-- **Amend rate:** 10 / 11 (finding 5 tracked on #1024, decision open)
+- **Amend rate:** 11 / 11
 - **Status:** Open
 
 ## Decisions
@@ -21,7 +21,7 @@
 | 2 | The #1180 rule hides the challenge at `BOUND` | S1 (reduced) | amend | Option A: readable at `CREATED` and `BOUND`, with a guard. Comment on #1180 |
 | 3 | Directory sync alone does not reach the Duo-style goal | S2 | amend | Honest sentence in the vision; the UI says what comes next after a send |
 | 4 | Send path as a mail relay on the community instance | S2 | amend | Option A: fixed template, caps, no evaluator sessions or self-registered tenants |
-| 5 | Unauthenticated verify burns an invitation | S2 | open | Already public as #1024, which the review did not find |
+| 5 | Unauthenticated verify burns an invitation | S2 | amend | Fix quickly and cleanly, outside this program: public instance, best practice (#1024). Already public; the review did not find it |
 | 6 | QR phishing reduced to wording | S2 | amend | Option A: named as residual risk; server host shown before step 7 (#1185) |
 | 7 | Directory table gaps and a factual error | S2 | amend / defer | Error and immediate deactivation fixed; the rest moved to the directory phase questions |
 | 8 | Timeout treated as failure | S2 | amend | Three outcomes, send id for traceability only, no deduplication |
