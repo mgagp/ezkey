@@ -99,6 +99,7 @@ remains orthogonal to the closed September operability program. Wave B closeout:
 | `I-2026-10-21-inverted-challenge-code-mode` | Inverted challenge-code mode (mobile shows, integration enters) | `parked` | `P3` | `auth-api`, `mobile`, `integration-api`, `docs`, `security` | `2026-10-21` |
 | `I-2026-11-01-pam-macos-windows-exploration` | ezkey-pam on macOS and Windows (exploration) | `captured` | `P3` | `pam`, `docs`, `lab:experimental` | `2026-11-01` |
 | `I-2026-11-03-enrollment-invitation-links` | Enrollment invitation links (deep links next to the QR code) | `captured` | `P2` (proposed) | `admin-api`, `admin-ui`, `auth-api`, `mobile`, `sdk-dart`, `infra`, `docs`, `security` | `2026-11-03` |
+| `I-2026-11-03-assurance-ladder` | Assurance ladder: proportionate standards posture (exploration) | `captured` | `P3` | `docs`, `security`, `mobile`, `lab:experimental` | `2026-11-03` |
 
 ## Tracer bullets (draft / ready / in progress)
 
