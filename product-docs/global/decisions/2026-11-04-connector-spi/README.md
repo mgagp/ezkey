@@ -200,8 +200,10 @@ provider credential.
 1. **One message, one factor.** The core refuses a job that combines the QR and the challenge, and any
    job carrying an admin activation code, which alone yields both factors. This is a rule in the core,
    not a connector convention.
-2. **Send only while `CREATED`.** The proof token is a bearer secret until bind. This matches the
-   exposure rule proposed in [#1180](https://github.com/mgagp/ezkey/issues/1180), still open.
+2. **Send only while `CREATED`.** The proof token is a bearer secret until bind. The challenge is not
+   sent, and stays readable by the operator while `CREATED` or `BOUND`, because verify runs at `BOUND`
+   (Marc, 2026-11-05). This corrects the rule proposed in
+   [#1180](https://github.com/mgagp/ezkey/issues/1180), still open.
 3. **No stored job.** The send is synchronous and operator-triggered, so no outbox holds secret
    material. A later auto-send decision must reopen this explicitly.
 4. **Nothing sensitive in logs,** on either side, including connector debug logs. Prove it with
@@ -282,7 +284,7 @@ error, timeout and rejected credential, so CI, QA and new connector prototypes s
 - **Invitation links** ([`I-2026-11-03`](../../backlog/ideas/I-2026-11-03-enrollment-invitation-links.md),
   [#1185](https://github.com/mgagp/ezkey/issues/1185)): a QR in an email cannot be scanned from the
   phone reading that email. A link would solve that later, so the delivery job should leave room for it.
-- **Exposure rule** ([#1180](https://github.com/mgagp/ezkey/issues/1180)): the send path must follow it.
+- **Exposure rule** ([#1180](https://github.com/mgagp/ezkey/issues/1180)): the send path follows its proof token rule; its challenge rule needs the correction in invariant 2. At `BOUND`, the operator screen should say a device has already scanned and remind them to confirm who they are speaking to.
 - **Later, no decision yet:** a shorter window after bind on the server, and a simpler recovery after
   an abandoned bind than delete and recreate.
 
