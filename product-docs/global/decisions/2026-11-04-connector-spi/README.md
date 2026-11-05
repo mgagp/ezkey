@@ -156,15 +156,17 @@ receives directory credentials. Duo's on-premises directory sync relies on a sim
 
 ### Mapping directory state to the enrollment lifecycle
 
-Checked against [`docs/LIFECYCLE_GOVERNANCE.md`](../../../../docs/LIFECYCLE_GOVERNANCE.md) § 3.3.
+Checked against [`docs/LIFECYCLE_GOVERNANCE.md`](../../../../docs/LIFECYCLE_GOVERNANCE.md) § 3.3 and the
+revocation code (`EnrollmentRevocationService`).
 
 | Directory event | Enrollment state | Proposed effect | Note |
 |-----------------|------------------|-----------------|------|
 | New entry in scope | None | Create a `CREATED` enrollment | Sending the invitation needs a later auto-send decision |
 | Account disabled | `VERIFIED` + active | Deactivate | Reversible; a disabled account may come back |
 | Account re-enabled | `VERIFIED` + inactive | Reactivate **only if the connector deactivated it** | An operator's investigation hold must survive |
+| Removed | `VERIFIED` + active | Deactivate at once | A leaver must not keep access during the grace period |
 | Removed, past a grace period | `VERIFIED` | Revoke with a reason | Governance: revoke when the user has left |
-| Removed or disabled | `CREATED` or `BOUND` | **Open** | Deactivate and revoke are `VERIFIED`-only today |
+| Removed or disabled | `CREATED` or `BOUND` | Revoke | Revoke refuses only an already `REVOKED` enrollment; deactivating a pending one does nothing, since it is not yet active |
 | Any | Admin MFA enrollment | **Never touched** | Prevents locking administrators out |
 
 **Safety rails, all required before a real directory:** a dry-run preview, a threshold that refuses a
@@ -350,7 +352,16 @@ error, timeout and rejected credential, so CI, QA and new connector prototypes s
    which is today's only machine-to-machine boundary. Not the Admin API.
 2. A directory-shaped API, or one aligned with SCIM, which Microsoft Entra ID can push natively.
 3. How a directory scope maps to tenant and integration, since an enrollment belongs to one integration.
-4. What happens to `CREATED` and `BOUND` enrollments of a person who left.
+4. **Operator hold:** "reactivate only if the connector deactivated it" fails when the connector acts
+   first, since the operator's deactivate is then a no-op that records nothing. A hold needs its own marker.
+5. **"None" in the mapping table:** a person whose enrollment was `REVOKED`, `EXPIRED` or `INVALID` must not
+   automatically get a new invitation, or a compromise revocation is undone.
+6. **False departure:** moving someone out of the subtree looks like a removal, and revoke is irreversible.
+7. **An admin who left:** "never touched" stays right, but it needs an alert so they do not stay active
+   silently.
+8. **A returning person:** an inactive `VERIFIED` enrollment with the same name makes verify fail at the
+   last step.
+9. **Revoke after the grace period:** automatic, or confirmed by an operator?
 
 ## Interactions to watch
 
