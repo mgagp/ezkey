@@ -1204,7 +1204,8 @@ Admin API machine-to-machine hatch was removed on purpose (`I-2026-08-29`).
 
 - Mock connector scenarios run as a CI gate: send, provider error, unknown outcome, slow connector,
   rejected credential, no connector.
-- Log-capture tests prove that no bearer material is logged.
+- A canary test on the real output of all containers looks for bearer material on the send path, including
+  base64 and PNG shapes. It shows known shapes are absent in the scenarios played, not that no path leaks.
 - Real proof: a QR received by email enrolls a phone, locally and then on the community instance.
 
 ### Related Decisions

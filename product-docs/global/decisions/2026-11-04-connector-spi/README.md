@@ -210,11 +210,27 @@ still send as the organisation until rotated.
    [#1180](https://github.com/mgagp/ezkey/issues/1180), still open.
 3. **No stored job.** The send is synchronous and operator-triggered, so no outbox holds secret
    material. A later auto-send decision must reopen this explicitly.
-4. **Nothing sensitive in logs,** on either side, including connector debug logs. Prove it with
-   log-capture tests.
+4. **Nothing sensitive in logs on the send path,** on either side, including connector debug logs.
+   Bootstrap is a separate matter: it logs its token by design in `full` mode
+   ([#1223](https://github.com/mgagp/ezkey/issues/1223)). See *Proving it on real output* below.
 5. **The connector keeps nothing.** It holds the material only for the duration of the send.
 6. **Transport:** a private Docker network or TLS, plus an authenticated caller. Step 2 picks the
    scheme.
+
+**Proving it on real output (Marc, 2026-11-05).** The QR travels as a base64 PNG, so searching logs for
+the token would pass even if a whole request body were logged. Log-capture unit tests do not see a library
+debug mode switched on by configuration either. So:
+
+- **A canary test at the step 4 gate:** send with a recognizable token and recipient, after bootstrap,
+  then search `docker logs` of all containers.
+- **It looks for shapes as well as values:** long base64 blocks, the PNG signature `iVBORw0KGgo`, and
+  request bodies.
+- **Errors use typed codes,** never message text, and provider text is not logged as is.
+- **`LogSanitizer`** on the recipient, names and any provider text.
+- **SMTP debug refuses to start** outside an explicit test mode (step 5).
+
+This shows known shapes are absent in the scenarios played. It does not prove that no rare error path
+leaks.
 
 **Exposure that remains, stated honestly:** the QR sits in a mailbox and at the mail provider. Read-once
 bind, the invitation window and the separate one-shot challenge bound the risk; the token also outlives
