@@ -217,7 +217,21 @@ still send as the organisation until rotated.
 bind, the invitation window and the separate one-shot challenge bound the risk; the token also outlives
 the invitation as a low-impact identifier
 ([`I-2026-11-03`](../../backlog/ideas/I-2026-11-03-enrollment-invitation-links.md)). Mail gateways may
-also strip or flag images, and a QR in an email resembles QR phishing, so the message wording matters.
+also strip or flag images.
+
+**QR phishing, a residual risk made more credible by this feature.** Routine QR emails teach people to
+scan what they receive. An attacker can run their own instance and send a QR and challenge imitating the
+real message. The victim then enrolls a device with the attacker. This gives no access to the victim's
+real enrollments or accounts, but it opens a credible approval channel to their phone for social
+engineering. The app contacts the server at scan, the HTTPS policy proves transport and not identity,
+and the labels on screen come from that same instance.
+
+**Mitigation (Marc, 2026-11-05):** show the server host at the challenge step, before the person
+completes enrollment, as a precondition for step 7 (tracked on
+[#1185](https://github.com/mgagp/ezkey/issues/1185)). The email states the expected server so the person
+can compare. Many people will not read it, so this reduces the risk without removing it. A review step
+before bind stays with the invitation links program, where opening a link must not contact a server
+without a decision.
 
 ## Abuse limits on sending
 
@@ -281,7 +295,7 @@ error, timeout and rejected credential, so CI, QA and new connector prototypes s
 3. **Recipient:** `contact_email` only, or can the operator type an address at send time?
 4. **Audit:** what is recorded for the recipient, given it is personal data?
 5. **Email wording and locale:** the message must tell the person to have the code in hand before
-   scanning. Who owns the template?
+   scanning, and state the expected server. Who owns the template?
 6. **Contract versioning** and what the health check returns.
 
 ## Open questions for the directory phase
