@@ -12,6 +12,11 @@ describe('localeForFormatting', () => {
     expect(localeForFormatting('en', ['fr-CA'])).toBe('en');
     expect(localeForFormatting('fr', ['en-US', 'es-ES'])).toBe('fr');
   });
+
+  it('falls back to English when the app language is not initialized yet', () => {
+    expect(localeForFormatting(undefined, ['fr-CA'])).toBe('en');
+    expect(localeForFormatting('', ['fr-CA'])).toBe('en');
+  });
 });
 
 describe('formatDateTime', () => {
