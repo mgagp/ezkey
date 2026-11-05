@@ -193,7 +193,8 @@ would leave two models and would not test the SPI on a real case (Marc, 2026-11-
 
 **Cost of this choice:** the operator configures two places, and provider secrets cannot be typed into
 the Admin UI. **Benefit:** no secret vault to build, and a compromised Ezkey database reveals no
-provider credential.
+provider credential. **Limit:** a stolen connector credential reveals no provider secret, but it can
+still send as the organisation until rotated.
 
 ## Security invariants
 
@@ -217,6 +218,18 @@ bind, the invitation window and the separate one-shot challenge bound the risk; 
 the invitation as a low-impact identifier
 ([`I-2026-11-03`](../../backlog/ideas/I-2026-11-03-enrollment-invitation-links.md)). Mail gateways may
 also strip or flag images, and a QR in an email resembles QR phishing, so the message wording matters.
+
+## Abuse limits on sending
+
+A send path can become a mail relay, above all on the public community instance, where anonymous
+signup creates a real tenant and `contact_email` carries no proof of ownership (Marc, 2026-11-05).
+
+- **Fixed template:** the contract has no free subject or body.
+- **Evaluator temporary sessions are denied.** `EvaluatorTempAccessFilter` is a deny-list, so a new
+  route is open until listed.
+- **Daily caps** per tenant and per instance, on every installation.
+- **No sending for self-registered tenants on the community instance.** They keep integrated delivery.
+  Open it later if evaluators ask. Nothing marks such a tenant today, so this needs a small addition.
 
 ## Failure postures (principle #17)
 
@@ -292,5 +305,5 @@ error, timeout and rejected credential, so CI, QA and new connector prototypes s
 
 - **Step 6:** Google's current terms, limits and authentication options for sending from a dedicated
   account. A personal mailbox is not assumed to suit the public instance.
-- **Step 7:** outbound port rules on Lightsail, and sender-domain authentication (SPF, DKIM) for
-  deliverability.
+- **Step 7:** outbound port rules on Lightsail, sender-domain authentication (SPF, DKIM) for
+  deliverability, and the abuse limits above.

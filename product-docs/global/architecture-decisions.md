@@ -1188,7 +1188,9 @@ Admin API machine-to-machine hatch was removed on purpose (`I-2026-08-29`).
 - **Positive.** The core stays vendor-free, a compromised Ezkey database reveals no provider credential,
   and a mock connector gives CI, QA and prototypes one fixture.
 - **Negative.** One more container for an operator who wants email, two places to configure, and a new
-  contract to version.
+  contract to version. A stolen connector credential reveals no provider secret but can still send as
+  the organisation. A send path can be abused as a mail relay, so it needs a fixed template, daily caps,
+  and no access for evaluator sessions or self-registered community tenants (decision pack).
 - **Neutral.** Integrated delivery stays first-class. `V-2026-0007` keeps its HTTP adapter decision.
   Automatic sending remains out of scope until a dedicated decision.
 
