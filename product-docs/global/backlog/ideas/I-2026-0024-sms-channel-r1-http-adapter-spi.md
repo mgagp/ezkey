@@ -33,7 +33,7 @@ See [`../grill-sessions/blitz-2026-05-08-2-D5-sms-grill-me.md`](../grill-session
   - **Send by SMS** on enrolment (operator action); never an admin activation code (ADR-0017); both Global Admin and Tenant Admin where workflow RBAC allows.
   - Body: short text + **challenge code** only.
   - Failure: error + on-screen fallback; disclaimers (`integrated-delivery` / `sms-assisted-delivery`).
-  - Reference peripheral repo `ezkey-sms-twilio` (or shell per `I-2026-0020`).
+  - Reference connector for Twilio, incubating in the monorepo (`#1206`); the public shell `ezkey-sms-twilio` may host it later.
 - **Out of scope (R1):**
   - SMS in core platform code.
   - Auto-send, links in SMS, QR in SMS, multi-adapter routing.

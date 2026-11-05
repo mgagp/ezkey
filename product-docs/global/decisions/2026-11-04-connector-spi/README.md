@@ -3,7 +3,7 @@
 ## Metadata
 
 - **Date:** 2026-11-04
-- **Status:** analysis for review; ADR-0017 is `proposed` until the gate on [#1207](https://github.com/mgagp/ezkey/issues/1207)
+- **Status:** accepted direction; ADR-0017 accepted by Marc on 2026-11-05 after [critical review](../../hygiene/critical-review/2026-11-05-pr1209-connector-spi.md). Step 2 carries the open questions below
 - **Scope:** how optional external services (email, SMS, directories) connect to an Ezkey base
 - **Related ADR:** [ADR-0017](../../architecture-decisions.md#adr-0017--connector-spi-for-external-services)
 - **Vision:** [`V-2026-11-04-connector-spi`](../../vision/V-2026-11-04-connector-spi.md)
@@ -33,7 +33,7 @@ flowchart LR
     UI["Admin UI<br/>on-screen QR and challenge"]
     ADM["Admin API<br/>delivery port"]
     INB["Inbound connector surface<br/>(later, location open)"]
-    DB[("PostgreSQL<br/>connector URL and credential only")]
+    DB[("PostgreSQL<br/>no provider secrets")]
     UI --> ADM
     ADM --> DB
     INB --> DB
@@ -197,7 +197,7 @@ would leave two models and would not test the SPI on a real case (Marc, 2026-11-
 | Provider credentials (SMTP, Twilio, directory bind) | Connector environment or Docker secrets | Whoever deploys the connector |
 | Connector settings (sender, search base, schedule) | Connector configuration | Same |
 | Connector URL and credential for Ezkey to call it | Ezkey configuration: properties first, a table with the existing encryption if an Admin UI screen is added | Global Admin |
-| Inbound credential for a directory connector | Ezkey, stored hashed like API keys; scoped to its tenant | Global Admin |
+| Inbound credential for a directory connector | Ezkey, stored hashed like API keys; its scope is an open question for the directory phase | Global Admin |
 
 **Cost of this choice:** the operator configures two places, and provider secrets cannot be typed into
 the Admin UI. **Benefit:** no secret vault to build, and a compromised Ezkey database reveals no

@@ -33,7 +33,7 @@ Each decision is recorded with enough context to be understood years later: why 
 | [ADR-0014](#adr-0014-qa-sphere-for-test-execution-tracking) | QA Sphere for test execution tracking | accepted | 2026-10-13 |
 | [ADR-0015](#adr-0015-management-port-separation-actuator-javamelody) | Management port separation (Actuator / JavaMelody) | accepted | 2026-10-19 |
 | [ADR-0016](#adr-0016-keyset-blob-single-source-of-truth) | Keyset blob as single source of truth | accepted | 2026-10-21 |
-| [ADR-0017](#adr-0017--connector-spi-for-external-services) | Connector SPI for external services | proposed | 2026-11-04 |
+| [ADR-0017](#adr-0017--connector-spi-for-external-services) | Connector SPI for external services | accepted | 2026-11-05 |
 
 ## ADR-0001 — Backend-first cryptographic protocol
 
@@ -1139,10 +1139,10 @@ divergence between file and blob (blockers B2, B5, B6). Real deployments already
 ### Metadata
 
 - **ID:** ADR-0017.
-- **Date:** 2026-11-04.
-- **Status:** proposed (Marc's decisions recorded on GitHub
-  [#1206](https://github.com/mgagp/ezkey/issues/1206); moves to accepted at the gate on
-  [#1207](https://github.com/mgagp/ezkey/issues/1207)).
+- **Date:** 2026-11-05 (proposed 2026-11-04).
+- **Status:** accepted by Marc after
+  [critical review](hygiene/critical-review/2026-11-05-pr1209-connector-spi.md)
+  (GitHub [#1206](https://github.com/mgagp/ezkey/issues/1206)).
 - **Scope:** global.
 - **Owners:** Platform architecture / security.
 - **Decision pack:** [`decisions/2026-11-04-connector-spi/`](decisions/2026-11-04-connector-spi/README.md).
