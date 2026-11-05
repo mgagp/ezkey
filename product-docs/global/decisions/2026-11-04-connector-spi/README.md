@@ -303,11 +303,11 @@ its behavior is defined here:
 
 ```mermaid
 flowchart TD
-  S1["1 Analysis and ADR"] --> S2["2 Delivery contract and directory sketch"]
+  S1["1 Analysis and ADR"] --> S2["2 Delivery contract v0 and directory sketch"]
   S2 --> S3["3 Delivery port and mock connector"]
   S3 --> S4["4 Docker scenarios and CI gate"]
   S4 --> S5["5 SMTP connector with Mailpit, Admin UI send"]
-  S5 --> S6["6 Real trial with a Google account"]
+  S5 --> S6["6 Real trial with a Google account, contract becomes v1"]
   S6 --> S7["7 Community instance"]
   S7 -. "separate decision" .-> SMS["SMS: challenge by Twilio"]
   S7 -. "separate decision" .-> DIR["Directory: OpenLDAP, then Active Directory"]
@@ -326,7 +326,19 @@ error, timeout and rejected credential, so CI, QA and new connector prototypes s
 4. **Audit:** what is recorded for the recipient, given it is personal data?
 5. **Email wording and locale:** the message must tell the person to have the code in hand before
    scanning, and state the expected server. Who owns the template?
-6. **Contract versioning** and what the health check returns.
+6. **What the health check returns.**
+
+**Requirements already set for step 2 (Marc, 2026-11-05):**
+
+- **The contract stays `v0` until the real trial at step 6,** and can change without compatibility work.
+  It becomes `v1` after that trial. The step order stays: the mock and its gate come first, because they
+  make the rest safe to build, and all the code lives in the monorepo.
+- **The job carries** the trigger (operator today), the template and locale, and the tenant. An
+  asynchronous result and bulk sending wait until a real need appears.
+- **The directory sketch fits on one page,** limited to what could force a change to the delivery contract.
+- **The mock cannot pass for real delivery:** it refuses to start outside an explicit test mode and
+  identifies itself in its responses.
+- **The CI job stays thin** and path-filtered, like `ezkey-jenkins`.
 
 ## Open questions for the directory phase
 
