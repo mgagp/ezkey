@@ -30,7 +30,7 @@ See [`../grill-sessions/blitz-2026-05-08-2-D5-sms-grill-me.md`](../grill-session
 - **In scope (R1):**
   - SPI contract: Admin API → HTTP POST delivery job → adapter → vendor.
   - Global Admin: adapter URL + credential posture in config.
-  - **Send by SMS** on enrolment (operator action); never an admin activation code (ADR-0017); both Global Admin and Tenant Admin where workflow RBAC allows.
+  - **Send by SMS** on enrolment (operator action); never an admin activation code (ADR-0018); both Global Admin and Tenant Admin where workflow RBAC allows.
   - Body: short text + **challenge code** only.
   - Failure: error + on-screen fallback; disclaimers (`integrated-delivery` / `sms-assisted-delivery`).
   - Reference connector for Twilio, incubating in the monorepo (`#1206`); the public shell `ezkey-sms-twilio` may host it later.

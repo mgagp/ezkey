@@ -50,7 +50,7 @@ where changes typically involve a handful of people at a time.
 
 The analysis, diagrams and rejected options are in the
 [decision pack](../decisions/2026-11-04-connector-spi/README.md). The decision is
-[ADR-0017](../architecture-decisions.md#adr-0017--connector-spi-for-external-services).
+[ADR-0018](../architecture-decisions.md#adr-0018--connector-spi-for-external-services).
 
 ## Potential impact
 
@@ -69,7 +69,7 @@ The analysis, diagrams and rejected options are in the
 
 ## Promotion criteria
 
-Promote once ADR-0017 is accepted and the delivery contract exists as a `TB-*` (step 2 of `#1206`).
+Promote once ADR-0018 is accepted and the delivery contract exists as a `TB-*` (step 2 of `#1206`).
 SMS and directory work are decided separately after the community instance step.
 
 ## Related documents

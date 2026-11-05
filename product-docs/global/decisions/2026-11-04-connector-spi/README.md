@@ -3,9 +3,9 @@
 ## Metadata
 
 - **Date:** 2026-11-04
-- **Status:** accepted direction; ADR-0017 accepted by Marc on 2026-11-05 after [critical review](../../hygiene/critical-review/2026-11-05-pr1209-connector-spi.md). Step 2 carries the open questions below
+- **Status:** accepted direction; ADR-0018 accepted by Marc on 2026-11-05 after [critical review](../../hygiene/critical-review/2026-11-05-pr1209-connector-spi.md). Step 2 carries the open questions below
 - **Scope:** how optional external services (email, SMS, directories) connect to an Ezkey base
-- **Related ADR:** [ADR-0017](../../architecture-decisions.md#adr-0017--connector-spi-for-external-services)
+- **Related ADR:** [ADR-0018](../../architecture-decisions.md#adr-0018--connector-spi-for-external-services)
 - **Vision:** [`V-2026-11-04-connector-spi`](../../vision/V-2026-11-04-connector-spi.md)
 - **GitHub:** [#1206](https://github.com/mgagp/ezkey/issues/1206) (program), [#1207](https://github.com/mgagp/ezkey/issues/1207) (this step)
 - **Captured by:** Marc

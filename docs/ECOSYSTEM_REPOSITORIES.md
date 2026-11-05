@@ -6,7 +6,7 @@ Ezkey stays **self-contained** in this monorepo. Integration repos remain **thin
 
 **Terminology note:** Prefer **integration repository** or **ecosystem repository** here. Do not confuse these with operational **“peripheral” APIs** described in audit-chain heartbeat wording in [`AUDIT_LOG_INTEGRITY.md`](AUDIT_LOG_INTEGRITY.md).
 
-**Incubation (2026-11-04, #1206):** connector code starts in this monorepo under `ezkey-connectors/`, like the SDKs, PAM and Jenkins. A separate repository is a later question. See [`V-2026-11-04-connector-spi`](../product-docs/global/vision/V-2026-11-04-connector-spi.md) and [ADR-0017](../product-docs/global/architecture-decisions.md#adr-0017--connector-spi-for-external-services).
+**Incubation (2026-11-04, #1206):** connector code starts in this monorepo under `ezkey-connectors/`, like the SDKs, PAM and Jenkins. A separate repository is a later question. See [`V-2026-11-04-connector-spi`](../product-docs/global/vision/V-2026-11-04-connector-spi.md) and [ADR-0018](../product-docs/global/architecture-decisions.md#adr-0018--connector-spi-for-external-services).
 
 ## Naming convention
 
@@ -37,7 +37,7 @@ Use **canonical vendor spelling** in names (e.g. `twilio`).
 
 ## Email stance
 
-Email is a connector, like SMS (Marc, 2026-11-04, #1206; [ADR-0017](../product-docs/global/architecture-decisions.md#adr-0017--connector-spi-for-external-services)). Ezkey sends no email today. The first implementation is SMTP, incubating in the monorepo; no separate repository exists yet.
+Email is a connector, like SMS (Marc, 2026-11-04, #1206; [ADR-0018](../product-docs/global/architecture-decisions.md#adr-0018--connector-spi-for-external-services)). Ezkey sends no email today. The first implementation is SMTP, incubating in the monorepo; no separate repository exists yet.
 
 ## Curated shell list
 
@@ -45,10 +45,10 @@ Each row is a public shell repository. It holds a README and a license only, unt
 
 | Repository | Capability | Status |
 |-------------------------|------------|------------------------|
-| [`ezkey-sms-twilio`](https://github.com/mgagp/ezkey-sms-twilio) | SMS via Twilio | Public shell; README predates ADR-0017 |
-| [`ezkey-sms-aws-sns`](https://github.com/mgagp/ezkey-sms-aws-sns) | SMS via AWS SNS | Public shell; README predates ADR-0017 |
-| [`ezkey-directory-microsoft-ad`](https://github.com/mgagp/ezkey-directory-microsoft-ad) | Directory ↔ Ezkey enrollment (Microsoft AD) | Public shell; README predates ADR-0017 |
-| [`ezkey-directory-ldap`](https://github.com/mgagp/ezkey-directory-ldap) | Directory ↔ Ezkey enrollment (LDAP) | Public shell; README predates ADR-0017 |
+| [`ezkey-sms-twilio`](https://github.com/mgagp/ezkey-sms-twilio) | SMS via Twilio | Public shell; README predates ADR-0018 |
+| [`ezkey-sms-aws-sns`](https://github.com/mgagp/ezkey-sms-aws-sns) | SMS via AWS SNS | Public shell; README predates ADR-0018 |
+| [`ezkey-directory-microsoft-ad`](https://github.com/mgagp/ezkey-directory-microsoft-ad) | Directory ↔ Ezkey enrollment (Microsoft AD) | Public shell; README predates ADR-0018 |
+| [`ezkey-directory-ldap`](https://github.com/mgagp/ezkey-directory-ldap) | Directory ↔ Ezkey enrollment (LDAP) | Public shell; README predates ADR-0018 |
 
 Optional local staging under `docs/staging/ecosystem-shells/` may be regenerated when publish work resumes (`I-2026-0020`).
 

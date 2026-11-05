@@ -84,5 +84,6 @@ mvn test -pl ezkey-tests -P all-tests
 
 Bruno collections are available under `bruno/` for exploratory or manual validation (see `bruno/README.md` and `./scripts/bruno-health.sh`).
 
-For the testing strategy and what layer covers what, use judgment proportional to risk (unit tests
+Any new functionality (and bug fixes where practical) must come with automated tests in the same PR, covered by the relevant module's test suite.
+For the testing strategy and what layer covers what, see **`product-docs/global/test-strategy.md`**; use judgment proportional to risk (unit tests
 for logic, functional tests for API contracts, Playwright for critical Admin UI workflows).

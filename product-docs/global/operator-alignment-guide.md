@@ -17,7 +17,7 @@ These analogies are **orientation tools**, not permission matrices. Authoritativ
 
 **Decision reflex:** when a feature touches heartbeat, integrity validation, manipulation remediation, encryption keys, or platform-wide alerts → default **Global Admin only**. When it touches integration/enrollment/API-key workflows → Tenant Admin is in scope; confirm whether Global Admin also needs visibility.
 
-**Channel send actions (email, SMS):** connector **configuration** = Global Admin (TI), with provider credentials kept on the connector side (ADR-0017). **Send** in enrolment workflows = **Global Admin or Tenant Admin** — whichever role operates that workflow in the deployment geometry below.
+**Channel send actions (email, SMS):** connector **configuration** = Global Admin (TI), with provider credentials kept on the connector side (ADR-0018). **Send** in enrolment workflows = **Global Admin or Tenant Admin** — whichever role operates that workflow in the deployment geometry below.
 
 ## Admin UI copy posture
 

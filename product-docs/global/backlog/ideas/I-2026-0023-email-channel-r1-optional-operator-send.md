@@ -15,7 +15,7 @@
 
 ## Direction change (2026-11-04)
 
-Marc decided on `#1206` that email goes through a **connector** (`V-2026-11-04-connector-spi`, ADR-0017). There is no Java Mail in the core; SMTP credentials stay with the connector. The email carries the **QR**; the challenge stays on screen, or goes by SMS later. The sections below are adjusted accordingly.
+Marc decided on `#1206` that email goes through a **connector** (`V-2026-11-04-connector-spi`, ADR-0018). There is no Java Mail in the core; SMTP credentials stay with the connector. The email carries the **QR**; the challenge stays on screen, or goes by SMS later. The sections below are adjusted accordingly.
 
 ## Intent
 
@@ -43,7 +43,7 @@ variant on activation). Full body expands on click — same honesty as D7, light
 
 - **In scope (R1 — full idea):**
   - Email connector and its configuration (Global Admin only); SMTP credentials stay with the connector.
-  - **Send by email** action on enrolment invite material, optional per operator. Never an admin activation code (ADR-0017).
+  - **Send by email** action on enrolment invite material, optional per operator. Never an admin activation code (ADR-0018).
   - Email body: QR visible + short instruction text; **never the challenge**.
   - Send failure: error message; on-screen QR remains available (minimized).
   - Disclaimer copy update (educational, posture-aware — not “coming soon”).
@@ -54,7 +54,7 @@ variant on activation). Full body expands on click — same honesty as D7, light
   - Automatic send on workflow events.
   - HTML templates / branding polish.
   - SMS (`V-2026-0007`).
-  - Other email workflows (recovery, notifications) beyond enrolment. Admin activation codes never go through a connector (ADR-0017).
+  - Other email workflows (recovery, notifications) beyond enrolment. Admin activation codes never go through a connector (ADR-0018).
 
 ## Grilling decisions (2026-05-19)
 

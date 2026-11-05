@@ -104,7 +104,7 @@ stack), and **#13** (open-source transparency). Applied instances:
 [`V-2026-0005`](vision/V-2026-0005-email-integration-strategy.md) (email),
 [`V-2026-06-28`](vision/V-2026-06-28-audit-archive-export-spi.md) (audit archive export), and
 [`V-2026-11-04-connector-spi`](vision/V-2026-11-04-connector-spi.md) with
-[ADR-0017](architecture-decisions.md#adr-0017--connector-spi-for-external-services) (the common
+[ADR-0018](architecture-decisions.md#adr-0018--connector-spi-for-external-services) (the common
 connector approach, including directories). The
 trade-off discussion that distilled this principle is recorded in
 [`integrity-assurance-honest-line.md`](integrity-assurance-honest-line.md) and method log

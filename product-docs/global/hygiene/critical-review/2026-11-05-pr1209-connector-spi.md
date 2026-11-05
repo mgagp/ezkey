@@ -38,5 +38,5 @@
 ## Follow-ups
 
 - Amendments landed on the author's branch (PR #1209); the bind session rule is in PR #1224.
-- ADR-0017 accepted by Marc, 2026-11-05.
-- Public shell READMEs still predate ADR-0017: one pass later, on `#1206`.
+- ADR-0018 accepted by Marc, 2026-11-05.
+- Public shell READMEs still predate ADR-0018: one pass later, on `#1206`.

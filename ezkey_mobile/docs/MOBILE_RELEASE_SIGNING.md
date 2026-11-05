@@ -91,16 +91,19 @@ release mode, it is almost always a missing ProGuard `-keep` rule; add it to
 
 ## 5. Version bumping
 
-Canon: [`MOBILE_PLAY_PUBLISHING.md`](MOBILE_PLAY_PUBLISHING.md) § *Versioning policy*.
+Canon: [`MOBILE_PLAY_PUBLISHING.md`](MOBILE_PLAY_PUBLISHING.md) § *Versioning policy*;
+product SemVer:
+[`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../../docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md)
+(ADR-0017 / [#1211](https://github.com/mgagp/ezkey/issues/1211)).
 
+- **`versionName`** — `ezkey_mobile/package.json` `"version"` equals product `X.Y.Z` (optional
+  matching pre-release). Gradle injects it as Android `versionName`.
 - **`versionCode`** — bump in `android/app/build.gradle` every Play upload (strictly increasing).
-- **`versionName`** — bump `ezkey_mobile/package.json` `"version"` every Play upload
-  (`0.y.z-alpha` while in public alpha; patch for fixes, minor for features). Gradle injects
-  it as Android `versionName`.
 - **Play release name** — `play-upload-internal.sh` sets `'<versionCode> (<versionName>)'`.
 
 Confirm the next `versionCode` against **Play Console → App bundle explorer** before upload.
-vc4 reused `versionName` `0.1.0-alpha` from vc3 — do not repeat that; bump both fields next time.
+vc4 reused `versionName` `0.1.0-alpha` from vc3 — do not repeat that pattern of same name without
+a new `versionCode`.
 
 > Play Console rejects an AAB whose `versionCode` is not strictly greater than
 > every previously uploaded AAB for the app.

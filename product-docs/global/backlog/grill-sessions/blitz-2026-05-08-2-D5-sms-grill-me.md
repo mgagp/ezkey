@@ -12,7 +12,7 @@
 | **Date** | `2026-05-19` |
 
 > **Amended 2026-11-05 (Marc, `#1206`):** an admin activation code is equivalent to both factors and
-> never goes through a connector (ADR-0017). The activation rows below no longer apply.
+> never goes through a connector (ADR-0018). The activation rows below no longer apply.
 
 ## Settled decisions
 

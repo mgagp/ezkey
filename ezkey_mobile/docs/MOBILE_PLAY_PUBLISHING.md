@@ -60,15 +60,29 @@ Delivery is **AAB** (not APK). Play App Signing holds the app-signing key; you k
 
 ## Versioning policy
 
-Keep Play uploads readable without inventing a second versioning system:
+Product SemVer is **one version for the whole monorepo**
+([ADR-0017](../../product-docs/global/architecture-decisions.md#adr-0017-product-versioning-one-semver-for-the-monorepo),
+[`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../../docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md),
+[#1211](https://github.com/mgagp/ezkey/issues/1211)). Do not invent a second product line for
+mobile; an own cadence later would be a **separate** decision.
 
 | Field | Where | Rule |
 |-------|--------|------|
-| **`versionCode`** | `android/app/build.gradle` | Strictly increasing integer per Play upload (hard requirement). Bump by PR before each upload. |
-| **`versionName`** | `ezkey_mobile/package.json` `"version"` | Semver with a pre-release tag while in public alpha: `0.y.z-alpha`. **Bump on every Play upload** (patch for fixes, minor for features). Gradle injects this as Android `versionName`; Settings/About show the same string. |
-| **Play release name** | set by `play-upload-internal.sh` | `'<versionCode> (<versionName>)'` (e.g. `4 (0.1.1-alpha)`). Override with `--release-name` only when needed. |
+| **`versionName`** | `ezkey_mobile/package.json` `"version"` | Equals the product version `X.Y.Z` (optional matching pre-release suffix when the product tag uses one, e.g. `0.2.0-alpha.1`). Product line starts at `0.2.0` because Play already shipped `0.1.2-alpha` (must not go backwards; ADR-0017 / [#1211](https://github.com/mgagp/ezkey/issues/1211)). Gradle injects this as Android `versionName`; Settings/About show the same string. |
+| **`versionCode`** | `android/app/build.gradle` | Strictly increasing integer per Play upload (hard requirement). Monotonic; independent of SemVer patch bumps. |
+| **Play release name** | set by `play-upload-internal.sh` | `'<versionCode> (<versionName>)'` (e.g. `7 (0.2.0)`). Override with `--release-name` only when needed. |
 
-**Why this exists:** vc4 went to the internal track as bare `0.1.0-alpha` while alpha showed hand-named `3 (0.1.0-alpha)` — same `versionName` as vc3, so the Console could not tell the uploads apart. Name releases with both code and name, and bump `versionName` every upload.
+**Trace:** Mobile `versionName` = product `X.Y.Z` with monotonic `versionCode` — store uploads stay
+tied to the monorepo product line; Console still needs both code and name to tell uploads apart —
+[#1211](https://github.com/mgagp/ezkey/issues/1211).
+
+**Why `versionCode` stays in the release name:** vc4 went to the internal track as bare
+`0.1.0-alpha` while alpha showed hand-named `3 (0.1.0-alpha)` — same `versionName` as vc3, so the
+Console could not tell the uploads apart. Name releases with both code and name.
+
+POM / npm / package alignment automation is deferred to [#1211](https://github.com/mgagp/ezkey/issues/1211)
+step 2; until then, keep `package.json` `"version"` and Play uploads consistent with the product
+line by hand when cutting a product-aligned build.
 
 ### Version bump recipe
 
@@ -76,11 +90,13 @@ Before each Play upload:
 
 1. Open Play Console → the Ezkey app → **App bundle explorer**. Note the highest published `versionCode`.
 2. If the workspace `versionCode` is **not** greater than that number, bump it in `android/app/build.gradle`.
-3. Bump `ezkey_mobile/package.json` `"version"` for this upload (patch or minor under `0.y.z-alpha`).
+3. Set `ezkey_mobile/package.json` `"version"` to the current product `X.Y.Z` (or matching pre-release) when this upload is meant to track that product cut.
 4. If dependencies changed, run `yarn license:app-data` and commit the JSON snapshot.
 5. Build the signed AAB (`./scripts/build-install-release-clean.sh` or `yarn android:bundle:release` with JDK 17).
 
-**Upload history:** vc4 = `0.1.0-alpha` (internal; same name as vc3 — why the policy exists). vc5 = `0.1.1-alpha` (patch; first upload under the policy). **vc6 = `0.1.2-alpha`** (patch; code-entry keypad fix #1082 on RN 0.88.1). Do not reuse a `versionCode`.
+**Upload history (pre–ADR-0017):** vc4 = `0.1.0-alpha` (internal; same name as vc3 — why the
+`versionCode` in the release name exists). vc5 = `0.1.1-alpha`. **vc6 = `0.1.2-alpha`** (#1082 on
+RN 0.88.1). Do not reuse a `versionCode`.
 
 ## Upload signed AAB to internal testing (CLI)
 

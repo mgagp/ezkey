@@ -31,7 +31,7 @@ Installing a **host JDK** to build Java modules from a fresh clone is a differen
 - [DEVELOPMENT.md](DEVELOPMENT.md): first clone on a new workstation, host JDK 25 / Maven baseline, tests, and development workflow.
 - [engineering/ci-cd-best-practices-plan.md](engineering/ci-cd-best-practices-plan.md): GitHub CI/CD and repo-settings inventory vs accepted practice, gap table, and phased plan (evaluator-facing; docs-only posture).
 - [OPERATIONAL.md](OPERATIONAL.md): deployment, operations, and production posture.
-- [VERSIONING_AND_DEPLOY_TRACEABILITY.md](VERSIONING_AND_DEPLOY_TRACEABILITY.md): public alpha claim, git-SHA identity, and live deploy ledger (no product semver until published artefacts).
+- [VERSIONING_AND_DEPLOY_TRACEABILITY.md](VERSIONING_AND_DEPLOY_TRACEABILITY.md): public alpha claim, monorepo product SemVer (ADR-0017 / #1211), git-SHA deploy ledger, and non-product `methodology/*` / `deploy/*` tags.
 - [configuration/README.md](configuration/README.md): index for configuration properties and per-module configuration docs.
 - [MAINTENANCE.md](MAINTENANCE.md): documentation maintenance expectations and standards.
 
@@ -63,7 +63,7 @@ Installing a **host JDK** to build Java modules from a fresh clone is a differen
 - [cloudflare/](cloudflare/): site and edge workflow notes.
 - [lightsail/community-host.md](lightsail/community-host.md): create/bootstrap a NEW community Lightsail host for ezkey.online (AWS CLI scripts under `scripts/lightsail/`).
 - [lightsail/community/DEPLOYED.md](lightsail/community/DEPLOYED.md): live state ledger for the community surface (update after successful publish).
-- [VERSIONING_AND_DEPLOY_TRACEABILITY.md](VERSIONING_AND_DEPLOY_TRACEABILITY.md): public alpha + git-SHA deploy traceability (pointer for cold agents).
+- [VERSIONING_AND_DEPLOY_TRACEABILITY.md](VERSIONING_AND_DEPLOY_TRACEABILITY.md): public alpha, product SemVer, and git-SHA deploy traceability (pointer for cold agents).
 - [dev-tools/](dev-tools/): internal development tools and helper assets.
 - [plan/operational-churn-ezkey.plan.md](plan/operational-churn-ezkey.plan.md): operational churn testing plan.
 

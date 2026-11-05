@@ -24,10 +24,12 @@ Bruno **desktop** is separate: open this `bruno/` folder as a collection for GUI
 
 | File | Use |
 |------|-----|
-| `environments/local.bru` | Direct localhost ports (default) |
+| `environments/local.bru` | Direct localhost ports (default; **gitignored** — local only) |
 | `environments/local-via-caddy-proxy.bru` | Caddy proxy ports |
 | `environments/local-ngrok.bru` | Ngrok / tunnel workflows |
 | `environments/community.bru` | Public community hosts (see hostname canon) |
+
+Copy `environments/local.bru.example` to `environments/local.bru` and put local values there.
 
 Runtime secrets (`token`, `secretKey`, device keys, …) stay empty in git. Scripts populate them during a run. Never commit filled tokens.
 

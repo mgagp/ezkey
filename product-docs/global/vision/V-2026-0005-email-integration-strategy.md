@@ -5,7 +5,7 @@
   a connector, not Java Mail in the core, and carries the QR while the challenge travels
   separately. Optional, operator-triggered sending and the postures below stand; read
   `smtp-assisted-delivery` as `email-assisted-delivery`. Admin activation codes are out of scope:
-  they equal both factors and never go through a connector (ADR-0017, 2026-11-05).
+  they equal both factors and never go through a connector (ADR-0018, 2026-11-05).
 - **Status:** `under-review`
 - **Intent:** Introduce **optional**, **operator-triggered** email (through a connector) for
   enrolment workflows while keeping Ezkey **fully operational** without SMTP

@@ -13,6 +13,10 @@ issues per finding.
 |------|------|
 | [`TEMPLATE.md`](TEMPLATE.md) | Copy for each new campaign / lot |
 | `YYYY-MM-DD-pass-N.md` | Dated instance (decisions table + short rationale) |
+| [`2026-11-04-pass-1.md`](2026-11-04-pass-1.md) | Biweekly Mobile rotation triage (docs-only; dispositions, no code) |
+| [`2026-11-03-pass-1-ios.md`](2026-11-03-pass-1-ios.md) | iOS lane first pass (SwiftLint + Periphery) |
+| [`2026-09-17-pass-1.md`](2026-09-17-pass-1.md) | Android / JS curated lot + deferred inventory |
+| [`2026-08-25-pass-1.md`](2026-08-25-pass-1.md) | First curated pass (fix / suppress lot) |
 
 ## Related
 
