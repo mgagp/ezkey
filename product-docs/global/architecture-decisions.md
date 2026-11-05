@@ -1202,7 +1202,8 @@ Admin API machine-to-machine hatch was removed on purpose (`I-2026-08-29`).
 
 ### Validation
 
-- Mock connector scenarios run as a CI gate: send, provider error, timeout, rejected credential, no connector.
+- Mock connector scenarios run as a CI gate: send, provider error, unknown outcome, slow connector,
+  rejected credential, no connector.
 - Log-capture tests prove that no bearer material is logged.
 - Real proof: a QR received by email enrolls a phone, locally and then on the community instance.
 

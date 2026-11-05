@@ -109,10 +109,13 @@ sequenceDiagram
     C-->>API: Accepted, provider reference
     API-->>UI: Sent, audit recorded
     M-->>U: Email with QR, and "have your code in hand before scanning"
-  else Failure or timeout
-    C-->>API: Error
+  else Rejected
+    C-->>API: Typed error
     API-->>UI: Clear error, audit recorded
     Note over UI: QR and challenge stay available on screen
+  else No answer in time
+    API-->>UI: Unknown: the email may have left, audit recorded
+    Note over UI: Check with the person before retrying
   end
   Note over Op,U: At any time before the scan, by a means the operator accepts
   Op->>U: Challenge
@@ -250,12 +253,23 @@ signup creates a real tenant and `contact_email` carries no proof of ownership (
 | Situation | Posture | Behavior |
 |-----------|---------|----------|
 | Delivery connector absent | Fail-open | Integrated delivery; no send button |
-| Send fails or times out | Fail-open, visible | Clear error, audit entry, on-screen material stays available |
+| Send rejected | Fail-open, visible | Clear error, audit entry, on-screen material stays available |
+| No answer in time | Fail-open, visible | Outcome `unknown`, never "failed": the provider may have accepted. Audit says so, on-screen material stays available |
 | Directory connector silent | Fail-open, visible | Nothing changes; staleness alert |
 | Directory read looks wrong | Fail-closed | Mass change refused, nothing applied, alert |
 | Connector credential rejected | Fail-closed | Call refused and logged |
 
-Ezkey makes one attempt per operator click, with a short timeout; retries remain the operator's choice.
+Ezkey makes one attempt per operator click; retries remain the operator's choice.
+
+**The call itself (Marc, 2026-11-05).** This would be the first outbound HTTP client in the Ezkey APIs, so
+its behavior is defined here:
+
+- **Three outcomes** in the contract, the UI and the audit: `accepted`, `rejected`, `unknown`.
+- **A send id per click,** passed to the connector, links the logs on both sides. It is for traceability
+  only: a duplicate of the same QR is harmless, and deduplication would make the connector keep state.
+- **Explicit connect and read timeouts,** well under Cloudflare Free's 100 s limit.
+- **The call runs outside any transaction,** and a test with a deliberately slow mock checks the database
+  pool, because `open-in-view` stays on in the Admin API.
 
 ## Impact by step
 
