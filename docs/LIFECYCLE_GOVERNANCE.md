@@ -228,7 +228,7 @@ Living status enum values also include terminal / failure paths such as `EXPIRED
 (default 7 days); that clock is the pending invitation window only, not a post-`VERIFIED` lifetime.
 
 - **CREATED** → Enrollment invitation exists; device has not bound yet.
-- **BOUND** → Device claimed the invitation; cryptographic verify not finished.
+- **BOUND** → Device claimed the invitation; cryptographic verify not finished. Scan and challenge form one sequence, and an abandoned bind needs a new invitation: see [one bind session](../ezkey_mobile/docs/MOBILE_APP_STATE_MACHINE.md#product-intent-one-bind-session).
 - **VERIFIED + Active** → The enrollment is fully operational. Authentication attempts are allowed.
 - **VERIFIED + Inactive** → The enrollment is temporarily suspended. Authentication is blocked, but the credential can be reactivated.
 - **REVOKED** → The enrollment is permanently invalidated. It cannot be reactivated or used again.

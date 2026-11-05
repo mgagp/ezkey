@@ -64,6 +64,32 @@ in-memory `PendingAttempt` or not.
 
 ## 1. Enrollment wizard FSM (QR → bind → verify)
 
+### Product intent: one bind session
+
+Decision (Marc, 2026-11-05, [#1206](https://github.com/mgagp/ezkey/issues/1206)). This subsection
+states intent, unlike the descriptive model around it, and applies to any authenticator.
+
+**Scanning starts a sequence: scan, then enter the 6-digit challenge straight away.** The person must
+have both the QR and the challenge in hand before scanning.
+
+- **"Together" is about use, not receipt.** The QR and the challenge may arrive hours or days apart,
+  through any channels, while the invitation is valid. Ezkey does not synchronize channels or connectors;
+  doing so would be accidental complexity.
+- **Out of scope by design:** bind now, then challenge hours later. Do not build resume or delayed
+  verify flows around that scenario.
+- **Two operating modes.** In *integrated delivery*, the Admin UI shows both items and the operator
+  passes them on. In *connector-assisted delivery*, a connector sends some material, for example the QR
+  by email, while the challenge stays on screen.
+- **The operator owns what remains,** by any means they accept: in person, a phone call, or an SMS from
+  their own phone. Separate channels are the ideal, not a requirement, and showing both on screen while
+  reading the code aloud stays valid. Ezkey draws security boundaries without dogmatism.
+
+**If the session is abandoned after bind:** the phone discards its in-memory draft, the server stays
+`BOUND`, and a new scan is refused ("Enrollment already bound by a device"). For an end-user enrollment,
+the operator deletes it and creates a new one. Reset applies only to an admin's own enrollment, with a
+recovery session. The server enforces no short window after bind: a `BOUND` enrollment can be verified
+until the invitation expires (`ezkey.enrollment.pending-expiration-days`, default 7).
+
 **Owner code:** `app/hooks/useEnrollmentWizard.ts`, `app/screens/EnrollmentWizard/EnrollmentWizardScreen.tsx`.
 
 ### States
@@ -99,7 +125,7 @@ in-memory `PendingAttempt` or not.
 
 1. **Happy path:** As a user, I scan the Admin QR, see who I’m enrolling for, enter the 6-digit code, and land on Home with a new enrollment card.
 2. **Wrong camera / missing URL:** As a user, if the QR has no Auth URL and the app has no global base URL, bind fails with a clear error and I can re-scan.
-3. **Abandon after bind:** As a user, I can tap Back after a successful bind to discard the draft without persisting keys; I am not left half-enrolled.
+3. **Abandon after bind:** As a user, I can tap Back after a successful bind to discard the draft without persisting keys. My phone is not left half-enrolled, but the server stays `BOUND`, so I need a new invitation from the operator (see *Product intent: one bind session*).
 
 ```mermaid
 stateDiagram-v2
