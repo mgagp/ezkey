@@ -20,7 +20,8 @@
 3. **Provider secrets stay in the connector.** Ezkey never holds a Twilio token, an SMTP password or
    a directory bind password.
 4. **One message never carries both factors.** Email carries the QR. The challenge stays on screen,
-   or goes by SMS later.
+   or goes by SMS later. An admin activation code equals both factors, so it never goes through a
+   connector.
 5. **Build the mechanism with a mock first,** then email, then the community instance. SMS and
    directory follow as separate decisions.
 
@@ -76,6 +77,17 @@ entity and *peripheral* appears in the audit heartbeat wording
 ([`docs/ECOSYSTEM_REPOSITORIES.md`](../../../../docs/ECOSYSTEM_REPOSITORIES.md)). **SPI** names the
 contract here, not Java's `ServiceLoader`.
 
+## Two delivery modes, one bind session
+
+Ezkey has two operating modes: **integrated delivery**, with no dependency, and
+**connector-assisted delivery**, in whatever form. A connector can send the QR by email while the
+challenge stays on screen; the operator then passes the challenge on by any means they accept: a
+phone call, or an SMS from their own phone. Boundaries without dogmatism.
+
+Whatever the mode, **scanning starts a sequence**: the person must have both items in hand before
+scanning. They may receive them days apart, so Ezkey never synchronizes channels or connectors. The
+rule lives in `ezkey_mobile/docs/MOBILE_APP_STATE_MACHINE.md` § *Product intent: one bind session*.
+
 ## Flow: send the QR by email
 
 ```mermaid
@@ -96,16 +108,19 @@ sequenceDiagram
     M-->>C: Accepted
     C-->>API: Accepted, provider reference
     API-->>UI: Sent, audit recorded
-    M-->>U: Email with QR
-    Op->>U: Challenge through another channel
+    M-->>U: Email with QR, and "have your code in hand before scanning"
   else Failure or timeout
     C-->>API: Error
     API-->>UI: Clear error, audit recorded
     Note over UI: QR and challenge stay available on screen
   end
+  Note over Op,U: At any time before the scan, by a means the operator accepts
+  Op->>U: Challenge
+  Note over U: Bind session: scan, then enter the challenge straight away
 ```
 
-"Accepted" means the provider took the message, not that the user received it.
+"Accepted" means the provider took the message, not that the user received it. The email is not
+something to act on later without the code: leaving after the scan requires a new invitation.
 
 ## Flow: directory reconcile (later)
 
@@ -182,8 +197,9 @@ provider credential.
 
 ## Security invariants
 
-1. **One message, one factor.** The core refuses a job that combines the QR and the challenge. This is
-   a rule in the core, not a connector convention.
+1. **One message, one factor.** The core refuses a job that combines the QR and the challenge, and any
+   job carrying an admin activation code, which alone yields both factors. This is a rule in the core,
+   not a connector convention.
 2. **Send only while `CREATED`.** The proof token is a bearer secret until bind. This matches the
    exposure rule proposed in [#1180](https://github.com/mgagp/ezkey/issues/1180), still open.
 3. **No stored job.** The send is synchronous and operator-triggered, so no outbox holds secret
@@ -249,8 +265,8 @@ error, timeout and rejected credential, so CI, QA and new connector prototypes s
    the connector then never parses the payload) or passes the payload?
 3. **Recipient:** `contact_email` only, or can the operator type an address at send time?
 4. **Audit:** what is recorded for the recipient, given it is personal data?
-5. **Scope of the first slice:** end-user enrollments only (leading option), with admin activation
-   added afterward?
+5. **Email wording and locale:** the message must tell the person to have the code in hand before
+   scanning. Who owns the template?
 6. **Contract versioning** and what the health check returns.
 
 ## Open questions for the directory phase
@@ -267,6 +283,8 @@ error, timeout and rejected credential, so CI, QA and new connector prototypes s
   [#1185](https://github.com/mgagp/ezkey/issues/1185)): a QR in an email cannot be scanned from the
   phone reading that email. A link would solve that later, so the delivery job should leave room for it.
 - **Exposure rule** ([#1180](https://github.com/mgagp/ezkey/issues/1180)): the send path must follow it.
+- **Later, no decision yet:** a shorter window after bind on the server, and a simpler recovery after
+  an abandoned bind than delete and recreate.
 
 ## To verify when the step arrives
 

@@ -14,7 +14,7 @@
 
 ## Intent
 
-Implement the **R1 SMS channel slice** from `V-2026-0007`: optional **operator-triggered** send for enrolment and admin-activation workflows via a **peripheral HTTP adapter** (reference: `ezkey-sms-twilio`); Global Admin configures adapter URL; Global Admin **or** Tenant Admin may send when operating the workflow. Ezkey stays operational without SMS. Challenge **codes only** in SMS body (no links/QR R1).
+Implement the **R1 SMS channel slice** from `V-2026-0007`: optional **operator-triggered** send for enrolment workflows via a **peripheral HTTP adapter** (reference: `ezkey-sms-twilio`); Global Admin configures adapter URL; Global Admin **or** Tenant Admin may send when operating the workflow. Ezkey stays operational without SMS. Challenge **codes only** in SMS body (no links/QR R1).
 
 ## Problem and value
 
@@ -30,7 +30,7 @@ See [`../grill-sessions/blitz-2026-05-08-2-D5-sms-grill-me.md`](../grill-session
 - **In scope (R1):**
   - SPI contract: Admin API → HTTP POST delivery job → adapter → vendor.
   - Global Admin: adapter URL + credential posture in config.
-  - **Send by SMS** on enrolment + admin activation (operator action); both Global Admin and Tenant Admin where workflow RBAC allows.
+  - **Send by SMS** on enrolment (operator action); never an admin activation code (ADR-0017); both Global Admin and Tenant Admin where workflow RBAC allows.
   - Body: short text + **challenge code** only.
   - Failure: error + on-screen fallback; disclaimers (`integrated-delivery` / `sms-assisted-delivery`).
   - Reference peripheral repo `ezkey-sms-twilio` (or shell per `I-2026-0020`).

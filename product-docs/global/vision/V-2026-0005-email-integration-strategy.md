@@ -4,10 +4,11 @@
 - **Superseded in part by:** `V-2026-11-04-connector-spi` (2026-11-04, #1206): email goes through
   a connector, not Java Mail in the core, and carries the QR while the challenge travels
   separately. Optional, operator-triggered sending and the postures below stand; read
-  `smtp-assisted-delivery` as `email-assisted-delivery`.
+  `smtp-assisted-delivery` as `email-assisted-delivery`. Admin activation codes are out of scope:
+  they equal both factors and never go through a connector (ADR-0017, 2026-11-05).
 - **Status:** `under-review`
 - **Intent:** Introduce **optional**, **operator-triggered** email (through a connector) for
-  enrolment and admin-activation workflows while keeping Ezkey **fully operational** without SMTP
+  enrolment workflows while keeping Ezkey **fully operational** without SMTP
   or after send failure. R1 normalizes operational choice — it does not mandate email. Two
   **documentation postures** (per `V-2026-0010`): **integrated delivery** (on-screen + manual
   external channels OK; educational disclaimer) and **SMTP-assisted delivery** (email-first UI

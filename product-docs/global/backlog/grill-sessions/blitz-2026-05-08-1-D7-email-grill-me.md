@@ -14,6 +14,9 @@
 > (`V-2026-11-04-connector-spi`, ADR-0017), and SMTP credentials stay with it. The email carries the
 > QR, never the challenge. `smtp-assisted-delivery` reads as `email-assisted-delivery`. The other
 > decisions below stand.
+>
+> **Amended 2026-11-05 (Marc, `#1206`):** an admin activation code is equivalent to both factors and
+> never goes through a connector (ADR-0017). The activation rows below no longer apply.
 
 ## Settled decisions
 

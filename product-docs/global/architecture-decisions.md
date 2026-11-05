@@ -1164,9 +1164,13 @@ Admin API machine-to-machine hatch was removed on purpose (`I-2026-08-29`).
 4. **Provider credentials stay on the connector side.** Ezkey holds only what it needs to reach or
    authenticate a connector.
 5. **One message never carries both factors.** Email carries the QR; the challenge stays on screen or
-   goes by SMS later. The core enforces this.
+   goes by SMS later. An admin activation code alone yields both factors (`POST /activate`), so it
+   never goes through a connector, by email or SMS. The core enforces this.
 6. **Connector code incubates in the monorepo** under `ezkey-connectors/`. Extraction is a later question.
 7. **Families share conventions, not a framework.** Each family has its own small contract.
+8. **Connectors are never synchronized with each other.** Scanning starts a sequence and the person
+   needs both items in hand first, however far apart they arrived. The operator passes on whatever no
+   connector sends, by any means they accept.
 
 ### Alternatives Considered
 

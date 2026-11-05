@@ -2,7 +2,7 @@
 
 - **Date:** `2026-05-08`
 - **Status:** `under-review`
-- **Intent:** **Optional**, **operator-triggered** SMS for enrolment and admin-activation via
+- **Intent:** **Optional**, **operator-triggered** SMS for enrolment via
   **peripheral HTTP adapter** (e.g. `ezkey-sms-twilio`) — not in-core, same model as email
   (`V-2026-11-04-connector-spi`). R1 SPI: Admin API POSTs delivery job to one configured adapter URL. Postures
   **`integrated-delivery`** / **`sms-assisted-delivery`** (mirror email). Body R1: **challenge

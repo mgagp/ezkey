@@ -19,7 +19,7 @@ Marc decided on `#1206` that email goes through a **connector** (`V-2026-11-04-c
 
 ## Intent
 
-Implement the **R1 email channel slice** from `V-2026-0005`: optional, **operator-triggered** send for enrolment and admin-activation workflows; through an email connector configured by the Global Admin; repositioned disclaimers; contextual help for **integrated delivery** (manual external channels). Ezkey stays operational without SMTP or after send failure.
+Implement the **R1 email channel slice** from `V-2026-0005`: optional, **operator-triggered** send for enrolment workflows; through an email connector configured by the Global Admin; repositioned disclaimers; contextual help for **integrated delivery** (manual external channels). Ezkey stays operational without SMTP or after send failure.
 
 ## Slice status (2026-07-25)
 
@@ -43,7 +43,7 @@ variant on activation). Full body expands on click — same honesty as D7, light
 
 - **In scope (R1 — full idea):**
   - Email connector and its configuration (Global Admin only); SMTP credentials stay with the connector.
-  - **Send by email** action on: enrolment invite material, admin activation code (both optional per operator).
+  - **Send by email** action on enrolment invite material, optional per operator. Never an admin activation code (ADR-0017).
   - Email body: QR visible + short instruction text; **never the challenge**.
   - Send failure: error message; on-screen QR remains available (minimized).
   - Disclaimer copy update (educational, posture-aware — not “coming soon”).
@@ -54,7 +54,7 @@ variant on activation). Full body expands on click — same honesty as D7, light
   - Automatic send on workflow events.
   - HTML templates / branding polish.
   - SMS (`V-2026-0007`).
-  - Other email workflows (recovery, notifications) beyond enrolment + admin activation.
+  - Other email workflows (recovery, notifications) beyond enrolment. Admin activation codes never go through a connector (ADR-0017).
 
 ## Grilling decisions (2026-05-19)
 

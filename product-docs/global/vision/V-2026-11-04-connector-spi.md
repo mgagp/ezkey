@@ -33,7 +33,12 @@ Email is the quick win (low risk, high value) and the first real test of the app
 - **Delivery family:** Ezkey calls the connector when an operator sends.
 - **Directory family:** the connector calls Ezkey on its own schedule, from inside the company network.
 - **Secrets:** provider credentials stay on the connector side.
-- **Message content:** email carries the QR; the challenge stays on screen, or goes by SMS later.
+- **Message content:** email carries the QR; the challenge stays on screen, or goes by SMS later. An
+  admin activation code never goes through a connector.
+- **Two modes:** integrated delivery, and connector-assisted delivery in whatever form. The operator
+  passes on what remains by any means they accept.
+- **Bind session:** scanning starts a sequence, so both items must be in hand first. They may arrive
+  days apart, and Ezkey never synchronizes channels or connectors.
 - **Code location:** the monorepo, like the SDKs, PAM and Jenkins; extraction is a later question.
 - **First target:** the mechanism with a mock connector usable by Docker, unit and functional tests,
   and as a CI gate. Then SMTP, a real trial with a Google account, then the community instance.
