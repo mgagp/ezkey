@@ -88,7 +88,7 @@ The fast path must remain genuinely fast.
 
 Core function never depends on a specific external vendor. Optional capabilities that require a
 third party — SMS, email, immutable archival storage — arrive through a **Service Provider
-Interface (SPI)** implemented by **separate peripheral projects** (for example an SMS adapter, an
+Interface (SPI)** implemented by **connectors outside the core**, in this repository or their own (for example an SMS adapter, an
 S3 / object-lock adapter, a Cloudflare R2 adapter). Ezkey must remain **fully operational,
 self-contained**, with none of them configured; an operator who declines an SPI simply accepts the
 documented limit of doing without it.
