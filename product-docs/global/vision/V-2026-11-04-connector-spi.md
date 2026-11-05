@@ -27,6 +27,11 @@ an enrollment when IT removes someone from the directory.
 
 Email is the quick win (low risk, high value) and the first real test of the approach.
 
+**What directory sync does and does not bring.** It automates creating and withdrawing enrollments, and
+withdrawal then needs no human action, which is the immediate gain. Until SMS and automatic sending are
+decided, getting each new person enrolled stays one operator action per person. That fits the SME target,
+where changes typically involve a handful of people at a time.
+
 ## Direction
 
 - **Connector:** a separate process, reached over a versioned HTTP contract.

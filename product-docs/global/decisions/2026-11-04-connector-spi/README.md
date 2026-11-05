@@ -125,6 +125,9 @@ sequenceDiagram
 "Accepted" means the provider took the message, not that the user received it. The email is not
 something to act on later without the code: leaving after the scan requires a new invitation.
 
+After a send, the Admin UI says what comes next: "QR sent. Give this person the code before they scan."
+Otherwise an operator can believe the work is done once the email leaves.
+
 ## Flow: directory reconcile (later)
 
 ```mermaid
@@ -336,6 +339,7 @@ error, timeout and rejected credential, so CI, QA and new connector prototypes s
 - **The job carries** the trigger (operator today), the template and locale, and the tenant. An
   asynchronous result and bulk sending wait until a real need appears.
 - **The directory sketch fits on one page,** limited to what could force a change to the delivery contract.
+  Size it for SME volumes (`product-intent.md` § *Scale and positioning compass*).
 - **The mock cannot pass for real delivery:** it refuses to start outside an explicit test mode and
   identifies itself in its responses.
 - **The CI job stays thin** and path-filtered, like `ezkey-jenkins`.
