@@ -41,7 +41,7 @@ Email is a connector, like SMS (Marc, 2026-11-04, #1206; [ADR-0017](../product-d
 
 ## Curated shell list
 
-Each row is a public shell repository. It holds a README only, until a connector is extracted there.
+Each row is a public shell repository. It holds a README and a license only, until a connector is extracted there.
 
 | Repository | Capability | Status |
 |-------------------------|------------|------------------------|
