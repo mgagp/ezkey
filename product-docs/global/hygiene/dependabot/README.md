@@ -151,11 +151,12 @@ To park a new later-train disruptor: comment + `gh pr edit <n> --add-label defer
 
 | Tracker | Topic | Status / re-evaluate when |
 |---------|--------|---------------------------|
-| `#627` | RN 0.87 platform lot closeout (ex-`#582`–`#585`) | Versions on main **done** (RN 0.87.1 / React 19.3.0 + navigation / vision-camera / safe-area); **Pixel smoke pending** — close `#627` when smoke is recorded |
+| `#627` | RN 0.87 platform lot closeout (ex-`#582`–`#585`) | **Closed 2026-11-06.** Versions had already landed. Pixel smoke recorded on the #1241 debug build (screen pass, admin.community re-enrollment, login) |
 
 As of 2026-09-26: Dependabot PRs `#582`–`#585` were **closed without merge** (Dependabot
 supersede 2026-09-22) after chantier F landed the versions otherwise. Residual human closeout is
 **issue `#627`**, not those PRs — do not reopen them.
+**2026-11-06:** Pixel smoke recorded on the #1241 debug build (Marc, Pixel 7 Pro): screen pass, admin.community re-enrollment, and login succeeded. `#627` closed. The "still pending" lines below are the notes from those earlier passes.
 **2026-09-28 hebdo:** active Dependabot queue empty (only deferred `#337`/`#498`); `#627` Pixel
 smoke still pending — see [`2026-09-28-pass-1.md`](2026-09-28-pass-1.md).
 **2026-10-05 hebdo:** Lots A–D squash-merged (Maven + Admin/SDK + mobile tooling/runtime); held
