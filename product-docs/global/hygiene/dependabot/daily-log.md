@@ -244,3 +244,18 @@ Append-only residual for **weekday light** `dependabot-curated` passes.
 - Code-scanning alerts API: PAT 403 (`actions`/security-events); relied on PR CodeQL checks SUCCESS + `mergeStateStatus` CLEAN + 0 unresolved review threads
 - Validation: mobile Node 24 — `yarn install --immutable`, `yarn validate:ci` (42 suites / 323 tests), `yarn license:ci`; Orval O0 diffs saved under artifacts; Dependabot/`ci-gate` green per PR before squash. No deploy.
 - Residual: phone smoke for mobile bumps tracked on #627 (gates next Play AAB). Nothing deployed.
+
+## 2026-11-06
+
+- Pass: mobile hygiene (Marc: clear the mobile dependency backlog and install on the connected Pixel 7 Pro); concurrency: clear (last Dependabot merges #1230/#1231 at 14:01Z, more than 30 minutes before this pass)
+- GitHub write: `gh` as mgagp
+- Merged (squash) before the hygiene branch: #1224 docs bind-session intent `aacdd6eb` (`ci-gate` already green). #1236 iOS language parity landed on `main` during the pass (`7308d9d90`); this branch was rebased onto it
+- Hygiene PR **#1241** (`hygiene/mobile-deps-2026-11-06`) supersedes, after it merges:
+  - #1196 mobile-minor-patch: react-query 5.105.1, i18next 26.6.0, react-i18next 17.1.10, safe-area-context 5.11.0, screens 4.30.1
+  - #1129 Babel 8.0.10 (was conflicting)
+  - #1130 React + react-test-renderer 19.3.1 only (RN stays 0.88.1; Marc included the React patch and the phone test)
+  - #1131 Vision Camera family 5.2.4 (Marc included the toolchain slice and the Pixel)
+  - #1170 Orval 8.45.0→8.46.0 (**O1**: one JSDoc comment on `respond` aligned with the Auth spec text already on `main` for #895; signatures unchanged; exact pin in `ezkey_mobile/AGENTS.md`)
+- Companion: `ios/Podfile.lock` versions and checksums for safe-area, screens, and Vision Camera (CI `pod install` diff). License snapshot package list unchanged
+- Validation: Node 24.22.1; jest 524/524 after rebase (one case timed out while the release build was using the CPU; re-run of that file 4/4); lint 0 errors / 5 pre-existing warnings; tsc green; `mobile / js-validate` and `android-jvm-unit-tests` green on the first CI head. Cold release gate: deleted `@react-native/gradle-plugin` build dirs, `assembleRelease` + `bundleRelease --no-daemon` BUILD SUCCESSFUL in 9m 4s (plugin `compileKotlin` ran). 16 KB gate PASS on `app-release.apk` and `app-release.aab` (hard FAIL 0; documented RELRO residuals only). `versionName` 0.1.2-alpha / `versionCode` 6. Debug install on Pixel 7 Pro (Android 17, `cheetah`), `MainActivity` resumed
+- Residual: QR scan not exercised (no enrollment stack). Phone smoke of this lot still gates the next Play AAB (#627). Close #1196, #1129, #1130, #1131, and #1170 after #1241 merges
