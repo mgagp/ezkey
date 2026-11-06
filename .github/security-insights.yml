@@ -1,0 +1,65 @@
+# OpenSSF Security Insights: machine-readable facts about this project's security practices.
+# Spec: https://github.com/ossf/security-insights
+# Review during the Monday dependabot-curated full pass; update last-reviewed when checked.
+header:
+  schema-version: 2.2.0
+  last-updated: '2026-11-06'
+  last-reviewed: '2026-11-06'
+  url: https://raw.githubusercontent.com/mgagp/ezkey/main/.github/security-insights.yml
+  comment: |
+    Ezkey is a laboratory project in public alpha, with no SLA. This file states practices;
+    it is not a compliance claim. Honest posture: docs/SECURITY_POSTURE.md.
+
+project:
+  name: Ezkey
+  homepage: https://ezkey.org/
+  administrators:
+    - name: Marc Gagnon
+      social: https://github.com/mgagp
+      primary: true
+  repositories:
+    - name: ezkey
+      url: https://github.com/mgagp/ezkey
+      comment: |
+        Monorepo: backend APIs, Admin UI, mobile apps, SDKs and documentation.
+  documentation:
+    detailed-guide: https://github.com/mgagp/ezkey/blob/main/docs/README.md
+    quickstart-guide: https://github.com/mgagp/ezkey/blob/main/README.md#quick-start
+    release-process: https://github.com/mgagp/ezkey/blob/main/docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md
+    support-policy: https://github.com/mgagp/ezkey/blob/main/SECURITY.md#supported-versions
+  vulnerability-reporting:
+    reports-accepted: true
+    bug-bounty-available: false
+    contact:
+      name: Ezkey security
+      email: security@ezkey.org
+      primary: true
+    policy: https://github.com/mgagp/ezkey/blob/main/SECURITY.md
+    comment: |
+      Report privately through GitHub private vulnerability reporting, or by email if the form
+      is unavailable.
+
+repository:
+  url: https://github.com/mgagp/ezkey
+  status: active
+  accepts-change-request: true
+  accepts-automated-change-request: true
+  core-team:
+    - name: Marc Gagnon
+      social: https://github.com/mgagp
+      primary: true
+  license:
+    url: https://github.com/mgagp/ezkey/blob/main/LICENSE
+    expression: MIT
+  documentation:
+    contributing-guide: https://github.com/mgagp/ezkey/blob/main/CONTRIBUTING.md
+    dependency-management-policy: https://github.com/mgagp/ezkey/blob/main/product-docs/global/hygiene/dependabot/README.md
+    governance: https://github.com/mgagp/ezkey/blob/main/product-docs/global/team-roles.md
+    review-policy: https://github.com/mgagp/ezkey/blob/main/CONTRIBUTING.md#contribution-workflow
+    security-policy: https://github.com/mgagp/ezkey/blob/main/SECURITY.md
+  security:
+    assessments:
+      self:
+        comment: |
+          No formal project-wide self-assessment yet. Maintainer-reviewed hygiene passes are
+          recorded under product-docs/global/hygiene/. No independent third-party assessment.

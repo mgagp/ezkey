@@ -47,6 +47,22 @@ Roadmap milestone `P4-compliance-readiness` is this quality as **operational dis
 (provisioning procedures, recovery-code lifecycle, stable audit artifacts). It is not "start an
 auditor engagement."
 
+## Assurance ladder (exploration)
+
+The project is never the audited party: an adopter's SOC 2 or ISO/IEC 27001 auditor examines the
+adopter, and sees Ezkey as a third-party component and as a source of control evidence. Ezkey aims
+to be a good component and a good evidence source; the mobile apps, which Ezkey publishes, follow
+store policies and OWASP MASVS; the community instance stays out of scope of any standard. The
+proportionate ladder (necessary → facilitator → sponsor-triggered) and the signal passes that feed
+the hygiene lanes are explored in
+[`backlog/ideas/I-2026-11-03-assurance-ladder.md`](backlog/ideas/I-2026-11-03-assurance-ladder.md).
+ISO/IEC 27001:2022 Annex A joins the TSC as a **reference-only** vocabulary for that exploration.
+
+**Decision trace (2026-11-03):** Marc reopened standards posture as a laboratory exploration,
+framed around the adopter as audited party and a proportionate ladder, without reversing the
+"what we do not do" list below. Reason: give adopters a facilitator path and the maintainer a
+cheap signal source for continuous improvement.
+
 ## What we do not do
 
 - No SOC 2 Type I or Type II, no ISO 27001, no attestation-equivalence claim.

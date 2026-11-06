@@ -513,7 +513,7 @@ yarn install --immutable && yarn validate:ci
 ```
 
 **Ruleset (maintainer):** keep required status check **`ci-gate`** only (plus non-check rules as
-desired: deletion / non-fast-forward already on). No other job names need to be required. Broader
+desired: deletion / non-fast-forward / pull request with 0 approvals already on). No other job names need to be required. Broader
 ruleset / Settings backlog: [`engineering/ci-cd-best-practices-plan.md`](engineering/ci-cd-best-practices-plan.md).
 
 **CodeQL (advanced setup):** workflow [`.github/workflows/codeql.yml`](../.github/workflows/codeql.yml)
