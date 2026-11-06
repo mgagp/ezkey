@@ -61,7 +61,7 @@ export const AppProviders: React.FC = () => {
     };
   }, []);
 
-  // Android settings → App languages can change while the app is in the background (#1157).
+  // The per-app language in system settings can change while the app is in the background (#1157).
   useEffect(() => {
     if (!ready) {
       return undefined;

@@ -288,6 +288,7 @@ export const resources = {
           'Controlled test seed payload is missing. Set EZKEY_ENROLLMENT_SEED_BYPASS_QR_PAYLOAD and rebuild.',
       },
       pendingAuth: {
+        captureBlocked: 'Stop recording or mirroring the screen to answer this request.',
         challengeInput: 'Challenge code input',
         challengeInputHint: 'Enter the 2-digit code shown on the sign-in screen',
         requestFailed: 'Request failed.',
@@ -700,6 +701,7 @@ export const resources = {
           'La charge utile de seed de test contrôlée est absente. Définissez EZKEY_ENROLLMENT_SEED_BYPASS_QR_PAYLOAD puis reconstruisez.',
       },
       pendingAuth: {
+        captureBlocked: 'Arrêtez l’enregistrement ou la recopie de l’écran pour répondre à cette demande.',
         challengeInput: 'Saisie du code de challenge',
         challengeInputHint: 'Entrez le code à 2 chiffres affiché sur l’écran de connexion',
         requestFailed: 'Échec de la requête.',

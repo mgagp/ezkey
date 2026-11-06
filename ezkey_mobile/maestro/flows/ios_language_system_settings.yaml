@@ -1,0 +1,75 @@
+# In-app Language and iOS Settings → Ezkey → Language stay in sync both ways (#1157). Needs a phone
+# with French first and English second: iOS hides the row with a single language, and choosing the
+# phone's first language clears the per-app language, so the app shows System default.
+# Debug build + Metro, no backend needed:
+#   maestro test maestro/flows/ios_language_system_settings.yaml
+# Ends on System default, set from the app.
+appId: org.ezkey.mobile
+---
+# App → iOS Settings
+- launchApp:
+    appId: org.ezkey.mobile
+    stopApp: true
+- extendedWaitUntil:
+    visible: "Settings|Paramètres"
+    timeout: 60000
+- tapOn: "Settings|Paramètres"
+- tapOn: "(Language|Langue).*"
+- tapOn:
+    id: "ezkey.language.en"
+- launchApp:
+    appId: com.apple.Preferences
+    stopApp: true
+- scrollUntilVisible:
+    element: "Apps"
+    direction: DOWN
+- tapOn: "Apps"
+- tapOn: "Ezkey"
+- scrollUntilVisible:
+    element: "Langue, .*"
+    direction: DOWN
+- assertVisible: "Langue, (English|Anglais)"
+- takeScreenshot: language_settings1_english_from_app
+# iOS Settings → app. iOS ends the app on this change.
+- tapOn: "Langue, .*"
+- tapOn: "Français"
+- launchApp:
+    appId: org.ezkey.mobile
+- extendedWaitUntil:
+    visible: "Authentificateur Ezkey"
+    timeout: 60000
+- tapOn: "Paramètres"
+- tapOn: "Langue.*"
+- assertVisible:
+    id: "ezkey.language.system"
+    text: ".*, (checked|coché)"
+- takeScreenshot: language_settings2_phone_language_from_settings
+- launchApp:
+    appId: com.apple.Preferences
+    stopApp: true
+- scrollUntilVisible:
+    element: "Apps"
+    direction: DOWN
+- tapOn: "Apps"
+- tapOn: "Ezkey"
+- scrollUntilVisible:
+    element: "Langue, .*"
+    direction: DOWN
+- tapOn: "Langue, .*"
+- tapOn: "English"
+- launchApp:
+    appId: org.ezkey.mobile
+- extendedWaitUntil:
+    visible: "Ezkey Authenticator"
+    timeout: 60000
+- tapOn: "Settings"
+- tapOn: "Language.*"
+- assertVisible:
+    id: "ezkey.language.en"
+    text: ".*, (checked|coché)"
+- takeScreenshot: language_settings3_english_from_settings
+- tapOn:
+    id: "ezkey.language.system"
+- assertVisible:
+    id: "ezkey.language.system"
+    text: ".*, (checked|coché)"

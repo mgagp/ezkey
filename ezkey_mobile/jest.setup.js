@@ -71,6 +71,7 @@ NativeModules.EzkeyPlayUpdateModule = {
 
 NativeModules.EzkeyWindowSecurityModule = {
   setSensitiveScreen: jest.fn(),
+  setCaptureMessage: jest.fn(),
 };
 
 NativeModules.EzkeyAppearanceModule = {

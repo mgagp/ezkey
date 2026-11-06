@@ -39,6 +39,7 @@ export const AppNavigator: React.FC = () => {
       cardStyle: {backgroundColor: colors.background},
       headerLeft: renderHeaderBack,
       headerBackAccessibilityLabel: t('common.back'),
+      headerBackTruncatedTitle: t('common.back'),
     }),
     [colors, t],
   );

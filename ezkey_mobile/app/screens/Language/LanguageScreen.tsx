@@ -18,8 +18,8 @@ const optionLabels: Record<LanguagePreference, string> = {
 /**
  * Manual language picker for the app.
  *
- * The choice is saved and applied immediately via i18next; on Android 13+ it is also the
- * system per-app language (Settings → App languages), kept in sync both ways (#1157).
+ * The choice is saved and applied immediately via i18next; on iOS and Android 13+ it is also
+ * the system per-app language, kept in sync both ways (#1157).
  *
  * @since 2025
  */
@@ -73,6 +73,7 @@ export const LanguageScreen: React.FC = () => {
           return (
             <Pressable
               key={option}
+              testID={`ezkey.language.${option}`}
               style={({pressed}) => [
                 styles.item,
                 index === LANGUAGE_OPTIONS.length - 1 && styles.itemLast,
