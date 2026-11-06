@@ -132,6 +132,14 @@ Phase 2 was rebased onto that squash with `git rebase --onto origin/main cbd6d66
 A plain `git rebase origin/main` tried to replay all 21 phase-1 commits, because
 a squash merge does not make those commits ancestors of `main`.
 
+## 2026-11-06 — CodeQL user-controlled-bypass
+
+Alert #176 on `outcomeFromCreate` was not the fail-closed decision. The rule
+treats any method whose name contains `auth` as an authentication method, and
+`authAttemptId()` was called only inside the `if` that also sees the sign-in
+checkbox. The id is now read before that branch, on every path. The checkbox
+still cannot turn a required code off.
+
 ## Method friction
 
 - The plan named PR 964. That PR is a merged Acme demo-app change. The Jenkins

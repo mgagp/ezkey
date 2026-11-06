@@ -143,11 +143,14 @@ public final class EzkeyLabLoginSupport {
             throws ChallengeMissingException {
         Objects.requireNonNull(created, "created");
         Integer challenge = created.authAttemptChallenge();
+        // Read the id on every path. The accessor is named authAttemptId, so CodeQL treats
+        // it as an authentication method. Calling it only inside the if below would look
+        // like the sign-in checkbox can skip that method.
+        int attemptId = created.authAttemptId();
         if (challenge == null && forceChallenge) {
-            throw new ChallengeMissingException(created.authAttemptId());
+            throw new ChallengeMissingException(attemptId);
         }
-        return new CreateOutcome(
-                created.authAttemptId(), challenge, created.timeoutSeconds(), created.expiresAt());
+        return new CreateOutcome(attemptId, challenge, created.timeoutSeconds(), created.expiresAt());
     }
 
     /**
