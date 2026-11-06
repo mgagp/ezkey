@@ -390,7 +390,8 @@ test-session: $(BUILD_DIR)/ezkey_session.o $(TEST_DIR)/test_session_harness.c | 
 
 # Harness: attempt-line fields + signal-safe emit gate (#1011).
 # #1016 P-a: external timeout so a blocking /dev/log write cannot hang CI.
-# macOS ships timeout only from version 27; before that, coreutils installs it as gtimeout (#1199).
+# macos-26 has no timeout; Homebrew's coreutils provides it there (#1199). gtimeout is only a
+# safety net for an install that uses the g prefix.
 TIMEOUT_CMD ?= $(shell command -v timeout 2>/dev/null || command -v gtimeout 2>/dev/null)
 TIMEOUT_MISSING = error: timeout or gtimeout required (Linux: coreutils; macOS before 27: brew install coreutils)
 TEST_DIAG_TIMEOUT_SECS ?= 15

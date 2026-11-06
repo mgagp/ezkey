@@ -615,7 +615,7 @@ jobs:
         with:
           persist-credentials: false
 
-      # macos-26 has no timeout command; the Makefile falls back on gtimeout.
+      # macos-26 has no timeout command; Homebrew's coreutils provides one under that name.
       - name: Install coreutils
         run: brew install coreutils
 
