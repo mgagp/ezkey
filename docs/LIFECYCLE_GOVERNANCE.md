@@ -240,7 +240,7 @@ Living status enum values also include terminal / failure paths such as `EXPIRED
 | Create | Yes | — | — | Initiates credential binding |
 | Deactivate | Yes (VERIFIED + active only) | Yes | Optional | Blocks authentication |
 | Reactivate | Yes (VERIFIED + inactive only) | Yes | Optional | Restores authentication |
-| Revoke | Yes (VERIFIED only) | No | Required | Permanently invalidates credential |
+| Revoke | Yes (any state except already REVOKED, including CREATED and BOUND) | No | Required | Permanently invalidates credential |
 | Delete | Conditional ¹ | No | Required | Physically removes enrollment record |
 
 ¹ Delete requires: zero authentication history **and** enrollment is not linked as any admin's MFA enrollment.

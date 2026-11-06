@@ -17,7 +17,7 @@ These analogies are **orientation tools**, not permission matrices. Authoritativ
 
 **Decision reflex:** when a feature touches heartbeat, integrity validation, manipulation remediation, encryption keys, or platform-wide alerts → default **Global Admin only**. When it touches integration/enrollment/API-key workflows → Tenant Admin is in scope; confirm whether Global Admin also needs visibility.
 
-**Channel send actions (email, SMS):** adapter/SMTP **configuration** = Global Admin (TI). **Send** in enrolment/activation workflows = **Global Admin or Tenant Admin** — whichever role operates that workflow in the deployment geometry below.
+**Channel send actions (email, SMS):** connector **configuration** = Global Admin (TI), with provider credentials kept on the connector side (ADR-0018). **Send** in enrolment workflows = **Global Admin or Tenant Admin** — whichever role operates that workflow in the deployment geometry below.
 
 ## Admin UI copy posture
 
@@ -29,7 +29,7 @@ Use a simple role-aware vs role-agnostic split for operator-facing copy:
 
 When copy can become inaccurate across scopes, prefer neutral wording such as "within your scope" over tenant-only phrasing.
 
-**Integrated delivery:** showing enrollment QR and binding challenge in the Admin UI without SMTP or SMS is a **valid product posture**, not a temporary preview. In the Admin UI, the educational note is a **collapsed disclosure** by default (summary label; expand for full guidance). Operators may still split materials across their own channels; optional SMTP-assisted delivery remains a later configuration path (`V-2026-0005`, `I-2026-0023`, `TB-2026-07-25-integrated-delivery-posture`).
+**Integrated delivery:** showing enrollment QR and binding challenge in the Admin UI without SMTP or SMS is a **valid product posture**, not a temporary preview. In the Admin UI, the educational note is a **collapsed disclosure** by default (summary label; expand for full guidance). Operators may still split materials across their own channels; optional email-assisted delivery through a connector remains a later configuration path (`V-2026-11-04-connector-spi`, `I-2026-0023`, `TB-2026-07-25-integrated-delivery-posture`).
 
 **Bind session:** tell the person to have both the QR and the 6-digit challenge in hand before scanning. They may receive them at different times and through any channels; how the challenge reaches them is the operator's choice. See [one bind session](../../ezkey_mobile/docs/MOBILE_APP_STATE_MACHINE.md#product-intent-one-bind-session).
 
