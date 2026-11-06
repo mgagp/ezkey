@@ -17,7 +17,7 @@ full pass (keep, tune, or roll back).
 
 | Layer | Cadence | Notes |
 |-------|---------|-------|
-| Dependabot opens PRs | **Daily** for Maven (`/`) and npm (`/ezkey-admin-ui`, `/ezkey-sdk/javascript`, `/ezkey_mobile`); **weekly** for `github-actions` and `pip` | Cooldown ~**3** days patch/minor, ~**7** days semver-major (npm/maven/pip); Actions uses `default-days: 3` only (schema has no semver keys). `open-pull-requests-limit: 10` per ecosystem — see `.github/dependabot.yml` |
+| Dependabot opens PRs | **Daily** for Maven (`/`) and npm (`/ezkey-admin-ui`, `/ezkey-sdk/javascript`, `/ezkey_mobile`); **weekly** for `github-actions`, `pip`, and npm at `/bruno` | Cooldown ~**3** days patch/minor, ~**7** days semver-major (npm/maven/pip); Actions uses `default-days: 3` only (schema has no semver keys). `open-pull-requests-limit: 10` per ecosystem — see `.github/dependabot.yml` |
 | Agent curation — weekday light | **Weekdays 09:14 ET** | T1–T3 + Orval **O0/O1** only; **silent when queue empty**; default autonomy on that scope |
 | Agent curation — Monday full | **Monday 09:14 ET** (or first working day) | Full lots + **Java BOM** + **Mobile RN** pulses (`yarn deps:monitor --strict`) + holds review; one campaign note from `TEMPLATE.md` |
 | Concurrency | **One owning pass per day** | Before merge/close/hygiene PR: if concurrent merges (~30 min) or another in-flight pass → back off, report only |
@@ -52,8 +52,16 @@ Dependabot alone cannot prove current:
 | Admin UI | `npm` at `/ezkey-admin-ui` (daily + cooldown) | Orval via **Orval risk grid** (skill); evaluate **separately** from mobile |
 | Ezkey Mobile (Yarn 4) | `npm` at `/ezkey_mobile` (daily + cooldown) | **Mobile RN pulse** Monday full; Orval via **Orval risk grid** (separate from Admin UI) |
 | SDK JS | `npm` at `/ezkey-sdk/javascript` (daily + cooldown) | — |
+| Bruno CLI | `npm` at `/bruno` (weekly + cooldown) | Smoke with `./scripts/bruno-health.sh --suite g0` |
 | GitHub Actions | `github-actions` at `/` (weekly); group `codeql-action` (`github/codeql-action/*`) so init/analyze bump together (#1061/#1063 failed alone; fixed by #1072) | — |
 | Python CLI | `pip` at `/ezkey-cli-python` (weekly) | — |
+
+**Alerts (enabled 2026-11-06, Marc's decision).** Version updates and alerts are complementary:
+transitive dependencies rarely move through version-update PRs, so lockfiles also need a refresh.
+Triage by **what ships**, not by GitHub's `runtime` / `development` label, which is unreliable on
+the Yarn mobile lockfile: at activation, 79 of its 82 alerts were outside the React Native release
+bundle (checked from Android and iOS source maps). Fix what ships first; refresh tooling lockfiles;
+dismiss the rest with a written reason. Security-update PRs stay off until the stock is triaged.
 
 **Maven dependency graph:** Dependabot PR updates are separate from GitHub’s Insights dependency
 graph. Ezkey submits the full transitive Maven graph via

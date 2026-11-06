@@ -94,11 +94,6 @@ RN-core / vision-camera / navigation; site / android-gradle / docker / compose m
 (`dependabot.yml` ~L196–201; automatic Gradle submission declined for `includeBuild` /
 `node_modules` coupling).
 
-**Stale comment flag:** `dependabot.yml` ~L170–174 still says `product-docs/site` `package-lock.json`
-is gitignored so alerts cover direct deps only. That is **stale since [#763](https://github.com/mgagp/ezkey/pull/763)** —
-the lockfile is committed and root `.gitignore` has `!product-docs/site/package-lock.json`. Fix the
-comment in a Dependabot/docs hygiene PR (not blocking this inventory).
-
 Security updates are not delayed by cooldown (Dependabot product behavior).
 
 #### 1.1.3 LTS toolchain policy (CI-enforced)
@@ -156,9 +151,10 @@ alerts + dependency-review land). Record the choice in the Monday campaign note 
 | **Dependency graph** | Was **disabled** (Maven submission failed on runs [38298454193](https://github.com/mgagp/ezkey/actions/runs/38298454193) and [38447903477](https://github.com/mgagp/ezkey/actions/runs/38447903477)). Marc **re-enabled** 2026-10-13. Operator posture documented in [#798](https://github.com/mgagp/ezkey/pull/798) (merged `638b4214`). | **G4 done** |
 | **Automatic dependency submission** | Docs say Disabled 2026-10-08; Actions still lists dynamic workflow type | **to confirm by Marc in Settings** (listing ≠ enabled) |
 | **Dependabot version updates** | `dependabot.yml` + open Dependabot PRs + dynamic “Dependabot Updates” workflow | **Verified on** |
-| **Dependabot alerts / security updates** | `SECURITY.md` announces them; `GET …/dependabot/alerts` returned *“Dependabot alerts are disabled”* (2026-10-14) | **Conflict — Marc’s call in Settings (new P0)** |
-| **Secret scanning** | Claimed in `SECURITY.md`; alerts API 403 | **to confirm by Marc in Settings** |
-| **Secret scanning push protection** | Claimed in `SECURITY.md`; not API-visible here | **to confirm by Marc in Settings** |
+| **Dependabot alerts** | Enabled 2026-11-06 (`PUT …/vulnerability-alerts`, Marc's decision): 156 open at activation, triage per [`hygiene/dependabot`](../../product-docs/global/hygiene/dependabot/README.md) § *Alerts* | **Verified on** |
+| **Dependabot security updates** | `security_and_analysis.dependabot_security_updates: disabled`, deliberately until the initial stock is triaged (they would enter `dependabot-auto-merge.yml`) | **Off by decision** (2026-11-06) |
+| **Secret scanning** | `security_and_analysis.secret_scanning: enabled` (API, 2026-11-05) | **Verified on** |
+| **Secret scanning push protection** | `security_and_analysis.secret_scanning_push_protection: enabled` (API, 2026-11-05) | **Verified on** |
 | **Code scanning — Advanced** | #805 merged; five analyses uploaded on `main` at `f26cbe55` | **G1 done** |
 | **CodeQL query suite** | `security-extended` restored in [#809](https://github.com/mgagp/ezkey/pull/809) (`287757ed`) | **Done** — default suite had undercounted (log-injection / sensitive-log) |
 | **CodeQL open-alert baseline on `main`** | Re-analyze under `security-extended` after #809/#810; record count in a later inventory refresh | **Pending re-count** (default-suite 2026-10-14 figure undercounts) |
@@ -232,8 +228,8 @@ Value: evaluator / supply-chain / operator impact (High / Med / Low).
 | # | Practice | Ezkey today | Gap | Effort | Value | Priority |
 |---|----------|-------------|-----|--------|-------|----------|
 | G1 | CodeQL Advanced only (no default conflict) | #805 merged; 5 analyses on `main` at `f26cbe55` | None — **done** | — | — | **Done** |
-| G2 | Dependabot **alerts** + security updates | Version updates strong; API said disabled vs `SECURITY.md` | Enable alerts if off; align `SECURITY.md` | S | High | **P0** |
-| G3 | Secret scanning + push protection | Claimed; not API-verified | Confirm on; enable if off | S | High | **P0** |
+| G2 | Dependabot **alerts** + security updates | Alerts on since 2026-11-06; `SECURITY.md` aligned | Triage the stock, then decide security updates | S | High | **Alerts done**; security updates after triage |
+| G3 | Secret scanning + push protection | Both enabled (API, 2026-11-05) | None | — | High | **Done** |
 | G4 | Dependency graph on; automatic submission off | Graph re-enabled 2026-10-13; #798 merged (`638b4214`) | Confirm automatic submission still Disabled in Settings | S | High | **Done** (graph + docs); confirm automatic submission |
 | G7 | Dependency review Action on PRs | Absent | After G2: add action limited to PRs that touch manifests; fail on high/critical | M | High | **P1** |
 | G8 | `SECURITY.md` Advanced CodeQL wording | Updated in #808 | Reconfirm after Marc verifies Settings toggles | S | Med | P1 |
@@ -265,9 +261,9 @@ Value: evaluator / supply-chain / operator impact (High / Med / Low).
 
 Owner suggestions in parentheses. **Marc** required wherever Settings is named.
 
-1. **Confirm / enable Dependabot alerts and security updates** (Marc; Fred align `SECURITY.md`) —
-   **new P0** (API “disabled” vs SECURITY announcement).
-2. **Confirm / enable secret scanning and push protection** (Marc; Christophe spot-check).
+1. ~~Enable Dependabot alerts~~ — **done** 2026-11-06, `SECURITY.md` aligned. Security updates stay
+   off until the initial stock is triaged.
+2. ~~Confirm secret scanning and push protection~~ — **done**, verified on by API 2026-11-05.
 3. ~~Merge [#798](https://github.com/mgagp/ezkey/pull/798)~~ — **done** (`638b4214`); graph
    must stay enabled; automatic submission stays Disabled (**G4**).
 4. **Refresh `SECURITY.md` “practices in use”** after the Settings toggles above are verified (Fred) —
@@ -333,10 +329,10 @@ Copy into a maintainer note; check each in **Settings → Code security / Rules 
 - [x] **CodeQL Advanced** — done via #805 uploads on `main` (`f26cbe55`); reconfirm UI still Advanced if desired.
 - [x] **Dependency graph:** Enabled (Marc 2026-10-13; document via #798).
 - [ ] **Automatic dependency submission:** Disabled (dedicated Maven workflow feeds the graph).
-- [ ] **Dependabot alerts:** Enabled (reconcile with 2026-10-14 API “disabled” signal) — **P0**.
-- [ ] **Dependabot security updates:** Enabled — **P0**.
-- [ ] **Secret scanning:** Enabled — **P0**.
-- [ ] **Push protection** (secret scanning): Enabled — **P0**.
+- [x] **Dependabot alerts:** Enabled (2026-11-06).
+- [ ] **Dependabot security updates:** Off by decision until the initial stock is triaged (2026-11-06).
+- [x] **Secret scanning:** Enabled (API, 2026-11-05).
+- [x] **Push protection** (secret scanning): Enabled (API, 2026-11-05).
 - [ ] **Private vulnerability reporting:** Enabled (API already `true` — reconfirm UI).
 - [ ] **Ruleset “Basic protection”:** still requires **`ci-gate` only** for status checks (do not add path-filtered job names).
 - [ ] Whether **classic branch protection** on `main` still exists alongside the ruleset.
