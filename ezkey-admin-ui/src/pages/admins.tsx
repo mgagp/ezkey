@@ -36,6 +36,11 @@ import { isEvaluatorTempSession } from '@/lib/auth';
 import { adminDemoPresets, isDemoMode } from '@/lib/demo-mode';
 import { isPhoneNumberInputValid, normalizePhoneNumberInput } from '@/lib/phone-number';
 import { canReissuePendingAdministratorActivationCode } from '@/lib/admin-pending-activation-eligibility';
+import {
+  RECOVERY_CODES_ISSUANCE_COPY_KEYS,
+  recoveryCodesIssuanceKind,
+  type RecoveryCodesIssuanceKind,
+} from '@/lib/admin-recovery-codes-issuance';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
 import {
   getGetAdminByIdQueryKey,
@@ -446,6 +451,9 @@ function AdminDetailDialog({
   const [regeneratedCodesCopied, setRegeneratedCodesCopied] = useState(false);
   const [regeneratedCodesSavedConfirmed, setRegeneratedCodesSavedConfirmed] = useState(false);
   const [recoveryCodesDialogMode, setRecoveryCodesDialogMode] = useState<'issue-initial' | 'regenerate'>('regenerate');
+  // Frozen when the dialog opens: the detail refetch after issuance clears recoveryCodesExhausted.
+  const [issuanceKind, setIssuanceKind] = useState<RecoveryCodesIssuanceKind>('initial');
+  const issuanceCopy = RECOVERY_CODES_ISSUANCE_COPY_KEYS[issuanceKind];
   const [reissueActivationOpen, setReissueActivationOpen] = useState(false);
   const [reissuedActivation, setReissuedActivation] = useState<AdminActivationCodeReissueShape | null>(null);
   const [activationReissueCopied, setActivationReissueCopied] = useState(false);
@@ -516,12 +524,12 @@ function AdminDetailDialog({
       setRegeneratedCodes(data);
       setRegeneratedCodesCopied(false);
       setRegeneratedCodesSavedConfirmed(false);
-      toast(t('detail.toastRecoveryCodesIssued', { username: adm!.username }), 'success');
+      toast(t(issuanceCopy.toast, { username: adm!.username }), 'success');
       await queryClient.invalidateQueries({ queryKey: ['admins'] });
       await queryClient.invalidateQueries({ queryKey: getGetAdminByIdQueryKey(adm!.adminId!) });
     },
     onError: (e: unknown) =>
-      toast(getTranslatedApiError(e, t, t('detail.errorRecoveryCodesIssue')), 'error'),
+      toast(getTranslatedApiError(e, t, t(issuanceCopy.error)), 'error'),
   });
 
   const reissueActivationCodeMutation = useMutation({
@@ -547,6 +555,7 @@ function AdminDetailDialog({
 
   const fullName = [adm.firstName, adm.lastName].filter(Boolean).join(' ');
   const canShowIssueInitialAction = canShowIssueInitialAdminRecoveryCodesAction(adm);
+  const issueActionLabel = t(RECOVERY_CODES_ISSUANCE_COPY_KEYS[recoveryCodesIssuanceKind(adm)].action);
   const canIssueInitialCodesNow = canIssueInitialAdminRecoveryCodes(adm);
   const issueInitialCodesDisabledReason = canShowIssueInitialAction && !canIssueInitialCodesNow
     ? t('detail.issueInitialRecoveryCodesBlockedFirstLoginRequired')
@@ -570,6 +579,7 @@ function AdminDetailDialog({
 
   const openIssueInitialDialog = () => {
     setRecoveryCodesDialogMode('issue-initial');
+    setIssuanceKind(recoveryCodesIssuanceKind(adm));
     setRegeneratedCodes(null);
     setRegeneratedCodesCopied(false);
     setRegeneratedCodesSavedConfirmed(false);
@@ -761,7 +771,7 @@ function AdminDetailDialog({
                       disabled
                     >
                       <KeyRound className="size-3.5" />
-                      {t('detail.issueInitialRecoveryCodes')}
+                      {issueActionLabel}
                     </Button>
                   </span>
                 </Tooltip>
@@ -773,7 +783,7 @@ function AdminDetailDialog({
                   onClick={openIssueInitialDialog}
                 >
                   <KeyRound className="size-3.5" />
-                  {t('detail.issueInitialRecoveryCodes')}
+                  {issueActionLabel}
                 </Button>
               )
             )}
@@ -867,7 +877,7 @@ function AdminDetailDialog({
         onClose={handleCloseRegenerateDialog}
         title={
           recoveryCodesDialogMode === 'issue-initial'
-            ? t('detail.issueInitialRecoveryCodesDialogTitle', { username: adm.username })
+            ? t(issuanceCopy.dialogTitle, { username: adm.username })
             : t('detail.regenerateRecoveryCodesDialogTitle', { username: adm.username })
         }
         size="md"
@@ -878,7 +888,7 @@ function AdminDetailDialog({
             <Alert variant="success">
               {regeneratedCodes.message
                 ?? (recoveryCodesDialogMode === 'issue-initial'
-                  ? t('detail.issueInitialRecoveryCodesSuccess')
+                  ? t(issuanceCopy.success)
                   : t('detail.regenerateRecoveryCodesSuccess'))}
             </Alert>
             <div className="border-2 border-error bg-error/5 p-3 flex gap-2">
@@ -942,7 +952,7 @@ function AdminDetailDialog({
           <div className="space-y-4">
             <Alert variant="warning">
               {recoveryCodesDialogMode === 'issue-initial'
-                ? t('detail.issueInitialRecoveryCodesIntro')
+                ? t(issuanceCopy.intro)
                 : t('detail.regenerateRecoveryCodesIntro')}
             </Alert>
             <div className="border-2 border-error bg-error/5 p-3 flex gap-2">
@@ -966,7 +976,7 @@ function AdminDetailDialog({
                   regenerateRecoveryCodesMutation.error ?? issueInitialRecoveryCodesMutation.error,
                   t,
                   recoveryCodesDialogMode === 'issue-initial'
-                    ? t('detail.errorRecoveryCodesIssue')
+                    ? t(issuanceCopy.error)
                     : t('detail.errorRecoveryCodesRegenerate'),
                 )}
               </Alert>
@@ -992,7 +1002,7 @@ function AdminDetailDialog({
                 }}
               >
                 {recoveryCodesDialogMode === 'issue-initial'
-                  ? t('detail.issueInitialRecoveryCodesConfirm')
+                  ? t(issuanceCopy.confirm)
                   : t('detail.regenerateRecoveryCodesConfirm')}
               </Button>
             </div>
