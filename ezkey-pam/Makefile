@@ -218,8 +218,7 @@ check-source:
 		echo "error: pam_info() must not appear in pam_ezkey.c (#941 — use pam_prompt)" >&2; exit 1; \
 	fi
 	# #1016 P-a: test-diag must keep an external timeout watchdog.
-	@grep -qE '^[[:space:]]*timeout[[:space:]].*test_diag_harness' $(MAKEFILE_LIST) || \
-		grep -qE 'timeout --foreground.*test_diag_harness' $(MAKEFILE_LIST) || \
+	@grep -qE '^[[:space:]]*[$$][(]TIMEOUT_CMD[)] --foreground.*test_diag_harness' $(MAKEFILE_LIST) || \
 		(echo "error: test-diag must run under timeout (#1016 P-a)" >&2; exit 1)
 	# #1016 C1/C2: body cap + empty PROXY + NETRC ignored (statement form).
 	@grep -qE 'EZKEY_HTTP_BODY_MAX' $(SRC_DIR)/ezkey_http.h || \
@@ -391,15 +390,17 @@ test-session: $(BUILD_DIR)/ezkey_session.o $(TEST_DIR)/test_session_harness.c | 
 
 # Harness: attempt-line fields + signal-safe emit gate (#1011).
 # #1016 P-a: external timeout so a blocking /dev/log write cannot hang CI.
+# macOS ships timeout only from version 27; before that, coreutils installs it as gtimeout (#1199).
+TIMEOUT_CMD ?= $(shell command -v timeout 2>/dev/null || command -v gtimeout 2>/dev/null)
+TIMEOUT_MISSING = error: timeout or gtimeout required (Linux: coreutils; macOS before 27: brew install coreutils)
 TEST_DIAG_TIMEOUT_SECS ?= 15
 test-diag: $(BUILD_DIR)/ezkey_diag.o $(BUILD_DIR)/ezkey_sanitize.o \
 		$(TEST_DIR)/test_diag_harness.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -I$(SRC_DIR) $(TEST_DIR)/test_diag_harness.c \
 		$(BUILD_DIR)/ezkey_diag.o $(BUILD_DIR)/ezkey_sanitize.o \
 		-o $(BUILD_DIR)/test_diag_harness
-	@command -v timeout >/dev/null 2>&1 || \
-		(echo "error: coreutils timeout required for test-diag watchdog (#1016 P-a)" >&2; exit 1)
-	timeout --foreground $(TEST_DIAG_TIMEOUT_SECS)s $(BUILD_DIR)/test_diag_harness
+	@test -n "$(TIMEOUT_CMD)" || (echo "$(TIMEOUT_MISSING)" >&2; exit 1)
+	$(TIMEOUT_CMD) --foreground $(TEST_DIAG_TIMEOUT_SECS)s $(BUILD_DIR)/test_diag_harness
 
 # Harness: body cap / PROXY "" / json long / URL redact (#1016 C1/C2/C4/C8).
 TEST_HTTP_TIMEOUT_SECS ?= 30
@@ -408,9 +409,8 @@ test-http: $(BUILD_DIR)/ezkey_http.o $(BUILD_DIR)/ezkey_sanitize.o \
 	$(CC) $(CFLAGS) -I$(SRC_DIR) $(TEST_DIR)/test_http_harness.c \
 		$(BUILD_DIR)/ezkey_http.o $(BUILD_DIR)/ezkey_sanitize.o \
 		-lcurl -lm -o $(BUILD_DIR)/test_http_harness
-	@command -v timeout >/dev/null 2>&1 || \
-		(echo "error: timeout required for test-http" >&2; exit 1)
-	timeout --foreground $(TEST_HTTP_TIMEOUT_SECS)s $(BUILD_DIR)/test_http_harness
+	@test -n "$(TIMEOUT_CMD)" || (echo "$(TIMEOUT_MISSING)" >&2; exit 1)
+	$(TIMEOUT_CMD) --foreground $(TEST_HTTP_TIMEOUT_SECS)s $(BUILD_DIR)/test_http_harness
 
 # Harness: wait/HTTP/URL decision contracts (#1016 cycle 2b P1).
 test-decision: $(BUILD_DIR)/ezkey_challenge.o $(BUILD_DIR)/ezkey_sanitize.o \

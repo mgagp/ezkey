@@ -49,7 +49,8 @@ that owns the API key.
 
 **Platform note:** Linux CI (Ubuntu + Rocky containers) is the reference for
 the stub suites. `make test` also runs on macOS (#1199): same code, Apple's
-`libpam` and `libcurl`, cJSON compiled in, checksum-pinned. There is no macOS
+`libpam` and `libcurl`, cJSON compiled in, checksum-pinned. Before macOS 27,
+it needs `brew install coreutils` for the `timeout` watchdog. There is no macOS
 install yet (#1202): `make install` refuses, because a misplaced module can lock
 out `sshd` and `sudo` ([F0 note](../product-docs/global/hygiene/pam-macos/2026-11-04-f0-feasibility.md)).
 

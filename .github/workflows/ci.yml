@@ -615,6 +615,10 @@ jobs:
         with:
           persist-credentials: false
 
+      # macos-26 has no timeout command; the Makefile falls back on gtimeout.
+      - name: Install coreutils
+        run: brew install coreutils
+
       - name: make test (check-source + compile + harnesses + hardening)
         run: make test
 
