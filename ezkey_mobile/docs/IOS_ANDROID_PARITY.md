@@ -7,7 +7,7 @@ not on screens: all TypeScript (screens, flows, protocol, signed-payload checks)
 behavior differs only where the native layer or the OS differs.
 
 Legend: **=** same behavior · **≈** equivalent by a different mechanism (reason given) · **—** not
-applicable on this platform · **open** not proven yet.
+applicable on this platform · **≠** accepted, intentional difference · **open** not proven yet.
 
 ## Core flow and protocol
 
@@ -37,7 +37,7 @@ applicable on this platform · **open** not proven yet.
 | QR enrollment capture | VisionCamera + ML Kit | VisionCamera + AVFoundation object output; `NSCameraUsageDescription` restored 2026-11-06 (lost in the rebuild, iOS ends an app that requests the camera without it) | **≈** / **open** on device | The simulator has no camera; F2a bypass for tests |
 | No-telemetry guard | CI: no `datatransport` in the APK (#1147, #1150) | CI: no telemetry pod, privacy manifests declare no tracking or collection (`ios-privacy-check.sh`) | **≈** | iOS does not link ML Kit |
 | App language (#1157) | Settings → App languages (Android 13+), `LocaleManager` | Settings → Ezkey → Language, `AppleLanguages` in the app's own defaults; declared in `CFBundleLocalizations` | **≈** | XCTest `EzkeyLocaleModuleTests`, Maestro `ios_language.yaml`, `ios_language_system_settings.yaml`. iOS relaunches the app after a change in Settings, hides the row on a phone with one language, and treats the phone's first language as no choice (the app then shows System default). Permission prompts (`fr.lproj/InfoPlist.strings`) follow an in-app change at the next launch. Time format seen on the simulator with a fr-CA phone: `09:02` (Android: `09 h 02`) |
-| Screenshots on Approve / Deny (#1154) | Blocked (`FLAG_SECURE`) | **Not blocked**: iOS has no public API for this | **open** (decision) | The request is short-lived and the key signature carries the guarantee. iOS-only workaround not used: a secure text field layer, undocumented behavior |
+| Screenshots on Approve / Deny (#1154) | Blocked (`FLAG_SECURE`) | **Not blocked**: iOS has no public API for this | **≠** | Accepted as intentional with Marc, 2026-11-06: the request is short-lived and the key signature carries the guarantee. The known workaround (a secure text field layer) relies on undocumented behavior: judged too fragile for now, so not a final decision on it |
 | App switcher / Recents thumbnail on Approve / Deny (#1154) | Hidden (`FLAG_SECURE`) | Hidden: cover window shown when the scene deactivates | **≈** | Simulator, 2026-11-06: snapshot in `Library/SplashBoard` is blank on Approve / Deny, normal on other screens; XCTest `EzkeyWindowSecurityModuleTests` |
 | Screen recording / mirroring on Approve / Deny (#1154) | Black in the recording, the user keeps the screen | Cover with a notice on the phone too; Approve and Deny are blocked until the capture stops | **≈** / **open** on device | XCTest only: the simulator does not report a capture (`UIScreen.isCaptured`). Real capture needs step 6 |
 | Third-party overlays on Approve / Deny (#1154) | Hidden, obscured touches dropped | No third-party overlays on iOS | **—** | |
