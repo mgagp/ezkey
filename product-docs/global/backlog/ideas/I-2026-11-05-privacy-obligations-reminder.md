@@ -6,7 +6,7 @@
 - **Status:** `parked`
 - **Priority:** `P3`
 - **Created at:** `2026-11-05`
-- **Updated at:** `2026-11-05`
+- **Updated at:** `2026-11-06`
 - **Last reviewed at:** `2026-11-05`
 - **Component tags:** `core`, `admin-api`, `docs`
 - **Captured by:** Marc
@@ -26,6 +26,15 @@ proportionate.
 - **Right to export** personal data in a simple, standard technological format.
 - **Connectors (`#1206`):** a mail or SMS provider learns who is enrolling where, which makes it a processor
   for the operator. The operator chooses it and answers for it.
+- **Send audit (`#1206`):** each send writes the full recipient address to the tamper-evident chain, to answer
+  "where did this QR go?" in an investigation.
+
+## Hypothesis to check
+
+Marc's understanding, not verified (2026-11-06): Law 25 may allow keeping what is required for the normal conduct
+of business. Strong authentication, with investigations over a longer retention period, could fall within that
+for this segment. This is an allegation to confront with the official sources of the Quebec authority concerned
+before relying on it.
 
 ## Trigger to reopen
 

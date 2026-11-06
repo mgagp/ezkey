@@ -377,7 +377,7 @@ error, timeout and rejected credential, so CI, QA and new connector prototypes s
    ([`TB-2026-11-06`](../../backlog/TB-2026-11-06-connector-delivery-contract-v0.md)).
 2. **QR format in the job:** decided, a PNG in base64 rendered by the core (same brief).
 3. **Recipient:** decided, the enrollment's `contactEmail` only, present at send time (same brief).
-4. **Audit:** what is recorded for the recipient, given it is personal data?
+4. **Audit:** decided, the full address in the audit entry, never in application logs (same brief).
 5. **Email wording and locale:** the message must tell the person to have the code in hand before
    scanning, and state the expected server. Who owns the template?
 6. **What the health check returns.**

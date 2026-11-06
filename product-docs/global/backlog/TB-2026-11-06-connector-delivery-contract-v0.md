@@ -25,7 +25,7 @@ Taken one at a time with Marc.
 | 1 | Authentication between Ezkey and a delivery connector | Bearer token per connector, with the rules below | 2026-11-06 |
 | 2 | QR format in the job | PNG in base64, rendered by the core, with the rules below | 2026-11-06 |
 | 3 | Recipient | The enrollment's `contactEmail` only, present at send time, with the rules below | 2026-11-06 |
-| 4 | What the audit records about the recipient | Open | |
+| 4 | What the audit records about the recipient | The full address, with the rules below | 2026-11-06 |
 | 5 | Email wording, locale and template owner | Open | |
 | 6 | What the health check returns | Open | |
 
@@ -76,6 +76,22 @@ and send again.
 one field at `CREATED`; the other fields keep today's rule. The change is audited and reconciled with
 `docs/LIFECYCLE_GOVERNANCE.md`. Correcting an address before a send is normal. After a send to a wrong address,
 the answer stays revoke and recreate, and the screen can say so.
+
+### 4. Audit of the recipient
+
+An investigation must answer "where did this QR go?". The address can change at `CREATED` and the enrollment can
+be deleted, so a reference is not enough. A masked address can leave the question unanswered, and a plain hash of
+an email is easy to reverse by guessing. Editing an enrollment already writes `contactEmail` in clear to the audit
+(`EnrollmentUpdateService`), so this adds no new kind of data.
+
+- **The entry holds:** send id, enrollment, operator, connector, template and locale, recipient, outcome, typed
+  error code and provider reference.
+- **It never holds:** the QR, the token or raw provider text.
+- **The address stays out of application logs,** on both sides. The canary test checks this with a recognizable
+  recipient.
+
+**Limit accepted:** the address stays in the tamper-evident chain, and erasure is not settled
+([`I-2026-11-05`](ideas/I-2026-11-05-privacy-obligations-reminder.md)).
 
 ## Configuration guidance
 
