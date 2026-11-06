@@ -398,7 +398,7 @@ This lifecycle is intentionally more complex than other entities because encrypt
 
 **Scope.** Recovery codes exist only for admins (Global Admin and Tenant Admin). Regular user enrollments do not have recovery codes. This is a deliberate asymmetry: admins need a self-service fallback because being locked out of the admin console has operational consequences for the entire instance. End-user recovery follows a different path — an admin can deactivate and re-enroll the user.
 
-**Lifecycle.** Recovery codes follow a simple generate-and-replace model. They are consumable artifacts — each code can be used once. When a new set is generated (regeneration), all remaining codes from the previous set are invalidated. There is no individual code deactivation or reactivation — the entire set is replaced.
+**Lifecycle.** Recovery codes follow a simple generate-and-replace model. They are consumable artifacts — each code can be used once. When a new set is generated (regeneration), all remaining codes from the previous set are invalidated. There is no individual code deactivation or reactivation — the entire set is replaced. A set whose codes have all been used is **exhausted**, not "never issued": the stored set is empty rather than absent, and operator copy offers a new set instead of a first issuance (#1244).
 
 **Relationship to enrollment.** An admin has an MFA enrollment (their login credential) and recovery codes as two independent properties. Revoking the admin's enrollment does not invalidate their recovery codes, and regenerating recovery codes does not affect the enrollment. They are parallel branches of the admin's security profile, not a parent-child chain.
 
