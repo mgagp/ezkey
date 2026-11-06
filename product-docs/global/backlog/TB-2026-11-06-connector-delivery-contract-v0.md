@@ -71,8 +71,11 @@ and send again.
 - **The address is visible before sending:** the button names the recipient, so the operator can spot a typo.
 - **One recipient field in the contract,** filled by the core from the enrollment, never by the Admin UI request.
 
-**Open:** today only a `VERIFIED` enrollment can be edited (`EnrollmentUpdateService`, Admin UI), so a `CREATED`
-enrollment without an address cannot get one without being recreated.
+**Editing `contactEmail` at `CREATED` (step 5).** Today only a `VERIFIED` enrollment can be edited
+(`EnrollmentUpdateService`, Admin UI), so an enrollment without an address could not get one. Allow editing this
+one field at `CREATED`; the other fields keep today's rule. The change is audited and reconciled with
+`docs/LIFECYCLE_GOVERNANCE.md`. Correcting an address before a send is normal. After a send to a wrong address,
+the answer stays revoke and recreate, and the screen can say so.
 
 ## Configuration guidance
 
