@@ -182,13 +182,62 @@ that justified looking again.
 | Option | Delivery | Directory | Verdict |
 |--------|----------|-----------|---------|
 | **REST, direction chosen per family** | Immediate error for the operator | Outbound-only from the customer network | **Retained** |
-| Shared database | Polling; no immediate error | Connector needs database access from the customer network | Rejected: couples connectors to the schema, wide privileges |
+| Shared application schema | Polling; no immediate error | Connector needs database access from the customer network | Rejected: couples connectors to the schema |
+| Dedicated exchange table with a restricted role | Polling; job waits if the connector is down; no immediate error | Would expose PostgreSQL to the customer network | Not retained for now: see below |
+| Outbox inside the core, then REST to the connector | Durable, same connector contract | Not applicable | In reserve for automatic sending: see below |
 | Message queue | Needs a result channel for the error | Works, but crosses the network boundary | Rejected: new infrastructure for an SME, against principle #7. Reopen on real volume |
 | In-process plugin | Immediate | Would put directory access inside the API | Rejected: vendor SDKs and secrets in the API process, image rebuilds |
 | Connector polls Ezkey for delivery jobs | Works behind NAT | Same direction as directory | Rejected for now: needs a stored job, which means stored secret material |
 
 Email in the core (the earlier `V-2026-0005` stance) was also set aside: simpler to deploy, but it
 would leave two models and would not test the SPI on a real case (Marc, 2026-11-04).
+
+### Dedicated exchange table: considered, not retained (Marc, 2026-11-06)
+
+Marc proposed a middle path he had seen work elsewhere: one table used as a message queue, reached by a
+role limited to that table, so that transactions stay database transactions with no two-phase commit.
+
+**What holds.** The security objection was overstated: Ezkey already runs separate PostgreSQL roles with a
+grant matrix (`docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md`), so a restricted role or a separate schema is a
+small cost. The real gains are also clear: no outbound HTTP client in the core, no call timeouts or pool
+risk, and a job that survives a connector outage.
+
+**What blocks it.** The QR carries the proof token, a bearer secret until bind, stored encrypted with a key
+only the core can use. A job the connector can read must therefore take one of three forms:
+
+- **QR in clear:** a second copy of a live secret, also present in backups.
+- **Encrypted for the connector:** key management and rotation per connector.
+- **A reference only:** the connector calls back to fetch the QR, so REST returns.
+
+| Case | REST | Exchange table with polling |
+|------|------|-----------------------------|
+| Connector down at the click | Immediate error; the operator retries | Job waits |
+| Outbound client, timeouts, pool | To build and test | Gone from the core |
+| Error shown to the operator | In the response | Needs status tracking in the Admin UI |
+| Revoked while waiting | No such window | Jobs must be cancelled, or a revoked QR still leaves |
+| Connector dies during the send | `unknown` | `unknown`, plus a lease and a cleanup |
+| State to manage | Three outcomes, nothing persisted | Five or six states, lease, heartbeat, expiry, purge |
+| Compromised connector | No database access | A PostgreSQL login and all pending jobs |
+| Contract change | Versioned OpenAPI | A core migration coordinated with each connector |
+
+The table makes the link between Ezkey and the queue transactional, but not the link between the connector
+and the mail provider, so `unknown` remains. The main benefit of the pattern, writing a business change
+and its message in one transaction, is mostly unused here: an operator's send changes no enrollment
+state. `ezkey_integrity_async_job` shows the machinery such a table needs in this codebase.
+
+**Variants.**
+
+- **A thin API as a trigger:** a lost trigger still requires polling the table, so this keeps two channels.
+- **No API, with `NOTIFY` and triggers:** `NOTIFY` delivers nothing to a disconnected listener and does not
+  carry the data, so polling is still needed. Triggers add hidden logic to migrate and test. At SME volume,
+  plain polling every few seconds would be enough.
+- **Directory family:** the connector lives in the customer network, and PostgreSQL should not be exposed
+  there. This family stays on outbound HTTP, so a table would mean two models.
+
+**Reopen on automatic sending,** for example an invitation created by directory sync. No operator is then
+present to retry, and writing the enrollment and its message in one transaction becomes valuable. Start
+from an outbox inside the core: it is close to this proposal, keeps the REST contract with connectors, and
+needs the "no stored job" invariant reopened explicitly.
 
 ## Secrets and parameters
 

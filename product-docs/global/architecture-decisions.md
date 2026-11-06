@@ -1254,7 +1254,11 @@ Admin API machine-to-machine hatch was removed on purpose (`I-2026-08-29`).
 
 - **Email in the core.** Simpler to deploy, but leaves two models and would not test the SPI on a real
   case. Rejected by Marc on 2026-11-04.
-- **Shared database.** Couples connectors to the schema and requires wide privileges. Rejected.
+- **Shared application schema.** Couples connectors to the schema. Rejected.
+- **Dedicated exchange table with a restricted role.** Removes the outbound client and survives a connector
+  outage, but a job the connector can read needs the QR's bearer secret in a readable form, and the state
+  to manage grows. Not retained on 2026-11-06. Reopen on automatic sending, starting from an outbox inside
+  the core that keeps the REST contract (decision pack).
 - **Message queue.** New infrastructure for an SME, against principle #7. Rejected; reopen on real volume.
 - **In-process plugins.** Brings vendor SDKs and secrets into the API process. Rejected.
 - **Connector polling Ezkey for delivery jobs.** Requires stored jobs holding secret material. Rejected for now.
