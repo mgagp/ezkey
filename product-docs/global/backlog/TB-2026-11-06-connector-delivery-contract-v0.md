@@ -24,7 +24,7 @@ Taken one at a time with Marc.
 |---|----------|----------|------|
 | 1 | Authentication between Ezkey and a delivery connector | Bearer token per connector, with the rules below | 2026-11-06 |
 | 2 | QR format in the job | PNG in base64, rendered by the core, with the rules below | 2026-11-06 |
-| 3 | Recipient | Open | |
+| 3 | Recipient | The enrollment's `contactEmail` only, present at send time, with the rules below | 2026-11-06 |
 | 4 | What the audit records about the recipient | Open | |
 | 5 | Email wording, locale and template owner | Open | |
 | 6 | What the health check returns | Open | |
@@ -56,6 +56,23 @@ captured it.
 - **The email attaches the image** inside the message instead of a `data:` URI, which several mail clients block.
   This belongs to the connector and is checked at step 6.
 - **Invitation links** (`I-2026-11-03`) would add a field later. The contract stays `v0` until step 6.
+
+### 3. Recipient
+
+A typed address would turn the send button into a relay to any address. And if an email leaves for the wrong
+address, the QR has left the perimeter: the right reaction is to revoke and recreate, not to correct the address
+and send again.
+
+`contactEmail` stays optional on the enrollment. It must be present when the operator sends, not at creation.
+
+- **No `contactEmail`:** no send, and the Admin UI says why. The QR stays available on screen.
+- **Validated at send:** an invalid format is refused with a clear error. Creation does not change, so existing
+  integrations keep working.
+- **The address is visible before sending:** the button names the recipient, so the operator can spot a typo.
+- **One recipient field in the contract,** filled by the core from the enrollment, never by the Admin UI request.
+
+**Open:** today only a `VERIFIED` enrollment can be edited (`EnrollmentUpdateService`, Admin UI), so a `CREATED`
+enrollment without an address cannot get one without being recreated.
 
 ## Configuration guidance
 
