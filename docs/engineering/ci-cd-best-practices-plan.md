@@ -162,6 +162,7 @@ alerts + dependency-review land). Record the choice in the Monday campaign note 
 | **Alert #9 (`java/ssrf`)** | Barrier model + stored-URL revalidation in [#810](https://github.com/mgagp/ezkey/pull/810) (`AuthApiUrlValidator` / demo-device) | **Addressed** (confirm closure under `security-extended`) |
 | **Code scanning as required check / ruleset `code_scanning` rule** | Not on ruleset `7558701` | Absent (optional Phase 2) |
 | **Security advisory / SECURITY.md** | Present; public alpha honesty | Good |
+| **Security Insights file** | [`.github/security-insights.yml`](../../.github/security-insights.yml), spec 2.2.0, schema-validated (2026-11-06). Lets the OSPS Baseline scanner evaluate controls it previously skipped; review `last-reviewed` in the Monday full pass | **Present** |
 
 ### 1.4 Process and hygiene (repo memory)
 
