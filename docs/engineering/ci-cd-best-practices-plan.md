@@ -124,7 +124,7 @@ aspiration in `DEVELOPMENT.md` but not wired — see G18 hygiene).
 | Setting | Observed | Source |
 |---------|----------|--------|
 | Ruleset | **Basic protection**, `enforcement: active`, targets `~DEFAULT_BRANCH` | `GET /repos/mgagp/ezkey/rulesets/7558701` |
-| Rules | `deletion`, `non_fast_forward`, `required_status_checks` with context **`ci-gate`** only, `pull_request` with **0** required approvals (added 2026-11-06, G5) | Same |
+| Rules | `deletion`, `non_fast_forward`, `required_status_checks` with context **`ci-gate`** only, `pull_request` with **0** required approvals (added 2026-11-06, G5). GitHub also returns `require_extra_approval_for_unattributed_changes: true`, which we did not request and could not find documented; maintainer and Dependabot PRs still report `CLEAN` | Same |
 | Strict up-to-date | `strict_required_status_checks_policy: false` | Same |
 | Bypass | `RepositoryRole` `actor_id: 5`, `bypass_mode: pull_request` (Admin role bypass on PRs only; direct pushes are refused) | Same |
 | Required approvals / CODEOWNERS review / signed commits / linear history | **Not** present on this ruleset | Same |
