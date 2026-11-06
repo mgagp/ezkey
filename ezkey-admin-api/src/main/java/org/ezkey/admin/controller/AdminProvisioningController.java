@@ -1040,7 +1040,7 @@ public class AdminProvisioningController {
   @Operation(
       summary = "Issue initial administrator recovery codes",
       description =
-          "Generates the first set of single-use recovery codes for an administrator after first"
+          "Generates a set of single-use recovery codes for an administrator after first"
               + " authenticated sign-in. This flow is distinct from regeneration and is only"
               + " available when no unused recovery code remains: either no set was ever issued,"
               + " or every code of the previous set has been used (recoveryCodesExhausted).")
