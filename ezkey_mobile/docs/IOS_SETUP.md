@@ -96,6 +96,8 @@ simulator with `maestro --device <simulator-udid> test <flow>`. Maestro's `hideK
 iOS: replace it with a tap on a neutral area (e.g. `- tapOn: { point: "50%,8%" }`, the header).
 `maestro/flows/ios_licenses.yaml` (no backend needed) walks Settings → Open Source Licenses and
 opens two C/C++ entries; Maestro's `back` does nothing on iOS, tap the header back button instead.
+`maestro/flows/ios_language.yaml` and `ios_language_system_settings.yaml` (no backend needed) check
+Settings → Language and its sync with iOS Settings; the second needs a phone with French first.
 `maestro/flows/ios_appearance.yaml` (no backend needed) checks Settings → Appearance and that the
 choice survives a cold start; iOS exposes the radio state in the accessibility value
 (`"radio button, checked"`), not in Maestro's `checked` attribute.

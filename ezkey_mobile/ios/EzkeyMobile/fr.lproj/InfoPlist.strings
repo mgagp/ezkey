@@ -1,0 +1,3 @@
+/* Texts of the iOS permission prompts, French (#1157). English is in Info.plist. */
+"NSCameraUsageDescription" = "Ezkey utilise la caméra pour lire le code QR d’enrôlement.";
+"NSFaceIDUsageDescription" = "Ezkey utilise Face ID pour confirmer les demandes d’approbation et les changements aux paramètres de sécurité.";

@@ -7,22 +7,29 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		E7A10C0011880000000000B1 /* EzkeyAppearanceModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A10C0011880000000000A1 /* EzkeyAppearanceModule.swift */; };
-		E7A10C0011880000000000B2 /* EzkeyAppearanceModule.m in Sources */ = {isa = PBXBuildFile; fileRef = E7A10C0011880000000000A2 /* EzkeyAppearanceModule.m */; };
-		E7A10C0011880000000000B3 /* EzkeyAppearanceModuleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A10C0011880000000000A3 /* EzkeyAppearanceModuleTests.swift */; };
 		0C80B921A6F3F58F76C31292 /* libPods-EzkeyMobile.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5DCACB8F33CDC322A6C60F78 /* libPods-EzkeyMobile.a */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
+		2798C11805295EAFD40DCEE2 /* EzkeyWindowSecurityModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76EBD9358D3B4859A7272FFA /* EzkeyWindowSecurityModule.swift */; };
+		40678677804E191A9FAB3D70 /* EzkeyLocaleModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 68E82BBD282A19EBA4C4895D /* EzkeyLocaleModule.m */; };
 		4AEE0A2B59D204E3BBFEB722 /* EzkeyCryptoCodecTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55142AD87C02D0067B6DCF65 /* EzkeyCryptoCodecTests.swift */; };
+		5B00E156808BBAA20DE2B84F /* EzkeyLocaleModuleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 326FBB589A84A5953875DE9B /* EzkeyLocaleModuleTests.swift */; };
 		6308658F0B360FDDD128E0A8 /* EzkeyCryptoModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DA491F2553F2CB27BCBB67C /* EzkeyCryptoModule.swift */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		761780EF2CA45674006654EF /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EE2CA45674006654EF /* SceneDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		991C22494D237715F768B52A /* EzkeyLocaleModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4435FCED9223C0B42F77323 /* EzkeyLocaleModule.swift */; };
 		9A23EE58FF43CB707AE415A2 /* libPods-EzkeyMobileTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = EF2080E8AE3F16323A1BD21C /* libPods-EzkeyMobileTests.a */; };
 		A1499064379938F64CD2CC72 /* EzkeyEnrollmentKeyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E4F4419A3DC68E561C9E8B4 /* EzkeyEnrollmentKeyStore.swift */; };
 		A2263AA0C112BCF6E2D58F5D /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D69E1B2F082A6FE2ED12AB79 /* Foundation.framework */; };
 		A2438B61A3262A6C009200D8 /* EzkeyReinstallPurgeProbeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB81FEDD9B7461C30F6A7B7B /* EzkeyReinstallPurgeProbeTests.swift */; };
 		BC0DD3C7005571FF633D74DB /* EzkeyCryptoModuleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F32CA9DF947881159B2E79 /* EzkeyCryptoModuleTests.swift */; };
+		D4AF5E2B66E28085CAF55B0C /* EzkeyWindowSecurityModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 90E8DCE89C6E1CC250397A61 /* EzkeyWindowSecurityModule.m */; };
+		D50ECCEB46676B55AE31A095 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 48DBB6211D1B59FEB42EFE2E /* InfoPlist.strings */; };
 		E1299E35A3C7BDC2C9E05B1F /* EzkeyCryptoCodec.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91AD48A2D31FFAC7F7FD6F92 /* EzkeyCryptoCodec.swift */; };
+		E7A10C0011880000000000B1 /* EzkeyAppearanceModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A10C0011880000000000A1 /* EzkeyAppearanceModule.swift */; };
+		E7A10C0011880000000000B2 /* EzkeyAppearanceModule.m in Sources */ = {isa = PBXBuildFile; fileRef = E7A10C0011880000000000A2 /* EzkeyAppearanceModule.m */; };
+		E7A10C0011880000000000B3 /* EzkeyAppearanceModuleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A10C0011880000000000A3 /* EzkeyAppearanceModuleTests.swift */; };
+		ED00E0AE75791965BCD30D69 /* EzkeyWindowSecurityModuleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 294EEE2F98D034AD89EBBD66 /* EzkeyWindowSecurityModuleTests.swift */; };
 		F0554FE356A77BD2291F2357 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		F1F9487687C11D908FE04836 /* EzkeyCryptoModule.m in Sources */ = {isa = PBXBuildFile; fileRef = DC77BA7A034011BF9B5B1166 /* EzkeyCryptoModule.m */; };
 /* End PBXBuildFile section */
@@ -38,31 +45,38 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		E7A10C0011880000000000A1 /* EzkeyAppearanceModule.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EzkeyAppearanceModule.swift; sourceTree = "<group>"; };
-		E7A10C0011880000000000A2 /* EzkeyAppearanceModule.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = EzkeyAppearanceModule.m; sourceTree = "<group>"; };
-		E7A10C0011880000000000A3 /* EzkeyAppearanceModuleTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EzkeyAppearanceModuleTests.swift; sourceTree = "<group>"; };
 		064DE6915EA94F63203EEB15 /* Pods-EzkeyMobileTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-EzkeyMobileTests.release.xcconfig"; path = "Target Support Files/Pods-EzkeyMobileTests/Pods-EzkeyMobileTests.release.xcconfig"; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* EzkeyMobile.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EzkeyMobile.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = EzkeyMobile/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = EzkeyMobile/Info.plist; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = EzkeyMobile/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		294EEE2F98D034AD89EBBD66 /* EzkeyWindowSecurityModuleTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EzkeyWindowSecurityModuleTests.swift; sourceTree = "<group>"; };
+		326FBB589A84A5953875DE9B /* EzkeyLocaleModuleTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EzkeyLocaleModuleTests.swift; sourceTree = "<group>"; };
 		3B4392A12AC88292D35C810B /* Pods-EzkeyMobile.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-EzkeyMobile.debug.xcconfig"; path = "Target Support Files/Pods-EzkeyMobile/Pods-EzkeyMobile.debug.xcconfig"; sourceTree = "<group>"; };
 		55142AD87C02D0067B6DCF65 /* EzkeyCryptoCodecTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EzkeyCryptoCodecTests.swift; sourceTree = "<group>"; };
 		5709B34CF0A7D63546082F79 /* Pods-EzkeyMobile.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-EzkeyMobile.release.xcconfig"; path = "Target Support Files/Pods-EzkeyMobile/Pods-EzkeyMobile.release.xcconfig"; sourceTree = "<group>"; };
 		5DCACB8F33CDC322A6C60F78 /* libPods-EzkeyMobile.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-EzkeyMobile.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		5E4F4419A3DC68E561C9E8B4 /* EzkeyEnrollmentKeyStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EzkeyEnrollmentKeyStore.swift; sourceTree = "<group>"; };
+		68E82BBD282A19EBA4C4895D /* EzkeyLocaleModule.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = EzkeyLocaleModule.m; sourceTree = "<group>"; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = EzkeyMobile/AppDelegate.swift; sourceTree = "<group>"; };
 		761780EE2CA45674006654EF /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SceneDelegate.swift; path = EzkeyMobile/SceneDelegate.swift; sourceTree = "<group>"; };
+		76EBD9358D3B4859A7272FFA /* EzkeyWindowSecurityModule.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EzkeyWindowSecurityModule.swift; sourceTree = "<group>"; };
 		7E3F3FE51DBE465456556F82 /* Pods-EzkeyMobile-EzkeyMobileTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-EzkeyMobile-EzkeyMobileTests.release.xcconfig"; path = "Target Support Files/Pods-EzkeyMobile-EzkeyMobileTests/Pods-EzkeyMobile-EzkeyMobileTests.release.xcconfig"; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = EzkeyMobile/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		8DA491F2553F2CB27BCBB67C /* EzkeyCryptoModule.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EzkeyCryptoModule.swift; sourceTree = "<group>"; };
+		90E8DCE89C6E1CC250397A61 /* EzkeyWindowSecurityModule.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = EzkeyWindowSecurityModule.m; sourceTree = "<group>"; };
 		912128D0D1B05B3843FC0E5A /* Pods-EzkeyMobile-EzkeyMobileTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-EzkeyMobile-EzkeyMobileTests.debug.xcconfig"; path = "Target Support Files/Pods-EzkeyMobile-EzkeyMobileTests/Pods-EzkeyMobile-EzkeyMobileTests.debug.xcconfig"; sourceTree = "<group>"; };
 		91AD48A2D31FFAC7F7FD6F92 /* EzkeyCryptoCodec.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EzkeyCryptoCodec.swift; sourceTree = "<group>"; };
+		A4467E992A1BD2B38C3F692A /* fr */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.strings; name = fr; path = fr.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		B34D75D92F51871837586F7B /* EzkeyMobileTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EzkeyMobileTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		B4435FCED9223C0B42F77323 /* EzkeyLocaleModule.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EzkeyLocaleModule.swift; sourceTree = "<group>"; };
 		B9DFDA1B84BDAD14F2553138 /* Pods-EzkeyMobileTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-EzkeyMobileTests.debug.xcconfig"; path = "Target Support Files/Pods-EzkeyMobileTests/Pods-EzkeyMobileTests.debug.xcconfig"; sourceTree = "<group>"; };
 		C0F32CA9DF947881159B2E79 /* EzkeyCryptoModuleTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EzkeyCryptoModuleTests.swift; sourceTree = "<group>"; };
 		D69E1B2F082A6FE2ED12AB79 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		DC77BA7A034011BF9B5B1166 /* EzkeyCryptoModule.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = EzkeyCryptoModule.m; sourceTree = "<group>"; };
+		E7A10C0011880000000000A1 /* EzkeyAppearanceModule.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EzkeyAppearanceModule.swift; sourceTree = "<group>"; };
+		E7A10C0011880000000000A2 /* EzkeyAppearanceModule.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = EzkeyAppearanceModule.m; sourceTree = "<group>"; };
+		E7A10C0011880000000000A3 /* EzkeyAppearanceModuleTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EzkeyAppearanceModuleTests.swift; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		EF2080E8AE3F16323A1BD21C /* libPods-EzkeyMobileTests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-EzkeyMobileTests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		FB81FEDD9B7461C30F6A7B7B /* EzkeyReinstallPurgeProbeTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EzkeyReinstallPurgeProbeTests.swift; sourceTree = "<group>"; };
@@ -89,14 +103,14 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		E7A10C0011880000000000C1 /* Appearance */ = {
+		0050011188543873B7F854A4 /* Security */ = {
 			isa = PBXGroup;
 			children = (
-				E7A10C0011880000000000A1 /* EzkeyAppearanceModule.swift */,
-				E7A10C0011880000000000A2 /* EzkeyAppearanceModule.m */,
+				76EBD9358D3B4859A7272FFA /* EzkeyWindowSecurityModule.swift */,
+				90E8DCE89C6E1CC250397A61 /* EzkeyWindowSecurityModule.m */,
 			);
-			name = Appearance;
-			path = EzkeyMobile/Appearance;
+			name = Security;
+			path = EzkeyMobile/Security;
 			sourceTree = "<group>";
 		};
 		13B07FAE1A68108700A75B9A /* EzkeyMobile */ = {
@@ -110,6 +124,9 @@
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
 				DDABE96671C1B3017D9E2B21 /* Crypto */,
 				E7A10C0011880000000000C1 /* Appearance */,
+				BC28F44450F133CA1346D118 /* Locale */,
+				0050011188543873B7F854A4 /* Security */,
+				48DBB6211D1B59FEB42EFE2E /* InfoPlist.strings */,
 			);
 			name = EzkeyMobile;
 			sourceTree = "<group>";
@@ -163,6 +180,8 @@
 				C0F32CA9DF947881159B2E79 /* EzkeyCryptoModuleTests.swift */,
 				FB81FEDD9B7461C30F6A7B7B /* EzkeyReinstallPurgeProbeTests.swift */,
 				E7A10C0011880000000000A3 /* EzkeyAppearanceModuleTests.swift */,
+				326FBB589A84A5953875DE9B /* EzkeyLocaleModuleTests.swift */,
+				294EEE2F98D034AD89EBBD66 /* EzkeyWindowSecurityModuleTests.swift */,
 			);
 			name = EzkeyMobileTests;
 			path = EzkeyMobileTests;
@@ -179,6 +198,16 @@
 				B9DFDA1B84BDAD14F2553138 /* Pods-EzkeyMobileTests.debug.xcconfig */,
 			);
 			path = Pods;
+			sourceTree = "<group>";
+		};
+		BC28F44450F133CA1346D118 /* Locale */ = {
+			isa = PBXGroup;
+			children = (
+				B4435FCED9223C0B42F77323 /* EzkeyLocaleModule.swift */,
+				68E82BBD282A19EBA4C4895D /* EzkeyLocaleModule.m */,
+			);
+			name = Locale;
+			path = EzkeyMobile/Locale;
 			sourceTree = "<group>";
 		};
 		D1FD49FC0A320C1A7EF128C8 /* iOS */ = {
@@ -199,6 +228,16 @@
 			);
 			name = Crypto;
 			path = EzkeyMobile/Crypto;
+			sourceTree = "<group>";
+		};
+		E7A10C0011880000000000C1 /* Appearance */ = {
+			isa = PBXGroup;
+			children = (
+				E7A10C0011880000000000A1 /* EzkeyAppearanceModule.swift */,
+				E7A10C0011880000000000A2 /* EzkeyAppearanceModule.m */,
+			);
+			name = Appearance;
+			path = EzkeyMobile/Appearance;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -265,6 +304,7 @@
 			knownRegions = (
 				en,
 				Base,
+				fr,
 			);
 			mainGroup = 83CBB9F61A601CBA00E9B192;
 			productRefGroup = 83CBBA001A601CBA00E9B192 /* Products */;
@@ -285,6 +325,7 @@
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				F0554FE356A77BD2291F2357 /* PrivacyInfo.xcprivacy in Resources */,
+				D50ECCEB46676B55AE31A095 /* InfoPlist.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -428,6 +469,10 @@
 				A1499064379938F64CD2CC72 /* EzkeyEnrollmentKeyStore.swift in Sources */,
 				E7A10C0011880000000000B1 /* EzkeyAppearanceModule.swift in Sources */,
 				E7A10C0011880000000000B2 /* EzkeyAppearanceModule.m in Sources */,
+				991C22494D237715F768B52A /* EzkeyLocaleModule.swift in Sources */,
+				40678677804E191A9FAB3D70 /* EzkeyLocaleModule.m in Sources */,
+				2798C11805295EAFD40DCEE2 /* EzkeyWindowSecurityModule.swift in Sources */,
+				D4AF5E2B66E28085CAF55B0C /* EzkeyWindowSecurityModule.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -439,6 +484,8 @@
 				BC0DD3C7005571FF633D74DB /* EzkeyCryptoModuleTests.swift in Sources */,
 				A2438B61A3262A6C009200D8 /* EzkeyReinstallPurgeProbeTests.swift in Sources */,
 				E7A10C0011880000000000B3 /* EzkeyAppearanceModuleTests.swift in Sources */,
+				5B00E156808BBAA20DE2B84F /* EzkeyLocaleModuleTests.swift in Sources */,
+				ED00E0AE75791965BCD30D69 /* EzkeyWindowSecurityModuleTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -452,6 +499,18 @@
 			targetProxy = A5767A8337CB193343516CC6 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		48DBB6211D1B59FEB42EFE2E /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				A4467E992A1BD2B38C3F692A /* fr */,
+			);
+			name = InfoPlist.strings;
+			path = EzkeyMobile;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {

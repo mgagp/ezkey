@@ -19,8 +19,8 @@ import {resources} from './resources';
 let initialized = false;
 
 /**
- * Current language setting. On Android 13+ the system per-app language wins, so a change made in
- * Android settings shows up here; an older in-app choice is pushed to the system once, then the
+ * Current language setting. On iOS and Android 13+ the system per-app language wins, so a change
+ * made in system settings shows up here; an older in-app choice is pushed to the system once, then the
  * in-app store is cleared. Elsewhere the in-app store is used. Unset means follow the phone.
  *
  * Fail-open: a native failure falls back to the in-app store.
@@ -90,7 +90,7 @@ export const initializeI18n = async () => {
 };
 
 /**
- * Re-applies the language setting, for example after the user changed it in Android settings
+ * Re-applies the language setting, for example after the user changed it in system settings
  * while the app was in the background.
  *
  * @returns the rendered locale
@@ -104,8 +104,8 @@ export const syncAppLanguage = async (): Promise<SupportedLocale> => {
 };
 
 /**
- * Saves and applies a language chosen in the app. On Android 13+ it is written to the system
- * per-app language, so Android settings show the same choice.
+ * Saves and applies a language chosen in the app. On iOS and Android 13+ it is written to the
+ * system per-app language, so system settings show the same choice.
  *
  * @param preference `system`, `en` or `fr`
  * @returns the rendered locale

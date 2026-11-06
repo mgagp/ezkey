@@ -18,7 +18,7 @@ const isLanguagePreference = (value: string): value is LanguagePreference =>
   value === 'system' || isSupportedLocale(value);
 
 /**
- * In-app language store. On Android 13+ the system per-app language is the source of truth and
+ * In-app language store. On iOS and Android 13+ the system per-app language is the source of truth and
  * this store is only read once to migrate an older in-app choice (see `app/i18n`).
  */
 class LocaleStorage {

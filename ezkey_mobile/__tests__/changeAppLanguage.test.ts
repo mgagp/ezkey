@@ -44,7 +44,7 @@ describe('app language', () => {
     jest.restoreAllMocks();
   });
 
-  describe('without a system per-app language (Android 12, iOS)', () => {
+  describe('without a system per-app language (Android 12)', () => {
     beforeEach(() => setPlatform('android', 31));
 
     it('persists the choice in the app and applies it in-process', async () => {
@@ -82,6 +82,29 @@ describe('app language', () => {
       setPlatform('android', 34);
 
       await expect(resolveLocale('system')).resolves.toBe('en');
+    });
+  });
+
+  describe('with the iOS per-app language', () => {
+    beforeEach(() => setPlatform('ios', 27));
+
+    it('writes the choice to iOS settings instead of the app store', async () => {
+      await changeAppLanguage('fr');
+
+      expect(nativeLocale.setApplicationLanguage).toHaveBeenCalledWith('fr');
+      expect(setPreferenceSpy).not.toHaveBeenCalled();
+    });
+
+    it('reads the regional tag iOS settings store', async () => {
+      nativeLocale.getApplicationLanguage.mockResolvedValue('fr-CA');
+
+      await expect(getLanguagePreference()).resolves.toBe('fr');
+    });
+
+    it('follows the French phone list when nothing was chosen', async () => {
+      nativeLocale.getSystemLanguages.mockResolvedValue(['fr-CA', 'en-CA']);
+
+      await expect(resolveLocale(await getLanguagePreference())).resolves.toBe('fr');
     });
   });
 
