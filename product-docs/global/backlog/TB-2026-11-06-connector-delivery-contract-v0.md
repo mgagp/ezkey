@@ -26,7 +26,7 @@ Taken one at a time with Marc.
 | 2 | QR format in the job | PNG in base64, rendered by the core, with the rules below | 2026-11-06 |
 | 3 | Recipient | The enrollment's `contactEmail` only, present at send time, with the rules below | 2026-11-06 |
 | 4 | What the audit records about the recipient | The full address, with the rules below | 2026-11-06 |
-| 5 | Email wording, locale and template owner | Open | |
+| 5 | Email wording, locale and template owner | The connector owns fixed templates, with the rules below | 2026-11-06 |
 | 6 | What the health check returns | Open | |
 
 ### 1. Authentication
@@ -92,6 +92,24 @@ an email is easy to reverse by guessing. Editing an enrollment already writes `c
 
 **Limit accepted:** the address stays in the tamper-evident chain, and erasure is not settled
 ([`I-2026-11-05`](ideas/I-2026-11-05-privacy-obligations-reminder.md)).
+
+### 5. Template and language
+
+The job names a template and a locale and carries a few data fields. If the core rendered the email, the contract
+would carry free text and the connector would become a relay. An editor in the Admin UI would let anyone weaken
+security wording. The cost: changing the text means redeploying the connector.
+
+- **Language:** the operator's Admin UI language at send time, `en` or `fr`, shown next to the button.
+- **Job data:** the organisation name, the expected server and the QR, nothing else. The name is bounded in length
+  and escaped by the connector, since it is the only free text left.
+- **Expected server required:** if `ezkey.qr.auth-base-url` is empty, the send is refused with a clear error. The
+  email must name the server so the person has something to compare.
+- **Required email content:** who invites, have your code in hand before scanning, which server the app should
+  show, and what to do if you did not expect this email. Exact wording comes at step 5 and is tried at step 6.
+
+**Limit accepted:** no language is stored for the person, so an operator can send the wrong language, and no other
+language is available. Tracked separately in [#1250](https://github.com/mgagp/ezkey/issues/1250); a better source
+of language should not change the contract's shape.
 
 ## Configuration guidance
 
