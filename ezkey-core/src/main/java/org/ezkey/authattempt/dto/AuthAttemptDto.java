@@ -20,7 +20,8 @@ import org.ezkey.authattempt.domain.AuthAttemptStatus;
  *
  * <p>This record is shared across all API modules (admin-api, integration-api) to expose
  * authentication attempt data at API boundaries. It provides a clean, immutable view of the attempt
- * without exposing internal domain or persistence details.
+ * without exposing internal domain or persistence details. It never carries the auth-attempt proof
+ * token: the protocol hands that token to the device only, via Auth API pending (#1180).
  *
  * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *
@@ -31,7 +32,6 @@ import org.ezkey.authattempt.domain.AuthAttemptStatus;
  * @param authAttemptStatus current status of the authentication attempt
  * @param authAttemptChallenge numeric challenge code sent to the mobile device (null if not
  *     requested)
- * @param authAttemptProofToken signed JWT proof token (present only when ACCEPTED)
  * @param createdAt timestamp when the authentication attempt was created
  * @param expiresAt timestamp when the authentication attempt expires
  * @param contextTitle optional short title describing the action requiring approval
@@ -72,14 +72,6 @@ public record AuthAttemptDto(
             example = "123456",
             requiredMode = RequiredMode.NOT_REQUIRED)
         Integer authAttemptChallenge,
-    /**
-     * Signed JWT proof token present only when authentication is accepted. Contains verifiable
-     * evidence of the authentication event.
-     */
-    @Schema(
-            description = "Signed JWT proof token (present only when status is ACCEPTED)",
-            requiredMode = RequiredMode.NOT_REQUIRED)
-        String authAttemptProofToken,
     /** Timestamp when the authentication attempt was created. */
     @Schema(
             description = "Creation timestamp with timezone",
