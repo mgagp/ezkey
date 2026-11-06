@@ -47,7 +47,8 @@ five language analyses uploaded on `main` at that commit.
 | [`SECURITY.md`](../../SECURITY.md) | Yes | Private vulnerability reporting URL; lists CI / CodeQL / Dependabot / secret scanning practices. Last updated **2026-10-14** (#808). |
 | [`docs/SECURITY_POSTURE.md`](../SECURITY_POSTURE.md) | Yes | Honest product security claims + § Code scanning policy (SLAs, dismiss rules). |
 | [`.github/workflows/scorecard.yml`](../../.github/workflows/scorecard.yml) | Yes | OpenSSF Scorecard (`ossf/scorecard-action`); push/`main` + weekly cron + `branch_protection_rule` + `workflow_dispatch`; `publish_results: true`; SARIF → code scanning. README badge deferred to a follow-up after first publish. |
-| dependency-review / SBOM / provenance / release / harden-runner workflows | **No** | Not in `.github/workflows/`. |
+| `dependency-review.yml` | **Yes** | Warn-only on manifest and workflow PRs; not in `ci-gate` (G7). |
+| SBOM / provenance / release / harden-runner workflows | **No** | Not in `.github/workflows/`. |
 
 #### 1.1.1 Maven dependency submission
 
@@ -232,7 +233,7 @@ Value: evaluator / supply-chain / operator impact (High / Med / Low).
 | G2 | Dependabot **alerts** + security updates | Alerts on since 2026-11-06; `SECURITY.md` aligned | Triage the stock, then decide security updates | S | High | **Alerts done**; security updates after triage |
 | G3 | Secret scanning + push protection | Both enabled (API, 2026-11-05) | None | — | High | **Done** |
 | G4 | Dependency graph on; automatic submission off | Graph re-enabled 2026-10-13; #798 merged (`638b4214`) | Confirm automatic submission still Disabled in Settings | S | High | **Done** (graph + docs); confirm automatic submission |
-| G7 | Dependency review Action on PRs | Absent | After G2: add action limited to PRs that touch manifests; fail on high/critical | M | High | **P1** |
+| G7 | Dependency review Action on PRs | `dependency-review.yml`, warn-only, not in `ci-gate` (2026-11-06); Maven not covered | Promote to blocking on high/critical after the alert stock is triaged | S | High | **Observing** |
 | G8 | `SECURITY.md` Advanced CodeQL wording | Updated in #808 | Reconfirm after Marc verifies Settings toggles | S | Med | P1 |
 | G5 | Ruleset: require **PR** before merge (no approval) | Status checks only; admin bypass always | Require a pull request **without** required approvals (solo: author cannot approve own PR). Approvals stay soft / #787 | S–M | Med | **P2** |
 | G9 | `delete_branch_on_merge` | false | Enable for hygiene | S | Low | P2 |
@@ -277,8 +278,9 @@ verified toggles.
 
 ### Phase 2 — Structural parity (supply-chain PR gate + light ruleset)
 
-1. **Dependency review Action** after G2 (Fred; Christophe severity): run on PRs that **touch
-   manifests**; fail on **high/critical** (G7 before G6).
+1. **Dependency review Action** (G7, before G6): in place in warn-only mode on PRs that **touch
+   manifests**. Promote to fail on **high/critical** after the alert stock is triaged (Christophe
+   severity).
 2. **Ruleset: require a pull request** before merge to `main`, **without** required approvals
    (Marc) — solo maintainer cannot approve PRs opened as `mgagp` (G5 → P2).
 3. **OpenSSF Scorecard** — workflow landed (`scorecard.yml`); README badge still follow-up after
