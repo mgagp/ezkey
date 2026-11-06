@@ -62,6 +62,8 @@ Triage by **what ships**, not by GitHub's `runtime` / `development` label, which
 the Yarn mobile lockfile: at activation, 79 of its 82 alerts were outside the React Native release
 bundle (checked from Android and iOS source maps). Fix what ships first; refresh tooling lockfiles;
 dismiss the rest with a written reason. Security-update PRs stay off until the stock is triaged.
+Mobile refresh recipe: `yarn up -R <alert packages> --mode=update-lockfile`, then compare the
+release bundles line by line (Android and iOS). `package.json` must not move.
 
 **Maven dependency graph:** Dependabot PR updates are separate from GitHub’s Insights dependency
 graph. Ezkey submits the full transitive Maven graph via
