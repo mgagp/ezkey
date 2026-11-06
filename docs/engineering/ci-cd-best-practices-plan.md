@@ -47,7 +47,8 @@ five language analyses uploaded on `main` at that commit.
 | [`SECURITY.md`](../../SECURITY.md) | Yes | Private vulnerability reporting URL; lists CI / CodeQL / Dependabot / secret scanning practices. Last updated **2026-10-14** (#808). |
 | [`docs/SECURITY_POSTURE.md`](../SECURITY_POSTURE.md) | Yes | Honest product security claims + § Code scanning policy (SLAs, dismiss rules). |
 | [`.github/workflows/scorecard.yml`](../../.github/workflows/scorecard.yml) | Yes | OpenSSF Scorecard (`ossf/scorecard-action`); push/`main` + weekly cron + `branch_protection_rule` + `workflow_dispatch`; `publish_results: true`; SARIF → code scanning. README badge deferred to a follow-up after first publish. |
-| dependency-review / SBOM / provenance / release / harden-runner workflows | **No** | Not in `.github/workflows/`. |
+| `dependency-review.yml` | **Yes** | Warn-only on manifest and workflow PRs; not in `ci-gate` (G7). |
+| SBOM / provenance / release / harden-runner workflows | **No** | Not in `.github/workflows/`. |
 
 #### 1.1.1 Maven dependency submission
 
@@ -276,8 +277,9 @@ verified toggles.
 
 ### Phase 2 — Structural parity (supply-chain PR gate + light ruleset)
 
-1. **Dependency review Action** after G2 (Fred; Christophe severity): run on PRs that **touch
-   manifests**; fail on **high/critical** (G7 before G6).
+1. **Dependency review Action** (G7, before G6): in place in warn-only mode on PRs that **touch
+   manifests**. Promote to fail on **high/critical** after the alert stock is triaged (Christophe
+   severity).
 2. **Ruleset: require a pull request** before merge to `main`, **without** required approvals
    (Marc) — solo maintainer cannot approve PRs opened as `mgagp` (G5 → P2).
 3. **OpenSSF Scorecard** — workflow landed (`scorecard.yml`); README badge still follow-up after
