@@ -375,8 +375,7 @@ error, timeout and rejected credential, so CI, QA and new connector prototypes s
 
 1. **Authentication** between Ezkey and a delivery connector: decided, bearer token per connector
    ([`TB-2026-11-06`](../../backlog/TB-2026-11-06-connector-delivery-contract-v0.md)).
-2. **QR format in the job:** the core renders a PNG (leading option: it already owns QR generation and
-   the connector then never parses the payload) or passes the payload?
+2. **QR format in the job:** decided, a PNG in base64 rendered by the core (same brief).
 3. **Recipient:** `contact_email` only, or can the operator type an address at send time?
 4. **Audit:** what is recorded for the recipient, given it is personal data?
 5. **Email wording and locale:** the message must tell the person to have the code in hand before
