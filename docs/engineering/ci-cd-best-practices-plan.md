@@ -119,26 +119,27 @@ gate; Python CLI pytest on 3.12/3.14. **Not** in PR CI: Playwright, full Docker 
 doctor/pentest hygiene, Jacoco coverage thresholds, Android `lint`, SonarQube (mentioned as
 aspiration in `DEVELOPMENT.md` but not wired — see G18 hygiene).
 
-### 1.2 Repository ruleset and merge settings (API-verified 2026-10-14)
+### 1.2 Repository ruleset and merge settings (API-verified 2026-11-06)
 
 | Setting | Observed | Source |
 |---------|----------|--------|
 | Ruleset | **Basic protection**, `enforcement: active`, targets `~DEFAULT_BRANCH` | `GET /repos/mgagp/ezkey/rulesets/7558701` |
-| Rules | `deletion`, `non_fast_forward`, `required_status_checks` with context **`ci-gate`** only | Same |
+| Rules | `deletion`, `non_fast_forward`, `required_status_checks` with context **`ci-gate`** only, `pull_request` with **0** required approvals (added 2026-11-06, G5) | Same |
 | Strict up-to-date | `strict_required_status_checks_policy: false` | Same |
-| Bypass | `RepositoryRole` `actor_id: 5`, `bypass_mode: always` (Admin role bypass) | Same |
-| Required PR / approvals / CODEOWNERS review / signed commits / linear history | **Not** present on this ruleset | Same |
-| Classic branch protection API | 403 from this token | **to confirm by Marc in Settings** if any classic rules remain |
+| Bypass | `RepositoryRole` `actor_id: 5`, `bypass_mode: pull_request` (Admin role bypass on PRs only; direct pushes are refused) | Same |
+| Required approvals / CODEOWNERS review / signed commits / linear history | **Not** present on this ruleset | Same |
+| Classic branch protection API | 404 `Branch not protected`: none on `main` | `GET …/branches/main/protection` |
 | `allow_squash_merge` / `allow_merge_commit` / `allow_rebase_merge` | All **true** | Repo REST |
 | `delete_branch_on_merge` | **false** | Repo REST |
-| `allow_auto_merge` / `allow_update_branch` | **false** | Repo REST |
+| `allow_auto_merge` / `allow_update_branch` | **true** (used by `dependabot-auto-merge.yml`) / **false** | Repo REST |
 | Deploy environments | One env: `copilot`, **no** protection rules | `GET …/environments` |
 
 **Ruleset vs bot autonomy:** Required status is **`ci-gate` only** — path-filtered jobs may skip;
-Dependabot and agent PRs merge when `ci-gate` is green and Marc (or Admin bypass) merges. Agents
-and Dependabot **cannot** self-approve. Admin bypass (`actor_id: 5`, always) is the emergency /
-solo-maintainer escape hatch — **to confirm by Marc** that it remains intentional. Soft merge bar
-(#787) still applies in process even when bypass is available.
+every change to `main` goes through a PR, and Dependabot and agent PRs merge when `ci-gate` is green
+and Marc (or auto-merge for allowed Dependabot patches) merges. Agents and Dependabot **cannot**
+self-approve. Admin bypass (`actor_id: 5`, PRs only) remains the solo-maintainer escape hatch on a
+PR whose checks are stuck; it no longer permits a direct push. Soft merge bar (#787) still applies
+in process even when bypass is available.
 
 **`allow_auto_merge`:** currently **false**. Options for later: enable for **T1-only** Dependabot
 lots under `dependabot-curated`, or keep an **explicit decision not to enable** (preferred until
@@ -161,7 +162,7 @@ alerts + dependency-review land). Record the choice in the Monday campaign note 
 | **CodeQL open-alert baseline on `main`** | Re-analyze under `security-extended` after #809/#810; record count in a later inventory refresh | **Pending re-count** (default-suite 2026-10-14 figure undercounts) |
 | **Alert #16 (`java/sensitive-log`)** | Fixed in [#810](https://github.com/mgagp/ezkey/pull/810) (`115dde38`) — recovery token fingerprint + LogSanitizer in `AdminOperationsRateLimitService` | **Fixed** |
 | **Alert #9 (`java/ssrf`)** | Barrier model + stored-URL revalidation in [#810](https://github.com/mgagp/ezkey/pull/810) (`AuthApiUrlValidator` / demo-device) | **Addressed** (confirm closure under `security-extended`) |
-| **Code scanning as required check / ruleset `code_scanning` rule** | Not on ruleset `7558701` | Absent (optional Phase 2) |
+| **Code scanning as required check / ruleset `code_scanning` rule** | Not on ruleset `7558701` | Policy-only by decision (G24) |
 | **Security advisory / SECURITY.md** | Present; public alpha honesty | Good |
 | **Security Insights file** | [`.github/security-insights.yml`](../../.github/security-insights.yml), spec 2.2.0, schema-validated (2026-11-06). Lets the OSPS Baseline scanner evaluate controls it previously skipped; review `last-reviewed` in the Monday full pass | **Present** |
 
@@ -235,7 +236,7 @@ Value: evaluator / supply-chain / operator impact (High / Med / Low).
 | G4 | Dependency graph on; automatic submission off | Graph re-enabled 2026-10-13; #798 merged (`638b4214`) | Confirm automatic submission still Disabled in Settings | S | High | **Done** (graph + docs); confirm automatic submission |
 | G7 | Dependency review Action on PRs | `dependency-review.yml`, warn-only, not in `ci-gate` (2026-11-06); Maven not covered | Promote to blocking on high/critical after the alert stock is triaged | S | High | **Observing** |
 | G8 | `SECURITY.md` Advanced CodeQL wording | Updated in #808 | Reconfirm after Marc verifies Settings toggles | S | Med | P1 |
-| G5 | Ruleset: require **PR** before merge (no approval) | Status checks only; admin bypass always | Require a pull request **without** required approvals (solo: author cannot approve own PR). Approvals stay soft / #787 | S–M | Med | **P2** |
+| G5 | Ruleset: require **PR** before merge (no approval) | **Done 2026-11-06 (Marc):** `pull_request` rule on ruleset `7558701`, 0 approvals, bypass and merge methods unchanged. Direct pushes to `main` had stopped on 2026-09-21 | None. Approvals stay soft / #787 | — | — | **Done** |
 | G9 | `delete_branch_on_merge` | false | Enable for hygiene | S | Low | P2 |
 | G10 | Prefer squash-only (or document merge strategy) | All three merge methods on | Pick one preferred; disable others or document | S | Low | P2 |
 | G12 | Scorecard workflow + badge | Workflow present (`scorecard.yml`); badge still absent | Keep scheduled Scorecard; add README badge after first successful publish | M | Med | P2 (workflow done; badge follow-up) |
@@ -243,7 +244,7 @@ Value: evaluator / supply-chain / operator impact (High / Med / Low).
 | G15 | SBOM generation (CycloneDX/SPDX) | Absent | Generate on `main` / release tags; attach artifacts | M | Med | P2 |
 | G17 | Android Lint in CI | Unit tests + 16 KB only | Add `lintDebug` (or release lint) to mobile workflow | M | Med | P2 |
 | G18 | Coverage gate vs aspirational “90%” | Jacoco in POM; “90%” in `DEVELOPMENT.md`; not CI-enforced | Hygiene: either enforce a realistic floor or remove the aspirational claim from `DEVELOPMENT.md` (not a release-train item) | M | Med | P2 (hygiene) |
-| G24 | CodeQL as blocking required check | Policy / #787 process; not ruleset-enforced | Ruleset `code_scanning` or required check if noise is tolerable — or keep policy-only | M | Med | P2 |
+| G24 | CodeQL as blocking required check | **Decided 2026-11-06 (Marc): keep policy-only.** `ci-gate` stays the single required check. CodeQL analyzes only the languages a PR changes, so a required per-language context would stay pending on PRs that skip it. The merge-ready rule (zero new unresolved alerts) covers the need | None. Revisit only if a new alert reaches `main` unnoticed. Scanners that look for required SAST (OSPS, Scorecard) may keep flagging this: accepted | — | — | **Closed** |
 | G6 | `CODEOWNERS` + optional required-reviewer paths | Absent | Only useful if paired with G5-style enforcement later; otherwise soft ownership docs | S–M | Low–Med | **P3** (tie to G5) |
 | G11 | Strict status checks (branch up to date) | `strict: false` | Skip for now — daily Dependabot PRs would force serial rebases | S | Low | **Skip / P3** |
 | G13 | Harden-runner (egress audit) | Absent | Optional later; see diminishing-returns | M | Low–Med | **P3** |
@@ -281,8 +282,8 @@ verified toggles.
 1. **Dependency review Action** (G7, before G6): in place in warn-only mode on PRs that **touch
    manifests**. Promote to fail on **high/critical** after the alert stock is triaged (Christophe
    severity).
-2. **Ruleset: require a pull request** before merge to `main`, **without** required approvals
-   (Marc) — solo maintainer cannot approve PRs opened as `mgagp` (G5 → P2).
+2. ~~**Ruleset: require a pull request**~~ — **done 2026-11-06** (G5): `pull_request` rule, 0 approvals,
+   because a solo maintainer cannot approve PRs opened as `mgagp`.
 3. **OpenSSF Scorecard** — workflow landed (`scorecard.yml`); README badge still follow-up after
    first publish (Fred); triage with Christophe (no 10/10 campaign).
 4. **Optional hygiene:** `delete_branch_on_merge`; document preferred merge method; decide
@@ -292,7 +293,7 @@ verified toggles.
 7. **Coverage honesty (G18 hygiene):** remove or enforce the “90%” claim in `DEVELOPMENT.md`
    (Fred + Patrick) — not a Phase 3 release item.
 8. **CODEOWNERS (G6)** only if/when G5-style enforcement is revisited (P3).
-9. **CodeQL required check (G24)** only if alert noise is tolerable (Marc + Christophe).
+9. ~~**CodeQL required check (G24)**~~ — **decided 2026-11-06:** policy-only, not a required check (see G24).
 
 Exit criteria: dependency review on manifest PRs; PR-required ruleset (no fake self-approval);
 Scorecard signal; Settings still documented.
@@ -338,9 +339,9 @@ Copy into a maintainer note; check each in **Settings → Code security / Rules 
 - [x] **Push protection** (secret scanning): Enabled (API, 2026-11-05).
 - [ ] **Private vulnerability reporting:** Enabled (API already `true` — reconfirm UI).
 - [ ] **Ruleset “Basic protection”:** still requires **`ci-gate` only** for status checks (do not add path-filtered job names).
-- [ ] Whether **classic branch protection** on `main` still exists alongside the ruleset.
+- [x] **Classic branch protection** on `main`: none (API 404, 2026-11-06).
 - [ ] Desired merge button set (squash / merge commit / rebase) and **delete branch on merge**.
-- [ ] Whether Admin **bypass** on the ruleset remains intentional for emergency / bot merges.
+- [x] Admin **bypass** on the ruleset: kept, PRs only (2026-11-06).
 - [ ] **`allow_auto_merge`:** keep off, or enable for Dependabot T1 only (record decision).
 
 Anything not checked stays marked **unverified** in future inventory refreshes — never guess.
