@@ -9,10 +9,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UserDetails;
 
-class EzkeyMockSecurityRealmTest {
+class EzkeySecurityRealmTest {
 
-    private EzkeyMockSecurityRealm realm() {
-        return new EzkeyMockSecurityRealm(
+    private EzkeySecurityRealm realm() {
+        return new EzkeySecurityRealm(
                 "https://example.invalid/ezkey",
                 "int-key-1",
                 Secret.fromString("lab-secret-value"),
@@ -38,6 +38,26 @@ class EzkeyMockSecurityRealmTest {
 
     @Test
     void sanitizeStripsNewlines() {
-        assertTrue(EzkeyMockSecurityRealm.sanitizeForLog("a\rb\nc").equals("a_b_c"));
+        assertTrue(EzkeySecurityRealm.sanitizeForLog("a\rb\nc").equals("a_b_c"));
+    }
+
+    @Test
+    void loginUrlIsEzkeySignIn() {
+        assertEquals("ezkey-login", realm().getLoginUrl());
+    }
+
+    @Test
+    void unknownUserIsNotAJenkinsUser() {
+        assertThrows(
+                org.springframework.security.core.userdetails.UsernameNotFoundException.class,
+                () -> realm().loadUserByUsername2("nobody"));
+    }
+
+    @Test
+    void enabledUserCanBeLoaded() {
+        EzkeySecurityRealm realm = realm();
+        realm.setEnabledUsers(java.util.List.of(new EzkeySecurityRealm.EzkeyAccount("labuser", "lab-id")));
+        assertEquals("labuser", realm.loadUserByUsername2("labuser").getUsername());
+        assertEquals("lab-id", realm.integrationUserIdentifier("labuser"));
     }
 }

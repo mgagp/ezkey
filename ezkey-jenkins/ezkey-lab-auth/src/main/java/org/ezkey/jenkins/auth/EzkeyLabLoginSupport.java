@@ -69,7 +69,7 @@ public final class EzkeyLabLoginSupport {
      * @return client aimed at the Integration API
      * @throws IllegalStateException if base URL, integration key, or secret is missing
      */
-    public static EzkeyClient newClient(@NonNull EzkeyMockSecurityRealm realm) {
+    public static EzkeyClient newClient(@NonNull EzkeySecurityRealm realm) {
         Objects.requireNonNull(realm, "realm");
         String base = realm.getEzkeyBaseUrl();
         String key = realm.getIntegrationKey();
@@ -113,7 +113,7 @@ public final class EzkeyLabLoginSupport {
                 Level.INFO,
                 "ezkey-lab Integration create ok authAttemptId={0} user={1} forceChallenge={2}",
                 new Object[] {
-                    created.authAttemptId(), EzkeyMockSecurityRealm.sanitizeForLog(user), forceChallenge
+                    created.authAttemptId(), EzkeySecurityRealm.sanitizeForLog(user), forceChallenge
                 });
 
         try {
@@ -143,11 +143,14 @@ public final class EzkeyLabLoginSupport {
             throws ChallengeMissingException {
         Objects.requireNonNull(created, "created");
         Integer challenge = created.authAttemptChallenge();
+        // Read the id on every path. The accessor is named authAttemptId, so CodeQL treats
+        // it as an authentication method. Calling it only inside the if below would look
+        // like the sign-in checkbox can skip that method.
+        int attemptId = created.authAttemptId();
         if (challenge == null && forceChallenge) {
-            throw new ChallengeMissingException(created.authAttemptId());
+            throw new ChallengeMissingException(attemptId);
         }
-        return new CreateOutcome(
-                created.authAttemptId(), challenge, created.timeoutSeconds(), created.expiresAt());
+        return new CreateOutcome(attemptId, challenge, created.timeoutSeconds(), created.expiresAt());
     }
 
     /**

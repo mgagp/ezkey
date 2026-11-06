@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install ezkey-lab-auth and apply EzkeyMockSecurityRealm (break-glass + Integration MFA).
+# Install ezkey-lab-auth and apply EzkeySecurityRealm (passwordless Ezkey + break-glass).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -23,6 +23,13 @@ docker cp "${HPI}" "${CONTAINER}:/var/jenkins_home/plugins/ezkey-lab-auth.hpi"
 docker exec "${CONTAINER}" rm -f \
   /var/jenkins_home/plugins/ezkey-lab-auth.jpi.disabled \
   /var/jenkins_home/plugins/ezkey-lab-auth.hpi.disabled 2>/dev/null || true
+
+# Phase 1 persisted EzkeyMockSecurityRealm. Jenkins refuses to boot if that class is gone.
+# This is a lab volume rewrite, not a plugin compatibility alias.
+echo "Updating a phase-1 realm class name so Jenkins can boot ..."
+MSYS_NO_PATHCONV=1 docker exec "${CONTAINER}" sed -i \
+  's/org.ezkey.jenkins.auth.EzkeyMockSecurityRealm/org.ezkey.jenkins.auth.EzkeySecurityRealm/g' \
+  /var/jenkins_home/config.xml
 
 echo "Restarting ${CONTAINER} ..."
 docker restart "${CONTAINER}" >/dev/null
@@ -48,7 +55,8 @@ ADMIN_PASS="$(jenkins_pass)"
 BASE_URL="${EZKEY_MOCK_BASE_URL:-http://integration-api:7080}"
 INT_KEY="${EZKEY_MOCK_INTEGRATION_KEY:-lab-integration-key}"
 SECRET="${EZKEY_MOCK_SECRET:-lab-ezkey-secret}"
-FORCE_CHALLENGE="${EZKEY_JENKINS_FORCE_CHALLENGE:-false}"
+FORCE_CHALLENGE="${EZKEY_JENKINS_FORCE_CHALLENGE:-true}"
+ENABLED_USERS="${EZKEY_JENKINS_ENABLED_USERS:-labuser}"
 
 # Escape for Groovy single-quoted string (keys/secrets must not contain ')
 escape_sq() { printf '%s' "$1" | sed "s/'/\\\\'/g"; }
@@ -59,14 +67,29 @@ case "$(printf '%s' "${FORCE_CHALLENGE}" | tr '[:upper:]' '[:lower:]')" in
   *) FORCE_GROOVY=false ;;
 esac
 
+ACCOUNTS=""
+IFS=',' read -ra ENTRIES <<< "${ENABLED_USERS}"
+for entry in "${ENTRIES[@]}"; do
+  entry="$(printf '%s' "$entry" | sed 's/^ *//;s/ *$//')"
+  [[ -z "$entry" ]] && continue
+  if [[ "$entry" == *=* ]]; then
+    user="${entry%%=*}"
+    ident="${entry#*=}"
+  else
+    user="$entry"
+    ident=""
+  fi
+  ACCOUNTS="${ACCOUNTS}new org.ezkey.jenkins.auth.EzkeySecurityRealm.EzkeyAccount('$(escape_sq "$user")', '$(escape_sq "$ident")'),"
+done
+
 cat >"${SCRIPT}" <<EOF
 import hudson.security.FullControlOnceLoggedInAuthorizationStrategy
 import hudson.util.Secret
 import jenkins.model.Jenkins
-import org.ezkey.jenkins.auth.EzkeyMockSecurityRealm
+import org.ezkey.jenkins.auth.EzkeySecurityRealm
 
 def j = Jenkins.get()
-def realm = new EzkeyMockSecurityRealm(
+def realm = new EzkeySecurityRealm(
   '$(escape_sq "${BASE_URL}")',
   '$(escape_sq "${INT_KEY}")',
   Secret.fromString('$(escape_sq "${SECRET}")'),
@@ -74,15 +97,16 @@ def realm = new EzkeyMockSecurityRealm(
   Secret.fromString('$(escape_sq "${ADMIN_PASS}")')
 )
 realm.setForceChallenge(${FORCE_GROOVY})
+realm.setEnabledUsers([${ACCOUNTS}])
 j.setSecurityRealm(realm)
 def strategy = new FullControlOnceLoggedInAuthorizationStrategy()
 strategy.setAllowAnonymousRead(false)
 j.setAuthorizationStrategy(strategy)
 j.save()
-println 'ezkey-lab: EzkeyMockSecurityRealm applied forceChallenge=' + realm.isForceChallenge()
+println 'ezkey-lab: EzkeySecurityRealm applied forceChallenge=' + realm.isForceChallenge()
 EOF
 
-echo "Applying EzkeyMockSecurityRealm via script console (forceChallenge=${FORCE_GROOVY}) ..."
+echo "Applying EzkeySecurityRealm via script console (forceChallenge=${FORCE_GROOVY}) ..."
 for attempt in $(seq 1 30); do
   jenkins_prepare_crumb || { sleep 2; continue; }
   if jenkins_is_unsecured; then
@@ -96,7 +120,7 @@ for attempt in $(seq 1 30); do
       --data-urlencode "script@${SCRIPT}" \
       "${BASE}/scriptText" 2>&1 || true)"
   fi
-  if printf '%s' "$out" | grep -q 'EzkeyMockSecurityRealm applied'; then
+  if printf '%s' "$out" | grep -q 'EzkeySecurityRealm applied'; then
     echo "$out"
     break
   fi
@@ -116,7 +140,7 @@ if [[ "$code" != "200" ]]; then
 fi
 
 echo "Verifying Ezkey MFA entry page ..."
-code="$(curl -sS -o /dev/null -w '%{http_code}' "${BASE}/ezkey-lab-login/")"
+code="$(curl -sS -o /dev/null -w '%{http_code}' "${BASE}/ezkey-login/")"
 if [[ "$code" != "200" ]]; then
   echo "Ezkey lab login page failed HTTP ${code}" >&2
   exit 1
@@ -124,6 +148,6 @@ fi
 
 echo "Configure OK."
 echo "  Break-glass: ${BASE}/login  (${ADMIN_USER})"
-echo "  Ezkey MFA:   ${BASE}/ezkey-lab-login/"
+echo "  Ezkey:       ${BASE}/ezkey-login/"
 echo "  Integration base URL in realm: ${BASE_URL}"
 echo "  forceChallenge: ${FORCE_GROOVY}"

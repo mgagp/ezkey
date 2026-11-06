@@ -38,8 +38,13 @@ ezkey_jenkins_docker_build_plugin() {
   else
     echo "Building ${module}.hpi with ${image} (docker run + volume ${volume}) ..."
     docker volume create "${volume}" >/dev/null
-    docker run --rm \
-      -v "${repo_root}:/src" \
+    # Same Git Bash guard as ci-plugin-test.sh: do not let MSYS rewrite /src.
+    local host_src="${repo_root}"
+    if command -v cygpath >/dev/null 2>&1; then
+      host_src="$(cygpath -w "${repo_root}")"
+    fi
+    MSYS_NO_PATHCONV=1 docker run --rm \
+      -v "${host_src}:/src" \
       -v "${volume}:/root/.m2" \
       -w /src \
       -e "PLUGIN_MODULE=${module}" \

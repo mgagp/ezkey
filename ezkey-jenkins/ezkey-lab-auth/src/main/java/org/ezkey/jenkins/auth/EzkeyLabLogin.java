@@ -9,6 +9,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.util.Locale;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import jenkins.model.Jenkins;
@@ -51,6 +52,11 @@ public class EzkeyLabLogin implements UnprotectedRootAction {
     static final String SESSION_TIMEOUT = "ezkey.lab.pendingTimeoutSeconds";
     /** Epoch millis when the wait loop must stop (now + timeout at create). */
     static final String SESSION_DEADLINE_MS = "ezkey.lab.pendingDeadlineMs";
+    /** Wait page with no Integration attempt (unknown user or cooldown). */
+    static final String SESSION_DECOY = "ezkey.lab.decoy";
+
+    /** How long a decoy wait claims to last, so it matches a real wait page. */
+    static final int DECOY_TIMEOUT_SECONDS = 60;
 
     static final String ATTR_RESULT_STATE = "ezkeyLabResultState";
 
@@ -69,7 +75,7 @@ public class EzkeyLabLogin implements UnprotectedRootAction {
     @NonNull
     @Override
     public String getUrlName() {
-        return "ezkey-lab-login";
+        return "ezkey-login";
     }
 
     /** Send form (no create yet). CSRF crumb required on POST. */
@@ -81,34 +87,60 @@ public class EzkeyLabLogin implements UnprotectedRootAction {
      * Operator clicked Send — create Integration auth attempt, then redirect to wait.
      *
      * @param req stapler request
-     * @param username Jenkins / Integration userIdentifier
+     * @param username Jenkins username
+     * @param requireChallenge {@code true} to request a code when the realm does not already force one
      * @return redirect or error
      */
     @RequirePOST
-    public HttpResponse doSend(StaplerRequest2 req, @QueryParameter String username) {
+    public HttpResponse doSend(
+            StaplerRequest2 req,
+            @QueryParameter String username,
+            @QueryParameter String requireChallenge) {
         String user = trim(username);
         if (user.isEmpty()) {
             return withError(req, "Username required.");
         }
 
-        EzkeyMockSecurityRealm realm = requireRealm();
+        EzkeySecurityRealm realm = requireRealm();
         if (realm == null) {
-            return withError(req, "Ezkey Lab Auth realm is not the active SecurityRealm.");
+            return withError(req, "Ezkey realm is not the active SecurityRealm.");
         }
         if (realm.getBreakGlassUsername().equals(user)) {
-            return withError(req, "Break-glass admin uses the standard Jenkins login form, not Ezkey MFA.");
+            return withError(req, "Break-glass admin uses the standard Jenkins login form, not Ezkey.");
         }
 
         HttpSession session = req.getSession(true);
-        // Double-submit / resend: cancel the previous Integration attempt before replacing it.
+        if (realm.findEnabledAccount(user) == null) {
+            // Same page as a real send. No Integration call, so the username is not confirmed.
+            bestEffortCancelPending(session, realm);
+            startDecoy(session, realm, user);
+            LOGGER.log(Level.FINE, "ezkey-login no push reason=not-enabled");
+            return HttpResponses.redirectTo("wait");
+        }
+        if (!realm.allowSend(user)) {
+            Object pendingUser = session.getAttribute(SESSION_USERNAME);
+            Object attempt = session.getAttribute(SESSION_ATTEMPT_ID);
+            boolean decoy = Boolean.TRUE.equals(session.getAttribute(SESSION_DECOY));
+            if (attempt instanceof Integer && user.equals(pendingUser) && !decoy) {
+                LOGGER.log(Level.FINE, "ezkey-login cooldown keeps the current attempt");
+                return HttpResponses.redirectTo("wait");
+            }
+            bestEffortCancelPending(session, realm);
+            startDecoy(session, realm, user);
+            LOGGER.log(Level.FINE, "ezkey-login no push reason=cooldown");
+            return HttpResponses.redirectTo("wait");
+        }
+
+        // Checkbox can only harden. It is ignored when the realm already forces a challenge.
+        boolean effectiveChallenge = realm.isForceChallenge() || "true".equals(requireChallenge);
         bestEffortCancelPending(session, realm);
         clearPending(session);
-        boolean forceChallenge = realm.isForceChallenge();
+        String integrationUser = realm.integrationUserIdentifier(user);
 
         try {
             EzkeyClient client = EzkeyLabLoginSupport.newClient(realm);
             EzkeyLabLoginSupport.CreateOutcome created =
-                    EzkeyLabLoginSupport.createAfterConfirm(client, user, forceChallenge);
+                    EzkeyLabLoginSupport.createAfterConfirm(client, integrationUser, effectiveChallenge);
             session.setAttribute(SESSION_ATTEMPT_ID, created.authAttemptId());
             session.setAttribute(SESSION_USERNAME, user);
             // Challenge held for wait.jelly display only when present — never written to logs.
@@ -117,8 +149,8 @@ public class EzkeyLabLogin implements UnprotectedRootAction {
             }
             int timeoutSeconds = Math.max(1, created.timeoutSeconds());
             session.setAttribute(SESSION_TIMEOUT, timeoutSeconds);
-            session.setAttribute(
-                    SESSION_DEADLINE_MS, System.currentTimeMillis() + timeoutSeconds * 1000L);
+            session.setAttribute(SESSION_DEADLINE_MS, realm.now() + timeoutSeconds * 1000L);
+            realm.recordSend(user);
             return HttpResponses.redirectTo("wait");
         } catch (EzkeyLabLoginSupport.ChallengeMissingException e) {
             LOGGER.log(
@@ -133,7 +165,7 @@ public class EzkeyLabLogin implements UnprotectedRootAction {
             LOGGER.log(
                     Level.WARNING,
                     "ezkey-lab create failed user={0} httpStatus={1}",
-                    new Object[] {EzkeyMockSecurityRealm.sanitizeForLog(user), e.getStatusCode()});
+                    new Object[] {EzkeySecurityRealm.sanitizeForLog(user), e.getStatusCode()});
             return withError(
                     req, "Could not start Ezkey authentication. Check Integration key and enrollment.");
         }
@@ -148,14 +180,16 @@ public class EzkeyLabLogin implements UnprotectedRootAction {
      */
     @RequirePOST
     public HttpResponse doConfirm(StaplerRequest2 req, @QueryParameter String username) {
-        return doSend(req, username);
+        return doSend(req, username, null);
     }
 
     /** Wait page: shows challenge; client polls {@code poll}. */
     @GET
     public void doWait(StaplerRequest2 req, StaplerResponse2 rsp) throws IOException, ServletException {
         HttpSession session = req.getSession(false);
-        if (session == null || session.getAttribute(SESSION_ATTEMPT_ID) == null) {
+        boolean pending = session != null && session.getAttribute(SESSION_ATTEMPT_ID) != null;
+        boolean decoy = session != null && Boolean.TRUE.equals(session.getAttribute(SESSION_DECOY));
+        if (!pending && !decoy) {
             rsp.sendRedirect(".");
             return;
         }
@@ -268,21 +302,27 @@ public class EzkeyLabLogin implements UnprotectedRootAction {
         if (session == null) {
             return text(401, "NO_SESSION");
         }
+        EzkeySecurityRealm realm = requireRealm();
+        if (Boolean.TRUE.equals(session.getAttribute(SESSION_DECOY))) {
+            if (isPastDeadline(session, realm)) {
+                clearPending(session);
+                return text(410, "EXPIRED");
+            }
+            return text(200, "PENDING");
+        }
         Object idObj = session.getAttribute(SESSION_ATTEMPT_ID);
         Object userObj = session.getAttribute(SESSION_USERNAME);
         if (!(idObj instanceof Integer attemptId) || !(userObj instanceof String username)) {
             return text(401, "NO_PENDING");
         }
 
-        if (isPastDeadline(session)) {
+        if (isPastDeadline(session, realm)) {
             // Server-authoritative expiry: cancel + terminal non-2xx (wait.jelly stops on !res.ok).
-            EzkeyMockSecurityRealm expiredRealm = requireRealm();
-            bestEffortCancelPending(session, expiredRealm);
+            bestEffortCancelPending(session, realm);
             clearPending(session);
             return text(410, "EXPIRED");
         }
 
-        EzkeyMockSecurityRealm realm = requireRealm();
         if (realm == null) {
             return text(500, "NO_REALM");
         }
@@ -426,18 +466,35 @@ public class EzkeyLabLogin implements UnprotectedRootAction {
     }
 
     @CheckForNull
-    private static EzkeyMockSecurityRealm requireRealm() {
+    private static EzkeySecurityRealm requireRealm() {
         SecurityRealm realm = Jenkins.get().getSecurityRealm();
-        return realm instanceof EzkeyMockSecurityRealm ez ? ez : null;
+        return realm instanceof EzkeySecurityRealm ez ? ez : null;
     }
 
-    private static boolean isPastDeadline(HttpSession session) {
+    private static boolean isPastDeadline(HttpSession session, @CheckForNull EzkeySecurityRealm realm) {
         Object deadline = session.getAttribute(SESSION_DEADLINE_MS);
-        return deadline instanceof Long d && System.currentTimeMillis() > d;
+        long now = realm == null ? System.currentTimeMillis() : realm.now();
+        return deadline instanceof Long d && now > d;
+    }
+
+    /** Same wait page as a real send, with a code that matches no Integration attempt. */
+    private static void startDecoy(HttpSession session, EzkeySecurityRealm realm, String user) {
+        clearPending(session);
+        session.setAttribute(SESSION_DECOY, Boolean.TRUE);
+        session.setAttribute(SESSION_USERNAME, user);
+        session.setAttribute(SESSION_CHALLENGE, ThreadLocalRandom.current().nextInt(100));
+        session.setAttribute(SESSION_TIMEOUT, DECOY_TIMEOUT_SECONDS);
+        session.setAttribute(SESSION_DEADLINE_MS, realm.now() + DECOY_TIMEOUT_SECONDS * 1000L);
+    }
+
+    /** True when the realm requires a challenge, so the sign-in checkbox stays hidden. */
+    public boolean isForceChallenge() {
+        EzkeySecurityRealm realm = requireRealm();
+        return realm != null && realm.isForceChallenge();
     }
 
     private static void bestEffortCancelPending(
-            HttpSession session, @CheckForNull EzkeyMockSecurityRealm realm) {
+            HttpSession session, @CheckForNull EzkeySecurityRealm realm) {
         Object idObj = session.getAttribute(SESSION_ATTEMPT_ID);
         if (!(idObj instanceof Integer attemptId) || realm == null) {
             return;
@@ -449,7 +506,7 @@ public class EzkeyLabLogin implements UnprotectedRootAction {
         }
     }
 
-    private static void establishLogin(StaplerRequest2 req, EzkeyMockSecurityRealm realm, String username) {
+    private static void establishLogin(StaplerRequest2 req, EzkeySecurityRealm realm, String username) {
         // Session fixation: rotate id before elevating (Servlet 3.1), like Jenkins login.
         if (req.getSession(false) != null) {
             req.changeSessionId();
@@ -466,7 +523,7 @@ public class EzkeyLabLogin implements UnprotectedRootAction {
         LOGGER.log(
                 Level.INFO,
                 "ezkey-lab Jenkins session established user={0}",
-                EzkeyMockSecurityRealm.sanitizeForLog(username));
+                EzkeySecurityRealm.sanitizeForLog(username));
     }
 
     private static void clearPending(HttpSession session) {
@@ -475,6 +532,7 @@ public class EzkeyLabLogin implements UnprotectedRootAction {
         session.removeAttribute(SESSION_CHALLENGE);
         session.removeAttribute(SESSION_TIMEOUT);
         session.removeAttribute(SESSION_DEADLINE_MS);
+        session.removeAttribute(SESSION_DECOY);
     }
 
     private HttpResponse withError(StaplerRequest2 req, String message) {

@@ -1,8 +1,8 @@
 <?jelly escape-by-default='true'?>
-<j:jelly xmlns:j="jelly:core">
-  <j:if test="${app.securityRealm.class.name == 'org.ezkey.jenkins.auth.EzkeyMockSecurityRealm'}">
+<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout">
+  <j:if test="${app.securityRealm.class.name == 'org.ezkey.jenkins.auth.EzkeySecurityRealm'}">
     <div style="text-align:center;margin:1rem 0;" data-testid="ezkey-lab-login-link">
-      <a href="${rootURL}/ezkey-lab-login/">Sign in with Ezkey MFA (lab)</a>
+      <a href="${rootURL}/ezkey-login/">Sign in with Ezkey</a>
     </div>
   </j:if>
 </j:jelly>

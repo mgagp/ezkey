@@ -1,33 +1,32 @@
 <?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout">
-  <l:layout title="Ezkey login — Waiting" norefresh="true">
+  <l:layout title="${%pageTitle}" norefresh="true">
     <l:main-panel>
       <div data-testid="ezkey-lab-state" data-ezkey-lab-state="waiting"
            id="ezkey-lab-wait-config"
            data-poll-ms="${it.waitPagePollIntervalMs}"
            data-poll-error-ms="${it.waitPagePollErrorIntervalMs}"
            data-timeout-seconds="${it.pendingTimeoutSeconds}">
-        <p style="margin:0 0 0.5rem;color:#666;font-size:0.9rem;">State: Challenge · Waiting</p>
-        <h1>Awaiting device approval</h1>
-        <p>User: <strong data-testid="ezkey-lab-username">${it.pendingUsername}</strong></p>
+        <h1>${%heading}</h1>
+        <p>${%userLabel} <strong data-testid="ezkey-lab-username">${it.pendingUsername}</strong></p>
         <j:if test="${it.pendingChallengeFormatted != null}">
           <div data-testid="ezkey-lab-challenge" data-ezkey-lab-state="challenge"
-               style="margin:1rem 0;padding:1rem;border:1px solid #ccc;max-width:20rem;">
-            <div style="font-size:0.85rem;color:#666;">Challenge code</div>
+               style="margin:1rem 0;padding:1rem;border:1px solid var(--border-color, #ccc);max-width:20rem;">
+            <div>${%challengeLabel}</div>
             <strong style="font-size: 1.75rem; letter-spacing: 0.15em;">${it.pendingChallengeFormatted}</strong>
-            <p style="margin:0.5rem 0 0;">Match this code on your Ezkey device, then approve or deny.</p>
+            <p>${%challengeHelp}</p>
           </div>
         </j:if>
         <j:if test="${it.pendingChallengeFormatted == null}">
-          <p data-testid="ezkey-lab-no-challenge">No challenge code for this attempt — approve or deny on your device.</p>
+          <p data-testid="ezkey-lab-no-challenge">${%noChallenge}</p>
         </j:if>
-        <p id="status" data-testid="ezkey-lab-status">Waiting for device response…</p>
+        <p id="status" data-testid="ezkey-lab-status">${%waiting}</p>
         <form method="post" action="cancel" style="margin-top: 1rem;">
           <j:set var="crumbIssuer" value="${app.getCrumbIssuer()}"/>
           <j:if test="${crumbIssuer != null}">
             <input type="hidden" name="${crumbIssuer.crumbRequestField}" value="${crumbIssuer.crumb}"/>
           </j:if>
-          <button type="submit" data-testid="ezkey-lab-cancel">Cancel</button>
+          <button type="submit" class="jenkins-button" data-testid="ezkey-lab-cancel">${%cancel}</button>
         </form>
       </div>
       <script><![CDATA[
@@ -58,7 +57,6 @@
               .then(function (res) {
                 if (stopped) return;
                 var t = res.text;
-                // Server-authoritative terminals: !res.ok (401/410/5xx). 410 EXPIRED → expired page.
                 if (!res.ok) {
                   if (t === 'EXPIRED') { go('expired'); return; }
                   go('error');
@@ -74,7 +72,6 @@
               })
               .catch(function () {
                 if (stopped) return;
-                // Network errors retry only until SESSION_TIMEOUT deadline.
                 if (pastDeadline()) { go('expired'); return; }
                 setTimeout(poll, errorMs);
               });
