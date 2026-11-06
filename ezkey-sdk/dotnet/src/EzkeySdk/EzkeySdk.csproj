@@ -6,7 +6,10 @@
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageId>Ezkey.Sdk</PackageId>
-    <PackageVersion>1.0.0</PackageVersion>
+    <PackageVersion>0.2.0-SNAPSHOT</PackageVersion>
+    <!-- AssemblyVersion/FileVersion: numeric only — never -SNAPSHOT (NuGet label is PackageVersion). -->
+    <AssemblyVersion>0.2.0.0</AssemblyVersion>
+    <FileVersion>0.2.0.0</FileVersion>
     <Title>Ezkey .NET SDK</Title>
     <Description>.NET SDK for Ezkey Admin and Auth APIs</Description>
     <Authors>Ezkey Contributors</Authors>

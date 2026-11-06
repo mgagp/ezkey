@@ -1,6 +1,6 @@
 {
   "name": "ezkey-javascript-sdk",
-  "version": "1.0.0",
+  "version": "0.2.0-SNAPSHOT",
   "description": "JavaScript/TypeScript SDK for Ezkey Admin and Auth APIs",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
