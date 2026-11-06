@@ -231,7 +231,7 @@ Value: evaluator / supply-chain / operator impact (High / Med / Low).
 | G2 | Dependabot **alerts** + security updates | Alerts on since 2026-11-06; `SECURITY.md` aligned | Triage the stock, then decide security updates | S | High | **Alerts done**; security updates after triage |
 | G3 | Secret scanning + push protection | Both enabled (API, 2026-11-05) | None | — | High | **Done** |
 | G4 | Dependency graph on; automatic submission off | Graph re-enabled 2026-10-13; #798 merged (`638b4214`) | Confirm automatic submission still Disabled in Settings | S | High | **Done** (graph + docs); confirm automatic submission |
-| G7 | Dependency review Action on PRs | Absent | After G2: add action limited to PRs that touch manifests; fail on high/critical | M | High | **P1** |
+| G7 | Dependency review Action on PRs | `dependency-review.yml`, warn-only, not in `ci-gate` (2026-11-06); Maven not covered | Promote to blocking on high/critical after the alert stock is triaged | S | High | **Observing** |
 | G8 | `SECURITY.md` Advanced CodeQL wording | Updated in #808 | Reconfirm after Marc verifies Settings toggles | S | Med | P1 |
 | G5 | Ruleset: require **PR** before merge (no approval) | Status checks only; admin bypass always | Require a pull request **without** required approvals (solo: author cannot approve own PR). Approvals stay soft / #787 | S–M | Med | **P2** |
 | G9 | `delete_branch_on_merge` | false | Enable for hygiene | S | Low | P2 |

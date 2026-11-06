@@ -1,0 +1,41 @@
+# Reports vulnerable dependencies that a pull request adds (CI plan G7).
+# Complements Dependabot alerts, which only look at what is already on main.
+#
+# Observation mode: warn-only, and not part of ci-gate. Promote to blocking once the initial
+# alert stock is triaged, so it does not fail routine mobile lockfile PRs.
+#
+# Limit: Maven is not covered. Its graph is submitted from main only
+# (maven-dependency-submission.yml), so a PR diff shows no Maven changes.
+name: Dependency review
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '**/package.json'
+      - '**/package-lock.json'
+      - '**/yarn.lock'
+      - '**/requirements*.txt'
+      - '**/pyproject.toml'
+      - '**/Gemfile.lock'
+      - '.github/workflows/**'
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    name: dependency-review
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Review added dependencies
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+          warn-only: true
