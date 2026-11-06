@@ -39,7 +39,7 @@ remains orthogonal to the closed September operability program. Wave B closeout:
 | Folder | Issue | Note |
 |--------|-------|------|
 | [`ezkey-jenkins/`](../../../ezkey-jenkins/) | [#972](https://github.com/mgagp/ezkey/issues/972) | Jenkins auth plugin lab (Integration API ↔ Java SDK); experimental; independent compose — does not delay community-alpha |
-| `ezkey-connectors/` (from step 3) | [#1206](https://github.com/mgagp/ezkey/issues/1206) | Connector SPI for external services: email first, then SMS and directory; connectors are lab, core changes keep normal rigor. [`V-2026-11-04-connector-spi`](../vision/V-2026-11-04-connector-spi.md), [pack](../decisions/2026-11-04-connector-spi/README.md) |
+| `ezkey-connectors/` (contract from step 2, code from step 3) | [#1206](https://github.com/mgagp/ezkey/issues/1206) | Connector SPI for external services: email first, then SMS and directory; connectors are lab, core changes keep normal rigor. [`V-2026-11-04-connector-spi`](../vision/V-2026-11-04-connector-spi.md), [pack](../decisions/2026-11-04-connector-spi/README.md) |
 
 ## Active ideas
 
@@ -105,6 +105,7 @@ remains orthogonal to the closed September operability program. Wave B closeout:
 
 | ID | Title | Status | Related idea |
 |----|-------|--------|--------------|
+| `TB-2026-11-06-connector-delivery-contract-v0` | Connector delivery contract v0 and directory sketch (`#1206` step 2) | `under-review` | `V-2026-11-04-connector-spi` |
 | `TB-2026-08-29-admin-api-remove-m2m-hatch` | Remove Admin API API-key M2M hatch | `done` | `I-2026-08-29-admin-api-remove-m2m-hatch` |
 | `TB-2026-08-28-admin-first-keyset-bootstrap` | Admin-first keyset bootstrap | `implemented` | `I-2026-07-17-keyset-blob-admin-first-bootstrap` |
 | `TB-2026-08-14-mobile-exit-experimental-messaging` | Exit experimental in-app messaging | `under-review` | `I-2026-08-02-mobile-exit-experimental-messaging` |

@@ -371,7 +371,12 @@ flowchart TD
 The mock connector is the long-term test tool as well as the first step: it plays success, provider
 error, timeout and rejected credential, so CI, QA and new connector prototypes share one fixture.
 
-## Open questions for step 2
+## Questions for step 2, now decided
+
+All six were settled on 2026-11-06. The result is the
+[delivery contract v0](../../../../ezkey-connectors/contracts/delivery-v0.openapi.yaml), the
+[directory sketch](directory-sketch.md) and the reasoning in
+[`TB-2026-11-06`](../../backlog/TB-2026-11-06-connector-delivery-contract-v0.md).
 
 1. **Authentication** between Ezkey and a delivery connector: decided, bearer token per connector
    ([`TB-2026-11-06`](../../backlog/TB-2026-11-06-connector-delivery-contract-v0.md)).
@@ -379,7 +384,7 @@ error, timeout and rejected credential, so CI, QA and new connector prototypes s
 3. **Recipient:** decided, the enrollment's `contactEmail` only, present at send time (same brief).
 4. **Audit:** decided, the full address in the audit entry, never in application logs (same brief).
 5. **Email wording and locale:** decided, the connector owns fixed templates (same brief).
-6. **What the health check returns.**
+6. **Health check:** decided, state and capabilities with no provider call (same brief).
 
 **Requirements already set for step 2 (Marc, 2026-11-05):**
 

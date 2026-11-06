@@ -3,7 +3,7 @@
 ## Metadata
 
 - **ID:** `TB-2026-11-06-connector-delivery-contract-v0`
-- **Status:** `draft`
+- **Status:** `under-review`
 - **Related vision:** [`V-2026-11-04-connector-spi`](../vision/V-2026-11-04-connector-spi.md)
 - **Decision pack:** [`2026-11-04-connector-spi`](../decisions/2026-11-04-connector-spi/README.md)
 - **GitHub issue:** `#1206` (step 2)
@@ -16,6 +16,9 @@
 Define the delivery contract v0 in OpenAPI, and show on one page that the directory case holds on paper,
 before any core or connector code is written.
 
+- **Contract:** [`ezkey-connectors/contracts/delivery-v0.openapi.yaml`](../../../ezkey-connectors/contracts/delivery-v0.openapi.yaml)
+- **Directory sketch:** [`directory-sketch.md`](../decisions/2026-11-04-connector-spi/directory-sketch.md)
+
 ## Decisions for the contract
 
 Taken one at a time with Marc.
@@ -27,7 +30,7 @@ Taken one at a time with Marc.
 | 3 | Recipient | The enrollment's `contactEmail` only, present at send time, with the rules below | 2026-11-06 |
 | 4 | What the audit records about the recipient | The full address, with the rules below | 2026-11-06 |
 | 5 | Email wording, locale and template owner | The connector owns fixed templates, with the rules below | 2026-11-06 |
-| 6 | What the health check returns | Open | |
+| 6 | What the health check returns | State and capabilities, with no provider call | 2026-11-06 |
 
 ### 1. Authentication
 
@@ -110,6 +113,91 @@ security wording. The cost: changing the text means redeploying the connector.
 **Limit accepted:** no language is stored for the person, so an operator can send the wrong language, and no other
 language is available. Tracked separately in [#1250](https://github.com/mgagp/ezkey/issues/1250); a better source
 of language should not change the contract's shape.
+
+### 6. Health check
+
+The send already gives an honest answer, so the health check does not try to predict it. Testing the provider on
+each call would be slow, repeat SMTP connections and risk provider limits.
+
+- **Returns:** state, connector name and version, contract version, channel, templates and locales, `testMode`.
+- **Never returns:** a credential, a provider host, the sender address or provider error detail.
+- **Core behavior:**
+  - Connector absent or unreachable: integrated delivery, with the QR on screen.
+  - Connector `degraded`: treated the same way, since it cannot send.
+  - Different contract version: send refused.
+  - Template or locale not offered: send refused with a clear error.
+  - `testMode` true: the Admin UI says so next to the button.
+- **Light call:** read when the screen opens, with a short timeout and a cache of a few seconds, never in a loop.
+
+**Limit accepted:** the button can show and the click still fail if the provider is down. The error is clear and
+the QR stays on screen.
+
+## How the core reads a call
+
+| What the core sees | Outcome | Why |
+|--------------------|---------|-----|
+| `200` | `accepted` | The provider took the message |
+| `400`, `401`, `413`, `422` | `rejected` | The connector says it did not leave |
+| Connection refused, before anything was sent | `rejected` | The job never reached the connector |
+| `504` | `unknown` | The provider did not answer in time |
+| Read timeout, connection lost, other `5xx`, redirect, unreadable body | `unknown` | The email may have left. Redirects are never followed |
+
+**Refused in the core, with no call:** caller's role or enrollment not `CREATED`; no connector or a `degraded` one;
+missing or invalid `contactEmail`; empty `ezkey.qr.auth-base-url`; daily cap reached; evaluator temporary session;
+self-registered tenant on the community instance; contract version, template or locale mismatch.
+
+**Starting timeouts, to adjust at step 3:** connect 3 s and read 20 s for a send, with the connector's own provider
+timeout at 15 s so it can answer `504` first. Health: 2 s, cached 10 s. All sit well under Cloudflare Free's 100 s.
+
+## Pre-existing conditions touched
+
+Nothing runs yet, so these bind step 3:
+
+- **First outbound HTTP client** in the Ezkey APIs. Only `ezkey-demo-device` has one today.
+- **`open-in-view` stays on** in the Admin API, so the call runs outside any transaction, and a slow-mock test checks
+  the database pool.
+- **`EvaluatorTempAccessFilter` is a deny-list,** so the new send route is open to those sessions until listed.
+- **Create does not validate `contactEmail`;** edit does (`EnrollmentUpdateService`).
+- **The QR renderer** is `QrCodeGeneratorService`, 300 × 300 in `EnrollmentController`.
+
+## Boundaries in scope
+
+- Admin API to delivery connector, in the contract above.
+
+## Out of scope
+
+- Any code, and the Admin API send endpoint (step 3).
+- The directory contract: this brief holds a sketch only.
+- SMS, automatic sending, bulk sending and an asynchronous result.
+- The exact email wording (step 5).
+
+## First executable slice
+
+Step 3 implements this contract with the delivery port and the mock connector.
+
+## Rollback or fallback posture
+
+Documentation only. The contract can still change without compatibility work until step 6.
+
+## Critical flows
+
+- **Nominal:** an operator sends, the provider accepts, the audit records it, the UI says what comes next.
+- **Exception:** the connector rejects or does not answer, the audit records it, the QR stays on screen.
+
+## Evidence plan
+
+- **Checked on 2026-11-06 with `openapi-spec-validator` and `jsonschema`:** the contract is valid OpenAPI 3.1 and
+  its example satisfies the schema. The schema refuses a challenge field, an activation code, a free subject or body,
+  a non-PNG, an oversized QR, an unknown locale, a provider host in the health response, and error message text.
+- Tests come at step 3, against this contract.
+
+## Quality gates
+
+Marc's gate for this step: the directory case holds on paper.
+
+## Exit criteria
+
+The contract and sketch are merged, and the vision note can be promoted.
 
 ## Configuration guidance
 
