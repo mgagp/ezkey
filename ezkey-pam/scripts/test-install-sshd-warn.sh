@@ -224,7 +224,7 @@ fi
 FAKE_INSTALL="${TMP}/install.fake.sh"
 cp "${INSTALL_SH}" "${FAKE_INSTALL}"
 # Neutralize real function calls (leave a fake awk that never uses the shared file).
-sed -i 's/ezkey_pam_warn_global_maxauthtries_1[^;]*/awk -f \/dev\/null "${SSHD_CFG}" || true/g' \
+sed -i.bak 's/ezkey_pam_warn_global_maxauthtries_1[^;]*/awk -f \/dev\/null "${SSHD_CFG}" || true/g' \
   "${FAKE_INSTALL}"
 if grep -qF "${FUNC_NAME}" "${FAKE_INSTALL}"; then
   fail "fixture: sed should have removed ${FUNC_NAME} calls from fake install"
