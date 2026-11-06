@@ -23,6 +23,8 @@
 | `EzkeyAppearancePackage` | Android (Kotlin) | Registers the appearance module with React Native | `android/app/src/main/java/org/ezkey/mobile/appearance/EzkeyAppearancePackage.kt` |
 | `EzkeyAppearanceModule` | iOS (Swift) | Same name and method as Android: `setApplicationNightMode` keeps the choice in `UserDefaults`; `SceneDelegate` applies it to the window (`overrideUserInterfaceStyle`) before React Native starts, so the first frame uses the chosen palette (#1188); fail-open. The launch screen follows the system appearance (iOS limit) | `ios/EzkeyMobile/Appearance/EzkeyAppearanceModule.swift` |
 | `EzkeyAppearanceModule` (extern) | iOS (Objective-C) | `RCT_EXTERN_MODULE` / `RCT_EXTERN_METHOD` declaration exposing the Swift module | `ios/EzkeyMobile/Appearance/EzkeyAppearanceModule.m` |
+| `EzkeyLocaleModule` | Android (Kotlin) | Per-app language through framework `LocaleManager` (API 33+): read / write the Settings → App languages choice, read the phone's language list; `locale` is in `configChanges` so a change does not recreate the activity (#1157). JS: `app/services/locale/appLanguage.ts` | `android/app/src/main/java/org/ezkey/mobile/locale/EzkeyLocaleModule.kt` |
+| `EzkeyLocalePackage` | Android (Kotlin) | Registers the locale module with React Native | `android/app/src/main/java/org/ezkey/mobile/locale/EzkeyLocalePackage.kt` |
 | `EzkeyCryptoModule` (extern) | iOS (Objective-C) | `RCT_EXTERN_MODULE` / `RCT_EXTERN_METHOD` declarations exposing the Swift module | `ios/EzkeyMobile/Crypto/EzkeyCryptoModule.m` |
 
 ## Communication Flow

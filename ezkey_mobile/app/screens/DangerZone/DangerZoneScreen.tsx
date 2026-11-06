@@ -30,6 +30,8 @@ import {
 import {borderRadius, spacing, typography} from '../../config/theme';
 import {createThemedStyles, useTheme} from '../../theme';
 import {shouldShowInstallationHostHint} from '../../utils/installationMetadata';
+import {formatDateTime} from '../../utils/formatDateTime';
+import {i18n} from '../../i18n';
 import {
   buildEnrollmentIdentityDisplay,
   buildHomeCardLabels,
@@ -59,22 +61,6 @@ const getEnrollmentDisplayName = (
     identityDisplayCopy(t),
   );
   return identity.accountLabel ?? identity.heroTitle;
-};
-
-const formatAbsoluteDateTime = (value?: string) => {
-  if (!value) {
-    return undefined;
-  }
-
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return undefined;
-  }
-
-  return parsed.toLocaleString(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  });
 };
 
 const formatRelativeAge = (
@@ -182,7 +168,7 @@ const buildDeleteMessage = (
     lines.push(t('dangerZone.installation', {value: installationLabel}));
   }
 
-  const lastActivity = formatAbsoluteDateTime(enrollment.lastActivityAt);
+  const lastActivity = formatDateTime(enrollment.lastActivityAt, i18n.language);
   if (lastActivity) {
     lines.push(t('dangerZone.lastActivity', {value: lastActivity}));
   }

@@ -77,6 +77,12 @@ NativeModules.EzkeyAppearanceModule = {
   setApplicationNightMode: jest.fn(),
 };
 
+NativeModules.EzkeyLocaleModule = {
+  getApplicationLanguage: jest.fn().mockResolvedValue(''),
+  setApplicationLanguage: jest.fn().mockResolvedValue(undefined),
+  getSystemLanguages: jest.fn().mockResolvedValue(['en-US']),
+};
+
 NativeModules.EzkeyCryptoModule = {
   generateEnrollmentKeyPair: jest.fn().mockResolvedValue(true),
   getPublicKey: jest.fn().mockResolvedValue(
