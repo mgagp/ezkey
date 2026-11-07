@@ -52,7 +52,11 @@
 #include <unistd.h>
 #include <syslog.h>
 #include <security/pam_modules.h>
+#ifdef __APPLE__
+#include <security/openpam.h> /* pam_prompt on OpenPAM */
+#else
 #include <security/pam_ext.h>
+#endif
 #include <security/pam_appl.h>
 #include "ezkey_budget.h"
 #include "ezkey_challenge.h"

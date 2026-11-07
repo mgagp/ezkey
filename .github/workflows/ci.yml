@@ -596,11 +596,37 @@ jobs:
       - name: Quality-gate secrets unit tests
         run: node --test scripts/lib/quality-gate-secrets.test.mjs
 
+  # macOS build and harnesses only (#1199): Docker stub suites stay on Linux, and no module is
+  # installed. Same triggers as ezkey-pam.
+  ezkey-pam-macos:
+    name: ezkey-pam (macOS)
+    needs: changes
+    if: >-
+      (needs.changes.outputs.ezkey-pam == 'true' || needs.changes.outputs.workflows == 'true')
+      && needs.changes.outputs.heavy == 'true'
+    runs-on: macos-26
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ezkey-pam
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # macos-26 has no timeout command; Homebrew's coreutils provides one under that name.
+      - name: Install coreutils
+        run: brew install coreutils
+
+      - name: make test (check-source + compile + harnesses + hardening)
+        run: make test
+
   # Single required-check candidate. Skipped path jobs count as success for the gate;
   # failure or cancellation of any needed job fails the gate.
   ci-gate:
     name: ci-gate
-    needs: [changes, admin-ui, backend, licenses-drift, ha-smoke, mobile, mobile-ios, cli-python, ezkey-pam, lightsail, dart-sdk, ezkey-jenkins, quality-gate]
+    needs: [changes, admin-ui, backend, licenses-drift, ha-smoke, mobile, mobile-ios, cli-python, ezkey-pam, ezkey-pam-macos, lightsail, dart-sdk, ezkey-jenkins, quality-gate]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -617,6 +643,7 @@ jobs:
           echo "mobile-ios=${{ needs.mobile-ios.result }}"
           echo "cli-python=${{ needs.cli-python.result }}"
           echo "ezkey-pam=${{ needs.ezkey-pam.result }}"
+          echo "ezkey-pam-macos=${{ needs.ezkey-pam-macos.result }}"
           echo "lightsail=${{ needs.lightsail.result }}"
           echo "dart-sdk=${{ needs.dart-sdk.result }}"
           echo "ezkey-jenkins=${{ needs.ezkey-jenkins.result }}"
@@ -636,6 +663,7 @@ jobs:
             "mobile-ios:${{ needs.mobile-ios.result }}" \
             "cli-python:${{ needs.cli-python.result }}" \
             "ezkey-pam:${{ needs.ezkey-pam.result }}" \
+            "ezkey-pam-macos:${{ needs.ezkey-pam-macos.result }}" \
             "lightsail:${{ needs.lightsail.result }}" \
             "dart-sdk:${{ needs.dart-sdk.result }}" \
             "ezkey-jenkins:${{ needs.ezkey-jenkins.result }}" \
