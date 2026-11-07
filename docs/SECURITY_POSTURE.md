@@ -314,6 +314,13 @@ schedule, `workflow_dispatch` and any change to the CodeQL setup analyze every l
 | Low | **180 days** |
 | False positive / won't-fix | Motivated dismissal at the **next triage** |
 
+### Dependency alerts
+
+Dependabot alerts are triaged by what ships. Before dismissing or accepting a third-party
+vulnerability, check upstream, because the fix may already be on its way: see
+[`hygiene/dependabot/README.md`](../product-docs/global/hygiene/dependabot/README.md)
+§ *Check upstream before dismissing a vulnerability*.
+
 ### PAM / experimental components
 
 Non-deployed lab surfaces (personal-host PAM, Python CLI) stay out of the operable-release path.
