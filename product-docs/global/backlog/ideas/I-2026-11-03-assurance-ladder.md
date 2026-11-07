@@ -6,11 +6,11 @@
 - **Status:** `captured`
 - **Priority:** `P3`
 - **Created at:** `2026-11-03`
-- **Updated at:** `2026-11-03`
+- **Updated at:** `2026-11-07`
 - **Last reviewed at:** `2026-11-03`
 - **Component tags:** `docs`, `security`, `mobile`, `lab:experimental`
 - **Captured by:** Marc
-- **GitHub issue:** none
+- **GitHub issue:** [#1260](https://github.com/mgagp/ezkey/issues/1260) (mobile encryption export and import position, one slice of this idea)
 
 ## Intent
 
@@ -54,7 +54,7 @@ evidence source** (features plus a mapping guide). Neither requires certifying t
 | Surface | Accountable party | Proportionate reference |
 | --- | --- | --- |
 | **Ezkey project** (code, CI, releases) | Maintainer | OpenSSF OSPS Baseline (Level 1, then 2), OpenSSF Best Practices badge, OpenSSF Scorecard; NIST SSDF as vocabulary |
-| **Mobile apps** (Google Play, Apple App Store) | **Ezkey as publisher** — the only surface where the project is the actual supplier | Store policies (Play Data safety, Apple privacy manifest, encryption export declaration) and OWASP MASVS; App Defense Alliance MASA Level 1 as a later, paid option |
+| **Mobile apps** (Google Play, Apple App Store) | **Ezkey as publisher** — the only surface where the project is the actual supplier | Store policies (Play Data safety, Apple privacy manifest, encryption export declaration, see [#1260](https://github.com/mgagp/ezkey/issues/1260)) and OWASP MASVS; App Defense Alliance MASA Level 1 as a later, paid option |
 | **Backend platform** (not operated in production by the project) | **Adopter** | Adopter-facing kit mapped to SOC 2 TSC and ISO/IEC 27001:2022 Annex A, reference only |
 | *Community instance* (`ezkey.online`) | Maintainer, evaluation only | **Explicitly out of scope** of any standard: public alpha, all-in-one, no SLA (see `V-2026-09-26-public-alpha-posture-closeout`) |
 
