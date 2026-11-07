@@ -3,7 +3,7 @@
 ## Metadata
 
 - **ID:** `TB-2026-11-06-connector-delivery-contract-v0`
-- **Status:** `under-review`
+- **Status:** `promoted`
 - **Related vision:** [`V-2026-11-04-connector-spi`](../vision/V-2026-11-04-connector-spi.md)
 - **Decision pack:** [`2026-11-04-connector-spi`](../decisions/2026-11-04-connector-spi/README.md)
 - **GitHub issue:** `#1206` (step 2)
