@@ -3,9 +3,9 @@
 ## Metadata
 
 - **ID:** `V-2026-11-04-connector-spi`
-- **Status:** `under-review`
+- **Status:** `promoted`
 - **Created at:** `2026-11-04`
-- **Updated at:** `2026-11-04`
+- **Updated at:** `2026-11-07`
 - **Captured by:** Marc
 - **Priority:** `P2`
 - **GitHub issue:** `#1206`
@@ -70,6 +70,7 @@ The analysis, diagrams and rejected options are in the
 ## Promotion criteria
 
 Promote once ADR-0018 is accepted and the delivery contract exists as a `TB-*` (step 2 of `#1206`).
+Done: promoted after [`TB-2026-11-06`](../backlog/TB-2026-11-06-connector-delivery-contract-v0.md) merged.
 SMS and directory work are decided separately after the community instance step.
 
 ## Related documents

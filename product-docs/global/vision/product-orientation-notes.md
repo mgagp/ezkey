@@ -28,12 +28,12 @@ feature branches.
 | `V-2026-06-28` | Audit archive export SPI: vendor-neutral immutable retention and cryptographic batch detachment | `under-review` | `2026-06-28` | [V-2026-06-28](V-2026-06-28-audit-archive-export-spi.md) |
 | `V-2026-07-18-authentication-wait-evolution` | Authentication wait evolution | `draft` | `2026-07-18` | [V-2026-07-18](V-2026-07-18-authentication-wait-evolution.md) |
 | `V-2026-10-07-multi-tenant-closed-testing-demo-app` | Multi-tenant closed-testing demo path: mobile Play closed-testing → production via existing Acme demo app (`/t/{code}`); platform stays alpha | `under-review` (lane D) | `2026-10-07` | [V-2026-10-07](V-2026-10-07-multi-tenant-closed-testing-demo-app.md) |
-| `V-2026-11-04-connector-spi` | Connector SPI for external services: email first, then SMS and directories, through one modular approach | `under-review` | `2026-11-04` | [V-2026-11-04](V-2026-11-04-connector-spi.md) |
 
 ## Recently promoted
 
 | ID | Title | Promoted date | Canonical destination |
 |----|-------|---------------|-----------------------|
+| `V-2026-11-04-connector-spi` | Connector SPI for external services: email first, then SMS and directories | `2026-11-07` | `TB-2026-11-06-connector-delivery-contract-v0`, `#1206` |
 | `V-2026-09-26-public-alpha-posture-closeout` | Public alpha posture closeout (lab · discreet · mobile Play production ok; platform stays alpha) | `2026-09-26` | Live cold-start / next-P0 compass; 2026-10-08 amendment: mobile app may go Play production, backends stay alpha |
 | `V-2026-09-22-exp1-to-ezkey-online-alpha` | former experimental lab → ezkey.online alpha community instance | `2026-09-22` | Domain/host locks; site PR #609; community ledger |
 | `V-2026-0014` | API documentation exposure and portal posture | `2026-05-22` | `I-2026-0026` → `TB-2026-0003` |
