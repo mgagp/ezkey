@@ -181,6 +181,75 @@ class AdminAuthenticationApi extends runtime.BaseAPI {
         return await response.value();
     }
     /**
+     * Available only when ezkey.evaluator.self-registration.enabled=true. Issues a one-shot EVALUATOR_TEMP session for navigable tenant-admin exploration without a device bind. Cookie loss cannot re-mint. Bind VERIFIED supersedes TEMP and requires a fresh SESSION login.
+     * Mint temporary evaluator console session
+     */
+    async mintEvaluatorTempSessionRaw(requestParameters, initOverrides) {
+        if (requestParameters['evaluatorTempSessionRequestDto'] == null) {
+            throw new runtime.RequiredError('evaluatorTempSessionRequestDto', 'Required parameter "evaluatorTempSessionRequestDto" was null or undefined when calling mintEvaluatorTempSession().');
+        }
+        const queryParameters = {};
+        const headerParameters = {};
+        headerParameters['Content-Type'] = 'application/json';
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        const response = await this.request({
+            path: `/api/v1/admin/auth/evaluator-temp`,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['evaluatorTempSessionRequestDto'],
+        }, initOverrides);
+        return new runtime.JSONApiResponse(response);
+    }
+    /**
+     * Available only when ezkey.evaluator.self-registration.enabled=true. Issues a one-shot EVALUATOR_TEMP session for navigable tenant-admin exploration without a device bind. Cookie loss cannot re-mint. Bind VERIFIED supersedes TEMP and requires a fresh SESSION login.
+     * Mint temporary evaluator console session
+     */
+    async mintEvaluatorTempSession(requestParameters, initOverrides) {
+        const response = await this.mintEvaluatorTempSessionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+    /**
+     * Cancels a pending passwordless login attempt using the waiter secret issued at login. Marks the attempt expired so wait unblocks and retry is not blocked (#831).
+     * Cancel pending passwordless authentication
+     */
+    async passwordlessCancelRaw(requestParameters, initOverrides) {
+        if (requestParameters['adminPasswordlessCancelRequestDto'] == null) {
+            throw new runtime.RequiredError('adminPasswordlessCancelRequestDto', 'Required parameter "adminPasswordlessCancelRequestDto" was null or undefined when calling passwordlessCancel().');
+        }
+        const queryParameters = {};
+        const headerParameters = {};
+        headerParameters['Content-Type'] = 'application/json';
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        const response = await this.request({
+            path: `/api/v1/admin/auth/passwordless-cancel`,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['adminPasswordlessCancelRequestDto'],
+        }, initOverrides);
+        return new runtime.VoidApiResponse(response);
+    }
+    /**
+     * Cancels a pending passwordless login attempt using the waiter secret issued at login. Marks the attempt expired so wait unblocks and retry is not blocked (#831).
+     * Cancel pending passwordless authentication
+     */
+    async passwordlessCancel(requestParameters, initOverrides) {
+        await this.passwordlessCancelRaw(requestParameters, initOverrides);
+    }
+    /**
      * Polls for passwordless authentication completion in two-call flows. Blocks for up to the wait window aligned with auth attempt TTL (capped at 300s). Supports both challenge-based (with display code) and non-blocking flows. Errors follow RFC 9457 Problem Details format.
      * Wait for passwordless authentication device response
      */

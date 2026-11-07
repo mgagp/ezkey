@@ -292,8 +292,8 @@ class AdministratorProvisioningApi extends runtime.BaseAPI {
         return await response.value();
     }
     /**
-     * Generates the first set of single-use recovery codes for an administrator after first authenticated sign-in. This flow is distinct from regeneration and is only available when no recovery-code set exists yet.
-     * Issue initial administrator recovery codes
+     * Generates a set of single-use recovery codes for an administrator after first authenticated sign-in. This flow is distinct from regeneration and is only available when no unused recovery code remains: either no set was ever issued, or every code of the previous set has been used (recoveryCodesExhausted).
+     * Issue recovery codes when none remain unused
      */
     async issueInitialRecoveryCodesRaw(requestParameters, initOverrides) {
         if (requestParameters['id'] == null) {
@@ -317,8 +317,8 @@ class AdministratorProvisioningApi extends runtime.BaseAPI {
         return new runtime.JSONApiResponse(response);
     }
     /**
-     * Generates the first set of single-use recovery codes for an administrator after first authenticated sign-in. This flow is distinct from regeneration and is only available when no recovery-code set exists yet.
-     * Issue initial administrator recovery codes
+     * Generates a set of single-use recovery codes for an administrator after first authenticated sign-in. This flow is distinct from regeneration and is only available when no unused recovery code remains: either no set was ever issued, or every code of the previous set has been used (recoveryCodesExhausted).
+     * Issue recovery codes when none remain unused
      */
     async issueInitialRecoveryCodes(requestParameters, initOverrides) {
         const response = await this.issueInitialRecoveryCodesRaw(requestParameters, initOverrides);

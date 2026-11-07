@@ -10,7 +10,7 @@
  * Do not edit the class manually.
  */
 import * as runtime from '../runtime';
-import type { AdminActivationRequestDto, AdminActivationResponseDto, AdminLoginRequestDto, AdminLoginResponseDto, AdminPasswordlessWaitRequestDto, AdminRecoveryRequestDto, AdminRecoveryResponseDto, AdminSessionResponseDto } from '../models/index';
+import type { AdminActivationRequestDto, AdminActivationResponseDto, AdminLoginRequestDto, AdminLoginResponseDto, AdminPasswordlessCancelRequestDto, AdminPasswordlessWaitRequestDto, AdminRecoveryRequestDto, AdminRecoveryResponseDto, AdminSessionResponseDto, EvaluatorTempSessionRequestDto, EvaluatorTempSessionResponseDto } from '../models/index';
 export interface ActivateRequest {
     adminActivationRequestDto: AdminActivationRequestDto;
 }
@@ -19,6 +19,12 @@ export interface LoginRequest {
 }
 export interface LogoutRequest {
     authorization?: string;
+}
+export interface MintEvaluatorTempSessionRequest {
+    evaluatorTempSessionRequestDto: EvaluatorTempSessionRequestDto;
+}
+export interface PasswordlessCancelRequest {
+    adminPasswordlessCancelRequestDto: AdminPasswordlessCancelRequestDto;
 }
 export interface PasswordlessWaitRequest {
     adminPasswordlessWaitRequestDto: AdminPasswordlessWaitRequestDto;
@@ -66,6 +72,26 @@ export declare class AdminAuthenticationApi extends runtime.BaseAPI {
      * Get current administrator session metadata
      */
     me(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AdminSessionResponseDto>;
+    /**
+     * Available only when ezkey.evaluator.self-registration.enabled=true. Issues a one-shot EVALUATOR_TEMP session for navigable tenant-admin exploration without a device bind. Cookie loss cannot re-mint. Bind VERIFIED supersedes TEMP and requires a fresh SESSION login.
+     * Mint temporary evaluator console session
+     */
+    mintEvaluatorTempSessionRaw(requestParameters: MintEvaluatorTempSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EvaluatorTempSessionResponseDto>>;
+    /**
+     * Available only when ezkey.evaluator.self-registration.enabled=true. Issues a one-shot EVALUATOR_TEMP session for navigable tenant-admin exploration without a device bind. Cookie loss cannot re-mint. Bind VERIFIED supersedes TEMP and requires a fresh SESSION login.
+     * Mint temporary evaluator console session
+     */
+    mintEvaluatorTempSession(requestParameters: MintEvaluatorTempSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EvaluatorTempSessionResponseDto>;
+    /**
+     * Cancels a pending passwordless login attempt using the waiter secret issued at login. Marks the attempt expired so wait unblocks and retry is not blocked (#831).
+     * Cancel pending passwordless authentication
+     */
+    passwordlessCancelRaw(requestParameters: PasswordlessCancelRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+    /**
+     * Cancels a pending passwordless login attempt using the waiter secret issued at login. Marks the attempt expired so wait unblocks and retry is not blocked (#831).
+     * Cancel pending passwordless authentication
+     */
+    passwordlessCancel(requestParameters: PasswordlessCancelRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
     /**
      * Polls for passwordless authentication completion in two-call flows. Blocks for up to the wait window aligned with auth attempt TTL (capped at 300s). Supports both challenge-based (with display code) and non-blocking flows. Errors follow RFC 9457 Problem Details format.
      * Wait for passwordless authentication device response

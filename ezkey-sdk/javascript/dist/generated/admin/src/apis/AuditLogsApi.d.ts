@@ -10,7 +10,7 @@
  * Do not edit the class manually.
  */
 import * as runtime from '../runtime';
-import type { ArchiveConfirmArchivedRequest, ArchiveConfirmArchivedResult, ArchiveEligibilityResult, ArchiveSealRequest, ArchiveSealResult, AuditChainIncidentResponseDto, AuditLogContextResponseDto, ChainVerificationReport, DeclareAuditChainIncidentRequest, GapDeclarationRequest, GapDeclarationResult, IntegrityReport, IntegrityRuptureReconciliationRequest, IntegrityRuptureReconciliationResult, PagedModelAuditChainCheckpointResponseDto, PagedModelAuditChainIncidentResponseDto, PagedModelAuditLogResponseDto, RetroactiveIntegrityValidationRunRequest, RetroactiveIntegrityValidationRunResponse } from '../models/index';
+import type { ArchiveConfirmArchivedRequest, ArchiveConfirmArchivedResult, ArchiveEligibilityResult, ArchiveSealRequest, ArchiveSealResult, AuditChainIncidentResponseDto, AuditLogContextResponseDto, ChainVerificationReport, DeclareAuditChainIncidentRequest, GapDeclarationRequest, GapDeclarationResult, IntegrityBootstrapResponseDto, IntegrityReport, IntegrityRuptureReconciliationRequest, IntegrityRuptureReconciliationResult, PagedModelAuditChainCheckpointResponseDto, PagedModelAuditChainIncidentResponseDto, PagedModelAuditLogResponseDto, RetroactiveIntegrityValidationRunRequest, RetroactiveIntegrityValidationRunResponse } from '../models/index';
 export interface CheckChainIntegrityRequest {
     from?: string;
     to?: string;
@@ -86,22 +86,22 @@ export interface SealArchiveRequest {
  */
 export declare class AuditLogsApi extends runtime.BaseAPI {
     /**
-     * Verifies chain checkpoint integrity by recomputing entry digests and validating chain linkage. Detects entry insertion, deletion, reordering, checkpoint tampering, and undeclared temporal gaps (missing checkpoints between consecutive windows or uncovered leading/trailing periods in the requested range). Global Admin only.  **Range handling:** The requested from/to may extend before the first checkpoint or after the last in the database. Such periods are not reported as undeclared gaps (they are before/after \"EZKey time\"). Only real gaps within the system\'s checkpoint extent are reported. The response fields effectiveFrom and effectiveTo indicate the range actually used for boundary gap reporting (clamped to coverageStart/coverageEnd when the request extended beyond the first/last checkpoint).
+     * Verifies chain checkpoint integrity by recomputing entry digests and validating chain linkage. Detects entry insertion, deletion, reordering, checkpoint tampering, and undeclared temporal gaps (missing checkpoints between consecutive windows or uncovered leading/trailing periods in the requested range). Runs under the Integrity heavy-crypto gate (HTTP 409 when busy) with the sync window cap (ezkey.audit.integrity.max-sync-window-days, default 8 — calendar days, DST-tolerant Instant span = days×24h+1h; longer windows use async VERIFY under max-window-days). Global Admin only.  **Range handling:** The requested from/to may extend before the first checkpoint or after the last in the database. Such periods are not reported as undeclared gaps (they are before/after \"EZKey time\"). Only real gaps within the system\'s checkpoint extent are reported. The response fields effectiveFrom and effectiveTo indicate the range actually used for boundary gap reporting (clamped to coverageStart/coverageEnd when the request extended beyond the first/last checkpoint).
      * Verify audit chain checkpoint integrity
      */
     checkChainIntegrityRaw(requestParameters: CheckChainIntegrityRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ChainVerificationReport>>;
     /**
-     * Verifies chain checkpoint integrity by recomputing entry digests and validating chain linkage. Detects entry insertion, deletion, reordering, checkpoint tampering, and undeclared temporal gaps (missing checkpoints between consecutive windows or uncovered leading/trailing periods in the requested range). Global Admin only.  **Range handling:** The requested from/to may extend before the first checkpoint or after the last in the database. Such periods are not reported as undeclared gaps (they are before/after \"EZKey time\"). Only real gaps within the system\'s checkpoint extent are reported. The response fields effectiveFrom and effectiveTo indicate the range actually used for boundary gap reporting (clamped to coverageStart/coverageEnd when the request extended beyond the first/last checkpoint).
+     * Verifies chain checkpoint integrity by recomputing entry digests and validating chain linkage. Detects entry insertion, deletion, reordering, checkpoint tampering, and undeclared temporal gaps (missing checkpoints between consecutive windows or uncovered leading/trailing periods in the requested range). Runs under the Integrity heavy-crypto gate (HTTP 409 when busy) with the sync window cap (ezkey.audit.integrity.max-sync-window-days, default 8 — calendar days, DST-tolerant Instant span = days×24h+1h; longer windows use async VERIFY under max-window-days). Global Admin only.  **Range handling:** The requested from/to may extend before the first checkpoint or after the last in the database. Such periods are not reported as undeclared gaps (they are before/after \"EZKey time\"). Only real gaps within the system\'s checkpoint extent are reported. The response fields effectiveFrom and effectiveTo indicate the range actually used for boundary gap reporting (clamped to coverageStart/coverageEnd when the request extended beyond the first/last checkpoint).
      * Verify audit chain checkpoint integrity
      */
     checkChainIntegrity(requestParameters?: CheckChainIntegrityRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ChainVerificationReport>;
     /**
-     * Recomputes HMAC-SHA256 signatures for audit log entries in the specified date range and reports any tampered or unsigned entries. Global Admin only.
+     * Recomputes HMAC-SHA256 signatures for audit log entries in the specified date range and reports any tampered or unsigned entries. Runs under the Integrity heavy-crypto gate (HTTP 409 when busy) with the sync window cap (ezkey.audit.integrity.max-sync-window-days, default 8 — calendar days, DST-tolerant Instant span = days×24h+1h; longer windows use async VERIFY under max-window-days). Global Admin only.
      * Verify audit log integrity
      */
     checkIntegrityRaw(requestParameters: CheckIntegrityRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<IntegrityReport>>;
     /**
-     * Recomputes HMAC-SHA256 signatures for audit log entries in the specified date range and reports any tampered or unsigned entries. Global Admin only.
+     * Recomputes HMAC-SHA256 signatures for audit log entries in the specified date range and reports any tampered or unsigned entries. Runs under the Integrity heavy-crypto gate (HTTP 409 when busy) with the sync window cap (ezkey.audit.integrity.max-sync-window-days, default 8 — calendar days, DST-tolerant Instant span = days×24h+1h; longer windows use async VERIFY under max-window-days). Global Admin only.
      * Verify audit log integrity
      */
     checkIntegrity(requestParameters?: CheckIntegrityRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<IntegrityReport>;
@@ -186,6 +186,16 @@ export declare class AuditLogsApi extends runtime.BaseAPI {
      */
     getChainCheckpoints(requestParameters?: GetChainCheckpointsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PagedModelAuditChainCheckpointResponseDto>;
     /**
+     * Thin Global Admin payload for Integrity honesty chrome: product runtimeProfile (base|integrity from Spring docker-base) plus chainCheckpointsEnabled and nightlyValidationEnabled config flags. Not a job matrix or second journal.
+     * Integrity atelier bootstrap
+     */
+    getIntegrityBootstrapRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<IntegrityBootstrapResponseDto>>;
+    /**
+     * Thin Global Admin payload for Integrity honesty chrome: product runtimeProfile (base|integrity from Spring docker-base) plus chainCheckpointsEnabled and nightlyValidationEnabled config flags. Not a job matrix or second journal.
+     * Integrity atelier bootstrap
+     */
+    getIntegrityBootstrap(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<IntegrityBootstrapResponseDto>;
+    /**
      * Paginated list of operational incidents raised when peripheral supervision detected stalled checkpoints (bounded unsupervised activity / degraded mode). Separate from GAP_DECLARATION checkpoints. Global Admin only.
      * List audit-chain heartbeat incidents
      */
@@ -206,22 +216,22 @@ export declare class AuditLogsApi extends runtime.BaseAPI {
      */
     reconcileIntegrityRupture(requestParameters: ReconcileIntegrityRuptureRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<IntegrityRuptureReconciliationResult>;
     /**
-     * Detective-layer validation over a date range: same semantics as the nightly batch. May raise or touch AUDIT_INTEGRITY_RUPTURE when violations remain alert-eligible. Global Admin only. Use GET integrity-check / chain-integrity for read-only forensic verify.
+     * Detective-layer validation over a date range: same semantics as the nightly batch. Runs under the Integrity heavy-crypto gate (HTTP 409 when busy). Synchronous path: window capped by ezkey.audit.integrity.max-sync-window-days (default 8 — Instant span = days×24h+1h; over-cap → integrity-window-over-cap with capKind=SYNC + fixed asyncAlternative). Longer windows: async RUN_VALIDATION under max-window-days (default 92). May raise or touch AUDIT_INTEGRITY_RUPTURE when violations remain alert-eligible. Global Admin only.
      * Run retroactive integrity validation
      */
     runRetroactiveIntegrityValidationRaw(requestParameters: RunRetroactiveIntegrityValidationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RetroactiveIntegrityValidationRunResponse>>;
     /**
-     * Detective-layer validation over a date range: same semantics as the nightly batch. May raise or touch AUDIT_INTEGRITY_RUPTURE when violations remain alert-eligible. Global Admin only. Use GET integrity-check / chain-integrity for read-only forensic verify.
+     * Detective-layer validation over a date range: same semantics as the nightly batch. Runs under the Integrity heavy-crypto gate (HTTP 409 when busy). Synchronous path: window capped by ezkey.audit.integrity.max-sync-window-days (default 8 — Instant span = days×24h+1h; over-cap → integrity-window-over-cap with capKind=SYNC + fixed asyncAlternative). Longer windows: async RUN_VALIDATION under max-window-days (default 92). May raise or touch AUDIT_INTEGRITY_RUPTURE when violations remain alert-eligible. Global Admin only.
      * Run retroactive integrity validation
      */
     runRetroactiveIntegrityValidation(requestParameters: RunRetroactiveIntegrityValidationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RetroactiveIntegrityValidationRunResponse>;
     /**
-     * Marks all chain checkpoints in the specified period as ARCHIVE_SEAL prior to dropping the corresponding DB partition. Runs a mandatory pre-flight integrity check -- rejected if any violation is detected. Returns the seal HMAC to include in the Git archive manifest. Global Admin only.  **Period identification -- two alternative modes:** - **Timestamp mode**: provide `periodStart` (inclusive) and `periodEnd` (exclusive) as ISO-8601 timestamps. - **Checkpoint ID mode**: provide `checkpointIdFrom` and `checkpointIdTo` (both inclusive integers). The service resolves the effective time range from those checkpoints automatically. Ergonomic when working directly with the database -- short IDs are easier to read than full timestamps.  Exactly one mode must be used. Providing both is an error.
+     * Marks all chain checkpoints in the specified period as ARCHIVE_SEAL prior to dropping the corresponding DB partition. Runs a mandatory pre-flight integrity check -- rejected if any violation is detected. Pre-flight verify is a synchronous HTTP path: it runs under the Integrity heavy-crypto gate (`busyHolder=SEAL_ARCHIVE`) and `ezkey.audit.integrity.max-sync-window-days` (default 8 — Cloudflare 100 s timeout floor; #781). Longer windows must use async Integrity jobs under `max-window-days`. Lifecycle scheduler auto-seal does not call verifyChain. Returns the seal HMAC to include in the Git archive manifest. Global Admin only.  **Period identification -- two alternative modes:** - **Timestamp mode**: provide `periodStart` (inclusive) and `periodEnd` (exclusive) as ISO-8601 timestamps. - **Checkpoint ID mode**: provide `checkpointIdFrom` and `checkpointIdTo` (both inclusive integers). The service resolves the effective time range from those checkpoints automatically. Ergonomic when working directly with the database -- short IDs are easier to read than full timestamps.  Exactly one mode must be used. Providing both is an error.
      * Seal an audit chain period for archival
      */
     sealArchiveRaw(requestParameters: SealArchiveRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ArchiveSealResult>>;
     /**
-     * Marks all chain checkpoints in the specified period as ARCHIVE_SEAL prior to dropping the corresponding DB partition. Runs a mandatory pre-flight integrity check -- rejected if any violation is detected. Returns the seal HMAC to include in the Git archive manifest. Global Admin only.  **Period identification -- two alternative modes:** - **Timestamp mode**: provide `periodStart` (inclusive) and `periodEnd` (exclusive) as ISO-8601 timestamps. - **Checkpoint ID mode**: provide `checkpointIdFrom` and `checkpointIdTo` (both inclusive integers). The service resolves the effective time range from those checkpoints automatically. Ergonomic when working directly with the database -- short IDs are easier to read than full timestamps.  Exactly one mode must be used. Providing both is an error.
+     * Marks all chain checkpoints in the specified period as ARCHIVE_SEAL prior to dropping the corresponding DB partition. Runs a mandatory pre-flight integrity check -- rejected if any violation is detected. Pre-flight verify is a synchronous HTTP path: it runs under the Integrity heavy-crypto gate (`busyHolder=SEAL_ARCHIVE`) and `ezkey.audit.integrity.max-sync-window-days` (default 8 — Cloudflare 100 s timeout floor; #781). Longer windows must use async Integrity jobs under `max-window-days`. Lifecycle scheduler auto-seal does not call verifyChain. Returns the seal HMAC to include in the Git archive manifest. Global Admin only.  **Period identification -- two alternative modes:** - **Timestamp mode**: provide `periodStart` (inclusive) and `periodEnd` (exclusive) as ISO-8601 timestamps. - **Checkpoint ID mode**: provide `checkpointIdFrom` and `checkpointIdTo` (both inclusive integers). The service resolves the effective time range from those checkpoints automatically. Ergonomic when working directly with the database -- short IDs are easier to read than full timestamps.  Exactly one mode must be used. Providing both is an error.
      * Seal an audit chain period for archival
      */
     sealArchive(requestParameters: SealArchiveRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ArchiveSealResult>;
@@ -253,9 +263,11 @@ export declare const GetAuditLogsEventTypeEnum: {
     readonly EnrollmentReactivated: "ENROLLMENT_REACTIVATED";
     readonly EnrollmentAuthAttemptBlocked: "ENROLLMENT_AUTH_ATTEMPT_BLOCKED";
     readonly EnrollmentExpired: "ENROLLMENT_EXPIRED";
+    readonly EnrollmentQrDelivery: "ENROLLMENT_QR_DELIVERY";
     readonly AuthAttemptCreated: "AUTH_ATTEMPT_CREATED";
     readonly AuthAttemptPending: "AUTH_ATTEMPT_PENDING";
     readonly AuthAttemptRespond: "AUTH_ATTEMPT_RESPOND";
+    readonly AuthAttemptRespondSignatureRejected: "AUTH_ATTEMPT_RESPOND_SIGNATURE_REJECTED";
     readonly AuthAttemptCancelled: "AUTH_ATTEMPT_CANCELLED";
     readonly AuthAttemptExpired: "AUTH_ATTEMPT_EXPIRED";
     readonly ApiKeyCreated: "API_KEY_CREATED";
@@ -293,6 +305,9 @@ export declare const GetAuditLogsEventTypeEnum: {
     readonly AuditIntegrityRuptureConciliated: "AUDIT_INTEGRITY_RUPTURE_CONCILIATED";
     readonly AuditEntryIntegrityConciliated: "AUDIT_ENTRY_INTEGRITY_CONCILIATED";
     readonly NightlyIntegrityValidationCompleted: "NIGHTLY_INTEGRITY_VALIDATION_COMPLETED";
+    readonly IntegrityAsyncJobStarted: "INTEGRITY_ASYNC_JOB_STARTED";
+    readonly IntegrityAsyncJobCompleted: "INTEGRITY_ASYNC_JOB_COMPLETED";
+    readonly IntegrityAsyncJobAbandoned: "INTEGRITY_ASYNC_JOB_ABANDONED";
     readonly AlertRaised: "ALERT_RAISED";
     readonly AlertResolved: "ALERT_RESOLVED";
 };
