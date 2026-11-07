@@ -124,7 +124,7 @@ aspiration in `DEVELOPMENT.md` but not wired — see G18 hygiene).
 | Setting | Observed | Source |
 |---------|----------|--------|
 | Ruleset | **Basic protection**, `enforcement: active`, targets `~DEFAULT_BRANCH` | `GET /repos/mgagp/ezkey/rulesets/7558701` |
-| Rules | `deletion`, `non_fast_forward`, `required_status_checks` with context **`ci-gate`** only, `pull_request` with **0** required approvals (added 2026-11-06, G5). GitHub also returns `require_extra_approval_for_unattributed_changes: true`, which we did not request and could not find documented; maintainer and Dependabot PRs still report `CLEAN` | Same |
+| Rules | `deletion`, `non_fast_forward`, `required_status_checks` with context **`ci-gate`** only, `pull_request` with **0** required approvals (added 2026-11-06, G5). GitHub also returns `require_extra_approval_for_unattributed_changes: true`, which we did not request and could not find documented; maintainer and Dependabot PRs still merge normally | Same |
 | Strict up-to-date | `strict_required_status_checks_policy: false` | Same |
 | Bypass | `RepositoryRole` `actor_id: 5`, `bypass_mode: pull_request` (Admin role bypass on PRs only; direct pushes are refused) | Same |
 | Required approvals / CODEOWNERS review / signed commits / linear history | **Not** present on this ruleset | Same |
@@ -236,7 +236,7 @@ Value: evaluator / supply-chain / operator impact (High / Med / Low).
 | G4 | Dependency graph on; automatic submission off | Graph re-enabled 2026-10-13; #798 merged (`638b4214`) | Confirm automatic submission still Disabled in Settings | S | High | **Done** (graph + docs); confirm automatic submission |
 | G7 | Dependency review Action on PRs | `dependency-review.yml`, warn-only, not in `ci-gate` (2026-11-06); Maven not covered | Promote to blocking on high/critical after the alert stock is triaged | S | High | **Observing** |
 | G8 | `SECURITY.md` Advanced CodeQL wording | Updated in #808 | Reconfirm after Marc verifies Settings toggles | S | Med | P1 |
-| G5 | Ruleset: require **PR** before merge (no approval) | **Done 2026-11-06 (Marc):** `pull_request` rule on ruleset `7558701`, 0 approvals, bypass and merge methods unchanged. Direct pushes to `main` had stopped on 2026-09-21 | None. Approvals stay soft / #787 | — | — | **Done** |
+| G5 | Ruleset: require **PR** before merge (no approval) | **Done 2026-11-06 (Marc):** `pull_request` rule on ruleset `7558701`, 0 approvals, bypass and merge methods unchanged. Direct pushes to `main` had stopped on 2026-09-21. The OSPS scanner still fails AC-03.01: v0.33.2 passes only with at least 1 required approval or an update-restriction rule. Accepted for a solo maintainer | None. Approvals stay soft / #787 | — | — | **Done** |
 | G9 | `delete_branch_on_merge` | false | Enable for hygiene | S | Low | P2 |
 | G10 | Prefer squash-only (or document merge strategy) | All three merge methods on | Pick one preferred; disable others or document | S | Low | P2 |
 | G12 | Scorecard workflow + badge | Workflow present (`scorecard.yml`); badge still absent | Keep scheduled Scorecard; add README badge after first successful publish | M | Med | P2 (workflow done; badge follow-up) |

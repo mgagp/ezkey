@@ -264,3 +264,8 @@ Append-only residual for **weekday light** `dependabot-curated` passes.
   - Release bundle diff, before vs after: 2 of 1,544 lines on Android, 2 of 1,536 on iOS: the `nanoid/non-secure` loop fix and the license snapshot
   - Residual to dismiss with a written reason after merge: `deepmerge` (no fix published), `glob` 13 and `minimatch` 9/10 (fix outside the requested range). All outside the bundle
   - Validation: Node 24.22.1; jest 524/524 on a warm cache (the first run after the Babel change had 7 timeouts from cold transforms); lint and tsc green; `validate:ci` and `license:ci` pass. Gradle and phone smoke run from the dedicated mobile worktree (long-path risk here)
+- Closeout after #1248 merged (`4cef0563`): GitHub recalculated the mobile alerts within hours, from 82 open to 2
+  - Dismissed as `tolerable_risk` with a written reason: #279 `deepmerge` (no fix published; tooling only, outside the release bundle). #281 `glob` was auto-dismissed by GitHub
+  - #283 `minimatch` was dismissed, then reopened the same day after the upstream check (Marc): the fix is moving upstream, so the alert stays open and closes by itself. Lesson and upstream waits: README § *Check upstream before dismissing a vulnerability*
+  - Still open: 17 (Bruno 14, Admin UI 1, SDK JS 1, mobile 1)
+  - Scorecard reported 80 known vulnerabilities, 55 of them from two floors in `ezkey_mobile/scripts/requirements-generate-icons.txt`, which it reads at the floor version. Floors raised to Pillow 13.0.0 and cairosvg 2.9.1, the versions OSV lists as clean. Both icon scripts ran in a disposable container; no icon was regenerated

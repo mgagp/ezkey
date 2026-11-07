@@ -140,6 +140,14 @@ not a mandatory top-level sort.
    Dependabot queue is not proof that the Boot line is current.
 4. **Mobile RN pulse** — **Monday full only** (same weight as Java BOM pulse). Weekday light
    skips. Empty Dependabot mobile queue ≠ stack current.
+   - **Dismissed-alert check** — **Monday full only.** List manually dismissed alerts; a manual
+     dismissal stays silent, so this is the only reminder:
+     ```bash
+     gh api --paginate 'repos/mgagp/ezkey/dependabot/alerts?state=dismissed&per_page=100'        --jq '.[]|[.number,.dependency.package.name,(.security_vulnerability.first_patched_version.identifier//"none"),.dismissed_comment]|@tsv'
+     ```
+     A package whose fix moved from `none` to a version needs a new decision. Also review the table
+     of alerts waiting on upstream and its fallback dates. Before any new dismissal, follow
+     hygiene README § *Check upstream before dismissing a vulnerability*.
 5. Classify each **remaining** PR **T1–T4** from the title SemVer digits and ecosystem path.
    Orval / OpenAPI-generator PRs: classify with the **Orval risk grid** (Admin UI and mobile
    **separately**, never batched together). Surface ambiguity to the operator (e.g. icon library
@@ -395,7 +403,7 @@ stack/Playwright were deferred to the next T2+ session or weekly milestone.
 Record the **Java BOM pulse** result in the campaign note even when no Boot bump was needed
 (`none` is a valid outcome). Same for the nested `google-java-format` check. Record the
 **Mobile RN pulse** (`deps:monitor --strict` + declared RN versions + Dependabot mobile PRs
-peeled) even when no mobile lot was proposed.
+peeled) even when no mobile lot was proposed. Same for the **Dismissed-alert check**.
 
 ## Pin, install, and codegen hygiene (after merges)
 

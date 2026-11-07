@@ -65,6 +65,36 @@ dismiss the rest with a written reason. Security-update PRs stay off until the s
 Mobile refresh recipe: `yarn up -R <alert packages> --mode=update-lockfile`, then compare the
 release bundles line by line (Android and iOS). `package.json` must not move.
 
+### Check upstream before dismissing a vulnerability
+
+Applies to any lane that dismisses or accepts a third-party vulnerability. A dismissal assumes the
+situation will not change, so verify that first:
+
+1. **Read the upstream default branch, not only the latest release:** its version pins, its open PRs
+   and issues on the advisory, and its release cadence.
+2. **Name what blocks the fix:** a version range, a pin, a major with breaking changes, or no patch
+   at all. If it matters, test the fix in a scratch copy with `overrides`.
+3. **If upstream is moving, leave the alert open** and add a row to the table below. An open alert
+   closes itself when the lockfile leaves the vulnerable range.
+4. **Dismiss only when no fix is coming** (no patch published, or upstream declined), with a written
+   reason. GitHub documents automatic reopening only for auto-dismissed alerts, so treat a manual
+   dismissal as silent. The Monday full pass lists them (see *Dismissed-alert check* in the skill).
+
+**Why (2026-11-06):** we were about to dismiss 16 alerts as imposed by upstream. Marc asked to check
+upstream first. Bruno's default branch had already fixed or removed 12 of its 14, ahead of the next
+release. ESLint and typescript-eslint had open PRs for `minimatch` 11, and the same override passed
+lint on the Admin UI. Dismissing would have hidden all of it.
+
+| Open alerts waiting on upstream (2026-11-06) | Closes when | Fallback |
+|---|---|---|
+| Bruno: `axios` (9), `form-data`, `js-yaml`, `csv-parse` | Next `@usebruno/cli` release, through the weekly Dependabot PR | None needed: tooling, not shipped |
+| Bruno: `@faker-js/faker`, `uuid` | Upstream moves off `^9` and `^10` (still there on its default branch) | Re-decide if still open after the next release |
+| Admin UI: `minimatch` | ESLint, `config-array` and `typescript-estree` allow `^11` | Monday full of **2026-11-30**: apply the tested `overrides` |
+| SDK JS: `minimatch` | `openapi-generator-cli` leaves `glob` 13 | Review with #1218 |
+| Mobile: `minimatch` | `typescript-estree` allows `^11` and tooling leaves `glob` 10 | Longest wait: tooling only, not in the release bundle |
+
+Delete a row when its alert closes.
+
 **Maven dependency graph:** Dependabot PR updates are separate from GitHub’s Insights dependency
 graph. Ezkey submits the full transitive Maven graph via
 [`.github/workflows/maven-dependency-submission.yml`](../../../../.github/workflows/maven-dependency-submission.yml)
