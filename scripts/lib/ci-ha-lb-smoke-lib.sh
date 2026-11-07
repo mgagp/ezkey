@@ -40,3 +40,26 @@ probe_lb() {
   rm -f "${body_file}"
   return 1
 }
+
+# Names of HA containers worth a log dump: restarted at least once, or neither healthy nor a
+# one-shot job that exited 0. A crashed instance may already be back to "starting" (#1259).
+ha_containers_to_diagnose() {
+  docker ps -a --filter "label=com.docker.compose.project=ezkey-ha" --format '{{.Names}}' |
+    while IFS= read -r name; do
+      docker inspect --format \
+        '{{.Name}} {{.RestartCount}} {{.State.Status}} {{.State.ExitCode}} {{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' \
+        "${name}"
+    done | ha_filter_containers_to_diagnose
+}
+
+# stdin: "/name restarts status exitCode health"; stdout: names needing a log dump.
+ha_filter_containers_to_diagnose() {
+  awk '{
+    sub(/^\//, "", $1)
+    if ($2 > 0) { print $1; next }
+    if ($5 == "healthy") next
+    if ($5 == "none" && $3 == "exited" && $4 == 0) next
+    if ($5 == "none" && $3 == "running") next
+    print $1
+  }'
+}

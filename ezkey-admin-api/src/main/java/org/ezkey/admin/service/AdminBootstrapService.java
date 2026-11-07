@@ -37,7 +37,6 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Service for bootstrapping admin MFA infrastructure at application startup.
@@ -149,10 +148,8 @@ public class AdminBootstrapService {
    * <p><b>HA Safety:</b> Uses distributed locking to ensure only one instance performs bootstrap in
    * HA deployments.
    *
-   * <p><b>Transaction boundary:</b> {@code @Transactional} is on this public entry point so the
-   * work executed inside {@link LockingTaskExecutor} (including {@code this::doBootstrapAdminMfa})
-   * runs in one Spring-managed transaction. {@code @Transactional} on the private task method would
-   * not apply (proxy bypass via self-invocation).
+   * <p><b>Transaction boundary:</b> {@link LockingTaskExecutor} runs the task in its own
+   * transaction, committed before the lock is released (#1259).
    *
    * <p><b>Startup order:</b> {@code @Order} is {@link
    * ApplicationReadyStartupOrder#ADMIN_MFA_BOOTSTRAP} so keyset empty-table sync and initial global
@@ -160,7 +157,6 @@ public class AdminBootstrapService {
    */
   @EventListener(ApplicationReadyEvent.class)
   @Order(ApplicationReadyStartupOrder.ADMIN_MFA_BOOTSTRAP)
-  @Transactional
   public void bootstrapAdminMfa() {
     if (!mfaProperties.getBootstrap().isEnabled()) {
       logger.info("Admin MFA bootstrap disabled by configuration");
@@ -185,7 +181,7 @@ public class AdminBootstrapService {
    * <p>This method creates System Integration and optionally Global Admin Enrollment if they don't
    * already exist.
    *
-   * <p>Only {@link #bootstrapAdminMfa()} is the Spring transaction boundary.
+   * <p>Runs in the transaction opened by {@link LockingTaskExecutor}.
    */
   private void doBootstrapAdminMfa() {
     try {
@@ -457,7 +453,7 @@ public class AdminBootstrapService {
 
     // Generate recovery codes, persist plaintext to disk (fail-closed), then hash into DB.
     // Export throws IllegalStateException when codes cannot be written — aborts bootstrap
-    // (@Transactional rollback). Codes are never written to logs.
+    // (transaction rollback). Codes are never written to logs.
     AdminRecoveryService.RecoveryCodesResult recoveryCodes =
         recoveryService.generateRecoveryCodes();
     bootstrapCredentialsFileExporter.exportIfEnabled(

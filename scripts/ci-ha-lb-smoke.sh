@@ -37,7 +37,23 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# Compose teardown removes the containers, so failure evidence must be printed first (#1259).
+print_failure_diagnostics() {
+  echo "==> Failed. Container state, then logs of every container that is not healthy:"
+  docker ps -a --filter "label=com.docker.compose.project=ezkey-ha" \
+    --format '{{.Names}}\t{{.Status}}' || true
+  local name
+  while IFS= read -r name; do
+    echo "--- ${name} (last 80 lines)"
+    docker logs --tail 80 "${name}" 2>&1 || true
+  done < <(ha_containers_to_diagnose)
+}
+
 cleanup() {
+  local status=$?
+  if [[ "${status}" -ne 0 ]]; then
+    print_failure_diagnostics
+  fi
   if [[ "${KEEP_STACK}" -eq 1 ]]; then
     echo "Keeping HA stack (--keep-stack)"
     return 0
