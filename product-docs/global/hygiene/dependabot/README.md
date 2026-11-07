@@ -63,6 +63,9 @@ the Yarn mobile lockfile: at activation, 79 of its 82 alerts were outside the Re
 bundle (checked from Android and iOS source maps). Fix what ships first; refresh tooling lockfiles;
 dismiss the rest with a written reason. Security-update PRs are on since the stock was triaged
 (2026-11-06); patch-level ones go through `dependabot-auto-merge.yml` with its exclusions.
+`update-types` in an `ignore` rule filters version updates only, so a security PR can still propose
+a deferred major such as TypeScript 7. It will not auto-merge. Treat it as T4 (Marc decides) and
+label it `deferred:later-train` if deferred; it is not a configuration error.
 Mobile refresh recipe: `yarn up -R <alert packages> --mode=update-lockfile`, then compare the
 release bundles line by line (Android and iOS). `package.json` must not move.
 

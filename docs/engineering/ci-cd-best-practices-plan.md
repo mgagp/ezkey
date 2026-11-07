@@ -280,8 +280,9 @@ verified toggles.
 ### Phase 2 — Structural parity (supply-chain PR gate + light ruleset)
 
 1. **Dependency review Action** (G7, before G6): in place in warn-only mode on PRs that **touch
-   manifests**. Promote to fail on **high/critical** after the alert stock is triaged (Christophe
-   severity).
+   manifests**. **Decided 2026-11-06 (Marc): stays warn-only for now**, because it would flag
+   alerts we chose to leave open while upstream moves, and it has little history yet. **Review on
+   2026-11-30.** Being outside `ci-gate`, a failing job would not block a merge anyway.
 2. ~~**Ruleset: require a pull request**~~ — **done 2026-11-06** (G5): `pull_request` rule, 0 approvals,
    because a solo maintainer cannot approve PRs opened as `mgagp`.
 3. **OpenSSF Scorecard** — workflow landed (`scorecard.yml`); README badge still follow-up after
