@@ -2848,7 +2848,7 @@
         "tags": [
           "Administrator Provisioning"
         ],
-        "summary": "Issue initial administrator recovery codes",
+        "summary": "Issue recovery codes when none remain unused",
         "description": "Generates a set of single-use recovery codes for an administrator after first authenticated sign-in. This flow is distinct from regeneration and is only available when no unused recovery code remains: either no set was ever issued, or every code of the previous set has been used (recoveryCodesExhausted).",
         "operationId": "issueInitialRecoveryCodes",
         "parameters": [
@@ -9265,7 +9265,7 @@
           },
           "hasRecoveryCodes": {
             "type": "boolean",
-            "description": "Whether this administrator currently has a recovery-code set stored server-side",
+            "description": "Whether unused recovery codes currently remain for this administrator",
             "example": false
           },
           "recoveryCodesExhausted": {
