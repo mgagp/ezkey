@@ -61,7 +61,8 @@ transitive dependencies rarely move through version-update PRs, so lockfiles als
 Triage by **what ships**, not by GitHub's `runtime` / `development` label, which is unreliable on
 the Yarn mobile lockfile: at activation, 79 of its 82 alerts were outside the React Native release
 bundle (checked from Android and iOS source maps). Fix what ships first; refresh tooling lockfiles;
-dismiss the rest with a written reason. Security-update PRs stay off until the stock is triaged.
+dismiss the rest with a written reason. Security-update PRs are on since the stock was triaged
+(2026-11-06); patch-level ones go through `dependabot-auto-merge.yml` with its exclusions.
 Mobile refresh recipe: `yarn up -R <alert packages> --mode=update-lockfile`, then compare the
 release bundles line by line (Android and iOS). `package.json` must not move.
 
