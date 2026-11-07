@@ -10,6 +10,8 @@ api-key*.env
 *.swp
 *.swo
 *.orig
+__pycache__/
+*.py[cod]
 
 # Agent git helper message files (canonical zero-argument flows)
 # See scripts/git-commit.sh and scripts/git-pr.sh
@@ -139,6 +141,9 @@ ezkey-admin-ui/test-results/
 /origin.pem
 .wrangler/cache/pages.json
 
+# Bruno local env (copy from local.bru.example; may hold device/integration keys)
+bruno/environments/local.bru
+
 # Historical leftover after Bruno migration — banner only
 /postman/**
 !/postman/README.md
@@ -153,6 +158,7 @@ experimental-hybrid/lightsail/.local/
 *play*service*account*.json
 *play*publisher*.json
 
+.playwright-mcp/
 
 # Claude Code per-user settings
 .claude/settings.local.json

@@ -16,14 +16,7 @@
  */
 
 import React, {useCallback, useEffect} from 'react';
-import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import {ActivityIndicator, ScrollView, Text, TouchableOpacity, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {useTranslation} from 'react-i18next';
 import {env} from '../../config/env';
@@ -32,7 +25,7 @@ import PinCodeInput from '../../components/PinCodeInput';
 import {usePendingAuth, AUTH_CHALLENGE_LENGTH, tracePendingAuthRespond} from '../../hooks/usePendingAuth';
 import {useSensitiveScreen} from '../../hooks/useSensitiveScreen';
 import {useAccessibilityAnnouncement} from '../../hooks/useAccessibilityAnnouncement';
-import {colors} from '../../config/theme';
+import {createThemedStyles} from '../../theme';
 import {
   buildEnrollmentIdentityDisplay,
   identityDisplayCopy,
@@ -48,6 +41,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'PendingAuth'>;
  * @since 2025
  */
 export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
+  const styles = useStyles();
   const {t} = useTranslation();
   const {enrollmentId, initialAttempt} = route.params;
 
@@ -348,37 +342,32 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(colors => ({
   container: {
     flex: 1,
     padding: 24,
     gap: 16,
-    backgroundColor: '#0b0d11',
-  },
-  heading: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#f4f7ff',
+    backgroundColor: colors.background,
   },
   pendingScrollContent: {
     paddingBottom: 24,
     flexGrow: 1,
   },
   enrollmentBox: {
-    backgroundColor: '#151923',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(54, 115, 223, 0.15)',
+    borderColor: colors.border,
   },
   enrollmentIntegration: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#f4f7ff',
+    color: colors.textPrimary,
   },
   enrollmentTenant: {
     fontSize: 14,
-    color: '#9aa3b6',
+    color: colors.textMuted,
     marginTop: 4,
   },
   loading: {
@@ -389,7 +378,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: '#9aa3b6',
+    color: colors.textMuted,
   },
   emptyState: {
     flex: 1,
@@ -400,7 +389,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#f4f7ff',
+    color: colors.textPrimary,
     textAlign: 'center',
   },
   checkAgainButton: {
@@ -413,10 +402,10 @@ const styles = StyleSheet.create({
   checkAgainLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
+    color: colors.textOnPrimary,
   },
   card: {
-    backgroundColor: '#151923',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 20,
     gap: 16,
@@ -429,8 +418,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
-    backgroundColor: 'rgba(97, 208, 149, 0.14)',
-    color: '#61d095',
+    backgroundColor: colors.successBg,
+    color: colors.success,
     fontSize: 12,
     fontWeight: '700',
     textTransform: 'uppercase',
@@ -439,11 +428,11 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#f4f7ff',
+    color: colors.textPrimary,
   },
   cardSubtitle: {
     fontSize: 14,
-    color: '#c2c8d5',
+    color: colors.textSecondary,
   },
   challengeSection: {
     gap: 12,
@@ -451,54 +440,20 @@ const styles = StyleSheet.create({
   challengeHeading: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#f4f7ff',
+    color: colors.textPrimary,
     lineHeight: 24,
   },
-  challengeContainer: {
-    position: 'relative',
-  },
-  challengeBoxes: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  challengeBox: {
-    width: 44,
-    height: 52,
-    borderRadius: 10,
-    backgroundColor: '#151923',
-    borderWidth: 3,
-    borderColor: 'rgba(54, 115, 223, 0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  challengeBoxFilled: {
-    borderColor: 'rgba(54, 115, 223, 0.85)',
-  },
-  challengeDigit: {
-    fontSize: 28,
-    fontWeight: '600',
-    color: '#f4f7ff',
-  },
-  challengeInputHidden: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    opacity: 0,
-    fontSize: 1,
-  },
   errorBanner: {
-    backgroundColor: 'rgba(255, 120, 120, 0.15)',
+    backgroundColor: colors.errorBg,
     borderLeftWidth: 4,
-    borderLeftColor: '#ff6666',
+    borderLeftColor: colors.error,
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
   },
   errorBannerText: {
     fontSize: 14,
-    color: '#ff6666',
+    color: colors.error,
   },
   actions: {
     flexDirection: 'row',
@@ -506,7 +461,7 @@ const styles = StyleSheet.create({
   },
   leaveDeclinesHint: {
     fontSize: 13,
-    color: '#9aa3b6',
+    color: colors.textMuted,
     textAlign: 'center',
     lineHeight: 18,
   },
@@ -515,7 +470,7 @@ const styles = StyleSheet.create({
     height: 2,
     marginTop: 6,
     opacity: 0.06,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.textOnPrimary,
   },
   actionButton: {
     flex: 1,
@@ -525,30 +480,30 @@ const styles = StyleSheet.create({
   },
   rejectButton: {
     borderWidth: 1,
-    borderColor: '#ff7878',
+    borderColor: colors.errorLight,
   },
   approveButton: {
-    backgroundColor: '#61d095',
+    backgroundColor: colors.success,
   },
   approveButtonDisabled: {
     borderWidth: 1,
-    borderColor: 'rgba(97, 208, 149, 0.35)',
+    borderColor: colors.successBorderMuted,
     backgroundColor: 'transparent',
   },
   rejectLabel: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#ff7878',
+    color: colors.errorLight,
   },
   approveLabel: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#0b0d11',
+    color: colors.textOnSuccess,
   },
   approveLabelDisabled: {
     fontSize: 15,
     fontWeight: '600',
-    color: 'rgba(97, 208, 149, 0.45)',
+    color: colors.successTextMuted,
   },
   secondaryButton: {
     alignItems: 'center',
@@ -556,40 +511,24 @@ const styles = StyleSheet.create({
   },
   secondaryLabel: {
     fontSize: 14,
-    color: '#9aa3b6',
-  },
-  /* Context level badge variants */
-  badgeInfo: {
-    color: '#61d095',
-  },
-  badgeWarning: {
-    color: '#f5a623',
-  },
-  badgeCritical: {
-    color: '#ff6666',
+    color: colors.textMuted,
   },
   /* Context message box */
   contextMessageBox: {
     borderLeftWidth: 3,
     paddingLeft: 12,
     paddingVertical: 8,
-    backgroundColor: '#1c2130',
+    backgroundColor: colors.surfaceElevated,
     borderRadius: 8,
   },
   contextMessageText: {
     fontSize: 14,
-    color: '#e0e5f0',
+    color: colors.textBody,
     lineHeight: 20,
   },
   /* Context level border accents */
   borderInfo: {
-    borderLeftColor: '#61d095',
-  },
-  borderWarning: {
-    borderLeftColor: '#f5a623',
-  },
-  borderCritical: {
-    borderLeftColor: '#ff6666',
+    borderLeftColor: colors.success,
   },
   errorState: {
     flex: 1,
@@ -600,38 +539,38 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#f4f7ff',
+    color: colors.textPrimary,
   },
   errorBody: {
     fontSize: 14,
-    color: '#ff6666',
+    color: colors.error,
     textAlign: 'center',
   },
   debugBox: {
     alignSelf: 'stretch',
-    backgroundColor: '#1a1d26',
+    backgroundColor: colors.surface,
     borderRadius: 8,
     padding: 12,
     marginTop: 8,
     borderWidth: 1,
-    borderColor: 'rgba(154, 163, 182, 0.3)',
+    borderColor: colors.borderMuted,
   },
   debugTitle: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#9aa3b6',
+    color: colors.textMuted,
     marginBottom: 4,
   },
   debugTimestamp: {
     fontSize: 11,
-    color: '#61d095',
+    color: colors.success,
     fontFamily: 'monospace',
     marginBottom: 8,
   },
   debugLine: {
     fontSize: 11,
-    color: '#9aa3b6',
+    color: colors.textMuted,
     fontFamily: 'monospace',
     marginTop: 2,
   },
-});
+}));

@@ -1181,9 +1181,13 @@ public class AdminProvisioningService {
    * @param admin target administrator
    * @param recoveryCodes new plain-text recovery codes shown once
    * @param previousCodesCount count of codes that existed before regeneration
+   * @param previousSetExhausted whether a previous set had been issued and fully consumed
    */
   public record RecoveryCodesRegenerationResult(
-      EzkeyAdmin admin, java.util.List<String> recoveryCodes, int previousCodesCount) {}
+      EzkeyAdmin admin,
+      java.util.List<String> recoveryCodes,
+      int previousCodesCount,
+      boolean previousSetExhausted) {}
 
   @Transactional
   public RecoveryCodesRegenerationResult issueInitialRecoveryCodes(
@@ -1200,6 +1204,7 @@ public class AdminProvisioningService {
       throw new IllegalStateException(
           "Initial recovery codes already exist for this administrator; use regeneration instead");
     }
+    boolean previousSetExhausted = admin.getRecoveryCodes() != null;
 
     AdminRecoveryService.RecoveryCodesResult recoveryCodes =
         recoveryService.generateRecoveryCodes();
@@ -1212,7 +1217,8 @@ public class AdminProvisioningService {
         requesterPrincipal.adminId(),
         recoveryCodes.getPlainCodes().size());
 
-    return new RecoveryCodesRegenerationResult(admin, recoveryCodes.getPlainCodes(), 0);
+    return new RecoveryCodesRegenerationResult(
+        admin, recoveryCodes.getPlainCodes(), 0, previousSetExhausted);
   }
 
   /**
@@ -1251,7 +1257,7 @@ public class AdminProvisioningService {
         recoveryCodes.getPlainCodes().size());
 
     return new RecoveryCodesRegenerationResult(
-        admin, recoveryCodes.getPlainCodes(), previousCodesCount);
+        admin, recoveryCodes.getPlainCodes(), previousCodesCount, false);
   }
 
   private EzkeyAdmin loadAdminAuthorizedForRecoveryCodeManagement(

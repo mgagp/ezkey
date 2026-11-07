@@ -150,6 +150,8 @@ public class AdminProvisioningController {
             && (admin.getAdminType() == EzkeyAdmin.AdminType.GLOBAL_ADMIN
                 || (admin.getTenant() != null
                     && Boolean.TRUE.equals(admin.getTenant().getActive())));
+    // recovery_codes stays NULL until a set is issued; consuming the last code leaves an empty
+    // array, which is what separates "exhausted" from "never issued".
     return new AdminResponseDto(
         admin.getAdminId(),
         admin.getVersion(),
@@ -168,6 +170,7 @@ public class AdminProvisioningController {
         admin.getCreatedAt(),
         admin.getLastLoginAt(),
         admin.getRecoveryCodes() != null && admin.getRecoveryCodes().length > 0,
+        admin.getRecoveryCodes() != null && admin.getRecoveryCodes().length == 0,
         operational);
   }
 
@@ -1035,11 +1038,12 @@ public class AdminProvisioningController {
   @PostMapping("/{id}/recovery-codes/issue-initial")
   @PreAuthorize("hasRole('ADMIN')")
   @Operation(
-      summary = "Issue initial administrator recovery codes",
+      summary = "Issue recovery codes when none remain unused",
       description =
-          "Generates the first set of single-use recovery codes for an administrator after first"
+          "Generates a set of single-use recovery codes for an administrator after first"
               + " authenticated sign-in. This flow is distinct from regeneration and is only"
-              + " available when no recovery-code set exists yet.")
+              + " available when no unused recovery code remains: either no set was ever issued,"
+              + " or every code of the previous set has been used (recoveryCodesExhausted).")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "Initial recovery codes issued successfully"),
     @ApiResponse(responseCode = "400", description = "Administrator is not eligible yet"),
@@ -1069,7 +1073,9 @@ public class AdminProvisioningController {
               result.recoveryCodes(),
               newCodesCount,
               false,
-              "Initial recovery codes issued. No previous codes existed.");
+              result.previousSetExhausted()
+                  ? "New recovery codes issued. Every code from the previous set had been used."
+                  : "Initial recovery codes issued. No previous codes existed.");
 
       Integer tenantId =
           result.admin().getTenant() != null ? result.admin().getTenant().getTenantId() : null;

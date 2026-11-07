@@ -125,6 +125,10 @@ services:
       # Public Auth API base URL for enrollment QR authUrl + GET /api/v1/public/instance-info.
       # Set when phones reach Auth API via tunnel or public hostname (not http://auth-api:8080).
       EZKEY_QR_AUTH_BASE_URL: ${EZKEY_QR_AUTH_BASE_URL:-}
+      # Optional delivery connector (ADR-0018). Empty URL: integrated delivery only.
+      EZKEY_ADMIN_CONNECTOR_DELIVERY_URL: ${EZKEY_ADMIN_CONNECTOR_DELIVERY_URL:-}
+      EZKEY_ADMIN_CONNECTOR_DELIVERY_TOKEN: ${EZKEY_ADMIN_CONNECTOR_DELIVERY_TOKEN:-}
+      EZKEY_ADMIN_CONNECTOR_DELIVERY_PLAIN_HTTP_PRIVATE_NETWORK: ${EZKEY_ADMIN_CONNECTOR_DELIVERY_PLAIN_HTTP_PRIVATE_NETWORK:-false}
       # Instance branding (maps to ezkey.organization.*). Override in docker/.env for local evaluation.
       EZKEY_ORGANIZATION_NAME: ${EZKEY_ORGANIZATION_NAME:-Ezkey System}
       EZKEY_ORGANIZATION_DESCRIPTION: ${EZKEY_ORGANIZATION_DESCRIPTION:-Ezkey MFA instance for your organization}

@@ -16,7 +16,6 @@ import {
   Alert,
   FlatList,
   ListRenderItemInfo,
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
@@ -28,8 +27,11 @@ import {
   enrollmentStorage,
   EnrollmentMetadataRecord,
 } from '../../services/storage/enrollmentStorage';
-import {borderRadius, colors, spacing, typography} from '../../config/theme';
+import {borderRadius, spacing, typography} from '../../config/theme';
+import {createThemedStyles, useTheme} from '../../theme';
 import {shouldShowInstallationHostHint} from '../../utils/installationMetadata';
+import {formatDateTime} from '../../utils/formatDateTime';
+import {i18n} from '../../i18n';
 import {
   buildEnrollmentIdentityDisplay,
   buildHomeCardLabels,
@@ -59,22 +61,6 @@ const getEnrollmentDisplayName = (
     identityDisplayCopy(t),
   );
   return identity.accountLabel ?? identity.heroTitle;
-};
-
-const formatAbsoluteDateTime = (value?: string) => {
-  if (!value) {
-    return undefined;
-  }
-
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return undefined;
-  }
-
-  return parsed.toLocaleString(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  });
 };
 
 const formatRelativeAge = (
@@ -182,7 +168,7 @@ const buildDeleteMessage = (
     lines.push(t('dangerZone.installation', {value: installationLabel}));
   }
 
-  const lastActivity = formatAbsoluteDateTime(enrollment.lastActivityAt);
+  const lastActivity = formatDateTime(enrollment.lastActivityAt, i18n.language);
   if (lastActivity) {
     lines.push(t('dangerZone.lastActivity', {value: lastActivity}));
   }
@@ -215,6 +201,7 @@ const DangerZoneEnrollmentRow = React.memo(function DangerZoneEnrollmentRow({
   deletePending,
   onDelete,
 }: DangerZoneEnrollmentRowProps) {
+  const styles = useStyles();
   const {t} = useTranslation();
 
   const handlePress = useCallback(() => {
@@ -276,6 +263,8 @@ const DangerZoneEnrollmentRow = React.memo(function DangerZoneEnrollmentRow({
  * @since 2025
  */
 export const DangerZoneScreen: React.FC = () => {
+  const {colors} = useTheme();
+  const styles = useStyles();
   const {t} = useTranslation();
   const navigation = useNavigation();
   const {data, isLoading, refetch} = useEnrollments();
@@ -408,16 +397,16 @@ export const DangerZoneScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(colors => ({
   container: {
     flex: 1,
     backgroundColor: colors.background,
   },
   banner: {
     padding: spacing.lg,
-    backgroundColor: 'rgba(255, 102, 102, 0.1)',
+    backgroundColor: colors.dangerBg,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 102, 102, 0.2)',
+    borderBottomColor: colors.dangerBorder,
   },
   bannerTitle: {
     fontSize: typography.fontSize.xl,
@@ -476,9 +465,9 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.semibold,
     color: colors.warning,
-    backgroundColor: 'rgba(245, 194, 107, 0.12)',
+    backgroundColor: colors.cautionBgStrong,
     borderWidth: 1,
-    borderColor: 'rgba(245, 194, 107, 0.35)',
+    borderColor: colors.cautionBorder,
     borderRadius: borderRadius.xl,
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
@@ -487,9 +476,9 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.semibold,
     color: colors.errorLight,
-    backgroundColor: 'rgba(255, 102, 102, 0.12)',
+    backgroundColor: colors.dangerBgStrong,
     borderWidth: 1,
-    borderColor: 'rgba(255, 102, 102, 0.25)',
+    borderColor: colors.dangerBorderStrong,
     borderRadius: borderRadius.xl,
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
@@ -498,7 +487,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: spacing.lg,
     borderRadius: borderRadius.sm,
-    backgroundColor: colors.error,
+    backgroundColor: colors.danger,
     alignSelf: 'flex-start',
   },
   deleteButtonDisabled: {
@@ -507,7 +496,7 @@ const styles = StyleSheet.create({
   deleteLabel: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textOnPrimary,
+    color: colors.textOnDanger,
   },
   empty: {
     padding: spacing.xxl,
@@ -524,7 +513,7 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
   clearAllButton: {
-    backgroundColor: colors.error,
+    backgroundColor: colors.danger,
     borderRadius: borderRadius.md,
     paddingVertical: spacing.md,
     alignItems: 'center',
@@ -535,7 +524,7 @@ const styles = StyleSheet.create({
   clearAllLabel: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textOnPrimary,
+    color: colors.textOnDanger,
   },
   footerHint: {
     marginTop: spacing.md,
@@ -549,4 +538,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.background,
   },
-});
+}));

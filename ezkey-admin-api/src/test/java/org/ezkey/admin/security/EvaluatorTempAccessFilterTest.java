@@ -62,6 +62,15 @@ class EvaluatorTempAccessFilterTest {
   }
 
   @Test
+  @DisplayName("TEMP denies QR delivery, send and capability")
+  void temp_deniesQrDelivery() throws Exception {
+    authenticateTemp(42);
+    assertEquals(403, filterGet("/api/v1/enrollments/7/qr-delivery").getStatus());
+    assertEquals(403, filterGet("/api/v1/enrollments/qr-delivery/capability").getStatus());
+    assertEquals(200, filterGet("/api/v1/enrollments/7/qrcode").getStatus());
+  }
+
+  @Test
   @DisplayName("TEMP denies GLOBAL tenants surface")
   void temp_deniesTenants() throws Exception {
     authenticateTemp(42);

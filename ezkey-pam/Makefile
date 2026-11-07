@@ -23,6 +23,24 @@ OBJECTS = $(BUILD_DIR)/pam_ezkey.o $(BUILD_DIR)/ezkey_filelog.o \
 	$(BUILD_DIR)/ezkey_conf.o $(BUILD_DIR)/ezkey_diag.o \
 	$(BUILD_DIR)/ezkey_http.o
 
+# macOS (#1199). Build and tests only; install is #1202. Only Apple's libraries are linked: this code
+# runs in a root process, and the Homebrew prefix is generally user-writable, so cJSON is compiled in.
+# The linker adds the ad hoc signature on Apple Silicon: an unsigned module takes down every sshd
+# login (F0, #1198), so check-hardening verifies it.
+ifeq ($(shell uname -s),Darwin)
+CC = clang
+CFLAGS = -fPIC -Wall -Wextra -O2 -std=c99 -D_DARWIN_C_SOURCE \
+	-fstack-protector-strong -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2 \
+	-I$(BUILD_DIR)/vendor/include
+LDFLAGS = -bundle
+LDLIBS = -lpam -lcurl -lm
+CJSON_VERSION = 1.7.18
+CJSON_SHA256 = 3aa806844a03442c00769b83e99970be70fbef03735ff898f4811dd03b9f5ee5
+CJSON_HEADER = $(BUILD_DIR)/vendor/include/cjson/cJSON.h
+CJSON_SOURCE = $(BUILD_DIR)/vendor/cJSON.c
+OBJECTS += $(BUILD_DIR)/cJSON.o
+endif
+
 .PHONY: all debug install uninstall clean check-pam check-source check-hardening \
 	lint help test test-filelog test-sanitize test-challenge test-conf \
 	test-budget test-session test-diag test-http test-decision \
@@ -32,6 +50,25 @@ all: $(BUILD_DIR)/$(MODULE_NAME)
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
+
+ifeq ($(shell uname -s),Darwin)
+$(CJSON_SOURCE): | $(BUILD_DIR)
+	mkdir -p $(BUILD_DIR)/vendor/include/cjson
+	curl -fsSL -o $(BUILD_DIR)/vendor/cjson.tar.gz \
+		https://github.com/DaveGamble/cJSON/archive/refs/tags/v$(CJSON_VERSION).tar.gz
+	echo "$(CJSON_SHA256)  $(BUILD_DIR)/vendor/cjson.tar.gz" | shasum -a 256 -c -
+	tar -xzf $(BUILD_DIR)/vendor/cjson.tar.gz -C $(BUILD_DIR)/vendor --strip-components=1 \
+		cJSON-$(CJSON_VERSION)/cJSON.c cJSON-$(CJSON_VERSION)/cJSON.h
+	cp $(BUILD_DIR)/vendor/cJSON.h $(CJSON_HEADER)
+
+$(CJSON_HEADER): $(CJSON_SOURCE)
+
+$(BUILD_DIR)/cJSON.o: $(CJSON_SOURCE)
+	$(CC) -fPIC -O2 -std=c99 -w -I$(BUILD_DIR)/vendor -c $(CJSON_SOURCE) -o $@
+
+$(BUILD_DIR)/pam_ezkey.o: $(CJSON_HEADER)
+$(BUILD_DIR)/ezkey_http.o: $(CJSON_HEADER)
+endif
 
 $(BUILD_DIR)/pam_ezkey.o: $(SRC_DIR)/pam_ezkey.c $(SRC_DIR)/ezkey_config.h \
 		$(SRC_DIR)/ezkey_conf.h $(SRC_DIR)/ezkey_filelog.h \
@@ -80,6 +117,10 @@ debug: CFLAGS += -DDEBUG -g
 debug: all
 
 install: $(BUILD_DIR)/$(MODULE_NAME)
+ifeq ($(shell uname -s),Darwin)
+	@echo "error: no install on macOS yet (#1202). A misplaced module can lock out sshd and sudo." >&2
+	@exit 1
+endif
 	@echo "Installing PAM module to $(INSTALL_DIR)..."
 	install -d $(INSTALL_DIR)
 	install -m 755 $(BUILD_DIR)/$(MODULE_NAME) $(INSTALL_DIR)/$(MODULE_NAME)
@@ -177,8 +218,7 @@ check-source:
 		echo "error: pam_info() must not appear in pam_ezkey.c (#941 — use pam_prompt)" >&2; exit 1; \
 	fi
 	# #1016 P-a: test-diag must keep an external timeout watchdog.
-	@grep -qE '^[[:space:]]*timeout[[:space:]].*test_diag_harness' $(MAKEFILE_LIST) || \
-		grep -qE 'timeout --foreground.*test_diag_harness' $(MAKEFILE_LIST) || \
+	@grep -qE '^[[:space:]]*[$$][(]TIMEOUT_CMD[)] --foreground.*test_diag_harness' $(MAKEFILE_LIST) || \
 		(echo "error: test-diag must run under timeout (#1016 P-a)" >&2; exit 1)
 	# #1016 C1/C2: body cap + empty PROXY + NETRC ignored (statement form).
 	@grep -qE 'EZKEY_HTTP_BODY_MAX' $(SRC_DIR)/ezkey_http.h || \
@@ -278,6 +318,18 @@ check-source:
 	@echo "check-source: openat/O_NOFOLLOW/O_NONBLOCK + sanitize + #941/#975/#982/#995/#1016 guards"
 
 # #1016 C6/S4/S5: BIND_NOW, RELRO, stack protector, FORTIFY _chk, DT_NEEDED.
+ifeq ($(shell uname -s),Darwin)
+check-hardening: $(BUILD_DIR)/$(MODULE_NAME)
+	@codesign -v $(BUILD_DIR)/$(MODULE_NAME) || \
+		(echo "error: module must be signed; unsigned takes down every sshd login (#1198)" >&2; exit 1)
+	@! otool -L $(BUILD_DIR)/$(MODULE_NAME) | tail -n +2 | grep -v '^[[:space:]]*/usr/lib/' || \
+		(echo "error: module links outside /usr/lib (root process, #1199)" >&2; exit 1)
+	@nm -u $(BUILD_DIR)/$(MODULE_NAME) | grep -q '__stack_chk' || \
+		(echo "error: module missing stack protector symbol" >&2; exit 1)
+	@nm -u $(BUILD_DIR)/$(MODULE_NAME) | grep -E '_chk$$' | grep -qv 'stack_chk' || \
+		(echo "error: module missing FORTIFY _chk symbols" >&2; exit 1)
+	@echo "check-hardening: signed + /usr/lib only + stack/_chk OK"
+else
 check-hardening: $(BUILD_DIR)/$(MODULE_NAME)
 	@command -v readelf >/dev/null 2>&1 || \
 		(echo "error: readelf required for check-hardening (#1016 C6)" >&2; exit 1)
@@ -295,6 +347,7 @@ check-hardening: $(BUILD_DIR)/$(MODULE_NAME)
 	@readelf -d $(BUILD_DIR)/$(MODULE_NAME) | grep NEEDED | grep -q 'libcjson\.so' || \
 		(echo "error: pam_ezkey.so DT_NEEDED missing libcjson (LDLIBS order / --as-needed)" >&2; exit 1)
 	@echo "check-hardening: BIND_NOW + GNU_RELRO + stack/_chk + DT_NEEDED curl/cjson OK"
+endif
 
 # Harness: 0644→0600, hardlink refused, FIFO non-blocking (#818 m2).
 test-filelog: $(SRC_DIR)/ezkey_filelog.c $(TEST_DIR)/test_filelog_harness.c | $(BUILD_DIR)
@@ -337,15 +390,18 @@ test-session: $(BUILD_DIR)/ezkey_session.o $(TEST_DIR)/test_session_harness.c | 
 
 # Harness: attempt-line fields + signal-safe emit gate (#1011).
 # #1016 P-a: external timeout so a blocking /dev/log write cannot hang CI.
+# macos-26 has no timeout; Homebrew's coreutils provides it there (#1199). gtimeout is only a
+# safety net for an install that uses the g prefix.
+TIMEOUT_CMD ?= $(shell command -v timeout 2>/dev/null || command -v gtimeout 2>/dev/null)
+TIMEOUT_MISSING = error: timeout or gtimeout required (Linux: coreutils; macOS before 27: brew install coreutils)
 TEST_DIAG_TIMEOUT_SECS ?= 15
 test-diag: $(BUILD_DIR)/ezkey_diag.o $(BUILD_DIR)/ezkey_sanitize.o \
 		$(TEST_DIR)/test_diag_harness.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -I$(SRC_DIR) $(TEST_DIR)/test_diag_harness.c \
 		$(BUILD_DIR)/ezkey_diag.o $(BUILD_DIR)/ezkey_sanitize.o \
 		-o $(BUILD_DIR)/test_diag_harness
-	@command -v timeout >/dev/null 2>&1 || \
-		(echo "error: coreutils timeout required for test-diag watchdog (#1016 P-a)" >&2; exit 1)
-	timeout --foreground $(TEST_DIAG_TIMEOUT_SECS)s $(BUILD_DIR)/test_diag_harness
+	@test -n "$(TIMEOUT_CMD)" || (echo "$(TIMEOUT_MISSING)" >&2; exit 1)
+	$(TIMEOUT_CMD) --foreground $(TEST_DIAG_TIMEOUT_SECS)s $(BUILD_DIR)/test_diag_harness
 
 # Harness: body cap / PROXY "" / json long / URL redact (#1016 C1/C2/C4/C8).
 TEST_HTTP_TIMEOUT_SECS ?= 30
@@ -354,9 +410,8 @@ test-http: $(BUILD_DIR)/ezkey_http.o $(BUILD_DIR)/ezkey_sanitize.o \
 	$(CC) $(CFLAGS) -I$(SRC_DIR) $(TEST_DIR)/test_http_harness.c \
 		$(BUILD_DIR)/ezkey_http.o $(BUILD_DIR)/ezkey_sanitize.o \
 		-lcurl -lm -o $(BUILD_DIR)/test_http_harness
-	@command -v timeout >/dev/null 2>&1 || \
-		(echo "error: timeout required for test-http" >&2; exit 1)
-	timeout --foreground $(TEST_HTTP_TIMEOUT_SECS)s $(BUILD_DIR)/test_http_harness
+	@test -n "$(TIMEOUT_CMD)" || (echo "$(TIMEOUT_MISSING)" >&2; exit 1)
+	$(TIMEOUT_CMD) --foreground $(TEST_HTTP_TIMEOUT_SECS)s $(BUILD_DIR)/test_http_harness
 
 # Harness: wait/HTTP/URL decision contracts (#1016 cycle 2b P1).
 test-decision: $(BUILD_DIR)/ezkey_challenge.o $(BUILD_DIR)/ezkey_sanitize.o \

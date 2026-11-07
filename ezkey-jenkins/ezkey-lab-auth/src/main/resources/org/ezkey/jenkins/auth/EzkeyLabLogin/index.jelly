@@ -1,0 +1,35 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout" xmlns:st="jelly:stapler">
+  <l:layout title="${%pageTitle}" norefresh="true">
+    <l:main-panel>
+      <div data-testid="ezkey-lab-state" data-ezkey-lab-state="confirm">
+        <h1>${%heading}</h1>
+        <p>${%intro}</p>
+        <form method="post" action="send" class="jenkins-form" style="max-width: 28rem;">
+          <j:set var="crumbIssuer" value="${app.getCrumbIssuer()}"/>
+          <j:if test="${crumbIssuer != null}">
+            <input type="hidden" name="${crumbIssuer.crumbRequestField}" value="${crumbIssuer.crumb}"/>
+          </j:if>
+          <div class="jenkins-form-item">
+            <label class="jenkins-form-label" for="username">${%username}</label>
+            <div class="jenkins-form-item__control">
+              <input class="jenkins-input" type="text" id="username" name="username" autocomplete="username" required="true"/>
+            </div>
+          </div>
+          <j:if test="${!it.forceChallenge}">
+            <div class="jenkins-form-item">
+              <label>
+                <input type="checkbox" name="requireChallenge" value="true" data-testid="ezkey-require-challenge"/>
+                ${%requireChallenge}
+              </label>
+            </div>
+          </j:if>
+          <button type="submit" class="jenkins-button jenkins-button--primary" data-testid="ezkey-lab-send">${%send}</button>
+        </form>
+        <p>
+          <a href="${rootURL}/login">${%breakGlass}</a>
+        </p>
+      </div>
+    </l:main-panel>
+  </l:layout>
+</j:jelly>

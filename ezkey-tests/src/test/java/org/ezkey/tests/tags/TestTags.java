@@ -372,4 +372,11 @@ public final class TestTags {
    * or the quality-gate {@code c1-rate-limit} phase.
    */
   public static final String GATE_C1 = "gate-c1";
+
+  /**
+   * Needs the mock delivery connector on the stack ({@code docker-compose.connector-mock.yml}).
+   * Excluded by default. Run through {@code scripts/ci-connector-scenarios.sh} or {@code
+   * -Pconnector-mock}.
+   */
+  public static final String CONNECTOR_MOCK = "connector-mock";
 }

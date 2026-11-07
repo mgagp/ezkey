@@ -1530,6 +1530,7 @@ Authorization: Bearer ezkey_admin_token...
       "createdAt": "2025-12-26T10:00:00Z",
       "lastLoginAt": "2025-12-28T09:15:00Z",
       "hasRecoveryCodes": true,
+      "recoveryCodesExhausted": false,
       "operational": true
     }
   ],
@@ -1542,7 +1543,7 @@ Authorization: Bearer ezkey_admin_token...
 }
 ```
 
-**Response fields:** `tenantName` is the display name of the tenant (`ezkey_tenant.tenant_name`) when `tenantId` is set; it is `null` for global administrators. `enrollmentId` is the MFA enrollment linked to this administrator (passwordless identity); null if not linked. `lastLoginAt` is the timestamp of the administrator's last successful login (null if never logged in). `operational` summarizes whether the admin account and (for tenant-scoped admins) the tenant are in an operable state for login. Useful for access reviews.
+**Response fields:** `tenantName` is the display name of the tenant (`ezkey_tenant.tenant_name`) when `tenantId` is set; it is `null` for global administrators. `enrollmentId` is the MFA enrollment linked to this administrator (passwordless identity); null if not linked. `lastLoginAt` is the timestamp of the administrator's last successful login (null if never logged in). `hasRecoveryCodes` is true while at least one unused recovery code remains. `recoveryCodesExhausted` is true when a set was issued and every code has since been used; it lets clients word the next `issue-initial` call as a replacement set rather than a first issuance (#1244). `operational` summarizes whether the admin account and (for tenant-scoped admins) the tenant are in an operable state for login. Useful for access reviews.
 
 **Status Codes:**
 - 200: List of administrators retrieved successfully
@@ -1566,7 +1567,7 @@ GET /api/v1/admins/2
 Authorization: Bearer ezkey_admin_token...
 ```
 
-**Success Response (200 OK):** Same fields as a list item: `adminId`, `version`, `username`, `email`, `phoneNumber`, `firstName`, `lastName`, `adminType`, `tenantId`, `tenantName`, `enrollmentId`, `active`, `lifecycleStatus`, `createdAt`, `lastLoginAt`, `hasRecoveryCodes`, `operational`.
+**Success Response (200 OK):** Same fields as a list item: `adminId`, `version`, `username`, `email`, `phoneNumber`, `firstName`, `lastName`, `adminType`, `tenantId`, `tenantName`, `enrollmentId`, `active`, `lifecycleStatus`, `createdAt`, `lastLoginAt`, `hasRecoveryCodes`, `recoveryCodesExhausted`, `operational`.
 
 **Status Codes:**
 - 200: Administrator retrieved successfully
@@ -1732,6 +1733,42 @@ Authorization: Bearer ezkey_admin_token...
 - 400: Enrollment missing proof token
 - 404: Enrollment not found or not visible to this admin
 - 500: Internal server error
+
+#### **POST /api/v1/enrollments/{id}/qr-delivery** (Send the QR through a delivery connector)
+
+Sends the QR of a `CREATED` enrollment to its `contactEmail`, as one attempt, through the optional delivery connector ([ADR-0018](../product-docs/global/architecture-decisions.md#adr-0018--connector-spi-for-external-services)). The challenge is never sent, and the QR stays available on screen whatever the outcome. Same tenant gate as `GET /qrcode`. Denied to evaluator temporary sessions.
+
+```http
+POST /api/v1/enrollments/123/qr-delivery
+Authorization: Bearer ezkey_admin_token...
+Content-Type: application/json
+
+{ "locale": "fr" }
+```
+
+**200:** the connector was called. `outcome` says what happened: `accepted` (the provider took the message, not proof of receipt), `rejected` (it did not leave) or `unknown` (it may have left: check with the person before retrying).
+
+```json
+{ "outcome": "accepted", "sendId": "3f0e2f6a-...", "recipient": "person@example.com", "code": null, "testMode": false }
+```
+
+**Refused before any call:** an RFC 9457 problem with a typed `code`.
+
+| Status | `code` | Meaning |
+|--------|--------|---------|
+| 404 | | Enrollment not found or not visible to this admin |
+| 409 | `enrollment-not-created`, `enrollment-expired`, `admin-enrollment`, `parent-not-operational` | This enrollment cannot be sent |
+| 422 | `contact-email-missing`, `contact-email-invalid`, `expected-server-missing`, `locale-not-offered` | Sending data is missing or invalid |
+| 429 | `daily-cap-reached` | Tenant or instance daily cap reached |
+| 503 | `connector-unavailable` | No connector, or it is unreachable, `degraded` or on another contract version |
+
+#### **GET /api/v1/enrollments/qr-delivery/capability** (QR delivery capability)
+
+Says whether the send action can be offered. Reads the connector's health with a short cache, and never contacts a provider. Denied to evaluator temporary sessions.
+
+```json
+{ "available": true, "testMode": false, "locales": ["en", "fr"] }
+```
 
 #### **PATCH /api/v1/enrollments/{id}** (Partial Update of Enrollment Metadata)
 

@@ -71,7 +71,7 @@ settings {
 }
 
 docs {
-  Generates the first one-time set of recovery codes for the target administrator. Use this after the administrator has completed a first authenticated sign-in and only when no recovery-code set exists yet.
+  Generates a one-time set of recovery codes for the target administrator when no unused code remains: either no set was ever issued (first issuance) or every code of the previous set has been used (`recoveryCodesExhausted = true`). Requires a completed first authenticated sign-in.
   
   **Permissions:**
   - **GlobalAdmin**: Can issue initial recovery codes for any administrator
@@ -79,6 +79,7 @@ docs {
   
   **Recommended Pre-check:**
   - Run GET `/api/v1/admins/{id}` first and confirm `hasRecoveryCodes = false` and `lastLoginAt` is not null
+  - `recoveryCodesExhausted = true` means this call replaces a fully used set (not a first issuance); `message` says so
   
   **Path Parameters:**
   - `id` (required): Administrator ID to issue the first recovery-code set for
@@ -93,7 +94,7 @@ docs {
   
   **Notes:**
   - This endpoint is rejected when the administrator has not completed a first authenticated sign-in yet.
-  - This endpoint is rejected when a recovery-code set already exists; use `regenerate` instead.
+  - This endpoint is rejected while unused recovery codes remain; use `regenerate` instead.
   - Save the new `recoveryCodes` immediately; they cannot be retrieved later.
   
   **Status Codes:**

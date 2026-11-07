@@ -26,6 +26,9 @@ The Admin UI implements this as a **recovery funnel** on the login page, not as 
 - After an enrollment exists, operators obtain a **replacement set** through
   `POST /api/v1/admins/{id}/recovery-codes/regenerate`; the previous unused set is invalidated
   immediately.
+- When every code of a set has been used (`recoveryCodesExhausted = true`), the next set still
+  goes through `POST /api/v1/admins/{id}/recovery-codes/issue-initial`, but the admin detail
+  action and dialog read "Issue new recovery codes", not a first issuance (#1244).
 - `GET /api/v1/admins/{id}/onboarding` does **not** return plaintext recovery codes (hashed at rest).
 
 Canon: [LIFECYCLE_GOVERNANCE.md](LIFECYCLE_GOVERNANCE.md) §3.5 (activation ≠ recovery).

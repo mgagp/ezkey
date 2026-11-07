@@ -198,7 +198,7 @@ class _Suite {
       );
       await _case('deny: integration sees REJECTED', _deny);
       await _case(
-        'respond: answering twice is a state conflict',
+        'respond: second decision refused locally; server copy is a state conflict',
         _respondTwice,
       );
       await _case(
@@ -721,8 +721,26 @@ class _Suite {
     );
     final attempt = await _claim(_plain!, created.authAttemptId);
     await _authenticator.approve(_plain!, attempt);
+    _expect(
+      attempt.decisionState == AuthAttemptDecisionState.locked,
+      'attempt not locked after respond: ${attempt.decisionState.name}',
+    );
+    try {
+      await _authenticator.deny(_plain!, attempt);
+      throw _CaseFailure('second decision was not refused locally');
+    } on EzkeyValidationException {
+      // Client decision lock (contract §2): nothing sent.
+    }
+    // Server guarantee, independent of the client lock: a copy of the attempt gets a final 409.
+    final copy = PendingAuthAttempt(
+      enrollmentLocalId: attempt.enrollmentLocalId,
+      authAttemptId: attempt.authAttemptId,
+      authAttemptProofToken: attempt.authAttemptProofToken,
+      challengeRequired: attempt.challengeRequired,
+      receivedAt: attempt.receivedAt,
+    );
     await _expectApiError(
-      () => _authenticator.approve(_plain!, attempt),
+      () => _authenticator.approve(_plain!, copy),
       EzkeyProblemKind.authAttemptStateConflict,
       'second respond',
     );

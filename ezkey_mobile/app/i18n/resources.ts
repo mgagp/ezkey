@@ -24,6 +24,7 @@ export const resources = {
         licenseDetail: 'License',
         dangerZone: 'Danger Zone',
         language: 'Language',
+        appearance: 'Appearance',
       },
       settings: {
         general: 'General',
@@ -34,7 +35,9 @@ export const resources = {
         comingSoonLabel: 'Coming soon',
         comingSoonSubtitle: 'What we plan next for this app',
         languageLabel: 'Language',
-        languageSubtitle: 'English by default; French available',
+        languageSubtitle: 'Follows this phone by default; English or French',
+        appearanceLabel: 'Appearance',
+        appearanceSubtitle: 'Light, dark, or the system setting',
         securityLabel: 'Security',
         securitySubtitleStandard: 'No extra confirmation before responding',
         securitySubtitleProtected: 'Ask for device confirmation before approving or denying',
@@ -115,10 +118,21 @@ export const resources = {
       },
       locale: {
         title: 'Language',
-        intro: 'Choose the app language. Changes are saved and applied immediately.',
+        intro:
+          'Choose the app language. Changes are saved and applied immediately. System default follows the language of this phone when it is English or French.',
+        system: 'System default',
         english: 'English',
         french: 'French',
         current: 'Current language',
+      },
+      appearance: {
+        title: 'Appearance',
+        intro:
+          'Choose how the app looks. System default follows the dark theme setting of this phone.',
+        system: 'System default',
+        light: 'Light',
+        dark: 'Dark',
+        current: 'Current setting',
       },
       about: {
         accessibilityLabel: 'About Ezkey Authenticator',
@@ -274,6 +288,7 @@ export const resources = {
           'Controlled test seed payload is missing. Set EZKEY_ENROLLMENT_SEED_BYPASS_QR_PAYLOAD and rebuild.',
       },
       pendingAuth: {
+        captureBlocked: 'Stop recording or mirroring the screen to answer this request.',
         challengeInput: 'Challenge code input',
         challengeInputHint: 'Enter the 2-digit code shown on the sign-in screen',
         requestFailed: 'Request failed.',
@@ -418,6 +433,7 @@ export const resources = {
         licenseDetail: 'Licence',
         dangerZone: 'Zone dangereuse',
         language: 'Langue',
+        appearance: 'Apparence',
       },
       settings: {
         general: 'Général',
@@ -428,7 +444,9 @@ export const resources = {
         comingSoonLabel: 'À venir',
         comingSoonSubtitle: 'Ce que nous prévoyons ensuite pour cette application',
         languageLabel: 'Langue',
-        languageSubtitle: 'Anglais par défaut; français disponible',
+        languageSubtitle: 'Suit ce téléphone par défaut; anglais ou français',
+        appearanceLabel: 'Apparence',
+        appearanceSubtitle: 'Clair, sombre ou réglage du système',
         securityLabel: 'Sécurité',
         securitySubtitleStandard: 'Aucune confirmation supplémentaire avant de répondre',
         securitySubtitleProtected: 'Demander une confirmation de l’appareil avant d’approuver ou de refuser',
@@ -511,10 +529,20 @@ export const resources = {
       locale: {
         title: 'Langue',
         intro:
-          'Choisissez la langue de l’application. Les changements sont enregistrés et appliqués immédiatement.',
+          'Choisissez la langue de l’application. Les changements sont enregistrés et appliqués immédiatement. Par défaut du système suit la langue de ce téléphone si c’est l’anglais ou le français.',
+        system: 'Par défaut du système',
         english: 'Anglais',
         french: 'Français',
         current: 'Langue actuelle',
+      },
+      appearance: {
+        title: 'Apparence',
+        intro:
+          'Choisissez l’apparence de l’application. Par défaut du système suit le réglage du thème sombre de ce téléphone.',
+        system: 'Par défaut du système',
+        light: 'Clair',
+        dark: 'Sombre',
+        current: 'Réglage actuel',
       },
       about: {
         accessibilityLabel: 'À propos de l’authentificateur Ezkey',
@@ -673,6 +701,7 @@ export const resources = {
           'La charge utile de seed de test contrôlée est absente. Définissez EZKEY_ENROLLMENT_SEED_BYPASS_QR_PAYLOAD puis reconstruisez.',
       },
       pendingAuth: {
+        captureBlocked: 'Arrêtez l’enregistrement ou la recopie de l’écran pour répondre à cette demande.',
         challengeInput: 'Saisie du code de challenge',
         challengeInputHint: 'Entrez le code à 2 chiffres affiché sur l’écran de connexion',
         requestFailed: 'Échec de la requête.',

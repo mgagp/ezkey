@@ -139,7 +139,11 @@ static void test_syslog_snap_no_zero_window(void) {
  */
 static void test_emit_nonblock_full_queue(void) {
     int sv[2] = {-1, -1};
+#ifdef __APPLE__
+    char junk[2048]; /* net.local.dgram.maxdgram: larger writes fail with EMSGSIZE */
+#else
     char junk[4096];
+#endif
     char msg[128];
     volatile sig_atomic_t emitted = 0;
     struct timespec t0;
@@ -152,12 +156,23 @@ static void test_emit_nonblock_full_queue(void) {
     memset(junk, 'x', sizeof(junk));
     snprintf(msg, sizeof(msg), "<86>pam_ezkey: attempt nonblock-probe");
 
+#if defined(SOCK_NONBLOCK) && defined(SOCK_CLOEXEC)
     if (socketpair(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC | SOCK_NONBLOCK, 0, sv) !=
         0) {
         fprintf(stderr, "[FAIL] N1: socketpair: %s\n", strerror(errno));
         failures++;
         return;
     }
+#else
+    /* macOS: no SOCK_NONBLOCK / SOCK_CLOEXEC, set them after creation. */
+    if (socketpair(AF_UNIX, SOCK_DGRAM, 0, sv) != 0 ||
+        fcntl(sv[0], F_SETFL, O_NONBLOCK) != 0 ||
+        fcntl(sv[1], F_SETFL, O_NONBLOCK) != 0) {
+        fprintf(stderr, "[FAIL] N1: socketpair: %s\n", strerror(errno));
+        failures++;
+        return;
+    }
+#endif
     flags = fcntl(sv[0], F_GETFL);
     expect_true("N1: emit peer has O_NONBLOCK",
                 flags >= 0 && (flags & O_NONBLOCK) != 0);
@@ -165,7 +180,8 @@ static void test_emit_nonblock_full_queue(void) {
     for (i = 0; i < 256; i++) {
         ssize_t nw = write(sv[0], junk, sizeof(junk));
         if (nw < 0) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            /* macOS reports a full datagram queue as ENOBUFS. */
+            if (errno == EAGAIN || errno == EWOULDBLOCK || errno == ENOBUFS) {
                 filled = 1;
                 break;
             }

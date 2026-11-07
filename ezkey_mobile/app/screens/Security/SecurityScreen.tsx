@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from 'react';
-import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {Pressable, ScrollView, Text, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTranslation} from 'react-i18next';
 import {
@@ -12,7 +12,8 @@ import {
   SECURITY_LEVELS,
   SecurityLevel,
 } from '../../services/storage/securityPreferenceStorage';
-import {borderRadius, colors, spacing, typography} from '../../config/theme';
+import {borderRadius, spacing, typography} from '../../config/theme';
+import {createThemedStyles} from '../../theme';
 import {cryptoService} from '../../services/crypto';
 
 const securityLevelTranslationKeys: Record<
@@ -30,6 +31,7 @@ const securityLevelTranslationKeys: Record<
 };
 
 export const SecurityScreen: React.FC = () => {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const {t} = useTranslation();
   const [selectedLevel, setSelectedLevel] = useState<SecurityLevel>(DEFAULT_SECURITY_LEVEL);
@@ -179,7 +181,7 @@ export const SecurityScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(colors => ({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -316,4 +318,4 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     lineHeight: 20,
   },
-});
+}));

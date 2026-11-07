@@ -46,7 +46,9 @@ five language analyses uploaded on `main` at that commit.
 | `.github/ISSUE_TEMPLATE/` | **No** | Directory absent (see diminishing-returns). |
 | [`SECURITY.md`](../../SECURITY.md) | Yes | Private vulnerability reporting URL; lists CI / CodeQL / Dependabot / secret scanning practices. Last updated **2026-10-14** (#808). |
 | [`docs/SECURITY_POSTURE.md`](../SECURITY_POSTURE.md) | Yes | Honest product security claims + § Code scanning policy (SLAs, dismiss rules). |
-| Scorecard / dependency-review / SBOM / provenance / release / harden-runner workflows | **No** | Not in `.github/workflows/`. |
+| [`.github/workflows/scorecard.yml`](../../.github/workflows/scorecard.yml) | Yes | OpenSSF Scorecard (`ossf/scorecard-action`); push/`main` + weekly cron + `branch_protection_rule` + `workflow_dispatch`; `publish_results: true`; SARIF → code scanning. README badge deferred to a follow-up after first publish. |
+| `dependency-review.yml` | **Yes** | Warn-only on manifest and workflow PRs; not in `ci-gate` (G7). |
+| SBOM / provenance / release / harden-runner workflows | **No** | Not in `.github/workflows/`. |
 
 #### 1.1.1 Maven dependency submission
 
@@ -93,11 +95,6 @@ RN-core / vision-camera / navigation; site / android-gradle / docker / compose m
 (`dependabot.yml` ~L196–201; automatic Gradle submission declined for `includeBuild` /
 `node_modules` coupling).
 
-**Stale comment flag:** `dependabot.yml` ~L170–174 still says `product-docs/site` `package-lock.json`
-is gitignored so alerts cover direct deps only. That is **stale since [#763](https://github.com/mgagp/ezkey/pull/763)** —
-the lockfile is committed and root `.gitignore` has `!product-docs/site/package-lock.json`. Fix the
-comment in a Dependabot/docs hygiene PR (not blocking this inventory).
-
 Security updates are not delayed by cooldown (Dependabot product behavior).
 
 #### 1.1.3 LTS toolchain policy (CI-enforced)
@@ -122,26 +119,27 @@ gate; Python CLI pytest on 3.12/3.14. **Not** in PR CI: Playwright, full Docker 
 doctor/pentest hygiene, Jacoco coverage thresholds, Android `lint`, SonarQube (mentioned as
 aspiration in `DEVELOPMENT.md` but not wired — see G18 hygiene).
 
-### 1.2 Repository ruleset and merge settings (API-verified 2026-10-14)
+### 1.2 Repository ruleset and merge settings (API-verified 2026-11-06)
 
 | Setting | Observed | Source |
 |---------|----------|--------|
 | Ruleset | **Basic protection**, `enforcement: active`, targets `~DEFAULT_BRANCH` | `GET /repos/mgagp/ezkey/rulesets/7558701` |
-| Rules | `deletion`, `non_fast_forward`, `required_status_checks` with context **`ci-gate`** only | Same |
+| Rules | `deletion`, `non_fast_forward`, `required_status_checks` with context **`ci-gate`** only, `pull_request` with **0** required approvals (added 2026-11-06, G5). GitHub also returns `require_extra_approval_for_unattributed_changes: true`, which we did not request and could not find documented; maintainer and Dependabot PRs still merge normally | Same |
 | Strict up-to-date | `strict_required_status_checks_policy: false` | Same |
-| Bypass | `RepositoryRole` `actor_id: 5`, `bypass_mode: always` (Admin role bypass) | Same |
-| Required PR / approvals / CODEOWNERS review / signed commits / linear history | **Not** present on this ruleset | Same |
-| Classic branch protection API | 403 from this token | **to confirm by Marc in Settings** if any classic rules remain |
+| Bypass | `RepositoryRole` `actor_id: 5`, `bypass_mode: pull_request` (Admin role bypass on PRs only; direct pushes are refused) | Same |
+| Required approvals / CODEOWNERS review / signed commits / linear history | **Not** present on this ruleset | Same |
+| Classic branch protection API | 404 `Branch not protected`: none on `main` | `GET …/branches/main/protection` |
 | `allow_squash_merge` / `allow_merge_commit` / `allow_rebase_merge` | All **true** | Repo REST |
 | `delete_branch_on_merge` | **false** | Repo REST |
-| `allow_auto_merge` / `allow_update_branch` | **false** | Repo REST |
+| `allow_auto_merge` / `allow_update_branch` | **true** (used by `dependabot-auto-merge.yml`) / **false** | Repo REST |
 | Deploy environments | One env: `copilot`, **no** protection rules | `GET …/environments` |
 
 **Ruleset vs bot autonomy:** Required status is **`ci-gate` only** — path-filtered jobs may skip;
-Dependabot and agent PRs merge when `ci-gate` is green and Marc (or Admin bypass) merges. Agents
-and Dependabot **cannot** self-approve. Admin bypass (`actor_id: 5`, always) is the emergency /
-solo-maintainer escape hatch — **to confirm by Marc** that it remains intentional. Soft merge bar
-(#787) still applies in process even when bypass is available.
+every change to `main` goes through a PR, and Dependabot and agent PRs merge when `ci-gate` is green
+and Marc (or auto-merge for allowed Dependabot patches) merges. Agents and Dependabot **cannot**
+self-approve. Admin bypass (`actor_id: 5`, PRs only) remains the solo-maintainer escape hatch on a
+PR whose checks are stuck; it no longer permits a direct push. Soft merge bar (#787) still applies
+in process even when bypass is available.
 
 **`allow_auto_merge`:** currently **false**. Options for later: enable for **T1-only** Dependabot
 lots under `dependabot-curated`, or keep an **explicit decision not to enable** (preferred until
@@ -155,16 +153,18 @@ alerts + dependency-review land). Record the choice in the Monday campaign note 
 | **Dependency graph** | Was **disabled** (Maven submission failed on runs [38298454193](https://github.com/mgagp/ezkey/actions/runs/38298454193) and [38447903477](https://github.com/mgagp/ezkey/actions/runs/38447903477)). Marc **re-enabled** 2026-10-13. Operator posture documented in [#798](https://github.com/mgagp/ezkey/pull/798) (merged `638b4214`). | **G4 done** |
 | **Automatic dependency submission** | Docs say Disabled 2026-10-08; Actions still lists dynamic workflow type | **to confirm by Marc in Settings** (listing ≠ enabled) |
 | **Dependabot version updates** | `dependabot.yml` + open Dependabot PRs + dynamic “Dependabot Updates” workflow | **Verified on** |
-| **Dependabot alerts / security updates** | `SECURITY.md` announces them; `GET …/dependabot/alerts` returned *“Dependabot alerts are disabled”* (2026-10-14) | **Conflict — Marc’s call in Settings (new P0)** |
-| **Secret scanning** | Claimed in `SECURITY.md`; alerts API 403 | **to confirm by Marc in Settings** |
-| **Secret scanning push protection** | Claimed in `SECURITY.md`; not API-visible here | **to confirm by Marc in Settings** |
+| **Dependabot alerts** | Enabled 2026-11-06 (`PUT …/vulnerability-alerts`, Marc's decision): 156 open at activation, triage per [`hygiene/dependabot`](../../product-docs/global/hygiene/dependabot/README.md) § *Alerts* | **Verified on** |
+| **Dependabot security updates** | `security_and_analysis.dependabot_security_updates: enabled`. Patch-level PRs enter `dependabot-auto-merge.yml` with its exclusions (crypto, Docker, Gradle, RN core, `deferred:*`, `hitl*`) | **On by decision** (2026-11-06, after stock triage) |
+| **Secret scanning** | `security_and_analysis.secret_scanning: enabled` (API, 2026-11-05) | **Verified on** |
+| **Secret scanning push protection** | `security_and_analysis.secret_scanning_push_protection: enabled` (API, 2026-11-05) | **Verified on** |
 | **Code scanning — Advanced** | #805 merged; five analyses uploaded on `main` at `f26cbe55` | **G1 done** |
 | **CodeQL query suite** | `security-extended` restored in [#809](https://github.com/mgagp/ezkey/pull/809) (`287757ed`) | **Done** — default suite had undercounted (log-injection / sensitive-log) |
 | **CodeQL open-alert baseline on `main`** | Re-analyze under `security-extended` after #809/#810; record count in a later inventory refresh | **Pending re-count** (default-suite 2026-10-14 figure undercounts) |
 | **Alert #16 (`java/sensitive-log`)** | Fixed in [#810](https://github.com/mgagp/ezkey/pull/810) (`115dde38`) — recovery token fingerprint + LogSanitizer in `AdminOperationsRateLimitService` | **Fixed** |
 | **Alert #9 (`java/ssrf`)** | Barrier model + stored-URL revalidation in [#810](https://github.com/mgagp/ezkey/pull/810) (`AuthApiUrlValidator` / demo-device) | **Addressed** (confirm closure under `security-extended`) |
-| **Code scanning as required check / ruleset `code_scanning` rule** | Not on ruleset `7558701` | Absent (optional Phase 2) |
+| **Code scanning as required check / ruleset `code_scanning` rule** | Not on ruleset `7558701` | Policy-only by decision (G24) |
 | **Security advisory / SECURITY.md** | Present; public alpha honesty | Good |
+| **Security Insights file** | [`.github/security-insights.yml`](../../.github/security-insights.yml), spec 2.2.0, schema-validated (2026-11-06). Lets the OSPS Baseline scanner evaluate controls it previously skipped; review `last-reviewed` in the Monday full pass | **Present** |
 
 ### 1.4 Process and hygiene (repo memory)
 
@@ -174,7 +174,7 @@ alerts + dependency-review land). Record the choice in the Monday campaign note 
 | Peer review | Soft process (“Manual Review”); **not** ruleset-enforced (solo: author cannot approve own PR) |
 | Dependabot curation | [#678](https://github.com/mgagp/ezkey/pull/678) risk model: tiers **T1–T4**; Orval **O0–O3** grid; Docker + Android Gradle under HITL until [#702](https://github.com/mgagp/ezkey/pull/702); labels `deferred:later-train` and `deferred:rn-upgrade`; weekday **autonomous light** passes for **T1–T3** and Orval **O0/O1**. Canon: [`product-docs/global/hygiene/dependabot/`](../../product-docs/global/hygiene/dependabot/) + skill `dependabot-curated` |
 | CodeQL triage | Hygiene lane `product-docs/global/hygiene/code-scanning/` + SLAs in `SECURITY_POSTURE` |
-| Deploy traceability | Git SHA ledger ([`VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../VERSIONING_AND_DEPLOY_TRACEABILITY.md)); **no** GitHub Releases / signed publish train yet |
+| Deploy traceability | Git SHA ledger + monorepo product SemVer decision (ADR-0017 / [#1211](https://github.com/mgagp/ezkey/issues/1211); [`VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../VERSIONING_AND_DEPLOY_TRACEABILITY.md)); **no** GitHub Releases / signed publish train yet |
 | Labels | Rich lane/type/component/priority/status set (verified via `gh label list`) |
 | Stale bot | Not present (diminishing returns) |
 
@@ -231,20 +231,20 @@ Value: evaluator / supply-chain / operator impact (High / Med / Low).
 | # | Practice | Ezkey today | Gap | Effort | Value | Priority |
 |---|----------|-------------|-----|--------|-------|----------|
 | G1 | CodeQL Advanced only (no default conflict) | #805 merged; 5 analyses on `main` at `f26cbe55` | None — **done** | — | — | **Done** |
-| G2 | Dependabot **alerts** + security updates | Version updates strong; API said disabled vs `SECURITY.md` | Enable alerts if off; align `SECURITY.md` | S | High | **P0** |
-| G3 | Secret scanning + push protection | Claimed; not API-verified | Confirm on; enable if off | S | High | **P0** |
+| G2 | Dependabot **alerts** + security updates | Alerts on since 2026-11-06; `SECURITY.md` aligned | None | S | High | **Done** 2026-11-06 (Marc) |
+| G3 | Secret scanning + push protection | Both enabled (API, 2026-11-05) | None | — | High | **Done** |
 | G4 | Dependency graph on; automatic submission off | Graph re-enabled 2026-10-13; #798 merged (`638b4214`) | Confirm automatic submission still Disabled in Settings | S | High | **Done** (graph + docs); confirm automatic submission |
-| G7 | Dependency review Action on PRs | Absent | After G2: add action limited to PRs that touch manifests; fail on high/critical | M | High | **P1** |
+| G7 | Dependency review Action on PRs | `dependency-review.yml`, warn-only, not in `ci-gate` (2026-11-06); Maven not covered | Promote to blocking on high/critical after the alert stock is triaged | S | High | **Observing** |
 | G8 | `SECURITY.md` Advanced CodeQL wording | Updated in #808 | Reconfirm after Marc verifies Settings toggles | S | Med | P1 |
-| G5 | Ruleset: require **PR** before merge (no approval) | Status checks only; admin bypass always | Require a pull request **without** required approvals (solo: author cannot approve own PR). Approvals stay soft / #787 | S–M | Med | **P2** |
+| G5 | Ruleset: require **PR** before merge (no approval) | **Done 2026-11-06 (Marc):** `pull_request` rule on ruleset `7558701`, 0 approvals, bypass and merge methods unchanged. Direct pushes to `main` had stopped on 2026-09-21. The OSPS scanner still fails AC-03.01: v0.33.2 passes only with at least 1 required approval or an update-restriction rule. Accepted for a solo maintainer | None. Approvals stay soft / #787 | — | — | **Done** |
 | G9 | `delete_branch_on_merge` | false | Enable for hygiene | S | Low | P2 |
 | G10 | Prefer squash-only (or document merge strategy) | All three merge methods on | Pick one preferred; disable others or document | S | Low | P2 |
-| G12 | Scorecard workflow + badge | Absent | Scheduled Scorecard; publish badge in README | M | Med | P2 |
+| G12 | Scorecard workflow + badge | Workflow present (`scorecard.yml`); badge still absent | Keep scheduled Scorecard; add README badge after first successful publish | M | Med | P2 (workflow done; badge follow-up) |
 | G14 | Container image CVE scanning | Docker Dependabot version bumps only | Trivy/Grype job or registry scan; not a substitute for alerts | M | Med | P2 |
 | G15 | SBOM generation (CycloneDX/SPDX) | Absent | Generate on `main` / release tags; attach artifacts | M | Med | P2 |
 | G17 | Android Lint in CI | Unit tests + 16 KB only | Add `lintDebug` (or release lint) to mobile workflow | M | Med | P2 |
 | G18 | Coverage gate vs aspirational “90%” | Jacoco in POM; “90%” in `DEVELOPMENT.md`; not CI-enforced | Hygiene: either enforce a realistic floor or remove the aspirational claim from `DEVELOPMENT.md` (not a release-train item) | M | Med | P2 (hygiene) |
-| G24 | CodeQL as blocking required check | Policy / #787 process; not ruleset-enforced | Ruleset `code_scanning` or required check if noise is tolerable — or keep policy-only | M | Med | P2 |
+| G24 | CodeQL as blocking required check | **Decided 2026-11-06 (Marc): keep policy-only.** `ci-gate` stays the single required check. CodeQL analyzes only the languages a PR changes, so a required per-language context would stay pending on PRs that skip it. The merge-ready rule (zero new unresolved alerts) covers the need | None. Revisit only if a new alert reaches `main` unnoticed. Scanners that look for required SAST (OSPS, Scorecard) may keep flagging this: accepted | — | — | **Closed** |
 | G6 | `CODEOWNERS` + optional required-reviewer paths | Absent | Only useful if paired with G5-style enforcement later; otherwise soft ownership docs | S–M | Low–Med | **P3** (tie to G5) |
 | G11 | Strict status checks (branch up to date) | `strict: false` | Skip for now — daily Dependabot PRs would force serial rebases | S | Low | **Skip / P3** |
 | G13 | Harden-runner (egress audit) | Absent | Optional later; see diminishing-returns | M | Low–Med | **P3** |
@@ -264,9 +264,9 @@ Value: evaluator / supply-chain / operator impact (High / Med / Low).
 
 Owner suggestions in parentheses. **Marc** required wherever Settings is named.
 
-1. **Confirm / enable Dependabot alerts and security updates** (Marc; Fred align `SECURITY.md`) —
-   **new P0** (API “disabled” vs SECURITY announcement).
-2. **Confirm / enable secret scanning and push protection** (Marc; Christophe spot-check).
+1. ~~Enable Dependabot alerts~~ — **done** 2026-11-06, `SECURITY.md` aligned. Security updates
+   **enabled** the same day, after the stock was triaged.
+2. ~~Confirm secret scanning and push protection~~ — **done**, verified on by API 2026-11-05.
 3. ~~Merge [#798](https://github.com/mgagp/ezkey/pull/798)~~ — **done** (`638b4214`); graph
    must stay enabled; automatic submission stays Disabled (**G4**).
 4. **Refresh `SECURITY.md` “practices in use”** after the Settings toggles above are verified (Fred) —
@@ -279,12 +279,14 @@ verified toggles.
 
 ### Phase 2 — Structural parity (supply-chain PR gate + light ruleset)
 
-1. **Dependency review Action** after G2 (Fred; Christophe severity): run on PRs that **touch
-   manifests**; fail on **high/critical** (G7 before G6).
-2. **Ruleset: require a pull request** before merge to `main`, **without** required approvals
-   (Marc) — solo maintainer cannot approve PRs opened as `mgagp` (G5 → P2).
-3. **OpenSSF Scorecard** scheduled workflow + README badge (Fred); triage with Christophe (no 10/10
-   campaign).
+1. **Dependency review Action** (G7, before G6): in place in warn-only mode on PRs that **touch
+   manifests**. **Decided 2026-11-06 (Marc): stays warn-only for now**, because it would flag
+   alerts we chose to leave open while upstream moves, and it has little history yet. **Review on
+   2026-11-30.** Being outside `ci-gate`, a failing job would not block a merge anyway.
+2. ~~**Ruleset: require a pull request**~~ — **done 2026-11-06** (G5): `pull_request` rule, 0 approvals,
+   because a solo maintainer cannot approve PRs opened as `mgagp`.
+3. **OpenSSF Scorecard** — workflow landed (`scorecard.yml`); README badge still follow-up after
+   first publish (Fred); triage with Christophe (no 10/10 campaign).
 4. **Optional hygiene:** `delete_branch_on_merge`; document preferred merge method; decide
    `allow_auto_merge` T1-only vs never (Marc + Fred).
 5. **Mobile:** Android Lint job or step (Justin + Fred) (G17).
@@ -292,7 +294,7 @@ verified toggles.
 7. **Coverage honesty (G18 hygiene):** remove or enforce the “90%” claim in `DEVELOPMENT.md`
    (Fred + Patrick) — not a Phase 3 release item.
 8. **CODEOWNERS (G6)** only if/when G5-style enforcement is revisited (P3).
-9. **CodeQL required check (G24)** only if alert noise is tolerable (Marc + Christophe).
+9. ~~**CodeQL required check (G24)**~~ — **decided 2026-11-06:** policy-only, not a required check (see G24).
 
 Exit criteria: dependency review on manifest PRs; PR-required ruleset (no fake self-approval);
 Scorecard signal; Settings still documented.
@@ -332,15 +334,15 @@ Copy into a maintainer note; check each in **Settings → Code security / Rules 
 - [x] **CodeQL Advanced** — done via #805 uploads on `main` (`f26cbe55`); reconfirm UI still Advanced if desired.
 - [x] **Dependency graph:** Enabled (Marc 2026-10-13; document via #798).
 - [ ] **Automatic dependency submission:** Disabled (dedicated Maven workflow feeds the graph).
-- [ ] **Dependabot alerts:** Enabled (reconcile with 2026-10-14 API “disabled” signal) — **P0**.
-- [ ] **Dependabot security updates:** Enabled — **P0**.
-- [ ] **Secret scanning:** Enabled — **P0**.
-- [ ] **Push protection** (secret scanning): Enabled — **P0**.
+- [x] **Dependabot alerts:** Enabled (2026-11-06).
+- [x] **Dependabot security updates:** Enabled after stock triage (API, 2026-11-06).
+- [x] **Secret scanning:** Enabled (API, 2026-11-05).
+- [x] **Push protection** (secret scanning): Enabled (API, 2026-11-05).
 - [ ] **Private vulnerability reporting:** Enabled (API already `true` — reconfirm UI).
 - [ ] **Ruleset “Basic protection”:** still requires **`ci-gate` only** for status checks (do not add path-filtered job names).
-- [ ] Whether **classic branch protection** on `main` still exists alongside the ruleset.
+- [x] **Classic branch protection** on `main`: none (API 404, 2026-11-06).
 - [ ] Desired merge button set (squash / merge commit / rebase) and **delete branch on merge**.
-- [ ] Whether Admin **bypass** on the ruleset remains intentional for emergency / bot merges.
+- [x] Admin **bypass** on the ruleset: kept, PRs only (2026-11-06).
 - [ ] **`allow_auto_merge`:** keep off, or enable for Dependabot T1 only (record decision).
 
 Anything not checked stays marked **unverified** in future inventory refreshes — never guess.

@@ -6,9 +6,10 @@
  */
 
 import React from 'react';
-import {StyleSheet, Text, TouchableOpacity} from 'react-native';
+import {Text, TouchableOpacity} from 'react-native';
 import {useTranslation} from 'react-i18next';
-import {colors, spacing} from '../config/theme';
+import {spacing} from '../config/theme';
+import {createThemedStyles} from '../theme';
 
 type Props = {
   onPress: () => void;
@@ -20,6 +21,7 @@ type Props = {
  * @since 2025
  */
 export const HeaderSettingsButton: React.FC<Props> = ({onPress}) => {
+  const styles = useStyles();
   const {t} = useTranslation();
 
   return (
@@ -35,7 +37,7 @@ export const HeaderSettingsButton: React.FC<Props> = ({onPress}) => {
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(colors => ({
   button: {
     minWidth: 48,
     minHeight: 48,
@@ -47,4 +49,4 @@ const styles = StyleSheet.create({
     fontSize: 22,
     color: colors.textPrimary,
   },
-});
+}));

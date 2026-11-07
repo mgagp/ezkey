@@ -25,7 +25,8 @@ meant to be linked from trust-facing material without inflating the top-level pi
   claim they are impossible.
 - **Self-contained by design.** Core function requires **no external vendor** — no SMS provider, no
   email provider, no cloud storage provider. External capabilities arrive through optional Service
-  Provider Interfaces (SPIs) implemented by separate peripheral projects.
+  Provider Interfaces (SPIs) implemented by connectors outside the core, whether they live in this
+  repository or their own.
 - **Pragmatic for SMEs.** The target operator adopts Ezkey for the security service it renders and
   does not want to spend their working life inside it. Controls are sized for that reality.
 
@@ -312,6 +313,13 @@ schedule, `workflow_dispatch` and any change to the CodeQL setup analyze every l
 | Medium | **60 days** ([OpenSSF `vulnerabilities_fixed_60_days`](https://www.bestpractices.dev/en/criteria/0#vulnerabilities_fixed_60_days)) |
 | Low | **180 days** |
 | False positive / won't-fix | Motivated dismissal at the **next triage** |
+
+### Dependency alerts
+
+Dependabot alerts are triaged by what ships. Before dismissing or accepting a third-party
+vulnerability, check upstream, because the fix may already be on its way: see
+[`hygiene/dependabot/README.md`](../product-docs/global/hygiene/dependabot/README.md)
+§ *Check upstream before dismissing a vulnerability*.
 
 ### PAM / experimental components
 

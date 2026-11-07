@@ -19,7 +19,9 @@ set -e
 HA_MODE=""
 EXPERIMENTAL_LIGHTSAIL_MODE=""
 FORCE_MODE=""
-VOLUME_NAME="ezkey_encryption-secrets"
+# Follow COMPOSE_PROJECT_NAME, as Docker Compose does, so a stack under another project name never
+# overwrites the master key of the default stack.
+VOLUME_NAME="${COMPOSE_PROJECT_NAME:-ezkey}_encryption-secrets"
 
 # Parse flags
 for arg in "$@"; do

@@ -9,7 +9,7 @@ Lists of 180 third-party dependencies.
      (EPL-2.0) AspectJ Weaver (org.aspectj:aspectjweaver:1.9.25.1 - https://www.eclipse.org/aspectj/)
      (Apache-2.0) attoparser (org.attoparser:attoparser:2.0.7.RELEASE - https://www.attoparser.org)
      (Apache-2.0) Bootstrap (org.webjars:bootstrap:5.3.8 - http://webjars.org)
-     (Apache-2.0) bucket4j_jdk17-core (com.bucket4j:bucket4j_jdk17-core:8.21.0 - http://github.com/bucket4j/bucket4j/bucket4j_jdk17-core)
+     (Apache-2.0) bucket4j_jdk17-core (com.bucket4j:bucket4j_jdk17-core:8.22.0 - http://github.com/bucket4j/bucket4j/bucket4j_jdk17-core)
      (Apache-2.0) Byte Buddy (without dependencies) (net.bytebuddy:byte-buddy:1.18.15 - https://bytebuddy.net/byte-buddy)
      (Apache-2.0) Caffeine cache (com.github.ben-manes.caffeine:caffeine:3.3.1 - https://github.com/ben-manes/caffeine)
      (MIT) Checker Qual (org.checkerframework:checker-qual:3.55.1 - https://checkerframework.org/)

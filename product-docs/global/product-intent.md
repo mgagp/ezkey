@@ -50,6 +50,14 @@ For structural analogies (Global Admin ≈ IT/platform ops; Tenant Admin ≈ Dev
 - Organizations that want a developer-friendly MFA option without depending on a closed vendor model.
 - Teams looking for an API-first authentication component that remains easy to reason about.
 
+### Scale and positioning compass
+
+Ezkey is the middle path for SMEs: stronger than passwords and TOTP, and not built for large-enterprise
+scale. Large enterprises have the means and the need to meet much stricter standards, and they are not
+the target market. Weigh designs against SME volumes: directory changes, for example, typically involve
+a handful of people at a time, even where the user base is much larger. Do not size a decision on bulk
+scenarios unless a real adopter signal calls for it (Marc, 2026-11-05, #1206).
+
 ## Core Product Requirements
 
 ### 1. Distinct protocol identity

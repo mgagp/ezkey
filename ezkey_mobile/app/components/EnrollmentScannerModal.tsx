@@ -15,6 +15,7 @@ import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {ActivityIndicator, Modal, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {Camera, useCameraDevice} from 'react-native-vision-camera';
 import {useEnrollmentCodeOutput} from './enrollmentCodeOutput';
+import {createThemedStyles, useTheme} from '../theme';
 
 /**
  * Modal properties for the enrollment QR scanner.
@@ -38,6 +39,8 @@ type Props = {
  * @since 2025
  */
 export const EnrollmentScannerModal: React.FC<Props> = ({visible, onDismiss, onScanned}) => {
+  const {colors} = useTheme();
+  const styles = useStyles();
   const [isActive, setIsActive] = useState(false);
   const lastScannedRef = useRef<string | undefined>(undefined);
   // VisionCamera 5.1+: resolve a concrete CameraDevice. Passing position string
@@ -69,7 +72,7 @@ export const EnrollmentScannerModal: React.FC<Props> = ({visible, onDismiss, onS
     if (device == null) {
       return (
         <View style={styles.cameraPlaceholder}>
-          <ActivityIndicator color="#f4f7ff" />
+          <ActivityIndicator color={colors.textOnCamera} />
         </View>
       );
     }
@@ -82,7 +85,7 @@ export const EnrollmentScannerModal: React.FC<Props> = ({visible, onDismiss, onS
         outputs={[barcodeOutput]}
       />
     );
-  }, [barcodeOutput, device, isActive]);
+  }, [barcodeOutput, colors.textOnCamera, device, isActive, styles.cameraPlaceholder]);
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onDismiss} transparent>
@@ -104,15 +107,15 @@ export const EnrollmentScannerModal: React.FC<Props> = ({visible, onDismiss, onS
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(colors => ({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: colors.overlay,
     justifyContent: 'center',
     padding: 16,
   },
   sheet: {
-    backgroundColor: '#0b0d11',
+    backgroundColor: colors.background,
     borderRadius: 16,
     overflow: 'hidden',
     padding: 16,
@@ -121,7 +124,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#f4f7ff',
+    color: colors.textPrimary,
     textAlign: 'center',
   },
   cameraContainer: {
@@ -129,13 +132,13 @@ const styles = StyleSheet.create({
     aspectRatio: 3 / 4,
     borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: '#000',
+    backgroundColor: colors.cameraBackground,
   },
   cameraPlaceholder: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#000',
+    backgroundColor: colors.cameraBackground,
   },
   actions: {
     flexDirection: 'row',
@@ -147,11 +150,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#f4f7ff',
+    borderColor: colors.borderContrast,
   },
   buttonSecondaryLabel: {
-    color: '#f4f7ff',
+    color: colors.textPrimary,
     fontSize: 14,
     fontWeight: '500',
   },
-});
+}));

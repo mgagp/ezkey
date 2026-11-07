@@ -52,7 +52,9 @@ before opening maestro.log.
 Options:
   --enrollment-id N       Reuse an enrollment already on the phone Home list
   --bootstrap-f2a         Create a fresh enrollment (JUnit) and bind via F2a Maestro
-  --auth-url URL          Auth API base URL reachable FROM THE PHONE (required with --bootstrap-f2a)
+  --auth-url URL          Auth API base URL reachable FROM THE PHONE (required with --bootstrap-f2a);
+                          http://localhost:8080 works on emulator and phone: the runner applies
+                          adb reverse for localhost / 127.0.0.1 URLs
   --iterations N          Loop count (default 1)
   --scenarios LIST        Comma list: approve,approve-challenge,deny,skip-consume
   --seed N                Deterministic shuffle of --scenarios before cycling
@@ -288,11 +290,25 @@ copy_latest_maestro() {
   [[ -f "${dest_dir}/maestro.log" ]] || : >"${dest_dir}/maestro.log"
 }
 
+# When the Auth API URL points at the host loopback (localhost / 127.0.0.1), map that port on the
+# device to the Mac/PC with `adb reverse`: emulator and phone (USB or wireless ADB) then reach the
+# local Docker stack at the same URL as the iOS simulator, with no LAN exposure and no ngrok
+# (#1175). Re-applied every iteration because a wireless ADB reconnect drops reverse mappings.
+ensure_auth_reverse() {
+  local url="${ENROLLMENT_AUTH_URL:-${AUTH_URL:-}}"
+  [[ "$url" =~ ^https?://(localhost|127\.0\.0\.1):([0-9]+) ]] || return 0
+  local port="${BASH_REMATCH[2]}"
+  if ! adb reverse "tcp:${port}" "tcp:${port}" >/dev/null 2>&1; then
+    echo "  [warn] adb reverse tcp:${port} failed; the device cannot reach ${url}" >&2
+  fi
+}
+
 normalize_device() {
   adb shell input keyevent KEYCODE_WAKEUP >/dev/null 2>&1 || true
   adb shell wm dismiss-keyguard >/dev/null 2>&1 || true
   adb shell cmd statusbar collapse >/dev/null 2>&1 || true
   adb shell input keyevent KEYCODE_HOME >/dev/null 2>&1 || true
+  ensure_auth_reverse
   sleep 1
 }
 
@@ -407,6 +423,7 @@ SUMMARY_JSONL="${SESSION_DIR}/summary.jsonl"
 for ((i = 1; i <= ITERATIONS; i++)); do
   ITER="$(printf '%05d' "$i")"
   ITER_DIR="${SESSION_DIR}/iterations/${ITER}"
+  ensure_auth_reverse
   mkdir -p "${ITER_DIR}"
   SCENARIO="$(pick_scenario "$i")"
   EXPECTED="$(expected_status_for "$SCENARIO")"

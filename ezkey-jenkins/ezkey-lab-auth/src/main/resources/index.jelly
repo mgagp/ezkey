@@ -1,0 +1,5 @@
+<?jelly escape-by-default='true'?>
+<div>
+  Experimental passwordless SecurityRealm (#1184): Ezkey is the only factor for enabled users.
+  Break-glass admin uses the standard Jenkins login. Sign-in URL is /ezkey-login/.
+</div>

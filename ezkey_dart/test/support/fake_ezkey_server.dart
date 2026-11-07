@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:ezkey_dart/ezkey_dart.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:pointycastle/export.dart' as pc;
 
 const String fakeAuthApiBaseUrl = 'https://auth.example.test';
 
@@ -263,7 +264,7 @@ class FakeEzkeyServer {
       request.challengeResponse,
       request.devicePublicKey,
     );
-    if (!verifyEcdsaSha256(
+    if (!_verifyDeviceSignature(
           ecPublicKeyFromSpkiBase64(request.devicePublicKey),
           payload,
           request.enrollmentProofTokenSigned,
@@ -346,7 +347,7 @@ class FakeEzkeyServer {
         enrollment.proofToken != request.enrollmentProofToken) {
       return _problem(400, failed);
     }
-    if (!verifyEcdsaSha256(
+    if (!_verifyDeviceSignature(
       ecPublicKeyFromSpkiBase64(enrollment.devicePublicKey!),
       request.deviceProofToken,
       request.deviceProofTokenSigned,
@@ -400,7 +401,7 @@ class FakeEzkeyServer {
       return _problem(409, conflict);
     }
     final enrollment = enrollments[attempt.enrollmentId]!;
-    if (!verifyEcdsaSha256(
+    if (!_verifyDeviceSignature(
       ecPublicKeyFromSpkiBase64(enrollment.devicePublicKey!),
       buildRespondPayload(attempt.proofToken, request.authAttemptAccepted),
       request.authAttemptProofTokenSignedByDevice,
@@ -476,4 +477,13 @@ class FakeEzkeyServer {
     status,
     headers: <String, String>{'content-type': 'application/problem+json'},
   );
+
+  /// Device ECDSA check as the Auth API does it: valid signature **and** low-S (SEC-012).
+  bool _verifyDeviceSignature(
+    pc.ECPublicKey key,
+    String data,
+    String signatureBase64Std,
+  ) =>
+      isLowSEcdsaDerSignature(signatureBase64Std) &&
+      verifyEcdsaSha256(key, data, signatureBase64Std);
 }

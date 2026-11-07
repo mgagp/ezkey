@@ -6,10 +6,11 @@
  */
 
 import React from 'react';
-import {Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {Linking, ScrollView, Text, TouchableOpacity, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTranslation} from 'react-i18next';
-import {borderRadius, colors, spacing, typography} from '../../config/theme';
+import {borderRadius, spacing, typography} from '../../config/theme';
+import {createThemedStyles} from '../../theme';
 
 const releaseNoteKeyOrder = ['includedItem1', 'includedItem2', 'includedItem3'] as const;
 
@@ -19,6 +20,7 @@ const releaseNoteKeyOrder = ['includedItem1', 'includedItem2', 'includedItem3'] 
  * @since 2025
  */
 export const ReleaseNotesScreen: React.FC = () => {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const {t} = useTranslation();
 
@@ -62,7 +64,7 @@ export const ReleaseNotesScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(colors => ({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -136,4 +138,4 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     lineHeight: 21,
   },
-});
+}));

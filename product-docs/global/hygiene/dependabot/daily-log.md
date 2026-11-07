@@ -244,3 +244,29 @@ Append-only residual for **weekday light** `dependabot-curated` passes.
 - Code-scanning alerts API: PAT 403 (`actions`/security-events); relied on PR CodeQL checks SUCCESS + `mergeStateStatus` CLEAN + 0 unresolved review threads
 - Validation: mobile Node 24 — `yarn install --immutable`, `yarn validate:ci` (42 suites / 323 tests), `yarn license:ci`; Orval O0 diffs saved under artifacts; Dependabot/`ci-gate` green per PR before squash. No deploy.
 - Residual: phone smoke for mobile bumps tracked on #627 (gates next Play AAB). Nothing deployed.
+
+## 2026-11-06
+
+- Pass: mobile hygiene (Marc: clear the mobile dependency backlog and install on the connected Pixel 7 Pro); concurrency: clear (last Dependabot merges #1230/#1231 at 14:01Z, more than 30 minutes before this pass)
+- GitHub write: `gh` as mgagp
+- Merged (squash) before the hygiene branch: #1224 docs bind-session intent `aacdd6eb` (`ci-gate` already green). #1236 iOS language parity landed on `main` during the pass (`7308d9d90`); this branch was rebased onto it
+- Hygiene PR **#1241** (`hygiene/mobile-deps-2026-11-06`) supersedes, after it merges:
+  - #1196 mobile-minor-patch: react-query 5.105.1, i18next 26.6.0, react-i18next 17.1.10, safe-area-context 5.11.0, screens 4.30.1
+  - #1129 Babel 8.0.10 (was conflicting)
+  - #1130 React + react-test-renderer 19.3.1 only (RN stays 0.88.1; Marc included the React patch and the phone test)
+  - #1131 Vision Camera family 5.2.4 (Marc included the toolchain slice and the Pixel)
+  - #1170 Orval 8.45.0→8.46.0 (**O1**: one JSDoc comment on `respond` aligned with the Auth spec text already on `main` for #895; signatures unchanged; exact pin in `ezkey_mobile/AGENTS.md`)
+- Companion: `ios/Podfile.lock` versions and checksums for safe-area, screens, and Vision Camera (CI `pod install` diff). License snapshot package list unchanged
+- Validation: Node 24.22.1; jest 524/524 after rebase (one case timed out while the release build was using the CPU; re-run of that file 4/4); lint 0 errors / 5 pre-existing warnings; tsc green; `mobile / js-validate` and `android-jvm-unit-tests` green on the first CI head. Cold release gate: deleted `@react-native/gradle-plugin` build dirs, `assembleRelease` + `bundleRelease --no-daemon` BUILD SUCCESSFUL in 9m 4s (plugin `compileKotlin` ran). 16 KB gate PASS on `app-release.apk` and `app-release.aab` (hard FAIL 0; documented RELRO residuals only). `versionName` 0.1.2-alpha / `versionCode` 6. Debug install on Pixel 7 Pro (Android 17, `cheetah`), `MainActivity` resumed
+- Phone smoke (Marc, Pixel 7 Pro, 2026-11-06): screen pass, admin.community re-enrollment, and login succeeded. Closes the #627 residual for this lot and for the RN 0.87 closeout. #1241 merged (`6933b974`). Superseded Dependabot PRs #1196, #1129, #1130, #1131, and #1170 closed after that merge
+- Pass: mobile transitive security refresh (alert stock, separate from #1241, which moved direct dependencies only). All 82 mobile alerts were still present in the lockfile after #1241
+  - `yarn up -R` on the 22 alert packages: 62 packages move, 1 added (`xml-naming`), none with native code, `package.json` unchanged. Clears 79 of 82 by version range; the count on `main` is confirmed after merge
+  - Release bundle diff, before vs after: 2 of 1,544 lines on Android, 2 of 1,536 on iOS: the `nanoid/non-secure` loop fix and the license snapshot
+  - Residual to dismiss with a written reason after merge: `deepmerge` (no fix published), `glob` 13 and `minimatch` 9/10 (fix outside the requested range). All outside the bundle
+  - Validation: Node 24.22.1; jest 524/524 on a warm cache (the first run after the Babel change had 7 timeouts from cold transforms); lint and tsc green; `validate:ci` and `license:ci` pass. Gradle and phone smoke run from the dedicated mobile worktree (long-path risk here)
+- Closeout after #1248 merged (`4cef0563`): GitHub recalculated the mobile alerts within hours, from 82 open to 2
+  - Dismissed as `tolerable_risk` with a written reason: #279 `deepmerge` (no fix published; tooling only, outside the release bundle). #281 `glob` was auto-dismissed by GitHub
+  - #283 `minimatch` was dismissed, then reopened the same day after the upstream check (Marc): the fix is moving upstream, so the alert stays open and closes by itself. Lesson and upstream waits: README § *Check upstream before dismissing a vulnerability*
+  - Still open: 17 (Bruno 14, Admin UI 1, SDK JS 1, mobile 1)
+  - Scorecard reported 80 known vulnerabilities, 55 of them from two floors in `ezkey_mobile/scripts/requirements-generate-icons.txt`, which it reads at the floor version. Floors raised to Pillow 13.0.0 and cairosvg 2.9.1, the versions OSV lists as clean. Both icon scripts ran in a disposable container; no icon was regenerated
+- Phone smoke for #1248 (Pixel 7 Pro, Android 17, `cheetah`, worktree `C:/w/m` at `4eca8fe82`, which contains `4cef0563`): `yarn install --immutable` on Node 24.22.1; `build-install-debug-clean.sh` with JDK 17, BUILD SUCCESSFUL in 10m 36s. About shows revision `4eca8fe`. Cold start landed on the empty home (the install script uninstalls first). Navigation: Settings → About → back → Appearance → back → Language, each screen rendered. Language switch to English applied immediately, then restored to the system default and French returned. Add-enrollment opened to the scan instructions; the bind was not completed because it needs a QR in front of the camera. The local stack was up, with `EZKEY_QR_AUTH_BASE_URL` on ngrok. No `ReactNativeJS` or `AndroidRuntime` errors. No further version bumps. #1253 does not change `yarn.lock`

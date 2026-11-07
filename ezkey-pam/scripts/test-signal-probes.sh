@@ -14,6 +14,12 @@
 # fires, but harness bash can still sit on the FIFO until the *external*
 # `timeout` (that outer timeout is authoritative for this class — we do not
 # kill the script process group).
+#
+# Probe 2 (challenge-prompt client kill): stub mode=hold parks GET /wait until
+# EZKEY_STUB_RELEASE_PATH exists. Harness releases only AFTER client kill +
+# pam-gone (removes pre-kill ACCEPTED flake on mode=ok) then re-checks
+# success_n=0 so the stub can ACCEPTED without vacuous "no SUCCESS". Assertion
+# stays strict: SIGNAL + stage=challenge + no SUCCESS.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -28,6 +34,7 @@ BACKUP="/tmp/pam_ezkey.conf.signal-probes.bak"
 STUB_PORT=18080
 STUB_PID_FILE="/tmp/ezkey-pam-stub-signal.pid"
 STUB_REQ_LOG="/tmp/ezkey-pam-stub-signal-reqs.log"
+STUB_RELEASE_PATH="/tmp/ezkey-pam-stub-signal-release"
 ARTIFACT_DIR="$(ezkey_pam_artifact_dir)"
 mkdir -p "${ARTIFACT_DIR}"
 PROOF="${ARTIFACT_DIR}/pam-signal-probes.log"
@@ -81,10 +88,12 @@ start_stub() {
   local mode="$1"
   local slow="${2:-3}"
   stop_stub
-  docker exec "${CONTAINER}" sh -c "rm -f '${STUB_REQ_LOG}'; : >'${STUB_REQ_LOG}'" || true
+  docker exec "${CONTAINER}" sh -c \
+    "rm -f '${STUB_REQ_LOG}' '${STUB_RELEASE_PATH}'; : >'${STUB_REQ_LOG}'" || true
   docker exec -d "${CONTAINER}" sh -c \
     "EZKEY_STUB_MODE='${mode}' EZKEY_STUB_PORT='${STUB_PORT}' EZKEY_STUB_SLOW_SECS='${slow}' \
      EZKEY_STUB_REQ_LOG='${STUB_REQ_LOG}' \
+     EZKEY_STUB_RELEASE_PATH='${STUB_RELEASE_PATH}' \
      python3 /opt/pam-ezkey/scripts/integration-api-stub.py \
      >/tmp/ezkey-pam-stub-signal.log 2>&1 & echo \$! >'${STUB_PID_FILE}'"
   local i
@@ -94,6 +103,23 @@ start_stub() {
   done
   fail "stub did not listen on ${STUB_PORT}"
   return 1
+}
+
+# True when the latest prompt in the capture is the post-create challenge line
+# (not the pre-create Type-ok confirm). Mirrors ezkey_ssh_kbdint_autoenter.
+capture_at_challenge_prompt() {
+  local log="$1"
+  local flat last_chal_n last_ok_n
+  flat="$(tr -cd '\11\12\15\40-\176' <"${log}" 2>/dev/null || true)"
+  last_chal_n="$(echo "${flat}" \
+    | grep -nE 'Ezkey challenge code:|Approve on your phone, then press Enter' \
+    | tail -1 | cut -d: -f1)" || true
+  last_ok_n="$(echo "${flat}" \
+    | grep -nE 'Type ok and press Enter to request device approval|SSH login for user ' \
+    | tail -1 | cut -d: -f1)" || true
+  last_chal_n="${last_chal_n:-0}"
+  last_ok_n="${last_ok_n:-0}"
+  [ "${last_chal_n}" -gt "${last_ok_n}" ]
 }
 
 point_conf() {
@@ -317,7 +343,8 @@ probe_kill_at_ok() {
 probe_kill_at_challenge() {
   echo "" | tee -a "${PROOF}"
   echo "--- Probe 2: client kill at challenge prompt ---" | tee -a "${PROOF}"
-  start_stub ok
+  # hold: park GET /wait until RELEASE_PATH; release only after kill + pam-gone.
+  start_stub hold
   point_conf 45 true
   local before_n
   before_n="$(count_attempt_matches 'pam_ezkey: attempt ')"
@@ -340,21 +367,37 @@ probe_kill_at_challenge() {
   set -e
 
   local i
+  # Pre-create confirm only — do not treat a challenge line as the ok prompt.
   for i in $(seq 1 80); do
-    if ezkey_ssh_capture_has_prewait_prompt "${log}"; then
+    if grep -Eqi 'Type ok and press Enter to request device approval' "${log}" \
+      2>/dev/null; then
       ezkey_ctrl_write "${ctrl}" "ok"
       break
     fi
     sleep 0.1
   done
-  # Wait for challenge digits prompt (second prompt).
+  # Wait until challenge is the latest prompt and create has landed. Do not
+  # wait for /wait — Enter must not have been sent; hold is the safety net if
+  # a spurious Enter races ahead of the kill.
+  local chal_ready=0
   for i in $(seq 1 80); do
-    if grep -Eqi 'challenge|Approve on your phone' "${log}" 2>/dev/null; then
+    if capture_at_challenge_prompt "${log}" \
+      && docker exec "${CONTAINER}" sh -c \
+        "grep -q 'POST .*/auth-attempts' '${STUB_REQ_LOG}' 2>/dev/null"; then
+      chal_ready=1
       break
     fi
     sleep 0.1
   done
-  sleep 0.2
+  if [ "${chal_ready}" -ne 1 ]; then
+    ezkey_ctrl_write "${ctrl}" "quit"
+    kill "${ssh_pid}" 2>/dev/null || true
+    wait "${ssh_pid}" 2>/dev/null || true
+    rm -rf "${ctrl_dir}"
+    fail "probe2: challenge prompt + create not ready before kill window"
+    stop_stub
+    return
+  fi
   local pids
   pids="$(pam_pids)"
   echo "probe2 pam_pids=${pids:-none}" | tee -a "${PROOF}"
@@ -374,6 +417,22 @@ probe_kill_at_challenge() {
   gone="$(wait_pam_gone "${pids}" "${t0}" || true)"
   wait "${ssh_pid}" 2>/dev/null || true
   rm -rf "${ctrl_dir}"
+
+  # Christophe #1197: release after kill + pam-gone so ACCEPTED is possible but
+  # cannot race the kill; success_n=0 remains a PAM proof, not a vacuous stub.
+  docker exec "${CONTAINER}" sh -c "touch '${STUB_RELEASE_PATH}'" >/dev/null 2>&1 || true
+  echo "probe2 release after kill" | tee -a "${PROOF}"
+  local release_seen=0
+  for i in $(seq 1 20); do
+    if docker exec "${CONTAINER}" sh -c \
+      "grep -q '^HOLD_RELEASE ' '${STUB_REQ_LOG}' 2>/dev/null"; then
+      release_seen=1
+      break
+    fi
+    sleep 0.05
+  done
+  echo "probe2 hold_release_seen=${release_seen} (1=pending /wait served; 0=no wait + ~1s bound)" \
+    | tee -a "${PROOF}"
 
   sleep 0.3
   local attempt

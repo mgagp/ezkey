@@ -6,10 +6,11 @@
  */
 
 import React, {useEffect, useState} from 'react';
-import {Text, StyleSheet, ScrollView, TouchableOpacity, Linking, View} from 'react-native';
+import {Text, ScrollView, TouchableOpacity, Linking, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTranslation} from 'react-i18next';
-import {borderRadius, colors, spacing, typography} from '../../config/theme';
+import {borderRadius, spacing, typography} from '../../config/theme';
+import {createThemedStyles} from '../../theme';
 import {EzkeyLogo} from '../../components/EzkeyLogo';
 import {nativeCrypto} from '../../services/crypto';
 import {APP_VERSION} from '../../config/appInfo';
@@ -22,6 +23,7 @@ const EZKEY_SITE_URL = 'https://ezkey.org';
  * @since 2025
  */
 export const AboutScreen: React.FC = () => {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const {t} = useTranslation();
   const [buildTimestampUtc, setBuildTimestampUtc] = useState<string | 'loading' | 'unavailable'>(
@@ -130,7 +132,7 @@ export const AboutScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(colors => ({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -210,4 +212,4 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeight.medium,
     textAlign: 'center',
   },
-});
+}));

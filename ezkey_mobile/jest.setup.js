@@ -71,6 +71,17 @@ NativeModules.EzkeyPlayUpdateModule = {
 
 NativeModules.EzkeyWindowSecurityModule = {
   setSensitiveScreen: jest.fn(),
+  setCaptureMessage: jest.fn(),
+};
+
+NativeModules.EzkeyAppearanceModule = {
+  setApplicationNightMode: jest.fn(),
+};
+
+NativeModules.EzkeyLocaleModule = {
+  getApplicationLanguage: jest.fn().mockResolvedValue(''),
+  setApplicationLanguage: jest.fn().mockResolvedValue(undefined),
+  getSystemLanguages: jest.fn().mockResolvedValue(['en-US']),
 };
 
 NativeModules.EzkeyCryptoModule = {

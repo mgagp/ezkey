@@ -11,6 +11,12 @@ Modes (EZKEY_STUB_MODE):
                    EZKEY_STUB_ACCEPT_DELAY then ACCEPTED (#982 approve-after-Enter)
   slow_create    — sleep then 201 (for api_timeout)
   pending        — POST 201; GET wait sleeps for ?timeout= then PENDING + timeoutReached
+  hold           — POST 201 (+ challenge when requested); GET wait blocks until
+                   EZKEY_STUB_RELEASE_PATH exists (deterministic gate), then
+                   ACCEPTED + HOLD_RELEASE marker in req log. Caps at
+                   EZKEY_STUB_HOLD_MAX_SECS (default 120) → PENDING/timeoutReached
+                   so a stranded hold cannot block forever. Probe 2 releases
+                   only after client kill + pam gone (proves no late SUCCESS).
   expired        — POST 201; GET wait → EXPIRED
   rejected       — POST 201; GET wait → REJECTED
   legacy_create  — ignore request ttlSeconds; response has neither timeoutSeconds nor expiresAt
@@ -48,6 +54,13 @@ REQ_LOG = os.environ.get("EZKEY_STUB_REQ_LOG", "/tmp/ezkey-pam-stub-reqs.log")
 GLOBAL_TTL_CAP = int(os.environ.get("EZKEY_STUB_TTL_CAP", "120"))
 # applied_shrink: server returns a lower applied TTL than the client asked.
 APPLIED_TTL = int(os.environ.get("EZKEY_STUB_APPLIED_TTL", "30"))
+# hold mode: GET /wait parks until this path exists, then returns ACCEPTED.
+RELEASE_PATH = os.environ.get(
+    "EZKEY_STUB_RELEASE_PATH", "/tmp/ezkey-pam-stub-release"
+)
+HOLD_POLL_SECS = float(os.environ.get("EZKEY_STUB_HOLD_POLL_SECS", "0.05"))
+# Bound so a stranded hold (harness crash / missed release) cannot block forever.
+HOLD_MAX_SECS = float(os.environ.get("EZKEY_STUB_HOLD_MAX_SECS", "120"))
 
 LEGACY_CREATE_MODES = frozenset(
     {"legacy_create", "legacy_rejected", "legacy_pending"}
@@ -278,6 +291,42 @@ class Handler(BaseHTTPRequestHandler):
                 },
             )
             return
+        if MODE == "hold":
+            # Deterministic gate: park until the harness creates RELEASE_PATH.
+            # Probe 2 releases only after client kill + pam-gone so ACCEPTED
+            # cannot race the kill, yet success_n=0 is still a PAM proof
+            # (stub will ACCEPTED once released). HOLD_MAX_SECS caps a stranded
+            # hold outside the harness trap (Patrick #1197 craft).
+            started = time.time()
+            while not os.path.exists(RELEASE_PATH):
+                if (time.time() - started) >= HOLD_MAX_SECS:
+                    waited = max(0, int(time.time() - started))
+                    _log_req("HOLD_TIMEOUT", self.path)
+                    self._json(
+                        200,
+                        {
+                            "authAttempt": 9001,
+                            "status": "PENDING",
+                            "completed": False,
+                            "timeoutReached": True,
+                            "waitDuration": waited,
+                        },
+                    )
+                    return
+                time.sleep(HOLD_POLL_SECS)
+            waited = max(0, int(time.time() - started))
+            _log_req("HOLD_RELEASE", self.path)
+            self._json(
+                200,
+                {
+                    "authAttempt": 9001,
+                    "status": "ACCEPTED",
+                    "completed": True,
+                    "timeoutReached": False,
+                    "waitDuration": waited,
+                },
+            )
+            return
         # ok / enrollment_challenge / legacy_create / applied_* / no_challenge / slow_create
         self._json(
             200,
@@ -296,11 +345,18 @@ def main() -> None:
         open(REQ_LOG, "w", encoding="utf-8").close()
     except OSError:
         pass
+    if MODE == "hold":
+        try:
+            if os.path.exists(RELEASE_PATH):
+                os.remove(RELEASE_PATH)
+        except OSError:
+            pass
     server = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
     print(
         f"stub mode={MODE} listening on :{PORT} req_log={REQ_LOG} "
         f"applied_ttl={APPLIED_TTL} ttl_cap={GLOBAL_TTL_CAP} "
-        f"accept_delay={ACCEPT_DELAY}",
+        f"accept_delay={ACCEPT_DELAY} release_path={RELEASE_PATH} "
+        f"hold_max_secs={HOLD_MAX_SECS}",
         flush=True,
     )
     server.serve_forever()

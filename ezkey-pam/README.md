@@ -48,8 +48,11 @@ that owns the API key.
 - STATUS cites `EZKEY_AUTH_BUDGET_SECS` by symbol (not a stale line number).
 
 **Platform note:** Linux CI (Ubuntu + Rocky containers) is the reference for
-`make check-source` and the stub suites. macOS/BSD `sed -i` differences are not
-exercised here.
+the stub suites. `make test` also runs on macOS (#1199): same code, Apple's
+`libpam` and `libcurl`, cJSON compiled in, checksum-pinned. Before macOS 27,
+it needs `brew install coreutils` for the `timeout` watchdog. There is no macOS
+install yet (#1202): `make install` refuses, because a misplaced module can lock
+out `sshd` and `sudo` ([F0 note](../product-docs/global/hygiene/pam-macos/2026-11-04-f0-feasibility.md)).
 
 ## What changed in 2.2.19 (#1016 cycle 2b — decisions / mutations)
 
@@ -129,7 +132,8 @@ exercised here.
   message, `ok` prompt, `challenge_requested` / `debug` toggles.
 - Sample conf comment: `challenge_requested` default **true**.
 - Probes: `scripts/test-signal-probes.sh` (client kill / TERM at prompt, create,
-  wait) in CI M1.
+  wait) in CI M1. Probe 2 uses stub mode `hold` (release-file gate) through the
+  client kill, then releases after pam-gone so `success_n=0` is a PAM proof.
 
 ## What changed in 2.2.14 (#995 — challenge requested by default)
 

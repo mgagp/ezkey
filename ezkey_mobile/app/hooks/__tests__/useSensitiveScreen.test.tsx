@@ -77,13 +77,19 @@ describe('useSensitiveScreen', () => {
     expect(nativeSet).not.toHaveBeenCalled();
   });
 
-  it('is a no-op on iOS', async () => {
+  it('applies on iOS and gives the native cover its capture message first', async () => {
     Object.defineProperty(Platform, 'OS', {configurable: true, writable: true, value: 'ios'});
+    const nativeMessage = NativeModules.EzkeyWindowSecurityModule.setCaptureMessage as jest.Mock;
+    nativeMessage.mockReset();
     const navigation = createNavigation(true);
     await renderer.act(async () => {
       renderer.create(<Probe navigation={navigation} />);
     });
 
-    expect(nativeSet).not.toHaveBeenCalled();
+    expect(nativeSet).toHaveBeenLastCalledWith(true);
+    expect(nativeMessage).toHaveBeenCalledTimes(1);
+    expect(nativeMessage.mock.invocationCallOrder[0]).toBeLessThan(
+      nativeSet.mock.invocationCallOrder[0],
+    );
   });
 });

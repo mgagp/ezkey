@@ -34,6 +34,13 @@ Canon sync 2026-08-24/25 closed delivered-but-stale index rows. Parallel mobile 
 remains orthogonal to the closed September operability program. Wave B closeout:
 [`method-logs/ML-2026-07-03-wave-b-integrity-cluster-closeout.md`](method-logs/ML-2026-07-03-wave-b-integrity-cluster-closeout.md).
 
+## Lab / experimental (folder-local)
+
+| Folder | Issue | Note |
+|--------|-------|------|
+| [`ezkey-jenkins/`](../../../ezkey-jenkins/) | [#972](https://github.com/mgagp/ezkey/issues/972) | Jenkins auth plugin lab (Integration API ↔ Java SDK); experimental; independent compose — does not delay community-alpha |
+| `ezkey-connectors/` (contract from step 2, code from step 3) | [#1206](https://github.com/mgagp/ezkey/issues/1206) | Connector SPI for external services: email first, then SMS and directory; connectors are lab, core changes keep normal rigor. [`V-2026-11-04-connector-spi`](../vision/V-2026-11-04-connector-spi.md), [pack](../decisions/2026-11-04-connector-spi/README.md) |
+
 ## Active ideas
 
 | ID | Title | Status | Priority | Components | Last reviewed |
@@ -54,8 +61,8 @@ remains orthogonal to the closed September operability program. Wave B closeout:
 | `I-2026-0019` | Android real-device mobile functional tests | `active` | `P1` | `ezkey-mobile`, `ezkey-tests`, `auth-api`, `admin-api`, `docker` | `2026-06-26` |
 | `I-2026-0020` | Integration ecosystem shell catalog & publish workflow | `captured` | `P2` | `docs`, GitHub ecosystem, `product-docs (traceability)` | `2026-05-11` |
 | `I-2026-0022` | Admin API scheduled jobs catalog (living document) | `incubating` | `P2` | `admin-api`, `docs` | `2026-05-24` |
-| `I-2026-0023` | Email channel R1: optional operator-triggered delivery | `incubating` | `P2` | `admin-api`, `admin-ui`, `infra`, `docs` | `2026-07-25` |
-| `I-2026-0024` | SMS channel R1: HTTP adapter SPI + optional operator send | `incubating` | `P2` | `admin-api`, `admin-ui`, `infra`, `docs` | `2026-05-24` |
+| `I-2026-0023` | Email channel R1: optional operator-triggered delivery | `incubating` | `P2` | `admin-api`, `admin-ui`, `infra`, `docs` | `2026-11-04` |
+| `I-2026-0024` | SMS channel R1: HTTP adapter SPI + optional operator send | `incubating` | `P2` | `admin-api`, `admin-ui`, `infra`, `docs` | `2026-11-04` |
 | `I-2026-0025` | Auth API protocol capability versioning | `incubating` | `P2` | `auth-api`, `mobile`, `admin-api`, `docs` | `2026-05-24` |
 | `I-2026-0027` | iOS app implementation — fresh native rebuild | `ready` | `P1` | `mobile` | `2026-05-24` |
 | `I-2026-05-23-exp1-anonymous-evaluator-onboarding` | EXP1 anonymous evaluator onboarding | `active` | `P2` | `admin-api`, `admin-ui`, `ezkey-org`, `infra (community)`, `docs` | `2026-05-23` |
@@ -68,7 +75,7 @@ remains orthogonal to the closed September operability program. Wave B closeout:
 | `I-2026-07-05-enrollment-integration-key-cycling` | Enrollment integration key cycling via auth-exchange hooks | `incubating` | `P3` | `auth-api`, `core`, `mobile`, `docs`, `crypto` | `2026-07-05` |
 | `I-2026-09-15-post-quantum-protocol-evolution` | Post-quantum evolution of the Ezkey protocol (umbrella; medium-term watch, #1165) | `incubating` | `P3` | `auth-api`, `core`, `mobile`, `sdk`, `docs`, `crypto`, `security` | `2026-11-03` |
 | `I-2026-0032` | Proof token hash-only storage (tiered hardening) | `incubating` | `P1` | `core`, `auth-api`, `admin-api`, `docs`, `crypto` | `2026-08-02` |
-| `I-2026-07-10-admin-recovery-codes-exhausted-label-ux` | Admin recovery codes: exhausted-set vs initial-issuance label UX | `captured` | `P3` | `admin-ui`, `admin-api`, `docs` | `2026-07-09` |
+| `I-2026-07-10-admin-recovery-codes-exhausted-label-ux` | Admin recovery codes: exhausted-set vs initial-issuance label UX | `done` | `P3` | `admin-ui`, `admin-api`, `docs` | `2026-11-06` |
 | `I-2026-07-11-api-key-expires-at-edit` | API key PATCH: edit or clear `expiresAt` | `captured` | `P2` | `admin-api`, `admin-ui`, `core`, `docs` | `2026-07-11` |
 | `I-2026-07-11-java-doctor-curated-hygiene` | Java doctor-curated continuous hygiene (SpotBugs + Semgrep + narrow PMD) | `ready` | `P3` | `core`, `admin-api`, `auth-api`, `integration-api`, `docs`, `tooling` | `2026-07-11` |
 | `I-2026-07-11-mobile-doctor-curated-hygiene` | Mobile doctor-curated continuous hygiene (react-doctor + Semgrep + Detekt) | `ready` | `P3` | `mobile`, `android`, `docs`, `tooling` | `2026-08-25` |
@@ -91,12 +98,15 @@ remains orthogonal to the closed September operability program. Wave B closeout:
 | `I-2026-09-15-mobile-admin-enrollment-account-label` | Mobile admin enrollment account label (bind/pending) | `done` | `P1` | `auth-api`, `admin-api`, `mobile`, `docs` | `2026-09-15` |
 | `I-2026-10-13-pam-tmp-log-hardening` | PAM debug logs under `/tmp` (TOCTOU / symlink; CodeQL 123/124) | `done` | `P3` | `pam`, `security`, `docs` | `2026-10-13` |
 | `I-2026-10-21-inverted-challenge-code-mode` | Inverted challenge-code mode (mobile shows, integration enters) | `parked` | `P3` | `auth-api`, `mobile`, `integration-api`, `docs`, `security` | `2026-10-21` |
-| `I-2026-11-01-pam-macos-windows-exploration` | ezkey-pam on macOS and Windows (exploration) | `captured` | `P3` | `pam`, `docs`, `lab:experimental` | `2026-11-01` |
+| `I-2026-11-01-pam-macos-windows-exploration` | ezkey-pam host-grade level and Mac-native integration (#1112) | `active` | `P1` | `pam`, `docs`, `lab:experimental` | `2026-11-04` |
+| `I-2026-11-03-enrollment-invitation-links` | Enrollment invitation links (deep links next to the QR code) | `captured` | `P2` (proposed) | `admin-api`, `admin-ui`, `auth-api`, `mobile`, `sdk-dart`, `infra`, `docs`, `security` | `2026-11-03` |
+| `I-2026-11-03-assurance-ladder` | Assurance ladder: proportionate standards posture (exploration) | `captured` | `P3` | `docs`, `security`, `mobile`, `lab:experimental` | `2026-11-03` |
 
 ## Tracer bullets (draft / ready / in progress)
 
 | ID | Title | Status | Related idea |
 |----|-------|--------|--------------|
+| `TB-2026-11-06-connector-delivery-contract-v0` | Connector delivery contract v0 and directory sketch (`#1206` step 2) | `promoted` | `V-2026-11-04-connector-spi` |
 | `TB-2026-08-29-admin-api-remove-m2m-hatch` | Remove Admin API API-key M2M hatch | `done` | `I-2026-08-29-admin-api-remove-m2m-hatch` |
 | `TB-2026-08-28-admin-first-keyset-bootstrap` | Admin-first keyset bootstrap | `implemented` | `I-2026-07-17-keyset-blob-admin-first-bootstrap` |
 | `TB-2026-08-14-mobile-exit-experimental-messaging` | Exit experimental in-app messaging | `under-review` | `I-2026-08-02-mobile-exit-experimental-messaging` |
@@ -158,6 +168,7 @@ remains orthogonal to the closed September operability program. Wave B closeout:
 
 | ID | Title | Reason | Next review |
 |----|-------|--------|-------------|
+| `I-2026-11-05-privacy-obligations-reminder` | Privacy obligations: what to pick up if Ezkey meets real use | **Parked** 2026-11-05 — proportionate reminder; reopen on a real adopter or personal data beyond lab use | On trigger |
 | `I-2026-0009` | Global controllers registry | **Dropped** 2026-05-24 — living registry downscoped; drop rationale in [`ideas/I-2026-0009-global-controllers-registry.md`](ideas/I-2026-0009-global-controllers-registry.md); archived stub [`api-controllers-registry.md`](../api-controllers-registry.md) | n/a |
 | `I-2026-0031` | SDK dogfood: first-party consumption and honest narrative | **Parked** 2026-06-30 — pre-analysis complete (layers A/B, no Admin UI → Integration SDK); deferred for September operable-release focus. Insight: [`grill-sessions/2026-06-30-sdk-dogfood-grill-me.md`](grill-sessions/2026-06-30-sdk-dogfood-grill-me.md). `I-2026-0004` unchanged. | post–Sept 2026 milestone or distribution trigger |
 | `I-2026-07-05-distilled-admin-platform-starter` | Distilled admin platform starter (`ezkey-app-starter`) | **Parked** 2026-07-05 — grill complete (D1–D10); external greenfield starter, not lite platform. Insight: [`grill-sessions/2026-07-05-distilled-admin-platform-starter-grill-me.md`](grill-sessions/2026-07-05-distilled-admin-platform-starter-grill-me.md). | post–Sept 2026 milestone or distribution trigger |

@@ -250,11 +250,32 @@ updates:
   # Dependabot CVE alerts. Container image CVE scanning is planned separately.
   # -------------------------------------------------------------------------
 
+  # Pinned Bruno CLI for local API collection health runs (scripts/bruno-health.sh). Dev tool only.
+  # Added 2026-11-06: the directory had no version updates and held 53 of the 156 open alerts.
+  - package-ecosystem: "npm"
+    directory: "/bruno"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 3
+      semver-patch-days: 3
+      semver-minor-days: 3
+      semver-major-days: 7
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+    groups:
+      bruno-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
   # Methodology micro-site (adm-zip, express, marked, …). Was missing; a
   # Dependabot security update for this folder failed without a version-updates
-  # entry. package-lock.json is gitignored, so alerts cover direct dependencies
-  # only (transitives invisible); committing the lockfile would close that gap
-  # (do not commit it in this PR).
+  # entry. package-lock.json is committed since #763, so alerts cover transitives.
   - package-ecosystem: "npm"
     directory: "/product-docs/site"
     schedule:

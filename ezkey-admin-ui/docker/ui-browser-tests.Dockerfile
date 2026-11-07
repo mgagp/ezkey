@@ -1,5 +1,5 @@
 # Tag must match @playwright/test resolved in package-lock.json (currently 1.64.1).
-FROM mcr.microsoft.com/playwright:v1.64.1-noble
+FROM mcr.microsoft.com/playwright:v1.65.0-noble
 
 WORKDIR /work
 

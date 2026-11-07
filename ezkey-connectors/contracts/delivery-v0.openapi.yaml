@@ -1,0 +1,238 @@
+openapi: 3.1.0
+info:
+  title: Ezkey delivery connector contract
+  version: 0.1.0
+  description: |
+    What a delivery connector exposes to Ezkey. Ezkey is the only caller.
+
+    **v0 can change without compatibility work until the real trial at step 6 of #1206, where it becomes v1.**
+
+    Rules that hold for every connector:
+
+    - The connector keeps nothing after a send, and never logs the QR, the recipient or a request body.
+    - The contract has no free subject or body, and no field for the challenge or an admin activation code.
+    - Errors carry typed codes, never message text or raw provider text.
+    - A `sendId` links logs on both sides. It is for traceability only, not deduplication.
+
+    Decisions and reasoning: `product-docs/global/backlog/TB-2026-11-06-connector-delivery-contract-v0.md`.
+  license:
+    name: MIT License
+    url: https://opensource.org/licenses/MIT
+tags:
+  - name: delivery
+    description: Send one message for one operator action.
+  - name: health
+    description: State and capabilities, with no call to the provider.
+security:
+  - connectorToken: []
+paths:
+  /v0/deliveries:
+    post:
+      tags: [delivery]
+      operationId: sendDelivery
+      summary: Send one message
+      description: |
+        Synchronous: the connector answers once the provider has answered, or once its own provider timeout expires.
+        That timeout must stay shorter than the read timeout Ezkey uses for this call.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeliveryJob'
+            examples:
+              enrollmentQr:
+                summary: Enrollment QR by email
+                value:
+                  sendId: 3f0e2f6a-9b1c-4d7e-8a55-2c1d9e7b6a10
+                  trigger: operator
+                  tenantRef: '42'
+                  template: enrollment-qr
+                  locale: fr
+                  recipient: person@example.com
+                  organisationName: Acme
+                  expectedServer: auth.example.com
+                  qrPngBase64: iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==
+      responses:
+        '200':
+          description: The provider took the message. This does not mean the person received it.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeliveryAccepted'
+        '400':
+          $ref: '#/components/responses/Rejected'
+        '401':
+          $ref: '#/components/responses/Rejected'
+        '413':
+          $ref: '#/components/responses/Rejected'
+        '422':
+          $ref: '#/components/responses/Rejected'
+        '504':
+          description: The provider did not answer in time. The message may have left.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeliveryError'
+  /v0/health:
+    get:
+      tags: [health]
+      operationId: getHealth
+      summary: Read state and capabilities
+      description: Fast and free of side effects. It never contacts the provider, so `ok` does not prove the provider is up.
+      responses:
+        '200':
+          description: The connector is running.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+        '401':
+          $ref: '#/components/responses/Rejected'
+components:
+  securitySchemes:
+    connectorToken:
+      type: http
+      scheme: bearer
+      description: One long random token per connector, compared in constant time. The connector accepts two tokens during a rotation.
+  responses:
+    Rejected:
+      description: The message did not leave.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/DeliveryError'
+  schemas:
+    DeliveryJob:
+      type: object
+      additionalProperties: false
+      required: [sendId, trigger, tenantRef, template, locale, recipient, organisationName, expectedServer, qrPngBase64]
+      properties:
+        sendId:
+          type: string
+          format: uuid
+          description: One per operator click.
+        trigger:
+          type: string
+          enum: [operator]
+          description: Informational. Later versions may add values, so a connector must not branch its security on it.
+        tenantRef:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: Opaque tenant reference, for the connector's logs and caps.
+        template:
+          $ref: '#/components/schemas/TemplateId'
+        locale:
+          $ref: '#/components/schemas/Locale'
+        recipient:
+          type: string
+          format: email
+          maxLength: 255
+          description: Filled by the core from the enrollment's `contactEmail`. Never logged.
+        organisationName:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: The only free text in the job. The connector escapes it when rendering.
+        expectedServer:
+          type: string
+          format: hostname
+          maxLength: 253
+          description: The server the app should show, so the person can compare.
+        qrPngBase64:
+          type: string
+          contentEncoding: base64
+          contentMediaType: image/png
+          pattern: '^iVBORw0KGgo'
+          maxLength: 87384
+          description: Bearer secret until bind. The connector refuses anything that is not a PNG, and attaches the image inside the message.
+    DeliveryAccepted:
+      type: object
+      additionalProperties: false
+      required: [outcome, sendId, testMode]
+      properties:
+        outcome:
+          type: string
+          const: accepted
+        sendId:
+          type: string
+          format: uuid
+        providerReference:
+          type: string
+          maxLength: 255
+          description: The provider's message reference, when it gives one.
+        testMode:
+          type: boolean
+          description: True for the mock, so it cannot pass for real delivery.
+    DeliveryError:
+      type: object
+      additionalProperties: false
+      required: [code]
+      properties:
+        code:
+          $ref: '#/components/schemas/DeliveryErrorCode'
+        sendId:
+          type: string
+          format: uuid
+          description: Present when the request could be read.
+    DeliveryErrorCode:
+      type: string
+      enum:
+        - invalid-request
+        - unauthorized
+        - payload-too-large
+        - invalid-qr
+        - unsupported-template
+        - unsupported-locale
+        - invalid-recipient
+        - recipient-refused
+        - provider-rejected
+        - provider-unavailable
+        - connector-cap-reached
+        - provider-timeout
+    Health:
+      type: object
+      additionalProperties: false
+      required: [status, connectorName, connectorVersion, contractVersion, channel, templates, testMode]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+          description: '`degraded` means the connector runs but cannot send, for example because its configuration is incomplete.'
+        connectorName:
+          type: string
+          maxLength: 64
+        connectorVersion:
+          type: string
+          maxLength: 32
+        contractVersion:
+          type: string
+          const: v0
+        channel:
+          type: string
+          enum: [email]
+        templates:
+          type: array
+          items:
+            $ref: '#/components/schemas/TemplateCapability'
+        testMode:
+          type: boolean
+    TemplateCapability:
+      type: object
+      additionalProperties: false
+      required: [template, locales]
+      properties:
+        template:
+          $ref: '#/components/schemas/TemplateId'
+        locales:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/Locale'
+    TemplateId:
+      type: string
+      enum: [enrollment-qr]
+    Locale:
+      type: string
+      enum: [en, fr]

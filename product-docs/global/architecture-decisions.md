@@ -33,6 +33,8 @@ Each decision is recorded with enough context to be understood years later: why 
 | [ADR-0014](#adr-0014-qa-sphere-for-test-execution-tracking) | QA Sphere for test execution tracking | accepted | 2026-10-13 |
 | [ADR-0015](#adr-0015-management-port-separation-actuator-javamelody) | Management port separation (Actuator / JavaMelody) | accepted | 2026-10-19 |
 | [ADR-0016](#adr-0016-keyset-blob-single-source-of-truth) | Keyset blob as single source of truth | accepted | 2026-10-21 |
+| [ADR-0017](#adr-0017-product-versioning-one-semver-for-the-monorepo) | Product versioning — one SemVer for the monorepo | accepted | 2026-11-04 |
+| [ADR-0018](#adr-0018--connector-spi-for-external-services) | Connector SPI for external services | accepted | 2026-11-05 |
 
 ## ADR-0001 — Backend-first cryptographic protocol
 
@@ -1132,3 +1134,163 @@ divergence between file and blob (blockers B2, B5, B6). Real deployments already
   [ADR-0011](#adr-0011-tink-native-database-keyset-envelope),
   [ADR-0012](#adr-0012-admin-owned-keyset-materialization).
 - Complements always-on encryption work in [#942](https://github.com/mgagp/ezkey/issues/942).
+
+## ADR-0017 — Product versioning — one SemVer for the monorepo
+
+### Metadata
+
+- **ID:** ADR-0017.
+- **Date:** 2026-11-04.
+- **Status:** accepted.
+- **Scope:** global.
+- **Owners:** Product / release (Marc).
+- **Trace:** [#1211](https://github.com/mgagp/ezkey/issues/1211) step 1.
+
+### Context
+
+Ezkey is a monorepo (backends, Admin UI, demo surfaces, CLI, PAM, mobile) with no product
+releases yet. Deploy identity today is the git SHA
+([`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../../docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md)).
+Existing tags such as `methodology/*` and `deploy/*` are not product versions. OpenSSF Best
+Practices asks for SemVer and unique version tags; the project needs a minimal solo-maintainer
+scheme before tooling or the first tag.
+
+### Decision
+
+Ezkey uses **Semantic Versioning** with **one product version for the whole monorepo**
+(backends, Admin UI, demo, CLI, PAM, mobile). The product starts at **`0.2.0`**. While the line
+is **`0.x`**, there is **no stability promise** (lab / public-alpha posture).
+
+**Trace:** One SemVer for the whole monorepo starting at `0.2.0` (0.x = no stability) —
+a tag must name everything shipped together; per-module versions are too costly for a solo
+maintainer — Marc, 2026-11-04, [#1211](https://github.com/mgagp/ezkey/issues/1211).
+
+**Trace:** First product version is `0.2.0`, not `0.1.0` — Play already shipped
+`versionName` `0.1.2-alpha`, and the mobile version must not go backwards —
+Marc, 2026-11-04, [#1211](https://github.com/mgagp/ezkey/issues/1211).
+
+Operational detail for tags, non-product namespaces, mobile `versionName` / `versionCode`, and
+SHA complementarity lives in
+[`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../../docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md).
+POM / npm / alignment mechanisms are deferred to [#1211](https://github.com/mgagp/ezkey/issues/1211)
+step 2.
+
+### Alternatives Considered
+
+- **Per-module / per-surface SemVer.** Rejected — a single ship event would need many tags and
+  constant alignment work; too expensive for a solo maintainer.
+- **Start at `0.1.0`.** Rejected — Play already shipped `versionName` `0.1.2-alpha`; the mobile
+  (and therefore monorepo) product line must not go backwards.
+- **Start at `1.0.0`.** Rejected — would imply a stability promise Ezkey does not make in lab /
+  public-alpha posture.
+- **Defer any product version until registries publish.** Rejected — OpenSSF and operator clarity
+  need a named product version before the first annotated tag; SHA remains the live deploy SOOT.
+
+### Consequences
+
+- **Positive.** One tag can name everything that ships together; docs and OpenSSF answers stay
+  simple; SHA ledger remains valid until and after the first product tag.
+- **Negative.** Surfaces that historically drifted (e.g. mobile Play uploads) must eventually
+  follow the shared product line; independent cadence requires an explicit later decision.
+- **Neutral.** `methodology/*` and `deploy/*` tags continue unchanged and are not product versions.
+
+### Impact
+
+- All shippable surfaces in the monorepo.
+- [`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../../docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md),
+  release checklist work under [#1211](https://github.com/mgagp/ezkey/issues/1211), mobile Play
+  version policy docs.
+
+### Validation
+
+- Docs-only for step 1 (this ADR + versioning doc). No tag and no release in this change.
+- Later steps of [#1211](https://github.com/mgagp/ezkey/issues/1211) prove alignment tooling and
+  the first annotated `v*` tag.
+
+### Related Decisions
+
+- Complements deploy SHA ledger conventions in
+  [`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../../docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md).
+
+## ADR-0018 — Connector SPI for external services
+
+### Metadata
+
+- **ID:** ADR-0018.
+- **Date:** 2026-11-05 (proposed 2026-11-04).
+- **Status:** accepted by Marc after
+  [critical review](hygiene/critical-review/2026-11-05-pr1209-connector-spi.md)
+  (GitHub [#1206](https://github.com/mgagp/ezkey/issues/1206)).
+- **Scope:** global.
+- **Owners:** Platform architecture / security.
+- **Decision pack:** [`decisions/2026-11-04-connector-spi/`](decisions/2026-11-04-connector-spi/README.md).
+
+### Context
+
+Design principle #16 sends optional third-party capabilities through an SPI, but `V-2026-0005` kept
+email in the core with Java Mail, and `V-2026-0007` defined an HTTP adapter for SMS only. Directory
+sync (Active Directory, LDAP) had no model, and its data flows the opposite way from delivery. The
+Admin API machine-to-machine hatch was removed on purpose (`I-2026-08-29`).
+
+### Decision
+
+1. **Connectors are separate processes reached over versioned HTTP contracts.** Ezkey remains fully
+   operational with none configured.
+2. **Email is a connector, like SMS.** There is one principle, and no email library in the core.
+3. **Direction follows the family.** Ezkey calls delivery connectors, synchronously and on operator
+   action. Directory connectors call Ezkey, with outbound connections only.
+4. **Provider credentials stay on the connector side.** Ezkey holds only what it needs to reach or
+   authenticate a connector.
+5. **One message never carries both factors.** Email carries the QR; the challenge stays on screen or
+   goes by SMS later. An admin activation code alone yields both factors (`POST /activate`), so it
+   never goes through a connector, by email or SMS. The core enforces this.
+6. **Connector code incubates in the monorepo** under `ezkey-connectors/`. Extraction is a later question.
+7. **Families share conventions, not a framework.** Each family has its own small contract.
+8. **Connectors are never synchronized with each other.** Scanning starts a sequence and the person
+   needs both items in hand first, however far apart they arrived. The operator passes on whatever no
+   connector sends, by any means they accept.
+
+### Alternatives Considered
+
+- **Email in the core.** Simpler to deploy, but leaves two models and would not test the SPI on a real
+  case. Rejected by Marc on 2026-11-04.
+- **Shared application schema.** Couples connectors to the schema. Rejected.
+- **Dedicated exchange table with a restricted role.** Removes the outbound client and survives a connector
+  outage, but a job the connector can read needs the QR's bearer secret in a readable form, and the state
+  to manage grows. Not retained on 2026-11-06. Reopen on automatic sending, starting from an outbox inside
+  the core that keeps the REST contract (decision pack).
+- **Message queue.** New infrastructure for an SME, against principle #7. Rejected; reopen on real volume.
+- **In-process plugins.** Brings vendor SDKs and secrets into the API process. Rejected.
+- **Connector polling Ezkey for delivery jobs.** Requires stored jobs holding secret material. Rejected for now.
+- **Secrets stored in Ezkey.** Allows configuration in the Admin UI, but requires a vault and enlarges
+  the impact of a compromised database. Rejected.
+
+### Consequences
+
+- **Positive.** The core stays vendor-free, a compromised Ezkey database reveals no provider credential,
+  and a mock connector gives CI, QA and prototypes one fixture.
+- **Negative.** One more container for an operator who wants email, two places to configure, and a new
+  contract to version. A stolen connector credential reveals no provider secret but can still send as
+  the organisation. A send path can be abused as a mail relay, so it needs a fixed template, daily caps,
+  and no access for evaluator sessions or self-registered community tenants (decision pack).
+- **Neutral.** Integrated delivery stays first-class. `V-2026-0007` keeps its HTTP adapter decision.
+  Automatic sending remains out of scope until a dedicated decision.
+
+### Impact
+
+- **Affected components.** `admin-api`, `admin-ui`, `infra`, `docs`, new `ezkey-connectors/`; later a new
+  inbound surface and enrollment schema changes for directories.
+- **Affected boundaries.** A new outbound trust boundary (delivery) now; a new inbound machine boundary later.
+
+### Validation
+
+- Mock connector scenarios run as a CI gate: send, provider error, unknown outcome, slow connector,
+  rejected credential, no connector.
+- A canary test on the real output of all containers looks for bearer material on the send path, including
+  base64 and PNG shapes. It shows known shapes are absent in the scenarios played, not that no path leaks.
+- Real proof: a QR received by email enrolls a phone, locally and then on the community instance.
+
+### Related Decisions
+
+- Refines design principle #16; supersedes the email transport in `V-2026-0005`; keeps `V-2026-0007`.
+- Related: ADR-0016 (existing at-rest encryption, reused for any connector credential Ezkey stores).

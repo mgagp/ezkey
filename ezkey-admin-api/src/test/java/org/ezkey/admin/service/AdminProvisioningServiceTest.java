@@ -10,6 +10,7 @@
 
 package org.ezkey.admin.service;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -694,11 +695,34 @@ class AdminProvisioningServiceTest {
           service.issueInitialRecoveryCodes(2, principal);
 
       assertEquals(0, result.previousCodesCount());
+      assertFalse(result.previousSetExhausted());
       assertEquals(tenantAdmin1, result.admin());
       assertEquals(recoveryCodes.getPlainCodes(), result.recoveryCodes());
       verify(adminRepository).findById(2);
       verify(adminRepository).save(tenantAdmin1);
       verify(recoveryService).generateRecoveryCodes();
+    }
+
+    @Test
+    @DisplayName("Issuing codes after every previous code was used reports an exhausted set")
+    void issueRecoveryCodesAfterExhaustedSetReportsPreviousSetExhausted() {
+      AdminPrincipal principal = new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null);
+      tenantAdmin1.setRecoveryCodes(new String[0]);
+      tenantAdmin1.setLastLoginAt(java.time.OffsetDateTime.now());
+
+      AdminRecoveryService.RecoveryCodesResult recoveryCodes =
+          new AdminRecoveryService.RecoveryCodesResult(
+              List.of("1111-2222-3333-4444-5555-6666-7777-8888"), List.of("$2a$10$newHash"));
+
+      when(adminRepository.findById(2)).thenReturn(java.util.Optional.of(tenantAdmin1));
+      when(recoveryService.generateRecoveryCodes()).thenReturn(recoveryCodes);
+
+      AdminProvisioningService.RecoveryCodesRegenerationResult result =
+          service.issueInitialRecoveryCodes(2, principal);
+
+      assertEquals(0, result.previousCodesCount());
+      assertTrue(result.previousSetExhausted());
+      assertArrayEquals(new String[] {"$2a$10$newHash"}, tenantAdmin1.getRecoveryCodes());
     }
 
     @Test

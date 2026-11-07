@@ -63,7 +63,7 @@ React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollme
 
 ## Contract-First Rules
 
-- Orval is pinned at **8.45.0** (exact). Config uses verb-aware defaults only (`query: { version: 5 }` —
+- Orval is pinned at **8.46.0** (exact). Config uses verb-aware defaults only (`query: { version: 5 }` —
   no global `useQuery` / `useMutation`). Same Option B as Admin UI `TB-2026-05-28` checkpoints 8.10 / 8.11.
   Bump autonomy follows the **Orval risk grid** (O0–O3) in skill `dependabot-curated` § *Orval risk
   grid* (pointer: [`../product-docs/global/hygiene/dependabot/README.md`](../product-docs/global/hygiene/dependabot/README.md));
@@ -107,6 +107,13 @@ A warm `assembleRelease` or a debug install does **not** prove a Play AAB. When 
 ## Android debug build (agents — read first)
 
 **Do not improvise `JAVA_HOME` or bare `./gradlew` on Windows.** The maintainer PATH often exposes **JDK 25** (`C:\Tools\jdk-25…`), which breaks React Native 0.87 Android (`Unsupported class file major version 69`, `com.facebook.react.settings` plugin errors). Android Studio JBR is also **not** always at `C:\Program Files\Android\Android Studio\jbr` (this workstation uses `Android Studio1\jbr`).
+
+**macOS (#1175):** `resolve-android-jdk.sh` finds a JDK 17 under `~/.sdkman/candidates/java/17.*`,
+`/Library/Java/JavaVirtualMachines/temurin-17*`, or the Android Studio JBR when it is 17 or 21 (Android
+Studio 2026.2 ships JDK 25, which is skipped). It also exports `ANDROID_HOME=~/Library/Android/sdk`
+when unset and puts `adb` on `PATH`, so no shell-profile edit is needed. Emulator: AVD
+`ezkey_pixel_9a` (Android 37, arm64), boot headless with
+`$ANDROID_HOME/emulator/emulator -avd ezkey_pixel_9a -no-window -no-audio`.
 
 ### Mandatory agent workflow
 

@@ -13,9 +13,10 @@ import {AboutScreen} from '../screens/About';
 import {ReleaseNotesScreen} from '../screens/ReleaseNotes';
 import {LicenseDetailScreen, LicensesScreen} from '../screens/Licenses';
 import {LanguageScreen} from '../screens/Language';
+import {AppearanceScreen} from '../screens/Appearance';
 import {SecurityScreen} from '../screens/Security';
 import {ComingSoonScreen} from '../screens/ComingSoon';
-import {colors} from '../config/theme';
+import {useTheme} from '../theme';
 import {HeaderSettingsButton} from '../components/HeaderSettingsButton';
 import {useTranslation} from 'react-i18next';
 
@@ -27,19 +28,20 @@ type HeaderLeftProps = Parameters<NonNullable<StackNavigationOptions['headerLeft
 const renderHeaderBack = (props: HeaderLeftProps) =>
   props.canGoBack ? <HeaderBackButton {...props} style={styles.headerBack} /> : null;
 
-const baseScreenOptions = {
-  headerStyle: {backgroundColor: colors.surface},
-  headerTintColor: colors.textPrimary,
-  headerTitleStyle: {fontWeight: '600' as const, fontSize: 18, color: colors.textPrimary},
-  cardStyle: {backgroundColor: colors.background},
-  headerLeft: renderHeaderBack,
-};
-
 export const AppNavigator: React.FC = () => {
   const {t} = useTranslation();
+  const {colors} = useTheme();
   const screenOptions = React.useMemo(
-    () => ({...baseScreenOptions, headerBackAccessibilityLabel: t('common.back')}),
-    [t],
+    () => ({
+      headerStyle: {backgroundColor: colors.surface},
+      headerTintColor: colors.textPrimary,
+      headerTitleStyle: {fontWeight: '600' as const, fontSize: 18, color: colors.textPrimary},
+      cardStyle: {backgroundColor: colors.background},
+      headerLeft: renderHeaderBack,
+      headerBackAccessibilityLabel: t('common.back'),
+      headerBackTruncatedTitle: t('common.back'),
+    }),
+    [colors, t],
   );
 
   return (
@@ -107,6 +109,11 @@ export const AppNavigator: React.FC = () => {
         name="Language"
         component={LanguageScreen}
         options={{title: t('navigation.language')}}
+      />
+      <Stack.Screen
+        name="Appearance"
+        component={AppearanceScreen}
+        options={{title: t('navigation.appearance')}}
       />
       <Stack.Screen
         name="Security"

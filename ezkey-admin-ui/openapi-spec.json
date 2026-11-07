@@ -1373,6 +1373,107 @@
         }
       }
     },
+    "/api/v1/enrollments/{id}/qr-delivery": {
+      "post": {
+        "tags": [
+          "Enrollments"
+        ],
+        "summary": "Send an enrollment QR by email",
+        "description": "One attempt through the delivery connector. The challenge is never sent. A 200 carries the outcome: accepted means the provider took the message, and unknown means it may have left. A refusal before any call returns a problem with a typed code.",
+        "operationId": "send",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QrDeliveryRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Connector called; see the outcome",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/QrDeliveryResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Enrollment not found or not visible",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/QrDeliveryResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Enrollment cannot be sent in this state",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/QrDeliveryResponseDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Missing or invalid sending data",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/QrDeliveryResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Daily cap reached",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/QrDeliveryResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "No usable connector",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/QrDeliveryResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/enrollments/{id}/deactivate": {
       "post": {
         "tags": [
@@ -2848,8 +2949,8 @@
         "tags": [
           "Administrator Provisioning"
         ],
-        "summary": "Issue initial administrator recovery codes",
-        "description": "Generates the first set of single-use recovery codes for an administrator after first authenticated sign-in. This flow is distinct from regeneration and is only available when no recovery-code set exists yet.",
+        "summary": "Issue recovery codes when none remain unused",
+        "description": "Generates a set of single-use recovery codes for an administrator after first authenticated sign-in. This flow is distinct from regeneration and is only available when no unused recovery code remains: either no set was ever issued, or every code of the previous set has been used (recoveryCodesExhausted).",
         "operationId": "issueInitialRecoveryCodes",
         "parameters": [
           {
@@ -4499,6 +4600,36 @@
         }
       }
     },
+    "/api/v1/enrollments/qr-delivery/capability": {
+      "get": {
+        "tags": [
+          "Enrollments"
+        ],
+        "summary": "Read QR delivery capability",
+        "description": "Says whether a delivery connector can be used, without contacting a provider.",
+        "operationId": "capability",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/QrDeliveryCapabilityDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/encryption-keys": {
       "get": {
         "tags": [
@@ -5226,6 +5357,7 @@
                 "ENROLLMENT_REACTIVATED",
                 "ENROLLMENT_AUTH_ATTEMPT_BLOCKED",
                 "ENROLLMENT_EXPIRED",
+                "ENROLLMENT_QR_DELIVERY",
                 "AUTH_ATTEMPT_CREATED",
                 "AUTH_ATTEMPT_PENDING",
                 "AUTH_ATTEMPT_RESPOND",
@@ -7352,6 +7484,39 @@
           }
         }
       },
+      "QrDeliveryRequestDto": {
+        "type": "object",
+        "properties": {
+          "locale": {
+            "type": "string",
+            "example": "fr",
+            "pattern": "en|fr"
+          }
+        },
+        "required": [
+          "locale"
+        ]
+      },
+      "QrDeliveryResponseDto": {
+        "type": "object",
+        "properties": {
+          "outcome": {
+            "type": "string"
+          },
+          "sendId": {
+            "type": "string"
+          },
+          "recipient": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "testMode": {
+            "type": "boolean"
+          }
+        }
+      },
       "ReencryptionKeyResponse": {
         "type": "object",
         "properties": {
@@ -9265,7 +9430,12 @@
           },
           "hasRecoveryCodes": {
             "type": "boolean",
-            "description": "Whether this administrator currently has a recovery-code set stored server-side",
+            "description": "Whether unused recovery codes currently remain for this administrator",
+            "example": false
+          },
+          "recoveryCodesExhausted": {
+            "type": "boolean",
+            "description": "Whether a recovery-code set was issued for this administrator and every code in it has since been used. False when unused codes remain or when no set was ever issued. Distinguishes a replacement set from a first issuance when hasRecoveryCodes is false.",
             "example": false
           },
           "operational": {
@@ -9459,6 +9629,23 @@
           "content",
           "page"
         ]
+      },
+      "QrDeliveryCapabilityDto": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "testMode": {
+            "type": "boolean"
+          },
+          "locales": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
       },
       "EncryptionKeyResponse": {
         "type": "object",
@@ -10105,6 +10292,7 @@
               "ENROLLMENT_REACTIVATED",
               "ENROLLMENT_AUTH_ATTEMPT_BLOCKED",
               "ENROLLMENT_EXPIRED",
+              "ENROLLMENT_QR_DELIVERY",
               "AUTH_ATTEMPT_CREATED",
               "AUTH_ATTEMPT_PENDING",
               "AUTH_ATTEMPT_RESPOND",
@@ -10861,42 +11049,42 @@
   },
   "x-tagGroups": [
     {
-      "name": "Getting started",
       "tags": [
         "Public",
         "Admin Authentication"
-      ]
+      ],
+      "name": "Getting started"
     },
     {
-      "name": "Tenant and integration setup",
       "tags": [
         "Tenants",
         "Integrations",
         "Enrollments",
         "API Keys"
-      ]
+      ],
+      "name": "Tenant and integration setup"
     },
     {
-      "name": "MFA operations",
       "tags": [
         "Auth Attempts",
         "Admin Enrollment Management"
-      ]
+      ],
+      "name": "MFA operations"
     },
     {
-      "name": "Administration",
       "tags": [
         "Administrator Provisioning"
-      ]
+      ],
+      "name": "Administration"
     },
     {
-      "name": "Platform operations",
       "tags": [
         "Audit Logs",
         "Encryption Keys",
         "Alerts",
         "Dashboard"
-      ]
+      ],
+      "name": "Platform operations"
     }
   ]
 }

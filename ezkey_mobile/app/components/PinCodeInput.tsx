@@ -12,6 +12,7 @@
 
 import React, {useCallback, useEffect, useMemo, useRef} from 'react';
 import {Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
+import {createThemedStyles} from '../theme';
 
 export type PinCodeInputProps = {
   /** Number of digit boxes to display. */
@@ -64,6 +65,7 @@ const PinCodeInput: React.FC<PinCodeInputProps> = ({
   testID,
   autoFocus = false,
 }) => {
+  const styles = useStyles();
   // RN 0.87: TextInput is a function component; ref instance is TextInputInstance
   // (ReactNativeElement), not the component type.
   const inputRef = useRef<React.ElementRef<typeof TextInput>>(null);
@@ -141,7 +143,7 @@ const PinCodeInput: React.FC<PinCodeInputProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(colors => ({
   container: {
     position: 'relative',
   },
@@ -152,19 +154,19 @@ const styles = StyleSheet.create({
     width: 44,
     height: 52,
     borderRadius: 10,
-    backgroundColor: '#151923',
+    backgroundColor: colors.surface,
     borderWidth: 3,
-    borderColor: 'rgba(54, 115, 223, 0.5)',
+    borderColor: colors.borderFocus,
     alignItems: 'center',
     justifyContent: 'center',
   },
   boxFilled: {
-    borderColor: 'rgba(54, 115, 223, 0.85)',
+    borderColor: colors.borderFocusStrong,
   },
   digit: {
     fontSize: 28,
     fontWeight: '600',
-    color: '#f4f7ff',
+    color: colors.textPrimary,
   },
   hiddenInputHost: {
     ...StyleSheet.absoluteFill,
@@ -174,6 +176,6 @@ const styles = StyleSheet.create({
     opacity: 0,
     fontSize: 1,
   },
-});
+}));
 
 export default PinCodeInput;

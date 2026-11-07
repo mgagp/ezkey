@@ -64,6 +64,7 @@ For feature, milestone, and traceability entries:
 
 | Term | Meaning |
 | --- | --- |
+| **Connector** | A separate process that links Ezkey to an external service over a versioned HTTP contract: email, SMS or a directory ([ADR-0018](global/architecture-decisions.md#adr-0018--connector-spi-for-external-services)). In `ezkey-pam` documents, the word means the PAM client, which is unrelated. |
 | **Enrollment** | Cryptographic binding between a user context, an integration, and a mobile device. |
 | **Authentication attempt** | A single MFA decision flow tied to an enrollment. |
 | **Proof token** | One-time cryptographic material used to protect a flow step. |

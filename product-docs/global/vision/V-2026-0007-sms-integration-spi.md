@@ -2,9 +2,10 @@
 
 - **Date:** `2026-05-08`
 - **Status:** `under-review`
-- **Intent:** **Optional**, **operator-triggered** SMS for enrolment and admin-activation via
-  **peripheral HTTP adapter** (e.g. `ezkey-sms-twilio`) — not in-core (contrast `V-2026-0005`
-  email). R1 SPI: Admin API POSTs delivery job to one configured adapter URL. Postures
+- **Intent:** **Optional**, **operator-triggered** SMS for enrolment via
+  **peripheral HTTP adapter** (e.g. `ezkey-sms-twilio`) — not in-core, same model as email
+  (`V-2026-11-04-connector-spi`). Connector code incubates in the monorepo; a separate repository is a
+  later question. R1 SPI: Admin API POSTs delivery job to one configured adapter URL. Postures
   **`integrated-delivery`** / **`sms-assisted-delivery`** (mirror email). Body R1: **challenge
   codes only** (short templates). Global Admin configures adapter; **Global Admin or Tenant
   Admin** sends per workflow RBAC and deployment geometry (`operator-alignment-guide.md`).
@@ -19,5 +20,6 @@
 
 - `I-2026-0024` — SMS channel R1: HTTP adapter SPI + optional operator send
 - `I-2026-0020` — Integration ecosystem shell catalog and publish workflow
-- `V-2026-0005` — Email integration strategy (contrast: in-core model)
+- `V-2026-0005` — Email integration strategy (same model since 2026-11-04)
+- `V-2026-11-04-connector-spi` — Connector SPI: generalizes this adapter model
 - `V-2026-0010` — Per-installation profile elaboration
