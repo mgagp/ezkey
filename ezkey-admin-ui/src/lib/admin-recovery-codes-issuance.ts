@@ -43,3 +43,55 @@ export const RECOVERY_CODES_ISSUANCE_COPY_KEYS: Record<RecoveryCodesIssuanceKind
     error: 'detail.errorReplacementRecoveryCodesIssue',
   },
 };
+
+export type RecoveryCodesDialogMode = 'issue-initial' | 'regenerate';
+
+export interface RecoveryCodesDialogCopyKeys {
+  dialogTitle: string;
+  intro: string;
+  confirm: string;
+  success: string;
+  error: string;
+}
+
+/**
+ * Operator-facing dialog copy. Success always comes from these keys — never from the
+ * English `message` field on the issuance HTTP response.
+ */
+export function recoveryCodesDialogCopy(
+  mode: RecoveryCodesDialogMode,
+  issuanceKind: RecoveryCodesIssuanceKind,
+): RecoveryCodesDialogCopyKeys {
+  if (mode === 'regenerate') {
+    return {
+      dialogTitle: 'detail.regenerateRecoveryCodesDialogTitle',
+      intro: 'detail.regenerateRecoveryCodesIntro',
+      confirm: 'detail.regenerateRecoveryCodesConfirm',
+      success: 'detail.regenerateRecoveryCodesSuccess',
+      error: 'detail.errorRecoveryCodesRegenerate',
+    };
+  }
+  const keys = RECOVERY_CODES_ISSUANCE_COPY_KEYS[issuanceKind];
+  return {
+    dialogTitle: keys.dialogTitle,
+    intro: keys.intro,
+    confirm: keys.confirm,
+    success: keys.success,
+    error: keys.error,
+  };
+}
+
+/**
+ * While the issuance dialog is open, keep the kind captured at open. A successful
+ * issue-initial refetch clears `recoveryCodesExhausted` and must not switch copy.
+ */
+export function frozenIssuanceKindWhileOpen(
+  dialogOpen: boolean,
+  kindAtOpen: RecoveryCodesIssuanceKind,
+  liveAdmin: Pick<AdminResponseDto, 'recoveryCodesExhausted'>,
+): RecoveryCodesIssuanceKind {
+  if (dialogOpen) {
+    return kindAtOpen;
+  }
+  return recoveryCodesIssuanceKind(liveAdmin);
+}

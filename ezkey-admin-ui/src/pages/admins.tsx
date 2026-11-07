@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, Check, Copy, KeyRound, Pencil, Plus, Power, PowerOff, QrCode, RefreshCw, UserX } from 'lucide-react';
 import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
+import { AdminRecoveryCodesDialog } from '@/components/feature/admin-recovery-codes-dialog';
 import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
 import { EnrollmentFkLink } from '@/components/feature/fk-detail-links';
 import { IntegratedDeliveryNotice } from '@/components/feature/integrated-delivery-notice';
@@ -38,6 +39,7 @@ import { isPhoneNumberInputValid, normalizePhoneNumberInput } from '@/lib/phone-
 import { canReissuePendingAdministratorActivationCode } from '@/lib/admin-pending-activation-eligibility';
 import {
   RECOVERY_CODES_ISSUANCE_COPY_KEYS,
+  recoveryCodesDialogCopy,
   recoveryCodesIssuanceKind,
   type RecoveryCodesIssuanceKind,
 } from '@/lib/admin-recovery-codes-issuance';
@@ -872,143 +874,35 @@ function AdminDetailDialog({
           <Button onClick={onClose}>{t('detail.close')}</Button>
         </div>
       </div>
-      <Dialog
+      <AdminRecoveryCodesDialog
         open={regenerateOpen}
         onClose={handleCloseRegenerateDialog}
-        title={
-          recoveryCodesDialogMode === 'issue-initial'
-            ? t(issuanceCopy.dialogTitle, { username: adm.username })
-            : t('detail.regenerateRecoveryCodesDialogTitle', { username: adm.username })
+        mode={recoveryCodesDialogMode}
+        issuanceKind={issuanceKind}
+        username={adm.username ?? ''}
+        result={regeneratedCodes}
+        copied={regeneratedCodesCopied}
+        savedConfirmed={regeneratedCodesSavedConfirmed}
+        onCopyAll={() => void handleCopyRegeneratedCodes()}
+        onSavedConfirmedChange={setRegeneratedCodesSavedConfirmed}
+        onConfirm={() => {
+          if (recoveryCodesDialogMode === 'issue-initial') {
+            issueInitialRecoveryCodesMutation.mutate(adm.adminId!);
+            return;
+          }
+          regenerateRecoveryCodesMutation.mutate(adm.adminId!);
+        }}
+        pending={regenerateRecoveryCodesMutation.isPending || issueInitialRecoveryCodesMutation.isPending}
+        errorMessage={
+          regenerateRecoveryCodesMutation.isError || issueInitialRecoveryCodesMutation.isError
+            ? getTranslatedApiError(
+                regenerateRecoveryCodesMutation.error ?? issueInitialRecoveryCodesMutation.error,
+                t,
+                t(recoveryCodesDialogCopy(recoveryCodesDialogMode, issuanceKind).error),
+              )
+            : null
         }
-        size="md"
-        dismissible={false}
-      >
-        {regeneratedCodes ? (
-          <div className="space-y-4">
-            <Alert variant="success">
-              {regeneratedCodes.message
-                ?? (recoveryCodesDialogMode === 'issue-initial'
-                  ? t(issuanceCopy.success)
-                  : t('detail.regenerateRecoveryCodesSuccess'))}
-            </Alert>
-            <div className="border-2 border-error bg-error/5 p-3 flex gap-2">
-              <AlertTriangle className="size-4 text-error shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-black text-error">
-                  {recoveryCodesDialogMode === 'issue-initial'
-                    ? t('detail.issueInitialRecoveryCodesWarningTitle')
-                    : t('detail.regenerateRecoveryCodesWarningTitle')}
-                </p>
-                <p className="text-xs text-error/80 mt-0.5">
-                  {recoveryCodesDialogMode === 'issue-initial'
-                    ? t('detail.issueInitialRecoveryCodesWarningBody')
-                    : t('detail.regenerateRecoveryCodesWarningBody')}
-                </p>
-              </div>
-            </div>
-            <div className="space-y-2 border-2 border-accent/40 bg-bg p-3">
-              <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted">
-                {t('detail.recoveryCodesTitle')}
-              </p>
-              <p className="text-xs text-fg-muted">{t('detail.recoveryCodesHint')}</p>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => void handleCopyRegeneratedCodes()}
-                className="gap-1.5"
-              >
-                {regeneratedCodesCopied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
-                {regeneratedCodesCopied ? t('onboarding.copied') : t('detail.copyAllRecoveryCodes')}
-              </Button>
-              <ul className="font-mono text-xs space-y-1 break-all max-h-48 overflow-y-auto border-2 border-fg/20 p-2 bg-surface">
-                {(regeneratedCodes.recoveryCodes ?? []).map((code) => (
-                  <li key={code}>{code}</li>
-                ))}
-              </ul>
-              <div className="flex items-center gap-2.5 p-3 border-2 border-fg/20 bg-bg">
-                <input
-                  id="regenerated-recovery-codes-saved"
-                  type="checkbox"
-                  className="size-4 border-2 border-fg accent-accent"
-                  checked={regeneratedCodesSavedConfirmed}
-                  onChange={(e) => setRegeneratedCodesSavedConfirmed(e.target.checked)}
-                />
-                <label
-                  htmlFor="regenerated-recovery-codes-saved"
-                  className="text-sm font-bold cursor-pointer select-none"
-                >
-                  {t('detail.recoveryCodesSavedConfirmLabel')}
-                </label>
-              </div>
-            </div>
-            <div className="flex justify-end pt-2">
-              <Button onClick={handleCloseRegenerateDialog} disabled={!regeneratedCodesSavedConfirmed}>
-                {t('detail.close')}
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <Alert variant="warning">
-              {recoveryCodesDialogMode === 'issue-initial'
-                ? t(issuanceCopy.intro)
-                : t('detail.regenerateRecoveryCodesIntro')}
-            </Alert>
-            <div className="border-2 border-error bg-error/5 p-3 flex gap-2">
-              <AlertTriangle className="size-4 text-error shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-black text-error">
-                  {recoveryCodesDialogMode === 'issue-initial'
-                    ? t('detail.issueInitialRecoveryCodesWarningTitle')
-                    : t('detail.regenerateRecoveryCodesWarningTitle')}
-                </p>
-                <p className="text-xs text-error/80 mt-0.5">
-                  {recoveryCodesDialogMode === 'issue-initial'
-                    ? t('detail.issueInitialRecoveryCodesWarningBody')
-                    : t('detail.regenerateRecoveryCodesWarningBody')}
-                </p>
-              </div>
-            </div>
-            {(regenerateRecoveryCodesMutation.isError || issueInitialRecoveryCodesMutation.isError) && (
-              <Alert variant="error">
-                {getTranslatedApiError(
-                  regenerateRecoveryCodesMutation.error ?? issueInitialRecoveryCodesMutation.error,
-                  t,
-                  recoveryCodesDialogMode === 'issue-initial'
-                    ? t(issuanceCopy.error)
-                    : t('detail.errorRecoveryCodesRegenerate'),
-                )}
-              </Alert>
-            )}
-            <div className="flex justify-end gap-2 pt-2">
-              <Button
-                variant="ghost"
-                type="button"
-                onClick={handleCloseRegenerateDialog}
-                disabled={regenerateRecoveryCodesMutation.isPending || issueInitialRecoveryCodesMutation.isPending}
-              >
-                {t('detail.editCancel')}
-              </Button>
-              <Button
-                type="button"
-                isLoading={regenerateRecoveryCodesMutation.isPending || issueInitialRecoveryCodesMutation.isPending}
-                onClick={() => {
-                  if (recoveryCodesDialogMode === 'issue-initial') {
-                    issueInitialRecoveryCodesMutation.mutate(adm.adminId!);
-                    return;
-                  }
-                  regenerateRecoveryCodesMutation.mutate(adm.adminId!);
-                }}
-              >
-                {recoveryCodesDialogMode === 'issue-initial'
-                  ? t(issuanceCopy.confirm)
-                  : t('detail.regenerateRecoveryCodesConfirm')}
-              </Button>
-            </div>
-          </div>
-        )}
-      </Dialog>
+      />
       <Dialog
         open={reissueActivationOpen}
         onClose={handleCloseReissueActivationDialog}
