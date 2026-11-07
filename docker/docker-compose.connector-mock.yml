@@ -1,0 +1,33 @@
+# Adds the mock delivery connector on the private Docker network, with no published port (#1206).
+# Test only: the mock delivers nothing. Used by scripts/ci-connector-scenarios.sh.
+services:
+  connector-mock:
+    build:
+      context: ../ezkey-connectors/ezkey-connector-mock
+    container_name: ezkey-connector-mock
+    environment:
+      EZKEY_CONNECTOR_MOCK_TEST_MODE: "true"
+      EZKEY_CONNECTOR_MOCK_TOKEN: local-test-only-connector-token
+      EZKEY_CONNECTOR_MOCK_SLOW_SECONDS: "10"
+    networks:
+      - ezkey-network
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'wget -q --header "Authorization: Bearer local-test-only-connector-token" -O /dev/null http://localhost:8090/v0/health'
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  admin-api:
+    environment:
+      EZKEY_ADMIN_CONNECTOR_DELIVERY_URL: http://connector-mock:8090
+      EZKEY_ADMIN_CONNECTOR_DELIVERY_TOKEN: ${EZKEY_ADMIN_CONNECTOR_DELIVERY_TOKEN:-local-test-only-connector-token}
+      EZKEY_ADMIN_CONNECTOR_DELIVERY_PLAIN_HTTP_PRIVATE_NETWORK: "true"
+      EZKEY_ADMIN_CONNECTOR_DELIVERY_READ_TIMEOUT: 6s
+      EZKEY_ADMIN_CONNECTOR_DELIVERY_HEALTH_CACHE_TTL: 1s
+      EZKEY_ADMIN_CONNECTOR_DELIVERY_TENANT_DAILY_CAP: "30"
+      EZKEY_QR_AUTH_BASE_URL: https://auth.connector-mock.test
+    depends_on:
+      connector-mock:
+        condition: service_healthy
