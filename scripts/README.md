@@ -566,3 +566,7 @@ bash -n scripts/update-openapi-specs.sh
 - Regular validation of spec files
 - Monitor for API changes
 - Update documentation when needed
+
+## Connector scenarios
+
+`ci-connector-scenarios.sh` replays the delivery connector scenarios and the log canary on a real stack, with no human. It wipes the volumes of the Compose project in use. See [`ezkey-connectors/README.md`](../ezkey-connectors/README.md).

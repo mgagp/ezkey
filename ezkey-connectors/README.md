@@ -43,3 +43,17 @@ The recipient's local part picks the scenario, so the mock keeps no state:
 | `mock-redirect@…` | `302` |
 | `mock-unreadable@…` | `200` outside the contract |
 | `mock-slow@…` | Waits, then `200 accepted` |
+
+## Replaying the scenarios
+
+`scripts/ci-connector-scenarios.sh` does this with no human, and the `connectors` CI job runs it:
+
+1. **No connector:** Ezkey works as before.
+2. **Rejected connector credential:** the connector counts as unavailable.
+3. **Mock connector** on the private Docker network (`docker/docker-compose.connector-mock.yml`): every outcome, refusals,
+   15 slow sends past the database pool size, the daily cap and the audit.
+4. **Log canary:** logs of every container hold no recipient, token, PNG signature, request body or long base64 block.
+
+It runs a clean start, which wipes the volumes of the Docker Compose project in use, and tears the stack down unless
+given `--keep-stack`. Container names are fixed, so stop any other Ezkey stack first. Set `COMPOSE_PROJECT_NAME` to keep
+the default project's volumes.

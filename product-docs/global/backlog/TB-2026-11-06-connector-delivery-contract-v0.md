@@ -219,6 +219,13 @@ the daily cap behaved as written. With 15 slow sends in flight, past the default
 0.05 s, and each send became `unknown` at 20 s. Logs of all containers and the mock held no recipient, token, PNG
 signature or long base64 block. The refusal for evaluator sessions is covered by a unit test only.
 
+## What step 4 added (2026-11-06)
+
+`scripts/ci-connector-scenarios.sh` replays the checks done by hand at step 3, with no human: no connector, rejected
+credential, mock scenarios and log canary. The `connectors` CI job is path-filtered and heavy, like `ha-smoke`: it runs on
+pull requests and nightly, not on the post-merge push. Tests tagged `connector-mock` stay out of the default suite, while
+the no-connector test joins it and skips itself when a connector is usable.
+
 ## Configuration guidance
 
 Best practices for configuring a connector are collected in

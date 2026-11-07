@@ -438,7 +438,7 @@ pending. Manual `workflow_dispatch` and the **nightly schedule** on `main` (UTC 
 `main` had no commit in the last 24 h) force **every** suite. A change to `ci.yml` runs every job;
 a change to a reusable workflow runs only the job that calls it.
 
-**Heavy jobs skip the post-merge push.** `ha-smoke`, `ezkey-pam`, `mobile-ios` and the mobile
+**Heavy jobs skip the post-merge push.** `ha-smoke`, `connectors`, `ezkey-pam`, `mobile-ios` and the mobile
 `android-16kb-alignment` job run on pull requests (where they gate the change) and nightly, but not
 on the push to `main` that follows a merge, which would repeat the PR run. The ruleset does not
 require branches to be up to date, so a merge of a stale PR is caught by the nightly run at the
@@ -458,6 +458,7 @@ inventory and improvement plan:
 | `admin-ui` | `ezkey-admin-ui/**`, `specs/**`, or a `ci.yml` change | `cmp` of `specs/admin-api/openapi-spec.json` vs `ezkey-admin-ui/openapi-spec.json`; Node from root `.nvmrc` (24 LTS); `npm ci`; `generate:api`; `tsc -b`; lint; Vitest; `vite build`; no-demo assert on `dist/` |
 | `backend` | Java reactor paths / root `pom.xml` / `scripts/build.sh` / `.mvn/**` / `docker/**` or workflows | JDK 25; install `checkstyle-config`; `spotless:check`; Checkstyle; full-reactor `install -DskipTests` (so `ezkey-tests` **compiles**); `test -pl '!ezkey-tests'` (H2 unit tests; **does not run** the Docker `ezkey-tests` suite) |
 | `ha-smoke` | Same path filter as `backend` (or `ci.yml`); PRs and nightly only | Live HA clean-start + HTTP probes through each HAProxy LB (and crypto management); expect documented status codes, never 503 (#905). Script: `scripts/ci-ha-lb-smoke.sh` |
+| `connectors` | `ezkey-connectors/**`, the Admin API delivery port, its functional tests and `scripts/ci-connector-scenarios.sh` (or `ci.yml`); PRs and nightly only | Mock connector unit tests, then the Docker delivery scenarios and the log canary (#1206) |
 | `mobile` | `ezkey_mobile/**`, its reusable workflow, or `ci.yml` | Calls reusable [`.github/workflows/ezkey-mobile-unit-tests.yml`](../.github/workflows/ezkey-mobile-unit-tests.yml): Yarn validate, Android JVM unit tests, **16 KB APK alignment** (PRs and nightly only) |
 | `mobile-ios` | iOS native surface (`ezkey_mobile/ios/**`, `package.json`, `yarn.lock`, `Gemfile*`, `scripts/ios-*.sh`), its reusable workflow, or `ci.yml`; PRs and nightly only | Calls reusable [`.github/workflows/ezkey-mobile-ios.yml`](../.github/workflows/ezkey-mobile-ios.yml) on `macos-26`: `yarn ios:lint` (swift-format + SwiftLint, strict), `pod install`, `yarn ios:test` (simulator build + XCTest) |
 | `dart-sdk` | `ezkey_dart/**` or workflows | Experimental Dart SDK offline gate in a pinned `dart` image: `ezkey_dart/scripts/test.sh` (format check, `analyze --fatal-infos`, unit tests). The live-stack suite `ezkey_dart/scripts/e2e.sh` stays local ([`ezkey_dart/README.md`](../ezkey_dart/README.md) §6) |
