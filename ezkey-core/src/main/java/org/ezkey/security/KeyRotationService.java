@@ -33,9 +33,12 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.Order;
 import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Service for scheduled encryption key rotation and lifecycle management.
@@ -80,6 +83,7 @@ public class KeyRotationService {
   private final AuditLogService auditLogService;
   private final EncryptionKeyMigrationScopeService migrationScopeService;
   private final KeyUsageVerificationService keyUsageVerificationService;
+  private final TransactionTemplate startupSyncTransaction;
 
   public KeyRotationService(
       KeyManagementOperations keyManagementOperations,
@@ -87,13 +91,15 @@ public class KeyRotationService {
       TinkProperties properties,
       AuditLogService auditLogService,
       EncryptionKeyMigrationScopeService migrationScopeService,
-      KeyUsageVerificationService keyUsageVerificationService) {
+      KeyUsageVerificationService keyUsageVerificationService,
+      PlatformTransactionManager transactionManager) {
     this.keyManagementOperations = keyManagementOperations;
     this.keyRepository = keyRepository;
     this.properties = properties;
     this.auditLogService = auditLogService;
     this.migrationScopeService = migrationScopeService;
     this.keyUsageVerificationService = keyUsageVerificationService;
+    this.startupSyncTransaction = new TransactionTemplate(transactionManager);
   }
 
   /**
@@ -116,9 +122,15 @@ public class KeyRotationService {
    * necessary for the system to function correctly. Constructor wiring ensures the key management
    * dependency is initialized before this method runs.
    *
-   * <p><b>Transaction boundary:</b> {@code @Transactional} is on this public {@link
-   * ApplicationReadyEvent} entry so the empty-table sync runs in one Spring-managed transaction.
-   * {@code @PostConstruct} would run on the raw target and would not apply the annotation.
+   * <p><b>Transaction boundary:</b> the empty-table sync runs in one {@link TransactionTemplate}
+   * transaction, started from this {@link ApplicationReadyEvent} entry. {@code @PostConstruct}
+   * would run on the raw target and could not use a declarative boundary.
+   *
+   * <p><b>Concurrent writers (#1259):</b> two HA Admin API instances can both read an empty table.
+   * The loser gets a unique-key violation only after the winner commits, so its transaction rolls
+   * back cleanly here and the winner's rows are the result. Failure posture: <b>fail-closed</b>. If
+   * the violation leaves the table empty, or another data access error occurs, startup stops
+   * because enrollment writes need these rows.
    *
    * <p><b>Startup order:</b> {@code @Order} is {@link ApplicationReadyStartupOrder#KEYSET_SYNC} so
    * this runs before Admin API MFA bootstrap. Enrollment insert writes encryption-key foreign keys;
@@ -130,7 +142,6 @@ public class KeyRotationService {
    */
   @EventListener(ApplicationReadyEvent.class)
   @Order(ApplicationReadyStartupOrder.KEYSET_SYNC)
-  @Transactional
   public void initializeKeysetSync() {
     // Check if Tink encryption is enabled (not rotation, but encryption itself)
     if (!properties.isEnabled()) {
@@ -153,24 +164,13 @@ public class KeyRotationService {
     }
 
     try {
-      // Check if database is empty
-      long keyCount = keyRepository.count();
-      logger.debug("Checking keyset synchronization: database contains {} keys", keyCount);
-
-      if (keyCount == 0) {
-        logger.warn(
-            "⚠️  Keyset exists and is loaded, but encryption_key table is empty. "
-                + "This may occur after database migration or reset. "
-                + "Synchronizing keyset metadata to database...");
-
-        // Synchronize all keys from keyset to database
-        syncAllKeysFromKeyset("STARTUP_SYNC");
-
-        logger.info("✅ Keyset synchronized to database. Key rotation service is now operational.");
-      } else {
-        logger.debug("Keyset and database are in sync ({} keys found in database)", keyCount);
+      startupSyncTransaction.executeWithoutResult(_ -> syncKeysetWhenTableEmpty());
+    } catch (DataIntegrityViolationException e) {
+      if (keyRepository.count() == 0) {
+        throw e;
       }
-    } catch (DataAccessException | IllegalStateException e) {
+      logger.info("Keyset metadata was synchronized by another Admin API instance");
+    } catch (IllegalStateException e) {
       logger.error(
           "❌ Failed to synchronize keyset on startup. Key rotation may not work correctly. "
               + "Error: {}",
@@ -178,6 +178,25 @@ public class KeyRotationService {
           e);
       // Don't throw - allow application to start even if sync fails
       // Admin can manually trigger sync via API if needed
+    }
+  }
+
+  private void syncKeysetWhenTableEmpty() {
+    long keyCount = keyRepository.count();
+    logger.debug("Checking keyset synchronization: database contains {} keys", keyCount);
+
+    if (keyCount == 0) {
+      logger.warn(
+          "⚠️  Keyset exists and is loaded, but encryption_key table is empty. "
+              + "This may occur after database migration or reset. "
+              + "Synchronizing keyset metadata to database...");
+
+      // Synchronize all keys from keyset to database
+      syncAllKeysFromKeyset("STARTUP_SYNC");
+
+      logger.info("✅ Keyset synchronized to database. Key rotation service is now operational.");
+    } else {
+      logger.debug("Keyset and database are in sync ({} keys found in database)", keyCount);
     }
   }
 

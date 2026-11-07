@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.PlatformTransactionManager;
 
 /**
  * Unit tests for the rotation.enabled fail-closed gate on {@link
@@ -37,6 +38,7 @@ class KeyRotationServiceRotationDisabledTest {
   @Mock private AuditLogService auditLogService;
   @Mock private EncryptionKeyMigrationScopeService migrationScopeService;
   @Mock private KeyUsageVerificationService keyUsageVerificationService;
+  @Mock private PlatformTransactionManager transactionManager;
 
   @Test
   @DisplayName("introduceNewKey throws when rotation.enabled is false")
@@ -50,7 +52,8 @@ class KeyRotationServiceRotationDisabledTest {
             properties,
             auditLogService,
             migrationScopeService,
-            keyUsageVerificationService);
+            keyUsageVerificationService,
+            transactionManager);
 
     EncryptionLifecycleDisabledException ex =
         assertThrows(
