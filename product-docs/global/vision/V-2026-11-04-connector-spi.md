@@ -5,7 +5,7 @@
 - **ID:** `V-2026-11-04-connector-spi`
 - **Status:** `promoted`
 - **Created at:** `2026-11-04`
-- **Updated at:** `2026-11-07`
+- **Updated at:** `2026-11-06`
 - **Captured by:** Marc
 - **Priority:** `P2`
 - **GitHub issue:** `#1206`

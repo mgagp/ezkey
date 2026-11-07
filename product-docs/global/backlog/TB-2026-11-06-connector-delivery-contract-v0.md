@@ -8,7 +8,7 @@
 - **Decision pack:** [`2026-11-04-connector-spi`](../decisions/2026-11-04-connector-spi/README.md)
 - **GitHub issue:** `#1206` (step 2)
 - **Created at:** `2026-11-06`
-- **Updated at:** `2026-11-07`
+- **Updated at:** `2026-11-06`
 - **Captured by:** Marc
 
 ## Objective
