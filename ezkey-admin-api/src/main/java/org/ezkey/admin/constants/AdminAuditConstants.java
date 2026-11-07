@@ -172,6 +172,18 @@ public final class AdminAuditConstants {
   /** Audit action for successful enrollment revocation (permanent, admin-initiated). */
   public static final String ENROLLMENT_REVOKED = "enrollment_revoked";
 
+  /** Audit action: the provider took the enrollment QR email. */
+  public static final String ENROLLMENT_QR_DELIVERY_ACCEPTED = "enrollment_qr_delivery_accepted";
+
+  /** Audit action: the enrollment QR email did not leave. */
+  public static final String ENROLLMENT_QR_DELIVERY_REJECTED = "enrollment_qr_delivery_rejected";
+
+  /** Audit action: the enrollment QR email may have left. */
+  public static final String ENROLLMENT_QR_DELIVERY_UNKNOWN = "enrollment_qr_delivery_unknown";
+
+  /** Audit action: the core refused the send before calling a connector. */
+  public static final String ENROLLMENT_QR_DELIVERY_REFUSED = "enrollment_qr_delivery_refused";
+
   /** Audit action for failed enrollment revocation. */
   public static final String ENROLLMENT_REVOCATION_FAILED = "enrollment_revocation_failed";
 

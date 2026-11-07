@@ -1734,6 +1734,42 @@ Authorization: Bearer ezkey_admin_token...
 - 404: Enrollment not found or not visible to this admin
 - 500: Internal server error
 
+#### **POST /api/v1/enrollments/{id}/qr-delivery** (Send the QR through a delivery connector)
+
+Sends the QR of a `CREATED` enrollment to its `contactEmail`, as one attempt, through the optional delivery connector ([ADR-0018](../product-docs/global/architecture-decisions.md#adr-0018--connector-spi-for-external-services)). The challenge is never sent, and the QR stays available on screen whatever the outcome. Same tenant gate as `GET /qrcode`. Denied to evaluator temporary sessions.
+
+```http
+POST /api/v1/enrollments/123/qr-delivery
+Authorization: Bearer ezkey_admin_token...
+Content-Type: application/json
+
+{ "locale": "fr" }
+```
+
+**200:** the connector was called. `outcome` says what happened: `accepted` (the provider took the message, not proof of receipt), `rejected` (it did not leave) or `unknown` (it may have left: check with the person before retrying).
+
+```json
+{ "outcome": "accepted", "sendId": "3f0e2f6a-...", "recipient": "person@example.com", "code": null, "testMode": false }
+```
+
+**Refused before any call:** an RFC 9457 problem with a typed `code`.
+
+| Status | `code` | Meaning |
+|--------|--------|---------|
+| 404 | | Enrollment not found or not visible to this admin |
+| 409 | `enrollment-not-created`, `enrollment-expired`, `admin-enrollment`, `parent-not-operational` | This enrollment cannot be sent |
+| 422 | `contact-email-missing`, `contact-email-invalid`, `expected-server-missing`, `locale-not-offered` | Sending data is missing or invalid |
+| 429 | `daily-cap-reached` | Tenant or instance daily cap reached |
+| 503 | `connector-unavailable` | No connector, or it is unreachable, `degraded` or on another contract version |
+
+#### **GET /api/v1/enrollments/qr-delivery/capability** (QR delivery capability)
+
+Says whether the send action can be offered. Reads the connector's health with a short cache, and never contacts a provider. Denied to evaluator temporary sessions.
+
+```json
+{ "available": true, "testMode": false, "locales": ["en", "fr"] }
+```
+
 #### **PATCH /api/v1/enrollments/{id}** (Partial Update of Enrollment Metadata)
 
 Partially updates enrollment metadata. Only non-null fields in the request body are applied. Supports `enrollmentName`, `contactEmail`, `expiresAt`, `authAttemptChallengeRequired`, `userIdentifier`, `clearContactEmail`, and `clearExpiresAt`. Only active, non-revoked VERIFIED enrollments can be updated. Include `version` from the GET response for optimistic locking.

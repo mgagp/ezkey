@@ -50,6 +50,8 @@ Authorization at controllers.
 | `/api/v1/enrollments/{id}` | GET | `ROLE_ADMIN` | Get enrollment by ID | ❌ No |
 | `/api/v1/enrollments` | POST | `ROLE_ADMIN` | Create new enrollment | ❌ No |
 | `/api/v1/enrollments/{id}` | DELETE | `ROLE_ADMIN` | Delete enrollment | ❌ No |
+| `/api/v1/enrollments/{id}/qr-delivery` | POST | `ROLE_ADMIN` | Send the enrollment QR through a delivery connector. Denied to evaluator temporary sessions | ❌ No |
+| `/api/v1/enrollments/qr-delivery/capability` | GET | `ROLE_ADMIN` | Say whether a delivery connector can be used. Denied to evaluator temporary sessions | ❌ No |
 
 ### Authentication Attempt Management
 

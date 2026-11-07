@@ -65,6 +65,7 @@ export const AUDIT_EVENT_TYPE_GROUPS: readonly AuditEventTypeGroup[] = [
       'ENROLLMENT_REACTIVATED',
       'ENROLLMENT_AUTH_ATTEMPT_BLOCKED',
       'ENROLLMENT_EXPIRED',
+      'ENROLLMENT_QR_DELIVERY',
     ],
   },
   {

@@ -1,0 +1,47 @@
+meta {
+  name: send qr delivery
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/enrollments/:id/qr-delivery
+  body: json
+  auth: inherit
+}
+
+params:path {
+  @description('The enrollment ID')
+  id: {{enrollmentId}}
+}
+
+body:json {
+  {
+    "locale": "fr"
+  }
+}
+
+script:post-response {
+  test("Called the connector, or refused with a typed code", function () {
+      expect([200, 404, 409, 422, 429, 503]).to.include(res.getStatus());
+  });
+
+  if (res.getStatus() === 200) {
+      test("Response carries an outcome", function () {
+          expect(["accepted", "rejected", "unknown"]).to.include(res.getBody().outcome);
+      });
+  } else if (res.getStatus() !== 404) {
+      test("Refusal carries a typed code", function () {
+          expect(res.getBody().code).to.be.a('string');
+      });
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Sends the QR of a CREATED enrollment to its contactEmail through the optional delivery connector.
+  With no connector configured, this returns 503 connector-unavailable.
+}

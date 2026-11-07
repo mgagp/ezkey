@@ -110,6 +110,7 @@
     "ENROLLMENT_REACTIVATED": "Enrôlement réactivé",
     "ENROLLMENT_AUTH_ATTEMPT_BLOCKED": "Tentative d'auth bloquée (enrôlement)",
     "ENROLLMENT_EXPIRED": "Enrôlement expiré",
+    "ENROLLMENT_QR_DELIVERY": "Envoi du QR d'enrôlement",
     "AUTH_ATTEMPT_CREATED": "Tentative d'auth créée",
     "AUTH_ATTEMPT_PENDING": "Tentative d'auth en attente",
     "AUTH_ATTEMPT_RESPOND": "Réponse tentative d'auth",
