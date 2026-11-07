@@ -13,6 +13,7 @@ src/apis/DashboardApi.ts
 src/apis/EncryptionKeysApi.ts
 src/apis/EnrollmentsApi.ts
 src/apis/IntegrationsApi.ts
+src/apis/IntegrityAsyncJobsApi.ts
 src/apis/PublicApi.ts
 src/apis/TenantsApi.ts
 src/apis/index.ts

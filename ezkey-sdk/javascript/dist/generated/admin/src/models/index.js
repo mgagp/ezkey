@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.RetroactiveIntegrityValidationRunResponseTriggerSourceEnum = exports.IntegrityRuptureReconciliationResultCategoryEnum = exports.IntegrityRuptureReconciliationRequestCategoryEnum = exports.IntegrationResponseDtoLifecycleStatusEnum = exports.EntryIntegrityViolationConciliationStatusEnum = exports.EntryIntegrityConciliationSummaryCategoryEnum = exports.EnrollmentResponseDtoDevicePrivateKeyStorageTierEnum = exports.EnrollmentResponseDtoEnrollmentStatusEnum = exports.DeclareAuditChainIncidentRequestRootCauseEnum = exports.DashboardScheduledJobRowDtoLastStatusEnum = exports.DashboardScheduledJobRowDtoJobKeyEnum = exports.DashboardAlertItemDtoStatusEnum = exports.DashboardAlertItemDtoSeverityEnum = exports.DashboardAlertItemDtoAlertTypeEnum = exports.AuthAttemptWaitResponseDtoStatusEnum = exports.AuthAttemptDtoAuthAttemptStatusEnum = exports.AuditLogResponseDtoApiNameEnum = exports.AuditLogResponseDtoEventStatusEnum = exports.AuditLogResponseDtoEventTypeEnum = exports.AuditChainIncidentResponseDtoRootCauseEnum = exports.AuditChainIncidentResponseDtoStatusEnum = exports.AuditChainCheckpointResponseDtoCheckpointTypeEnum = exports.AuditChainCheckpointResponseDtoLifecycleStateEnum = exports.AlertResponseDtoResolutionReasonEnum = exports.AlertResponseDtoStatusEnum = exports.AlertResponseDtoSeverityEnum = exports.AlertResponseDtoAlertTypeEnum = exports.AdminSessionResponseDtoAdminTypeEnum = exports.AdminResponseDtoLifecycleStatusEnum = exports.AdminResponseDtoAdminTypeEnum = exports.AdminLoginResponseDtoAdminTypeEnum = exports.AdminLoginResponseDtoStatusEnum = exports.AdminCreateRequestDtoOnboardingModeEnum = void 0;
+exports.RetroactiveIntegrityValidationRunResponseTriggerSourceEnum = exports.IntegrityRuptureReconciliationResultCategoryEnum = exports.IntegrityRuptureReconciliationRequestCategoryEnum = exports.IntegrityBootstrapResponseDtoRuntimeProfileEnum = exports.IntegrityAsyncJobStartRequestTriggerEnum = exports.IntegrityAsyncJobStartRequestTypeEnum = exports.IntegrityAsyncJobResponseBusyHolderEnum = exports.IntegrityAsyncJobResponseChainStatusEnum = exports.IntegrityAsyncJobResponseTriggerEnum = exports.IntegrityAsyncJobResponseStatusEnum = exports.IntegrityAsyncJobResponseTypeEnum = exports.IntegrationResponseDtoLifecycleStatusEnum = exports.EntryIntegrityViolationConciliationStatusEnum = exports.EntryIntegrityConciliationSummaryCategoryEnum = exports.EnrollmentResponseDtoDevicePrivateKeyStorageTierEnum = exports.EnrollmentResponseDtoEnrollmentStatusEnum = exports.DeclareAuditChainIncidentRequestRootCauseEnum = exports.DashboardScheduledJobRowDtoLastStatusEnum = exports.DashboardScheduledJobRowDtoJobKeyEnum = exports.DashboardAlertItemDtoStatusEnum = exports.DashboardAlertItemDtoSeverityEnum = exports.DashboardAlertItemDtoAlertTypeEnum = exports.AuthAttemptWaitResponseDtoStatusEnum = exports.AuthAttemptDtoAuthAttemptStatusEnum = exports.AuditLogResponseDtoApiNameEnum = exports.AuditLogResponseDtoEventStatusEnum = exports.AuditLogResponseDtoEventTypeEnum = exports.AuditChainIncidentResponseDtoRootCauseEnum = exports.AuditChainIncidentResponseDtoStatusEnum = exports.AuditChainCheckpointResponseDtoCheckpointTypeEnum = exports.AuditChainCheckpointResponseDtoLifecycleStateEnum = exports.AlertResponseDtoResolutionReasonEnum = exports.AlertResponseDtoStatusEnum = exports.AlertResponseDtoSeverityEnum = exports.AlertResponseDtoAlertTypeEnum = exports.AdminSessionResponseDtoTokenPurposeEnum = exports.AdminSessionResponseDtoAdminTypeEnum = exports.AdminResponseDtoLifecycleStatusEnum = exports.AdminResponseDtoAdminTypeEnum = exports.AdminLoginResponseDtoAdminTypeEnum = exports.AdminLoginResponseDtoStatusEnum = exports.AdminCreateRequestDtoOnboardingModeEnum = void 0;
 /**
  * @export
  */
@@ -47,6 +47,14 @@ exports.AdminSessionResponseDtoAdminTypeEnum = {
     GlobalAdmin: 'GLOBAL_ADMIN',
     TenantAdmin: 'TENANT_ADMIN',
     IntegrationAdmin: 'INTEGRATION_ADMIN'
+};
+/**
+ * @export
+ */
+exports.AdminSessionResponseDtoTokenPurposeEnum = {
+    Session: 'SESSION',
+    EvaluatorTemp: 'EVALUATOR_TEMP',
+    Recovery: 'RECOVERY'
 };
 /**
  * @export
@@ -146,9 +154,11 @@ exports.AuditLogResponseDtoEventTypeEnum = {
     EnrollmentReactivated: 'ENROLLMENT_REACTIVATED',
     EnrollmentAuthAttemptBlocked: 'ENROLLMENT_AUTH_ATTEMPT_BLOCKED',
     EnrollmentExpired: 'ENROLLMENT_EXPIRED',
+    EnrollmentQrDelivery: 'ENROLLMENT_QR_DELIVERY',
     AuthAttemptCreated: 'AUTH_ATTEMPT_CREATED',
     AuthAttemptPending: 'AUTH_ATTEMPT_PENDING',
     AuthAttemptRespond: 'AUTH_ATTEMPT_RESPOND',
+    AuthAttemptRespondSignatureRejected: 'AUTH_ATTEMPT_RESPOND_SIGNATURE_REJECTED',
     AuthAttemptCancelled: 'AUTH_ATTEMPT_CANCELLED',
     AuthAttemptExpired: 'AUTH_ATTEMPT_EXPIRED',
     ApiKeyCreated: 'API_KEY_CREATED',
@@ -186,6 +196,9 @@ exports.AuditLogResponseDtoEventTypeEnum = {
     AuditIntegrityRuptureConciliated: 'AUDIT_INTEGRITY_RUPTURE_CONCILIATED',
     AuditEntryIntegrityConciliated: 'AUDIT_ENTRY_INTEGRITY_CONCILIATED',
     NightlyIntegrityValidationCompleted: 'NIGHTLY_INTEGRITY_VALIDATION_COMPLETED',
+    IntegrityAsyncJobStarted: 'INTEGRITY_ASYNC_JOB_STARTED',
+    IntegrityAsyncJobCompleted: 'INTEGRITY_ASYNC_JOB_COMPLETED',
+    IntegrityAsyncJobAbandoned: 'INTEGRITY_ASYNC_JOB_ABANDONED',
     AlertRaised: 'ALERT_RAISED',
     AlertResolved: 'ALERT_RESOLVED'
 };
@@ -224,7 +237,8 @@ exports.AuthAttemptWaitResponseDtoStatusEnum = {
     Read: 'READ',
     Invalid: 'INVALID',
     Rejected: 'REJECTED',
-    Accepted: 'ACCEPTED'
+    Accepted: 'ACCEPTED',
+    Expired: 'EXPIRED'
 };
 /**
  * @export
@@ -319,6 +333,74 @@ exports.EntryIntegrityViolationConciliationStatusEnum = {
 exports.IntegrationResponseDtoLifecycleStatusEnum = {
     Active: 'ACTIVE',
     Retired: 'RETIRED'
+};
+/**
+ * @export
+ */
+exports.IntegrityAsyncJobResponseTypeEnum = {
+    VerifyChainRange: 'VERIFY_CHAIN_RANGE',
+    VerifyEntryHmacRange: 'VERIFY_ENTRY_HMAC_RANGE',
+    RunValidation: 'RUN_VALIDATION'
+};
+/**
+ * @export
+ */
+exports.IntegrityAsyncJobResponseStatusEnum = {
+    Running: 'RUNNING',
+    Succeeded: 'SUCCEEDED',
+    Failed: 'FAILED',
+    Cancelled: 'CANCELLED',
+    Expired: 'EXPIRED',
+    Interrupted: 'INTERRUPTED'
+};
+/**
+ * @export
+ */
+exports.IntegrityAsyncJobResponseTriggerEnum = {
+    Manual: 'MANUAL',
+    Auto: 'AUTO',
+    Nightly: 'NIGHTLY'
+};
+/**
+ * @export
+ */
+exports.IntegrityAsyncJobResponseChainStatusEnum = {
+    Ok: 'OK',
+    UndeclaredGapDetected: 'UNDECLARED_GAP_DETECTED',
+    ChainIntegrityViolationDetected: 'CHAIN_INTEGRITY_VIOLATION_DETECTED',
+    NotVerified: 'NOT_VERIFIED'
+};
+/**
+ * @export
+ */
+exports.IntegrityAsyncJobResponseBusyHolderEnum = {
+    Nightly: 'NIGHTLY',
+    ReportGet: 'REPORT_GET',
+    SealArchive: 'SEAL_ARCHIVE',
+    OperatorJob: 'OPERATOR_JOB'
+};
+/**
+ * @export
+ */
+exports.IntegrityAsyncJobStartRequestTypeEnum = {
+    VerifyChainRange: 'VERIFY_CHAIN_RANGE',
+    VerifyEntryHmacRange: 'VERIFY_ENTRY_HMAC_RANGE',
+    RunValidation: 'RUN_VALIDATION'
+};
+/**
+ * @export
+ */
+exports.IntegrityAsyncJobStartRequestTriggerEnum = {
+    Manual: 'MANUAL',
+    Auto: 'AUTO',
+    Nightly: 'NIGHTLY'
+};
+/**
+ * @export
+ */
+exports.IntegrityBootstrapResponseDtoRuntimeProfileEnum = {
+    Base: 'base',
+    Integrity: 'integrity'
 };
 /**
  * @export

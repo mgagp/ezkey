@@ -1716,7 +1716,9 @@ GET /api/v1/enrollments/123
 Authorization: Bearer ezkey_admin_token...
 ```
 
-**Response (high level):** Returns the full enrollment record including integration display fields where applicable (`integrationName`, `isSystemIntegration`), cryptographic material references (`integrationPublicKey`, `devicePublicKey`), client-reported `devicePrivateKeyStorageTier` when set at verify (`NONE`, `STANDARD`, `STRONG`; not independently verified by the server — see `docs/MOBILE_DEVELOPER_GUIDE.md`), and lifecycle audit timestamps such as `createdAt`, `createdByAdminId`, `deactivatedAt`, `deactivatedByAdminId`, `revokedAt`, and `revokedByAdminId` when set.
+**Response (high level):** Returns the full enrollment record including integration display fields where applicable (`integrationName`, `isSystemIntegration`), client-reported `devicePrivateKeyStorageTier` when set at verify (`NONE`, `STANDARD`, `STRONG`; not independently verified by the server — see `docs/MOBILE_DEVELOPER_GUIDE.md`), and lifecycle audit timestamps such as `createdAt`, `createdByAdminId`, `deactivatedAt`, `deactivatedByAdminId`, `revokedAt`, and `revokedByAdminId` when set.
+
+**Bind material (#1180):** `enrollmentProofToken` is returned only while `CREATED`, and `enrollmentChallenge` only while `CREATED` or `BOUND` (verify follows bind, and the operator may still have to give the code); both are null otherwise. Integration and device public keys are never returned: protocol actors get them from Auth API bind and verify, and the server verifies device signatures from the stored entity. `GET` and search share this rule.
 
 #### **GET /api/v1/enrollments/{id}/qrcode** (Enrollment bind-handle QR)
 
@@ -1732,6 +1734,7 @@ Authorization: Bearer ezkey_admin_token...
 - 200: PNG QR generated
 - 400: Enrollment missing proof token
 - 404: Enrollment not found or not visible to this admin
+- 409: Enrollment is not `CREATED`: the QR holds the proof token, so it follows the same rule as the JSON GET (#1180)
 - 500: Internal server error
 
 #### **POST /api/v1/enrollments/{id}/qr-delivery** (Send the QR through a delivery connector)

@@ -4534,7 +4534,7 @@
           "Enrollments"
         ],
         "summary": "Generate QR code for enrollment",
-        "description": "Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentId, enrollmentProofToken, authUrl})",
+        "description": "Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentId, enrollmentProofToken, authUrl}). Only while the enrollment is CREATED; 409 otherwise",
         "operationId": "getQrCode",
         "parameters": [
           {
@@ -4574,6 +4574,17 @@
           },
           "404": {
             "description": "Enrollment not found or not visible to this admin",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Enrollment is not CREATED",
             "content": {
               "*/*": {
                 "schema": {
@@ -7677,10 +7688,6 @@
             "description": "Numeric challenge displayed to user for verification (null if not requested)",
             "example": 123456
           },
-          "authAttemptProofToken": {
-            "type": "string",
-            "description": "Signed JWT proof token (present only when status is ACCEPTED)"
-          },
           "createdAt": {
             "type": "string",
             "format": "date-time",
@@ -9007,26 +9014,17 @@
           "enrollmentChallenge": {
             "type": "integer",
             "format": "int32",
-            "description": "Challenge value for enrollment verification",
+            "description": "Challenge value for enrollment verification; returned only while the enrollment is CREATED or BOUND, null otherwise",
             "example": 123456
           },
           "enrollmentProofToken": {
             "type": "string",
-            "description": "Unique code for enrollment verification",
-            "example": "EZK-ABC123-DEF456"
+            "description": "Enrollment bind secret for the QR / manual channel; returned only while the enrollment is CREATED, null otherwise"
           },
           "authAttemptChallengeRequired": {
             "type": "boolean",
             "description": "Flag indicating if authentication attempts require challenge",
             "example": false
-          },
-          "integrationPublicKey": {
-            "type": "string",
-            "description": "Public key for integration communication"
-          },
-          "devicePublicKey": {
-            "type": "string",
-            "description": "Public key for the device"
           },
           "devicePrivateKeyStorageTier": {
             "type": "string",
@@ -11049,42 +11047,42 @@
   },
   "x-tagGroups": [
     {
+      "name": "Getting started",
       "tags": [
         "Public",
         "Admin Authentication"
-      ],
-      "name": "Getting started"
+      ]
     },
     {
+      "name": "Tenant and integration setup",
       "tags": [
         "Tenants",
         "Integrations",
         "Enrollments",
         "API Keys"
-      ],
-      "name": "Tenant and integration setup"
+      ]
     },
     {
+      "name": "MFA operations",
       "tags": [
         "Auth Attempts",
         "Admin Enrollment Management"
-      ],
-      "name": "MFA operations"
+      ]
     },
     {
+      "name": "Administration",
       "tags": [
         "Administrator Provisioning"
-      ],
-      "name": "Administration"
+      ]
     },
     {
+      "name": "Platform operations",
       "tags": [
         "Audit Logs",
         "Encryption Keys",
         "Alerts",
         "Dashboard"
-      ],
-      "name": "Platform operations"
+      ]
     }
   ]
 }

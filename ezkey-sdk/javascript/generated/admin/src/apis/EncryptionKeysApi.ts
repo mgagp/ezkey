@@ -18,6 +18,7 @@ import type {
   BatchCreationResponse,
   BatchResumeResponse,
   EncryptionKeyResponse,
+  EncryptionLifecycleConfigDto,
   KeyRotationResponse,
   PagedModelEncryptionKeyResponse,
   PagedModelReencryptionBatchResponse,
@@ -143,6 +144,42 @@ export class EncryptionKeysApi extends runtime.BaseAPI {
      */
     async getKey(requestParameters: GetKeyRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EncryptionKeyResponse> {
         const response = await this.getKeyRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Returns whether key rotation and re-encryption are enabled. Flags come from config, not from the product runtime profile name. Global Admin only.
+     * Encryption lifecycle config
+     */
+    async getLifecycleConfigRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EncryptionLifecycleConfigDto>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        const response = await this.request({
+            path: `/api/v1/encryption-keys/lifecycle-config`,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Returns whether key rotation and re-encryption are enabled. Flags come from config, not from the product runtime profile name. Global Admin only.
+     * Encryption lifecycle config
+     */
+    async getLifecycleConfig(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EncryptionLifecycleConfigDto> {
+        const response = await this.getLifecycleConfigRaw(initOverrides);
         return await response.value();
     }
 

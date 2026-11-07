@@ -92,11 +92,9 @@ docs {
   - `enrollmentName`: Human-readable name for the enrollment
   - `enrollmentStatus`: Enrollment lifecycle status
   - `enrollmentActive`: Flag indicating if the enrollment is active
-  - `enrollmentChallenge`: Challenge value for enrollment verification
-  - `enrollmentProofToken`: Unique code for enrollment verification
+  - `enrollmentChallenge`: Challenge value for enrollment verification (null unless CREATED or BOUND)
+  - `enrollmentProofToken`: Bind secret (null unless CREATED)
   - `authAttemptChallengeRequired`: Flag for challenge requirement
-  - `integrationPublicKey`: Public key for integration communication
-  - `devicePublicKey`: Public key for the device (null if not bound)
   - `devicePrivateKeyStorageTier`: Client-reported device private key storage tier at verify: `NONE`, `STANDARD`, or `STRONG` (null if unknown or legacy)
   - `verifiedAt`: When enrollment was verified (null if not yet verified)
   - `createdByAdminId`: Admin who created (null when via API key)

@@ -19,10 +19,14 @@ import type {
   AdminActivationResponseDto,
   AdminLoginRequestDto,
   AdminLoginResponseDto,
+  AdminPasswordlessCancelRequestDto,
   AdminPasswordlessWaitRequestDto,
   AdminRecoveryRequestDto,
   AdminRecoveryResponseDto,
   AdminSessionResponseDto,
+  EvaluatorTempSessionRequestDto,
+  EvaluatorTempSessionResponseDto,
+  ProblemDetail,
 } from '../models/index';
 
 export interface ActivateRequest {
@@ -35,6 +39,14 @@ export interface LoginRequest {
 
 export interface LogoutRequest {
     authorization?: string;
+}
+
+export interface MintEvaluatorTempSessionRequest {
+    evaluatorTempSessionRequestDto: EvaluatorTempSessionRequestDto;
+}
+
+export interface PasswordlessCancelRequest {
+    adminPasswordlessCancelRequestDto: AdminPasswordlessCancelRequestDto;
 }
 
 export interface PasswordlessWaitRequest {
@@ -211,6 +223,97 @@ export class AdminAuthenticationApi extends runtime.BaseAPI {
     async me(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AdminSessionResponseDto> {
         const response = await this.meRaw(initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Available only when ezkey.evaluator.self-registration.enabled=true. Issues a one-shot EVALUATOR_TEMP session for navigable tenant-admin exploration without a device bind. Cookie loss cannot re-mint. Bind VERIFIED supersedes TEMP and requires a fresh SESSION login.
+     * Mint temporary evaluator console session
+     */
+    async mintEvaluatorTempSessionRaw(requestParameters: MintEvaluatorTempSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EvaluatorTempSessionResponseDto>> {
+        if (requestParameters['evaluatorTempSessionRequestDto'] == null) {
+            throw new runtime.RequiredError(
+                'evaluatorTempSessionRequestDto',
+                'Required parameter "evaluatorTempSessionRequestDto" was null or undefined when calling mintEvaluatorTempSession().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        const response = await this.request({
+            path: `/api/v1/admin/auth/evaluator-temp`,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['evaluatorTempSessionRequestDto'],
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Available only when ezkey.evaluator.self-registration.enabled=true. Issues a one-shot EVALUATOR_TEMP session for navigable tenant-admin exploration without a device bind. Cookie loss cannot re-mint. Bind VERIFIED supersedes TEMP and requires a fresh SESSION login.
+     * Mint temporary evaluator console session
+     */
+    async mintEvaluatorTempSession(requestParameters: MintEvaluatorTempSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EvaluatorTempSessionResponseDto> {
+        const response = await this.mintEvaluatorTempSessionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Cancels a pending passwordless login attempt using the waiter secret issued at login. Marks the attempt expired so wait unblocks and retry is not blocked (#831).
+     * Cancel pending passwordless authentication
+     */
+    async passwordlessCancelRaw(requestParameters: PasswordlessCancelRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['adminPasswordlessCancelRequestDto'] == null) {
+            throw new runtime.RequiredError(
+                'adminPasswordlessCancelRequestDto',
+                'Required parameter "adminPasswordlessCancelRequestDto" was null or undefined when calling passwordlessCancel().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        const response = await this.request({
+            path: `/api/v1/admin/auth/passwordless-cancel`,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['adminPasswordlessCancelRequestDto'],
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Cancels a pending passwordless login attempt using the waiter secret issued at login. Marks the attempt expired so wait unblocks and retry is not blocked (#831).
+     * Cancel pending passwordless authentication
+     */
+    async passwordlessCancel(requestParameters: PasswordlessCancelRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.passwordlessCancelRaw(requestParameters, initOverrides);
     }
 
     /**

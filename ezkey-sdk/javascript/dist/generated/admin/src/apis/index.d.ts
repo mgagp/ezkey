@@ -9,6 +9,7 @@ export * from './DashboardApi';
 export * from './EncryptionKeysApi';
 export * from './EnrollmentsApi';
 export * from './IntegrationsApi';
+export * from './IntegrityAsyncJobsApi';
 export * from './PublicApi';
 export * from './TenantsApi';
 //# sourceMappingURL=index.d.ts.map

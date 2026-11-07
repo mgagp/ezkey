@@ -13,6 +13,7 @@ package org.ezkey.admin.controller;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -24,6 +25,7 @@ import org.ezkey.admin.service.QrCodeGeneratorService;
 import org.ezkey.admin.service.QrCodePayloadService;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.audit.support.AuditEntityFkResolver;
+import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.enrollment.mapper.EnrollmentAdminMapper;
@@ -35,6 +37,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
@@ -112,6 +116,7 @@ class EnrollmentControllerQrAccessTest {
     Enrollment enrollment = new Enrollment();
     enrollment.setEnrollmentId(ENROLLMENT_ID);
     enrollment.setEnrollmentProofToken("proof-token");
+    enrollment.setStatus(EnrollmentStatus.CREATED);
     byte[] png = new byte[] {1, 2, 3};
 
     when(accessControlService.canAccessEnrollment(authentication, ENROLLMENT_ID)).thenReturn(true);
@@ -124,5 +129,25 @@ class EnrollmentControllerQrAccessTest {
     assertEquals(HttpStatus.OK, response.getStatusCode());
     assertArrayEquals(png, response.getBody());
     assertEquals("image/png", response.getHeaders().getFirst("Content-Type"));
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @EnumSource(value = EnrollmentStatus.class, names = "CREATED", mode = EnumSource.Mode.EXCLUDE)
+  @DisplayName("QR fetch outside CREATED returns 409 and never composes the proof token (#1180)")
+  void getQrCode_outsideCreated_returnsConflictWithoutComposingPayload(EnrollmentStatus status)
+      throws Exception {
+    Enrollment enrollment = new Enrollment();
+    enrollment.setEnrollmentId(ENROLLMENT_ID);
+    enrollment.setEnrollmentProofToken("proof-token");
+    enrollment.setStatus(status);
+
+    when(accessControlService.canAccessEnrollment(authentication, ENROLLMENT_ID)).thenReturn(true);
+    when(enrollmentService.getById(ENROLLMENT_ID)).thenReturn(enrollment);
+
+    ResponseEntity<byte[]> response = enrollmentController.getQrCode(ENROLLMENT_ID);
+
+    assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+    verify(qrCodePayloadService, never()).composePayload(any(), any());
+    verify(qrCodeGeneratorService, never()).generateQrCodeImage(any(), anyInt(), anyInt());
   }
 }

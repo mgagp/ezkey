@@ -87,6 +87,19 @@ public interface EnrollmentAdminMapper {
    */
   @Mapping(source = "status", target = "enrollmentStatus")
   @Mapping(source = "active", target = "enrollmentActive")
+  // #1180: proof token only while CREATED (QR / manual channel); challenge while CREATED or BOUND,
+  // because verify runs after bind and the operator may still have to give the code.
+  @Mapping(
+      target = "enrollmentProofToken",
+      expression =
+          "java(EnrollmentStatus.CREATED.equals(entity.getStatus())"
+              + " ? entity.getEnrollmentProofToken() : null)")
+  @Mapping(
+      target = "enrollmentChallenge",
+      expression =
+          "java(EnrollmentStatus.CREATED.equals(entity.getStatus())"
+              + " || EnrollmentStatus.BOUND.equals(entity.getStatus())"
+              + " ? entity.getEnrollmentChallenge() : null)")
   @Mapping(target = "integrationName", ignore = true)
   @Mapping(target = "tenantId", ignore = true)
   @Mapping(target = "tenantName", ignore = true)
@@ -161,8 +174,6 @@ public interface EnrollmentAdminMapper {
         base.enrollmentChallenge(),
         base.enrollmentProofToken(),
         base.authAttemptChallengeRequired(),
-        base.integrationPublicKey(),
-        base.devicePublicKey(),
         base.devicePrivateKeyStorageTier(),
         base.verifiedAt(),
         base.expiresAt(),

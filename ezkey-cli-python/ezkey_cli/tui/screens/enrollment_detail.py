@@ -98,17 +98,12 @@ class EnrollmentDetailScreen(Screen):
     content.append(f"Name: {data.get('enrollmentName', 'N/A')}")
     content.append(f"Status: {data.get('enrollmentStatus', 'N/A')}")
     content.append(f"Active: {'✓' if data.get('enrollmentActive') else '✗'}")
-    content.append(f"Challenge: {data.get('enrollmentChallenge', 'N/A')}")
-    content.append(f"Proof Token: {data.get('enrollmentProofToken', 'N/A')}")
+    # The Admin API returns null outside the bind steps (#1180).
+    content.append(f"Challenge: {data.get('enrollmentChallenge') or 'N/A'}")
+    content.append(f"Proof Token: {data.get('enrollmentProofToken') or 'N/A'}")
     content.append(
         f"Auth Challenge Required: {data.get('authAttemptChallengeRequired', 'N/A')}"
     )
-    content.append("")
-    content.append("Integration Public Key:")
-    content.append(str(data.get('integrationPublicKey') or 'N/A'))
-    content.append("")
-    content.append("Device Public Key:")
-    content.append(str(data.get('devicePublicKey') or 'N/A'))
 
     detail_widget = self.query_one("#detail_content", Static)
     detail_widget.update("\n".join(content))
