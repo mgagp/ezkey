@@ -375,10 +375,6 @@
             "description": "Numeric challenge displayed to user for verification (null if not requested)",
             "example": 123456
           },
-          "authAttemptProofToken": {
-            "type": "string",
-            "description": "Signed JWT proof token (present only when status is ACCEPTED)"
-          },
           "createdAt": {
             "type": "string",
             "format": "date-time",

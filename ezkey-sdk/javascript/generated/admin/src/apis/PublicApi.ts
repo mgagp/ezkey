@@ -40,14 +40,6 @@ export class PublicApi extends runtime.BaseAPI {
 
         headerParameters['Content-Type'] = 'application/json';
 
-        if (this.configuration && this.configuration.accessToken) {
-            const token = this.configuration.accessToken;
-            const tokenString = await token("bearerAuth", []);
-
-            if (tokenString) {
-                headerParameters["Authorization"] = `Bearer ${tokenString}`;
-            }
-        }
         const response = await this.request({
             path: `/api/v1/public/evaluator-signup`,
             method: 'POST',
@@ -69,7 +61,7 @@ export class PublicApi extends runtime.BaseAPI {
     }
 
     /**
-     * Returns read-only instance metadata for the Admin UI (login shell) and operators. authApiPublicBaseUrl matches the authUrl embedded in enrollment QR codes when ezkey.qr.auth-base-url is set.
+     * Returns read-only instance metadata for the Admin UI (login shell) and operators. authApiPublicBaseUrl matches the authUrl embedded in enrollment QR codes when ezkey.qr.auth-base-url is set. evaluatorSelfRegistrationEnabled mirrors ezkey.evaluator.self-registration.enabled (temporary console explore gate).
      * Get public instance info
      */
     async getInstanceInfoRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PublicInstanceInfoResponseDto>> {
@@ -77,14 +69,6 @@ export class PublicApi extends runtime.BaseAPI {
 
         const headerParameters: runtime.HTTPHeaders = {};
 
-        if (this.configuration && this.configuration.accessToken) {
-            const token = this.configuration.accessToken;
-            const tokenString = await token("bearerAuth", []);
-
-            if (tokenString) {
-                headerParameters["Authorization"] = `Bearer ${tokenString}`;
-            }
-        }
         const response = await this.request({
             path: `/api/v1/public/instance-info`,
             method: 'GET',
@@ -96,7 +80,7 @@ export class PublicApi extends runtime.BaseAPI {
     }
 
     /**
-     * Returns read-only instance metadata for the Admin UI (login shell) and operators. authApiPublicBaseUrl matches the authUrl embedded in enrollment QR codes when ezkey.qr.auth-base-url is set.
+     * Returns read-only instance metadata for the Admin UI (login shell) and operators. authApiPublicBaseUrl matches the authUrl embedded in enrollment QR codes when ezkey.qr.auth-base-url is set. evaluatorSelfRegistrationEnabled mirrors ezkey.evaluator.self-registration.enabled (temporary console explore gate).
      * Get public instance info
      */
     async getInstanceInfo(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PublicInstanceInfoResponseDto> {
