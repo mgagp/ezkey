@@ -44,7 +44,8 @@ public enum EventTypeFamily {
       EventType.ENROLLMENT_DEACTIVATED,
       EventType.ENROLLMENT_REACTIVATED,
       EventType.ENROLLMENT_AUTH_ATTEMPT_BLOCKED,
-      EventType.ENROLLMENT_EXPIRED),
+      EventType.ENROLLMENT_EXPIRED,
+      EventType.ENROLLMENT_QR_DELIVERY),
   AUTH_ATTEMPT(
       EventType.AUTH_ATTEMPT_CREATED,
       EventType.AUTH_ATTEMPT_PENDING,

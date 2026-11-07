@@ -11,7 +11,9 @@
 package org.ezkey.audit.domain.repository;
 
 import java.time.OffsetDateTime;
+import java.util.Collection;
 import java.util.List;
+import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.domain.entity.AuditLog;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -49,6 +51,29 @@ public interface AuditLogRepository
    */
   @Query(value = "SELECT nextval('ezkey_audit_log_id_seq')", nativeQuery = true)
   Long nextAuditLogId();
+
+  /**
+   * Counts audit entries of one type and some actions for one tenant since a moment.
+   *
+   * @param eventType event type
+   * @param tenantId tenant
+   * @param eventActions actions to count
+   * @param since inclusive start
+   * @return the count
+   */
+  long countByEventTypeAndTenantIdAndEventActionInAndCreatedAtGreaterThanEqual(
+      EventType eventType, Integer tenantId, Collection<String> eventActions, OffsetDateTime since);
+
+  /**
+   * Counts audit entries of one type and some actions across the instance since a moment.
+   *
+   * @param eventType event type
+   * @param eventActions actions to count
+   * @param since inclusive start
+   * @return the count
+   */
+  long countByEventTypeAndEventActionInAndCreatedAtGreaterThanEqual(
+      EventType eventType, Collection<String> eventActions, OffsetDateTime since);
 
   /**
    * Delete audit logs older than the specified date.

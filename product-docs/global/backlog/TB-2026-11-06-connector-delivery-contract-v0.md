@@ -199,6 +199,26 @@ Marc's gate for this step: the directory case holds on paper.
 
 The contract and sketch are merged, and the vision note can be promoted.
 
+## What step 3 added (2026-11-06)
+
+Choices made while building the delivery port, within the decisions above:
+
+- **Also refused in the core:** an admin MFA enrollment (system integration), an expired invitation, and a retired
+  integration or inactive tenant, following the eligibility chain in `docs/LIFECYCLE_GOVERNANCE.md`.
+- **Daily caps** default to 50 per tenant and 200 per instance per UTC day. They count `accepted` and `unknown` from
+  the audit, since a `rejected` email did not leave, so no new table is needed. Concurrent sends can overshoot slightly.
+- **Open-in-view:** a session under open-in-view holds its database connection until the response, whatever the
+  transaction boundaries. So `spring.jpa.open-in-view=false` turns off Spring Boot's interceptor, and
+  `AdminOpenInViewConfig` registers the same interceptor on every route except the send.
+  `AdminOpenInViewConfigPoolTest` proves both sides with a pool of one connection.
+- **Left for step 7:** the self-registered tenant refusal, which needs a new marker on the tenant. No community
+  deployment has a connector before that step.
+
+**Checked on the real stack (2026-11-06):** a clean start with and without the mock. Every outcome, the refusals and
+the daily cap behaved as written. With 15 slow sends in flight, past the default pool size, another admin read took
+0.05 s, and each send became `unknown` at 20 s. Logs of all containers and the mock held no recipient, token, PNG
+signature or long base64 block. The refusal for evaluator sessions is covered by a unit test only.
+
 ## Configuration guidance
 
 Best practices for configuring a connector are collected in
