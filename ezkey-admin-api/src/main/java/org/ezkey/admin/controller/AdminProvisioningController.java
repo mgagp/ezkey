@@ -1038,7 +1038,7 @@ public class AdminProvisioningController {
   @PostMapping("/{id}/recovery-codes/issue-initial")
   @PreAuthorize("hasRole('ADMIN')")
   @Operation(
-      summary = "Issue initial administrator recovery codes",
+      summary = "Issue recovery codes when none remain unused",
       description =
           "Generates a set of single-use recovery codes for an administrator after first"
               + " authenticated sign-in. This flow is distinct from regeneration and is only"
