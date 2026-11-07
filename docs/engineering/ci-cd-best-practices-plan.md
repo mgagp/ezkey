@@ -154,7 +154,7 @@ alerts + dependency-review land). Record the choice in the Monday campaign note 
 | **Automatic dependency submission** | Docs say Disabled 2026-10-08; Actions still lists dynamic workflow type | **to confirm by Marc in Settings** (listing ≠ enabled) |
 | **Dependabot version updates** | `dependabot.yml` + open Dependabot PRs + dynamic “Dependabot Updates” workflow | **Verified on** |
 | **Dependabot alerts** | Enabled 2026-11-06 (`PUT …/vulnerability-alerts`, Marc's decision): 156 open at activation, triage per [`hygiene/dependabot`](../../product-docs/global/hygiene/dependabot/README.md) § *Alerts* | **Verified on** |
-| **Dependabot security updates** | `security_and_analysis.dependabot_security_updates: disabled`, deliberately until the initial stock is triaged (they would enter `dependabot-auto-merge.yml`) | **Off by decision** (2026-11-06) |
+| **Dependabot security updates** | `security_and_analysis.dependabot_security_updates: enabled`. Patch-level PRs enter `dependabot-auto-merge.yml` with its exclusions (crypto, Docker, Gradle, RN core, `deferred:*`, `hitl*`) | **On by decision** (2026-11-06, after stock triage) |
 | **Secret scanning** | `security_and_analysis.secret_scanning: enabled` (API, 2026-11-05) | **Verified on** |
 | **Secret scanning push protection** | `security_and_analysis.secret_scanning_push_protection: enabled` (API, 2026-11-05) | **Verified on** |
 | **Code scanning — Advanced** | #805 merged; five analyses uploaded on `main` at `f26cbe55` | **G1 done** |
@@ -231,7 +231,7 @@ Value: evaluator / supply-chain / operator impact (High / Med / Low).
 | # | Practice | Ezkey today | Gap | Effort | Value | Priority |
 |---|----------|-------------|-----|--------|-------|----------|
 | G1 | CodeQL Advanced only (no default conflict) | #805 merged; 5 analyses on `main` at `f26cbe55` | None — **done** | — | — | **Done** |
-| G2 | Dependabot **alerts** + security updates | Alerts on since 2026-11-06; `SECURITY.md` aligned | Triage the stock, then decide security updates | S | High | **Alerts done**; security updates after triage |
+| G2 | Dependabot **alerts** + security updates | Alerts on since 2026-11-06; `SECURITY.md` aligned | None | S | High | **Done** 2026-11-06 (Marc) |
 | G3 | Secret scanning + push protection | Both enabled (API, 2026-11-05) | None | — | High | **Done** |
 | G4 | Dependency graph on; automatic submission off | Graph re-enabled 2026-10-13; #798 merged (`638b4214`) | Confirm automatic submission still Disabled in Settings | S | High | **Done** (graph + docs); confirm automatic submission |
 | G7 | Dependency review Action on PRs | `dependency-review.yml`, warn-only, not in `ci-gate` (2026-11-06); Maven not covered | Promote to blocking on high/critical after the alert stock is triaged | S | High | **Observing** |
@@ -264,8 +264,8 @@ Value: evaluator / supply-chain / operator impact (High / Med / Low).
 
 Owner suggestions in parentheses. **Marc** required wherever Settings is named.
 
-1. ~~Enable Dependabot alerts~~ — **done** 2026-11-06, `SECURITY.md` aligned. Security updates stay
-   off until the initial stock is triaged.
+1. ~~Enable Dependabot alerts~~ — **done** 2026-11-06, `SECURITY.md` aligned. Security updates
+   **enabled** the same day, after the stock was triaged.
 2. ~~Confirm secret scanning and push protection~~ — **done**, verified on by API 2026-11-05.
 3. ~~Merge [#798](https://github.com/mgagp/ezkey/pull/798)~~ — **done** (`638b4214`); graph
    must stay enabled; automatic submission stays Disabled (**G4**).
@@ -280,8 +280,9 @@ verified toggles.
 ### Phase 2 — Structural parity (supply-chain PR gate + light ruleset)
 
 1. **Dependency review Action** (G7, before G6): in place in warn-only mode on PRs that **touch
-   manifests**. Promote to fail on **high/critical** after the alert stock is triaged (Christophe
-   severity).
+   manifests**. **Decided 2026-11-06 (Marc): stays warn-only for now**, because it would flag
+   alerts we chose to leave open while upstream moves, and it has little history yet. **Review on
+   2026-11-30.** Being outside `ci-gate`, a failing job would not block a merge anyway.
 2. ~~**Ruleset: require a pull request**~~ — **done 2026-11-06** (G5): `pull_request` rule, 0 approvals,
    because a solo maintainer cannot approve PRs opened as `mgagp`.
 3. **OpenSSF Scorecard** — workflow landed (`scorecard.yml`); README badge still follow-up after
@@ -334,7 +335,7 @@ Copy into a maintainer note; check each in **Settings → Code security / Rules 
 - [x] **Dependency graph:** Enabled (Marc 2026-10-13; document via #798).
 - [ ] **Automatic dependency submission:** Disabled (dedicated Maven workflow feeds the graph).
 - [x] **Dependabot alerts:** Enabled (2026-11-06).
-- [ ] **Dependabot security updates:** Off by decision until the initial stock is triaged (2026-11-06).
+- [x] **Dependabot security updates:** Enabled after stock triage (API, 2026-11-06).
 - [x] **Secret scanning:** Enabled (API, 2026-11-05).
 - [x] **Push protection** (secret scanning): Enabled (API, 2026-11-05).
 - [ ] **Private vulnerability reporting:** Enabled (API already `true` — reconfirm UI).

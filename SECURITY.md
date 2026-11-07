@@ -63,7 +63,7 @@ The following are **actually in use** today (they are hygiene and review practic
 - Required pull-request CI aggregate check **`ci-gate`** (GitHub Actions; repository ruleset)
 - **CodeQL** code scanning (advanced setup workflow in-repo; Settings must use Advanced — see [`docs/SECURITY_POSTURE.md`](docs/SECURITY_POSTURE.md) § Code scanning policy)
 - **Dependabot** version updates for Maven, npm, pip, Gradle, Docker, docker-compose, and GitHub Actions
-- **Dependabot alerts** on the dependency graph (enabled 2026-11-06). Automatic security-update PRs stay off until the initial stock is triaged. Known gap: native Android (Gradle) and iOS (CocoaPods) dependencies are not in the graph, so they produce no alerts
+- **Dependabot alerts** on the dependency graph (enabled 2026-11-06). Automatic security-update PRs are on since the same day, once the initial stock was triaged. Known gap: native Android (Gradle) and iOS (CocoaPods) dependencies are not in the graph, so they produce no alerts
 - **Secret scanning** with **push protection**
 - Periodic AI-assisted security and hygiene passes, reviewed by the maintainer (static analysis, local API pentest campaigns, Dependabot triage); see `product-docs/global/hygiene/`
 
