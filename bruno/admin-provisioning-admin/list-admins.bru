@@ -122,7 +122,8 @@ docs {
   - `lifecycleStatus`: `PENDING_ACTIVATION`, `ACTIVE`, or `DEACTIVATED`
   - `createdAt`: Timestamp when the administrator was created
   - `lastLoginAt`: Timestamp of the last successful login (null if never logged in)
-  - `hasRecoveryCodes`: Whether a recovery-code set currently exists for this administrator
+  - `hasRecoveryCodes`: Whether unused recovery codes currently remain for this administrator
+  - `recoveryCodesExhausted`: Whether a set was issued and every code in it has since been used
   - `operational`: Whether the admin is fully operational (active and, for tenant admins, tenant also active)
   
   **Status Codes:**

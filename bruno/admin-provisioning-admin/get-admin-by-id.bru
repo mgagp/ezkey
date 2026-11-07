@@ -45,6 +45,7 @@ script:post-response {
           expect(jsonData).to.have.property('createdAt');
           expect(jsonData).to.have.property('lastLoginAt');
           expect(jsonData).to.have.property('hasRecoveryCodes');
+          expect(jsonData).to.have.property('recoveryCodesExhausted');
       });
       bru.setEnvVar('adminHasRecoveryCodes', String(Boolean(jsonData.hasRecoveryCodes)));
   }
@@ -62,7 +63,7 @@ docs {
   - **TenantAdmin**: Can retrieve administrators in their own tenant only
   
   **Response (200 OK):**
-  - `adminId`, `version`, `username`, `email`, `phoneNumber`, `firstName`, `lastName`, `adminType`, `tenantId`, `tenantName` (null for global admins; tenant display name otherwise), `enrollmentId`, `active`, `lifecycleStatus`, `createdAt`, `lastLoginAt`, `hasRecoveryCodes`, `operational`
+  - `adminId`, `version`, `username`, `email`, `phoneNumber`, `firstName`, `lastName`, `adminType`, `tenantId`, `tenantName` (null for global admins; tenant display name otherwise), `enrollmentId`, `active`, `lifecycleStatus`, `createdAt`, `lastLoginAt`, `hasRecoveryCodes`, `recoveryCodesExhausted`, `operational`
   
-  Use the returned `version` as `adminVersion` in the PATCH request for optimistic locking. Use `lastLoginAt` plus `hasRecoveryCodes` to decide whether to call `issue-initial` or `regenerate` for recovery-code management.
+  Use the returned `version` as `adminVersion` in the PATCH request for optimistic locking. Use `lastLoginAt` plus `hasRecoveryCodes` to decide whether to call `issue-initial` or `regenerate` for recovery-code management. When `hasRecoveryCodes = false`, `recoveryCodesExhausted = true` means a previous set was fully used, so `issue-initial` replaces it rather than issuing a first set.
 }

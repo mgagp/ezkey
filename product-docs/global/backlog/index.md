@@ -75,7 +75,7 @@ remains orthogonal to the closed September operability program. Wave B closeout:
 | `I-2026-07-05-enrollment-integration-key-cycling` | Enrollment integration key cycling via auth-exchange hooks | `incubating` | `P3` | `auth-api`, `core`, `mobile`, `docs`, `crypto` | `2026-07-05` |
 | `I-2026-09-15-post-quantum-protocol-evolution` | Post-quantum evolution of the Ezkey protocol (umbrella; medium-term watch, #1165) | `incubating` | `P3` | `auth-api`, `core`, `mobile`, `sdk`, `docs`, `crypto`, `security` | `2026-11-03` |
 | `I-2026-0032` | Proof token hash-only storage (tiered hardening) | `incubating` | `P1` | `core`, `auth-api`, `admin-api`, `docs`, `crypto` | `2026-08-02` |
-| `I-2026-07-10-admin-recovery-codes-exhausted-label-ux` | Admin recovery codes: exhausted-set vs initial-issuance label UX | `captured` | `P3` | `admin-ui`, `admin-api`, `docs` | `2026-07-09` |
+| `I-2026-07-10-admin-recovery-codes-exhausted-label-ux` | Admin recovery codes: exhausted-set vs initial-issuance label UX | `done` | `P3` | `admin-ui`, `admin-api`, `docs` | `2026-11-06` |
 | `I-2026-07-11-api-key-expires-at-edit` | API key PATCH: edit or clear `expiresAt` | `captured` | `P2` | `admin-api`, `admin-ui`, `core`, `docs` | `2026-07-11` |
 | `I-2026-07-11-java-doctor-curated-hygiene` | Java doctor-curated continuous hygiene (SpotBugs + Semgrep + narrow PMD) | `ready` | `P3` | `core`, `admin-api`, `auth-api`, `integration-api`, `docs`, `tooling` | `2026-07-11` |
 | `I-2026-07-11-mobile-doctor-curated-hygiene` | Mobile doctor-curated continuous hygiene (react-doctor + Semgrep + Detekt) | `ready` | `P3` | `mobile`, `android`, `docs`, `tooling` | `2026-08-25` |

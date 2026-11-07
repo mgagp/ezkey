@@ -75,7 +75,9 @@ import java.time.OffsetDateTime;
  * @param lifecycleStatus Explicit lifecycle status (PENDING_ACTIVATION, ACTIVE, DEACTIVATED)
  * @param createdAt Timestamp when the administrator was created (with timezone)
  * @param lastLoginAt Timestamp of last successful login (null if never logged in)
- * @param hasRecoveryCodes Whether a recovery-code set currently exists for this administrator
+ * @param hasRecoveryCodes Whether unused recovery codes currently remain for this administrator
+ * @param recoveryCodesExhausted Whether a recovery-code set was issued and every code in it has
+ *     since been used (false when unused codes remain or when no set was ever issued)
  * @param operational Whether this administrator is fully operational (active and, for tenant
  *     admins, tenant also active)
  * @author Ezkey contributors
@@ -142,10 +144,17 @@ public record AdminResponseDto(
             nullable = true)
         OffsetDateTime lastLoginAt,
     @Schema(
-            description =
-                "Whether this administrator currently has a recovery-code set stored server-side",
+            description = "Whether unused recovery codes currently remain for this administrator",
             example = "false")
         Boolean hasRecoveryCodes,
+    @Schema(
+            description =
+                "Whether a recovery-code set was issued for this administrator and every code in"
+                    + " it has since been used. False when unused codes remain or when no set was"
+                    + " ever issued. Distinguishes a replacement set from a first issuance when"
+                    + " hasRecoveryCodes is false.",
+            example = "false")
+        Boolean recoveryCodesExhausted,
     @Schema(
             description =
                 "Whether this administrator is fully operational (active and, for tenant admins,"

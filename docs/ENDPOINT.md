@@ -1530,6 +1530,7 @@ Authorization: Bearer ezkey_admin_token...
       "createdAt": "2025-12-26T10:00:00Z",
       "lastLoginAt": "2025-12-28T09:15:00Z",
       "hasRecoveryCodes": true,
+      "recoveryCodesExhausted": false,
       "operational": true
     }
   ],
@@ -1542,7 +1543,7 @@ Authorization: Bearer ezkey_admin_token...
 }
 ```
 
-**Response fields:** `tenantName` is the display name of the tenant (`ezkey_tenant.tenant_name`) when `tenantId` is set; it is `null` for global administrators. `enrollmentId` is the MFA enrollment linked to this administrator (passwordless identity); null if not linked. `lastLoginAt` is the timestamp of the administrator's last successful login (null if never logged in). `operational` summarizes whether the admin account and (for tenant-scoped admins) the tenant are in an operable state for login. Useful for access reviews.
+**Response fields:** `tenantName` is the display name of the tenant (`ezkey_tenant.tenant_name`) when `tenantId` is set; it is `null` for global administrators. `enrollmentId` is the MFA enrollment linked to this administrator (passwordless identity); null if not linked. `lastLoginAt` is the timestamp of the administrator's last successful login (null if never logged in). `hasRecoveryCodes` is true while at least one unused recovery code remains. `recoveryCodesExhausted` is true when a set was issued and every code has since been used; it lets clients word the next `issue-initial` call as a replacement set rather than a first issuance (#1244). `operational` summarizes whether the admin account and (for tenant-scoped admins) the tenant are in an operable state for login. Useful for access reviews.
 
 **Status Codes:**
 - 200: List of administrators retrieved successfully
@@ -1566,7 +1567,7 @@ GET /api/v1/admins/2
 Authorization: Bearer ezkey_admin_token...
 ```
 
-**Success Response (200 OK):** Same fields as a list item: `adminId`, `version`, `username`, `email`, `phoneNumber`, `firstName`, `lastName`, `adminType`, `tenantId`, `tenantName`, `enrollmentId`, `active`, `lifecycleStatus`, `createdAt`, `lastLoginAt`, `hasRecoveryCodes`, `operational`.
+**Success Response (200 OK):** Same fields as a list item: `adminId`, `version`, `username`, `email`, `phoneNumber`, `firstName`, `lastName`, `adminType`, `tenantId`, `tenantName`, `enrollmentId`, `active`, `lifecycleStatus`, `createdAt`, `lastLoginAt`, `hasRecoveryCodes`, `recoveryCodesExhausted`, `operational`.
 
 **Status Codes:**
 - 200: Administrator retrieved successfully
