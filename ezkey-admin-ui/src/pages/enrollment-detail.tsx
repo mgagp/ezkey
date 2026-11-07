@@ -852,118 +852,106 @@ export default function EnrollmentDetailPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>{t('detail.cryptoCardTitle')}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <InfoRow label={t('detail.infoIntegrationPublicKey')}>
-                  <span className="font-mono text-xs break-all text-fg-muted max-h-28 overflow-y-auto block">
-                    {enrollment.integrationPublicKey ?? '—'}
-                  </span>
-                </InfoRow>
-                <InfoRow label={t('detail.infoDevicePublicKey')}>
-                  <span className="font-mono text-xs break-all text-fg-muted max-h-28 overflow-y-auto block">
-                    {enrollment.devicePublicKey ?? '—'}
-                  </span>
-                </InfoRow>
-              </CardContent>
-            </Card>
             </div>
 
             {/* Token + QR + Danger */}
             <div className="space-y-4">
-              {(
-                (enrollment.enrollmentProofToken != null && enrollment.enrollmentProofToken !== '') ||
-                enrollment.enrollmentStatus === 'CREATED' ||
-                enrollment.enrollmentStatus === 'BOUND'
-              ) && (
+              {(enrollment.enrollmentStatus === 'CREATED' || enrollment.enrollmentStatus === 'BOUND') && (
                 <IntegratedDeliveryNotice summary={t('common:integratedDelivery.summary')}>
                   {t('detail.credentialsPreviewNotice')}
                 </IntegratedDeliveryNotice>
               )}
 
-              {/* Proof Token */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>
-                    <Tooltip content={t('detail.help.proofToken')}>
-                      <span>{t('detail.enrollmentToken')}</span>
-                    </Tooltip>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <p className="text-xs text-fg-muted">
-                    {t('detail.tokenHint')}
-                  </p>
-                  {enrollment.enrollmentProofToken ? (
-                    <>
-                      <div className="border-2 border-fg p-3 font-mono text-xs break-all bg-bg leading-relaxed">
-                        {tokenVisible ? enrollment.enrollmentProofToken : '•'.repeat(20) + ' …'}
-                      </div>
-                      <div className="flex gap-2 flex-wrap">
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => setTokenVisible(!tokenVisible)}
-                          className="gap-1.5"
-                        >
-                          {tokenVisible ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-                          {tokenVisible ? t('detail.hide') : t('detail.reveal')}
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={handleCopyToken}
-                          className="gap-1.5"
-                        >
-                          {tokenCopied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
-                          {tokenCopied ? t('detail.copied') : t('detail.copy')}
-                        </Button>
-                      </div>
-                      {enrollment.enrollmentChallenge != null && (
-                        <div className="border-2 border-fg/30 p-3 bg-bg">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted mb-1">
-                            <Tooltip content={t('detail.help.bindingChallengeCode')}>
-                              <span>{t('create.bindingChallengeCode')}</span>
-                            </Tooltip>
-                          </p>
-                          <p className="font-mono text-2xl font-black tracking-widest">
-                            {enrollment.enrollmentChallenge}
-                          </p>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <Alert variant="info">{t('detail.tokenNotAvailable')}</Alert>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* QR Code */}
-              <Card>
-                <CardHeader><CardTitle>{t('detail.qrCode')}</CardTitle></CardHeader>
-                <CardContent className="space-y-3">
-                  <p className="text-xs text-fg-muted">
-                    {t('detail.qrCodeHint')}
-                  </p>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    isLoading={qrLoading}
-                    onClick={handleToggleQr}
-                    className="gap-1.5"
-                  >
-                    <QrCode className="size-3.5" />
-                    {qrCodeUrl ? t('create.hideQrCode') : t('create.showQrCode')}
-                  </Button>
-                  {qrCodeUrl && (
-                    <div className="border-2 border-fg p-3 inline-block">
-                      <img src={qrCodeUrl} alt="Enrollment QR Code" className="size-48" />
+              {/* Proof token: API returns it only while CREATED (#1180) */}
+              {enrollment.enrollmentProofToken && (
+                <Card data-testid="enrollment-token-card">
+                  <CardHeader>
+                    <CardTitle>
+                      <Tooltip content={t('detail.help.proofToken')}>
+                        <span>{t('detail.enrollmentToken')}</span>
+                      </Tooltip>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-xs text-fg-muted">
+                      {t('detail.tokenHint')}
+                    </p>
+                    <div className="border-2 border-fg p-3 font-mono text-xs break-all bg-bg leading-relaxed">
+                      {tokenVisible ? enrollment.enrollmentProofToken : '•'.repeat(20) + ' …'}
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+                    <div className="flex gap-2 flex-wrap">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setTokenVisible(!tokenVisible)}
+                        className="gap-1.5"
+                      >
+                        {tokenVisible ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                        {tokenVisible ? t('detail.hide') : t('detail.reveal')}
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={handleCopyToken}
+                        className="gap-1.5"
+                      >
+                        {tokenCopied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
+                        {tokenCopied ? t('detail.copied') : t('detail.copy')}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Binding code: API returns it while CREATED or BOUND (#1180) */}
+              {enrollment.enrollmentChallenge != null && (
+                <Card data-testid="enrollment-challenge-card">
+                  <CardHeader>
+                    <CardTitle>
+                      <Tooltip content={t('detail.help.bindingChallengeCode')}>
+                        <span>{t('create.bindingChallengeCode')}</span>
+                      </Tooltip>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {enrollment.enrollmentStatus === 'BOUND' && (
+                      <Alert variant="warning" data-testid="enrollment-bound-warning">
+                        {t('detail.boundChallengeWarning')}
+                      </Alert>
+                    )}
+                    <p className="font-mono text-2xl font-black tracking-widest" data-testid="enrollment-challenge-code">
+                      {enrollment.enrollmentChallenge}
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* QR holds the proof token, so it follows the same rule (#1180) */}
+              {enrollment.enrollmentStatus === 'CREATED' && (
+                <Card data-testid="enrollment-qr-card">
+                  <CardHeader><CardTitle>{t('detail.qrCode')}</CardTitle></CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-xs text-fg-muted">
+                      {t('detail.qrCodeHint')}
+                    </p>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      isLoading={qrLoading}
+                      onClick={handleToggleQr}
+                      className="gap-1.5"
+                    >
+                      <QrCode className="size-3.5" />
+                      {qrCodeUrl ? t('create.hideQrCode') : t('create.showQrCode')}
+                    </Button>
+                    {qrCodeUrl && (
+                      <div className="border-2 border-fg p-3 inline-block">
+                        <img src={qrCodeUrl} alt="Enrollment QR Code" className="size-48" />
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Danger Zone */}
               <Card className="border-error">

@@ -54,14 +54,9 @@ script:post-response {
           expect(jsonData.timeoutReached).to.be.a('boolean');
       });
   
-      if (jsonData.status === 'ACCEPTED') {
-          test("Accepted attempt has proof token", function () {
-              expect(jsonData.authAttempt).to.have.property('authAttemptProofToken');
-              expect(jsonData.authAttempt.authAttemptProofToken).to.not.be.null;
-          });
-          bru.setEnvVar("authAttemptProofToken", jsonData.authAttempt.authAttemptProofToken);
-          console.log('Auth ACCEPTED - proof token saved');
-      }
+      test("Proof token is not part of the integration contract (#1180)", function () {
+          expect(jsonData.authAttempt).to.not.have.property('authAttemptProofToken');
+      });
   
       console.log('Status:', jsonData.status, '| Completed:', jsonData.completed, '| TimeoutReached:', jsonData.timeoutReached, '| WaitDuration:', jsonData.waitDuration + 's');
   }
@@ -88,7 +83,7 @@ docs {
   The blocking wait parks a virtual thread — no platform thread is held. This allows many concurrent wait calls at minimal resource cost.
   
   **Response (200 OK — device responded):**
-  - `authAttempt`: Full auth attempt state (includes `authAttemptProofToken` when ACCEPTED)
+  - `authAttempt`: Full auth attempt state (never the proof token, which only the device receives)
   - `status`: Calculated status — `PENDING`, `READ`, `INVALID`, `REJECTED`, `ACCEPTED`, `EXPIRED`
   - `completed`: `true` when device has responded (ACCEPTED / REJECTED / INVALID)
   - `timeoutReached`: `false`

@@ -99,7 +99,6 @@ class AuthAttemptDetailScreen(Screen):
     content.append(f"Enrollment ID: {data.get('enrollmentId', 'N/A')}")
     content.append(f"Status: {data.get('authAttemptStatus', 'N/A')}")
     content.append(f"Challenge: {data.get('authAttemptChallenge', 'N/A')}")
-    content.append(f"Proof Token: {data.get('authAttemptProofToken', 'N/A')}")
     content.append(f"Created At: {data.get('createdAt', 'N/A')}")
     content.append(f"Expires At: {data.get('expiresAt', 'N/A')}")
 

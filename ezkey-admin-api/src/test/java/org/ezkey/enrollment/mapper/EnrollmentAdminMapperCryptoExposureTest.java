@@ -28,8 +28,9 @@ import org.mapstruct.factory.Mappers;
  * (GET and search by enrollment) in each {@link EnrollmentStatus} (#1180).
  *
  * <p>Both GET and search go through {@link EnrollmentAdminMapper#toResponse(Enrollment)}, so this
- * mapper is the single exposure point for the Admin UI enrollment detail and list. Rule: the bind
- * secrets (proof token, challenge) are returned only while {@code CREATED}; public keys never.
+ * mapper is the single exposure point for the Admin UI enrollment detail and list. Rule: the proof
+ * token is returned only while {@code CREATED}, the challenge only while {@code CREATED} or {@code
+ * BOUND}; public keys never.
  *
  * @author Ezkey contributors
  * @since 2026
@@ -68,10 +69,24 @@ class EnrollmentAdminMapperCryptoExposureTest {
     assertThat(dto.enrollmentChallenge()).isEqualTo(CHALLENGE);
   }
 
+  @Test
+  @DisplayName("BOUND withholds the proof token but keeps the challenge for the verify step")
+  void boundKeepsChallengeOnly() {
+    EnrollmentResponseDto dto =
+        mapper.toResponseWithIntegrationAndAdminUsernames(
+            enrollmentIn(EnrollmentStatus.BOUND), null, Map.of());
+
+    assertThat(dto.enrollmentProofToken()).isNull();
+    assertThat(dto.enrollmentChallenge()).isEqualTo(CHALLENGE);
+  }
+
   @ParameterizedTest(name = "{0}")
-  @EnumSource(value = EnrollmentStatus.class, names = "CREATED", mode = EnumSource.Mode.EXCLUDE)
-  @DisplayName("every state after CREATED withholds the proof token and challenge")
-  void afterCreatedWithholdsBindSecrets(EnrollmentStatus status) {
+  @EnumSource(
+      value = EnrollmentStatus.class,
+      names = {"CREATED", "BOUND"},
+      mode = EnumSource.Mode.EXCLUDE)
+  @DisplayName("every state after BOUND withholds the proof token and challenge")
+  void afterBoundWithholdsBindSecrets(EnrollmentStatus status) {
     EnrollmentResponseDto dto =
         mapper.toResponseWithIntegrationAndAdminUsernames(enrollmentIn(status), null, Map.of());
 

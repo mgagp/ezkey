@@ -49,9 +49,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * </ul>
  *
  * <p><b>Security Note:</b> This DTO carries only the crypto material an operator needs (#1180). The
- * enrollment proof token and challenge are returned only while the enrollment is {@code CREATED}
- * (QR / manual bind channel); integration and device public keys, and all private keys, are never
- * returned. The Auth API verifies device signatures from the stored entity, not from this DTO.
+ * enrollment proof token is returned only while the enrollment is {@code CREATED} (QR / manual bind
+ * channel) and the challenge only while {@code CREATED} or {@code BOUND} (verify follows bind);
+ * integration and device public keys, and all private keys, are never returned. The Auth API
+ * verifies device signatures from the stored entity, not from this DTO.
  *
  * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *
@@ -62,7 +63,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * @param enrollmentName Human-readable name for the enrollment (e.g., "John's iPhone")
  * @param enrollmentStatus Enrollment lifecycle status (CREATED, BOUND, VERIFIED, INVALID)
  * @param enrollmentActive Flag indicating if the enrollment is currently active
- * @param enrollmentChallenge Challenge value for enrollment verification; null unless CREATED
+ * @param enrollmentChallenge Challenge value for enrollment verification; null unless CREATED or
+ *     BOUND
  * @param enrollmentProofToken Bind secret for the QR / manual channel; null unless CREATED
  * @param authAttemptChallengeRequired Flag indicating if authentication attempts require challenge
  * @param verifiedAt When enrollment was verified (device completed binding)
@@ -112,7 +114,7 @@ public record EnrollmentResponseDto(
     @Schema(
             description =
                 "Challenge value for enrollment verification; returned only while the enrollment"
-                    + " is CREATED, null otherwise",
+                    + " is CREATED or BOUND, null otherwise",
             example = "123456")
         Integer enrollmentChallenge,
     @Schema(

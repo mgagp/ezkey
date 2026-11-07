@@ -42,8 +42,7 @@
     "labelTenant": "Tenant",
     "labelChallenge": "Défi",
     "labelCreated": "Créé",
-    "labelExpires": "Expire",
-    "labelProofToken": "Jeton de preuve"
+    "labelExpires": "Expire"
   },
   "status": {
     "labelPending": "En attente",

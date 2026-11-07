@@ -87,7 +87,8 @@ public interface EnrollmentAdminMapper {
    */
   @Mapping(source = "status", target = "enrollmentStatus")
   @Mapping(source = "active", target = "enrollmentActive")
-  // #1180: bind secrets only while CREATED (QR / manual channel); never decrypted otherwise.
+  // #1180: proof token only while CREATED (QR / manual channel); challenge while CREATED or BOUND,
+  // because verify runs after bind and the operator may still have to give the code.
   @Mapping(
       target = "enrollmentProofToken",
       expression =
@@ -97,6 +98,7 @@ public interface EnrollmentAdminMapper {
       target = "enrollmentChallenge",
       expression =
           "java(EnrollmentStatus.CREATED.equals(entity.getStatus())"
+              + " || EnrollmentStatus.BOUND.equals(entity.getStatus())"
               + " ? entity.getEnrollmentChallenge() : null)")
   @Mapping(target = "integrationName", ignore = true)
   @Mapping(target = "tenantId", ignore = true)

@@ -744,7 +744,8 @@ public class EnrollmentController {
       summary = "Generate QR code for enrollment",
       description =
           "Returns a PNG QR code image containing enrollment credentials as JSON"
-              + " ({enrollmentId, enrollmentProofToken, authUrl})")
+              + " ({enrollmentId, enrollmentProofToken, authUrl}). Only while the enrollment is"
+              + " CREATED; 409 otherwise")
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "200", description = "QR code generated successfully"),
@@ -752,6 +753,7 @@ public class EnrollmentController {
         @ApiResponse(
             responseCode = "404",
             description = "Enrollment not found or not visible to this admin"),
+        @ApiResponse(responseCode = "409", description = "Enrollment is not CREATED"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
   @PreAuthorize("hasRole('ADMIN')")
@@ -767,6 +769,11 @@ public class EnrollmentController {
       }
 
       var enrollment = enrollmentService.getById(id);
+
+      // #1180: the QR encodes the proof token, so it follows the same rule as the JSON GET.
+      if (enrollment.getStatus() != EnrollmentStatus.CREATED) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).build();
+      }
 
       // Validate enrollment has proof token
       if (enrollment.getEnrollmentProofToken() == null
