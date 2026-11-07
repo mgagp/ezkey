@@ -38,6 +38,7 @@ HITL shape. See root [`AGENTS.md`](../../AGENTS.md) for keywords.
 | [`mobile-doctor/`](mobile-doctor/) | `mobile-doctor-curated` | Ezkey Mobile static-analysis curated passes |
 | [`dependabot/`](dependabot/) | `dependabot-curated` | Near-continuous Dependabot triage (weekday light + Monday full), Orval O0–O3 grid, Java BOM / Mobile RN pulses |
 | [`major-upgrades/`](major-upgrades/) | (quarterly in `dependabot-curated` + monthly GHA) | Platform / runtime / base-image major-upgrade register (`registry.yaml`); light path vs dedicated issue; monthly [`endoflife-check.yml`](../../../.github/workflows/endoflife-check.yml) |
+| [`stabilization-lessons/`](stabilization-lessons/) | (read before HA, startup, exposure or test-helper work) | Lessons from the #1180 / #1259 stabilization, with evidence and checks |
 | [`security-pentest/`](security-pentest/) | `security-pentest-curated` | Live API / DAST-style security campaigns |
 | [`code-scanning/`](code-scanning/) | (CodeQL SAST triage) | GitHub CodeQL / code-scanning alert triage and advanced-setup config decisions; policy in `docs/SECURITY_POSTURE.md` |
 | [`javamelody/`](javamelody/) | `javamelody-curated` | Live JavaMelody extract after a known workload (typically operational churn) |
