@@ -1,9 +1,9 @@
 vars {
-  base_url: 
-  base_url_crypto_api: 
-  base_url_admin_api: 
-  base_url_integration_api: 
-  base_url_integration_api_mgmt: 
+  base_url: http://localhost:8080
+  base_url_crypto_api: http://localhost:9090
+  base_url_admin_api: http://localhost:9080
+  base_url_integration_api: http://localhost:7080
+  base_url_integration_api_mgmt: http://localhost:7081
   application_id: 
   pair_id: 
   pair_challengeForDevice: 
