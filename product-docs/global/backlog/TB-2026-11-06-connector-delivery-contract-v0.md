@@ -226,6 +226,15 @@ credential, mock scenarios and log canary. The `connectors` CI job is path-filte
 pull requests and nightly, not on the post-merge push. Tests tagged `connector-mock` stay out of the default suite, while
 the no-connector test joins it and skips itself when a connector is usable.
 
+**Daily caps in test (Marc, 2026-11-06):** the `docker-test` profile makes them effectively off, like its rate limits, so a
+default clean start has no surprise limit. The mock overlay sets a low tenant cap, so the refusal stays tested.
+
+## What step 5 added (2026-11-08)
+
+- **`contactEmail` at `CREATED`:** `PATCH /api/v1/enrollments/{id}` accepts that field alone, or its clear, while
+  `CREATED`. Other fields still need an active `VERIFIED` enrollment. A `CREATED` enrollment is inactive until verify, so
+  the active flag gates `VERIFIED` only. The Admin UI offers "Edit contact email" at `CREATED`.
+
 ## Configuration guidance
 
 Best practices for configuring a connector are collected in

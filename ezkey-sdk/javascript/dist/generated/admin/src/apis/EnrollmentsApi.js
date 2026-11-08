@@ -430,7 +430,7 @@ class EnrollmentsApi extends runtime.BaseAPI {
         return await response.value();
     }
     /**
-     * Updates enrollment metadata (name, contactEmail, expiresAt, authAttemptChallengeRequired, userIdentifier). Only active VERIFIED enrollments. Include version from GET for optimistic locking.
+     * Updates enrollment metadata (name, contactEmail, expiresAt, authAttemptChallengeRequired, userIdentifier). Only active VERIFIED enrollments, or contactEmail alone while CREATED. Include version from GET for optimistic locking.
      * Partially update enrollment metadata
      */
     async updateRaw(requestParameters, initOverrides) {
@@ -460,7 +460,7 @@ class EnrollmentsApi extends runtime.BaseAPI {
         return new runtime.JSONApiResponse(response);
     }
     /**
-     * Updates enrollment metadata (name, contactEmail, expiresAt, authAttemptChallengeRequired, userIdentifier). Only active VERIFIED enrollments. Include version from GET for optimistic locking.
+     * Updates enrollment metadata (name, contactEmail, expiresAt, authAttemptChallengeRequired, userIdentifier). Only active VERIFIED enrollments, or contactEmail alone while CREATED. Include version from GET for optimistic locking.
      * Partially update enrollment metadata
      */
     async update(requestParameters, initOverrides) {

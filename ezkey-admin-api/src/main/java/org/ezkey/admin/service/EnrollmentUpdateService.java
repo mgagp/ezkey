@@ -35,12 +35,13 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>Implements PATCH semantics for enrollment metadata: enrollmentName, contactEmail, expiresAt,
  * authAttemptChallengeRequired, userIdentifier. Only active, non-revoked VERIFIED enrollments can
- * be updated.
+ * be updated, except contactEmail, which can also change while CREATED (#1206 step 5).
  *
  * <p><b>Constraints:</b>
  *
  * <ul>
- *   <li>Enrollment must be VERIFIED and active (not revoked, not deactivated)
+ *   <li>Enrollment must be VERIFIED and active (not revoked, not deactivated), or CREATED and
+ *       active for a request that touches contactEmail only
  *   <li>enrollmentName: must be unique per (integration_id, name) for VERIFIED status
  *   <li>expiresAt: must be in the future if provided; null = no expiration
  * </ul>
@@ -82,7 +83,8 @@ public class EnrollmentUpdateService {
   /**
    * Partially updates an enrollment's metadata.
    *
-   * <p>Only non-null fields in the request are applied. The enrollment must be VERIFIED and active.
+   * <p>Only non-null fields in the request are applied. The enrollment must be VERIFIED and active,
+   * or CREATED and not revoked when the request touches contactEmail only.
    *
    * @param enrollmentId the enrollment ID to update
    * @param request the partial update request
@@ -100,14 +102,23 @@ public class EnrollmentUpdateService {
             .findById(enrollmentId)
             .orElseThrow(() -> new ResourceNotFoundException("Enrollment", enrollmentId));
 
-    // Only active, non-revoked VERIFIED enrollments can be updated
-    if (enrollment.getStatus() != EnrollmentStatus.VERIFIED) {
+    // Active, non-revoked VERIFIED enrollments can be updated. At CREATED, only contactEmail can
+    // change, so an invitation can get an address before a send (#1206 step 5).
+    if (enrollment.getStatus() == EnrollmentStatus.CREATED) {
+      if (touchesMoreThanContactEmail(request)) {
+        throw new IllegalArgumentException(
+            "Enrollment cannot be updated: status is CREATED, and only contactEmail can change"
+                + " before the device binds.");
+      }
+    } else if (enrollment.getStatus() != EnrollmentStatus.VERIFIED) {
       throw new IllegalArgumentException(
           "Enrollment cannot be updated: status is "
               + enrollment.getStatus()
-              + ". Only VERIFIED enrollments can be updated.");
+              + ". Only VERIFIED enrollments can be updated, or contactEmail while CREATED.");
     }
-    if (!Boolean.TRUE.equals(enrollment.getActive())) {
+    // A CREATED enrollment is inactive until verify by design, so the flag only gates VERIFIED.
+    if (enrollment.getStatus() == EnrollmentStatus.VERIFIED
+        && !Boolean.TRUE.equals(enrollment.getActive())) {
       throw new IllegalArgumentException(
           "Enrollment cannot be updated: enrollment is inactive. Reactivate before updating.");
     }
@@ -270,6 +281,15 @@ public class EnrollmentUpdateService {
 
     builder.custom("changes", changes);
     return builder.toJson();
+  }
+
+  private static boolean touchesMoreThanContactEmail(EnrollmentUpdateRequestDto request) {
+    return request.enrollmentName() != null
+        || request.contactPhoneNumber() != null
+        || request.expiresAt() != null
+        || Boolean.TRUE.equals(request.clearExpiresAt())
+        || request.authAttemptChallengeRequired() != null
+        || request.userIdentifier() != null;
   }
 
   private static boolean isValidContactEmail(String email) {

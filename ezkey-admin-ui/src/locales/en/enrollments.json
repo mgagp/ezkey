@@ -134,6 +134,8 @@
     "infoRevoked": "Revoked",
     "infoByAdmin": "(admin {{id}})",
     "editMetadata": "Edit metadata",
+    "editContactEmailOnly": "Edit contact email",
+    "editContactEmailOnlyHint": "Before the device binds, only the contact email can change. If an invitation already went to a wrong address, revoke this enrollment and create a new one.",
     "viewRelatedAudits": "View related audits",
     "editDialogTitle": "Edit enrollment metadata",
     "editSave": "Save changes",

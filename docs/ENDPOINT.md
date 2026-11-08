@@ -1788,6 +1788,8 @@ Says whether the send action can be offered. Reads the connector's health with a
 
 Partially updates enrollment metadata. Only non-null fields in the request body are applied. Supports `enrollmentName`, `contactEmail`, `expiresAt`, `authAttemptChallengeRequired`, `userIdentifier`, `clearContactEmail`, and `clearExpiresAt`. Only active, non-revoked VERIFIED enrollments can be updated. Include `version` from the GET response for optimistic locking.
 
+**Which enrollments:** an active `VERIFIED` enrollment accepts every field. A `CREATED` enrollment, which stays inactive until verify, accepts **`contactEmail` or `clearContactEmail` only**, so an invitation can get an address before a send (#1206 step 5). Any other field at `CREATED` returns **400**, and every other status returns **400**. If an invitation already went to a wrong address, revoke the enrollment and create a new one.
+
 Omitted fields are left unchanged. Sending `null` for optional fields does **not** clear them. To clear optional `contactEmail` or `expiresAt`, set **`clearContactEmail`: true** or **`clearExpiresAt`: true** respectively (or send an empty `contactEmail` after trim to clear email). When `clearContactEmail` is true, any `contactEmail` value in the same request is ignored for the stored value. If `expiresAt` is non-null in the same request, it wins and **`clearExpiresAt` is ignored**.
 
 **Semantics — `expiresAt`:** This field governs the **pending invitation window** (creation → bind → verify). It is **not** a post-verification “MFA valid until” lifetime for the whole enrollment; after `VERIFIED`, ongoing authentication does not use this field as an automatic cutoff (a separate product concept may be introduced later).

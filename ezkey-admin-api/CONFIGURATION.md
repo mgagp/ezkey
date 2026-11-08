@@ -372,6 +372,8 @@ only; ignore/close relies on this scheduler. See `docs/ENDPOINT.md` and
 | `tenant-daily-cap` | `50` | optionnel | Sends per tenant per UTC day. Counts `accepted` and `unknown` |
 | `instance-daily-cap` | `200` | optionnel | Sends for the instance per UTC day. Counts `accepted` and `unknown` |
 
+The `docker-test` profile, used by a default clean start, sets both caps to `1000000`, in line with its disabled rate limits.
+
 ---
 
 ## Shared Properties (ezkey-core)

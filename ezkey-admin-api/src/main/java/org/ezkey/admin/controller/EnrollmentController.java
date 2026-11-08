@@ -315,8 +315,8 @@ public class EnrollmentController {
    *
    * <p>Only non-null fields in the request body are applied. Supports enrollmentName, contactEmail,
    * expiresAt, authAttemptChallengeRequired, userIdentifier. Only active, non-revoked VERIFIED
-   * enrollments can be updated. Include {@code version} from the GET response for optimistic
-   * locking.
+   * enrollments can be updated; while CREATED, only contactEmail can change. Include {@code
+   * version} from the GET response for optimistic locking.
    *
    * @param id the enrollment ID to update
    * @param request the partial update request
@@ -327,8 +327,9 @@ public class EnrollmentController {
       summary = "Partially update enrollment metadata",
       description =
           "Updates enrollment metadata (name, contactEmail, expiresAt,"
-              + " authAttemptChallengeRequired, userIdentifier). Only active VERIFIED enrollments."
-              + " Include version from GET for optimistic locking.")
+              + " authAttemptChallengeRequired, userIdentifier). Only active VERIFIED enrollments,"
+              + " or contactEmail alone while CREATED. Include version from GET for optimistic"
+              + " locking.")
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "200", description = "Enrollment updated successfully"),

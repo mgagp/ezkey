@@ -238,6 +238,7 @@ Living status enum values also include terminal / failure paths such as `EXPIRED
 | Action | Allowed | Reversible | Reason | Effect |
 |--------|---------|------------|--------|--------|
 | Create | Yes | — | — | Initiates credential binding |
+| Edit metadata | Yes (VERIFIED + active: every field; CREATED: `contactEmail` only) | Yes | — | Audited as `ENROLLMENT_UPDATED` with previous and new values |
 | Deactivate | Yes (VERIFIED + active only) | Yes | Optional | Blocks authentication |
 | Reactivate | Yes (VERIFIED + inactive only) | Yes | Optional | Restores authentication |
 | Revoke | Yes (any state except already REVOKED, including CREATED and BOUND) | No | Required | Permanently invalidates credential |
@@ -254,6 +255,7 @@ This is the most important operational distinction in Ezkey:
 
 **Guardrails and rationale:**
 
+- **Only the contact email changes before bind.** An invitation may need an address before it is sent by email (#1206 step 5). Name, phone, identifier, challenge and expiry keep the `VERIFIED`-only rule. After an email went to a wrong address, the QR has left: revoke and recreate rather than correct and resend.
 - **No delete with authentication history.** If an enrollment was ever used for authentication, its record is part of the audit trail. Deleting it would create gaps in the security log. Delete is reserved for cleanup of test, mistaken, or never-used enrollments.
 - **No delete of admin MFA enrollments.** An admin's MFA enrollment is a critical security binding. Deleting it directly would bypass the admin lifecycle — if an admin's credential needs to be invalidated, revoke it through the normal revocation flow.
 - **Reason required for revoke and delete.** Both are irreversible and security-significant. The reason documents the real-world event that triggered the action.
