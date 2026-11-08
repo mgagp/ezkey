@@ -235,6 +235,16 @@ default clean start has no surprise limit. The mock overlay sets a low tenant ca
   `CREATED`. Other fields still need an active `VERIFIED` enrollment. A `CREATED` enrollment is inactive until verify, so
   the active flag gates `VERIFIED` only. The Admin UI offers "Edit contact email" at `CREATED`.
 
+- **SMTP connector (`ezkey-connector-smtp`):** fixed `en` and `fr` templates with the four required elements, the QR
+  inline as `cid:enrollment-qr`, and the organisation name escaped in HTML and refused with control characters. STARTTLS
+  is required by default. Plain SMTP needs an explicit private-network declaration, like the core's `http://` rule.
+  Its daily cap lives in memory (decision with Marc, 2026-11-08): it bounds a stolen token and restarts with the
+  connector. Only a sure non-delivery is a rejection; any other provider failure is an unknown outcome.
+- **Mailpit** (`docker-compose.connector-smtp.yml`) catches every email locally. The scenario script reads it back.
+- **Admin UI:** "Send by email" sits in the QR card of a `CREATED` enrollment when a connector is usable. It names the
+  recipient and the language, shows a test-mode badge for the mock, says what comes next after a send, and keeps the
+  QR on screen when the send fails.
+
 ## Configuration guidance
 
 Best practices for configuring a connector are collected in

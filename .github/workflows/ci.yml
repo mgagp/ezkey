@@ -158,6 +158,7 @@ jobs:
               - 'ezkey-admin-api/src/main/java/org/ezkey/admin/config/AdminOpenInViewConfig.java'
               - 'ezkey-tests/src/test/java/org/ezkey/tests/connector/**'
               - 'docker/docker-compose.connector-mock.yml'
+              - 'docker/docker-compose.connector-smtp.yml'
               - 'scripts/ci-connector-scenarios.sh'
 
       # Manual and nightly runs must exercise every suite; path filters alone would
@@ -607,6 +608,10 @@ jobs:
 
       - name: Mock connector unit tests
         working-directory: ezkey-connectors/ezkey-connector-mock
+        run: mvn -B test
+
+      - name: SMTP connector unit tests
+        working-directory: ezkey-connectors/ezkey-connector-smtp
         run: mvn -B test
 
       - name: Delivery scenarios and log canary
