@@ -44,6 +44,51 @@ The recipient's local part picks the scenario, so the mock keeps no state:
 | `mock-unreadable@…` | `200` outside the contract |
 | `mock-slow@…` | Waits, then `200 accepted` |
 
+## SMTP connector
+
+[`ezkey-connector-smtp`](ezkey-connector-smtp/) sends the enrollment QR by email (#1206 step 5). It owns fixed templates
+in English and French, attaches the QR inline (`cid:`), and never sends the challenge. Outside the root Maven reactor,
+like the mock.
+
+```bash
+cd ezkey-connector-smtp
+mvn test    # uses an in-JVM SMTP server (GreenMail)
+```
+
+| Setting | Default | Meaning |
+|---------|---------|---------|
+| `EZKEY_CONNECTOR_SMTP_TOKEN` | *(none)* | Required bearer token |
+| `EZKEY_CONNECTOR_SMTP_NEXT_TOKEN` | *(none)* | Second token accepted during a rotation |
+| `EZKEY_CONNECTOR_SMTP_PORT` | `8091` | HTTP port |
+| `EZKEY_CONNECTOR_SMTP_HOST` | *(none)* | SMTP host. Without it, or without a sender, health says `degraded` |
+| `EZKEY_CONNECTOR_SMTP_SMTP_PORT` | `587` | SMTP port |
+| `EZKEY_CONNECTOR_SMTP_USERNAME`, `EZKEY_CONNECTOR_SMTP_PASSWORD` | *(none)* | SMTP credentials; no authentication when the user is empty |
+| `EZKEY_CONNECTOR_SMTP_FROM_ADDRESS`, `EZKEY_CONNECTOR_SMTP_FROM_NAME` | *(none)*, `Ezkey` | Sender |
+| `EZKEY_CONNECTOR_SMTP_SECURITY` | `starttls` | `starttls` (required), `tls` (implicit), or `plain` |
+| `EZKEY_CONNECTOR_SMTP_PLAIN_PRIVATE_NETWORK` | `false` | Must be `true` for `plain`, or the connector refuses to start |
+| `EZKEY_CONNECTOR_SMTP_PROVIDER_TIMEOUT_SECONDS` | `15` | Connect, read and write timeout towards the provider |
+| `EZKEY_CONNECTOR_SMTP_DAILY_CAP` | `100` | Sends per UTC day that may reach the provider |
+
+- **Daily cap:** counts sends that reached the provider, including unknown outcomes. It lives in memory and restarts at
+  zero with the connector: a bound against a stolen token, not the main protection, which stays the core's caps.
+- **Outcomes:** a refused connection or an unknown host is `provider-unavailable` (the email did not leave), a refused
+  recipient is `recipient-refused`, a read timeout is `provider-timeout`, and anything else is an unknown outcome
+  (`500`), since the email may have left.
+
+### Trying it locally with Mailpit
+
+```bash
+cd docker
+docker compose -f docker-compose.yml -f docker-compose.docker-dev.yml -f docker-compose.with-proxy.yml \
+  -f docker-compose.connector-smtp.yml up -d --build --no-deps --wait mailpit connector-smtp admin-api
+```
+
+Run it after a clean start. Every email lands in Mailpit, at <http://localhost:8025>. The QR and the email name
+`localhost:8080`, which suits an app on the host such as the iOS simulator. The Demo Device runs inside Docker and
+cannot reach that address: after importing the QR from the email, clear the Auth API it proposes so it keeps its
+configured one. The Admin UI then offers "Send by
+email" on an enrollment at `CREATED` that has a contact email.
+
 ## Replaying the scenarios
 
 `scripts/ci-connector-scenarios.sh` does this with no human, and the `connectors` CI job runs it:
@@ -53,6 +98,14 @@ The recipient's local part picks the scenario, so the mock keeps no state:
 3. **Mock connector** on the private Docker network (`docker/docker-compose.connector-mock.yml`): every outcome, refusals,
    15 slow sends past the database pool size, the daily cap and the audit.
 4. **Log canary:** logs of every container hold no recipient, token, PNG signature, request body or long base64 block.
+5. **SMTP connector** with Mailpit (`docker/docker-compose.connector-smtp.yml`): a real send, read back from Mailpit's
+   API. The French wording, the expected server, no challenge, and the inline PNG equal to the on-screen QR.
+6. **Mail provider down:** Mailpit stopped, the send is `rejected` with `provider-unavailable`, and the QR stays on
+   screen.
+7. **Log canary** again, with the SMTP connector. Mailpit is left out: it plays the provider, which sees the recipient
+   by design.
+
+`--smtp-only` with `--skip-start` replays scenarios 5 to 7 on a running stack.
 
 It runs a clean start, which wipes the volumes of the Docker Compose project in use, and tears the stack down unless
 given `--keep-stack`. Container names are fixed, so stop any other Ezkey stack first. Set `COMPOSE_PROJECT_NAME` to keep

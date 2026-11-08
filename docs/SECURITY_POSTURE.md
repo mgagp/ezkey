@@ -116,6 +116,24 @@ meant to be linked from trust-facing material without inflating the top-level pi
   (for example enrollment private keys, proof tokens, API key material), not general PII
   confidentiality.
 
+### Sending the enrollment QR by email (#1206 step 5)
+
+Sending is optional. With no connector, the QR and the challenge stay on screen and Ezkey is complete.
+
+- **The proof token leaves Ezkey.** The QR encodes the enrollment proof token, a bearer secret until
+  bind. A send passes it to the delivery connector and then to the email provider, and it sits in the
+  person's mailbox. Whoever scans the QR first can bind, so the challenge stays out of the email and
+  goes through another channel, and an email sent to a wrong address means revoke and recreate.
+- **The provider is the operator's processor.** Choosing and contracting it, and what it keeps, belong
+  to the operator. Ezkey sends only the fixed template, the recipient, the organisation name, the
+  expected server and the QR.
+- **Controls:** the core sends only to the enrollment's `contactEmail`, only at `CREATED`, and caps
+  sends per tenant and per instance each day. The connector authenticates the core with its own token,
+  keeps its own daily cap against a stolen token, uses STARTTLS or TLS towards the provider by default,
+  and logs no recipient, token or QR (checked by a log canary in CI). Plain SMTP is refused unless a
+  private network is declared, which the local Mailpit setup does.
+- **Audit:** each send records the recipient, the outcome and the operator, never the QR or the token.
+
 ## What Ezkey does not do (current limits, stated honestly)
 
 - **It does not defend against a host-rooted adversary in-database.** Because the HMAC key lives on
