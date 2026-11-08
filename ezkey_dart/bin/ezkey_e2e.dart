@@ -520,9 +520,11 @@ class _Suite {
       server['enrollmentStatus'] == 'VERIFIED',
       'server status ${server['enrollmentStatus']}',
     );
+    // #1180: the Admin API no longer returns the device key. The signed pending and respond
+    // scenarios below prove the server holds the key this device generated.
     _expect(
-      server['devicePublicKey'] == enrollment.devicePublicKey,
-      'server device key differs',
+      !server.containsKey('devicePublicKey'),
+      'Admin API exposes devicePublicKey',
     );
     _expect(
       server['devicePrivateKeyStorageTier'] == 'NONE',
