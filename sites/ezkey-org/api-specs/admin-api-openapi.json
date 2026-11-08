@@ -3931,7 +3931,7 @@
           "Enrollments"
         ],
         "summary": "Partially update enrollment metadata",
-        "description": "Updates enrollment metadata (name, contactEmail, expiresAt, authAttemptChallengeRequired, userIdentifier). Only active VERIFIED enrollments. Include version from GET for optimistic locking.",
+        "description": "Updates enrollment metadata (name, contactEmail, expiresAt, authAttemptChallengeRequired, userIdentifier). Only active VERIFIED enrollments, or contactEmail alone while CREATED. Include version from GET for optimistic locking.",
         "operationId": "update",
         "parameters": [
           {

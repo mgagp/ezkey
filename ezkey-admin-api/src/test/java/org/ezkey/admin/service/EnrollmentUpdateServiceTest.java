@@ -31,6 +31,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -282,6 +284,141 @@ class EnrollmentUpdateServiceTest {
     assertThatThrownBy(() -> enrollmentUpdateService.updateEnrollment(1, request))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Invalid email");
+    verify(enrollmentRepository, never()).save(any());
+  }
+
+  // #1206 step 5: at CREATED, only contactEmail can change, so an invitation can get an address
+  // before a send. Every other field keeps the VERIFIED-only rule.
+
+  @Test
+  @DisplayName("updateEnrollment - CREATED accepts a contactEmail change and audits it")
+  void updateEnrollment_created_acceptsContactEmail() throws Exception {
+    enrollment.setStatus(EnrollmentStatus.CREATED);
+    when(enrollmentRepository.findById(1)).thenReturn(Optional.of(enrollment));
+    when(enrollmentRepository.save(any(Enrollment.class))).thenAnswer(i -> i.getArgument(0));
+
+    EnrollmentUpdateRequestDto request =
+        new EnrollmentUpdateRequestDto(
+            0L, null, " alice@example.com ", null, null, null, null, null, null);
+
+    EnrollmentUpdateOutcome outcome = enrollmentUpdateService.updateEnrollment(1, request);
+
+    assertThat(outcome.enrollment().getContactEmail()).isEqualTo("alice@example.com");
+    JsonNode changes = objectMapper.readTree(outcome.auditEventDetailsJson()).get("changes");
+    assertThat(changes.size()).isEqualTo(1);
+    assertThat(changeForField(changes, "contactEmail").path("new").asString())
+        .isEqualTo("alice@example.com");
+  }
+
+  @Test
+  @DisplayName(
+      "updateEnrollment - CREATED is inactive until verify, and still accepts contactEmail")
+  void updateEnrollment_createdInactive_acceptsContactEmail() {
+    // An ordinary enrollment is created with active=false (EnrollmentService); only VERIFIED is
+    // gated by the flag.
+    enrollment.setStatus(EnrollmentStatus.CREATED);
+    enrollment.setActive(false);
+    when(enrollmentRepository.findById(1)).thenReturn(Optional.of(enrollment));
+    when(enrollmentRepository.save(any(Enrollment.class))).thenAnswer(i -> i.getArgument(0));
+
+    EnrollmentUpdateRequestDto request =
+        new EnrollmentUpdateRequestDto(
+            0L, null, "alice@example.com", null, null, null, null, null, null);
+
+    assertThat(enrollmentUpdateService.updateEnrollment(1, request).enrollment().getContactEmail())
+        .isEqualTo("alice@example.com");
+  }
+
+  @Test
+  @DisplayName("updateEnrollment - revoked CREATED enrollment refuses contactEmail")
+  void updateEnrollment_createdRevoked_refuses() {
+    enrollment.setStatus(EnrollmentStatus.CREATED);
+    enrollment.setRevokedAt(OffsetDateTime.now());
+    when(enrollmentRepository.findById(1)).thenReturn(Optional.of(enrollment));
+
+    EnrollmentUpdateRequestDto request =
+        new EnrollmentUpdateRequestDto(
+            0L, null, "alice@example.com", null, null, null, null, null, null);
+
+    assertThatThrownBy(() -> enrollmentUpdateService.updateEnrollment(1, request))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("revoked");
+    verify(enrollmentRepository, never()).save(any());
+  }
+
+  @Test
+  @DisplayName("updateEnrollment - CREATED accepts clearContactEmail")
+  void updateEnrollment_created_acceptsClearContactEmail() {
+    enrollment.setStatus(EnrollmentStatus.CREATED);
+    when(enrollmentRepository.findById(1)).thenReturn(Optional.of(enrollment));
+    when(enrollmentRepository.save(any(Enrollment.class))).thenAnswer(i -> i.getArgument(0));
+
+    EnrollmentUpdateRequestDto request =
+        new EnrollmentUpdateRequestDto(0L, null, null, null, null, null, null, true, null);
+
+    assertThat(enrollmentUpdateService.updateEnrollment(1, request).enrollment().getContactEmail())
+        .isNull();
+  }
+
+  @Test
+  @DisplayName("updateEnrollment - CREATED refuses any field other than contactEmail")
+  void updateEnrollment_created_refusesOtherFields() {
+    enrollment.setStatus(EnrollmentStatus.CREATED);
+    when(enrollmentRepository.findById(1)).thenReturn(Optional.of(enrollment));
+
+    List<EnrollmentUpdateRequestDto> requests =
+        List.of(
+            new EnrollmentUpdateRequestDto(
+                0L, "New", "a@example.com", null, null, null, null, null, null),
+            new EnrollmentUpdateRequestDto(
+                0L, null, null, "+15145551234", null, null, null, null, null),
+            new EnrollmentUpdateRequestDto(
+                0L, null, null, null, OffsetDateTime.now().plusDays(1), null, null, null, null),
+            new EnrollmentUpdateRequestDto(0L, null, null, null, null, true, null, null, null),
+            new EnrollmentUpdateRequestDto(0L, null, null, null, null, null, "user-1", null, null),
+            new EnrollmentUpdateRequestDto(0L, null, null, null, null, null, null, null, true));
+
+    for (EnrollmentUpdateRequestDto request : requests) {
+      assertThatThrownBy(() -> enrollmentUpdateService.updateEnrollment(1, request))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("only contactEmail");
+    }
+    assertThat(enrollment.getContactEmail()).isEqualTo("original@example.com");
+    verify(enrollmentRepository, never()).save(any());
+  }
+
+  @Test
+  @DisplayName("updateEnrollment - CREATED still refuses an invalid contactEmail")
+  void updateEnrollment_created_refusesInvalidEmail() {
+    enrollment.setStatus(EnrollmentStatus.CREATED);
+    when(enrollmentRepository.findById(1)).thenReturn(Optional.of(enrollment));
+
+    EnrollmentUpdateRequestDto request =
+        new EnrollmentUpdateRequestDto(
+            0L, null, "not-an-email", null, null, null, null, null, null);
+
+    assertThatThrownBy(() -> enrollmentUpdateService.updateEnrollment(1, request))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Invalid email");
+    verify(enrollmentRepository, never()).save(any());
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @EnumSource(
+      value = EnrollmentStatus.class,
+      names = {"CREATED", "VERIFIED"},
+      mode = EnumSource.Mode.EXCLUDE)
+  @DisplayName("updateEnrollment - other statuses refuse even a contactEmail change")
+  void updateEnrollment_otherStatus_refusesContactEmail(EnrollmentStatus status) {
+    enrollment.setStatus(status);
+    when(enrollmentRepository.findById(1)).thenReturn(Optional.of(enrollment));
+
+    EnrollmentUpdateRequestDto request =
+        new EnrollmentUpdateRequestDto(
+            0L, null, "a@example.com", null, null, null, null, null, null);
+
+    assertThatThrownBy(() -> enrollmentUpdateService.updateEnrollment(1, request))
+        .isInstanceOf(IllegalArgumentException.class);
     verify(enrollmentRepository, never()).save(any());
   }
 }

@@ -54,6 +54,17 @@ test('@elective @device-backed enrollment detail shows bind material only while 
   await expect(boundWarning).toBeHidden();
   await expect(page.getByText(/public key/i)).toHaveCount(0);
 
+  // #1206 step 5: before bind, the operator can give the invitation an address, and nothing else.
+  const editEmail = page.getByRole('button', { name: /edit contact email|modifier l'e-mail de contact/i });
+  await editEmail.click();
+  await expect(page.getByTestId('enrollment-edit-email-only-hint')).toBeVisible();
+  await expect(page.locator('#edit-name')).toHaveCount(0);
+  await page.locator('#edit-email').fill(`alice-${suffix}@example.com`);
+  await page.getByRole('dialog').getByRole('button', { name: /save|enregistrer/i }).click();
+  await expect(page.getByRole('dialog')).toBeHidden();
+  const updated = await page.request.get(`/api/v1/enrollments/${enrollmentId}`, { headers });
+  expect((await updated.json()).contactEmail).toBe(`alice-${suffix}@example.com`);
+
   const form = { enrollmentId: String(enrollmentId), enrollmentProofToken };
   const bind = await context.request.post(`${testEnv.demoDeviceUrl}/phone/ezkey/enrollment/bind`, {
     form,
@@ -63,6 +74,7 @@ test('@elective @device-backed enrollment detail shows bind material only while 
   await page.reload();
   await expect(code).toHaveText(String(enrollmentChallenge));
   await expect(boundWarning).toBeVisible();
+  await expect(editEmail).toBeHidden();
   await expect(tokenCard).toBeHidden();
   await expect(qrCard).toBeHidden();
 

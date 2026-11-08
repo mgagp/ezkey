@@ -45,7 +45,7 @@ settings {
 }
 
 docs {
-  Partially updates enrollment metadata. Only non-null fields are applied. Requires a **VERIFIED** and **active** enrollment.
+  Partially updates enrollment metadata. Only non-null fields are applied. Requires a **VERIFIED** and **active** enrollment, except `contactEmail` (or `clearContactEmail`) alone, which a **CREATED** enrollment also accepts (#1206 step 5).
   
   **Run `get` first** to populate `enrollmentId` and copy `version` into environment as `enrollmentVersion` (or set manually from GET response).
   

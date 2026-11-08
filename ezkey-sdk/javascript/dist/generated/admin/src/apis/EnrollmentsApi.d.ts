@@ -160,12 +160,12 @@ export declare class EnrollmentsApi extends runtime.BaseAPI {
      */
     send(requestParameters: SendRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<QrDeliveryResponseDto>;
     /**
-     * Updates enrollment metadata (name, contactEmail, expiresAt, authAttemptChallengeRequired, userIdentifier). Only active VERIFIED enrollments. Include version from GET for optimistic locking.
+     * Updates enrollment metadata (name, contactEmail, expiresAt, authAttemptChallengeRequired, userIdentifier). Only active VERIFIED enrollments, or contactEmail alone while CREATED. Include version from GET for optimistic locking.
      * Partially update enrollment metadata
      */
     updateRaw(requestParameters: UpdateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EnrollmentResponseDto>>;
     /**
-     * Updates enrollment metadata (name, contactEmail, expiresAt, authAttemptChallengeRequired, userIdentifier). Only active VERIFIED enrollments. Include version from GET for optimistic locking.
+     * Updates enrollment metadata (name, contactEmail, expiresAt, authAttemptChallengeRequired, userIdentifier). Only active VERIFIED enrollments, or contactEmail alone while CREATED. Include version from GET for optimistic locking.
      * Partially update enrollment metadata
      */
     update(requestParameters: UpdateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EnrollmentResponseDto>;

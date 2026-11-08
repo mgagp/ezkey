@@ -134,6 +134,8 @@
     "infoRevoked": "Révoqué",
     "infoByAdmin": "(admin {{id}})",
     "editMetadata": "Modifier les métadonnées",
+    "editContactEmailOnly": "Modifier l'e-mail de contact",
+    "editContactEmailOnlyHint": "Avant que l'appareil se lie, seul l'e-mail de contact peut changer. Si une invitation est déjà partie vers une mauvaise adresse, révoquez cet enrôlement et créez-en un nouveau.",
     "viewRelatedAudits": "Voir les audits liés",
     "editDialogTitle": "Modifier les métadonnées de l'enrôlement",
     "editSave": "Enregistrer",

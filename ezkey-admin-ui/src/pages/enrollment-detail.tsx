@@ -31,6 +31,7 @@ import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { authContextDemoPresets, isDemoMode } from '@/lib/demo-mode';
 import { isPhoneNumberInputValid, normalizePhoneNumberInput } from '@/lib/phone-number';
 import { formatChallengeCode, formatCountdown, formatDate } from '@/lib/utils';
+import { enrollmentEditScope } from '@/lib/enrollment-edit-scope';
 import { useCancel, useCreate2, useGetById2 } from '@/generated/admin-api/auth-attempts/auth-attempts';
 import {
   getGetByIdQueryKey,
@@ -529,8 +530,24 @@ export default function EnrollmentDetailPage() {
     setEditOpen(true);
   };
 
+  const editScope = enrollmentEditScope(enrollment);
+  const canEditMetadata = editScope !== 'none';
+  const editContactEmailOnly = editScope === 'contactEmail';
+
   const handleSaveMetadata = () => {
     if (!enrollment?.enrollmentId) return;
+    if (editContactEmailOnly) {
+      // Before bind, the API accepts the contact email alone (#1206 step 5).
+      const email = editEmail.trim();
+      const emailData: EnrollmentUpdateRequestDto = { version: enrollment.version };
+      if (editClearEmail || email === '') {
+        emailData.clearContactEmail = true;
+      } else {
+        emailData.contactEmail = email;
+      }
+      updateMutation.mutate({ id: enrollment.enrollmentId, data: emailData });
+      return;
+    }
     const name = editName.trim();
     if (!name) return;
     const data: EnrollmentUpdateRequestDto = {
@@ -564,11 +581,6 @@ export default function EnrollmentDetailPage() {
     }
     updateMutation.mutate({ id: enrollment.enrollmentId, data });
   };
-
-  const canEditMetadata =
-    enrollment != null &&
-    enrollment.enrollmentStatus === 'VERIFIED' &&
-    enrollment.enrollmentActive === true;
 
   // Revoke blob URL on unmount or when QR is hidden
   useEffect(() => {
@@ -716,7 +728,7 @@ export default function EnrollmentDetailPage() {
                       className="gap-1.5"
                     >
                       <Pencil className="size-3.5" />
-                      {t('detail.editMetadata')}
+                      {editContactEmailOnly ? t('detail.editContactEmailOnly') : t('detail.editMetadata')}
                     </Button>
                   )}
                 </div>
@@ -1263,11 +1275,17 @@ export default function EnrollmentDetailPage() {
         onClose={() => {
           if (!updateMutation.isPending) setEditOpen(false);
         }}
-        title={t('detail.editDialogTitle')}
+        title={editContactEmailOnly ? t('detail.editContactEmailOnly') : t('detail.editDialogTitle')}
         size="md"
         dismissible={false}
       >
         <div className="space-y-4">
+          {editContactEmailOnly && (
+            <p className="text-sm text-fg-muted" data-testid="enrollment-edit-email-only-hint">
+              {t('detail.editContactEmailOnlyHint')}
+            </p>
+          )}
+          {!editContactEmailOnly && (
           <div className="space-y-1.5">
             <Label htmlFor="edit-name">{t('detail.editName')}</Label>
             <Input
@@ -1279,6 +1297,7 @@ export default function EnrollmentDetailPage() {
               autoComplete="off"
             />
           </div>
+          )}
           <div className="space-y-1.5">
             <Label htmlFor="edit-email">{t('detail.editContactEmail')}</Label>
             <Input
@@ -1304,6 +1323,8 @@ export default function EnrollmentDetailPage() {
               <span className="text-xs text-fg-muted">{t('detail.editClearContactEmail')}</span>
             </label>
           </div>
+          {!editContactEmailOnly && (
+          <>
           <div className="space-y-1.5">
             <Label htmlFor="edit-phone">{t('detail.editContactPhone')}</Label>
             <Input
@@ -1362,6 +1383,8 @@ export default function EnrollmentDetailPage() {
               <span className="text-xs text-fg-muted">{t('detail.editClearExpiresAt')}</span>
             </label>
           </div>
+          </>
+          )}
           {updateMutation.isError && (
             <Alert variant="error">
               {getTranslatedApiError(
@@ -1386,7 +1409,10 @@ export default function EnrollmentDetailPage() {
               type="button"
               onClick={handleSaveMetadata}
               isLoading={updateMutation.isPending}
-              disabled={!editName.trim() || (editPhone.trim() !== '' && !isPhoneNumberInputValid(editPhone))}
+              disabled={
+                !editContactEmailOnly
+                && (!editName.trim() || (editPhone.trim() !== '' && !isPhoneNumberInputValid(editPhone)))
+              }
             >
               {t('detail.editSave')}
             </Button>
