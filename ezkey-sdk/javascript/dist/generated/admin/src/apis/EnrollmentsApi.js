@@ -91,6 +91,36 @@ class EnrollmentsApi extends runtime.BaseAPI {
         await this._deleteRaw(requestParameters, initOverrides);
     }
     /**
+     * Says whether a delivery connector can be used, without contacting a provider.
+     * Read QR delivery capability
+     */
+    async capabilityRaw(initOverrides) {
+        const queryParameters = {};
+        const headerParameters = {};
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        const response = await this.request({
+            path: `/api/v1/enrollments/qr-delivery/capability`,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+        return new runtime.JSONApiResponse(response);
+    }
+    /**
+     * Says whether a delivery connector can be used, without contacting a provider.
+     * Read QR delivery capability
+     */
+    async capability(initOverrides) {
+        const response = await this.capabilityRaw(initOverrides);
+        return await response.value();
+    }
+    /**
      * Creates a new enrollment that can later be bound to a mobile device
      * Create new enrollment
      */
@@ -194,7 +224,7 @@ class EnrollmentsApi extends runtime.BaseAPI {
         return await response.value();
     }
     /**
-     * Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentId, enrollmentProofToken, authUrl})
+     * Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentId, enrollmentProofToken, authUrl}). Only while the enrollment is CREATED; 409 otherwise
      * Generate QR code for enrollment
      */
     async getQrCodeRaw(requestParameters, initOverrides) {
@@ -224,7 +254,7 @@ class EnrollmentsApi extends runtime.BaseAPI {
         }
     }
     /**
-     * Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentId, enrollmentProofToken, authUrl})
+     * Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentId, enrollmentProofToken, authUrl}). Only while the enrollment is CREATED; 409 otherwise
      * Generate QR code for enrollment
      */
     async getQrCode(requestParameters, initOverrides) {
@@ -359,6 +389,44 @@ class EnrollmentsApi extends runtime.BaseAPI {
      */
     async search1(requestParameters = {}, initOverrides) {
         const response = await this.search1Raw(requestParameters, initOverrides);
+        return await response.value();
+    }
+    /**
+     * One attempt through the delivery connector. The challenge is never sent. A 200 carries the outcome: accepted means the provider took the message, and unknown means it may have left. A refusal before any call returns a problem with a typed code.
+     * Send an enrollment QR by email
+     */
+    async sendRaw(requestParameters, initOverrides) {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError('id', 'Required parameter "id" was null or undefined when calling send().');
+        }
+        if (requestParameters['qrDeliveryRequestDto'] == null) {
+            throw new runtime.RequiredError('qrDeliveryRequestDto', 'Required parameter "qrDeliveryRequestDto" was null or undefined when calling send().');
+        }
+        const queryParameters = {};
+        const headerParameters = {};
+        headerParameters['Content-Type'] = 'application/json';
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        const response = await this.request({
+            path: `/api/v1/enrollments/{id}/qr-delivery`.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id']))),
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['qrDeliveryRequestDto'],
+        }, initOverrides);
+        return new runtime.JSONApiResponse(response);
+    }
+    /**
+     * One attempt through the delivery connector. The challenge is never sent. A 200 carries the outcome: accepted means the provider took the message, and unknown means it may have left. A refusal before any call returns a problem with a typed code.
+     * Send an enrollment QR by email
+     */
+    async send(requestParameters, initOverrides) {
+        const response = await this.sendRaw(requestParameters, initOverrides);
         return await response.value();
     }
     /**

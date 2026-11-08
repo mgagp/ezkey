@@ -11,7 +11,9 @@
 package org.ezkey.admin.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -19,6 +21,8 @@ import static org.mockito.Mockito.when;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.ezkey.admin.constants.AdminAuditConstants;
+import org.ezkey.admin.dto.response.AdminRecoveryCodesRegenerationResponseDto;
+import org.ezkey.admin.dto.response.AdminResponseDto;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.service.AdminProvisioningService;
 import org.ezkey.admin.service.AdminProvisioningService.RecoveryCodesRegenerationResult;
@@ -61,8 +65,8 @@ class AdminProvisioningControllerRecoveryCodesTest {
         new AdminProvisioningController(
             provisioningService, qrCodeGeneratorService, qrCodePayloadService, auditLogService);
 
-    when(httpRequest.getRemoteAddr()).thenReturn("127.0.0.1");
-    when(httpRequest.getHeader("User-Agent")).thenReturn("test-agent");
+    lenient().when(httpRequest.getRemoteAddr()).thenReturn("127.0.0.1");
+    lenient().when(httpRequest.getHeader("User-Agent")).thenReturn("test-agent");
   }
 
   @Test
@@ -81,13 +85,16 @@ class AdminProvisioningControllerRecoveryCodesTest {
 
     RecoveryCodesRegenerationResult result =
         new RecoveryCodesRegenerationResult(
-            admin, List.of("1111-2222-3333-4444-5555-6666-7777-8888"), 0);
+            admin, List.of("1111-2222-3333-4444-5555-6666-7777-8888"), 0, false);
     when(provisioningService.issueInitialRecoveryCodes(42, principal)).thenReturn(result);
 
     ResponseEntity<?> response =
         controller.issueInitialRecoveryCodes(42, authentication, httpRequest);
 
     assertEquals(HttpStatus.OK, response.getStatusCode());
+    AdminRecoveryCodesRegenerationResponseDto body =
+        assertInstanceOf(AdminRecoveryCodesRegenerationResponseDto.class, response.getBody());
+    assertEquals("Initial recovery codes issued. No previous codes existed.", body.message());
 
     ArgumentCaptor<AuditLog> captor = ArgumentCaptor.forClass(AuditLog.class);
     verify(auditLogService, times(1)).log(captor.capture());
@@ -97,6 +104,56 @@ class AdminProvisioningControllerRecoveryCodesTest {
     assertEquals(EventStatus.SUCCESS, logged.getEventStatus());
     assertEquals(1, logged.getAdminId());
     assertEquals(42, logged.getTargetAdminId());
+  }
+
+  @Test
+  @DisplayName("issueInitialRecoveryCodes does not claim a first issuance after an exhausted set")
+  void issueInitialRecoveryCodesMessageReflectsExhaustedPreviousSet() {
+    AdminPrincipal principal = new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null);
+    when(authentication.getPrincipal()).thenReturn(principal);
+
+    EzkeyAdmin admin = new EzkeyAdmin("global.admin", AdminType.GLOBAL_ADMIN);
+    admin.setAdminId(42);
+
+    RecoveryCodesRegenerationResult result =
+        new RecoveryCodesRegenerationResult(
+            admin, List.of("1111-2222-3333-4444-5555-6666-7777-8888"), 0, true);
+    when(provisioningService.issueInitialRecoveryCodes(42, principal)).thenReturn(result);
+
+    ResponseEntity<?> response =
+        controller.issueInitialRecoveryCodes(42, authentication, httpRequest);
+
+    assertEquals(HttpStatus.OK, response.getStatusCode());
+    AdminRecoveryCodesRegenerationResponseDto body =
+        assertInstanceOf(AdminRecoveryCodesRegenerationResponseDto.class, response.getBody());
+    assertEquals(
+        "New recovery codes issued. Every code from the previous set had been used.",
+        body.message());
+  }
+
+  @Test
+  @DisplayName("getAdminById separates never-issued, exhausted and available recovery-code sets")
+  void getAdminByIdExposesRecoveryCodeSetState() {
+    AdminPrincipal principal = new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null);
+    when(authentication.getPrincipal()).thenReturn(principal);
+    EzkeyAdmin admin = new EzkeyAdmin("global.admin", AdminType.GLOBAL_ADMIN);
+    admin.setAdminId(42);
+    when(provisioningService.getAdminById(42, principal)).thenReturn(admin);
+
+    admin.setRecoveryCodes(null);
+    AdminResponseDto neverIssued = controller.getAdminById(42, authentication).getBody();
+    assertEquals(Boolean.FALSE, neverIssued.hasRecoveryCodes());
+    assertEquals(Boolean.FALSE, neverIssued.recoveryCodesExhausted());
+
+    admin.setRecoveryCodes(new String[0]);
+    AdminResponseDto exhausted = controller.getAdminById(42, authentication).getBody();
+    assertEquals(Boolean.FALSE, exhausted.hasRecoveryCodes());
+    assertEquals(Boolean.TRUE, exhausted.recoveryCodesExhausted());
+
+    admin.setRecoveryCodes(new String[] {"$2a$10$hashedRecoveryCodePlaceholder000000"});
+    AdminResponseDto available = controller.getAdminById(42, authentication).getBody();
+    assertEquals(Boolean.TRUE, available.hasRecoveryCodes());
+    assertEquals(Boolean.FALSE, available.recoveryCodesExhausted());
   }
 
   @Test
@@ -115,7 +172,7 @@ class AdminProvisioningControllerRecoveryCodesTest {
 
     RecoveryCodesRegenerationResult result =
         new RecoveryCodesRegenerationResult(
-            admin, List.of("1111-2222-3333-4444-5555-6666-7777-8888"), 2);
+            admin, List.of("1111-2222-3333-4444-5555-6666-7777-8888"), 2, false);
     when(provisioningService.regenerateRecoveryCodes(42, principal)).thenReturn(result);
 
     ResponseEntity<?> response =

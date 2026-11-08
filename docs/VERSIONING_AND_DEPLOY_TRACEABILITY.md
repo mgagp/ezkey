@@ -74,8 +74,7 @@ release-looking local coordinate.
 |---------|-------------|-------|
 | Maven reactor modules | inherit `${revision}${changelist}` | No hard-coded module versions |
 | npm (Admin UI, `ezkey-javascript-sdk`, generated `ezkey-admin-client` / `ezkey-auth-client`) | Maven string as-is | e.g. `0.2.0-SNAPSHOT` |
-| .NET `Ezkey.Sdk` `PackageVersion` | Maven string as-is | NuGet prerelease label; **only** place `-SNAPSHOT` is allowed |
-| .NET `AssemblyVersion` / `FileVersion` | numeric `major.minor.patch.0` | e.g. `0.2.0.0` — never include `-SNAPSHOT` |
+| .NET | deferred | No SDK in tree (#1232). When a client returns (#1219): `PackageVersion` keeps the Maven string; `AssemblyVersion` / `FileVersion` are numeric `major.minor.patch.0` only |
 | Python (`ezkey-python-sdk`, `ezkey-cli`) | `-SNAPSHOT` → `.dev0` (PEP 440) | e.g. `0.2.0.dev0` |
 | Mobile `package.json` / Android `versionName` | strip trailing `-SNAPSHOT` only | e.g. `0.2.0`; keep `-alpha.N` when present |
 | Android `versionCode` | monotonic integer **> 6** | Floor `7` for the `0.2.0` train (Play already shipped vc6) |

@@ -41,6 +41,9 @@ Brief design notes for JPA transaction and persistence context usage in Ezkey. I
 - **`*TxHelper` beans** are acceptable when they encode a **single**, well-named `REQUIRES_NEW` concern; if a helper becomes a grab-bag, prefer a **narrower service** or clearer split (pragmatic, not dogmatic).
 - **Self-invocation** (`this.method`, `this::` into executors) **does not** go through the Spring proxy—put `@Transactional` on the **public entry** that actually runs the flow, or move work to another bean.
 
+- **Open the transaction inside a distributed lock, never around it**, so the lock outlives the commit. `LockingTaskExecutor` does this (#1259).
+- **A `catch` inside `@Transactional` cannot recover a database error:** the transaction is rollback-only, and PostgreSQL rejects further statements. Recover in a separate transaction, and prove it on PostgreSQL, because H2 can hide this. See [`stabilization-lessons`](../../product-docs/global/hygiene/stabilization-lessons/README.md).
+
 **Baseline inventory (2026-04):** [`SERVICE_LAYER_SPRING_AUDIT_2026-04.md`](SERVICE_LAYER_SPRING_AUDIT_2026-04.md) — sectioned findings for follow-on coding sessions.
 
 **Hygiene refresh (2026-08):** [`../java-transactional-boundaries-assessment-2026-08.md`](../java-transactional-boundaries-assessment-2026-08.md) — self-invocation / `*TxHelper` / placement. **Documented exception:** `AuthAttemptWaitService` (`NOT_SUPPORTED`) plus `AdminAuthAttemptTxHelper` (`REQUIRES_NEW`) so wait can poll a committed pending row for the device respond. That triad confirms the rule; it is not a self-invocation smell.

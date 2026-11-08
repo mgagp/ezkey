@@ -16,8 +16,8 @@ params:path {
 }
 
 script:post-response {
-  test("Status code is 200, 400, 403, or 404", function () {
-      expect([200, 400, 403, 404]).to.include(res.getStatus());
+  test("Status code is 200, 400, 403, 404, or 409", function () {
+      expect([200, 400, 403, 404, 409]).to.include(res.getStatus());
   });
   
   if (res.getStatus() === 200) {
@@ -65,6 +65,7 @@ docs {
   - 401: Unauthorized - admin token required
   - 403: Forbidden - not authorized to access this admin's credentials
   - 404: Administrator or enrollment not found
+  - 409: Enrollment is not `CREATED`; a device has bound it and the QR is no longer available
   - 500: Internal server error
   
   **Usage:**

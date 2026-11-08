@@ -60,6 +60,7 @@ public enum EventType {
   ENROLLMENT_REACTIVATED, // Admin reactivated a previously deactivated enrollment
   ENROLLMENT_AUTH_ATTEMPT_BLOCKED, // Auth attempt rejected because enrollment is inactive/revoked
   ENROLLMENT_EXPIRED, // Pending enrollment expired (expires_at passed); status set to EXPIRED
+  ENROLLMENT_QR_DELIVERY, // Enrollment QR send through a delivery connector, whatever the outcome
 
   // Authentication attempt events
   AUTH_ATTEMPT_CREATED,

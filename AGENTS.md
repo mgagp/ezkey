@@ -28,15 +28,18 @@ Root [`PRD.md`](PRD.md) is a **stub** that points at `product-intent.md` (canon 
 | At-rest encryption / Tink keyset storage | [`docs/SECURITY_POSTURE.md`](docs/SECURITY_POSTURE.md), [`ezkey-core/CONFIGURATION.md`](ezkey-core/CONFIGURATION.md) § Encryption at Rest, [`product-docs/global/architecture-decisions.md`](product-docs/global/architecture-decisions.md) ADR-0008 + ADR-0011 |
 | Logging / log-injection hardening | Caller-controlled value → `org.ezkey.util.LogSanitizer.sanitizeForLog`; secrets never logged at any level; prove on runtime output (log-capture test). Mandate and SLAs: [`docs/SECURITY_POSTURE.md`](docs/SECURITY_POSTURE.md) § Code scanning policy. Production wrap backlog: [#801](https://github.com/mgagp/ezkey/issues/801). |
 | Normative posture | [`product-docs/global/normative-posture.md`](product-docs/global/normative-posture.md) — operational discipline; mapping vocabulary lives only there. Honest claims: [`docs/SECURITY_POSTURE.md`](docs/SECURITY_POSTURE.md) |
+| Enrollment bind session (scan and challenge form one sequence; delivery modes; abandoned bind) | [`ezkey_mobile/docs/MOBILE_APP_STATE_MACHINE.md`](ezkey_mobile/docs/MOBILE_APP_STATE_MACHINE.md) § *Product intent: one bind session* |
 | Lifecycle / eligibility / multi-entity operator design | Skim [`product-docs/global/lifecycle-model.md`](product-docs/global/lifecycle-model.md), then [`docs/LIFECYCLE_GOVERNANCE.md`](docs/LIFECYCLE_GOVERNANCE.md) when designing |
 | Admin UI conventions | [`ezkey-admin-ui/AGENTS.md`](ezkey-admin-ui/AGENTS.md) |
 | Mobile-primary work | [`ezkey_mobile/AGENTS.md`](ezkey_mobile/AGENTS.md), [`ezkey_mobile/docs/README.md`](ezkey_mobile/docs/README.md) |
 | Experimental PAM (host sshd lab) | `ezkey-pam` is **experimental** (personal lab; loaded in host root sshd/login, not containerised) — see [`ezkey-pam/README.md`](ezkey-pam/README.md) (line 3). Hardening backlog: [`I-2026-10-13-pam-tmp-log-hardening`](product-docs/global/backlog/ideas/I-2026-10-13-pam-tmp-log-hardening.md). |
+| Dismissing or accepting a dependency vulnerability (`tolerable_risk`, risk acceptance, security evaluation) | Check upstream first: [`product-docs/global/hygiene/dependabot/README.md`](product-docs/global/hygiene/dependabot/README.md) § *Check upstream before dismissing a vulnerability* |
 | Mandate-driven hygiene assessment (HITL + handoff) | Keyword **`assessment-curated`** → [`product-docs/global/hygiene/assessment-curated/README.md`](product-docs/global/hygiene/assessment-curated/README.md) |
 | Legacy document hygiene (canonicality / discoverability / archive-vs-delete) | Keyword **`document-hygiene-curated`** → [`product-docs/global/hygiene/document-hygiene/README.md`](product-docs/global/hygiene/document-hygiene/README.md) |
 | New idea / method | [`product-docs/methodology/README.md`](product-docs/methodology/README.md) — the whole method fits in that one document since the 2026-08 ablation |
 | Plan review / cold-agent hardening (aliases: `critical-review`, adversarial review, revue critique, plan hardening Stage 2) | Canon [`product-docs/global/hygiene/critical-review/README.md`](product-docs/global/hygiene/critical-review/README.md); prompt [`product-docs/templates/critical-review.prompt.md`](product-docs/templates/critical-review.prompt.md); skill [`.cursor/skills/critical-review/SKILL.md`](.cursor/skills/critical-review/SKILL.md); execution-hardening angle [`product-docs/templates/cold-agent-plan-review.prompt.md`](product-docs/templates/cold-agent-plan-review.prompt.md); pattern [`product-docs/methodology/README.md`](product-docs/methodology/README.md) § two-stage |
 | Adopter posture / 3-second test | [`product-docs/global/operator-alignment-guide.md`](product-docs/global/operator-alignment-guide.md) — Ezkey is never the adopter's core business; every human surface must stay simple, fluid, operationally clear |
+| Startup or HA behaviour, locks with transactions, removing an exposed field, test helpers, a CI failure that looks random | [`product-docs/global/hygiene/stabilization-lessons/README.md`](product-docs/global/hygiene/stabilization-lessons/README.md) — rules, evidence and checks from the #1180 / #1259 stabilization |
 | Fail-open vs fail-closed | [`product-docs/global/design-principles.md`](product-docs/global/design-principles.md) §17 — name whether failure continues (observable) or stops at critical boundaries |
 | API contract change | Controller + **section** of `docs/ENDPOINT.md` + OpenAPI refresh workflow (see OpenAPI rules) |
 | Strategic positioning / public copy | [`docs/PROJECT_POSITIONING.md`](docs/PROJECT_POSITIONING.md) only when that layer is in scope |
@@ -425,7 +428,7 @@ When the operator asks for a **`dependabot-curated`** pass:
    Probe Cursor Cloud `GH_TOKEN` (`gh auth status`; never print the secret) before choosing
    hygiene-branch vs merging the existing Dependabot PRs.
 2. Peel off any PR labeled `deferred:*`. **Monday full only:** run the **Java BOM pulse** and
-   **Mobile RN pulse** (skill §§). Weekday light skips those pulses; empty actionable queue →
+   **Mobile RN pulse** (skill §§), plus the **Dismissed-alert check**. Weekday light skips those pulses; empty actionable queue →
    silent exit.
 3. Classify remaining PRs T1–T4; Orval via **Orval risk grid** (Admin UI and mobile separately).
    Propose **3–6 lots** (overview only).

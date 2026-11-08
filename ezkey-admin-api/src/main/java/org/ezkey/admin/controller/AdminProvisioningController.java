@@ -47,6 +47,7 @@ import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.audit.util.ClientContext;
+import org.ezkey.enrollment.EnrollmentBindMaterialPolicy;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.springdoc.core.annotations.ParameterObject;
@@ -143,6 +144,10 @@ public class AdminProvisioningController {
         admin.getEnrollment() != null ? admin.getEnrollment().getEnrollmentId() : null;
     String enrollmentName =
         admin.getEnrollment() != null ? admin.getEnrollment().getEnrollmentName() : null;
+    String enrollmentStatus =
+        admin.getEnrollment() != null && admin.getEnrollment().getStatus() != null
+            ? admin.getEnrollment().getStatus().name()
+            : null;
     String tenantName = admin.getTenant() != null ? admin.getTenant().getTenantName() : null;
     boolean operational =
         Boolean.TRUE.equals(admin.getActive())
@@ -150,6 +155,8 @@ public class AdminProvisioningController {
             && (admin.getAdminType() == EzkeyAdmin.AdminType.GLOBAL_ADMIN
                 || (admin.getTenant() != null
                     && Boolean.TRUE.equals(admin.getTenant().getActive())));
+    // recovery_codes stays NULL until a set is issued; consuming the last code leaves an empty
+    // array, which is what separates "exhausted" from "never issued".
     return new AdminResponseDto(
         admin.getAdminId(),
         admin.getVersion(),
@@ -163,11 +170,13 @@ public class AdminProvisioningController {
         tenantName,
         enrollmentId,
         enrollmentName,
+        enrollmentStatus,
         admin.getActive(),
         admin.getLifecycleStatus().name(),
         admin.getCreatedAt(),
         admin.getLastLoginAt(),
         admin.getRecoveryCodes() != null && admin.getRecoveryCodes().length > 0,
+        admin.getRecoveryCodes() != null && admin.getRecoveryCodes().length == 0,
         operational);
   }
 
@@ -1035,11 +1044,12 @@ public class AdminProvisioningController {
   @PostMapping("/{id}/recovery-codes/issue-initial")
   @PreAuthorize("hasRole('ADMIN')")
   @Operation(
-      summary = "Issue initial administrator recovery codes",
+      summary = "Issue recovery codes when none remain unused",
       description =
-          "Generates the first set of single-use recovery codes for an administrator after first"
+          "Generates a set of single-use recovery codes for an administrator after first"
               + " authenticated sign-in. This flow is distinct from regeneration and is only"
-              + " available when no recovery-code set exists yet.")
+              + " available when no unused recovery code remains: either no set was ever issued,"
+              + " or every code of the previous set has been used (recoveryCodesExhausted).")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "Initial recovery codes issued successfully"),
     @ApiResponse(responseCode = "400", description = "Administrator is not eligible yet"),
@@ -1069,7 +1079,9 @@ public class AdminProvisioningController {
               result.recoveryCodes(),
               newCodesCount,
               false,
-              "Initial recovery codes issued. No previous codes existed.");
+              result.previousSetExhausted()
+                  ? "New recovery codes issued. Every code from the previous set had been used."
+                  : "Initial recovery codes issued. No previous codes existed.");
 
       Integer tenantId =
           result.admin().getTenant() != null ? result.admin().getTenant().getTenantId() : null;
@@ -1191,12 +1203,13 @@ public class AdminProvisioningController {
       description =
           "Returns a PNG QR code image containing enrollment credentials as JSON"
               + " ({enrollmentId, enrollmentProofToken, authUrl}) for passwordless enrollment"
-              + " binding.")
+              + " binding. Available only while the enrollment is CREATED.")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "QR code generated successfully"),
     @ApiResponse(responseCode = "400", description = "Enrollment missing proof token"),
     @ApiResponse(responseCode = "403", description = "Forbidden - not authorized"),
-    @ApiResponse(responseCode = "404", description = "Administrator or enrollment not found")
+    @ApiResponse(responseCode = "404", description = "Administrator or enrollment not found"),
+    @ApiResponse(responseCode = "409", description = "Enrollment is not CREATED")
   })
   public ResponseEntity<?> getAdminOnboardingQrCode(
       @Parameter(description = "Administrator ID", example = "1") @PathVariable("id") Integer id,
@@ -1209,6 +1222,19 @@ public class AdminProvisioningController {
 
     try {
       OnboardingCredentialsResult result = provisioningService.getAdminOnboarding(id, principal);
+
+      // #1266: the QR encodes the proof token, so it follows the same rule as the JSON GET.
+      if (!EnrollmentBindMaterialPolicy.proofTokenAvailable(result.enrollmentStatus())) {
+        ProblemDetail problem =
+            ProblemDetail.forStatusAndDetail(
+                HttpStatus.CONFLICT,
+                "The onboarding QR code is available only while the enrollment awaits a device.");
+        problem.setType(
+            URI.create("https://ezkey.io/problems/admin-provisioning/bind-material-unavailable"));
+        problem.setTitle("Bind Material Unavailable");
+        problem.setProperty("path", httpRequest.getRequestURI());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
+      }
 
       // Validate enrollment has proof token
       if (result.enrollmentProofToken() == null || result.enrollmentProofToken().isEmpty()) {

@@ -17,7 +17,7 @@ full pass (keep, tune, or roll back).
 
 | Layer | Cadence | Notes |
 |-------|---------|-------|
-| Dependabot opens PRs | **Daily** for Maven (`/`) and npm (`/ezkey-admin-ui`, `/ezkey-sdk/javascript`, `/ezkey_mobile`); **weekly** for `github-actions` and `pip` | Cooldown ~**3** days patch/minor, ~**7** days semver-major (npm/maven/pip); Actions uses `default-days: 3` only (schema has no semver keys). `open-pull-requests-limit: 10` per ecosystem — see `.github/dependabot.yml` |
+| Dependabot opens PRs | **Daily** for Maven (`/`) and npm (`/ezkey-admin-ui`, `/ezkey-sdk/javascript`, `/ezkey_mobile`); **weekly** for `github-actions`, `pip`, and npm at `/bruno` | Cooldown ~**3** days patch/minor, ~**7** days semver-major (npm/maven/pip); Actions uses `default-days: 3` only (schema has no semver keys). `open-pull-requests-limit: 10` per ecosystem — see `.github/dependabot.yml` |
 | Agent curation — weekday light | **Weekdays 09:14 ET** | T1–T3 + Orval **O0/O1** only; **silent when queue empty**; default autonomy on that scope |
 | Agent curation — Monday full | **Monday 09:14 ET** (or first working day) | Full lots + **Java BOM** + **Mobile RN** pulses (`yarn deps:monitor --strict`) + holds review; one campaign note from `TEMPLATE.md` |
 | Concurrency | **One owning pass per day** | Before merge/close/hygiene PR: if concurrent merges (~30 min) or another in-flight pass → back off, report only |
@@ -52,8 +52,52 @@ Dependabot alone cannot prove current:
 | Admin UI | `npm` at `/ezkey-admin-ui` (daily + cooldown) | Orval via **Orval risk grid** (skill); evaluate **separately** from mobile |
 | Ezkey Mobile (Yarn 4) | `npm` at `/ezkey_mobile` (daily + cooldown) | **Mobile RN pulse** Monday full; Orval via **Orval risk grid** (separate from Admin UI) |
 | SDK JS | `npm` at `/ezkey-sdk/javascript` (daily + cooldown) | — |
+| Bruno CLI | `npm` at `/bruno` (weekly + cooldown) | Smoke with `./scripts/bruno-health.sh --suite g0` |
 | GitHub Actions | `github-actions` at `/` (weekly); group `codeql-action` (`github/codeql-action/*`) so init/analyze bump together (#1061/#1063 failed alone; fixed by #1072) | — |
 | Python CLI | `pip` at `/ezkey-cli-python` (weekly) | — |
+
+**Alerts (enabled 2026-11-06, Marc's decision).** Version updates and alerts are complementary:
+transitive dependencies rarely move through version-update PRs, so lockfiles also need a refresh.
+Triage by **what ships**, not by GitHub's `runtime` / `development` label, which is unreliable on
+the Yarn mobile lockfile: at activation, 79 of its 82 alerts were outside the React Native release
+bundle (checked from Android and iOS source maps). Fix what ships first; refresh tooling lockfiles;
+dismiss the rest with a written reason. Security-update PRs are on since the stock was triaged
+(2026-11-06); patch-level ones go through `dependabot-auto-merge.yml` with its exclusions.
+`update-types` in an `ignore` rule filters version updates only, so a security PR can still propose
+a deferred major such as TypeScript 7. It will not auto-merge. Treat it as T4 (Marc decides) and
+label it `deferred:later-train` if deferred; it is not a configuration error.
+Mobile refresh recipe: `yarn up -R <alert packages> --mode=update-lockfile`, then compare the
+release bundles line by line (Android and iOS). `package.json` must not move.
+
+### Check upstream before dismissing a vulnerability
+
+Applies to any lane that dismisses or accepts a third-party vulnerability. A dismissal assumes the
+situation will not change, so verify that first:
+
+1. **Read the upstream default branch, not only the latest release:** its version pins, its open PRs
+   and issues on the advisory, and its release cadence.
+2. **Name what blocks the fix:** a version range, a pin, a major with breaking changes, or no patch
+   at all. If it matters, test the fix in a scratch copy with `overrides`.
+3. **If upstream is moving, leave the alert open** and add a row to the table below. An open alert
+   closes itself when the lockfile leaves the vulnerable range.
+4. **Dismiss only when no fix is coming** (no patch published, or upstream declined), with a written
+   reason. GitHub documents automatic reopening only for auto-dismissed alerts, so treat a manual
+   dismissal as silent. The Monday full pass lists them (see *Dismissed-alert check* in the skill).
+
+**Why (2026-11-06):** we were about to dismiss 16 alerts as imposed by upstream. Marc asked to check
+upstream first. Bruno's default branch had already fixed or removed 12 of its 14, ahead of the next
+release. ESLint and typescript-eslint had open PRs for `minimatch` 11, and the same override passed
+lint on the Admin UI. Dismissing would have hidden all of it.
+
+| Open alerts waiting on upstream (2026-11-06) | Closes when | Fallback |
+|---|---|---|
+| Bruno: `axios` (9), `form-data`, `js-yaml`, `csv-parse` | Next `@usebruno/cli` release, through the weekly Dependabot PR | None needed: tooling, not shipped |
+| Bruno: `@faker-js/faker`, `uuid` | Upstream moves off `^9` and `^10` (still there on its default branch) | Re-decide if still open after the next release |
+| Admin UI: `minimatch` | ESLint, `config-array` and `typescript-estree` allow `^11` | Monday full of **2026-11-30**: apply the tested `overrides` |
+| SDK JS: `minimatch` | `openapi-generator-cli` leaves `glob` 13 | Review with #1218 |
+| Mobile: `minimatch` | `typescript-estree` allows `^11` and tooling leaves `glob` 10 | Longest wait: tooling only, not in the release bundle |
+
+Delete a row when its alert closes.
 
 **Maven dependency graph:** Dependabot PR updates are separate from GitHub’s Insights dependency
 graph. Ezkey submits the full transitive Maven graph via
@@ -143,11 +187,12 @@ To park a new later-train disruptor: comment + `gh pr edit <n> --add-label defer
 
 | Tracker | Topic | Status / re-evaluate when |
 |---------|--------|---------------------------|
-| `#627` | RN 0.87 platform lot closeout (ex-`#582`–`#585`) | Versions on main **done** (RN 0.87.1 / React 19.3.0 + navigation / vision-camera / safe-area); **Pixel smoke pending** — close `#627` when smoke is recorded |
+| `#627` | RN 0.87 platform lot closeout (ex-`#582`–`#585`) | **Closed 2026-11-06.** Versions had already landed. Pixel smoke recorded on the #1241 debug build (screen pass, admin.community re-enrollment, login) |
 
 As of 2026-09-26: Dependabot PRs `#582`–`#585` were **closed without merge** (Dependabot
 supersede 2026-09-22) after chantier F landed the versions otherwise. Residual human closeout is
 **issue `#627`**, not those PRs — do not reopen them.
+**2026-11-06:** Pixel smoke recorded on the #1241 debug build (Marc, Pixel 7 Pro): screen pass, admin.community re-enrollment, and login succeeded. `#627` closed. The "still pending" lines below are the notes from those earlier passes.
 **2026-09-28 hebdo:** active Dependabot queue empty (only deferred `#337`/`#498`); `#627` Pixel
 smoke still pending — see [`2026-09-28-pass-1.md`](2026-09-28-pass-1.md).
 **2026-10-05 hebdo:** Lots A–D squash-merged (Maven + Admin/SDK + mobile tooling/runtime); held

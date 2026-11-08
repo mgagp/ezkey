@@ -228,7 +228,7 @@ Living status enum values also include terminal / failure paths such as `EXPIRED
 (default 7 days); that clock is the pending invitation window only, not a post-`VERIFIED` lifetime.
 
 - **CREATED** → Enrollment invitation exists; device has not bound yet.
-- **BOUND** → Device claimed the invitation; cryptographic verify not finished.
+- **BOUND** → Device claimed the invitation; cryptographic verify not finished. Scan and challenge form one sequence, and an abandoned bind needs a new invitation: see [one bind session](../ezkey_mobile/docs/MOBILE_APP_STATE_MACHINE.md#product-intent-one-bind-session).
 - **VERIFIED + Active** → The enrollment is fully operational. Authentication attempts are allowed.
 - **VERIFIED + Inactive** → The enrollment is temporarily suspended. Authentication is blocked, but the credential can be reactivated.
 - **REVOKED** → The enrollment is permanently invalidated. It cannot be reactivated or used again.
@@ -240,7 +240,7 @@ Living status enum values also include terminal / failure paths such as `EXPIRED
 | Create | Yes | — | — | Initiates credential binding |
 | Deactivate | Yes (VERIFIED + active only) | Yes | Optional | Blocks authentication |
 | Reactivate | Yes (VERIFIED + inactive only) | Yes | Optional | Restores authentication |
-| Revoke | Yes (VERIFIED only) | No | Required | Permanently invalidates credential |
+| Revoke | Yes (any state except already REVOKED, including CREATED and BOUND) | No | Required | Permanently invalidates credential |
 | Delete | Conditional ¹ | No | Required | Physically removes enrollment record |
 
 ¹ Delete requires: zero authentication history **and** enrollment is not linked as any admin's MFA enrollment.
@@ -398,7 +398,7 @@ This lifecycle is intentionally more complex than other entities because encrypt
 
 **Scope.** Recovery codes exist only for admins (Global Admin and Tenant Admin). Regular user enrollments do not have recovery codes. This is a deliberate asymmetry: admins need a self-service fallback because being locked out of the admin console has operational consequences for the entire instance. End-user recovery follows a different path — an admin can deactivate and re-enroll the user.
 
-**Lifecycle.** Recovery codes follow a simple generate-and-replace model. They are consumable artifacts — each code can be used once. When a new set is generated (regeneration), all remaining codes from the previous set are invalidated. There is no individual code deactivation or reactivation — the entire set is replaced.
+**Lifecycle.** Recovery codes follow a simple generate-and-replace model. They are consumable artifacts — each code can be used once. When a new set is generated (regeneration), all remaining codes from the previous set are invalidated. There is no individual code deactivation or reactivation — the entire set is replaced. A set whose codes have all been used is **exhausted**, not "never issued": the stored set is empty rather than absent, and operator copy offers a new set instead of a first issuance (#1244).
 
 **Relationship to enrollment.** An admin has an MFA enrollment (their login credential) and recovery codes as two independent properties. Revoking the admin's enrollment does not invalidate their recovery codes, and regenerating recovery codes does not affect the enrollment. They are parallel branches of the admin's security profile, not a parent-child chain.
 

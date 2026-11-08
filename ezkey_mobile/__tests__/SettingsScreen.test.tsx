@@ -52,7 +52,7 @@ describe('SettingsScreen', () => {
 
     const textContent = tree!.root.findAllByType(Text).map(node => node.props.children).flat().join(' ');
     expect(textContent).toContain('Language');
-    expect(textContent).toContain('English by default; French available');
+    expect(textContent).toContain('Follows this phone by default; English or French');
 
     const languageItem = tree!.root.findAll(
       node =>

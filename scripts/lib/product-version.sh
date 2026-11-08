@@ -44,9 +44,10 @@ def one(tag: str, default: str | None = None) -> str:
         sys.exit(2)
     return m.group(1)
 
-revision = one("revision")
-changelist = one("changelist", "")
-print(f"{revision}\t{changelist}")
+revision = one("revision").replace("\r", "").strip()
+changelist = one("changelist", "").replace("\r", "").strip()
+# LF only. Windows CPython print() emits CRLF, and bash `read` keeps the CR.
+sys.stdout.buffer.write(f"{revision}\t{changelist}\n".encode("utf-8"))
 PY
 }
 
@@ -55,6 +56,8 @@ ezkey_maven_product_version() {
   local pom="${1:?}"
   local revision changelist
   IFS=$'\t' read -r revision changelist < <(ezkey_read_pom_ci_versions "$pom")
+  revision="${revision//$'\r'/}"
+  changelist="${changelist//$'\r'/}"
   printf '%s' "${revision}${changelist}"
 }
 
@@ -114,6 +117,7 @@ ezkey_android_version_name() {
 
 # .NET AssemblyVersion / FileVersion: numeric major.minor.patch.revision only.
 # Never include -SNAPSHOT or other SemVer labels (those belong on PackageVersion only).
+# No csproj in tree today (#1232); keep the mapping for when a client returns (#1219).
 ezkey_dotnet_assembly_file_version() {
   local maven_version="${1:?}"
   local name core
@@ -259,90 +263,6 @@ if n != 1:
     sys.exit(2)
 open(path, "w", encoding="utf-8", newline="\n").write(new)
 PY
-}
-
-ezkey_read_csproj_package_version() {
-  local file="${1:?}"
-  python3 - "$file" <<'PY'
-import re
-import sys
-
-text = open(sys.argv[1], encoding="utf-8").read()
-m = re.search(r"<PackageVersion>([^<]+)</PackageVersion>", text)
-if not m:
-    sys.stderr.write(f"error: PackageVersion not found in {sys.argv[1]}\n")
-    sys.exit(2)
-print(m.group(1))
-PY
-}
-
-ezkey_read_csproj_element() {
-  local file="${1:?}"
-  local tag="${2:?}"
-  python3 - "$file" "$tag" <<'PY'
-import re
-import sys
-
-path, tag = sys.argv[1], sys.argv[2]
-text = open(path, encoding="utf-8").read()
-m = re.search(rf"<{tag}>([^<]+)</{tag}>", text)
-if not m:
-    sys.stderr.write(f"error: {tag} not found in {path}\n")
-    sys.exit(2)
-print(m.group(1))
-PY
-}
-
-# Set PackageVersion (may include -SNAPSHOT) and numeric AssemblyVersion / FileVersion.
-ezkey_set_csproj_versions() {
-  local file="${1:?}"
-  local package_version="${2:?}"
-  local assembly_version="${3:?}"
-  python3 - "$file" "$package_version" "$assembly_version" <<'PY'
-import re
-import sys
-
-path, package_version, assembly_version = sys.argv[1], sys.argv[2], sys.argv[3]
-if "SNAPSHOT" in assembly_version.upper():
-    sys.stderr.write(
-        f"error: AssemblyVersion/FileVersion must not contain SNAPSHOT (got {assembly_version})\n"
-    )
-    sys.exit(2)
-text = open(path, encoding="utf-8").read()
-
-
-def upsert(src: str, tag: str, value: str) -> str:
-    pattern = rf"(<{tag}>)[^<]*(</{tag}>)"
-    new, n = re.subn(pattern, rf"\g<1>{value}\2", src, count=1)
-    if n == 1:
-        return new
-    # Insert after PackageVersion when the element is missing.
-    new2, n2 = re.subn(
-        r"(</PackageVersion>\s*\n)",
-        rf"</PackageVersion>\n    <{tag}>{value}</{tag}>\n",
-        src,
-        count=1,
-    )
-    if n2 != 1:
-        sys.stderr.write(f"error: could not set <{tag}> in {path}\n")
-        sys.exit(2)
-    return new2
-
-
-text = upsert(text, "PackageVersion", package_version)
-text = upsert(text, "AssemblyVersion", assembly_version)
-text = upsert(text, "FileVersion", assembly_version)
-open(path, "w", encoding="utf-8", newline="\n").write(text)
-PY
-}
-
-# Backward-compatible alias used by older call sites / dry-run labels.
-ezkey_set_csproj_package_version() {
-  local file="${1:?}"
-  local package_version="${2:?}"
-  local assembly_version
-  assembly_version="$(ezkey_dotnet_assembly_file_version "${package_version}")"
-  ezkey_set_csproj_versions "$file" "$package_version" "$assembly_version"
 }
 
 ezkey_read_android_version_code() {

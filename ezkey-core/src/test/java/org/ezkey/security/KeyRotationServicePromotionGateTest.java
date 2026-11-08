@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.PlatformTransactionManager;
 
 /**
  * Base / ops: encryption ON + rotation OFF must idle KEY_PROMOTION without disabling Tink.
@@ -40,6 +41,7 @@ class KeyRotationServicePromotionGateTest {
   @Mock private AuditLogService auditLogService;
   @Mock private EncryptionKeyMigrationScopeService migrationScopeService;
   @Mock private KeyUsageVerificationService keyUsageVerificationService;
+  @Mock private PlatformTransactionManager transactionManager;
 
   private KeyRotationService keyRotationService;
   private final TinkProperties.Rotation rotation = new TinkProperties.Rotation();
@@ -53,7 +55,8 @@ class KeyRotationServicePromotionGateTest {
             properties,
             auditLogService,
             migrationScopeService,
-            keyUsageVerificationService);
+            keyUsageVerificationService,
+            transactionManager);
   }
 
   @Test

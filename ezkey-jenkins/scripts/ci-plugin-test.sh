@@ -16,9 +16,15 @@ fi
 docker volume create "${VOLUME}" >/dev/null
 echo "ezkey-jenkins plugin tests with ${IMAGE} (volume ${VOLUME}, host network for JenkinsRule) ..."
 # Host network: JenkinsRule Jetty bind is unreliable under Docker bridge port mapping.
-docker run --rm \
+# Git Bash rewrites a container path like /src unless MSYS_NO_PATHCONV is set for this
+# command only. The host mount must stay a Windows path so Docker Desktop can open it.
+HOST_SRC="${REPO_ROOT}"
+if command -v cygpath >/dev/null 2>&1; then
+  HOST_SRC="$(cygpath -w "${REPO_ROOT}")"
+fi
+MSYS_NO_PATHCONV=1 docker run --rm \
   --network host \
-  -v "${REPO_ROOT}:/src" \
+  -v "${HOST_SRC}:/src" \
   -v "${VOLUME}:/root/.m2" \
   -w /src \
   -e JAVA_TOOL_OPTIONS="-Djava.net.preferIPv4Stack=true" \

@@ -116,6 +116,36 @@ class EncryptionKeysApi extends runtime.BaseAPI {
         return await response.value();
     }
     /**
+     * Returns whether key rotation and re-encryption are enabled. Flags come from config, not from the product runtime profile name. Global Admin only.
+     * Encryption lifecycle config
+     */
+    async getLifecycleConfigRaw(initOverrides) {
+        const queryParameters = {};
+        const headerParameters = {};
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        const response = await this.request({
+            path: `/api/v1/encryption-keys/lifecycle-config`,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+        return new runtime.JSONApiResponse(response);
+    }
+    /**
+     * Returns whether key rotation and re-encryption are enabled. Flags come from config, not from the product runtime profile name. Global Admin only.
+     * Encryption lifecycle config
+     */
+    async getLifecycleConfig(initOverrides) {
+        const response = await this.getLifecycleConfigRaw(initOverrides);
+        return await response.value();
+    }
+    /**
      * Returns the current primary encryption key used for new encryption operations. Global Admin only.
      * Get primary encryption key
      */

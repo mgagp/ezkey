@@ -86,6 +86,25 @@ install_fake_curl "503,503,503,503,503,200"
 assert_ok "probe_lb passes on 5×503 then 200" \
   probe_lb "fake-recover-200" "http://127.0.0.1/fake" "200"
 
+filter_input=$'/ezkey-admin-api-1 1 running 0 starting
+/ezkey-admin-api-2 0 running 0 healthy
+/ezkey-auth-api-1 0 running 0 unhealthy
+/ezkey-migration-ha 0 exited 0 none
+/ezkey-db-grants-ha 0 exited 1 none
+/ezkey-demo-device-ha 0 running 0 starting
+/ezkey-haproxy-auth 0 running 0 none'
+expected_names=$'ezkey-admin-api-1
+ezkey-auth-api-1
+ezkey-db-grants-ha
+ezkey-demo-device-ha'
+if [[ "$(ha_filter_containers_to_diagnose <<<"${filter_input}")" == "${expected_names}" ]]; then
+  echo "PASS: diagnostics select restarted, unhealthy and failed containers (#1259)"
+  pass=$((pass + 1))
+else
+  echo "FAIL: diagnostics container selection (#1259)" >&2
+  fail=$((fail + 1))
+fi
+
 echo
 echo "Test results: ${pass} passed, ${fail} failed"
 [[ "${fail}" -eq 0 ]]

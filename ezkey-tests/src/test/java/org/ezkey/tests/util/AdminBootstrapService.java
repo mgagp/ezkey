@@ -278,6 +278,7 @@ public class AdminBootstrapService {
       }
 
       CryptoApiClient.EcP256KeyPair deviceKeyPair;
+      String boundIntegrationPublicKey = null;
       DeviceCredentials deviceCredentials;
 
       if ("VERIFIED".equals(enrollmentStatus)) {
@@ -348,8 +349,10 @@ public class AdminBootstrapService {
         log.info("═══════════════════════════════════════════════════════════════");
         log.info("STEP 3: Binding device to enrollment...");
         log.info("═══════════════════════════════════════════════════════════════");
-        String bindProofToken =
+        BindOutcome bindOutcome =
             bindDeviceOrSkip(credentials.enrollmentId(), credentials.enrollmentProofToken());
+        String bindProofToken = bindOutcome.proofToken();
+        boundIntegrationPublicKey = bindOutcome.integrationPublicKey();
         log.info("✅ Step 3 Complete - Device bound to enrollment:");
         log.info(
             "   Bind Proof Token: {}...",
@@ -410,6 +413,7 @@ public class AdminBootstrapService {
             deviceCredentials.publicKey(),
             deviceCredentials.privateKey(),
             credentials.enrollmentProofToken(),
+            boundIntegrationPublicKey,
             tempAdminToken);
         log.info("✅ Step 5 Complete - Enrollment file written to demo-device");
         log.info("   DemoDevice is now synchronized with enrollment state");
@@ -498,8 +502,9 @@ public class AdminBootstrapService {
       log.info("═══════════════════════════════════════════════════════════════");
       log.info("STEP 3: Binding device to enrollment...");
       log.info("═══════════════════════════════════════════════════════════════");
-      String bindProofToken =
+      BindOutcome bindOutcome =
           bindDeviceOrSkip(credentials.enrollmentId(), credentials.enrollmentProofToken());
+      String bindProofToken = bindOutcome.proofToken();
       log.info("✅ Step 3 Complete - Device bound to enrollment:");
       log.info(
           "   Bind Proof Token: {}...",
@@ -563,6 +568,7 @@ public class AdminBootstrapService {
             deviceCredentials.publicKey(),
             deviceCredentials.privateKey(),
             credentials.enrollmentProofToken(),
+            bindOutcome.integrationPublicKey(),
             tempAdminToken);
         log.info("✅ Step 6 Complete - DemoDevice enrollment file updated successfully");
         log.info("   DemoDevice should now be synchronized with enrollment state");
@@ -681,7 +687,7 @@ public class AdminBootstrapService {
    * @throws IllegalStateException if enrollment is already bound but not verified, or if rate limit
    *     retries are exhausted
    */
-  private String bindDeviceOrSkip(Integer enrollmentId, String enrollmentProofToken) {
+  private BindOutcome bindDeviceOrSkip(Integer enrollmentId, String enrollmentProofToken) {
     log.info("   Calling: POST /api/v1/enrollments/bind");
     log.info("   Enrollment ID: {}", enrollmentId);
     log.debug(
@@ -751,7 +757,7 @@ public class AdminBootstrapService {
           log.info(
               "   ⏭️  Skipping bind step (enrollment already VERIFIED, will use existing"
                   + " credentials)");
-          return "SKIPPED_BIND_ALREADY_VERIFIED";
+          return new BindOutcome("SKIPPED_BIND_ALREADY_VERIFIED", null);
         }
 
         // Second check: Database status (opportunistic - check real state)
@@ -762,7 +768,7 @@ public class AdminBootstrapService {
           log.info(
               "   ✅ Enrollment is VERIFIED in database - Skipping bind step (enrollment is"
                   + " usable)");
-          return "SKIPPED_BIND_ALREADY_VERIFIED";
+          return new BindOutcome("SKIPPED_BIND_ALREADY_VERIFIED", null);
         } else if ("BOUND".equals(enrollmentStatus)) {
           log.warn(
               "   ⚠️  Enrollment is BOUND but not VERIFIED - Resetting enrollment in database to"
@@ -812,7 +818,8 @@ public class AdminBootstrapService {
         String bindProofToken = response.jsonPath().getString("enrollmentProofToken");
         assertThat(bindProofToken).isNotNull().isNotEmpty();
         log.info("   ✅ Bind successful - Proof token received");
-        return bindProofToken;
+        return new BindOutcome(
+            bindProofToken, response.jsonPath().getString("integrationPublicKey"));
       }
 
       // For other errors, fail immediately
@@ -1334,4 +1341,10 @@ public class AdminBootstrapService {
       throw new IllegalStateException("SHA-256 algorithm not available", e);
     }
   }
+
+  /**
+   * Result of a bind attempt. {@code integrationPublicKey} is null when bind was skipped because
+   * the enrollment is already verified: the protocol hands the key out only in the bind response.
+   */
+  private record BindOutcome(String proofToken, String integrationPublicKey) {}
 }

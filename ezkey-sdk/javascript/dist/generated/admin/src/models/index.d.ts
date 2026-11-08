@@ -215,6 +215,12 @@ export interface AdminLoginResponseDto {
      */
     tenantId?: number;
     /**
+     * Tenant display name when the administrator is tenant- or integration-scoped; null for global administrators
+     * @type {string}
+     * @memberof AdminLoginResponseDto
+     */
+    tenantName?: string;
+    /**
      * Non-secret CSRF token to send in X-CSRF-TOKEN for cookie-authenticated unsafe requests. Present only in browser session cookie mode.
      * @type {string}
      * @memberof AdminLoginResponseDto
@@ -245,6 +251,25 @@ export declare const AdminLoginResponseDtoAdminTypeEnum: {
     readonly IntegrationAdmin: "INTEGRATION_ADMIN";
 };
 export type AdminLoginResponseDtoAdminTypeEnum = typeof AdminLoginResponseDtoAdminTypeEnum[keyof typeof AdminLoginResponseDtoAdminTypeEnum];
+/**
+ *
+ * @export
+ * @interface AdminPasswordlessCancelRequestDto
+ */
+export interface AdminPasswordlessCancelRequestDto {
+    /**
+     *
+     * @type {number}
+     * @memberof AdminPasswordlessCancelRequestDto
+     */
+    authAttemptId: number;
+    /**
+     *
+     * @type {string}
+     * @memberof AdminPasswordlessCancelRequestDto
+     */
+    waiterSecret: string;
+}
 /**
  *
  * @export
@@ -411,6 +436,12 @@ export interface AdminResponseDto {
      */
     enrollmentName?: string | null;
     /**
+     * Status of the linked MFA enrollment (null when enrollmentId is null). Tells whether onboarding material can still be retrieved.
+     * @type {string}
+     * @memberof AdminResponseDto
+     */
+    enrollmentStatus?: AdminResponseDtoEnrollmentStatusEnum | null;
+    /**
      * Flag indicating if the administrator is currently active
      * @type {boolean}
      * @memberof AdminResponseDto
@@ -435,11 +466,17 @@ export interface AdminResponseDto {
      */
     lastLoginAt?: string | null;
     /**
-     * Whether this administrator currently has a recovery-code set stored server-side
+     * Whether unused recovery codes currently remain for this administrator
      * @type {boolean}
      * @memberof AdminResponseDto
      */
     hasRecoveryCodes?: boolean;
+    /**
+     * Whether a recovery-code set was issued for this administrator and every code in it has since been used. False when unused codes remain or when no set was ever issued. Distinguishes a replacement set from a first issuance when hasRecoveryCodes is false.
+     * @type {boolean}
+     * @memberof AdminResponseDto
+     */
+    recoveryCodesExhausted?: boolean;
     /**
      * Whether this administrator is fully operational (active and, for tenant admins, tenant also active)
      * @type {boolean}
@@ -456,6 +493,18 @@ export declare const AdminResponseDtoAdminTypeEnum: {
     readonly IntegrationAdmin: "INTEGRATION_ADMIN";
 };
 export type AdminResponseDtoAdminTypeEnum = typeof AdminResponseDtoAdminTypeEnum[keyof typeof AdminResponseDtoAdminTypeEnum];
+/**
+ * @export
+ */
+export declare const AdminResponseDtoEnrollmentStatusEnum: {
+    readonly Created: "CREATED";
+    readonly Bound: "BOUND";
+    readonly Verified: "VERIFIED";
+    readonly Invalid: "INVALID";
+    readonly Revoked: "REVOKED";
+    readonly Expired: "EXPIRED";
+};
+export type AdminResponseDtoEnrollmentStatusEnum = typeof AdminResponseDtoEnrollmentStatusEnum[keyof typeof AdminResponseDtoEnrollmentStatusEnum];
 /**
  * @export
  */
@@ -502,11 +551,23 @@ export interface AdminSessionResponseDto {
      */
     tenantId?: number;
     /**
+     * Tenant display name when the administrator is tenant- or integration-scoped; null for global administrators
+     * @type {string}
+     * @memberof AdminSessionResponseDto
+     */
+    tenantName?: string;
+    /**
      * Non-secret CSRF token to send in X-CSRF-TOKEN for cookie-authenticated unsafe requests
      * @type {string}
      * @memberof AdminSessionResponseDto
      */
     csrfToken?: string;
+    /**
+     * Token purpose: SESSION for passwordless login, EVALUATOR_TEMP for temporary console explore
+     * @type {string}
+     * @memberof AdminSessionResponseDto
+     */
+    tokenPurpose?: AdminSessionResponseDtoTokenPurposeEnum;
 }
 /**
  * @export
@@ -517,6 +578,15 @@ export declare const AdminSessionResponseDtoAdminTypeEnum: {
     readonly IntegrationAdmin: "INTEGRATION_ADMIN";
 };
 export type AdminSessionResponseDtoAdminTypeEnum = typeof AdminSessionResponseDtoAdminTypeEnum[keyof typeof AdminSessionResponseDtoAdminTypeEnum];
+/**
+ * @export
+ */
+export declare const AdminSessionResponseDtoTokenPurposeEnum: {
+    readonly Session: "SESSION";
+    readonly EvaluatorTemp: "EVALUATOR_TEMP";
+    readonly Recovery: "RECOVERY";
+};
+export type AdminSessionResponseDtoTokenPurposeEnum = typeof AdminSessionResponseDtoTokenPurposeEnum[keyof typeof AdminSessionResponseDtoTokenPurposeEnum];
 /**
  * Request DTO for partial update of administrator profile
  * @export
@@ -1520,9 +1590,11 @@ export declare const AuditLogResponseDtoEventTypeEnum: {
     readonly EnrollmentReactivated: "ENROLLMENT_REACTIVATED";
     readonly EnrollmentAuthAttemptBlocked: "ENROLLMENT_AUTH_ATTEMPT_BLOCKED";
     readonly EnrollmentExpired: "ENROLLMENT_EXPIRED";
+    readonly EnrollmentQrDelivery: "ENROLLMENT_QR_DELIVERY";
     readonly AuthAttemptCreated: "AUTH_ATTEMPT_CREATED";
     readonly AuthAttemptPending: "AUTH_ATTEMPT_PENDING";
     readonly AuthAttemptRespond: "AUTH_ATTEMPT_RESPOND";
+    readonly AuthAttemptRespondSignatureRejected: "AUTH_ATTEMPT_RESPOND_SIGNATURE_REJECTED";
     readonly AuthAttemptCancelled: "AUTH_ATTEMPT_CANCELLED";
     readonly AuthAttemptExpired: "AUTH_ATTEMPT_EXPIRED";
     readonly ApiKeyCreated: "API_KEY_CREATED";
@@ -1560,6 +1632,9 @@ export declare const AuditLogResponseDtoEventTypeEnum: {
     readonly AuditIntegrityRuptureConciliated: "AUDIT_INTEGRITY_RUPTURE_CONCILIATED";
     readonly AuditEntryIntegrityConciliated: "AUDIT_ENTRY_INTEGRITY_CONCILIATED";
     readonly NightlyIntegrityValidationCompleted: "NIGHTLY_INTEGRITY_VALIDATION_COMPLETED";
+    readonly IntegrityAsyncJobStarted: "INTEGRITY_ASYNC_JOB_STARTED";
+    readonly IntegrityAsyncJobCompleted: "INTEGRITY_ASYNC_JOB_COMPLETED";
+    readonly IntegrityAsyncJobAbandoned: "INTEGRITY_ASYNC_JOB_ABANDONED";
     readonly AlertRaised: "ALERT_RAISED";
     readonly AlertResolved: "ALERT_RESOLVED";
 };
@@ -1655,12 +1730,6 @@ export interface AuthAttemptDto {
      * @memberof AuthAttemptDto
      */
     authAttemptChallenge?: number;
-    /**
-     * Signed JWT proof token (present only when status is ACCEPTED)
-     * @type {string}
-     * @memberof AuthAttemptDto
-     */
-    authAttemptProofToken?: string;
     /**
      * Creation timestamp with timezone
      * @type {string}
@@ -1780,6 +1849,7 @@ export declare const AuthAttemptWaitResponseDtoStatusEnum: {
     readonly Invalid: "INVALID";
     readonly Rejected: "REJECTED";
     readonly Accepted: "ACCEPTED";
+    readonly Expired: "EXPIRED";
 };
 export type AuthAttemptWaitResponseDtoStatusEnum = typeof AuthAttemptWaitResponseDtoStatusEnum[keyof typeof AuthAttemptWaitResponseDtoStatusEnum];
 /**
@@ -1986,31 +2056,31 @@ export interface ChainVerificationReport {
  */
 export interface DashboardAlertItemDto {
     /**
-     *
+     * Alert primary key
      * @type {number}
      * @memberof DashboardAlertItemDto
      */
     alertId?: number;
     /**
-     *
+     * Alert type
      * @type {string}
      * @memberof DashboardAlertItemDto
      */
     alertType?: DashboardAlertItemDtoAlertTypeEnum;
     /**
-     *
+     * Alert severity
      * @type {string}
      * @memberof DashboardAlertItemDto
      */
     severity?: DashboardAlertItemDtoSeverityEnum;
     /**
-     *
+     * Alert status
      * @type {string}
      * @memberof DashboardAlertItemDto
      */
     status?: DashboardAlertItemDtoStatusEnum;
     /**
-     *
+     * Alert creation timestamp
      * @type {string}
      * @memberof DashboardAlertItemDto
      */
@@ -2177,19 +2247,19 @@ export interface DashboardEnrollmentStatsDto {
  */
 export interface DashboardIntegrationStatsDto {
     /**
-     *
+     * Total integrations in scope
      * @type {number}
      * @memberof DashboardIntegrationStatsDto
      */
     total?: number;
     /**
-     *
+     * Integrations in ACTIVE lifecycle status
      * @type {number}
      * @memberof DashboardIntegrationStatsDto
      */
     active?: number;
     /**
-     *
+     * Integrations in RETIRED lifecycle status
      * @type {number}
      * @memberof DashboardIntegrationStatsDto
      */
@@ -2233,25 +2303,25 @@ export interface DashboardIntegrityConfigSummaryDto {
  */
 export interface DashboardOverviewDto {
     /**
-     *
+     * Integration counts for the current scope
      * @type {DashboardIntegrationStatsDto}
      * @memberof DashboardOverviewDto
      */
     integrations?: DashboardIntegrationStatsDto;
     /**
-     *
+     * Operational enrollment counts
      * @type {DashboardEnrollmentStatsDto}
      * @memberof DashboardOverviewDto
      */
     enrollments?: DashboardEnrollmentStatsDto;
     /**
-     *
+     * Auth attempt stats for the last 24 hours
      * @type {DashboardAuth24hStatsDto}
      * @memberof DashboardOverviewDto
      */
     auth24h?: DashboardAuth24hStatsDto;
     /**
-     *
+     * Recent audit log entries
      * @type {Array<DashboardRecentActivityItemDto>}
      * @memberof DashboardOverviewDto
      */
@@ -2294,43 +2364,43 @@ export interface DashboardOverviewDto {
  */
 export interface DashboardRecentActivityItemDto {
     /**
-     *
+     * Audit log primary key
      * @type {number}
      * @memberof DashboardRecentActivityItemDto
      */
     auditLogId?: number;
     /**
-     *
+     * Event type name
      * @type {string}
      * @memberof DashboardRecentActivityItemDto
      */
     eventType?: string;
     /**
-     *
+     * Event status name
      * @type {string}
      * @memberof DashboardRecentActivityItemDto
      */
     eventStatus?: string;
     /**
-     *
+     * Free-text event action
      * @type {string}
      * @memberof DashboardRecentActivityItemDto
      */
     eventAction?: string;
     /**
-     *
+     * API name that produced the event
      * @type {string}
      * @memberof DashboardRecentActivityItemDto
      */
     apiName?: string;
     /**
-     *
+     * Administrator id when applicable
      * @type {number}
      * @memberof DashboardRecentActivityItemDto
      */
     adminId?: number;
     /**
-     *
+     * Event creation timestamp
      * @type {string}
      * @memberof DashboardRecentActivityItemDto
      */
@@ -2539,6 +2609,25 @@ export interface EncryptionKeyResponse {
     reencryptionWallClockSeconds?: number;
 }
 /**
+ * Encryption lifecycle enable flags (non-secret). Global Admin only. Not a job matrix.
+ * @export
+ * @interface EncryptionLifecycleConfigDto
+ */
+export interface EncryptionLifecycleConfigDto {
+    /**
+     * Whether encryption key rotation is enabled
+     * @type {boolean}
+     * @memberof EncryptionLifecycleConfigDto
+     */
+    rotationEnabled?: boolean;
+    /**
+     * Whether re-encryption is enabled
+     * @type {boolean}
+     * @memberof EncryptionLifecycleConfigDto
+     */
+    reencryptionEnabled?: boolean;
+}
+/**
  * Enrollment creation data
  * @export
  * @interface EnrollmentCreateRequestDto
@@ -2717,13 +2806,13 @@ export interface EnrollmentResponseDto {
      */
     enrollmentActive?: boolean;
     /**
-     * Challenge value for enrollment verification
+     * Challenge value for enrollment verification; returned only while the enrollment is CREATED or BOUND, null otherwise
      * @type {number}
      * @memberof EnrollmentResponseDto
      */
     enrollmentChallenge?: number;
     /**
-     * Unique code for enrollment verification
+     * Enrollment bind secret for the QR / manual channel; returned only while the enrollment is CREATED, null otherwise
      * @type {string}
      * @memberof EnrollmentResponseDto
      */
@@ -2734,18 +2823,6 @@ export interface EnrollmentResponseDto {
      * @memberof EnrollmentResponseDto
      */
     authAttemptChallengeRequired?: boolean;
-    /**
-     * Public key for integration communication
-     * @type {string}
-     * @memberof EnrollmentResponseDto
-     */
-    integrationPublicKey?: string;
-    /**
-     * Public key for the device
-     * @type {string}
-     * @memberof EnrollmentResponseDto
-     */
-    devicePublicKey?: string;
     /**
      * Client-reported device private key storage tier at verify (NONE, STANDARD, STRONG); null if unknown or legacy
      * @type {string}
@@ -3105,6 +3182,98 @@ export interface EvaluatorSelfRegistrationResponseDto {
     tenantLabel?: string;
 }
 /**
+ * Mint a one-shot temporary evaluator console session after activation
+ * @export
+ * @interface EvaluatorTempSessionRequestDto
+ */
+export interface EvaluatorTempSessionRequestDto {
+    /**
+     * Enrollment ID returned by POST /admin/auth/activate
+     * @type {number}
+     * @memberof EvaluatorTempSessionRequestDto
+     */
+    enrollmentId: number;
+    /**
+     * Enrollment proof token returned by POST /admin/auth/activate (capability to mint)
+     * @type {string}
+     * @memberof EvaluatorTempSessionRequestDto
+     */
+    enrollmentProofToken: string;
+}
+/**
+ * Temporary evaluator console session mint response
+ * @export
+ * @interface EvaluatorTempSessionResponseDto
+ */
+export interface EvaluatorTempSessionResponseDto {
+    /**
+     * Whether the temporary session was minted
+     * @type {boolean}
+     * @memberof EvaluatorTempSessionResponseDto
+     */
+    success?: boolean;
+    /**
+     * Operator-facing message
+     * @type {string}
+     * @memberof EvaluatorTempSessionResponseDto
+     */
+    message?: string;
+    /**
+     * Opaque bearer token. Omitted when the API issues an HttpOnly session cookie.
+     * @type {string}
+     * @memberof EvaluatorTempSessionResponseDto
+     */
+    token?: string;
+    /**
+     * Administrator type
+     * @type {string}
+     * @memberof EvaluatorTempSessionResponseDto
+     */
+    adminType?: string;
+    /**
+     * Administrator username
+     * @type {string}
+     * @memberof EvaluatorTempSessionResponseDto
+     */
+    username?: string;
+    /**
+     * Absolute temporary session expiry (UTC)
+     * @type {string}
+     * @memberof EvaluatorTempSessionResponseDto
+     */
+    expiresAt?: string;
+    /**
+     * Administrator ID
+     * @type {number}
+     * @memberof EvaluatorTempSessionResponseDto
+     */
+    adminId?: number;
+    /**
+     * Tenant scope ID
+     * @type {number}
+     * @memberof EvaluatorTempSessionResponseDto
+     */
+    tenantId?: number;
+    /**
+     * Tenant display name
+     * @type {string}
+     * @memberof EvaluatorTempSessionResponseDto
+     */
+    tenantName?: string;
+    /**
+     * Token purpose
+     * @type {string}
+     * @memberof EvaluatorTempSessionResponseDto
+     */
+    tokenPurpose?: string;
+    /**
+     * CSRF token for cookie mode
+     * @type {string}
+     * @memberof EvaluatorTempSessionResponseDto
+     */
+    csrfToken?: string;
+}
+/**
  *
  * @export
  * @interface GapDeclarationRequest
@@ -3297,6 +3466,332 @@ export declare const IntegrationResponseDtoLifecycleStatusEnum: {
     readonly Retired: "RETIRED";
 };
 export type IntegrationResponseDtoLifecycleStatusEnum = typeof IntegrationResponseDtoLifecycleStatusEnum[keyof typeof IntegrationResponseDtoLifecycleStatusEnum];
+/**
+ * Accepted Integrity async job (minimal body).
+ * @export
+ * @interface IntegrityAsyncJobAcceptedResponse
+ */
+export interface IntegrityAsyncJobAcceptedResponse {
+    /**
+     * Opaque job id
+     * @type {string}
+     * @memberof IntegrityAsyncJobAcceptedResponse
+     */
+    jobId: string;
+}
+/**
+ * Integrity async job status and result summary (non-secret).
+ * @export
+ * @interface IntegrityAsyncJobResponse
+ */
+export interface IntegrityAsyncJobResponse {
+    /**
+     *
+     * @type {string}
+     * @memberof IntegrityAsyncJobResponse
+     */
+    jobId?: string;
+    /**
+     *
+     * @type {string}
+     * @memberof IntegrityAsyncJobResponse
+     */
+    type?: IntegrityAsyncJobResponseTypeEnum;
+    /**
+     *
+     * @type {string}
+     * @memberof IntegrityAsyncJobResponse
+     */
+    status?: IntegrityAsyncJobResponseStatusEnum;
+    /**
+     *
+     * @type {string}
+     * @memberof IntegrityAsyncJobResponse
+     */
+    trigger?: IntegrityAsyncJobResponseTriggerEnum;
+    /**
+     *
+     * @type {string}
+     * @memberof IntegrityAsyncJobResponse
+     */
+    startedByUsername?: string;
+    /**
+     *
+     * @type {number}
+     * @memberof IntegrityAsyncJobResponse
+     */
+    startedByAdminId?: number;
+    /**
+     *
+     * @type {string}
+     * @memberof IntegrityAsyncJobResponse
+     */
+    startedAt?: string;
+    /**
+     *
+     * @type {string}
+     * @memberof IntegrityAsyncJobResponse
+     */
+    heartbeatAt?: string;
+    /**
+     *
+     * @type {string}
+     * @memberof IntegrityAsyncJobResponse
+     */
+    finishedAt?: string;
+    /**
+     *
+     * @type {string}
+     * @memberof IntegrityAsyncJobResponse
+     */
+    scopeFrom?: string;
+    /**
+     *
+     * @type {string}
+     * @memberof IntegrityAsyncJobResponse
+     */
+    scopeTo?: string;
+    /**
+     *
+     * @type {string}
+     * @memberof IntegrityAsyncJobResponse
+     */
+    resultSummary?: string;
+    /**
+     *
+     * @type {string}
+     * @memberof IntegrityAsyncJobResponse
+     */
+    errorSummary?: string;
+    /**
+     *
+     * @type {boolean}
+     * @memberof IntegrityAsyncJobResponse
+     */
+    intact?: boolean;
+    /**
+     *
+     * @type {number}
+     * @memberof IntegrityAsyncJobResponse
+     */
+    alertId?: number;
+    /**
+     *
+     * @type {string}
+     * @memberof IntegrityAsyncJobResponse
+     */
+    chainStatus?: IntegrityAsyncJobResponseChainStatusEnum;
+    /**
+     *
+     * @type {number}
+     * @memberof IntegrityAsyncJobResponse
+     */
+    totalCheckpoints?: number;
+    /**
+     *
+     * @type {number}
+     * @memberof IntegrityAsyncJobResponse
+     */
+    validCheckpoints?: number;
+    /**
+     *
+     * @type {number}
+     * @memberof IntegrityAsyncJobResponse
+     */
+    invalidCheckpoints?: number;
+    /**
+     *
+     * @type {number}
+     * @memberof IntegrityAsyncJobResponse
+     */
+    archivedCheckpoints?: number;
+    /**
+     *
+     * @type {number}
+     * @memberof IntegrityAsyncJobResponse
+     */
+    undeclaredGaps?: number;
+    /**
+     *
+     * @type {number}
+     * @memberof IntegrityAsyncJobResponse
+     */
+    entryHmacViolations?: number;
+    /**
+     *
+     * @type {string}
+     * @memberof IntegrityAsyncJobResponse
+     */
+    abandonedAt?: string;
+    /**
+     *
+     * @type {string}
+     * @memberof IntegrityAsyncJobResponse
+     */
+    resumeOneLiner?: string;
+    /**
+     *
+     * @type {string}
+     * @memberof IntegrityAsyncJobResponse
+     */
+    busyHolder?: IntegrityAsyncJobResponseBusyHolderEnum;
+}
+/**
+ * @export
+ */
+export declare const IntegrityAsyncJobResponseTypeEnum: {
+    readonly VerifyChainRange: "VERIFY_CHAIN_RANGE";
+    readonly VerifyEntryHmacRange: "VERIFY_ENTRY_HMAC_RANGE";
+    readonly RunValidation: "RUN_VALIDATION";
+};
+export type IntegrityAsyncJobResponseTypeEnum = typeof IntegrityAsyncJobResponseTypeEnum[keyof typeof IntegrityAsyncJobResponseTypeEnum];
+/**
+ * @export
+ */
+export declare const IntegrityAsyncJobResponseStatusEnum: {
+    readonly Running: "RUNNING";
+    readonly Succeeded: "SUCCEEDED";
+    readonly Failed: "FAILED";
+    readonly Cancelled: "CANCELLED";
+    readonly Expired: "EXPIRED";
+    readonly Interrupted: "INTERRUPTED";
+};
+export type IntegrityAsyncJobResponseStatusEnum = typeof IntegrityAsyncJobResponseStatusEnum[keyof typeof IntegrityAsyncJobResponseStatusEnum];
+/**
+ * @export
+ */
+export declare const IntegrityAsyncJobResponseTriggerEnum: {
+    readonly Manual: "MANUAL";
+    readonly Auto: "AUTO";
+    readonly Nightly: "NIGHTLY";
+};
+export type IntegrityAsyncJobResponseTriggerEnum = typeof IntegrityAsyncJobResponseTriggerEnum[keyof typeof IntegrityAsyncJobResponseTriggerEnum];
+/**
+ * @export
+ */
+export declare const IntegrityAsyncJobResponseChainStatusEnum: {
+    readonly Ok: "OK";
+    readonly UndeclaredGapDetected: "UNDECLARED_GAP_DETECTED";
+    readonly ChainIntegrityViolationDetected: "CHAIN_INTEGRITY_VIOLATION_DETECTED";
+    readonly NotVerified: "NOT_VERIFIED";
+};
+export type IntegrityAsyncJobResponseChainStatusEnum = typeof IntegrityAsyncJobResponseChainStatusEnum[keyof typeof IntegrityAsyncJobResponseChainStatusEnum];
+/**
+ * @export
+ */
+export declare const IntegrityAsyncJobResponseBusyHolderEnum: {
+    readonly Nightly: "NIGHTLY";
+    readonly ReportGet: "REPORT_GET";
+    readonly SealArchive: "SEAL_ARCHIVE";
+    readonly OperatorJob: "OPERATOR_JOB";
+};
+export type IntegrityAsyncJobResponseBusyHolderEnum = typeof IntegrityAsyncJobResponseBusyHolderEnum[keyof typeof IntegrityAsyncJobResponseBusyHolderEnum];
+/**
+ * Start an Integrity async job on the single global slot.
+ * @export
+ * @interface IntegrityAsyncJobStartRequest
+ */
+export interface IntegrityAsyncJobStartRequest {
+    /**
+     * Job type
+     * @type {string}
+     * @memberof IntegrityAsyncJobStartRequest
+     */
+    type: IntegrityAsyncJobStartRequestTypeEnum;
+    /**
+     * Inclusive window start (ISO-8601)
+     * @type {string}
+     * @memberof IntegrityAsyncJobStartRequest
+     */
+    from: string;
+    /**
+     * Exclusive window end (ISO-8601)
+     * @type {string}
+     * @memberof IntegrityAsyncJobStartRequest
+     */
+    to: string;
+    /**
+     * When type is RUN_VALIDATION, whether to raise/touch alert on eligible violations. Default true. Ignored for verify job types.
+     * @type {boolean}
+     * @memberof IntegrityAsyncJobStartRequest
+     */
+    raiseAlert?: boolean;
+    /**
+     * Client-declared initiation metadata: MANUAL (default) or AUTO. NIGHTLY is server-only and rejected on POST.
+     * @type {string}
+     * @memberof IntegrityAsyncJobStartRequest
+     */
+    trigger?: IntegrityAsyncJobStartRequestTriggerEnum;
+}
+/**
+ * @export
+ */
+export declare const IntegrityAsyncJobStartRequestTypeEnum: {
+    readonly VerifyChainRange: "VERIFY_CHAIN_RANGE";
+    readonly VerifyEntryHmacRange: "VERIFY_ENTRY_HMAC_RANGE";
+    readonly RunValidation: "RUN_VALIDATION";
+};
+export type IntegrityAsyncJobStartRequestTypeEnum = typeof IntegrityAsyncJobStartRequestTypeEnum[keyof typeof IntegrityAsyncJobStartRequestTypeEnum];
+/**
+ * @export
+ */
+export declare const IntegrityAsyncJobStartRequestTriggerEnum: {
+    readonly Manual: "MANUAL";
+    readonly Auto: "AUTO";
+    readonly Nightly: "NIGHTLY";
+};
+export type IntegrityAsyncJobStartRequestTriggerEnum = typeof IntegrityAsyncJobStartRequestTriggerEnum[keyof typeof IntegrityAsyncJobStartRequestTriggerEnum];
+/**
+ * Thin Integrity atelier bootstrap: product runtime profile plus monitoring enable flags and effective window caps (non-secret). Global Admin only.
+ * @export
+ * @interface IntegrityBootstrapResponseDto
+ */
+export interface IntegrityBootstrapResponseDto {
+    /**
+     * Product runtime profile from Spring environment (docker-base → base; else integrity). Not derived from enable flags.
+     * @type {string}
+     * @memberof IntegrityBootstrapResponseDto
+     */
+    runtimeProfile?: IntegrityBootstrapResponseDtoRuntimeProfileEnum;
+    /**
+     * Whether rolling audit chain checkpoints are enabled (config flag for monitoring honesty).
+     * @type {boolean}
+     * @memberof IntegrityBootstrapResponseDto
+     */
+    chainCheckpointsEnabled?: boolean;
+    /**
+     * Whether nightly retroactive integrity validation is enabled (config flag for monitoring honesty).
+     * @type {boolean}
+     * @memberof IntegrityBootstrapResponseDto
+     */
+    nightlyValidationEnabled?: boolean;
+    /**
+     * Configured max async Integrity window length in calendar days (ezkey.audit.integrity.max-window-days). Instant span = days×24h+1h. Used by async VERIFY / RUN_VALIDATION. Closes the hard-coded 193 h UI cap for PR 2.
+     * @type {number}
+     * @memberof IntegrityBootstrapResponseDto
+     */
+    maxWindowDays?: number;
+    /**
+     * Configured max sync report-GET window length in calendar days (ezkey.audit.integrity.max-sync-window-days). Instant span = days×24h+1h. Used by integrity-check / chain-integrity GETs.
+     * @type {number}
+     * @memberof IntegrityBootstrapResponseDto
+     */
+    maxSyncWindowDays?: number;
+    /**
+     * Configured nightly retroactive validation window length in hours (ezkey.audit.integrity.nightly.window-hours).
+     * @type {number}
+     * @memberof IntegrityBootstrapResponseDto
+     */
+    nightlyWindowHours?: number;
+}
+/**
+ * @export
+ */
+export declare const IntegrityBootstrapResponseDtoRuntimeProfileEnum: {
+    readonly Base: "base";
+    readonly Integrity: "integrity";
+};
+export type IntegrityBootstrapResponseDtoRuntimeProfileEnum = typeof IntegrityBootstrapResponseDtoRuntimeProfileEnum[keyof typeof IntegrityBootstrapResponseDtoRuntimeProfileEnum];
 /**
  *
  * @export
@@ -3549,25 +4044,25 @@ export interface PageMetadata {
      * @type {number}
      * @memberof PageMetadata
      */
-    size?: number;
+    size: number;
     /**
      *
      * @type {number}
      * @memberof PageMetadata
      */
-    number?: number;
+    number: number;
     /**
      *
      * @type {number}
      * @memberof PageMetadata
      */
-    totalElements?: number;
+    totalElements: number;
     /**
      *
      * @type {number}
      * @memberof PageMetadata
      */
-    totalPages?: number;
+    totalPages: number;
 }
 /**
  *
@@ -3580,13 +4075,13 @@ export interface PagedModelAdminResponseDto {
      * @type {Array<AdminResponseDto>}
      * @memberof PagedModelAdminResponseDto
      */
-    content?: Array<AdminResponseDto>;
+    content: Array<AdminResponseDto>;
     /**
      *
      * @type {PageMetadata}
      * @memberof PagedModelAdminResponseDto
      */
-    page?: PageMetadata;
+    page: PageMetadata;
 }
 /**
  *
@@ -3599,13 +4094,13 @@ export interface PagedModelAlertResponseDto {
      * @type {Array<AlertResponseDto>}
      * @memberof PagedModelAlertResponseDto
      */
-    content?: Array<AlertResponseDto>;
+    content: Array<AlertResponseDto>;
     /**
      *
      * @type {PageMetadata}
      * @memberof PagedModelAlertResponseDto
      */
-    page?: PageMetadata;
+    page: PageMetadata;
 }
 /**
  *
@@ -3618,13 +4113,13 @@ export interface PagedModelApiKeyResponseDto {
      * @type {Array<ApiKeyResponseDto>}
      * @memberof PagedModelApiKeyResponseDto
      */
-    content?: Array<ApiKeyResponseDto>;
+    content: Array<ApiKeyResponseDto>;
     /**
      *
      * @type {PageMetadata}
      * @memberof PagedModelApiKeyResponseDto
      */
-    page?: PageMetadata;
+    page: PageMetadata;
 }
 /**
  *
@@ -3637,13 +4132,13 @@ export interface PagedModelAuditChainCheckpointResponseDto {
      * @type {Array<AuditChainCheckpointResponseDto>}
      * @memberof PagedModelAuditChainCheckpointResponseDto
      */
-    content?: Array<AuditChainCheckpointResponseDto>;
+    content: Array<AuditChainCheckpointResponseDto>;
     /**
      *
      * @type {PageMetadata}
      * @memberof PagedModelAuditChainCheckpointResponseDto
      */
-    page?: PageMetadata;
+    page: PageMetadata;
 }
 /**
  *
@@ -3656,13 +4151,13 @@ export interface PagedModelAuditChainIncidentResponseDto {
      * @type {Array<AuditChainIncidentResponseDto>}
      * @memberof PagedModelAuditChainIncidentResponseDto
      */
-    content?: Array<AuditChainIncidentResponseDto>;
+    content: Array<AuditChainIncidentResponseDto>;
     /**
      *
      * @type {PageMetadata}
      * @memberof PagedModelAuditChainIncidentResponseDto
      */
-    page?: PageMetadata;
+    page: PageMetadata;
 }
 /**
  *
@@ -3675,13 +4170,13 @@ export interface PagedModelAuditLogResponseDto {
      * @type {Array<AuditLogResponseDto>}
      * @memberof PagedModelAuditLogResponseDto
      */
-    content?: Array<AuditLogResponseDto>;
+    content: Array<AuditLogResponseDto>;
     /**
      *
      * @type {PageMetadata}
      * @memberof PagedModelAuditLogResponseDto
      */
-    page?: PageMetadata;
+    page: PageMetadata;
 }
 /**
  *
@@ -3694,13 +4189,13 @@ export interface PagedModelAuthAttemptDto {
      * @type {Array<AuthAttemptDto>}
      * @memberof PagedModelAuthAttemptDto
      */
-    content?: Array<AuthAttemptDto>;
+    content: Array<AuthAttemptDto>;
     /**
      *
      * @type {PageMetadata}
      * @memberof PagedModelAuthAttemptDto
      */
-    page?: PageMetadata;
+    page: PageMetadata;
 }
 /**
  *
@@ -3713,13 +4208,13 @@ export interface PagedModelEncryptionKeyResponse {
      * @type {Array<EncryptionKeyResponse>}
      * @memberof PagedModelEncryptionKeyResponse
      */
-    content?: Array<EncryptionKeyResponse>;
+    content: Array<EncryptionKeyResponse>;
     /**
      *
      * @type {PageMetadata}
      * @memberof PagedModelEncryptionKeyResponse
      */
-    page?: PageMetadata;
+    page: PageMetadata;
 }
 /**
  *
@@ -3732,13 +4227,13 @@ export interface PagedModelEnrollmentResponseDto {
      * @type {Array<EnrollmentResponseDto>}
      * @memberof PagedModelEnrollmentResponseDto
      */
-    content?: Array<EnrollmentResponseDto>;
+    content: Array<EnrollmentResponseDto>;
     /**
      *
      * @type {PageMetadata}
      * @memberof PagedModelEnrollmentResponseDto
      */
-    page?: PageMetadata;
+    page: PageMetadata;
 }
 /**
  *
@@ -3751,13 +4246,13 @@ export interface PagedModelIntegrationResponseDto {
      * @type {Array<IntegrationResponseDto>}
      * @memberof PagedModelIntegrationResponseDto
      */
-    content?: Array<IntegrationResponseDto>;
+    content: Array<IntegrationResponseDto>;
     /**
      *
      * @type {PageMetadata}
      * @memberof PagedModelIntegrationResponseDto
      */
-    page?: PageMetadata;
+    page: PageMetadata;
 }
 /**
  *
@@ -3770,13 +4265,13 @@ export interface PagedModelReencryptionBatchResponse {
      * @type {Array<ReencryptionBatchResponse>}
      * @memberof PagedModelReencryptionBatchResponse
      */
-    content?: Array<ReencryptionBatchResponse>;
+    content: Array<ReencryptionBatchResponse>;
     /**
      *
      * @type {PageMetadata}
      * @memberof PagedModelReencryptionBatchResponse
      */
-    page?: PageMetadata;
+    page: PageMetadata;
 }
 /**
  *
@@ -3789,13 +4284,13 @@ export interface PagedModelTenantResponseDto {
      * @type {Array<TenantResponseDto>}
      * @memberof PagedModelTenantResponseDto
      */
-    content?: Array<TenantResponseDto>;
+    content: Array<TenantResponseDto>;
     /**
      *
      * @type {PageMetadata}
      * @memberof PagedModelTenantResponseDto
      */
-    page?: PageMetadata;
+    page: PageMetadata;
 }
 /**
  *
@@ -3828,7 +4323,7 @@ export interface ProblemDetail {
      */
     detail?: string;
     /**
-     *
+     * URI-reference of the occurrence. Ezkey uses the request path (relative), matching RFC 9457; it is not an absolute URI.
      * @type {string}
      * @memberof ProblemDetail
      */
@@ -3872,6 +4367,87 @@ export interface PublicInstanceInfoResponseDto {
      * @memberof PublicInstanceInfoResponseDto
      */
     aboutUrl?: string | null;
+    /**
+     * When true, evaluator self-registration and temporary console explore are available on this Admin API (community/lab). False or omitted when disabled.
+     * @type {boolean}
+     * @memberof PublicInstanceInfoResponseDto
+     */
+    evaluatorSelfRegistrationEnabled?: boolean | null;
+}
+/**
+ *
+ * @export
+ * @interface QrDeliveryCapabilityDto
+ */
+export interface QrDeliveryCapabilityDto {
+    /**
+     *
+     * @type {boolean}
+     * @memberof QrDeliveryCapabilityDto
+     */
+    available?: boolean;
+    /**
+     *
+     * @type {boolean}
+     * @memberof QrDeliveryCapabilityDto
+     */
+    testMode?: boolean;
+    /**
+     *
+     * @type {Array<string>}
+     * @memberof QrDeliveryCapabilityDto
+     */
+    locales?: Array<string>;
+}
+/**
+ *
+ * @export
+ * @interface QrDeliveryRequestDto
+ */
+export interface QrDeliveryRequestDto {
+    /**
+     *
+     * @type {string}
+     * @memberof QrDeliveryRequestDto
+     */
+    locale: string;
+}
+/**
+ *
+ * @export
+ * @interface QrDeliveryResponseDto
+ */
+export interface QrDeliveryResponseDto {
+    /**
+     *
+     * @type {string}
+     * @memberof QrDeliveryResponseDto
+     */
+    outcome?: string;
+    /**
+     *
+     * @type {string}
+     * @memberof QrDeliveryResponseDto
+     */
+    sendId?: string;
+    /**
+     *
+     * @type {string}
+     * @memberof QrDeliveryResponseDto
+     */
+    recipient?: string;
+    /**
+     *
+     * @type {string}
+     * @memberof QrDeliveryResponseDto
+     */
+    code?: string;
+    /**
+     *
+     * @type {boolean}
+     * @memberof QrDeliveryResponseDto
+     */
+    testMode?: boolean;
 }
 /**
  *

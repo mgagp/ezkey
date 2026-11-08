@@ -125,7 +125,6 @@ public interface AuthAttemptAdminApiMapper {
         base.enrollmentId(),
         base.authAttemptStatus(),
         base.authAttemptChallenge(),
-        base.authAttemptProofToken(),
         base.createdAt(),
         base.expiresAt(),
         base.contextTitle(),

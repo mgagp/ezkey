@@ -26,6 +26,7 @@ Central registry for all `ezkey.*` configuration properties across the backend m
 | `ezkey.admin.mfa` | `ezkey-admin-api` | admin-api | [admin-api §2](../../ezkey-admin-api/CONFIGURATION.md#2-admin-mfa-ezkeyadminmfa) |
 | `ezkey.admin.token` | `ezkey-admin-api` | admin-api | [admin-api §3](../../ezkey-admin-api/CONFIGURATION.md#3-admin-tokens-ezkeyadmintoken) |
 | `ezkey.admin.token.cleanup` | `ezkey-admin-api` | admin-api | [admin-api §3](../../ezkey-admin-api/CONFIGURATION.md#3-admin-tokens-ezkeyadmintoken) |
+| `ezkey.admin.connector.delivery` | `ezkey-admin-api` | admin-api | [admin-api § Delivery connector](../../ezkey-admin-api/CONFIGURATION.md#delivery-connector-ezkeyadminconnectordelivery) |
 | `ezkey.admin.recovery` | `ezkey-admin-api` | admin-api | [admin-api §4](../../ezkey-admin-api/CONFIGURATION.md#4-recovery-codes-ezkeyadminrecovery) |
 | `ezkey.admin.rate-limit` | `ezkey-admin-api` | admin-api | [admin-api §5](../../ezkey-admin-api/CONFIGURATION.md#5-admin-login-rate-limiting-ezkeyadminrate-limit) |
 | `ezkey.admin-operations.rate-limit` | `ezkey-admin-api` | admin-api | [admin-api §6](../../ezkey-admin-api/CONFIGURATION.md#6-admin-operations-rate-limiting-ezkeyadmin-operationsrate-limit) |

@@ -38,6 +38,9 @@ public class EvaluatorTempAccessFilter extends OncePerRequestFilter {
   private static final Pattern ADMIN_ONBOARDING =
       Pattern.compile("^/api/v1/admins/(\\d+)(/onboarding(/qrcode)?)?$");
 
+  private static final Pattern QR_DELIVERY =
+      Pattern.compile("^/api/v1/enrollments/(qr-delivery/.*|\\d+/qr-delivery)$");
+
   /**
    * Deny-list seed (Patrick craft steer): GLOBAL/cross-tenant; mint SESSION without bind; integrity
    * raise/async write; cross-admin QR/onboarding (self-only rule below); dangerous export/bootstrap
@@ -99,6 +102,10 @@ public class EvaluatorTempAccessFilter extends OncePerRequestFilter {
             || path.contains("/checkpoint")
             || path.contains("/gap")
             || path.contains("/integrity"))) {
+      return true;
+    }
+
+    if (QR_DELIVERY.matcher(path).matches()) {
       return true;
     }
 

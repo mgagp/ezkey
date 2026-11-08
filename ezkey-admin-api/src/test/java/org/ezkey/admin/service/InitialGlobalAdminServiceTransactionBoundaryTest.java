@@ -11,11 +11,11 @@
 package org.ezkey.admin.service;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-import java.time.Duration;
 import java.util.Optional;
 import javax.sql.DataSource;
 import net.javacrumbs.shedlock.core.LockProvider;
@@ -33,7 +33,6 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseBuilder;
 import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType;
@@ -46,9 +45,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 /**
  * Regression test for {@link InitialGlobalAdminService} transactional boundaries (audit F-001).
  *
- * <p>The locked runnable must participate in the transaction opened by the public {@link
- * InitialGlobalAdminService#initializeGlobalAdmin()} entry point (not a misleading private
- * {@code @Transactional} that Spring never applies).
+ * <p>The locked task must run in a transaction that commits before the lock is released (#1259), so
+ * the next lock holder sees its writes.
  *
  * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *
@@ -78,19 +76,23 @@ class InitialGlobalAdminServiceTransactionBoundaryTest {
     when(adminRepository.findByUsername("john.doe")).thenReturn(Optional.empty());
     when(adminRepository.findByUsername("admin")).thenReturn(Optional.empty());
     when(adminRepository.save(any(EzkeyAdmin.class)))
-        .thenAnswer(invocation -> invocation.getArgument(0));
+        .thenAnswer(invocation -> {
+          assertTrue(
+              TransactionSynchronizationManager.isActualTransactionActive(),
+              "Locked task must run inside a transaction (F-001)");
+          return invocation.getArgument(0);
+        });
   }
 
   @Test
-  @DisplayName(
-      "Locked bootstrap task participates in transaction from public initializeGlobalAdmin()")
-  void lockedTaskRunnableParticipatesInTransactionFromPublicEntry() {
+  @DisplayName("Locked bootstrap task runs in a transaction committed before the lock is released")
+  void lockedTaskCommitsBeforeLockRelease() {
     assertDoesNotThrow(() -> initialGlobalAdminService.initializeGlobalAdmin());
   }
 
   /**
    * Minimal Spring context: {@link InitialGlobalAdminService}, JDBC transaction manager (no JPA),
-   * {@link LockingTaskExecutor} that asserts a transaction is active when the lock callback runs.
+   * and a {@link LockingTaskExecutor} whose lock asserts on release that the transaction has ended.
    */
   @SpringBootConfiguration
   @EnableTransactionManagement
@@ -110,29 +112,25 @@ class InitialGlobalAdminServiceTransactionBoundaryTest {
 
     @Bean
     LockProvider lockProvider() {
-      SimpleLock lock = Mockito.mock(SimpleLock.class);
-      return _ -> Optional.of(lock);
+      return _ -> {
+        SimpleLock lock = Mockito.mock(SimpleLock.class);
+        Mockito.doAnswer(
+                _ -> {
+                  assertFalse(
+                      TransactionSynchronizationManager.isActualTransactionActive(),
+                      "The lock must be released after the task's commit (#1259)");
+                  return null;
+                })
+            .when(lock)
+            .unlock();
+        return Optional.of(lock);
+      };
     }
 
     @Bean
-    @Primary
-    LockingTaskExecutor lockingTaskExecutor(LockProvider lockProvider) {
-      LockingTaskExecutor delegate = new LockingTaskExecutor(lockProvider);
-      return new LockingTaskExecutor(lockProvider) {
-        @Override
-        public boolean executeWithLock(String lockName, Duration lockAtMostFor, Runnable task) {
-          return delegate.executeWithLock(
-              lockName,
-              lockAtMostFor,
-              () -> {
-                assertTrue(
-                    TransactionSynchronizationManager.isActualTransactionActive(),
-                    "Runnable passed to LockingTaskExecutor must run inside the outer"
-                        + " @Transactional boundary (F-001)");
-                task.run();
-              });
-        }
-      };
+    LockingTaskExecutor lockingTaskExecutor(
+        LockProvider lockProvider, PlatformTransactionManager transactionManager) {
+      return new LockingTaskExecutor(lockProvider, transactionManager);
     }
   }
 }

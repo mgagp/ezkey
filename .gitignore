@@ -10,6 +10,8 @@ api-key*.env
 *.swp
 *.swo
 *.orig
+__pycache__/
+*.py[cod]
 
 # Agent git helper message files (canonical zero-argument flows)
 # See scripts/git-commit.sh and scripts/git-pr.sh

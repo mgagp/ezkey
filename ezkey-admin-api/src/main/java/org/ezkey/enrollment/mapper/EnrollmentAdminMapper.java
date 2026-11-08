@@ -12,6 +12,7 @@ package org.ezkey.enrollment.mapper;
 
 import java.util.List;
 import java.util.Map;
+import org.ezkey.enrollment.EnrollmentBindMaterialPolicy;
 import org.ezkey.enrollment.domain.DevicePrivateKeyStorageTier;
 import org.ezkey.enrollment.domain.EnrollmentCreateRequest;
 import org.ezkey.enrollment.domain.EnrollmentCreateResponse;
@@ -71,7 +72,7 @@ import org.mapstruct.ReportingPolicy;
 @Mapper(
     unmappedTargetPolicy = ReportingPolicy.WARN,
     componentModel = "spring",
-    imports = {EnrollmentStatus.class})
+    imports = {EnrollmentBindMaterialPolicy.class, EnrollmentStatus.class})
 public interface EnrollmentAdminMapper {
 
   /**
@@ -87,6 +88,17 @@ public interface EnrollmentAdminMapper {
    */
   @Mapping(source = "status", target = "enrollmentStatus")
   @Mapping(source = "active", target = "enrollmentActive")
+  // #1180: see EnrollmentBindMaterialPolicy.
+  @Mapping(
+      target = "enrollmentProofToken",
+      expression =
+          "java(EnrollmentBindMaterialPolicy.proofTokenAvailable(entity.getStatus())"
+              + " ? entity.getEnrollmentProofToken() : null)")
+  @Mapping(
+      target = "enrollmentChallenge",
+      expression =
+          "java(EnrollmentBindMaterialPolicy.challengeAvailable(entity.getStatus())"
+              + " ? entity.getEnrollmentChallenge() : null)")
   @Mapping(target = "integrationName", ignore = true)
   @Mapping(target = "tenantId", ignore = true)
   @Mapping(target = "tenantName", ignore = true)
@@ -161,8 +173,6 @@ public interface EnrollmentAdminMapper {
         base.enrollmentChallenge(),
         base.enrollmentProofToken(),
         base.authAttemptChallengeRequired(),
-        base.integrationPublicKey(),
-        base.devicePublicKey(),
         base.devicePrivateKeyStorageTier(),
         base.verifiedAt(),
         base.expiresAt(),

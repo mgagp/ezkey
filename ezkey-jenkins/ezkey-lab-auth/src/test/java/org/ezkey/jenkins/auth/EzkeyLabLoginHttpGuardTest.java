@@ -43,7 +43,7 @@ class EzkeyLabLoginHttpGuardTest {
         JenkinsRule.WebClient wc = j.createWebClient();
         wc.setThrowExceptionOnFailingStatusCode(false);
         WebRequest req =
-                new WebRequest(new URL(j.getURL(), "ezkey-lab-login/send"), HttpMethod.GET);
+                new WebRequest(new URL(j.getURL(), "ezkey-login/send"), HttpMethod.GET);
         Page page = wc.getPage(req);
         assertEquals(405, page.getWebResponse().getStatusCode());
     }
@@ -56,7 +56,7 @@ class EzkeyLabLoginHttpGuardTest {
         wc.setThrowExceptionOnFailingStatusCode(false);
         // Intentionally omit wc.addCrumb(req) — CSRF must reject.
         WebRequest req =
-                new WebRequest(new URL(j.getURL(), "ezkey-lab-login/send"), HttpMethod.POST);
+                new WebRequest(new URL(j.getURL(), "ezkey-login/send"), HttpMethod.POST);
         req.setRequestParameters(List.of(new NameValuePair("username", "labuser")));
         Page page = wc.getPage(req);
         assertEquals(403, page.getWebResponse().getStatusCode());
@@ -67,7 +67,7 @@ class EzkeyLabLoginHttpGuardTest {
         j.jenkins.setCrumbIssuer(new DefaultCrumbIssuer(false));
         j.jenkins.setSecurityRealm(labRealm("http://127.0.0.1:9"));
         JenkinsRule.WebClient wc = j.createWebClient();
-        HtmlPage page = wc.goTo("ezkey-lab-login/");
+        HtmlPage page = wc.goTo("ezkey-login/");
         HtmlForm form = page.getForms().get(0);
         assertEquals("send", form.getActionAttribute());
         String crumbField = j.jenkins.getCrumbIssuer().getCrumbRequestField();
@@ -96,7 +96,7 @@ class EzkeyLabLoginHttpGuardTest {
 
             Page poll =
                     wc.getPage(
-                            new WebRequest(new URL(j.getURL(), "ezkey-lab-login/poll"), HttpMethod.GET));
+                            new WebRequest(new URL(j.getURL(), "ezkey-login/poll"), HttpMethod.GET));
             assertEquals(200, poll.getWebResponse().getStatusCode());
             assertEquals("ACCEPTED", poll.getWebResponse().getContentAsString().trim());
 
@@ -180,7 +180,7 @@ class EzkeyLabLoginHttpGuardTest {
 
             Page poll =
                     wc.getPage(
-                            new WebRequest(new URL(j.getURL(), "ezkey-lab-login/poll"), HttpMethod.GET));
+                            new WebRequest(new URL(j.getURL(), "ezkey-login/poll"), HttpMethod.GET));
             assertEquals(
                     410,
                     poll.getWebResponse().getStatusCode(),
@@ -254,9 +254,12 @@ class EzkeyLabLoginHttpGuardTest {
         }
     }
 
-    /** M1: second Send cancels the first Integration attempt id. */
+    /**
+     * After the send cooldown, a second Send cancels the first Integration attempt. An immediate
+     * resend is covered by {@link EzkeyPasswordlessHttpTest}.
+     */
     @Test
-    void secondSendCancelsPreviousAttempt(JenkinsRule j) throws Exception {
+    void secondSendAfterCooldownCancelsPreviousAttempt(JenkinsRule j) throws Exception {
         AtomicInteger nextId = new AtomicInteger(200);
         List<Integer> created = new CopyOnWriteArrayList<>();
         List<Integer> cancelled = new CopyOnWriteArrayList<>();
@@ -312,7 +315,10 @@ class EzkeyLabLoginHttpGuardTest {
         try {
             String base = "http://127.0.0.1:" + server.getAddress().getPort();
             j.jenkins.setCrumbIssuer(new DefaultCrumbIssuer(false));
-            j.jenkins.setSecurityRealm(labRealm(base));
+            EzkeySecurityRealm realm = labRealm(base);
+            java.util.concurrent.atomic.AtomicLong now = new java.util.concurrent.atomic.AtomicLong(1_000_000L);
+            realm.setClockForTest(now::get);
+            j.jenkins.setSecurityRealm(realm);
 
             JenkinsRule.WebClient wc = j.createWebClient();
             wc.setThrowExceptionOnFailingStatusCode(false);
@@ -322,8 +328,8 @@ class EzkeyLabLoginHttpGuardTest {
             assertEquals(1, created.size());
             int firstId = created.get(0);
 
-            // Second send from wait page: go back to index and send again (same session).
-            wc.goTo("ezkey-lab-login/");
+            now.addAndGet(EzkeySecurityRealm.SEND_COOLDOWN_MILLIS + 1);
+            wc.goTo("ezkey-login/");
             submitSend(j, wc, "labuser");
             assertEquals(2, created.size());
             assertTrue(
@@ -393,7 +399,7 @@ class EzkeyLabLoginHttpGuardTest {
 
     private static void submitSend(JenkinsRule j, JenkinsRule.WebClient wc, String username)
             throws Exception {
-        HtmlPage index = wc.goTo("ezkey-lab-login/");
+        HtmlPage index = wc.goTo("ezkey-login/");
         HtmlForm form = index.getForms().get(0);
         form.getInputByName("username").setValueAttribute(username);
         HtmlPage waitPage = j.submit(form);
@@ -453,12 +459,17 @@ class EzkeyLabLoginHttpGuardTest {
         return null;
     }
 
-    private static EzkeyMockSecurityRealm labRealm(String baseUrl) {
-        return new EzkeyMockSecurityRealm(
-                baseUrl,
-                "ikey",
-                Secret.fromString("skey"),
-                "admin",
-                Secret.fromString("ezkey-lab-admin"));
+    private static EzkeySecurityRealm labRealm(String baseUrl) {
+        EzkeySecurityRealm realm =
+                new EzkeySecurityRealm(
+                        baseUrl,
+                        "ikey",
+                        Secret.fromString("skey"),
+                        "admin",
+                        Secret.fromString("ezkey-lab-admin"));
+        // Existing HTTP guards predate mandatory number matching. Phase 2 default is true.
+        realm.setForceChallenge(false);
+        realm.setEnabledUsers(java.util.List.of(new EzkeySecurityRealm.EzkeyAccount("labuser", "")));
+        return realm;
     }
 }

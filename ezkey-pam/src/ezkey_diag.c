@@ -238,7 +238,11 @@ int ezkey_diag_open_log_fd(void) {
     }
     memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;
+#ifdef __APPLE__
+    strncpy(addr.sun_path, "/var/run/syslog", sizeof(addr.sun_path) - 1);
+#else
     strncpy(addr.sun_path, "/dev/log", sizeof(addr.sun_path) - 1);
+#endif
     if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) != 0) {
         int saved = errno;
         close(fd);

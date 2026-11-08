@@ -311,7 +311,7 @@
           },
           "challengeRequested": {
             "type": "boolean",
-            "description": "Whether to generate a numeric challenge for additional verification",
+            "description": "Whether to generate a numeric challenge for additional verification. Required (unchanged pre-#895).",
             "example": true
           },
           "contextTitle": {
@@ -331,7 +331,7 @@
           "ttlSeconds": {
             "type": "integer",
             "format": "int32",
-            "description": "Optional TTL in seconds for this attempt. Minimum 15. Values above 120 are clamped to 120. When omitted, the server default applies (typically 120).",
+            "description": "Optional TTL in seconds for this attempt. JSON integer only (no float/string). Minimum 15. Values above 120 are clamped to 120. When omitted, min(server default, 120) applies.",
             "example": 75,
             "minimum": 15
           }
@@ -374,10 +374,6 @@
             "format": "int32",
             "description": "Numeric challenge displayed to user for verification (null if not requested)",
             "example": 123456
-          },
-          "authAttemptProofToken": {
-            "type": "string",
-            "description": "Signed JWT proof token (present only when status is ACCEPTED)"
           },
           "createdAt": {
             "type": "string",

@@ -21,7 +21,7 @@ M3/M4 evaluate **SDK + Integration API** fit only. Auth API / device crypto / Da
 | **miniOrange 2FA** | Overlay 2FA on existing realm; commercial TOTP/etc. | Same overlay idea; heavy / vendor. |
 | **totp-login-plugin** (qc2105) | Custom **SecurityRealm** with TOTP | Shows realm-replace is viable for lab. |
 
-**Lab choice:** custom `EzkeyMockSecurityRealm` (extends `AbstractPasswordBasedSecurityRealm`) — break-glass local password on the standard Jenkins login form; Ezkey MFA via `/ezkey-lab-login/` (confirm → create → challenge → wait).
+**Lab choice (M2, renamed in M6):** custom `EzkeySecurityRealm` (extends `AbstractPasswordBasedSecurityRealm`). Ezkey is the only factor for users the admin enabled. `getLoginUrl()` returns `ezkey-login`, so Jenkins' Sign in link opens that page. Break-glass stays on core `/login` (password), which does not follow `getLoginUrl`.
 
 ## Break-glass (anti-lockout)
 
@@ -30,7 +30,7 @@ A local admin path that does **not** depend on Ezkey / Integration API being up.
 - Username default `admin` (override `EZKEY_JENKINS_ADMIN_USER`)
 - Password default `ezkey-lab-admin` (override `EZKEY_JENKINS_ADMIN_PASSWORD`) — lab only
 - Interim boot: `HudsonPrivateSecurityRealm` via init groovy
-- After plugin configure: same credentials on `EzkeyMockSecurityRealm`
+- After plugin configure: same credentials on `EzkeySecurityRealm`
 
 ## Secret handling — `hudson.util.Secret` vs Credentials plugin
 
@@ -60,15 +60,17 @@ A local admin path that does **not** depend on Ezkey / Integration API being up.
 
 ## Login flow (M4/M5) — Integration API consumer
 
-Implemented: `EzkeyLabLogin` (`/ezkey-lab-login/`) + `EzkeyLabLoginSupport` + `EzkeyClient`.
+Implemented: `EzkeyLabLogin` (`/ezkey-login/`) + `EzkeyLabLoginSupport` + `EzkeyClient`.
 
 1. **Break-glass** → standard `/login` local password only.
-2. **Ezkey path** (`/ezkey-lab-login/`):
-   1. Form: username + POST button **Envoyer la demande Ezkey** (Jenkins CSRF crumb; `@RequirePOST`).
-   2. On send → `createAuthAttemptByUserIdentifier(user, realm.forceChallenge)`.
-   3. If create returns `authAttemptChallenge` → **display** on the wait page (never log it).
-   4. If challenge missing and `forceChallenge=true` → **fail closed** + best-effort `cancelAuthAttempt`.
-   5. Poll `waitForAuthAttempt`; Cancel button → cancel; ACCEPTED → Jenkins session; REJECTED/EXPIRED → deny.
+2. **Ezkey path** (`/ezkey-login/`):
+   1. Form: username + POST **Send Ezkey sign-in request** (Jenkins CSRF crumb; `@RequirePOST`).
+   2. Unknown user, or a user not on the realm's enabled list: same wait page, with a decoy code, and **no** Integration call.
+   3. Enabled user inside the 30 s send cooldown: no new push. The same browser keeps its current attempt; a new browser sees the decoy page.
+   4. Otherwise `createAuthAttemptByUserIdentifier(integrationUserIdentifier, effectiveChallenge)`.
+   5. If create returns `authAttemptChallenge` → **display** on the wait page (never log it).
+   6. If a code was requested and none came back → **fail closed** + best-effort `cancelAuthAttempt`.
+   7. Poll `waitForAuthAttempt`; Cancel button → cancel; ACCEPTED → Jenkins session (id rotated); REJECTED / EXPIRED / INVALID → no session.
 3. Jenkins compose joins `ezkey_ezkey-network` as an **external** network only (DNS to
    `integration-api:7080`). No shared volumes; still a separate compose project. Fallback:
    `host.docker.internal:7080` when the external network is unavailable.
@@ -76,19 +78,23 @@ Implemented: `EzkeyLabLogin` (`/ezkey-lab-login/`) + `EzkeyLabLoginSupport` + `E
 ## Challenge matrix (A / B / C / D)
 
 Server generates a code when `enrollment.authAttemptChallengeRequired || request.challengeRequested`.
-Realm field `forceChallenge` (default **false**, `@DataBoundSetter`) maps to Integration
-`challengeRequested`. Configure via UI or `EZKEY_JENKINS_FORCE_CHALLENGE` in
-`configure-mock-auth.sh`.
+Realm field `forceChallenge` (default **true**, `@DataBoundSetter`) maps to Integration
+`challengeRequested`. Configure via UI, JCasC (`securityRealm.ezkey`), or
+`EZKEY_JENKINS_FORCE_CHALLENGE` in `configure-mock-auth.sh`.
 
 | Case | Enrollment requires code | Realm `forceChallenge` | Result |
 |------|--------------------------|------------------------|--------|
 | **A** | no | false | No code; wait page has no challenge block |
 | **B** | yes | false | Code returned → **display** |
-| **C** | — | — | **Out of scope** — no per-login opt-in; not tested |
+| **C** | no | false, and the user checks the box | Code requested for that sign-in only |
 | **D** | no (or ignored) | true | Code requested; missing code → **fail closed** |
 
 Display rule: show the code whenever `authAttemptChallenge != null`. Reject only when
-`forceChallenge=true` and the code is missing. Lab tests cover **A / B / D** only.
+the effective request asked for a code and none came back (fail closed + cancel).
+The effective request is `forceChallenge` OR the sign-in checkbox. The checkbox is
+hidden while `forceChallenge` is true, and it cannot clear a forced code.
+
+Lab tests cover **A / B / C / D**.
 
 **Wait / poll thresholds** (single source in `EzkeyLabLoginSupport`): wait clamp 1..30 s,
 Integration poll interval 2 s, per-poll wait 8 s, wait-page JS 1500 ms (2000 ms on
@@ -122,13 +128,31 @@ Setup: `./scripts/m5-provision-lab-integration.sh` then `source .ezkey/m5-integr
 `./scripts/configure-mock-auth.sh`. Live: `./scripts/m4-live-demo.sh approve|deny` (reads
 `EZKEY_JENKINS_ENROLLMENT_ID` from the env file).
 
-**`/ezkey-lab-login/` states (M5):** confirm → challenge + waiting → approved | denied | expired |
+**`/ezkey-login/` states (M5, path renamed in M6):** confirm → challenge + waiting → approved | denied | expired |
 cancelled (plus error). Each page exposes `data-ezkey-lab-state` / `data-testid="ezkey-lab-state"`.
 
 **Credentials:** still deferred (see above) — not low-risk for this lab.
 
 **Boundaries:** no Admin UI changes; integration behaviour documented only in this folder
 (`DESIGN.md` / `README.md` / `TUTORIAL.md`). Break-glass unchanged.
+
+## M6 — credible passwordless sign-in (#1184)
+
+Ezkey stays the only factor. Phase 2 makes that believable for a Jenkins admin.
+
+| Decision | Choice | Why |
+|----------|--------|-----|
+| User list | Realm-owned `enabledUsers` (`username` + optional Integration `userIdentifier`) | This realm is the user source, like Jenkins' own user database. A `UserProperty` would require the user to exist before the first passwordless login. |
+| Sign in link | `getLoginUrl()` → `ezkey-login` | Same hook SAML and GitHub OAuth realms use. Core `/login` stays for break-glass and does not follow this URL. |
+| Anti-enumeration | Unknown, disabled and cooled-down sends all render the wait page, including a two-digit code | A missing code, or a different page, would reveal which usernames are enabled. The decoy code matches no attempt. |
+| Cooldown | 30 s per Jenkins username, in memory, after a successful create | Stops a tight resend loop. Same-session resend inside the window keeps the current attempt (does not cancel it). After the window, resend cancels the previous attempt. Server-side approval-fatigue policy stays in #992. |
+| Fail-closed | Integration down or missing challenge → no session | Break-glass is the only fail-open path, logged at WARNING. |
+| Config | Jenkins form + `@Symbol("ezkey")` for JCasC | `configRoundtrip` and a JCasC YAML load are both tested. |
+| #998 | Checkbox kept, harden-only | Still useful when an admin turns `forceChallenge` off. |
+
+**Not built:** a second-factor overlay for LDAP, AD or SSO. That is a phase 3 candidate. It would sit on top of another realm; this lab replaces the realm.
+
+**Residual (reasoned, not executed):** a timing difference between a real Integration create and a decoy response can still hint that a username is enabled. The HTTP page does not.
 
 ## Milestone map
 
@@ -140,3 +164,4 @@ cancelled (plus error). Each page exposes `data-ezkey-lab-state` / `data-testid=
 | M3 | SDK / Integration API fit decision |
 | M4 | Live Integration round-trip + confirm/challenge UI |
 | **M5** | **Dedicated lab integration/enrollment + UI states; Credentials deferred** |
+| **M6** | **Passwordless credibility: enabled users, mandatory challenge, native Sign in, cooldown, JCasC** |

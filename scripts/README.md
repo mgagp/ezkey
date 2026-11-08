@@ -25,7 +25,8 @@ Docker-only alternative (no host JDK/Maven): `./scripts/build-docker.sh`. Same D
 ## Product version sync (ADR-0017 / #1211)
 
 Parent POM `${revision}${changelist}` is the product SemVer source of truth. Align npm / Python /
-.NET / Android / Jenkins SDK pins, then gate divergence in CI:
+Android / Jenkins SDK pins, then gate divergence in CI. .NET stays out until a client exists
+(#1219; empty shell removed in #1232):
 
 ```bash
 ./scripts/sync-version.sh
@@ -581,3 +582,7 @@ bash -n scripts/update-openapi-specs.sh
 - Regular validation of spec files
 - Monitor for API changes
 - Update documentation when needed
+
+## Connector scenarios
+
+`ci-connector-scenarios.sh` replays the delivery connector scenarios and the log canary on a real stack, with no human. It wipes the volumes of the Compose project in use. See [`ezkey-connectors/README.md`](../ezkey-connectors/README.md).

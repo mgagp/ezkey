@@ -2308,6 +2308,17 @@ def get_admin_onboarding(ctx, id):
     response = http_client.get(url)
     OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
 
+    if response.success and isinstance(response.data, dict):
+        credentials = response.data
+        if credentials.get('enrollmentProofToken') is None:
+            if credentials.get('enrollmentChallenge') is None:
+                OutputUtils.info("💡 Enrollment is complete or closed: no bind material is available")
+            else:
+                OutputUtils.info(
+                    "💡 A device has already bound this enrollment: only the challenge remains. "
+                    "Confirm who you are speaking to before giving this code"
+                )
+
 
 @provisioning_group.command('qrcode')
 @click.option('--id', required=True, type=int, help='Admin ID')
@@ -2352,7 +2363,9 @@ def get_admin_onboarding_qrcode(ctx, id, output):
         else:
             try:
                 error_data = response.json()
-                error_msg = error_data.get('message', error_data.get('error', 'Unknown error'))
+                error_msg = error_data.get(
+                    'detail', error_data.get('message', error_data.get('error', 'Unknown error'))
+                )
                 OutputUtils.error(f"Failed to generate QR code: {error_msg}")
             except ValueError:
                 OutputUtils.error(f"Failed to generate QR code: HTTP {response.status_code}")
@@ -2361,6 +2374,8 @@ def get_admin_onboarding_qrcode(ctx, id, output):
                 OutputUtils.info("💡 Enrollment may be missing proof token")
             elif response.status_code == 404:
                 OutputUtils.info("💡 Administrator not found")
+            elif response.status_code == 409:
+                OutputUtils.info("💡 The enrollment is no longer waiting for a device: the QR code is unavailable")
     except Exception as e:
         OutputUtils.error(f"Request failed: {str(e)}")
     finally:

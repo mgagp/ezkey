@@ -42,8 +42,7 @@
     "labelTenant": "Tenant",
     "labelChallenge": "Challenge",
     "labelCreated": "Created",
-    "labelExpires": "Expires",
-    "labelProofToken": "Proof Token"
+    "labelExpires": "Expires"
   },
   "status": {
     "labelPending": "Pending",

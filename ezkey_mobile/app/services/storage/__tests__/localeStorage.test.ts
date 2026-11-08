@@ -12,6 +12,7 @@ import {
   DEFAULT_LOCALE,
   localeStorage,
   normalizeLocale,
+  pickSupportedLocale,
 } from '../localeStorage';
 
 const mockAsyncStorage = jest.mocked(AsyncStorage);
@@ -24,28 +25,43 @@ describe('localeStorage', () => {
     mockAsyncStorage.removeItem.mockResolvedValue();
   });
 
-  it('returns English by default when no preference exists', async () => {
-    await expect(localeStorage.getLocale()).resolves.toBe(DEFAULT_LOCALE);
+  it('returns null when no preference exists', async () => {
+    await expect(localeStorage.getPreference()).resolves.toBeNull();
   });
 
-  it('returns English when storage contains an unsupported locale', async () => {
+  it('ignores unsupported stored values', async () => {
     mockAsyncStorage.getItem.mockResolvedValue('es');
 
-    await expect(localeStorage.getLocale()).resolves.toBe(DEFAULT_LOCALE);
+    await expect(localeStorage.getPreference()).resolves.toBeNull();
   });
 
-  it('persists supported locale values', async () => {
-    await localeStorage.setLocale('fr');
+  it('accepts the system default preference', async () => {
+    mockAsyncStorage.getItem.mockResolvedValue('system');
+
+    await expect(localeStorage.getPreference()).resolves.toBe('system');
+  });
+
+  it('persists and clears the preference', async () => {
+    await localeStorage.setPreference('fr');
+    await localeStorage.clearPreference();
 
     expect(mockAsyncStorage.setItem).toHaveBeenCalledWith(
       'ezkey-mobile/preferences/language',
       'fr',
     );
+    expect(mockAsyncStorage.removeItem).toHaveBeenCalledWith('ezkey-mobile/preferences/language');
   });
 
   it('normalizes missing or invalid locale values to English', () => {
     expect(normalizeLocale()).toBe(DEFAULT_LOCALE);
     expect(normalizeLocale('de')).toBe(DEFAULT_LOCALE);
     expect(normalizeLocale('fr')).toBe('fr');
+  });
+
+  it('picks the first supported language from a device list', () => {
+    expect(pickSupportedLocale(['de-DE', 'fr-CA', 'en-US'])).toBe('fr');
+    expect(pickSupportedLocale(['en_GB'])).toBe('en');
+    expect(pickSupportedLocale(['es-ES'])).toBe(DEFAULT_LOCALE);
+    expect(pickSupportedLocale([])).toBe(DEFAULT_LOCALE);
   });
 });

@@ -16,8 +16,8 @@ params:path {
 }
 
 script:post-response {
-  test("Status code is 200, 400, or 404", function () {
-      expect([200, 400, 404]).to.include(res.getStatus());
+  test("Status code is 200, 400, 404, or 409", function () {
+      expect([200, 400, 404, 409]).to.include(res.getStatus());
   });
   
   if (res.getStatus() === 200) {
@@ -45,6 +45,8 @@ docs {
   ```
   
   The `authUrl` field is only included when `ezkey.qr.auth-base-url` is configured on the server. When absent, the mobile app uses its default base URL.
+  
+  Available only while the enrollment is `CREATED`; any other state returns 409 (#1180).
   
   **Path Parameters:**
   - `id` (required): Enrollment ID to generate QR code for

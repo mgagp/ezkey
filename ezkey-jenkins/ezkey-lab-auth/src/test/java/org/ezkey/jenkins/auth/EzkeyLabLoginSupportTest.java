@@ -22,8 +22,8 @@ class EzkeyLabLoginSupportTest {
 
     @Test
     void newClientRejectsBlankSecret() {
-        EzkeyMockSecurityRealm realm =
-                new EzkeyMockSecurityRealm(
+        EzkeySecurityRealm realm =
+                new EzkeySecurityRealm(
                         "http://example.invalid",
                         "ikey",
                         Secret.fromString(""),
@@ -88,17 +88,17 @@ class EzkeyLabLoginSupportTest {
     }
 
     @Test
-    void forceChallengeDefaultsFalse() {
-        EzkeyMockSecurityRealm realm =
-                new EzkeyMockSecurityRealm(
+    void forceChallengeDefaultsTrue() {
+        EzkeySecurityRealm realm =
+                new EzkeySecurityRealm(
                         "http://example.invalid",
                         "ikey",
                         Secret.fromString("s"),
                         "admin",
                         Secret.fromString("x"));
-        assertEquals(false, realm.isForceChallenge());
-        realm.setForceChallenge(true);
         assertEquals(true, realm.isForceChallenge());
+        realm.setForceChallenge(false);
+        assertEquals(false, realm.isForceChallenge());
     }
 
     /** B1: clamp below min → 1. */

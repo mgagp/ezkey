@@ -1,0 +1,29 @@
+meta {
+  name: get qr delivery capability
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{base_url_admin_api}}/api/v1/enrollments/qr-delivery/capability
+  body: none
+  auth: inherit
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Response says whether delivery is available", function () {
+      expect(res.getBody().available).to.be.a('boolean');
+  });
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Says whether a delivery connector can be used. available is false with no connector configured.
+}

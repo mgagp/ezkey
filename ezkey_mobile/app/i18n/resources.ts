@@ -35,7 +35,7 @@ export const resources = {
         comingSoonLabel: 'Coming soon',
         comingSoonSubtitle: 'What we plan next for this app',
         languageLabel: 'Language',
-        languageSubtitle: 'English by default; French available',
+        languageSubtitle: 'Follows this phone by default; English or French',
         appearanceLabel: 'Appearance',
         appearanceSubtitle: 'Light, dark, or the system setting',
         securityLabel: 'Security',
@@ -118,7 +118,9 @@ export const resources = {
       },
       locale: {
         title: 'Language',
-        intro: 'Choose the app language. Changes are saved and applied immediately.',
+        intro:
+          'Choose the app language. Changes are saved and applied immediately. System default follows the language of this phone when it is English or French.',
+        system: 'System default',
         english: 'English',
         french: 'French',
         current: 'Current language',
@@ -286,6 +288,7 @@ export const resources = {
           'Controlled test seed payload is missing. Set EZKEY_ENROLLMENT_SEED_BYPASS_QR_PAYLOAD and rebuild.',
       },
       pendingAuth: {
+        captureBlocked: 'Stop recording or mirroring the screen to answer this request.',
         challengeInput: 'Challenge code input',
         challengeInputHint: 'Enter the 2-digit code shown on the sign-in screen',
         requestFailed: 'Request failed.',
@@ -441,7 +444,7 @@ export const resources = {
         comingSoonLabel: 'À venir',
         comingSoonSubtitle: 'Ce que nous prévoyons ensuite pour cette application',
         languageLabel: 'Langue',
-        languageSubtitle: 'Anglais par défaut; français disponible',
+        languageSubtitle: 'Suit ce téléphone par défaut; anglais ou français',
         appearanceLabel: 'Apparence',
         appearanceSubtitle: 'Clair, sombre ou réglage du système',
         securityLabel: 'Sécurité',
@@ -526,7 +529,8 @@ export const resources = {
       locale: {
         title: 'Langue',
         intro:
-          'Choisissez la langue de l’application. Les changements sont enregistrés et appliqués immédiatement.',
+          'Choisissez la langue de l’application. Les changements sont enregistrés et appliqués immédiatement. Par défaut du système suit la langue de ce téléphone si c’est l’anglais ou le français.',
+        system: 'Par défaut du système',
         english: 'Anglais',
         french: 'Français',
         current: 'Langue actuelle',
@@ -697,6 +701,7 @@ export const resources = {
           'La charge utile de seed de test contrôlée est absente. Définissez EZKEY_ENROLLMENT_SEED_BYPASS_QR_PAYLOAD puis reconstruisez.',
       },
       pendingAuth: {
+        captureBlocked: 'Arrêtez l’enregistrement ou la recopie de l’écran pour répondre à cette demande.',
         challengeInput: 'Saisie du code de challenge',
         challengeInputHint: 'Entrez le code à 2 chiffres affiché sur l’écran de connexion',
         requestFailed: 'Échec de la requête.',

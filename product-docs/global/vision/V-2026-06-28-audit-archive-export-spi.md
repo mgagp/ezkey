@@ -47,7 +47,7 @@
 - `V-2026-0004` — Integrity validation strategy (rolling attach + nightly detect); this vision is its
   Phase-2 external-immutability complement
 - `V-2026-0007` — SMS integration SPI (peripheral-adapter precedent, no vendor lock-in)
-- `V-2026-0005` — Email integration strategy (contrast: in-core)
+- `V-2026-0005` — Email integration strategy (connector model since 2026-11-04)
 - `V-2026-0012` — Dedicated batch backend (future) — adjacent peripheral-processing direction
 - `I-2026-0020` — Integration ecosystem shell catalog & publish workflow (placeholder/showcase repos)
 - `I-2026-06-28` — Audit archive export SPI (backlog idea, this vision's actionable slice)

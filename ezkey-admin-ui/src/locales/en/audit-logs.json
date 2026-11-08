@@ -110,6 +110,7 @@
     "ENROLLMENT_REACTIVATED": "Enrollment Reactivated",
     "ENROLLMENT_AUTH_ATTEMPT_BLOCKED": "Enrollment Auth Attempt Blocked",
     "ENROLLMENT_EXPIRED": "Enrollment Expired",
+    "ENROLLMENT_QR_DELIVERY": "Enrollment QR Delivery",
     "AUTH_ATTEMPT_CREATED": "Auth Attempt Created",
     "AUTH_ATTEMPT_PENDING": "Auth Attempt Pending",
     "AUTH_ATTEMPT_RESPOND": "Auth Attempt Respond",

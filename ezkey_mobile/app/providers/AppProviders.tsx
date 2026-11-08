@@ -1,11 +1,11 @@
 import React, {useEffect, useMemo, useState} from 'react';
-import {ActivityIndicator, StyleSheet, View} from 'react-native';
+import {ActivityIndicator, AppState, StyleSheet, View} from 'react-native';
 import {DarkTheme, DefaultTheme, NavigationContainer} from '@react-navigation/native';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {AppNavigator} from '../navigation';
 import {AppErrorBoundary} from '../components/AppErrorBoundary';
 import {UnsupportedOsScreen} from '../screens/UnsupportedOs';
-import {initializeI18n} from '../i18n';
+import {initializeI18n, syncAppLanguage} from '../i18n';
 import {initializeAppearance} from '../services/appearance/appearance';
 import {useTheme} from '../theme';
 import {isAndroidOsSupported} from '../utils/androidOsSupport';
@@ -60,6 +60,21 @@ export const AppProviders: React.FC = () => {
       active = false;
     };
   }, []);
+
+  // The per-app language in system settings can change while the app is in the background (#1157).
+  useEffect(() => {
+    if (!ready) {
+      return undefined;
+    }
+    const subscription = AppState.addEventListener('change', state => {
+      if (state === 'active') {
+        syncAppLanguage().catch(error => {
+          console.warn('[i18n] Failed to sync the app language:', error);
+        });
+      }
+    });
+    return () => subscription.remove();
+  }, [ready]);
 
   return (
     <AppErrorBoundary>

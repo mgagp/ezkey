@@ -1,7 +1,7 @@
 /*
  * M2 interim security before ezkey-lab-auth is installed (#972).
  * HudsonPrivateSecurityRealm + break-glass admin so the instance is never unsecured.
- * After ./scripts/configure-mock-auth.sh, EzkeyMockSecurityRealm takes over with the
+ * After ./scripts/configure-mock-auth.sh, EzkeySecurityRealm takes over with the
  * same break-glass username/password.
  */
 import hudson.security.FullControlOnceLoggedInAuthorizationStrategy
@@ -13,8 +13,8 @@ def instance = Jenkins.get()
 def realm = instance.getSecurityRealm()
 
 // Do not clobber Ezkey mock realm once configure-mock-auth.sh has applied it.
-if (realm != null && realm.class.name.contains('EzkeyMockSecurityRealm')) {
-    println 'ezkey-jenkins M2: EzkeyMockSecurityRealm already active — skip interim bootstrap'
+if (realm != null && realm.class.name.contains('EzkeySecurityRealm')) {
+    println 'ezkey-jenkins M2: EzkeySecurityRealm already active — skip interim bootstrap'
     return
 }
 

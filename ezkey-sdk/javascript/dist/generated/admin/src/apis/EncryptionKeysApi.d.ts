@@ -10,7 +10,7 @@
  * Do not edit the class manually.
  */
 import * as runtime from '../runtime';
-import type { BatchCreationResponse, BatchResumeResponse, EncryptionKeyResponse, KeyRotationResponse, PagedModelEncryptionKeyResponse, PagedModelReencryptionBatchResponse, ReencryptionKeyResponse, ReencryptionTriggerResponse } from '../models/index';
+import type { BatchCreationResponse, BatchResumeResponse, EncryptionKeyResponse, EncryptionLifecycleConfigDto, KeyRotationResponse, PagedModelEncryptionKeyResponse, PagedModelReencryptionBatchResponse, ReencryptionKeyResponse, ReencryptionTriggerResponse } from '../models/index';
 export interface GetKeyRequest {
     keyId: number;
 }
@@ -65,6 +65,16 @@ export declare class EncryptionKeysApi extends runtime.BaseAPI {
      * Get encryption key by ID
      */
     getKey(requestParameters: GetKeyRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EncryptionKeyResponse>;
+    /**
+     * Returns whether key rotation and re-encryption are enabled. Flags come from config, not from the product runtime profile name. Global Admin only.
+     * Encryption lifecycle config
+     */
+    getLifecycleConfigRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EncryptionLifecycleConfigDto>>;
+    /**
+     * Returns whether key rotation and re-encryption are enabled. Flags come from config, not from the product runtime profile name. Global Admin only.
+     * Encryption lifecycle config
+     */
+    getLifecycleConfig(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EncryptionLifecycleConfigDto>;
     /**
      * Returns the current primary encryption key used for new encryption operations. Global Admin only.
      * Get primary encryption key

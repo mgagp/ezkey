@@ -1,10 +1,12 @@
 # Ezkey integration ecosystem repositories
 
-This document describes **separate GitHub repositories** (“integration repos” / “ecosystem repos”) that will implement optional connectivity from the Ezkey platform to vendor systems—for example SMS delivery or identity-directory synchronization—once a stable **service integration contract** exists in core.
+This document describes **separate GitHub repositories** (“integration repos” / “ecosystem repos”) that may later host what connectors implement. Connector code starts in this monorepo (see *Incubation* below). These repositories concern optional connectivity from the Ezkey platform to vendor systems—for example SMS delivery or identity-directory synchronization—once a stable **service integration contract** exists in core.
 
 Ezkey stays **self-contained** in this monorepo. Integration repos remain **thin adapters** (+ documentation) keyed by vendor and capability. They must not redefine Ezkey lifecycle semantics; operators still govern enrollments and tenants according to [`LIFECYCLE_GOVERNANCE.md`](LIFECYCLE_GOVERNANCE.md).
 
 **Terminology note:** Prefer **integration repository** or **ecosystem repository** here. Do not confuse these with operational **“peripheral” APIs** described in audit-chain heartbeat wording in [`AUDIT_LOG_INTEGRITY.md`](AUDIT_LOG_INTEGRITY.md).
+
+**Incubation (2026-11-04, #1206):** connector code starts in this monorepo under `ezkey-connectors/`, like the SDKs, PAM and Jenkins. A separate repository is a later question. See [`V-2026-11-04-connector-spi`](../product-docs/global/vision/V-2026-11-04-connector-spi.md) and [ADR-0018](../product-docs/global/architecture-decisions.md#adr-0018--connector-spi-for-external-services).
 
 ## Naming convention
 
@@ -15,7 +17,7 @@ Repositories follow:
 | Segment | Role | Examples |
 |--------|------|----------|
 | `ezkey-` | Organization-level prefix | (fixed) |
-| `<integration-family>` | Ezkey capability extended | `sms`, `directory`, optionally `email` |
+| `<integration-family>` | Ezkey capability extended | `email`, `sms`, `directory` |
 | `<vendor-or-tech>` | Vendor or neutral technology token | `twilio`, `aws-sns`, `microsoft-ad`, `ldap` |
 | `<qualifier>` | Disambiguation only when needed | Rare |
 
@@ -35,20 +37,20 @@ Use **canonical vendor spelling** in names (e.g. `twilio`).
 
 ## Email stance
 
-Operational email remains **in-core** today (Java Mail and configuration—see **`V-2026-0005`** in [`product-orientation-notes.md`](../product-docs/global/vision/product-orientation-notes.md)). This catalog **does not** list a transactional-email shell unless product direction explicitly adds out-of-core API providers alongside that model.
+Email is a connector, like SMS (Marc, 2026-11-04, #1206; [ADR-0018](../product-docs/global/architecture-decisions.md#adr-0018--connector-spi-for-external-services)). Ezkey sends no email today. The first implementation is SMTP, incubating in the monorepo; no separate repository exists yet.
 
-## Curated shell list (planned integration repos)
+## Curated shell list
 
-Each row is an **approved name** for a future public repository. **Repository URL** placeholders—fill after you create repos on GitHub.
+Each row is a public shell repository. It holds a README and a license only, until a connector is extracted there.
 
-| Planned repository name | Capability | Draft / publish status |
+| Repository | Capability | Status |
 |-------------------------|------------|------------------------|
-| *(add URL)* | SMS via Twilio | Staging tree not in git yet — drive via `I-2026-0020` |
-| *(add URL)* | SMS via AWS SNS | Staging tree not in git yet — drive via `I-2026-0020` |
-| *(add URL)* | Directory ↔ Ezkey enrollment (Microsoft AD) | Staging tree not in git yet — drive via `I-2026-0020` |
-| *(add URL)* | Directory ↔ Ezkey enrollment (LDAP) | Staging tree not in git yet — drive via `I-2026-0020` |
+| [`ezkey-sms-twilio`](https://github.com/mgagp/ezkey-sms-twilio) | SMS via Twilio | Public shell; README predates ADR-0018 |
+| [`ezkey-sms-aws-sns`](https://github.com/mgagp/ezkey-sms-aws-sns) | SMS via AWS SNS | Public shell; README predates ADR-0018 |
+| [`ezkey-directory-microsoft-ad`](https://github.com/mgagp/ezkey-directory-microsoft-ad) | Directory ↔ Ezkey enrollment (Microsoft AD) | Public shell; README predates ADR-0018 |
+| [`ezkey-directory-ldap`](https://github.com/mgagp/ezkey-directory-ldap) | Directory ↔ Ezkey enrollment (LDAP) | Public shell; README predates ADR-0018 |
 
-After repositories exist, replace *(add URL)* with full `https://github.com/...` links. Optional local staging under `docs/staging/ecosystem-shells/` may be regenerated when publish work resumes (`I-2026-0020`).
+Optional local staging under `docs/staging/ecosystem-shells/` may be regenerated when publish work resumes (`I-2026-0020`).
 
 ## Standard README skeleton (for shells)
 

@@ -16,6 +16,8 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 source "${ROOT}/scripts/lib/product-version.sh"
 
 IFS=$'\t' read -r BASE_REVISION POM_CHANGELIST < <(ezkey_read_pom_ci_versions "${ROOT}/pom.xml")
+BASE_REVISION="${BASE_REVISION//$'\r'/}"
+POM_CHANGELIST="${POM_CHANGELIST//$'\r'/}"
 
 BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
 SHORT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")

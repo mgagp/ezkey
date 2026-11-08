@@ -27,6 +27,7 @@ __exportStar(require("./DashboardApi"), exports);
 __exportStar(require("./EncryptionKeysApi"), exports);
 __exportStar(require("./EnrollmentsApi"), exports);
 __exportStar(require("./IntegrationsApi"), exports);
+__exportStar(require("./IntegrityAsyncJobsApi"), exports);
 __exportStar(require("./PublicApi"), exports);
 __exportStar(require("./TenantsApi"), exports);
 //# sourceMappingURL=index.js.map

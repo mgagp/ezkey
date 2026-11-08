@@ -200,7 +200,7 @@ for request context and respond submission, then returns control to Enrollment D
 | --- | --- | --- | --- |
 | Settings | Single hub for app-adjacent actions | Does not participate in enrollment/auth protocol flow directly | Routes to About, Language, Appearance, Security, Danger Zone, and Licenses. |
 | Security | Local security preference for this phone | Secondary preference surface, but security-sensitive when lowering protection | The app requires device confirmation before saving a downgrade from protected mode to standard. |
-| Language | Manual language selection | Secondary preference only | Persists English/French selection and applies it immediately via i18next (no app restart). |
+| Language | Manual language selection | Secondary preference only | System default (follows the phone when it is English or French, else English), English, or French; applied immediately via i18next (no app restart). On Android 13+ the choice is the system per-app language (Settings → App languages), synced both ways; Android 12 keeps it in AsyncStorage (#1157). Dates use the app language. |
 | Appearance | Light / Dark / System default theme | Secondary preference only | Persists the choice (default System default) and applies it immediately; System default follows the phone's dark theme live. Both palettes meet WCAG AA text contrast (`__tests__/themeContrast.test.ts`). |
 | About | App metadata and project context | Informational only | Shows version, native build timestamp, MIT/open-source note, and link to `ezkey.org`. |
 | Danger Zone | Destructive local maintenance | Explicitly separated to avoid accidental deletion in the main flow | Supports deleting one enrollment or clearing all local enrollment data. |

@@ -354,6 +354,26 @@ only; ignore/close relies on this scheduler. See `docs/ENDPOINT.md` and
 
 ---
 
+### Delivery connector (`ezkey.admin.connector.delivery.*`)
+
+**Description:** the optional delivery connector ([ADR-0018](../product-docs/global/architecture-decisions.md#adr-0018--connector-spi-for-external-services)). With no URL, Ezkey stays on integrated delivery. Provider credentials stay in the connector. Sending also requires `ezkey.qr.auth-base-url`, since the email names the expected server.
+
+**Defined in:** `DeliveryConnectorProperties`
+
+| Property | Default | Obligation | Description |
+|---|---|---|---|
+| `url` | *(empty)* | optionnel | Connector base URL. Blank: no connector |
+| `token` | *(empty)* | requis with `url` | Bearer token, one per connector. A URL without a token is ignored |
+| `plain-http-private-network` | `false` | optionnel | Declares a private network, which allows `http://`. Otherwise an `http://` URL is ignored, because the job carries the QR |
+| `connect-timeout` | `3s` | optionnel | Connect timeout for every call |
+| `read-timeout` | `20s` | optionnel | Read timeout for a send. Keep it longer than the connector's provider timeout |
+| `health-timeout` | `2s` | optionnel | Timeout for a health read |
+| `health-cache-ttl` | `10s` | optionnel | How long a health read stays cached |
+| `tenant-daily-cap` | `50` | optionnel | Sends per tenant per UTC day. Counts `accepted` and `unknown` |
+| `instance-daily-cap` | `200` | optionnel | Sends for the instance per UTC day. Counts `accepted` and `unknown` |
+
+---
+
 ## Shared Properties (ezkey-core)
 
 The following ezkey-core prefixes are also active in Admin API. See
@@ -404,6 +424,9 @@ When `true`, Admin API emits a startup WARN in addition to the write-time WARN.
 
 | Spring property | Docker env var | docker-compose default |
 |---|---|---|
+| `ezkey.admin.connector.delivery.url` | `EZKEY_ADMIN_CONNECTOR_DELIVERY_URL` | *(empty: no connector)* |
+| `ezkey.admin.connector.delivery.token` | `EZKEY_ADMIN_CONNECTOR_DELIVERY_TOKEN` | *(empty)* |
+| `ezkey.admin.connector.delivery.plain-http-private-network` | `EZKEY_ADMIN_CONNECTOR_DELIVERY_PLAIN_HTTP_PRIVATE_NETWORK` | `false` |
 | `ezkey.admin.initial.username` | `EZKEY_ADMIN_INITIAL_USERNAME` | `admin.docker` |
 | `ezkey.admin.initial.email` | `EZKEY_ADMIN_INITIAL_EMAIL` | `admin@ezkey.local` |
 | `ezkey.admin.initial.first-name` | `EZKEY_ADMIN_INITIAL_FIRST_NAME` | `Admin` |

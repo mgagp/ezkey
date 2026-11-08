@@ -32,7 +32,8 @@ Two adoption paths, in this order:
 
 Non-goals until dogfood is boring:
 
-- Windows, macOS, or a multi-OS PAM SDK
+- Windows, or a multi-OS PAM SDK. macOS is no longer a non-goal: see
+  [#1112](https://github.com/mgagp/ezkey/issues/1112) (host-grade level, Mac-native SSH; 2026-11-04)
 - sudo / su / polkit as the first target (SSH first)
 - A configuration language, encrypted property store, or plugin loader
 - Duo-style `failmode=safe` (fail-open MFA) inside the module

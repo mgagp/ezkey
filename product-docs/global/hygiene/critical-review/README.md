@@ -80,6 +80,7 @@ Never ask bare “No-Go.” Never invent `I-*` / `TB-*` per finding.
 
 - [`2026-10-08-pr711-northwind-vision.md`](2026-10-08-pr711-northwind-vision.md) — CR1
 - [`2026-10-08-pr724-announcements.md`](2026-10-08-pr724-announcements.md) — CR2
+- [`2026-11-05-pr1209-connector-spi.md`](2026-11-05-pr1209-connector-spi.md) — CR3
 
 ## How to invoke (operator cheat sheet)
 

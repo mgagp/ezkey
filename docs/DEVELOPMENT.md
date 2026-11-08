@@ -367,7 +367,7 @@ Ezkey uses **CI-friendly Maven versions** with branch-specific qualifiers to pre
   - `revision`: Base version (default: `0.2.0`)
   - `changelist`: Suffix (default: `-SNAPSHOT`)
 - **Flatten**: `flatten-maven-plugin` (`resolveCiFriendliesOnly`) resolves those placeholders in installed/deployed POMs
-- **Cross-ecosystem sync**: `./scripts/sync-version.sh` aligns npm / Python / .NET / Android / Jenkins SDK pins; `./scripts/check-version-alignment.sh` is the CI divergence gate. Details: [`VERSIONING_AND_DEPLOY_TRACEABILITY.md`](VERSIONING_AND_DEPLOY_TRACEABILITY.md) § Alignment mechanisms.
+- **Cross-ecosystem sync**: `./scripts/sync-version.sh` aligns npm / Python / Android / Jenkins SDK pins; `./scripts/check-version-alignment.sh` is the CI divergence gate. .NET is deferred until a client exists (#1219; empty shell removed in #1232). Details: [`VERSIONING_AND_DEPLOY_TRACEABILITY.md`](VERSIONING_AND_DEPLOY_TRACEABILITY.md) § Alignment mechanisms.
 - **Defaults**: Parent POM properties supply the defaults; `mvn` / `./scripts/build.sh` work without a local config file. Optional per-checkout overrides: copy `.mvn/maven.config.example` → gitignored `.mvn/maven.config` (e.g. `-Drevision=0.2.0-wt1`). See root `AGENTS.md` § Local Maven version properties.
 - **Branch isolation**: `scripts/mvn-branch.sh` appends `-<branch>` to `revision` so local `install` coordinates do not collide across branches
 
@@ -439,7 +439,7 @@ pending. Manual `workflow_dispatch` and the **nightly schedule** on `main` (UTC 
 `main` had no commit in the last 24 h) force **every** suite. A change to `ci.yml` runs every job;
 a change to a reusable workflow runs only the job that calls it.
 
-**Heavy jobs skip the post-merge push.** `ha-smoke`, `ezkey-pam`, `mobile-ios` and the mobile
+**Heavy jobs skip the post-merge push.** `ha-smoke`, `connectors`, `ezkey-pam`, `mobile-ios` and the mobile
 `android-16kb-alignment` job run on pull requests (where they gate the change) and nightly, but not
 on the push to `main` that follows a merge, which would repeat the PR run. The ruleset does not
 require branches to be up to date, so a merge of a stale PR is caught by the nightly run at the
@@ -458,7 +458,8 @@ inventory and improvement plan:
 | `changes` | Always | Path filter outputs (one per suite, plus `workflows` = `ci.yml` and `heavy` = not a push); all forced on `workflow_dispatch` and nightly |
 | `admin-ui` | `ezkey-admin-ui/**`, `specs/**`, or a `ci.yml` change | `cmp` of `specs/admin-api/openapi-spec.json` vs `ezkey-admin-ui/openapi-spec.json`; Node from root `.nvmrc` (24 LTS); `npm ci`; `generate:api`; `tsc -b`; lint; Vitest; `vite build`; no-demo assert on `dist/` |
 | `backend` | Java reactor paths / root `pom.xml` / `scripts/build.sh` / `.mvn/**` / `docker/**` or workflows | JDK 25; install `checkstyle-config`; `spotless:check`; Checkstyle; full-reactor `install -DskipTests` (so `ezkey-tests` **compiles**); `test -pl '!ezkey-tests'` (H2 unit tests; **does not run** the Docker `ezkey-tests` suite) |
-| `ha-smoke` | Same path filter as `backend` (or `ci.yml`); PRs and nightly only | Live HA clean-start + HTTP probes through each HAProxy LB (and crypto management); expect documented status codes, never 503 (#905). Script: `scripts/ci-ha-lb-smoke.sh` |
+| `ha-smoke` | Same path filter as `backend` (or `ci.yml`); PRs and nightly only | Live HA clean-start + HTTP probes through each HAProxy LB (and crypto management); expect documented status codes, never 503 (#905). On failure it prints the state and logs of unhealthy or restarted containers before teardown (#1259). Script: `scripts/ci-ha-lb-smoke.sh` |
+| `connectors` | `ezkey-connectors/**`, the Admin API delivery port, its functional tests and `scripts/ci-connector-scenarios.sh` (or `ci.yml`); PRs and nightly only | Mock connector unit tests, then the Docker delivery scenarios and the log canary (#1206) |
 | `mobile` | `ezkey_mobile/**`, its reusable workflow, or `ci.yml` | Calls reusable [`.github/workflows/ezkey-mobile-unit-tests.yml`](../.github/workflows/ezkey-mobile-unit-tests.yml): Yarn validate, Android JVM unit tests, **16 KB APK alignment** (PRs and nightly only) |
 | `mobile-ios` | iOS native surface (`ezkey_mobile/ios/**`, `package.json`, `yarn.lock`, `Gemfile*`, `scripts/ios-*.sh`), its reusable workflow, or `ci.yml`; PRs and nightly only | Calls reusable [`.github/workflows/ezkey-mobile-ios.yml`](../.github/workflows/ezkey-mobile-ios.yml) on `macos-26`: `yarn ios:lint` (swift-format + SwiftLint, strict), `pod install`, `yarn ios:test` (simulator build + XCTest) |
 | `dart-sdk` | `ezkey_dart/**` or workflows | Experimental Dart SDK offline gate in a pinned `dart` image: `ezkey_dart/scripts/test.sh` (format check, `analyze --fatal-infos`, unit tests). The live-stack suite `ezkey_dart/scripts/e2e.sh` stays local ([`ezkey_dart/README.md`](../ezkey_dart/README.md) §6) |
@@ -514,7 +515,7 @@ yarn install --immutable && yarn validate:ci
 ```
 
 **Ruleset (maintainer):** keep required status check **`ci-gate`** only (plus non-check rules as
-desired: deletion / non-fast-forward already on). No other job names need to be required. Broader
+desired: deletion / non-fast-forward / pull request with 0 approvals already on). No other job names need to be required. Broader
 ruleset / Settings backlog: [`engineering/ci-cd-best-practices-plan.md`](engineering/ci-cd-best-practices-plan.md).
 
 **CodeQL (advanced setup):** workflow [`.github/workflows/codeql.yml`](../.github/workflows/codeql.yml)

@@ -115,8 +115,13 @@ class AdminProvisioningDetailScreen(Screen):
       content.append("")
       content.append("Onboarding Credentials (save securely):")
       content.append(f"Enrollment ID: {self.onboarding_data.get('enrollmentId', 'N/A')}")
-      content.append(f"Enrollment Proof Token: {self.onboarding_data.get('enrollmentProofToken', 'N/A')}")
-      content.append(f"Enrollment Challenge: {self.onboarding_data.get('enrollmentChallenge', 'N/A')}")
+      # #1266: the API returns null once the enrollment has moved past the state that needs them.
+      proof_token = self.onboarding_data.get('enrollmentProofToken')
+      challenge = self.onboarding_data.get('enrollmentChallenge')
+      content.append(f"Enrollment Proof Token: {proof_token if proof_token is not None else 'No longer available'}")
+      content.append(f"Enrollment Challenge: {challenge if challenge is not None else 'No longer available'}")
+      if proof_token is None and challenge is not None:
+        content.append("A device has already bound this enrollment. Confirm who you are speaking to before giving this code.")
 
     detail_widget = self.query_one("#detail_content", Static)
     detail_widget.update("\n".join(content))

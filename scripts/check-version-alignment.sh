@@ -26,13 +26,14 @@ PYTHON_VERSION="$(ezkey_python_product_version "$MAVEN_VERSION")"
 ANDROID_NAME="$(ezkey_android_version_name "$MAVEN_VERSION")"
 
 echo "Expected Maven product version: ${MAVEN_VERSION}"
-echo "Expected npm / .NET version:    ${NPM_VERSION}"
+echo "Expected npm version:           ${NPM_VERSION}"
 echo "Expected Python (PEP 440):      ${PYTHON_VERSION}"
 echo "Expected Android versionName:   ${ANDROID_NAME}"
 echo "Android versionCode floor:      ${EZKEY_ANDROID_VERSION_CODE_MIN} (must be > 6)"
 
 # --- Parent revision train (expected value from product-version.sh, not hard-coded here) ---
 IFS=$'\t' read -r revision _changelist < <(ezkey_read_pom_ci_versions "$POM")
+revision="${revision//$'\r'/}"
 if [[ "$revision" != "${EZKEY_PRODUCT_REVISION}" ]]; then
   fail "Parent <revision> must be ${EZKEY_PRODUCT_REVISION} for the current product train (got ${revision}; see EZKEY_PRODUCT_REVISION in scripts/lib/product-version.sh)"
 else
@@ -100,24 +101,8 @@ check_eq "ezkey-sdk/python/pyproject.toml (ezkey-python-sdk)" \
 check_eq "ezkey-cli-python/setup.py (ezkey-cli)" \
   "$(ezkey_read_setup_py_version "${ROOT}/ezkey-cli-python/setup.py")" "$PYTHON_VERSION"
 
-# --- .NET ---
-# PackageVersion may carry -SNAPSHOT (NuGet prerelease). AssemblyVersion / FileVersion must not.
-CSPROJ="${ROOT}/ezkey-sdk/dotnet/src/EzkeySdk/EzkeySdk.csproj"
-DOTNET_ASSEMBLY="$(ezkey_dotnet_assembly_file_version "$MAVEN_VERSION")"
-check_eq "Ezkey.Sdk PackageVersion" \
-  "$(ezkey_read_csproj_package_version "$CSPROJ")" "$NPM_VERSION"
-check_eq "Ezkey.Sdk AssemblyVersion" \
-  "$(ezkey_read_csproj_element "$CSPROJ" AssemblyVersion)" "$DOTNET_ASSEMBLY"
-check_eq "Ezkey.Sdk FileVersion" \
-  "$(ezkey_read_csproj_element "$CSPROJ" FileVersion)" "$DOTNET_ASSEMBLY"
-for av_tag in AssemblyVersion FileVersion; do
-  av_val="$(ezkey_read_csproj_element "$CSPROJ" "$av_tag")"
-  if [[ "${av_val^^}" == *SNAPSHOT* ]]; then
-    fail "Ezkey.Sdk ${av_tag}='${av_val}' must not contain SNAPSHOT (NuGet label belongs on PackageVersion only)"
-  else
-    ok "Ezkey.Sdk ${av_tag} has no SNAPSHOT"
-  fi
-done
+# .NET: empty shell removed on main (#1232). Gate skips it until a client exists (#1219).
+# Reserved rule: PackageVersion may carry -SNAPSHOT; AssemblyVersion / FileVersion must not.
 
 # --- Jenkins lab ---
 # ADR-0017 exception (#1211): Jenkins lab plugins (ezkey-lab-auth / ezkey-lab-hello) keep their

@@ -10,7 +10,7 @@
  * Do not edit the class manually.
  */
 import * as runtime from '../runtime';
-import type { EnrollmentCreateRequestDto, EnrollmentCreateResponseDto, EnrollmentResponseDto, EnrollmentUpdateRequestDto, PagedModelEnrollmentResponseDto } from '../models/index';
+import type { EnrollmentCreateRequestDto, EnrollmentCreateResponseDto, EnrollmentResponseDto, EnrollmentUpdateRequestDto, PagedModelEnrollmentResponseDto, QrDeliveryCapabilityDto, QrDeliveryRequestDto, QrDeliveryResponseDto } from '../models/index';
 export interface DeleteRequest {
     id: number;
     reason: string;
@@ -47,6 +47,10 @@ export interface Search1Request {
     size?: number;
     sort?: Array<string>;
 }
+export interface SendRequest {
+    id: number;
+    qrDeliveryRequestDto: QrDeliveryRequestDto;
+}
 export interface UpdateRequest {
     id: number;
     enrollmentUpdateRequestDto: EnrollmentUpdateRequestDto;
@@ -65,6 +69,16 @@ export declare class EnrollmentsApi extends runtime.BaseAPI {
      * Delete enrollment
      */
     _delete(requestParameters: DeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+    /**
+     * Says whether a delivery connector can be used, without contacting a provider.
+     * Read QR delivery capability
+     */
+    capabilityRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<QrDeliveryCapabilityDto>>;
+    /**
+     * Says whether a delivery connector can be used, without contacting a provider.
+     * Read QR delivery capability
+     */
+    capability(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<QrDeliveryCapabilityDto>;
     /**
      * Creates a new enrollment that can later be bound to a mobile device
      * Create new enrollment
@@ -96,12 +110,12 @@ export declare class EnrollmentsApi extends runtime.BaseAPI {
      */
     getById(requestParameters: GetByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EnrollmentResponseDto>;
     /**
-     * Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentId, enrollmentProofToken, authUrl})
+     * Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentId, enrollmentProofToken, authUrl}). Only while the enrollment is CREATED; 409 otherwise
      * Generate QR code for enrollment
      */
     getQrCodeRaw(requestParameters: GetQrCodeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<string>>;
     /**
-     * Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentId, enrollmentProofToken, authUrl})
+     * Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentId, enrollmentProofToken, authUrl}). Only while the enrollment is CREATED; 409 otherwise
      * Generate QR code for enrollment
      */
     getQrCode(requestParameters: GetQrCodeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<string>;
@@ -135,6 +149,16 @@ export declare class EnrollmentsApi extends runtime.BaseAPI {
      * Search enrollments
      */
     search1(requestParameters?: Search1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PagedModelEnrollmentResponseDto>;
+    /**
+     * One attempt through the delivery connector. The challenge is never sent. A 200 carries the outcome: accepted means the provider took the message, and unknown means it may have left. A refusal before any call returns a problem with a typed code.
+     * Send an enrollment QR by email
+     */
+    sendRaw(requestParameters: SendRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<QrDeliveryResponseDto>>;
+    /**
+     * One attempt through the delivery connector. The challenge is never sent. A 200 carries the outcome: accepted means the provider took the message, and unknown means it may have left. A refusal before any call returns a problem with a typed code.
+     * Send an enrollment QR by email
+     */
+    send(requestParameters: SendRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<QrDeliveryResponseDto>;
     /**
      * Updates enrollment metadata (name, contactEmail, expiresAt, authAttemptChallengeRequired, userIdentifier). Only active VERIFIED enrollments. Include version from GET for optimistic locking.
      * Partially update enrollment metadata

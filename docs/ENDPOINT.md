@@ -1312,6 +1312,16 @@ This endpoint only applies after the administrator already has a first enrollmen
 created with `onboardingMode = ACTIVATION_CODE` remain in `PENDING_ACTIVATION` with no
 `enrollmentId`, so this endpoint is not applicable until the activation code has been consumed.
 
+**Availability ([#1266](https://github.com/mgagp/ezkey/issues/1266)):** an operator can obtain the material only while it is needed to complete enrollment. The response stays 200 with null fields otherwise.
+
+| Enrollment status | `enrollmentProofToken` | `enrollmentChallenge` |
+| ----------------- | ---------------------- | --------------------- |
+| `CREATED` | Value | Value |
+| `BOUND` | `null` | Value (confirm who you are speaking to before giving it) |
+| Any other status | `null` | `null` |
+
+An admin who lost their device uses the reset flow, not this GET. `GET /api/v1/admins/{id}` exposes `enrollmentStatus`.
+
 **Permissions:**
 - **GlobalAdmin**: Can retrieve onboarding credentials for any admin
 - **TenantAdmin**: Can only retrieve onboarding credentials for admins in their tenant
@@ -1385,6 +1395,7 @@ This allows the mobile app to automatically populate enrollment credentials and 
 - 401: Unauthorized - admin token required
 - 403: Forbidden - not authorized to access this admin's credentials
 - 404: Administrator or enrollment not found
+- 409: Enrollment is not `CREATED`; the QR encodes the proof token, so it follows the same rule as the JSON GET (#1266)
 - 500: Internal server error
 
 ---
@@ -1530,6 +1541,7 @@ Authorization: Bearer ezkey_admin_token...
       "createdAt": "2025-12-26T10:00:00Z",
       "lastLoginAt": "2025-12-28T09:15:00Z",
       "hasRecoveryCodes": true,
+      "recoveryCodesExhausted": false,
       "operational": true
     }
   ],
@@ -1542,7 +1554,7 @@ Authorization: Bearer ezkey_admin_token...
 }
 ```
 
-**Response fields:** `tenantName` is the display name of the tenant (`ezkey_tenant.tenant_name`) when `tenantId` is set; it is `null` for global administrators. `enrollmentId` is the MFA enrollment linked to this administrator (passwordless identity); null if not linked. `lastLoginAt` is the timestamp of the administrator's last successful login (null if never logged in). `operational` summarizes whether the admin account and (for tenant-scoped admins) the tenant are in an operable state for login. Useful for access reviews.
+**Response fields:** `tenantName` is the display name of the tenant (`ezkey_tenant.tenant_name`) when `tenantId` is set; it is `null` for global administrators. `enrollmentId` is the MFA enrollment linked to this administrator (passwordless identity); null if not linked. `lastLoginAt` is the timestamp of the administrator's last successful login (null if never logged in). `hasRecoveryCodes` is true while at least one unused recovery code remains. `recoveryCodesExhausted` is true when a set was issued and every code has since been used; it lets clients word the next `issue-initial` call as a replacement set rather than a first issuance (#1244). `operational` summarizes whether the admin account and (for tenant-scoped admins) the tenant are in an operable state for login. Useful for access reviews.
 
 **Status Codes:**
 - 200: List of administrators retrieved successfully
@@ -1566,7 +1578,7 @@ GET /api/v1/admins/2
 Authorization: Bearer ezkey_admin_token...
 ```
 
-**Success Response (200 OK):** Same fields as a list item: `adminId`, `version`, `username`, `email`, `phoneNumber`, `firstName`, `lastName`, `adminType`, `tenantId`, `tenantName`, `enrollmentId`, `active`, `lifecycleStatus`, `createdAt`, `lastLoginAt`, `hasRecoveryCodes`, `operational`.
+**Success Response (200 OK):** Same fields as a list item: `adminId`, `version`, `username`, `email`, `phoneNumber`, `firstName`, `lastName`, `adminType`, `tenantId`, `tenantName`, `enrollmentId`, `active`, `lifecycleStatus`, `createdAt`, `lastLoginAt`, `hasRecoveryCodes`, `recoveryCodesExhausted`, `operational`.
 
 **Status Codes:**
 - 200: Administrator retrieved successfully
@@ -1715,7 +1727,9 @@ GET /api/v1/enrollments/123
 Authorization: Bearer ezkey_admin_token...
 ```
 
-**Response (high level):** Returns the full enrollment record including integration display fields where applicable (`integrationName`, `isSystemIntegration`), cryptographic material references (`integrationPublicKey`, `devicePublicKey`), client-reported `devicePrivateKeyStorageTier` when set at verify (`NONE`, `STANDARD`, `STRONG`; not independently verified by the server — see `docs/MOBILE_DEVELOPER_GUIDE.md`), and lifecycle audit timestamps such as `createdAt`, `createdByAdminId`, `deactivatedAt`, `deactivatedByAdminId`, `revokedAt`, and `revokedByAdminId` when set.
+**Response (high level):** Returns the full enrollment record including integration display fields where applicable (`integrationName`, `isSystemIntegration`), client-reported `devicePrivateKeyStorageTier` when set at verify (`NONE`, `STANDARD`, `STRONG`; not independently verified by the server — see `docs/MOBILE_DEVELOPER_GUIDE.md`), and lifecycle audit timestamps such as `createdAt`, `createdByAdminId`, `deactivatedAt`, `deactivatedByAdminId`, `revokedAt`, and `revokedByAdminId` when set.
+
+**Bind material (#1180):** `enrollmentProofToken` is returned only while `CREATED`, and `enrollmentChallenge` only while `CREATED` or `BOUND` (verify follows bind, and the operator may still have to give the code); both are null otherwise. Integration and device public keys are never returned: protocol actors get them from Auth API bind and verify, and the server verifies device signatures from the stored entity. `GET` and search share this rule.
 
 #### **GET /api/v1/enrollments/{id}/qrcode** (Enrollment bind-handle QR)
 
@@ -1731,7 +1745,44 @@ Authorization: Bearer ezkey_admin_token...
 - 200: PNG QR generated
 - 400: Enrollment missing proof token
 - 404: Enrollment not found or not visible to this admin
+- 409: Enrollment is not `CREATED`: the QR holds the proof token, so it follows the same rule as the JSON GET (#1180)
 - 500: Internal server error
+
+#### **POST /api/v1/enrollments/{id}/qr-delivery** (Send the QR through a delivery connector)
+
+Sends the QR of a `CREATED` enrollment to its `contactEmail`, as one attempt, through the optional delivery connector ([ADR-0018](../product-docs/global/architecture-decisions.md#adr-0018--connector-spi-for-external-services)). The challenge is never sent, and the QR stays available on screen whatever the outcome. Same tenant gate as `GET /qrcode`. Denied to evaluator temporary sessions.
+
+```http
+POST /api/v1/enrollments/123/qr-delivery
+Authorization: Bearer ezkey_admin_token...
+Content-Type: application/json
+
+{ "locale": "fr" }
+```
+
+**200:** the connector was called. `outcome` says what happened: `accepted` (the provider took the message, not proof of receipt), `rejected` (it did not leave) or `unknown` (it may have left: check with the person before retrying).
+
+```json
+{ "outcome": "accepted", "sendId": "3f0e2f6a-...", "recipient": "person@example.com", "code": null, "testMode": false }
+```
+
+**Refused before any call:** an RFC 9457 problem with a typed `code`.
+
+| Status | `code` | Meaning |
+|--------|--------|---------|
+| 404 | | Enrollment not found or not visible to this admin |
+| 409 | `enrollment-not-created`, `enrollment-expired`, `admin-enrollment`, `parent-not-operational` | This enrollment cannot be sent |
+| 422 | `contact-email-missing`, `contact-email-invalid`, `expected-server-missing`, `locale-not-offered` | Sending data is missing or invalid |
+| 429 | `daily-cap-reached` | Tenant or instance daily cap reached |
+| 503 | `connector-unavailable` | No connector, or it is unreachable, `degraded` or on another contract version |
+
+#### **GET /api/v1/enrollments/qr-delivery/capability** (QR delivery capability)
+
+Says whether the send action can be offered. Reads the connector's health with a short cache, and never contacts a provider. Denied to evaluator temporary sessions.
+
+```json
+{ "available": true, "testMode": false, "locales": ["en", "fr"] }
+```
 
 #### **PATCH /api/v1/enrollments/{id}** (Partial Update of Enrollment Metadata)
 
