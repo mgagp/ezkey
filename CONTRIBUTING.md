@@ -59,6 +59,14 @@ On Windows agent shells (PowerShell), do **not** pass the PR title/body inline t
 See `AGENTS.md` § *GitHub pull request on Windows (agent shell)* and
 `.cursor/rules/git-pr-windows.mdc`.
 
+## Responses to issues
+
+Bug reports and requests get a first response within 14 days. The response can be a question, a
+"no" or a plan; it need not include a fix. A daily workflow
+([`.github/workflows/issue-response-reminder.yml`](.github/workflows/issue-response-reminder.yml))
+reminds the maintainer from day 7. Report vulnerabilities privately, as described in
+[`SECURITY.md`](SECURITY.md).
+
 ## Build and verification
 
 On a fresh clone (empty `~/.m2`), from the repository root in Bash (Git Bash on Windows):

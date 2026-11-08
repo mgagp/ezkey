@@ -34,7 +34,7 @@ Please include:
 
 This is a small community lab project maintained primarily by [@mgagp](https://github.com/mgagp), with AI-assisted review.
 
-Response is best effort, with no SLA. We usually acknowledge reports within a few days.
+We acknowledge vulnerability reports within 14 days. Fixes remain best effort, with no SLA.
 
 After remediation where applicable, we may publish a GitHub Security Advisory and credit the reporter unless anonymity is requested.
 
