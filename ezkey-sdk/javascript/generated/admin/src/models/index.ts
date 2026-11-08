@@ -445,6 +445,12 @@ export interface AdminResponseDto {
      */
     enrollmentName?: string | null;
     /**
+     * Status of the linked MFA enrollment (null when enrollmentId is null). Tells whether onboarding material can still be retrieved.
+     * @type {string}
+     * @memberof AdminResponseDto
+     */
+    enrollmentStatus?: AdminResponseDtoEnrollmentStatusEnum | null;
+    /**
      * Flag indicating if the administrator is currently active
      * @type {boolean}
      * @memberof AdminResponseDto
@@ -498,6 +504,19 @@ export const AdminResponseDtoAdminTypeEnum = {
     IntegrationAdmin: 'INTEGRATION_ADMIN'
 } as const;
 export type AdminResponseDtoAdminTypeEnum = typeof AdminResponseDtoAdminTypeEnum[keyof typeof AdminResponseDtoAdminTypeEnum];
+
+/**
+ * @export
+ */
+export const AdminResponseDtoEnrollmentStatusEnum = {
+    Created: 'CREATED',
+    Bound: 'BOUND',
+    Verified: 'VERIFIED',
+    Invalid: 'INVALID',
+    Revoked: 'REVOKED',
+    Expired: 'EXPIRED'
+} as const;
+export type AdminResponseDtoEnrollmentStatusEnum = typeof AdminResponseDtoEnrollmentStatusEnum[keyof typeof AdminResponseDtoEnrollmentStatusEnum];
 
 /**
  * @export

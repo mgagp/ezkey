@@ -42,6 +42,7 @@ import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.audit.support.AuditEntityFkResolver;
 import org.ezkey.audit.util.ClientContext;
+import org.ezkey.enrollment.EnrollmentBindMaterialPolicy;
 import org.ezkey.enrollment.domain.EnrollmentCreateRequest;
 import org.ezkey.enrollment.domain.EnrollmentCreateResponse;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
@@ -771,7 +772,7 @@ public class EnrollmentController {
       var enrollment = enrollmentService.getById(id);
 
       // #1180: the QR encodes the proof token, so it follows the same rule as the JSON GET.
-      if (enrollment.getStatus() != EnrollmentStatus.CREATED) {
+      if (!EnrollmentBindMaterialPolicy.proofTokenAvailable(enrollment.getStatus())) {
         return ResponseEntity.status(HttpStatus.CONFLICT).build();
       }
 

@@ -37,6 +37,7 @@ import org.ezkey.audit.domain.repository.AuditLogRepository;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.audit.util.ClientContext;
 import org.ezkey.config.QrCodeProperties;
+import org.ezkey.enrollment.EnrollmentBindMaterialPolicy;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
@@ -230,7 +231,7 @@ public class EnrollmentQrDeliveryService {
     if (material.adminEnrollment()) {
       throw new QrDeliveryRefusedException(Reason.ADMIN_ENROLLMENT);
     }
-    if (material.status() != EnrollmentStatus.CREATED) {
+    if (!EnrollmentBindMaterialPolicy.proofTokenAvailable(material.status())) {
       throw new QrDeliveryRefusedException(Reason.ENROLLMENT_NOT_CREATED);
     }
     if (material.expired()) {

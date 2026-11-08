@@ -2,7 +2,7 @@
 
 What the November 2026 stabilization around #1180 and #1259 taught us about analysis, design, tests and code structure. Read this before you touch startup code, HA behaviour, an exposure rule, a test helper, or a CI failure that looks random.
 
-Each lesson states a rule, the evidence behind it, and a check you can run. Candidates not yet reproduced are in #1267 and #1266.
+Each lesson states a rule, the evidence behind it, and a check you can run. Candidates not yet reproduced are in #1267.
 
 ## The case in brief
 
@@ -63,6 +63,6 @@ Each lesson states a rule, the evidence behind it, and a check you can run. Cand
 
 **14. Put an invariant in one place.** Prefer one owner over a convention each caller must remember.
 - Evidence: moving the transaction into `LockingTaskExecutor` fixed every caller at once.
-- Open point: the rule "proof token only while `CREATED`" still lives in three places: `EnrollmentAdminMapper`, `EnrollmentController.getQrCode` and `EnrollmentQrDeliveryService`. A single policy would have prevented the QR bypass. #1266 would add a fourth place, so decide this there.
+- Evidence: the rule "proof token only while `CREATED`" lived in three places, and #1266 would have added a fourth. Every Admin API exit now asks `EnrollmentBindMaterialPolicy`.
 
 **15. Take secrets out of templates, not configuration.** `local.bru.example` lost its localhost URLs along with the secrets, which broke g4 on a fresh clone (#1264).

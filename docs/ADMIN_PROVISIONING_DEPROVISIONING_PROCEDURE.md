@@ -25,8 +25,8 @@ System tenant (tenant_id=1) cannot have Tenant Admins created in it.
 1. **Create the admin** via API:
    - Global: `POST /api/v1/admins/global` (body: username, email, firstName, lastName).
    - Tenant: `POST /api/v1/admins/tenant` (body: username, email, firstName, lastName, tenantId; TenantAdmin omits tenantId and their tenant is used).
-2. **Retrieve onboarding credentials** once: `GET /api/v1/admins/{id}/onboarding` (or QR: `GET /api/v1/admins/{id}/onboarding/qrcode`).
-3. **Share credentials securely** with the new admin. Recovery codes and enrollment credentials are shown only at creation; recovery codes cannot be retrieved later (stored as BCrypt hashes).
+2. **Retrieve onboarding credentials** before the device binds: `GET /api/v1/admins/{id}/onboarding` (or QR: `GET /api/v1/admins/{id}/onboarding/qrcode`). The proof token and QR are available only while the enrollment is `CREATED`, and the challenge only while it is `CREATED` or `BOUND` (#1266).
+3. **Share credentials securely** with the new admin. Recovery codes cannot be retrieved later (stored as BCrypt hashes).
 4. **Audit:** Events `ADMIN_CREATED` with action `admin_global_created` or `admin_tenant_created` are logged. The created admin ID is stored in the audit log as `target_admin_id` for querying.
 
 ## Deprovisioning (Deactivate Admin)

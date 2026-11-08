@@ -37,6 +37,7 @@
   "onboarding": {
     "title": "Intégration — {{username}}",
     "errorLoad": "Impossible de charger les identifiants d'intégration.",
+    "noLongerAvailable": "Cet enrôlement est terminé ou fermé : ses identifiants d'intégration ne sont plus disponibles.",
     "alertShare": "Partagez ces identifiants avec l'administrateur pour configurer l'application mobile EZKey.",
     "previewNotice": "Livraison intégrée : cette boîte affiche le jeton de preuve, le défi de liaison et le code QR dans l'interface d'administration pour qu'Ezkey fonctionne sans adaptateur courriel ni SMS. Pour une assurance plus forte, vous pouvez les séparer sur vos propres canaux (par exemple, envoyer une capture du QR par courriel et le défi à six chiffres par SMS ou messagerie). Une livraison assistée par SMTP pourra être configurée plus tard lorsque le canal courriel sera disponible.",
     "enrollmentProofToken": "Jeton de preuve d'enrôlement",

@@ -1312,6 +1312,16 @@ This endpoint only applies after the administrator already has a first enrollmen
 created with `onboardingMode = ACTIVATION_CODE` remain in `PENDING_ACTIVATION` with no
 `enrollmentId`, so this endpoint is not applicable until the activation code has been consumed.
 
+**Availability ([#1266](https://github.com/mgagp/ezkey/issues/1266)):** an operator can obtain the material only while it is needed to complete enrollment. The response stays 200 with null fields otherwise.
+
+| Enrollment status | `enrollmentProofToken` | `enrollmentChallenge` |
+| ----------------- | ---------------------- | --------------------- |
+| `CREATED` | Value | Value |
+| `BOUND` | `null` | Value (confirm who you are speaking to before giving it) |
+| Any other status | `null` | `null` |
+
+An admin who lost their device uses the reset flow, not this GET. `GET /api/v1/admins/{id}` exposes `enrollmentStatus`.
+
 **Permissions:**
 - **GlobalAdmin**: Can retrieve onboarding credentials for any admin
 - **TenantAdmin**: Can only retrieve onboarding credentials for admins in their tenant
@@ -1385,6 +1395,7 @@ This allows the mobile app to automatically populate enrollment credentials and 
 - 401: Unauthorized - admin token required
 - 403: Forbidden - not authorized to access this admin's credentials
 - 404: Administrator or enrollment not found
+- 409: Enrollment is not `CREATED`; the QR encodes the proof token, so it follows the same rule as the JSON GET (#1266)
 - 500: Internal server error
 
 ---

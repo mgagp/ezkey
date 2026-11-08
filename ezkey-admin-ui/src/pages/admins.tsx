@@ -56,6 +56,7 @@ import {
 } from '@/generated/admin-api/administrator-provisioning/administrator-provisioning';
 import { useListTenants } from '@/generated/admin-api/tenants/tenants';
 import { AdminCreateRequestDtoOnboardingMode } from '@/generated/admin-api/model';
+import { canShowOnboardingCredentials } from '@/lib/admin-onboarding-eligibility';
 import type {
   AdminCreateRequestDto,
   AdminUpdateRequestDto,
@@ -65,8 +66,8 @@ import type {
 
 /** UI-facing shape for admin onboarding (API returns GetAdminOnboarding200). */
 interface AdminOnboardingShape {
-  enrollmentProofToken?: string;
-  enrollmentChallenge?: number;
+  enrollmentProofToken?: string | null;
+  enrollmentChallenge?: number | null;
 }
 
 /** UI-facing shape for create admin response (API returns provisioning DTO with optional recovery codes). */
@@ -116,12 +117,6 @@ function shouldShowTenantOperationalWarning(
     && admin.lifecycleStatus === 'ACTIVE'
     && admin.operational === false
   );
-}
-
-function canShowOnboardingCredentials(
-  admin: Pick<AdminResponseDto, 'enrollmentId' | 'lifecycleStatus'>,
-): boolean {
-  return admin.enrollmentId != null && !isPendingActivationAdmin(admin);
 }
 
 function canRegenerateAdminRecoveryCodes(
@@ -211,22 +206,24 @@ function OnboardingDialog({
   adminId: number | null;
   adminUsername: string;
 }) {
-  const { t } = useTranslation('admins');
+  const { t } = useTranslation(['admins', 'enrollments']);
   const [tokenCopied, setTokenCopied] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
 
   const { data: rawOnboarding, isLoading, isError } = useGetAdminOnboarding<AdminOnboardingShape>(
     adminId ?? 0,
-    { query: { enabled: open && adminId !== null } },
+    // #1266: always ask the server, so a cached token never outlives the state that allowed it.
+    { query: { enabled: open && adminId !== null, staleTime: 0, gcTime: 0 } },
   );
   const onboarding = rawOnboarding as unknown as AdminOnboardingShape | undefined;
+  const proofToken = onboarding?.enrollmentProofToken ?? null;
+  const challenge = onboarding?.enrollmentChallenge ?? null;
 
   const handleCopy = async () => {
-    const token = onboarding?.enrollmentProofToken;
-    if (token == null || token === '') return;
+    if (proofToken == null || proofToken === '') return;
     try {
-      await navigator.clipboard.writeText(String(token));
+      await navigator.clipboard.writeText(proofToken);
       setTokenCopied(true);
       setTimeout(() => setTokenCopied(false), 2000);
     } catch { /* ignore */ }
@@ -256,55 +253,73 @@ function OnboardingDialog({
       {isError && <Alert variant="error">{t('onboarding.errorLoad')}</Alert>}
       {onboarding && (
         <div className="space-y-4">
-          <Alert variant="info">
-            {t('onboarding.alertShare')}
-          </Alert>
-          <IntegratedDeliveryNotice summary={t('common:integratedDelivery.summary')}>
-            {t('onboarding.previewNotice')}
-          </IntegratedDeliveryNotice>
+          {proofToken != null && (
+            <>
+              <Alert variant="info">
+                {t('onboarding.alertShare')}
+              </Alert>
+              <IntegratedDeliveryNotice summary={t('common:integratedDelivery.summary')}>
+                {t('onboarding.previewNotice')}
+              </IntegratedDeliveryNotice>
 
-          {/* Proof Token */}
-          <div className="space-y-1.5">
-            <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted">
-              {t('onboarding.enrollmentProofToken')}
-            </p>
-            <div className="border-2 border-fg p-3 font-mono text-xs break-all bg-bg leading-relaxed">
-              {String(onboarding.enrollmentProofToken ?? '')}
-            </div>
-            <Button variant="secondary" size="sm" onClick={handleCopy} className="gap-1.5">
-              {tokenCopied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
-              {tokenCopied ? t('onboarding.copied') : t('onboarding.copyToken')}
-            </Button>
-          </div>
+              {/* Proof Token */}
+              <div className="space-y-1.5" data-testid="admin-onboarding-token">
+                <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted">
+                  {t('onboarding.enrollmentProofToken')}
+                </p>
+                <div className="border-2 border-fg p-3 font-mono text-xs break-all bg-bg leading-relaxed">
+                  {proofToken}
+                </div>
+                <Button variant="secondary" size="sm" onClick={handleCopy} className="gap-1.5">
+                  {tokenCopied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
+                  {tokenCopied ? t('onboarding.copied') : t('onboarding.copyToken')}
+                </Button>
+              </div>
+            </>
+          )}
 
           {/* Challenge */}
-          <div className="border-2 border-fg/30 p-3 bg-bg">
-            <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted mb-1">
-              {t('onboarding.bindingChallenge')}
-            </p>
-            <p className="font-mono text-2xl font-black tracking-widest">
-              {String(onboarding.enrollmentChallenge ?? '')}
-            </p>
-          </div>
+          {challenge != null && (
+            <div className="border-2 border-fg/30 p-3 bg-bg">
+              <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted mb-1">
+                {t('onboarding.bindingChallenge')}
+              </p>
+              {proofToken == null && (
+                <Alert variant="warning" className="mb-2" data-testid="admin-onboarding-bound-warning">
+                  {t('enrollments:detail.boundChallengeWarning')}
+                </Alert>
+              )}
+              <p className="font-mono text-2xl font-black tracking-widest" data-testid="admin-onboarding-challenge">
+                {challenge}
+              </p>
+            </div>
+          )}
 
           {/* QR Code */}
-          <div className="space-y-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              isLoading={qrLoading}
-              onClick={handleToggleQr}
-              className="gap-1.5"
-            >
-              <QrCode className="size-3.5" />
-              {qrCodeUrl ? t('onboarding.hideQrCode') : t('onboarding.showQrCode')}
-            </Button>
-            {qrCodeUrl && (
-              <div className="border-2 border-fg p-3 inline-block">
-                <img src={qrCodeUrl} alt={t('onboarding.qrCodeAlt')} className="size-48" />
-              </div>
-            )}
-          </div>
+          {proofToken != null && (
+            <div className="space-y-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                isLoading={qrLoading}
+                onClick={handleToggleQr}
+                className="gap-1.5"
+              >
+                <QrCode className="size-3.5" />
+                {qrCodeUrl ? t('onboarding.hideQrCode') : t('onboarding.showQrCode')}
+              </Button>
+              {qrCodeUrl && (
+                <div className="border-2 border-fg p-3 inline-block">
+                  <img src={qrCodeUrl} alt={t('onboarding.qrCodeAlt')} className="size-48" />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* The enrollment moved on after the list was loaded. */}
+          {proofToken == null && challenge == null && (
+            <Alert variant="info">{t('onboarding.noLongerAvailable')}</Alert>
+          )}
 
           <div className="flex justify-end pt-2">
             <Button onClick={handleClose}>{t('onboarding.close')}</Button>
@@ -747,6 +762,7 @@ function AdminDetailDialog({
                 variant="secondary"
                 size="sm"
                 className="gap-1.5"
+                data-testid="admin-detail-credentials"
                 onClick={() => onShowCredentials(adm.adminId!, adm.username!)}
               >
                 <KeyRound className="size-3.5" />
