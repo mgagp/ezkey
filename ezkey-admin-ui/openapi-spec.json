@@ -6926,7 +6926,7 @@
           "Administrator Provisioning"
         ],
         "summary": "Generate QR code for onboarding",
-        "description": "Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentId, enrollmentProofToken, authUrl}) for passwordless enrollment binding.",
+        "description": "Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentId, enrollmentProofToken, authUrl}) for passwordless enrollment binding. Available only while the enrollment is CREATED.",
         "operationId": "getAdminOnboardingQrCode",
         "parameters": [
           {
@@ -6974,6 +6974,16 @@
           },
           "404": {
             "description": "Administrator or enrollment not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Enrollment is not CREATED",
             "content": {
               "*/*": {
                 "schema": {
@@ -9396,6 +9406,22 @@
             "description": "Human-readable name of the linked MFA enrollment (null when enrollmentId is null)",
             "example": "admin.docker MFA"
           },
+          "enrollmentStatus": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Status of the linked MFA enrollment (null when enrollmentId is null). Tells whether onboarding material can still be retrieved.",
+            "enum": [
+              "CREATED",
+              "BOUND",
+              "VERIFIED",
+              "INVALID",
+              "REVOKED",
+              "EXPIRED"
+            ],
+            "example": "VERIFIED"
+          },
           "active": {
             "type": "boolean",
             "description": "Flag indicating if the administrator is currently active",
@@ -11047,42 +11073,42 @@
   },
   "x-tagGroups": [
     {
-      "name": "Getting started",
       "tags": [
         "Public",
         "Admin Authentication"
-      ]
+      ],
+      "name": "Getting started"
     },
     {
-      "name": "Tenant and integration setup",
       "tags": [
         "Tenants",
         "Integrations",
         "Enrollments",
         "API Keys"
-      ]
+      ],
+      "name": "Tenant and integration setup"
     },
     {
-      "name": "MFA operations",
       "tags": [
         "Auth Attempts",
         "Admin Enrollment Management"
-      ]
+      ],
+      "name": "MFA operations"
     },
     {
-      "name": "Administration",
       "tags": [
         "Administrator Provisioning"
-      ]
+      ],
+      "name": "Administration"
     },
     {
-      "name": "Platform operations",
       "tags": [
         "Audit Logs",
         "Encryption Keys",
         "Alerts",
         "Dashboard"
-      ]
+      ],
+      "name": "Platform operations"
     }
   ]
 }

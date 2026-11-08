@@ -24,6 +24,7 @@ import org.ezkey.admin.exception.AuthenticationException;
 import org.ezkey.admin.exception.GlobalAdminLimitException;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.util.AdminEnrollmentDisplayNames;
+import org.ezkey.enrollment.EnrollmentBindMaterialPolicy;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
@@ -962,7 +963,8 @@ public class AdminProvisioningService {
    *
    * <p>This method retrieves sensitive onboarding credentials (enrollment proof token, challenge
    * code, recovery codes) for an administrator. Access is restricted to authorized administrators
-   * who have permission to view these credentials.
+   * who have permission to view these credentials. {@link EnrollmentBindMaterialPolicy} decides
+   * which values are present for the current enrollment status; the others are null.
    *
    * <p><b>Authorization:</b>
    *
@@ -1042,11 +1044,18 @@ public class AdminProvisioningService {
         adminId,
         loadedEnrollment.getEnrollmentId());
 
+    // #1266: an operator gets the bind material only while it is needed to complete enrollment.
+    EnrollmentStatus status = loadedEnrollment.getStatus();
     return new OnboardingCredentialsResult(
         loadedEnrollment.getEnrollmentId(),
-        loadedEnrollment.getEnrollmentProofToken(),
-        loadedEnrollment.getEnrollmentChallenge(),
-        null); // Recovery codes cannot be retrieved after initial provisioning (BCrypt hashed)
+        EnrollmentBindMaterialPolicy.proofTokenAvailable(status)
+            ? loadedEnrollment.getEnrollmentProofToken()
+            : null,
+        EnrollmentBindMaterialPolicy.challengeAvailable(status)
+            ? loadedEnrollment.getEnrollmentChallenge()
+            : null,
+        null, // Recovery codes cannot be retrieved after initial provisioning (BCrypt hashed)
+        status);
   }
 
   /**
@@ -1168,12 +1177,14 @@ public class AdminProvisioningService {
    * @param enrollmentProofToken Enrollment proof token
    * @param enrollmentChallenge Enrollment challenge code
    * @param recoveryCodes Recovery codes (null if not available)
+   * @param enrollmentStatus Enrollment status that decided which material is present
    */
   public record OnboardingCredentialsResult(
       Integer enrollmentId,
       String enrollmentProofToken,
       Integer enrollmentChallenge,
-      java.util.List<String> recoveryCodes) {}
+      java.util.List<String> recoveryCodes,
+      EnrollmentStatus enrollmentStatus) {}
 
   /**
    * Result containing a newly generated set of recovery codes for an administrator.

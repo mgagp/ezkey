@@ -42,12 +42,18 @@ public record AdminOnboardingResponseDto(
     @Schema(description = "Enrollment ID for passwordless authentication", example = "123")
         Integer enrollmentId,
     @Schema(
-            description = "Enrollment proof token (shown once - save securely)",
-            example = "EZK-ABC123-DEF456")
+            description =
+                "Enrollment proof token. Available only while the enrollment is CREATED; null"
+                    + " afterwards.",
+            example = "EZK-ABC123-DEF456",
+            nullable = true)
         String enrollmentProofToken,
     @Schema(
-            description = "Enrollment challenge code (6 digits, shown once - save securely)",
-            example = "654321")
+            description =
+                "Enrollment challenge code (6 digits). Available only while the enrollment is"
+                    + " CREATED or BOUND; null afterwards.",
+            example = "654321",
+            nullable = true)
         Integer enrollmentChallenge,
     @Schema(
             description = "List of recovery codes (shown once, single-use - save securely)",

@@ -18,6 +18,7 @@ import org.ezkey.admin.config.BootstrapCredentialsOutputMode;
 import org.ezkey.admin.config.InitialGlobalAdminProperties;
 import org.ezkey.admin.util.AdminEnrollmentDisplayNames;
 import org.ezkey.config.OrganizationProperties;
+import org.ezkey.enrollment.EnrollmentBindMaterialPolicy;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
@@ -369,7 +370,7 @@ public class AdminBootstrapService {
           enrollmentRepository
               .findById(enrollmentId)
               .orElseThrow(() -> new RuntimeException("Enrollment not found: " + enrollmentId));
-      if (existingEnrollment.getStatus() == EnrollmentStatus.CREATED) {
+      if (EnrollmentBindMaterialPolicy.proofTokenAvailable(existingEnrollment.getStatus())) {
         bootstrapCredentialsFileExporter.exportIfEnabled(
             existingEnrollment,
             existingEnrollment.getEnrollmentProofToken(),

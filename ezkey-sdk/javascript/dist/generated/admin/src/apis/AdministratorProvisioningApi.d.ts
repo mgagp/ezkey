@@ -118,12 +118,12 @@ export declare class AdministratorProvisioningApi extends runtime.BaseAPI {
      */
     getAdminOnboarding(requestParameters: GetAdminOnboardingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<object>;
     /**
-     * Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentId, enrollmentProofToken, authUrl}) for passwordless enrollment binding.
+     * Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentId, enrollmentProofToken, authUrl}) for passwordless enrollment binding. Available only while the enrollment is CREATED.
      * Generate QR code for onboarding
      */
     getAdminOnboardingQrCodeRaw(requestParameters: GetAdminOnboardingQrCodeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<object>>;
     /**
-     * Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentId, enrollmentProofToken, authUrl}) for passwordless enrollment binding.
+     * Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentId, enrollmentProofToken, authUrl}) for passwordless enrollment binding. Available only while the enrollment is CREATED.
      * Generate QR code for onboarding
      */
     getAdminOnboardingQrCode(requestParameters: GetAdminOnboardingQrCodeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<object>;

@@ -259,7 +259,7 @@ class AdministratorProvisioningApi extends runtime.BaseAPI {
         return await response.value();
     }
     /**
-     * Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentId, enrollmentProofToken, authUrl}) for passwordless enrollment binding.
+     * Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentId, enrollmentProofToken, authUrl}) for passwordless enrollment binding. Available only while the enrollment is CREATED.
      * Generate QR code for onboarding
      */
     async getAdminOnboardingQrCodeRaw(requestParameters, initOverrides) {
@@ -284,7 +284,7 @@ class AdministratorProvisioningApi extends runtime.BaseAPI {
         return new runtime.JSONApiResponse(response);
     }
     /**
-     * Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentId, enrollmentProofToken, authUrl}) for passwordless enrollment binding.
+     * Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentId, enrollmentProofToken, authUrl}) for passwordless enrollment binding. Available only while the enrollment is CREATED.
      * Generate QR code for onboarding
      */
     async getAdminOnboardingQrCode(requestParameters, initOverrides) {

@@ -12,6 +12,7 @@ package org.ezkey.enrollment.mapper;
 
 import java.util.List;
 import java.util.Map;
+import org.ezkey.enrollment.EnrollmentBindMaterialPolicy;
 import org.ezkey.enrollment.domain.DevicePrivateKeyStorageTier;
 import org.ezkey.enrollment.domain.EnrollmentCreateRequest;
 import org.ezkey.enrollment.domain.EnrollmentCreateResponse;
@@ -71,7 +72,7 @@ import org.mapstruct.ReportingPolicy;
 @Mapper(
     unmappedTargetPolicy = ReportingPolicy.WARN,
     componentModel = "spring",
-    imports = {EnrollmentStatus.class})
+    imports = {EnrollmentBindMaterialPolicy.class, EnrollmentStatus.class})
 public interface EnrollmentAdminMapper {
 
   /**
@@ -87,18 +88,16 @@ public interface EnrollmentAdminMapper {
    */
   @Mapping(source = "status", target = "enrollmentStatus")
   @Mapping(source = "active", target = "enrollmentActive")
-  // #1180: proof token only while CREATED (QR / manual channel); challenge while CREATED or BOUND,
-  // because verify runs after bind and the operator may still have to give the code.
+  // #1180: see EnrollmentBindMaterialPolicy.
   @Mapping(
       target = "enrollmentProofToken",
       expression =
-          "java(EnrollmentStatus.CREATED.equals(entity.getStatus())"
+          "java(EnrollmentBindMaterialPolicy.proofTokenAvailable(entity.getStatus())"
               + " ? entity.getEnrollmentProofToken() : null)")
   @Mapping(
       target = "enrollmentChallenge",
       expression =
-          "java(EnrollmentStatus.CREATED.equals(entity.getStatus())"
-              + " || EnrollmentStatus.BOUND.equals(entity.getStatus())"
+          "java(EnrollmentBindMaterialPolicy.challengeAvailable(entity.getStatus())"
               + " ? entity.getEnrollmentChallenge() : null)")
   @Mapping(target = "integrationName", ignore = true)
   @Mapping(target = "tenantId", ignore = true)

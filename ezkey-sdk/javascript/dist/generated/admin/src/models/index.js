@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.RetroactiveIntegrityValidationRunResponseTriggerSourceEnum = exports.IntegrityRuptureReconciliationResultCategoryEnum = exports.IntegrityRuptureReconciliationRequestCategoryEnum = exports.IntegrityBootstrapResponseDtoRuntimeProfileEnum = exports.IntegrityAsyncJobStartRequestTriggerEnum = exports.IntegrityAsyncJobStartRequestTypeEnum = exports.IntegrityAsyncJobResponseBusyHolderEnum = exports.IntegrityAsyncJobResponseChainStatusEnum = exports.IntegrityAsyncJobResponseTriggerEnum = exports.IntegrityAsyncJobResponseStatusEnum = exports.IntegrityAsyncJobResponseTypeEnum = exports.IntegrationResponseDtoLifecycleStatusEnum = exports.EntryIntegrityViolationConciliationStatusEnum = exports.EntryIntegrityConciliationSummaryCategoryEnum = exports.EnrollmentResponseDtoDevicePrivateKeyStorageTierEnum = exports.EnrollmentResponseDtoEnrollmentStatusEnum = exports.DeclareAuditChainIncidentRequestRootCauseEnum = exports.DashboardScheduledJobRowDtoLastStatusEnum = exports.DashboardScheduledJobRowDtoJobKeyEnum = exports.DashboardAlertItemDtoStatusEnum = exports.DashboardAlertItemDtoSeverityEnum = exports.DashboardAlertItemDtoAlertTypeEnum = exports.AuthAttemptWaitResponseDtoStatusEnum = exports.AuthAttemptDtoAuthAttemptStatusEnum = exports.AuditLogResponseDtoApiNameEnum = exports.AuditLogResponseDtoEventStatusEnum = exports.AuditLogResponseDtoEventTypeEnum = exports.AuditChainIncidentResponseDtoRootCauseEnum = exports.AuditChainIncidentResponseDtoStatusEnum = exports.AuditChainCheckpointResponseDtoCheckpointTypeEnum = exports.AuditChainCheckpointResponseDtoLifecycleStateEnum = exports.AlertResponseDtoResolutionReasonEnum = exports.AlertResponseDtoStatusEnum = exports.AlertResponseDtoSeverityEnum = exports.AlertResponseDtoAlertTypeEnum = exports.AdminSessionResponseDtoTokenPurposeEnum = exports.AdminSessionResponseDtoAdminTypeEnum = exports.AdminResponseDtoLifecycleStatusEnum = exports.AdminResponseDtoAdminTypeEnum = exports.AdminLoginResponseDtoAdminTypeEnum = exports.AdminLoginResponseDtoStatusEnum = exports.AdminCreateRequestDtoOnboardingModeEnum = void 0;
+exports.RetroactiveIntegrityValidationRunResponseTriggerSourceEnum = exports.IntegrityRuptureReconciliationResultCategoryEnum = exports.IntegrityRuptureReconciliationRequestCategoryEnum = exports.IntegrityBootstrapResponseDtoRuntimeProfileEnum = exports.IntegrityAsyncJobStartRequestTriggerEnum = exports.IntegrityAsyncJobStartRequestTypeEnum = exports.IntegrityAsyncJobResponseBusyHolderEnum = exports.IntegrityAsyncJobResponseChainStatusEnum = exports.IntegrityAsyncJobResponseTriggerEnum = exports.IntegrityAsyncJobResponseStatusEnum = exports.IntegrityAsyncJobResponseTypeEnum = exports.IntegrationResponseDtoLifecycleStatusEnum = exports.EntryIntegrityViolationConciliationStatusEnum = exports.EntryIntegrityConciliationSummaryCategoryEnum = exports.EnrollmentResponseDtoDevicePrivateKeyStorageTierEnum = exports.EnrollmentResponseDtoEnrollmentStatusEnum = exports.DeclareAuditChainIncidentRequestRootCauseEnum = exports.DashboardScheduledJobRowDtoLastStatusEnum = exports.DashboardScheduledJobRowDtoJobKeyEnum = exports.DashboardAlertItemDtoStatusEnum = exports.DashboardAlertItemDtoSeverityEnum = exports.DashboardAlertItemDtoAlertTypeEnum = exports.AuthAttemptWaitResponseDtoStatusEnum = exports.AuthAttemptDtoAuthAttemptStatusEnum = exports.AuditLogResponseDtoApiNameEnum = exports.AuditLogResponseDtoEventStatusEnum = exports.AuditLogResponseDtoEventTypeEnum = exports.AuditChainIncidentResponseDtoRootCauseEnum = exports.AuditChainIncidentResponseDtoStatusEnum = exports.AuditChainCheckpointResponseDtoCheckpointTypeEnum = exports.AuditChainCheckpointResponseDtoLifecycleStateEnum = exports.AlertResponseDtoResolutionReasonEnum = exports.AlertResponseDtoStatusEnum = exports.AlertResponseDtoSeverityEnum = exports.AlertResponseDtoAlertTypeEnum = exports.AdminSessionResponseDtoTokenPurposeEnum = exports.AdminSessionResponseDtoAdminTypeEnum = exports.AdminResponseDtoLifecycleStatusEnum = exports.AdminResponseDtoEnrollmentStatusEnum = exports.AdminResponseDtoAdminTypeEnum = exports.AdminLoginResponseDtoAdminTypeEnum = exports.AdminLoginResponseDtoStatusEnum = exports.AdminCreateRequestDtoOnboardingModeEnum = void 0;
 /**
  * @export
  */
@@ -31,6 +31,17 @@ exports.AdminResponseDtoAdminTypeEnum = {
     GlobalAdmin: 'GLOBAL_ADMIN',
     TenantAdmin: 'TENANT_ADMIN',
     IntegrationAdmin: 'INTEGRATION_ADMIN'
+};
+/**
+ * @export
+ */
+exports.AdminResponseDtoEnrollmentStatusEnum = {
+    Created: 'CREATED',
+    Bound: 'BOUND',
+    Verified: 'VERIFIED',
+    Invalid: 'INVALID',
+    Revoked: 'REVOKED',
+    Expired: 'EXPIRED'
 };
 /**
  * @export
