@@ -203,6 +203,7 @@ order under [`../methodology/README.md`](../methodology/README.md).
 
 ## Related documents
 
+- [`research/2026-11-08-executable-intent-and-mutation/README.md`](research/2026-11-08-executable-intent-and-mutation/README.md) — draft research on lived product intent, executable checks, and mutation testing. Not a decision and not a gate. The dictated source is the [appendix](research/2026-11-08-executable-intent-and-mutation/appendix-source-intention.md).
 - [`spec-test-traceability.md`](spec-test-traceability.md) — feature ↔ spec ↔ automated tests
 - [`tester-onboarding.md`](tester-onboarding.md) — external mobile tester onboarding runbook (FR)
 - [`normative-posture.md`](normative-posture.md) — SOC 2 reference vocabulary; no parallel program

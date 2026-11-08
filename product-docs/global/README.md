@@ -17,6 +17,7 @@ This folder holds the product-wide living truth for Ezkey. It is the canonical e
 | [`lifecycle-model.md`](lifecycle-model.md) | Entity relationships and global lifecycle rules. |
 | [`team-roles.md`](team-roles.md) | Named team role one-liners (human or agent); owner decides merges. |
 | [`test-strategy.md`](test-strategy.md) | Global test strategy, taxonomy codes, QA Sphere nomenclature. |
+| [`research/2026-11-08-executable-intent-and-mutation/`](research/2026-11-08-executable-intent-and-mutation/README.md) | Draft research: lived intent, executable checks, and mutation. Not a decision. Source dictation in the appendix. |
 | [`spec-test-traceability.md`](spec-test-traceability.md) | Global spec-test traceability matrix. |
 | [`vision/`](vision/README.md) | Product orientation notes and evolving direction. |
 | [`backlog/`](backlog/README.md) | Markdown-native backlog with temporal status lifecycle. |
