@@ -379,4 +379,11 @@ public final class TestTags {
    * -Pconnector-mock}.
    */
   public static final String CONNECTOR_MOCK = "connector-mock";
+
+  /**
+   * Needs the SMTP delivery connector and Mailpit on the stack ({@code
+   * docker-compose.connector-smtp.yml}). Excluded by default. Run through {@code
+   * scripts/ci-connector-scenarios.sh} or {@code -Pconnector-smtp}.
+   */
+  public static final String CONNECTOR_SMTP = "connector-smtp";
 }

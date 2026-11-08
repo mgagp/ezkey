@@ -10,6 +10,7 @@ import { DevicePrivateKeyTierBadge } from '@/components/feature/device-private-k
 import { EnrollmentStatusBadge } from '@/components/feature/enrollment-status-badge';
 import { AdminFkLink } from '@/components/feature/fk-detail-links';
 import { IntegratedDeliveryNotice } from '@/components/feature/integrated-delivery-notice';
+import { QrEmailDelivery } from '@/components/feature/qr-email-delivery';
 import { OperationalWarning } from '@/components/feature/operational-warning';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -726,6 +727,7 @@ export default function EnrollmentDetailPage() {
                       size="sm"
                       onClick={openEditMetadata}
                       className="gap-1.5"
+                      data-testid="enrollment-edit-metadata"
                     >
                       <Pencil className="size-3.5" />
                       {editContactEmailOnly ? t('detail.editContactEmailOnly') : t('detail.editMetadata')}
@@ -960,6 +962,13 @@ export default function EnrollmentDetailPage() {
                       <div className="border-2 border-fg p-3 inline-block">
                         <img src={qrCodeUrl} alt="Enrollment QR Code" className="size-48" />
                       </div>
+                    )}
+                    {!enrollment.isSystemIntegration && enrollment.enrollmentId != null && (
+                      <QrEmailDelivery
+                        enrollmentId={enrollment.enrollmentId}
+                        contactEmail={enrollment.contactEmail}
+                        onEditContactEmail={openEditMetadata}
+                      />
                     )}
                   </CardContent>
                 </Card>

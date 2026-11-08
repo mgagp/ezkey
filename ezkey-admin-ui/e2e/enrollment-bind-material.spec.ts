@@ -55,7 +55,8 @@ test('@elective @device-backed enrollment detail shows bind material only while 
   await expect(page.getByText(/public key/i)).toHaveCount(0);
 
   // #1206 step 5: before bind, the operator can give the invitation an address, and nothing else.
-  const editEmail = page.getByRole('button', { name: /edit contact email|modifier l'e-mail de contact/i });
+  // The header action; the send-by-email block repeats it when a connector is usable.
+  const editEmail = page.getByTestId('enrollment-edit-metadata');
   await editEmail.click();
   await expect(page.getByTestId('enrollment-edit-email-only-hint')).toBeVisible();
   await expect(page.locator('#edit-name')).toHaveCount(0);

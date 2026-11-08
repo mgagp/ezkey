@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Test;
  * error path leaks.
  */
 @Tag(TestTags.CONNECTOR_MOCK)
+@Tag(TestTags.CONNECTOR_SMTP)
 @DisplayName("QR delivery log canary")
 class QrDeliveryLogCanaryFunctionalTest extends AbstractQrDeliveryFunctionalTest {
 
@@ -43,7 +44,10 @@ class QrDeliveryLogCanaryFunctionalTest extends AbstractQrDeliveryFunctionalTest
     send(enrollmentId, "fr");
 
     List<String> containers = containers();
-    assertThat(containers).contains("ezkey-admin-api", "ezkey-connector-mock");
+    // The script names the connector under test: the mock, or the SMTP connector (#1206 step 5).
+    String connector =
+        System.getProperty("ezkey.tests.connector.container", "ezkey-connector-mock");
+    assertThat(containers).contains("ezkey-admin-api", connector);
 
     for (String container : containers) {
       String logs = logs(container);
@@ -57,7 +61,8 @@ class QrDeliveryLogCanaryFunctionalTest extends AbstractQrDeliveryFunctionalTest
   private static List<String> containers() throws IOException, InterruptedException {
     List<String> names = new ArrayList<>();
     for (String name : docker("ps", "-a", "--format", "{{.Names}}").split("\\R")) {
-      if (name.startsWith("ezkey-")) {
+      // Mailpit plays the mail provider, which receives the recipient by design.
+      if (name.startsWith("ezkey-") && !name.equals("ezkey-mailpit")) {
         names.add(name);
       }
     }

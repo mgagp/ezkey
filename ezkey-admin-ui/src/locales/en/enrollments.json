@@ -204,7 +204,34 @@
     "errorDeactivate": "Failed to deactivate.",
     "errorReactivate": "Failed to reactivate.",
     "errorRevoke": "Failed to revoke.",
-    "errorDelete": "Failed to delete enrollment."
+    "errorDelete": "Failed to delete enrollment.",
+    "emailDelivery": {
+      "title": "Send by email",
+      "testMode": "Test connector: nothing is delivered",
+      "languageNote": "The email is written in {{language}}, the language of your Admin UI. It carries the QR only, never the 6-digit code.",
+      "language": {
+        "en": "English",
+        "fr": "French"
+      },
+      "send": "Send the QR to {{email}}",
+      "noContactEmail": "Add a contact email to send this QR by email. The QR stays available on screen.",
+      "accepted": "Email sent to {{email}}. Next: give the person their 6-digit code through another channel, since it is not in the email. They scan the QR, then enter the code right away. If the address was wrong, revoke this enrollment and create a new one.",
+      "unknown": "The email may have left for {{email}}, but the provider did not confirm it. Check with the person before sending again. The QR stays on screen.",
+      "rejected": "The email did not leave ({{code}}). Nothing was sent. You can show the QR on screen instead, or try again later.",
+      "refused": {
+        "connectorUnavailable": "Email delivery is not available right now. Show the QR on screen instead.",
+        "localeNotOffered": "The connector has no email in this language. Switch the Admin UI language, or show the QR on screen.",
+        "notCreated": "This enrollment no longer waits for a device, so its QR cannot be sent.",
+        "expired": "This invitation has expired. Create a new enrollment.",
+        "adminEnrollment": "Administrator enrollments are not sent by email. Use the onboarding screen of the administrator.",
+        "parentNotOperational": "The integration or tenant is not operational, so nothing can be sent.",
+        "contactEmailMissing": "This enrollment has no contact email. Add one first.",
+        "contactEmailInvalid": "The contact email is not valid. Correct it first.",
+        "expectedServerMissing": "The server address for the app is not configured (ezkey.qr.auth-base-url), so the email could not name it.",
+        "dailyCapReached": "The daily sending limit is reached. Show the QR on screen, or try again tomorrow.",
+        "other": "The email could not be sent. Show the QR on screen instead."
+      }
+    }
   },
   "lifecycleDialog": {
     "deactivateTitle": "Deactivate Enrollment",
