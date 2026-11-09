@@ -13,9 +13,6 @@ package org.ezkey.authattempt.service;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 import java.util.OptionalLong;
-import org.ezkey.alert.domain.AlertSeverity;
-import org.ezkey.alert.domain.AlertType;
-import org.ezkey.alert.service.AlertService;
 import org.ezkey.audit.constants.AuthAttemptAuditConstants;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
@@ -123,7 +120,7 @@ public class AuthAttemptRespondService {
 
   private final ObjectProvider<AuthRespondOwnershipRateLimiter> ownershipRateLimiter;
 
-  private final AlertService alertService;
+  private final AuthAttemptEnrollmentAlert enrollmentAlert;
 
   /**
    * Constructs the respond service with required dependencies.
@@ -135,7 +132,7 @@ public class AuthAttemptRespondService {
    * @param auditLogService audit trail (signature-rejected probes, #912)
    * @param ownershipRateLimiter optional post-ownership per-id budget (#912 C1); empty when rate
    *     limiting is disabled
-   * @param alertService operator alert raised when the device rejects an attempt
+   * @param enrollmentAlert operator alert raised after a device deny commits
    */
   public AuthAttemptRespondService(
       AuthAttemptRepository authAttemptRepository,
@@ -144,14 +141,14 @@ public class AuthAttemptRespondService {
       AuthAttemptTxHelper authAttemptTxHelper,
       AuditLogService auditLogService,
       ObjectProvider<AuthRespondOwnershipRateLimiter> ownershipRateLimiter,
-      AlertService alertService) {
+      AuthAttemptEnrollmentAlert enrollmentAlert) {
     this.authAttemptRepository = authAttemptRepository;
     this.enrollmentRepository = enrollmentRepository;
     this.authAttemptTxHelper = authAttemptTxHelper;
     this.signatureService = signatureService;
     this.auditLogService = auditLogService;
     this.ownershipRateLimiter = ownershipRateLimiter;
-    this.alertService = alertService;
+    this.enrollmentAlert = enrollmentAlert;
   }
 
   /**
@@ -507,12 +504,7 @@ public class AuthAttemptRespondService {
       enrollment.setLastUsedAt(OffsetDateTime.now());
       enrollmentRepository.save(enrollment);
     } else if (newStatus == AuthAttemptStatus.REJECTED) {
-      Integer enrollmentId = authAttempt.getEnrollmentId();
-      alertService.raiseOrTouch(
-          AlertType.AUTH_ATTEMPT_REJECTED,
-          AlertSeverity.WARNING,
-          "AUTH_ATTEMPT_REJECTED:" + enrollmentId,
-          "{\"enrollmentId\":" + enrollmentId + "}");
+      enrollmentAlert.raiseAfterCommit(authAttempt.getEnrollmentId());
     }
   }
 

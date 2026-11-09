@@ -90,7 +90,7 @@ class AuthAttemptRespondServiceTest {
             authAttemptTxHelper,
             auditLogService,
             ownershipRateLimiter,
-            alertService);
+            new AuthAttemptEnrollmentAlert(alertService));
   }
 
   @Test

@@ -497,6 +497,7 @@ Logs never include wait JSON bodies, proof tokens, secret keys, or Basic auth he
   returns HTTP 409 `auth-attempt-pending-exists` until it completes or expires. No #955 runbook
   file exists in this module; this is the install line for that integration. Anyone who can reach
   SSH can trigger the cooldown and lock the legitimate user out for 5 minutes, and can repeat that.
+  Prompt fatigue is still possible at about 3 prompts per 11 minutes.
 - **Interaction model:** one SSH login → pre-create `ok` → at most one create →
   optional challenge prompt → `/wait`. Batch / empty clients create nothing.
   See [`docs/INTERACTION-MODEL.md`](docs/INTERACTION-MODEL.md) (scenario catalogue
