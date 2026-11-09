@@ -32,3 +32,13 @@ Semgrep's C pack and commercial analyzers are out. Two maintained open-source an
 ## Scope
 
 `ezkey-pam/src` only (the module that sshd loads). Harnesses under `ezkey-pam/test` are the regression net, not a second scan surface.
+
+## Runtime axis
+
+Static tools above do not run the harnesses. The replay is:
+
+```bash
+./scripts/pam-doctor-sanitizers.sh
+```
+
+ASan and UBSan on the existing `make test` C harnesses, then Valgrind Memcheck on a separate non-sanitized build, in `ubuntu:24.04`. `--skip-valgrind` skips Memcheck. Not a CI gate. Output: `logs/pam-doctor/sanitizers/` (gitignored). Fuzzing is not part of this command.
