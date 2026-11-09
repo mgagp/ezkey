@@ -33,6 +33,7 @@ import { authContextDemoPresets, isDemoMode } from '@/lib/demo-mode';
 import { isPhoneNumberInputValid, normalizePhoneNumberInput } from '@/lib/phone-number';
 import { formatChallengeCode, formatCountdown, formatDate } from '@/lib/utils';
 import { enrollmentEditScope } from '@/lib/enrollment-edit-scope';
+import { enrollmentActiveToggle } from '@/lib/enrollment-active-toggle';
 import { useCancel, useCreate2, useGetById2 } from '@/generated/admin-api/auth-attempts/auth-attempts';
 import {
   getGetByIdQueryKey,
@@ -532,6 +533,7 @@ export default function EnrollmentDetailPage() {
   };
 
   const editScope = enrollmentEditScope(enrollment);
+  const activeToggle = enrollmentActiveToggle(enrollment);
   const canEditMetadata = editScope !== 'none';
   const editContactEmailOnly = editScope === 'contactEmail';
 
@@ -979,10 +981,10 @@ export default function EnrollmentDetailPage() {
                 <CardHeader><CardTitle>{t('detail.dangerZone')}</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
 
-                  {/* Deactivate / Reactivate */}
-                  {enrollment.enrollmentStatus !== 'REVOKED' && (
+                  {/* Deactivate / Reactivate: VERIFIED only (#1277) */}
+                  {activeToggle !== null && (
                     <div className="space-y-2">
-                      {enrollment.enrollmentActive ? (
+                      {activeToggle === 'deactivate' ? (
                         <>
                           <div className="flex items-start gap-2">
                             <p className="text-xs text-fg-muted">
@@ -1035,7 +1037,7 @@ export default function EnrollmentDetailPage() {
                   )}
 
                   {/* Divider */}
-                  {enrollment.enrollmentStatus !== 'REVOKED' && (
+                  {activeToggle !== null && (
                     <div className="border-t-2 border-error/20" />
                   )}
 
