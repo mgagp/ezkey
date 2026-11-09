@@ -15,7 +15,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="ezkey-cli",
-    version="1.0.0",
+    version="0.2.0.dev0",
     author="Ezkey contributors",
     description="Command line interface for Ezkey - Open Source MFA/Passkey Alternative",
     long_description=long_description,

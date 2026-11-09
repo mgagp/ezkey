@@ -363,12 +363,13 @@ Ezkey uses **CI-friendly Maven versions** with branch-specific qualifiers to pre
 
 #### How It Works
 
-- **Root POM version**: `${revision}${buildQualifier}${changelist}`
-  - `revision`: Base version (default: `0.0.1`)
-  - `buildQualifier`: Branch-specific qualifier (empty on `main`, `-<branch-name>` on feature branches)
+- **Root POM version**: `${revision}${changelist}` (product SemVer, ADR-0017)
+  - `revision`: Base version (default: `0.2.0`)
   - `changelist`: Suffix (default: `-SNAPSHOT`)
-- **Defaults**: Parent POM properties supply the defaults; `mvn` / `./scripts/build.sh` work without a local config file. Optional per-checkout overrides: copy `.mvn/maven.config.example` → gitignored `.mvn/maven.config` (e.g. worktree suffix `-wt1`). See root `AGENTS.md` § Local Maven version properties.
-- **Branch isolation**: `scripts/mvn-branch.sh` injects `buildQualifier` from the current git branch so local `install` coordinates do not collide across branches
+- **Flatten**: `flatten-maven-plugin` (`resolveCiFriendliesOnly`) resolves those placeholders in installed/deployed POMs
+- **Cross-ecosystem sync**: `./scripts/sync-version.sh` aligns npm / Python / Android / Jenkins SDK pins; `./scripts/check-version-alignment.sh` is the CI divergence gate. .NET is deferred until a client exists (#1219; empty shell removed in #1232). Details: [`VERSIONING_AND_DEPLOY_TRACEABILITY.md`](VERSIONING_AND_DEPLOY_TRACEABILITY.md) § Alignment mechanisms.
+- **Defaults**: Parent POM properties supply the defaults; `mvn` / `./scripts/build.sh` work without a local config file. Optional per-checkout overrides: copy `.mvn/maven.config.example` → gitignored `.mvn/maven.config` (e.g. `-Drevision=0.2.0-wt1`). See root `AGENTS.md` § Local Maven version properties.
+- **Branch isolation**: `scripts/mvn-branch.sh` appends `-<branch>` to `revision` so local `install` coordinates do not collide across branches
 
 #### Building Without Collisions
 
@@ -385,16 +386,16 @@ mvn clean install
 
 #### How Branch Qualifiers Are Generated
 
-- **Feature branches**: `0.0.1-feature-login-SNAPSHOT` (branch name sanitized)
-- **Main/master**: `0.0.1-SNAPSHOT` (no qualifier)
-- **Detached HEAD**: `0.0.1-abc1234-SNAPSHOT` (fallback to git SHA)
+- **Feature branches**: `0.2.0-feature-login-SNAPSHOT` (branch name sanitized)
+- **Main/master**: `0.2.0-SNAPSHOT` (no qualifier)
+- **Detached HEAD**: `0.2.0-abc1234-SNAPSHOT` (fallback to git SHA)
 
 #### IDE Configuration
 
 For IntelliJ IDEA or other IDEs, you can configure Maven to use the wrapper:
 
 1. **IntelliJ IDEA**: Settings → Build, Execution, Deployment → Build Tools → Maven → Runner
-   - Add VM options: `-DbuildQualifier=-$(git rev-parse --abbrev-ref HEAD)` (bash) or use the wrapper script path
+   - Prefer `scripts/mvn-branch.sh` as the Maven executable, or set `-Drevision=0.2.0-<branch>` for local isolation
 
 2. **Alternative**: Use the wrapper script as your Maven executable path in IDE settings
 
@@ -406,9 +407,9 @@ workflow (version properties, signing, deploy). Until then, use local/`./scripts
 and the PR `CI` workflow only.
 
 **Branch conventions (local version isolation only):**
-- **`main`**: `X.Y.Z-SNAPSHOT` (next development version; empty `buildQualifier`)
-- **Feature branches**: optional branch-specific qualifiers via `scripts/mvn-branch.sh` or
-  `.mvn/maven.config` (e.g. `0.0.1-feature-login-SNAPSHOT`)
+- **`main`**: `X.Y.Z-SNAPSHOT` (next development version)
+- **Feature branches**: optional branch-specific revision via `scripts/mvn-branch.sh` or
+  `.mvn/maven.config` (e.g. `-Drevision=0.2.0-feature-login`)
 - Feature branches do **not** publish to Maven Central
 
 Living entry points: this section, root `AGENTS.md` § Local Maven version properties,

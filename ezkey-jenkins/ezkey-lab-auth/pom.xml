@@ -22,7 +22,8 @@
     <changelist>-SNAPSHOT</changelist>
     <jenkins.baseline>2.528</jenkins.baseline>
     <jenkins.version>${jenkins.baseline}.3</jenkins.version>
-    <ezkey.sdk.version>0.0.1-SNAPSHOT</ezkey.sdk.version>
+    <!-- Must match parent POM product SemVer (scripts/check-version-alignment.sh). -->
+    <ezkey.sdk.version>0.2.0-SNAPSHOT</ezkey.sdk.version>
     <spotless.check.skip>false</spotless.check.skip>
     <ban-junit4-imports.skip>false</ban-junit4-imports.skip>
     <ban-commons-lang-2.skip>false</ban-commons-lang-2.skip>

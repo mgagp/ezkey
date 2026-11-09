@@ -22,6 +22,23 @@ See [`docs/DEVELOPMENT.md`](../docs/DEVELOPMENT.md) § *First clone on a new wor
 
 Docker-only alternative (no host JDK/Maven): `./scripts/build-docker.sh`. Same DEVELOPMENT.md section.
 
+## Product version sync (ADR-0017 / #1211)
+
+Parent POM `${revision}${changelist}` is the product SemVer source of truth. Align npm / Python /
+Android `versionName` / iOS `MARKETING_VERSION` / Jenkins SDK pins, then gate divergence in CI.
+Android `versionCode` and iOS `CURRENT_PROJECT_VERSION` stay store-local. .NET stays out until a
+client exists (#1219; empty shell removed in #1232):
+
+```bash
+./scripts/sync-version.sh
+./scripts/check-version-alignment.sh
+./scripts/check-version-alignment.test.sh
+```
+
+Mapping rules (Android strips `-SNAPSHOT`; Python maps it to `.dev0`): see
+[`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md)
+§ Alignment mechanisms.
+
 ## Git fast-forward helper
 
 Deterministic helper to update the current branch from an upstream branch using fetch + ff-only.

@@ -13,6 +13,8 @@ rewritten. Android remains the reference implementation.
 | Minimum iOS | **15.5** (see *Platform support floor*) |
 | Bundle identifier | `org.ezkey.mobile` (same as Android `applicationId`) |
 | Display name | `Ezkey` |
+| Marketing version | `MARKETING_VERSION` `0.2.0` (same as Android `versionName` / `package.json`; synced from the parent POM) |
+| Build number | `CURRENT_PROJECT_VERSION` `1` for the first `0.2.0` archive. Apple-only; not the Play `versionCode` |
 | Ruby | Homebrew Ruby 4.0 (macOS system Ruby 2.6 is too old) |
 | CocoaPods | 1.17.0, pinned by `Gemfile.lock`, installed into `vendor/bundle` |
 | Node / Yarn | Node ≥ 24, Yarn 4.10.3 (Corepack) |

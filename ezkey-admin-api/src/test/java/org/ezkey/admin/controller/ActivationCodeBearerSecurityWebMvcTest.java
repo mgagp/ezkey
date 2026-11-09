@@ -71,6 +71,7 @@ import org.ezkey.integration.service.IntegrationService;
 import org.ezkey.security.SensitiveDataHasher;
 import org.ezkey.signature.Ed25519KeyPair;
 import org.ezkey.signature.SignatureService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -82,6 +83,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.data.domain.Page;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -141,6 +143,9 @@ class ActivationCodeBearerSecurityWebMvcTest {
 
   @BeforeEach
   void setUp() {
+    // Activation-code rejection leaves the request unauthenticated; a leftover principal from a
+    // prior WebMvcTest in the same JVM would turn the expected 401 into 403 (AccessDenied).
+    SecurityContextHolder.clearContext();
     tokensByHash.clear();
     when(tokenRepository.findByBearerTokenHashAndActiveTrueWithRelations(anyString()))
         .thenAnswer(invocation ->
@@ -221,6 +226,11 @@ class ActivationCodeBearerSecurityWebMvcTest {
             mintSignatureService,
             mintSecurityProperties,
             tokenRepository);
+  }
+
+  @AfterEach
+  void tearDown() {
+    SecurityContextHolder.clearContext();
   }
 
   @Test

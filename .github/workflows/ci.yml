@@ -359,6 +359,24 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+  # Product SemVer alignment (ADR-0017 / #1211 step 2). Always runs so npm / SDK /
+  # Android / Jenkins SDK pins cannot drift from the parent POM revision.
+  version-alignment:
+    name: version-alignment
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Assert versioned artifacts match parent POM
+        run: bash scripts/check-version-alignment.sh
+
+      - name: Version-alignment helper unit tests
+        run: bash scripts/check-version-alignment.test.sh
+
   # Drift gate for committed root THIRD-PARTY.txt. Generation is profile-only
   # (`mvn -Plicenses generate-resources`); never part of the default build.
   licenses-drift:
@@ -672,7 +690,7 @@ jobs:
   # failure or cancellation of any needed job fails the gate.
   ci-gate:
     name: ci-gate
-    needs: [changes, admin-ui, backend, licenses-drift, ha-smoke, mobile, mobile-ios, cli-python, ezkey-pam, ezkey-pam-macos, lightsail, dart-sdk, ezkey-jenkins, connectors, quality-gate]
+    needs: [changes, admin-ui, backend, version-alignment, licenses-drift, ha-smoke, mobile, mobile-ios, cli-python, ezkey-pam, ezkey-pam-macos, lightsail, dart-sdk, ezkey-jenkins, connectors, quality-gate]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -683,6 +701,7 @@ jobs:
           echo "changes=${{ needs.changes.result }}"
           echo "admin-ui=${{ needs.admin-ui.result }}"
           echo "backend=${{ needs.backend.result }}"
+          echo "version-alignment=${{ needs.version-alignment.result }}"
           echo "licenses-drift=${{ needs.licenses-drift.result }}"
           echo "ha-smoke=${{ needs.ha-smoke.result }}"
           echo "mobile=${{ needs.mobile.result }}"
@@ -704,6 +723,7 @@ jobs:
           for pair in \
             "admin-ui:${{ needs.admin-ui.result }}" \
             "backend:${{ needs.backend.result }}" \
+            "version-alignment:${{ needs.version-alignment.result }}" \
             "licenses-drift:${{ needs.licenses-drift.result }}" \
             "ha-smoke:${{ needs.ha-smoke.result }}" \
             "mobile:${{ needs.mobile.result }}" \

@@ -548,22 +548,17 @@ def _run_upload(
 
             play_names = version_names_on_tracks(tracks_payload)
             if info.version_name and info.version_name in play_names:
-                msg = (
-                    f"AAB versionName {info.version_name!r} already appears on a Play "
-                    f"release name ({sorted(play_names)}). Bump package.json version "
-                    f"before the next upload (see MOBILE_PLAY_PUBLISHING.md)."
+                # One product cut can ship several Play uploads. versionCode is what
+                # must increase; the release name already carries both numbers.
+                print(
+                    "WARNING: AAB versionName "
+                    f"{info.version_name!r} already appears on a Play release name "
+                    f"({sorted(play_names)}). Continuing: uploads of one product cut "
+                    "share versionName. versionCode must still increase. "
+                    "The release name '<versionCode> (<versionName>)' tells them apart."
                 )
                 if allow_same_version_name:
-                    print(
-                        f"WARNING: {msg} Continuing because --allow-same-version-name."
-                    )
-                else:
-                    print(
-                        f"Refusing upload: {msg}\n"
-                        "Pass --allow-same-version-name to override.",
-                        file=sys.stderr,
-                    )
-                    return 1
+                    print("(--allow-same-version-name is set; that is the default posture.)")
 
             if dry_run:
                 print(
@@ -666,7 +661,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--allow-same-version-name",
         action="store_true",
-        help="Allow upload when AAB versionName already appears on a Play release",
+        help="No-op. Same versionName is allowed; versionCode must still increase. Kept so existing commands work.",
     )
     parser.add_argument(
         "--print-version-code",

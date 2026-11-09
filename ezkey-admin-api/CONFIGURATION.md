@@ -512,7 +512,7 @@ Local QA overlay: [`docker/docker-compose.evaluator-self-reg.yml`](../docker/doc
 |---|---|---|---|---|
 | `management.server.port` | `9081` | `9081` | recommandé | Dedicated management port; Actuator is not on `9080`. |
 | `management.server.address` | `127.0.0.1` | `0.0.0.0` | recommandé [IDE] | Loopback for IDE/`windows`. Docker profile sets `0.0.0.0` so HAProxy/peers reach the port (#905); local compose publishes `127.0.0.1:9081:9081` on the host. |
-| `management.endpoints.web.exposure.include` | `health` | `health` | recommandé | `windows` also exposes `metrics` (no `heapdump` / `threaddump`). |
+| `management.endpoints.web.exposure.include` | `health,info` | `health,info` | recommandé | Product SemVer via `/actuator/info` (`build.version`); `windows` / `docker-dev` also expose `metrics`. Do not expose `env` / `heapdump` / `threaddump`. |
 
 See [`docs/LOCAL_STACK_PORTS.md`](../docs/LOCAL_STACK_PORTS.md). Decision: [ADR-0015](../product-docs/global/architecture-decisions.md#adr-0015-management-port-separation-actuator-javamelody).
 

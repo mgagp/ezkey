@@ -38,6 +38,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 /**
@@ -116,6 +117,10 @@ class AdminTokenAuthenticationFilterTest {
     String activationCode = AdminAuditConstants.ACTIVATION_TOKEN_PREFIX + "abc123";
     MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/integrations");
     request.addHeader("Authorization", "Bearer " + activationCode);
+    // Prior principal must not survive — otherwise Security answers 403 instead of 401.
+    SecurityContextHolder.getContext()
+        .setAuthentication(
+            new UsernamePasswordAuthenticationToken("stale", "n/a", java.util.List.of()));
 
     filter.doFilter(request, new MockHttpServletResponse(), new MockFilterChain());
 

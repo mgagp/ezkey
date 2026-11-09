@@ -6,7 +6,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.ezkey</groupId>
   <artifactId>ezkey-sdk</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
+  <version>0.2.0-SNAPSHOT</version>
   <packaging>jar</packaging>
   <name>Ezkey Java SDK</name>
   <description>Zero-dependency Integration API client (lab packaging for Jenkins plugin)</description>

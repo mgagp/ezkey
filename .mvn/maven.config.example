@@ -1,3 +1,6 @@
--Drevision=0.0.1
+# Optional per-checkout Maven CLI defaults (copy to maven.config — gitignored).
+# Product SemVer: ${revision}${changelist} (ADR-0017). For worktree isolation, append a
+# suffix to revision (e.g. 0.2.0-wt1) rather than inventing a fourth version property —
+# flatten-maven-plugin resolveCiFriendliesOnly only expands revision/changelist/sha1.
+-Drevision=0.2.0
 -Dchangelist=-SNAPSHOT
--DbuildQualifier=

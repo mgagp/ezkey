@@ -36,12 +36,21 @@ Marc / [#1211](https://github.com/mgagp/ezkey/issues/1211).
 avoids conflating method/deploy pointers with the product line —
 [#1211](https://github.com/mgagp/ezkey/issues/1211).
 
-### Mobile (`versionName` / `versionCode`)
+### Mobile (`versionName` / `versionCode` / iOS)
 
 | Field | Rule |
 |-------|------|
 | **`versionName`** | Equals the product version `X.Y.Z` (same string as the SemVer without the leading `v`; use a matching pre-release suffix when the product tag does). |
-| **`versionCode`** | Monotonic increasing integer (Play requirement). |
+| **iOS `MARKETING_VERSION`** | Same string as `versionName` (`CFBundleShortVersionString`). Debug and Release of `org.ezkey.mobile`. |
+| **`versionCode`** | Monotonic increasing integer (Play requirement). Independent of the Apple build number. |
+| **iOS `CURRENT_PROJECT_VERSION`** | Apple build integer. Starts at **1** for the `0.2.0` line. Increases on each App Store Connect upload. Not tied to `versionCode`. |
+
+**When a number moves (public alpha).** Servers, Admin UI, and the community host stay on the git
+SHA; Maven stays `0.2.0-SNAPSHOT`. The product name (`0.2.0`, `versionName`, `MARKETING_VERSION`)
+moves when a mobile ship is named as a new cut. Each Play upload still raises `versionCode`, and
+each Apple upload still raises `CURRENT_PROJECT_VERSION`, even when the name stays. Several device
+builds of one cut share `0.2.0`; the Play release name `'<versionCode> (<versionName>)'` tells them
+apart.
 
 **Trace:** Mobile `versionName` = product `X.Y.Z` with a monotonic `versionCode` — keeps the store
 upload identity tied to the monorepo product line; an own mobile cadence later would be a
@@ -53,11 +62,48 @@ upload identity tied to the monorepo product line; an own mobile cadence later w
 ledger remains the source of truth for what is running; the tag names a release cut, not a
 substitute for the ledger — [#1211](https://github.com/mgagp/ezkey/issues/1211).
 
-### Alignment mechanisms (deferred)
+### Alignment mechanisms (step 2)
 
-**Trace:** POM, npm, and alignment-script mechanisms are deferred to
-[#1211](https://github.com/mgagp/ezkey/issues/1211) **step 2** — step 1 records the versioning
-decision only; no implementation detail here.
+Parent POM CI-friendly properties are the **single source of truth**:
+
+| Property | Dev default | Role |
+|----------|-------------|------|
+| `revision` | `0.2.0` (`EZKEY_PRODUCT_REVISION` in `scripts/lib/product-version.sh`) | Product SemVer core; alignment gate reads the expected train from that constant |
+| `changelist` | `-SNAPSHOT` | Dev suffix; clear for a release cut on main |
+
+Full Maven coordinate = `${revision}${changelist}` (e.g. `0.2.0-SNAPSHOT`).
+`flatten-maven-plugin` (`resolveCiFriendliesOnly`) resolves those placeholders in installed POMs.
+Do not embed custom properties inside `<version>` — flatten would leave them unresolved.
+
+`scripts/mvn-branch.sh` (local feature builds): off `main`/`master`, always keep `-SNAPSHOT`
+(e.g. `0.2.0-<branch>-SNAPSHOT`). Empty changelist off main is refused — never emit a
+release-looking local coordinate.
+
+| Surface | Mapped form | Notes |
+|---------|-------------|-------|
+| Maven reactor modules | inherit `${revision}${changelist}` | No hard-coded module versions |
+| npm (Admin UI, `ezkey-javascript-sdk`, generated `ezkey-admin-client` / `ezkey-auth-client`) | Maven string as-is | e.g. `0.2.0-SNAPSHOT` |
+| .NET | deferred | No SDK in tree (#1232). When a client returns (#1219): `PackageVersion` keeps the Maven string; `AssemblyVersion` / `FileVersion` are numeric `major.minor.patch.0` only |
+| Python (`ezkey-python-sdk`, `ezkey-cli`) | `-SNAPSHOT` → `.dev0` (PEP 440) | e.g. `0.2.0.dev0` |
+| Mobile `package.json` / Android `versionName` / iOS `MARKETING_VERSION` | strip trailing `-SNAPSHOT` only | e.g. `0.2.0`; keep `-alpha.N` when present |
+| Android `versionCode` | monotonic integer **> 6** | Floor `7` for the `0.2.0` train (Play already shipped vc6). Not copied onto iOS |
+| iOS `CURRENT_PROJECT_VERSION` | left as-is by sync | Apple build integer; `1` on the first `0.2.0` archive |
+| Jenkins lab `ezkey.sdk.version` + install-file pins | Maven string | Lab **plugin** HPI SemVer stays independent (ADR-0017 exception / #1211) |
+
+**Commands:**
+
+```bash
+./scripts/sync-version.sh          # write aligned versions from parent POM
+./scripts/check-version-alignment.sh   # CI gate — fail on divergence
+```
+
+Spring Boot APIs generate `META-INF/build-info.properties` and expose product SemVer on
+management `/actuator/info` (`build.version`). Env dumps stay off (`management.info.env.enabled=false`).
+Admin UI chrome stays **Public alpha · \<sha7\>** (do not show bare `v0.2.0`); `package.json`
+version is aligned for tooling only.
+
+**Trace:** POM / npm / SDK / Android / CLI alignment + CI divergence check —
+[#1211](https://github.com/mgagp/ezkey/issues/1211) step 2.
 
 ## Product claims (operator / public)
 
@@ -81,10 +127,9 @@ A git tag such as `v0.2.0` is the correct product-tag form; the UI must never sh
   3. At worst `0.2.0-alpha · <sha7>` — still **never** `v0.2.0` alone without the public-alpha
      framing
 
-Until [#1211](https://github.com/mgagp/ezkey/issues/1211) step 2 lands, Maven / npm module versions
-may still diverge from the product SemVer; treat them as **internal build identity**, not as a
-second public claim. (`ezkey-admin-ui/package.json` may say `0.0.0` — that is npm scaffolding,
-not a product claim.)
+Maven / npm / SDK package versions follow the parent POM via `scripts/sync-version.sh`. They are
+**build identity**, not a second public claim — UI chrome still prefers Public alpha + SHA (see
+Forbidden / discouraged chrome).
 
 ## Source of truth for “what is live”
 
@@ -103,7 +148,7 @@ As operated today (Seb read-only inventory of ezkey.online):
 |-------|---------------|-------------------|
 | **Admin UI** | **Cloudflare Pages** (not a Lightsail container) | Record the **git SHA of the tree that was built and published** to Pages. Pages deploy id alone is not enough unless mapped back to that SHA. |
 | **APIs / Demo ACME** | Lightsail Docker VM | Images tagged `*:latest` are **not** deploy traceability. Ledger must record the **full git SHA** that produced (or was intended for) those images. Rolling / compose builds also stamp OCI `org.opencontainers.image.revision` via `OCI_IMAGE_REVISION` (#814; see [`experimental-hybrid/BACKEND_ROLLING_UPDATE.md`](../experimental-hybrid/BACKEND_ROLLING_UPDATE.md)). |
-| **Demo ACME / health / actuator** | same VM | Typically expose **no** product version string — do not invent one until step 2 exposes a shared runtime version. |
+| **Demo ACME / health / actuator** | same VM | Management `/actuator/info` exposes `build.version` (product SemVer) when the stack is built from this tree; live deploy SOOT remains the SHA ledger. |
 
 Closing the pre-convention gap: until the first post-publish ledger row exists, live SHA is
 **unknown** even if containers are `latest`. The procedure below is how that gap is closed.
@@ -181,5 +226,5 @@ export VITE_GIT_SHA="$(git rev-parse --short=7 HEAD)"
 ## Out of scope here
 
 - Creating the first annotated product tag or GitHub Release (later [#1211](https://github.com/mgagp/ezkey/issues/1211) steps)
-- POM / npm / mobile alignment tooling (step 2 of [#1211](https://github.com/mgagp/ezkey/issues/1211))
+- CHANGELOG / RELEASING.md / registry publication / signing (later [#1211](https://github.com/mgagp/ezkey/issues/1211) steps)
 - Changing live DNS / Cloudflare / Lightsail without a separate ops go-ahead

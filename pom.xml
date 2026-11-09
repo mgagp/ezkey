@@ -5,7 +5,7 @@
 
 	<groupId>org.ezkey</groupId>
 	<artifactId>ezkey-parent</artifactId>
-	<version>${revision}${buildQualifier}${changelist}</version>
+	<version>${revision}${changelist}</version>
 	<packaging>pom</packaging>
 
 	<name>Ezkey Parent</name>
@@ -53,11 +53,18 @@
 	</modules>
 
 	<properties>
-		<!-- CI-friendly version properties -->
-		<revision>0.0.1</revision>
+		<!--
+		  Product SemVer (ADR-0017 / #1211): one version for the whole monorepo.
+		  CI-friendly formula: ${revision}${changelist} → 0.2.0-SNAPSHOT in dev.
+		  Release cuts clear changelist (empty) so the coordinate is 0.2.0.
+		  Local branch/worktree isolation: scripts/mvn-branch.sh appends a qualifier to
+		  revision (e.g. -Drevision=0.2.0-feature-x). Do not put a custom property inside
+		  <version> — flatten resolveCiFriendliesOnly only expands revision/changelist/sha1.
+		  npm / Android / SDK consumers sync from these properties via scripts/sync-version.sh.
+		-->
+		<revision>0.2.0</revision>
 		<changelist>-SNAPSHOT</changelist>
-		<!-- buildQualifier is injected by wrapper scripts or .mvn/maven.config (empty by default) -->
-		<buildQualifier></buildQualifier>
+		<flatten-maven-plugin.version>1.8.0</flatten-maven-plugin.version>
 		<java.version>25</java.version>
 		<maven.compiler.source>25</maven.compiler.source>
 		<maven.compiler.target>25</maven.compiler.target>
@@ -543,6 +550,36 @@
 
 		<!-- Plugins appliqués à tous les modules -->
 		<plugins>
+			<!--
+			  Resolve CI-friendly ${revision}/${changelist} in installed/deployed POMs
+			  (ADR-0017 / #1211 step 2). flattenMode resolveCiFriendliesOnly keeps the rest of
+			  the POM intact.
+			-->
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>flatten-maven-plugin</artifactId>
+				<version>${flatten-maven-plugin.version}</version>
+				<configuration>
+					<updatePomFile>true</updatePomFile>
+					<flattenMode>resolveCiFriendliesOnly</flattenMode>
+				</configuration>
+				<executions>
+					<execution>
+						<id>flatten</id>
+						<phase>process-resources</phase>
+						<goals>
+							<goal>flatten</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>flatten.clean</id>
+						<phase>clean</phase>
+						<goals>
+							<goal>clean</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
 			<plugin>
 				<groupId>com.diffplug.spotless</groupId>
 				<artifactId>spotless-maven-plugin</artifactId>

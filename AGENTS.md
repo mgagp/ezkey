@@ -163,7 +163,7 @@ reactor-built `checkstyle-config` dependency is part of that contract.
 **Docker-only alternative:** `./scripts/build-docker.sh` runs Spotless apply in a bind-mounted
 container plus the `build-validation` Docker target (see `docs/DEVELOPMENT.md`).
 
-**Local Maven version properties:** The parent POM defines `revision`, `changelist`, and an empty default `buildQualifier`. To override from the CLI for all reactor builds (for example a per–git-worktree suffix such as `-wt1` so local `install` artifacts do not clash), copy `.mvn/maven.config.example` to `.mvn/maven.config` and edit the last line. That file is gitignored and is not committed; CI and clones without the file use POM defaults only.
+**Local Maven version properties:** The parent POM defines CI-friendly `revision` and `changelist` (product SemVer, ADR-0017). To override from the CLI for all reactor builds (for example a per–git-worktree suffix such as `-Drevision=0.2.0-wt1` so local `install` artifacts do not clash), copy `.mvn/maven.config.example` to `.mvn/maven.config` and edit the revision line. That file is gitignored and is not committed; CI and clones without the file use POM defaults only. Cross-ecosystem sync: `./scripts/sync-version.sh` / `./scripts/check-version-alignment.sh`.
 
 ---
 
