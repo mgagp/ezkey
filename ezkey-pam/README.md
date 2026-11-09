@@ -576,15 +576,17 @@ Logs never include wait JSON bodies, proof tokens, secret keys, or Basic auth he
       PubkeyAuthentication no
   ```
 
-  Recommendation (Marc, 2026-11-09; Christophe validated): for the
-  `ezkey-mfa` group, require the SSH key before the Ezkey prompt so a username
-  alone cannot start one. Partial success does not count toward `MaxAuthTries`,
-  but every refused key and each keyboard-interactive failure does. Recommend
-  client-side `IdentitiesOnly yes` plus `IdentityFile`, and server-side
-  `MaxAuthTries 2` or `3` in that Match. A refused key with `MaxAuthTries 1`
-  makes sshd disconnect. The first matching `Match Group ezkey-mfa` wins;
-  break-glass and admin-port blocks are unchanged as long as Match order is
-  respected. The keyboard-interactive-only Match above stays the dogfood block.
+  Recommendation (#992): for the `ezkey-mfa` group, require the SSH key before
+  the Ezkey prompt so a username alone cannot start one. Partial success does
+  not count toward `MaxAuthTries`, but every refused key and each
+  keyboard-interactive failure does. Recommend client-side `IdentitiesOnly yes`
+  plus `IdentityFile`, and server-side `MaxAuthTries 2` or `3` in that Match.
+  With `MaxAuthTries 3`, each keyboard-interactive failure starts a new attempt,
+  so one connection can show up to about 3 prompts, and only for holders of an
+  authorized key. A refused key with `MaxAuthTries 1` makes sshd disconnect.
+  The first matching `Match Group ezkey-mfa` wins; break-glass and admin-port
+  blocks are unchanged as long as Match order is respected. The
+  keyboard-interactive-only Match above stays the dogfood block.
 
   ```text
   Match Group ezkey-mfa
