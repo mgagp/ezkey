@@ -28,6 +28,12 @@ import org.springframework.stereotype.Component;
 @Component
 public class AuthAttemptCreateLock {
 
+  /**
+   * First key of {@code pg_advisory_xact_lock(int, int)}. Namespaces auth-attempt create locks away
+   * from any other advisory lock in this database.
+   */
+  public static final int AUTH_ATTEMPT_CREATE_LOCK_CLASS_ID = 992_001;
+
   @PersistenceContext private EntityManager entityManager;
 
   /**
@@ -37,8 +43,9 @@ public class AuthAttemptCreateLock {
    */
   public void lockEnrollment(Integer enrollmentId) {
     entityManager
-        .createNativeQuery("SELECT pg_advisory_xact_lock(?1)")
-        .setParameter(1, enrollmentId.longValue())
+        .createNativeQuery("SELECT pg_advisory_xact_lock(CAST(?1 AS integer), CAST(?2 AS integer))")
+        .setParameter(1, AUTH_ATTEMPT_CREATE_LOCK_CLASS_ID)
+        .setParameter(2, enrollmentId)
         .getResultList();
   }
 }

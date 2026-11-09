@@ -19,6 +19,9 @@ import static org.mockito.Mockito.when;
 
 import java.time.OffsetDateTime;
 import java.util.Optional;
+import org.ezkey.alert.domain.AlertSeverity;
+import org.ezkey.alert.domain.AlertType;
+import org.ezkey.alert.service.AlertService;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
@@ -39,12 +42,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class AuthAttemptTxHelperTest {
 
   @Mock private AuthAttemptRepository authAttemptRepository;
+  @Mock private AlertService alertService;
 
   private AuthAttemptTxHelper helper;
 
   @BeforeEach
   void setUp() {
-    helper = new AuthAttemptTxHelper(authAttemptRepository);
+    helper = new AuthAttemptTxHelper(authAttemptRepository, alertService);
   }
 
   @Test
@@ -53,6 +57,11 @@ class AuthAttemptTxHelperTest {
     when(authAttemptRepository.updateStatusIfCurrent(
             eq(42), eq(AuthAttemptStatus.READ), eq(AuthAttemptStatus.INVALID), any()))
         .thenReturn(1);
+    AuthAttempt marked = new AuthAttempt();
+    marked.setAuthAttemptId(42);
+    marked.setEnrollmentId(7);
+    marked.setAuthAttemptChallenge(42);
+    when(authAttemptRepository.findById(42)).thenReturn(Optional.of(marked));
 
     helper.markAsInvalid(42);
 
@@ -62,6 +71,12 @@ class AuthAttemptTxHelperTest {
             eq(42), eq(AuthAttemptStatus.READ), eq(AuthAttemptStatus.INVALID), nowCaptor.capture());
     assertThat(nowCaptor.getValue()).isNotNull();
     verify(authAttemptRepository, never()).save(any());
+    verify(alertService)
+        .raiseOrTouch(
+            eq(AlertType.AUTH_ATTEMPT_REJECTED),
+            eq(AlertSeverity.WARNING),
+            eq("AUTH_ATTEMPT_REJECTED:7"),
+            eq("{\"enrollmentId\":7}"));
   }
 
   /**
@@ -88,5 +103,6 @@ class AuthAttemptTxHelperTest {
         .updateStatusIfCurrent(
             eq(42), eq(AuthAttemptStatus.READ), eq(AuthAttemptStatus.INVALID), any());
     verify(authAttemptRepository, never()).save(any());
+    verify(alertService, never()).raiseOrTouch(any(), any(), any(), any());
   }
 }

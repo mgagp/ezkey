@@ -8,9 +8,10 @@ import enIntegrations from '@/locales/en/integrations.json';
 import frIntegrations from '@/locales/fr/integrations.json';
 import { PendingAttemptPolicyField } from './pending-attempt-policy-field';
 
-const EN_HELP = 'Refuse is recommended for integrations triggered repeatedly or automatically.';
+const EN_HELP =
+  'Refuse is recommended for interactive integrations, where a person is waiting to sign in. Saving this does not change a request that is already waiting. The next request uses this setting: Replace ends the waiting one; Refuse keeps it and rejects the new request.';
 const FR_HELP =
-  'Refuser est recommandé pour les intégrations déclenchées de façon répétée ou automatisée.';
+  "Refuser est recommandé pour les intégrations interactives, où une personne attend pour se connecter. Enregistrer ce réglage ne change pas une demande déjà en attente. La prochaine demande l'applique : Remplacer met fin à celle qui attend ; Refuser la garde et rejette la nouvelle.";
 
 function i18nFor(lng: 'en' | 'fr') {
   const instance = i18n.createInstance();
@@ -39,6 +40,7 @@ describe('PendingAttemptPolicyField', () => {
     const help = screen.getByTestId('pending-attempt-policy-help').textContent ?? '';
     expect(help).toContain(EN_HELP);
     expect(help.toLowerCase()).not.toMatch(/pam|ssh|jenkins/);
+    expect(screen.getByText('When a request is already waiting')).toBeTruthy();
     expect((screen.getByRole('combobox') as HTMLSelectElement).value).toBe('REPLACE');
   });
 
@@ -51,6 +53,7 @@ describe('PendingAttemptPolicyField', () => {
     const help = screen.getByTestId('pending-attempt-policy-help').textContent ?? '';
     expect(help).toContain(FR_HELP);
     expect(help.toLowerCase()).not.toMatch(/pam|ssh|jenkins/);
+    expect(screen.getByText('Quand une demande attend déjà')).toBeTruthy();
     expect((screen.getByRole('combobox') as HTMLSelectElement).value).toBe('REFUSE');
   });
 });

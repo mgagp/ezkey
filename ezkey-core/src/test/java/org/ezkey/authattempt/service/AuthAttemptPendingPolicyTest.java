@@ -11,6 +11,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -182,6 +184,29 @@ class AuthAttemptPendingPolicyTest {
         .thenAnswer(invocation -> invocation.getArgument(0));
 
     assertThat(after.create(request())).isNotNull();
+  }
+
+  @Test
+  @DisplayName("INVALID attempts arm the cooldown on the fixed clock")
+  void cooldown_invalidArmsSuspension() {
+    when(enrollmentRepository.findById(1)).thenReturn(Optional.of(verifiedEnrollment()));
+    OffsetDateTime now = OffsetDateTime.ofInstant(NOW, ZoneOffset.UTC);
+    when(authAttemptRepository.findCreatedAtByEnrollmentIdAndStatusInSince(any(), anyList(), any()))
+        .thenReturn(List.of(now.minusMinutes(8), now.minusMinutes(4), now.minusMinutes(1)));
+
+    assertThatThrownBy(() -> service.create(request()))
+        .isInstanceOf(AuthAttemptCreationCooldownException.class)
+        .extracting(ex -> ((AuthAttemptCreationCooldownException) ex).getRetryAfterSeconds())
+        .isEqualTo(240L);
+
+    verify(authAttemptRepository)
+        .findCreatedAtByEnrollmentIdAndStatusInSince(
+            eq(1),
+            argThat(statuses ->
+                statuses.contains(AuthAttemptStatus.INVALID)
+                    && statuses.contains(AuthAttemptStatus.REJECTED)
+                    && statuses.contains(AuthAttemptStatus.EXPIRED)),
+            eq(now.minusSeconds(900)));
   }
 
   private void stubEnrollment(PendingAttemptPolicy policy) {

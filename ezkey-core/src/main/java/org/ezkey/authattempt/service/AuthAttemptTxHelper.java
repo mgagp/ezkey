@@ -11,6 +11,9 @@
 package org.ezkey.authattempt.service;
 
 import java.time.OffsetDateTime;
+import org.ezkey.alert.domain.AlertSeverity;
+import org.ezkey.alert.domain.AlertType;
+import org.ezkey.alert.service.AlertService;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
@@ -45,8 +48,18 @@ public class AuthAttemptTxHelper {
 
   private final AuthAttemptRepository authAttemptRepository;
 
-  public AuthAttemptTxHelper(AuthAttemptRepository authAttemptRepository) {
+  private final AlertService alertService;
+
+  /**
+   * Creates the helper.
+   *
+   * @param authAttemptRepository attempt store
+   * @param alertService operator alerts; the INVALID alert commits with this helper's transaction
+   */
+  public AuthAttemptTxHelper(
+      AuthAttemptRepository authAttemptRepository, AlertService alertService) {
     this.authAttemptRepository = authAttemptRepository;
+    this.alertService = alertService;
   }
 
   /**
@@ -59,7 +72,10 @@ public class AuthAttemptTxHelper {
    *
    * <p><b>Security:</b> Invalid-signature probes must <em>not</em> call this method — they keep the
    * attempt in {@code READ} and return generic state-conflict (#912). Challenge mismatch after a
-   * valid device signature still records INVALID for audit.
+   * valid device signature still records INVALID for audit. A successful flip raises the same
+   * enrollment alert as a device deny (dedupe key {@code AUTH_ATTEMPT_REJECTED:} plus the
+   * enrollment id, payload the enrollment id only). The alert commits with this transaction so a
+   * later rollback of the respond call cannot drop it.
    *
    * @param authAttemptId the auth attempt ID to mark as invalid
    */
@@ -71,6 +87,7 @@ public class AuthAttemptTxHelper {
             authAttemptId, AuthAttemptStatus.READ, AuthAttemptStatus.INVALID, now);
     if (updated == 1) {
       logger.warn("🔒 Auth attempt {} marked as INVALID (committed independently)", authAttemptId);
+      raiseInvalidAlert(authAttemptId);
       return;
     }
     AuthAttempt latest = authAttemptRepository.findById(authAttemptId).orElse(null);
@@ -83,6 +100,25 @@ public class AuthAttemptTxHelper {
         authAttemptId,
         latest.getAuthAttemptStatus());
     // Transaction commits here when method returns
+  }
+
+  /**
+   * Raises the shared enrollment alert after a challenge mismatch is committed. The payload is the
+   * enrollment id only; challenge digits are never included.
+   *
+   * @param authAttemptId attempt that was just marked INVALID
+   */
+  private void raiseInvalidAlert(Integer authAttemptId) {
+    AuthAttempt marked = authAttemptRepository.findById(authAttemptId).orElse(null);
+    if (marked == null || marked.getEnrollmentId() == null) {
+      return;
+    }
+    Integer enrollmentId = marked.getEnrollmentId();
+    alertService.raiseOrTouch(
+        AlertType.AUTH_ATTEMPT_REJECTED,
+        AlertSeverity.WARNING,
+        "AUTH_ATTEMPT_REJECTED:" + enrollmentId,
+        "{\"enrollmentId\":" + enrollmentId + "}");
   }
 
   /**

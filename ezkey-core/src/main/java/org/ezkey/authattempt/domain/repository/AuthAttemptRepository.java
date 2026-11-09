@@ -307,7 +307,7 @@ public interface AuthAttemptRepository
    * <p>Used to derive the creation cooldown from existing rows. Ordered oldest first.
    *
    * @param enrollmentId enrollment whose attempts are counted
-   * @param statuses counted statuses, typically REJECTED and EXPIRED
+   * @param statuses counted statuses: REJECTED, INVALID, and EXPIRED
    * @param since inclusive lower bound on {@code createdAt}
    * @return matching creation timestamps
    */

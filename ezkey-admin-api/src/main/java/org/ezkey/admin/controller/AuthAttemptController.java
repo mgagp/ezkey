@@ -69,6 +69,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -332,6 +333,12 @@ public class AuthAttemptController {
       value = {
         @ApiResponse(responseCode = "201", description = "Auth attempt created successfully"),
         @ApiResponse(responseCode = "400", description = "Invalid data"),
+        @ApiResponse(
+            responseCode = "409",
+            description =
+                "Live attempt already exists (auth-attempt-pending-exists) or creation is"
+                    + " suspended (auth-attempt-creation-cooldown). Retry-After is set.",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
   @PreAuthorize("hasRole('ADMIN')")

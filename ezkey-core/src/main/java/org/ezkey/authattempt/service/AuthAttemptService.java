@@ -531,7 +531,14 @@ public class AuthAttemptService {
   }
 
   /**
-   * Refuses creation while a recent run of rejected or expired attempts is still cooling down.
+   * Refuses creation while a recent run of rejected, invalid, or expired attempts is still cooling
+   * down.
+   *
+   * <p>Counted statuses are {@code REJECTED}, {@code INVALID} (wrong challenge digits), and {@code
+   * EXPIRED}. Supersession and cancellation both persist {@code EXPIRED}, so those rows count. The
+   * window uses {@code createdAt}: a status change lands at most one attempt TTL after creation,
+   * and the expiry scheduler ({@code fixedDelay}, about 60 seconds) may record {@code EXPIRED}
+   * about 60 seconds after {@code expiresAt}.
    *
    * @param enrollmentId enrollment being created against
    * @param now evaluation instant, shared with the attempt row
@@ -547,7 +554,10 @@ public class AuthAttemptService {
     OffsetDateTime since = now.minusSeconds((long) windowSeconds + durationSeconds);
     List<OffsetDateTime> eventTimes =
         authAttemptRepository.findCreatedAtByEnrollmentIdAndStatusInSince(
-            enrollmentId, List.of(AuthAttemptStatus.REJECTED, AuthAttemptStatus.EXPIRED), since);
+            enrollmentId,
+            List.of(
+                AuthAttemptStatus.REJECTED, AuthAttemptStatus.INVALID, AuthAttemptStatus.EXPIRED),
+            since);
     OptionalLong remaining =
         AuthAttemptCooldown.remainingSeconds(
             eventTimes, now, threshold, windowSeconds, durationSeconds);

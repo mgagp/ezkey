@@ -495,7 +495,8 @@ Logs never include wait JSON bodies, proof tokens, secret keys, or Basic auth he
   this connector with pending-attempt policy **REFUSE**. The platform default is REPLACE, which
   lets a later create expire the attempt that is still waiting. REFUSE keeps that attempt and
   returns HTTP 409 `auth-attempt-pending-exists` until it completes or expires. No #955 runbook
-  file exists in this module; this is the install line for that integration.
+  file exists in this module; this is the install line for that integration. Anyone who can reach
+  SSH can trigger the cooldown and lock the legitimate user out for 5 minutes, and can repeat that.
 - **Interaction model:** one SSH login → pre-create `ok` → at most one create →
   optional challenge prompt → `/wait`. Batch / empty clients create nothing.
   See [`docs/INTERACTION-MODEL.md`](docs/INTERACTION-MODEL.md) (scenario catalogue

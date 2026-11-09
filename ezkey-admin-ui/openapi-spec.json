@@ -2120,6 +2120,16 @@
               }
             }
           },
+          "409": {
+            "description": "Live attempt already exists (auth-attempt-pending-exists) or creation is suspended (auth-attempt-creation-cooldown). Retry-After is set.",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Internal server error",
             "content": {

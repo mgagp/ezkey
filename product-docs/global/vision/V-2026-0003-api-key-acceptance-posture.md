@@ -14,9 +14,15 @@
 - **Next step:** implement `TB-2026-08-29-admin-api-remove-m2m-hatch`.
 - **Captured by:** Marc
 - **Decision (2026-11-09, #992):** pending-attempt policy is per integration, default **REPLACE**
-  (expire the live attempt and create the new one) so existing Integration API callers keep
-  working; **REFUSE** is an explicit integration choice. Creation cooldown is a global platform
-  control, not a second rate limiter.
+  (expire the live attempt and create the new one) so existing Integration API callers keep that
+  supersession; **REFUSE** is an explicit integration choice. Creation cooldown is a global
+  platform control, not a second rate limiter. Those `EXPIRED` supersessions, and cancellations,
+  count toward the cooldown, so a caller that stays on REPLACE can still be suspended (#1311).
+- **Decision (2026-11-09, #1311):** Admin UI names the setting "When a request is already waiting"
+  (FR: "Quand une demande attend déjà"). Help recommends Refuse for interactive integrations where
+  a person is waiting to sign in, and says that saving does not change a request already waiting.
+  Reason: the earlier "repeatedly or automatically" sentence pointed operators at the wrong
+  integrations.
 
 ## Related artifacts
 

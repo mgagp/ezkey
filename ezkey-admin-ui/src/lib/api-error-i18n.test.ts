@@ -165,6 +165,25 @@ describe('getTranslatedApiError', () => {
       "Nombre maximal d'administrateurs globaux atteint (3). Impossible d'en créer davantage.",
     );
   });
+
+  it('uses the French pending-attempt problem copy instead of a generic error', async () => {
+    await i18n.changeLanguage('fr');
+    const t = i18n.t.bind(i18n);
+    const pending = new ApiError(409, {}, 'fallback detail', {
+      type: `${EZKEY_PROBLEM_TYPE_BASE}/domain/auth-attempt-pending-exists`,
+      detail: 'A pending authentication attempt already exists for this enrollment.',
+    });
+    const cooldown = new ApiError(409, {}, 'fallback detail', {
+      type: `${EZKEY_PROBLEM_TYPE_BASE}/domain/auth-attempt-creation-cooldown`,
+      detail: 'Authentication attempt creation is temporarily suspended for this enrollment.',
+    });
+    expect(getTranslatedApiError(pending, t, 'generic')).toBe(
+      'Une demande attend déjà pour cet enrôlement.',
+    );
+    expect(getTranslatedApiError(cooldown, t, 'generic')).toBe(
+      'Les nouvelles demandes pour cet enrôlement sont suspendues après des échecs ou des expirations répétés.',
+    );
+  });
 });
 
 describe('parseProblemParameters', () => {
