@@ -364,6 +364,47 @@ When the operator asks for a **`java-doctor-curated`** improvement pass:
   `I-2026-07-11-java-doctor-curated-hygiene`, `TB-2026-07-11-java-doctor-curated-mvp`,
   `product-docs/global/hygiene/java-doctor/README.md`.
 
+## PAM doctor-curated keyword
+
+- For the Linux PAM module (`ezkey-pam/src`), the shared keyword is **`pam-doctor-curated`**.
+- Purpose: a **punctual curated pass** in the same family as `java-doctor-curated` — clang-format
+  (Google preset) drift + clang-tidy (analyzer / bugprone / CERT) + cppcheck
+  (warning / performance / portability) → P1/P2/P3 shortlist. **Not** a CI gate and **not** a
+  zero-warning campaign. The macOS install track is out of this pass.
+- Skill: [`.cursor/skills/pam-doctor-curated/SKILL.md`](.cursor/skills/pam-doctor-curated/SKILL.md).
+- Default command from repo root (Git Bash on Windows):
+
+```bash
+./scripts/pam-doctor-curated.sh
+```
+
+  Optional: `--offline` to re-curate an existing `logs/pam-doctor/raw/` without the container.
+  The scan runs in Docker (`ubuntu:24.04`) so the Linux PAM, curl, and cJSON headers are present.
+- Outputs under `logs/pam-doctor/` (gitignored):
+  - `pam-doctor.curated.md` — deduped shortlist grouped by rule
+  - `pam-doctor.curated.json` — machine-readable summary
+  - `raw/` — clang-format TSV, cppcheck text, clang-tidy text, tool versions
+- Config: `ezkey-pam/.clang-format`, `ezkey-pam/.clang-tidy`, `config/pam-doctor/`.
+- Campaign notes: `product-docs/global/hygiene/pam-doctor/`. Do **not** invent `I-*` / `TB-*` /
+  GitHub issues per finding. On demand (experimental module); not part of the Java → mobile →
+  React biweekly rotation.
+
+### HITL contract (mandatory for cold agents)
+
+When the operator asks for a **`pam-doctor-curated`** improvement pass:
+
+1. Run the script; read `logs/pam-doctor/pam-doctor.curated.md`.
+2. Propose a **small prioritized lot** (usually 3–6 rule groups), not a zero-warning campaign.
+3. **Before any code change — one finding at a time.** Wait for fix / suppress / skip on that
+   item before presenting the next. A format-only apply (`clang-format -i` on `ezkey-pam/src`)
+   still waits for an explicit go.
+4. Fuzzy signal: skip. Harmless over-defense: leave it and suppress with a reason. Do not add
+   tests for a leave.
+5. Record the pass from `product-docs/global/hygiene/pam-doctor/TEMPLATE.md`.
+6. Accepted fixes: name the existing `make test` harness and extend it only when the decision
+   is not already pinned. Auth decision, cancel, conf secrets, TLS verify, and the signal
+   handler need a counter-read before a refactor.
+
 ## Dependabot curated keyword
 
 - For near-continuous Dependabot dependency-update triage, the shared keyword is

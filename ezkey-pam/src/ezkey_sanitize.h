@@ -11,7 +11,8 @@
  * Neutralize control characters, high bytes (>= 0x80), spaces, and '=' before
  * syslog / file logs (#818 m3 + M1 review). Spaces/'=' would let a crafted
  * username forge attempt-line fields; non-ASCII bytes stay out of the parse
- * surface. Writes into dest (NUL-terminated); always succeeds for non-NULL dest.
+ * surface. Writes into dest (NUL-terminated); always succeeds for non-NULL
+ * dest.
  *
  * @param dest destination buffer
  * @param dest_size capacity of dest

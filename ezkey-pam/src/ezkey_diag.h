@@ -28,20 +28,20 @@ extern "C" {
  * -1 for “unknown / not applicable” and are rendered as `-` on the line.
  */
 typedef struct {
-    char user[128];
-    long auth_attempt_id; /* <=0 → "-" */
-    const char *result;
-    const char *cancel_status;
-    int pam_rc;
-    long latency_ms;
-    int lab_http;
-    int timeout_seconds; /* <=0 → "-" */
-    const char *stage;
-    const char *reason;
-    int curl_rc;     /* -1 → "-" */
-    long http;       /* -1 → "-" */
-    long confirm_ms; /* -1 → "-" */
-    long api_ms;     /* -1 → "-" */
+  char user[128];
+  long auth_attempt_id; /* <=0 → "-" */
+  const char *result;
+  const char *cancel_status;
+  int pam_rc;
+  long latency_ms;
+  int lab_http;
+  int timeout_seconds; /* <=0 → "-" */
+  const char *stage;
+  const char *reason;
+  int curl_rc;     /* -1 → "-" */
+  long http;       /* -1 → "-" */
+  long confirm_ms; /* -1 → "-" */
+  long api_ms;     /* -1 → "-" */
 } EzkeyDiag;
 
 /**
@@ -73,8 +73,8 @@ int ezkey_diag_format_attempt(char *dest, size_t dest_size,
  * @param out_len receives byte count to write (excludes NUL)
  * @return 0 on success, -1 on error
  */
-int ezkey_diag_format_syslog(char *dest, size_t dest_size, const EzkeyDiag *diag,
-                             size_t *out_len);
+int ezkey_diag_format_syslog(char *dest, size_t dest_size,
+                             const EzkeyDiag *diag, size_t *out_len);
 
 /**
  * Double-buffered SIGNAL syslog snapshot (#1016 N5).
@@ -84,11 +84,11 @@ int ezkey_diag_format_syslog(char *dest, size_t dest_size, const EzkeyDiag *diag
  * (never a zeroed length on the active slot).
  */
 typedef struct {
-    char buf[2][EZKEY_DIAG_LINE_MAX];
-    /** Published byte counts; read only after observing {@code slot}. */
-    volatile size_t len[2];
-    /** Active slot: 0 or 1. */
-    volatile sig_atomic_t slot;
+  char buf[2][EZKEY_DIAG_LINE_MAX];
+  /** Published byte counts; read only after observing {@code slot}. */
+  volatile size_t len[2];
+  /** Active slot: 0 or 1. */
+  volatile sig_atomic_t slot;
 } EzkeyDiagSyslogSnap;
 
 /**

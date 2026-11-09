@@ -1,5 +1,6 @@
 /*
- * ezkey_http.h — bounded response buffer + libcurl transport guards (#1016 C1/C2).
+ * ezkey_http.h — bounded response buffer + libcurl transport guards (#1016
+ * C1/C2).
  *
  * @since 2026
  */
@@ -16,14 +17,14 @@ extern "C" {
 #endif
 
 /** Hard cap on Integration API response bodies (create / wait / cancel). */
-#define EZKEY_HTTP_BODY_MAX (64 * 1024)
+#define EZKEY_HTTP_BODY_MAX ((size_t)64 * 1024)
 
 /**
  * Growable response buffer for CURLOPT_WRITEFUNCTION.
  */
 typedef struct {
-    char *data;
-    size_t size;
+  char *data;
+  size_t size;
 } EzkeyHttpBuf;
 
 /**
