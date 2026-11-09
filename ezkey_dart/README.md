@@ -77,7 +77,7 @@ Admin UI / app           User                 Phone (this SDK)                 A
      | create invitation   |                        |                              |
      |-- QR code --------->|-- scan --------------->|                              |
      |-- challenge (6 dg)->|                        |                              |
-     |                     |                        |-- POST /enrollments/bind --->|  {enrollmentId, enrollmentProofToken}
+     |                     |                        |-- POST /enrollments/bind --->|  {enrollmentProofToken}
      |                     |                        |<-- integration key + names --|  signed (bind payload, Ed25519)
      |                     |                        |  verify signature, pin key   |
      |                     |<- "Enroll with ACME?" -|                              |
@@ -93,10 +93,11 @@ Admin UI / app           User                 Phone (this SDK)                 A
 QR code content (one of):
 
 ```json
-{"enrollmentId": 42, "enrollmentProofToken": "…", "authUrl": "https://auth.example.com"}
+{"enrollmentProofToken": "…", "authUrl": "https://auth.example.com"}
 ```
 
-or the legacy `42|<enrollmentProofToken>`. `authUrl` is optional; the app may configure a default.
+A leftover `enrollmentId` key is ignored. `authUrl` is optional; the app may configure a default.
+Bind returns `enrollmentId`.
 
 Server rules you must design the UI around:
 
@@ -468,8 +469,8 @@ $D run bin/ezkey_dart.dart forget --enrollment 7
 
 `check --decide` accepts `ask` | `approve` | `deny` | `none`, and `--challenge N` supplies the
 code. Exit codes: `0` ok, `1` error / FAILED / no longer active, `2` usage, `3` nothing pending.
-The QR JSON is the Admin UI invitation content (`enrollmentId`, `enrollmentProofToken`, optional
-`authUrl`); the challenge is shown next to it.
+The QR JSON is the Admin UI invitation content (`enrollmentProofToken`, optional `authUrl`); the
+challenge is shown next to it. Bind returns `enrollmentId`.
 
 ---
 

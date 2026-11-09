@@ -18,7 +18,6 @@ describe('enrollmentsApi', () => {
 
   it('bind calls the correct endpoint with normalized payload', async () => {
     const payload: BindEnrollmentRequest = {
-      enrollmentId: '123',
       enrollmentProofToken: 'proof-token',
     };
     const responseData: BindEnrollmentResponse = {
@@ -35,7 +34,7 @@ describe('enrollmentsApi', () => {
     const result = await enrollmentsApi.bind(payload);
 
     expect(mockedBind).toHaveBeenCalledWith(
-      {enrollmentId: 123, enrollmentProofToken: 'proof-token'},
+      {enrollmentProofToken: 'proof-token'},
       undefined,
     );
     expect(result).toEqual(responseData);
@@ -43,7 +42,6 @@ describe('enrollmentsApi', () => {
 
   it('bind passes authUrl as baseURL config when provided', async () => {
     const payload: BindEnrollmentRequest = {
-      enrollmentId: '456',
       enrollmentProofToken: 'proof-token-2',
     };
     const responseData: BindEnrollmentResponse = {
@@ -60,7 +58,7 @@ describe('enrollmentsApi', () => {
     const result = await enrollmentsApi.bind(payload, 'https://ezkey.globex.com');
 
     expect(mockedBind).toHaveBeenCalledWith(
-      {enrollmentId: 456, enrollmentProofToken: 'proof-token-2'},
+      {enrollmentProofToken: 'proof-token-2'},
       {baseURL: 'https://ezkey.globex.com'},
     );
     expect(result).toEqual(responseData);

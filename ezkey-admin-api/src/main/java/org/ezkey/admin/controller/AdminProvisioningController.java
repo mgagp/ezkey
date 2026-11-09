@@ -1176,7 +1176,7 @@ public class AdminProvisioningController {
    * Generates a QR code for administrator onboarding.
    *
    * <p>This endpoint generates a PNG QR code image containing enrollment credentials
-   * (enrollmentId|enrollmentProofToken) that can be scanned by the mobile application for
+   * (enrollmentProofToken, optional authUrl) that can be scanned by the mobile application for
    * passwordless enrollment binding.
    *
    * <p><b>Authorization:</b>
@@ -1189,7 +1189,7 @@ public class AdminProvisioningController {
    * <p><b>QR Code Format (JSON):</b>
    *
    * <pre>
-   * {"enrollmentId":"...","enrollmentProofToken":"...","authUrl":"..."}
+   * {"enrollmentProofToken":"...","authUrl":"..."}
    * </pre>
    *
    * @param id the administrator ID
@@ -1202,7 +1202,7 @@ public class AdminProvisioningController {
       summary = "Generate QR code for onboarding",
       description =
           "Returns a PNG QR code image containing enrollment credentials as JSON"
-              + " ({enrollmentId, enrollmentProofToken, authUrl}) for passwordless enrollment"
+              + " ({enrollmentProofToken, authUrl}) for passwordless enrollment"
               + " binding. Available only while the enrollment is CREATED.")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "QR code generated successfully"),
@@ -1246,8 +1246,7 @@ public class AdminProvisioningController {
       }
 
       // Compose JSON payload with optional authUrl
-      String qrContent =
-          qrCodePayloadService.composePayload(result.enrollmentId(), result.enrollmentProofToken());
+      String qrContent = qrCodePayloadService.composePayload(result.enrollmentProofToken());
 
       // Generate QR code (300x300 pixels)
       byte[] qrCodeImage = qrCodeGeneratorService.generateQrCodeImage(qrContent, 300, 300);

@@ -521,8 +521,7 @@ public class AdminBootstrapService {
     logger.warn("   Enrollment Challenge Code: {}", enrollment.getEnrollmentChallenge());
     logger.warn("");
 
-    String enrollmentPayload =
-        qrCodePayloadService.composePayload(enrollment.getEnrollmentId(), enrollmentProofToken);
+    String enrollmentPayload = qrCodePayloadService.composePayload(enrollmentProofToken);
     logger.warn("📷 QR CODE (Scan with Ezkey Mobile):");
     logger.warn("");
     for (String line : qrCodeAsciiRenderer.renderAscii(enrollmentPayload).split("\\R")) {

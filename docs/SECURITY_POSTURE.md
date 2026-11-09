@@ -59,6 +59,7 @@ meant to be linked from trust-facing material without inflating the top-level pi
   never the signature). `markAsInvalid` remains only for post-ownership failures (e.g. wrong
   challenge) and is conditional on status still `READ` (atomic `updateStatusIfCurrent`). Sequential
   ids aggravate enumeration but are not required once an id is known.
+- **Decision (ADR-0019):** The enrollment invitation (QR, deep link, paste) carries `enrollmentProofToken` and optional `authUrl`. It does not carry `enrollmentId`. Bind resolves the row by the unique proof-token hash and returns the id. A leftover `enrollmentId` key in an already-printed QR is ignored. Read-once `CREATED` to `BOUND` still requires the token. Unauthenticated `POST /verify` that can mark a `CREATED` row `INVALID` from a guessed id is a separate follow-up, not fixed by this invitation change.
 - **Decision (#912 C1):** The respond per-`authAttemptId` budget (default 1 / 5 min) is consumed
   **only after** a valid device signature. The filter applies an IP ceiling on **all** respond
   requests (not failures only); a third-party invalid respond must not starve the owner into HTTP

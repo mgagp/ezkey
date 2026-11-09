@@ -72,7 +72,6 @@ class EnrollmentBindServiceEligibilityTest {
   @DisplayName("bind rejects an admin-linked enrollment when the admin is pending activation")
   void bindRejectsPendingActivationAdminEnrollment() {
     EnrollmentBindRequest request = new EnrollmentBindRequest();
-    request.setEnrollmentId(101);
     request.setEnrollmentProofToken("proof-token");
 
     Enrollment enrollment = new Enrollment();
@@ -87,8 +86,8 @@ class EnrollmentBindServiceEligibilityTest {
     admin.setActive(true);
     admin.setLifecycleStatus(AdminLifecycleStatus.PENDING_ACTIVATION);
 
-    when(enrollmentRepository.findByEnrollmentIdAndEnrollmentProofTokenHash(
-            101, org.ezkey.security.SensitiveDataHasher.sha256Hex("proof-token")))
+    when(enrollmentRepository.findByEnrollmentProofTokenHash(
+            org.ezkey.security.SensitiveDataHasher.sha256Hex("proof-token")))
         .thenReturn(Optional.of(enrollment));
     when(ezkeyAdminRepository.findByEnrollmentId(101)).thenReturn(Optional.of(admin));
 
@@ -108,7 +107,6 @@ class EnrollmentBindServiceEligibilityTest {
   @DisplayName("bind refuses enrollment after expiresAt (bootstrap invitation TTL)")
   void bindRefusesAfterEnrollmentExpiry() {
     EnrollmentBindRequest request = new EnrollmentBindRequest();
-    request.setEnrollmentId(303);
     request.setEnrollmentProofToken("bootstrap-expired-proof");
 
     OffsetDateTime expiresAt = OffsetDateTime.now().minusMinutes(5);
@@ -119,8 +117,8 @@ class EnrollmentBindServiceEligibilityTest {
     enrollment.setCreatedAt(OffsetDateTime.now().minusHours(25));
     enrollment.setExpiresAt(expiresAt);
 
-    when(enrollmentRepository.findByEnrollmentIdAndEnrollmentProofTokenHash(
-            303, org.ezkey.security.SensitiveDataHasher.sha256Hex("bootstrap-expired-proof")))
+    when(enrollmentRepository.findByEnrollmentProofTokenHash(
+            org.ezkey.security.SensitiveDataHasher.sha256Hex("bootstrap-expired-proof")))
         .thenReturn(Optional.of(enrollment));
 
     EnrollmentInvitationExpiredException exception =
@@ -138,7 +136,6 @@ class EnrollmentBindServiceEligibilityTest {
       "bind succeeds after recover→reset refreshed expiresAt (EXPIRED → CREATED + new TTL)")
   void bindSucceedsAfterInvitationTtlRefresh() {
     EnrollmentBindRequest request = new EnrollmentBindRequest();
-    request.setEnrollmentId(404);
     request.setEnrollmentProofToken("reissued-proof");
 
     Enrollment enrollment = new Enrollment();
@@ -157,8 +154,8 @@ class EnrollmentBindServiceEligibilityTest {
     integration.setDescription("System");
     integration.setIsSystemIntegration(true);
 
-    when(enrollmentRepository.findByEnrollmentIdAndEnrollmentProofTokenHash(
-            404, org.ezkey.security.SensitiveDataHasher.sha256Hex("reissued-proof")))
+    when(enrollmentRepository.findByEnrollmentProofTokenHash(
+            org.ezkey.security.SensitiveDataHasher.sha256Hex("reissued-proof")))
         .thenReturn(Optional.of(enrollment));
     when(ezkeyAdminRepository.findByEnrollmentId(404)).thenReturn(Optional.empty());
     when(integrationRepository.findById(1)).thenReturn(Optional.of(integration));
@@ -188,7 +185,6 @@ class EnrollmentBindServiceEligibilityTest {
   @DisplayName("bind returns invitation expired when expired cleanup cannot be persisted")
   void bindExpiredEnrollment_WhenCleanupFails_StillReturnsInvitationExpired() {
     EnrollmentBindRequest request = new EnrollmentBindRequest();
-    request.setEnrollmentId(202);
     request.setEnrollmentProofToken("expired-proof-token");
 
     OffsetDateTime expiresAt = OffsetDateTime.now().minusMinutes(1);
@@ -199,8 +195,8 @@ class EnrollmentBindServiceEligibilityTest {
     enrollment.setCreatedAt(OffsetDateTime.now().minusHours(1));
     enrollment.setExpiresAt(expiresAt);
 
-    when(enrollmentRepository.findByEnrollmentIdAndEnrollmentProofTokenHash(
-            202, org.ezkey.security.SensitiveDataHasher.sha256Hex("expired-proof-token")))
+    when(enrollmentRepository.findByEnrollmentProofTokenHash(
+            org.ezkey.security.SensitiveDataHasher.sha256Hex("expired-proof-token")))
         .thenReturn(Optional.of(enrollment));
     doThrow(new DataAccessResourceFailureException("repository unavailable"))
         .when(enrollmentTxHelper)

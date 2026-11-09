@@ -107,7 +107,7 @@ class _EnrollCommand extends _BaseCommand {
       ..addOption(
         'code',
         help:
-            'QR content: JSON {"enrollmentId","enrollmentProofToken",...} or id|token.',
+            'QR content: JSON {"enrollmentProofToken",...}.',
       )
       ..addOption(
         'code-file',

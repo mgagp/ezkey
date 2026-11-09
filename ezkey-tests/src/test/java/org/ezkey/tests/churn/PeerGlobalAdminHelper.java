@@ -114,7 +114,6 @@ public final class PeerGlobalAdminHelper {
     RestAssuredTestConfig.configureForAuthApi(dockerStackConfig);
 
     Map<String, Object> bindRequest = new HashMap<>();
-    bindRequest.put("enrollmentId", enrollmentId);
     bindRequest.put("enrollmentProofToken", enrollmentProofToken);
     bindRequest.put("devicePublicKey", keyPair.publicKey());
 

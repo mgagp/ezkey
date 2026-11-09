@@ -4622,7 +4622,7 @@
           "Enrollments"
         ],
         "summary": "Generate QR code for enrollment",
-        "description": "Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentId, enrollmentProofToken, authUrl}). Only while the enrollment is CREATED; 409 otherwise",
+        "description": "Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentProofToken, authUrl}). Only while the enrollment is CREATED; 409 otherwise",
         "operationId": "getQrCode",
         "parameters": [
           {
@@ -7015,7 +7015,7 @@
           "Administrator Provisioning"
         ],
         "summary": "Generate QR code for onboarding",
-        "description": "Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentId, enrollmentProofToken, authUrl}) for passwordless enrollment binding. Available only while the enrollment is CREATED.",
+        "description": "Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentProofToken, authUrl}) for passwordless enrollment binding. Available only while the enrollment is CREATED.",
         "operationId": "getAdminOnboardingQrCode",
         "parameters": [
           {

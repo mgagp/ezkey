@@ -489,7 +489,6 @@ class _Suite {
 
   EnrollmentCode _code(LabEnrollmentInvitation invite) => EnrollmentCode.parse(
     jsonEncode(<String, Object?>{
-      'enrollmentId': invite.enrollmentId,
       'enrollmentProofToken': invite.enrollmentProofToken,
       'authUrl': endpoints.authApi,
     }),
@@ -880,7 +879,6 @@ class _Suite {
     await writePrivateFile(
       codeFile,
       jsonEncode(<String, Object?>{
-        'enrollmentId': _cliInvite.enrollmentId,
         'enrollmentProofToken': _cliInvite.enrollmentProofToken,
         'authUrl': endpoints.authApi,
       }),

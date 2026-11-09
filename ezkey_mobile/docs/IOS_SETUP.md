@@ -85,7 +85,7 @@ Android Maestro harness; see `docs/MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md`).
   (copy `.env.example` to `.env`; rebuild the native app after any change — `react-native-config`
   reads `.env` at build time).
 
-Then: **+** → paste `enrollmentId|proofToken|authUrl` (or the JSON QR payload) → *Use controlled
+Then: **+** → paste `proofToken|authUrl` (or the JSON QR payload) → *Use controlled
 test seed*. Bind/verify trust checks still run.
 
 **Local backend:** the iOS simulator shares the Mac network stack, so `http://localhost:8080`

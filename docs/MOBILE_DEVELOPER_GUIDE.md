@@ -374,7 +374,7 @@ sequenceDiagram
     participant Mobile as Mobile App
     participant Auth as Auth API
 
-    Mobile->>Auth: POST /api/v1/enrollments/bind\n(enrollmentId, enrollmentProofToken)
+    Mobile->>Auth: POST /api/v1/enrollments/bind\n(enrollmentProofToken)
     Auth-->>Mobile: enrollment metadata + integrationPublicKey
     Mobile->>Mobile: Generate EC P-256 key pair in Android Keystore
     Mobile->>Mobile: Sign canonical verify payload with device private key
@@ -394,7 +394,6 @@ Request body:
 
 ```json
 {
-  "enrollmentId": 456,
   "enrollmentProofToken": "abc123-def456-ghi789"
 }
 ```
@@ -403,10 +402,9 @@ Primary request fields:
 
 | Field | Type | Required | Meaning |
 |---|---|---|---|
-| `enrollmentId` | number | Yes | Enrollment identifier |
 | `enrollmentProofToken` | string | Yes | Permanent proof token associated with the enrollment |
 
-The bind contract defines **only** these two fields. Integration display names in the response come from the single name and description stored on the integration record (no bind-time locale negotiation). A future product iteration could introduce locale-aware integration copy and API support; that is not part of the current protocol.
+The bind request is the proof token. The response returns `enrollmentId`, which later verify, pending, and signed payloads use (ADR-0019). Integration display names in the response come from the single name and description stored on the integration record (no bind-time locale negotiation). A future product iteration could introduce locale-aware integration copy and API support; that is not part of the current protocol.
 
 Successful response:
 

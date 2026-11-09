@@ -65,7 +65,6 @@ export type EnrollmentSummary = {
 };
 
 export type BindEnrollmentRequest = {
-  enrollmentId: string;
   enrollmentProofToken: EnrollmentBindRequestDto['enrollmentProofToken'];
 };
 

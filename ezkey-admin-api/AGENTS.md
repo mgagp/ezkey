@@ -73,7 +73,7 @@ Proposed elevation to the global ADR log (confirm/challenge): **ADR-0013** and p
 ## Enrollment QR payload
 
 Enrollment and admin-onboarding QR codes are **JSON** from `QrCodePayloadService`
-(`enrollmentId`, `enrollmentProofToken`, optional `authUrl`). `authUrl` comes from
+(`enrollmentProofToken`, optional `authUrl`). The enrollment id is not an invitation field (ADR-0019). `authUrl` comes from
 `ezkey.qr.auth-base-url` (`EZKEY_QR_AUTH_BASE_URL`). Omit the field when unset — mobile falls back
 to `EZKEY_API_BASE_URL`. Do **not** revert the generator to pipe-only. Do **not** add a URL
 shortener. Canon: [`docs/ENDPOINT.md`](../docs/ENDPOINT.md) (search `ezkey.qr.auth-base-url`).

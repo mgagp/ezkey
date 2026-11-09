@@ -38,20 +38,14 @@ enum DevicePrivateKeyStorageTier {
 /// Content of the enrollment QR code / invitation link shown by the Admin UI or the integrating
 /// application.
 ///
-/// Primary format (JSON): `{"enrollmentId": 42, "enrollmentProofToken": "...", "authUrl": "https://..."}`
-/// (`authUrl` optional; `enrollmentId` may be a number or a string).
-/// Legacy format: `42|proofToken`.
+/// Primary format (JSON): `{"enrollmentProofToken": "...", "authUrl": "https://..."}`
+/// (`authUrl` optional). A leftover `enrollmentId` key is ignored. The id is returned by bind
+/// (ADR-0019).
 ///
 /// The 6-digit enrollment challenge is **not** in the code: it is shown separately to the user
 /// (out of band) and typed into the authenticator.
 class EnrollmentCode {
-  EnrollmentCode({
-    required this.enrollmentId,
-    required this.enrollmentProofToken,
-    this.authUrl,
-  });
-
-  final int enrollmentId;
+  EnrollmentCode({required this.enrollmentProofToken, this.authUrl});
 
   /// Secret bearer token for this enrollment. Never log it.
   final String enrollmentProofToken;
@@ -78,7 +72,6 @@ class EnrollmentCode {
       decoded = null;
     }
     if (decoded is Map<String, dynamic> &&
-        decoded['enrollmentId'] != null &&
         decoded['enrollmentProofToken'] != null) {
       final rawAuthUrl = decoded['authUrl'];
       String? authUrl;
@@ -91,7 +84,6 @@ class EnrollmentCode {
         }
       }
       return EnrollmentCode(
-        enrollmentId: _parseEnrollmentId(decoded['enrollmentId'].toString()),
         enrollmentProofToken: _requireToken(
           decoded['enrollmentProofToken'].toString(),
         ),
@@ -99,30 +91,11 @@ class EnrollmentCode {
       );
     }
 
-    final separator = trimmed.indexOf('|');
-    if (separator > 0) {
-      return EnrollmentCode(
-        enrollmentId: _parseEnrollmentId(trimmed.substring(0, separator)),
-        enrollmentProofToken: _requireToken(trimmed.substring(separator + 1)),
-      );
-    }
-
     throw const EzkeyValidationException('Unsupported enrollment code format');
   }
 
   @override
-  String toString() =>
-      'EnrollmentCode(enrollmentId: $enrollmentId, authUrl: $authUrl)';
-}
-
-int _parseEnrollmentId(String value) {
-  final id = int.tryParse(value.trim());
-  if (id == null || id <= 0 || id > 0x7fffffff) {
-    throw const EzkeyValidationException(
-      'Enrollment id must be a positive 32-bit integer',
-    );
-  }
-  return id;
+  String toString() => 'EnrollmentCode(authUrl: $authUrl)';
 }
 
 String _requireToken(String value) {

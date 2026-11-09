@@ -15,7 +15,6 @@ import {sha256HexUtf8} from '../sha256HexUtf8';
 describe('enrollmentSeedLogRedaction', () => {
   const secretToken = 'super-secret-enrollment-proof-token';
   const rawQr = JSON.stringify({
-    enrollmentId: '42',
     enrollmentProofToken: secretToken,
     authUrl: 'https://auth.example.com',
   });
@@ -32,13 +31,11 @@ describe('enrollmentSeedLogRedaction', () => {
     expect(redacted).not.toContain(rawQr);
   });
 
-  it('redactParsedQrPayloadForLog keeps enrollmentId and redacts the proof token', () => {
+  it('redactParsedQrPayloadForLog redacts the proof token', () => {
     const redacted = redactParsedQrPayloadForLog({
-      enrollmentId: '42',
       enrollmentProofToken: secretToken,
       authUrl: 'https://auth.example.com',
     });
-    expect(redacted.enrollmentId).toBe('42');
     expect(redacted.authUrl).toBe('present');
     expect(redacted.proofToken).toContain('redacted');
     expect(redacted.proofToken).not.toContain(secretToken);
@@ -52,7 +49,6 @@ describe('enrollmentSeedLogRedaction', () => {
       rawValue: rawQr,
       normalizedValue: rawQr,
       parsed: {
-        enrollmentId: '42',
         enrollmentProofToken: secretToken,
         authUrl: 'https://auth.example.com',
       },
@@ -91,7 +87,6 @@ describe('enrollmentSeedLogRedaction', () => {
       rawValue: rawQr,
       normalizedValue: rawQr,
       parsed: {
-        enrollmentId: '42',
         enrollmentProofToken: secretToken,
         authUrl: 'https://auth.example.com',
       },

@@ -3,7 +3,6 @@
  * for enrollment QR codes (mobile app {@code parseQrPayload}).
  */
 export function buildEnrollmentQrPayloadJson(
-  enrollmentId: number,
   enrollmentProofToken: string,
   authBaseUrl?: string | null,
 ): string {
@@ -11,7 +10,6 @@ export function buildEnrollmentQrPayloadJson(
     authBaseUrl?.trim()
     || (import.meta.env.VITE_QR_AUTH_BASE_URL as string | undefined)?.trim();
   const payload: Record<string, string> = {
-    enrollmentId: String(enrollmentId),
     enrollmentProofToken,
   };
   if (authBase) {

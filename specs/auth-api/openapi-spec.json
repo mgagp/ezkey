@@ -87,7 +87,7 @@
             }
           },
           "400": {
-            "description": "Invalid enrollment ID, proof token, or enrollment expired",
+            "description": "Invalid proof token, or enrollment expired",
             "content": {
               "*/*": {
                 "schema": {
@@ -578,12 +578,6 @@
         "type": "object",
         "description": "Request DTO for enrollment binding initiation with proof token",
         "properties": {
-          "enrollmentId": {
-            "type": "integer",
-            "format": "int32",
-            "description": "Enrollment ID to bind to the mobile device",
-            "example": 123
-          },
           "enrollmentProofToken": {
             "type": "string",
             "description": "Enrollment proof token for authentication",
@@ -591,7 +585,6 @@
           }
         },
         "required": [
-          "enrollmentId",
           "enrollmentProofToken"
         ]
       },

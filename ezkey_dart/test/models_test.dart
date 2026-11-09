@@ -5,27 +5,25 @@ import 'package:test/test.dart';
 
 void main() {
   group('EnrollmentCode.parse', () {
-    test('JSON with numeric id and authUrl (normalized)', () {
+    test('JSON with proof token and authUrl (normalized)', () {
       final code = EnrollmentCode.parse(
         '{"enrollmentId": 42, "enrollmentProofToken": "abc.def", "authUrl": "HTTPS://Auth.Example.org:443/"}',
       );
-      expect(code.enrollmentId, 42);
       expect(code.enrollmentProofToken, 'abc.def');
       expect(code.authUrl, 'https://auth.example.org');
     });
 
-    test('JSON with string id and no authUrl', () {
-      final code = EnrollmentCode.parse(
-        '{"enrollmentId": "7", "enrollmentProofToken": "t"}',
-      );
-      expect(code.enrollmentId, 7);
+    test('JSON with proof token and no authUrl', () {
+      final code = EnrollmentCode.parse('{"enrollmentProofToken": "t"}');
+      expect(code.enrollmentProofToken, 't');
       expect(code.authUrl, isNull);
     });
 
-    test('legacy id|token format', () {
-      final code = EnrollmentCode.parse(' 9|tok.en ');
-      expect(code.enrollmentId, 9);
-      expect(code.enrollmentProofToken, 'tok.en');
+    test('legacy id|token format is rejected', () {
+      expect(
+        () => EnrollmentCode.parse(' 9|tok.en '),
+        throwsA(isA<EzkeyValidationException>()),
+      );
     });
 
     test('plain http only for development hosts', () {
@@ -60,7 +58,7 @@ void main() {
         '1|',
         '1|to ken',
         '{"enrollmentId": 1}',
-        '{"enrollmentId": -1, "enrollmentProofToken": "t"}',
+        '{"enrollmentProofToken": "has space"}',
         '{"enrollmentId": 1, "enrollmentProofToken": "t", "authUrl": "javascript:alert(1)"}',
         '{"enrollmentId": 1, "enrollmentProofToken": "t", "authUrl": "https://u:p@host"}',
       ]) {
@@ -73,7 +71,9 @@ void main() {
     });
 
     test('toString does not reveal the proof token', () {
-      final code = EnrollmentCode.parse('5|super-secret-token');
+      final code = EnrollmentCode.parse(
+        '{"enrollmentProofToken":"super-secret-token"}',
+      );
       expect('$code', isNot(contains('super-secret-token')));
     });
   });

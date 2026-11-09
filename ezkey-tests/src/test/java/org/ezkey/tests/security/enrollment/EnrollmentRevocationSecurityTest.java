@@ -105,7 +105,6 @@ public class EnrollmentRevocationSecurityTest extends AbstractSecurityTest {
     configureForAuthApi(dockerStackConfig);
 
     Map<String, Object> bindRequest = new HashMap<>();
-    bindRequest.put("enrollmentId", enrollmentId);
     bindRequest.put("enrollmentProofToken", enrollmentProofToken);
 
     Response bindResponse =
@@ -197,7 +196,6 @@ public class EnrollmentRevocationSecurityTest extends AbstractSecurityTest {
     configureForAuthApi(dockerStackConfig);
 
     Map<String, Object> bindRequest = new HashMap<>();
-    bindRequest.put("enrollmentId", enrollmentId);
     bindRequest.put("enrollmentProofToken", enrollmentProofToken);
 
     Response bindResponse =
@@ -594,7 +592,6 @@ public class EnrollmentRevocationSecurityTest extends AbstractSecurityTest {
 
       configureForAuthApi(dockerStackConfig);
       Map<String, Object> bindRequest = new HashMap<>();
-      bindRequest.put("enrollmentId", created.enrollmentId());
       bindRequest.put("enrollmentProofToken", created.enrollmentProofToken());
       Response bindAfterRevoke =
           given()

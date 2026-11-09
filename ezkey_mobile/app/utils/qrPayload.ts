@@ -19,7 +19,6 @@ import {validateAuthUrl} from './urlValidation';
  * @since 2025
  */
 export type QrPayload = {
-  enrollmentId: string;
   enrollmentProofToken: string;
   /** Validated and normalized Auth API base URL when present in the QR code. */
   authUrl?: string;
@@ -31,8 +30,8 @@ export type QrPayload = {
  * The JSON format is the primary format and may include an `authUrl` field pointing to the Ezkey Auth API
  * host for this enrollment. When present the URL is validated (HTTPS enforced, dev loopback tolerated).
  *
- * The pipe-delimited format (`enrollmentId|enrollmentProofToken`) is kept for backward compatibility and
- * does not carry an `authUrl`; the global default from `env.apiBaseUrl` will be used instead.
+ * A leftover `enrollmentId` key is ignored. The enrollment id is returned by bind, not carried in the
+ * invitation (ADR-0019). A `proofToken|authUrl` paste is normalized by the enrollment wizard before parse.
  *
  * The function enforces the payload constraints described in `docs/ENDPOINT.md` ensuring we extract proof tokens
  * without introducing alternate parsing paths that could weaken enrollment verification.
@@ -49,34 +48,21 @@ export const parseQrPayload = (value: string): QrPayload => {
   }
 
   // Try JSON format first. Only JSON.parse itself is wrapped — validation errors propagate directly.
-  let parsed:
-    | {enrollmentId?: string | number; enrollmentProofToken?: string; authUrl?: string}
-    | undefined;
+  let parsed: {enrollmentProofToken?: string; authUrl?: string} | undefined;
   try {
     parsed = JSON.parse(trimmed) as typeof parsed;
   } catch {
-    // Not valid JSON — fall through to pipe-delimited format.
+    throw new Error('Unsupported QR format');
   }
 
-  if (parsed?.enrollmentId && parsed?.enrollmentProofToken) {
-    if (parsed.authUrl !== undefined && validateAuthUrl(parsed.authUrl) == null) {
-      throw new Error('Invalid Auth API URL in QR payload.');
-    }
-    return {
-      enrollmentId: String(parsed.enrollmentId),
-      enrollmentProofToken: String(parsed.enrollmentProofToken),
-      authUrl: validateAuthUrl(parsed.authUrl),
-    };
+  if (!parsed?.enrollmentProofToken) {
+    throw new Error('Unsupported QR format');
   }
-
-  // Pipe-delimited fallback: enrollmentId|enrollmentProofToken
-  const pipeParts = trimmed.split('|');
-  if (pipeParts.length >= 2) {
-    return {
-      enrollmentId: pipeParts[0],
-      enrollmentProofToken: pipeParts.slice(1).join('|'),
-    };
+  if (parsed.authUrl !== undefined && validateAuthUrl(parsed.authUrl) == null) {
+    throw new Error('Invalid Auth API URL in QR payload.');
   }
-
-  throw new Error('Unsupported QR format');
+  return {
+    enrollmentProofToken: String(parsed.enrollmentProofToken),
+    authUrl: validateAuthUrl(parsed.authUrl),
+  };
 };

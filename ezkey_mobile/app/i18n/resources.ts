@@ -240,7 +240,7 @@ export const resources = {
         challengeInputHint: 'Enter the 6-digit code shown with the QR code',
         requestFailed: 'Request failed.',
         unexpectedError: 'Unexpected error.',
-        missingIdOrToken: 'Enrollment ID and proof token are required.',
+        missingIdOrToken: 'The enrollment proof token is required.',
         missingAuthUrl:
           'No Auth API URL: scan a QR that includes authUrl (set ezkey.qr.auth-base-url on the server), or set EZKEY_API_BASE_URL in .env and rebuild.',
         invalidServerIdentity: 'Could not verify server identity (integration signature).',
@@ -278,7 +278,7 @@ export const resources = {
         qrUnsupportedFormat: 'Unsupported QR format',
         controlledBypassAction: 'Use controlled test seed',
         controlledBypassInputPlaceholder:
-          'Optional: paste runtime enrollment seed payload (JSON or enrollmentId|proofToken)',
+          'Optional: paste runtime enrollment seed payload (JSON or proofToken|authUrl)',
         controlledBypassHint:
           'Debug/test only. Camera scan is bypassed, but bind/verify trust checks still run.',
         controlledBypassActive: 'Controlled bypass seed used',
@@ -652,7 +652,7 @@ export const resources = {
         challengeInputHint: 'Entrez le code à 6 chiffres affiché avec le code QR',
         requestFailed: 'Échec de la requête.',
         unexpectedError: 'Erreur inattendue.',
-        missingIdOrToken: 'L’identifiant d’enrôlement et le proof token sont requis.',
+        missingIdOrToken: 'Le proof token d’enrôlement est requis.',
         missingAuthUrl:
           'Aucune URL Auth API : scannez un QR qui inclut authUrl (définissez ezkey.qr.auth-base-url côté serveur), ou configurez EZKEY_API_BASE_URL dans .env puis reconstruisez.',
         invalidServerIdentity:
@@ -691,7 +691,7 @@ export const resources = {
         qrUnsupportedFormat: 'Format QR non pris en charge',
         controlledBypassAction: 'Utiliser la seed de test contrôlée',
         controlledBypassInputPlaceholder:
-          'Optionnel : collez la charge seed runtime (JSON ou enrollmentId|proofToken)',
+          'Optionnel : collez la charge seed runtime (JSON ou proofToken|authUrl)',
         controlledBypassHint:
           'Debug/test uniquement. Le scan caméra est contourné, mais les vérifications de confiance bind/verify restent actives.',
         controlledBypassActive: 'Seed via contournement contrôlé utilisée',

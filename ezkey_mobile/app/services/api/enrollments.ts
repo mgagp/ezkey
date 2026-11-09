@@ -49,7 +49,6 @@ export const enrollmentsApi = {
    */
   bind: async (payload: BindEnrollmentRequest, authUrl?: string) => {
     const body = {
-      enrollmentId: Number(payload.enrollmentId),
       enrollmentProofToken: payload.enrollmentProofToken,
     };
     const response = await bindGenerated(

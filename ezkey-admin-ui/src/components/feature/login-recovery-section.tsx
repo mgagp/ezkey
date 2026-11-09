@@ -156,7 +156,6 @@ export function LoginRecoverySection({
     void (async () => {
       try {
         const json = buildEnrollmentQrPayloadJson(
-          qrInput.enrollmentId,
           qrInput.proof,
           authApiPublicBaseUrl,
         );

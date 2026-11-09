@@ -12,7 +12,7 @@ The Admin UI implements this as a **recovery funnel** on the login page, not as 
 ### After reset (bind step)
 
 - The operator is **not** authenticated with a normal admin token on the login page, so the UI cannot call `GET /api/v1/admins/{id}/onboarding/qrcode` after reset.
-- The success step therefore builds the **same JSON payload** as the Admin API QR generator (`enrollmentId`, `enrollmentProofToken`, optional `authUrl`) and renders a **QR image in the browser** (PNG data URL). Set `VITE_QR_AUTH_BASE_URL` to the same value as the Admin API’s `ezkey.qr.auth-base-url` (and the `authApiPublicBaseUrl` field from `GET /api/v1/public/instance-info`) so browser-generated QR matches server-generated QR and the mobile app receives a consistent `authUrl`.
+- The success step therefore builds the **same JSON payload** as the Admin API QR generator (`enrollmentProofToken`, optional `authUrl`) and renders a **QR image in the browser** (PNG data URL). Set `VITE_QR_AUTH_BASE_URL` to the same value as the Admin API’s `ezkey.qr.auth-base-url` (and the `authApiPublicBaseUrl` field from `GET /api/v1/public/instance-info`) so browser-generated QR matches server-generated QR and the mobile app receives a consistent `authUrl`.
 - The **binding challenge** stays visible for manual verification flows. The **enrollment proof token** remains available under a collapsed “Manual entry” section for operators who cannot scan.
 
 ## Provisioning

@@ -41,7 +41,7 @@ docs {
   **QR Code Format (JSON):**
   The QR code contains enrollment credentials in JSON format:
   ```json
-  {"enrollmentId":"4","enrollmentProofToken":"abc123def456...","authUrl":"https://ezkey.acme.com:8080"}
+  {"enrollmentProofToken":"abc123def456...","authUrl":"https://ezkey.acme.com:8080"}
   ```
   
   The `authUrl` field is only included when `ezkey.qr.auth-base-url` is configured on the server. When absent, the mobile app uses its default base URL.

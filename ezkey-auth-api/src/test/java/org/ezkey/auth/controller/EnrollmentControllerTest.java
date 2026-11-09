@@ -138,10 +138,9 @@ class EnrollmentControllerTest {
   @BeforeEach
   void setUp() {
     // Setup bind request test data - Using record constructor
-    bindRequestDto = new EnrollmentBindRequestDto(123, "test-proof-token");
+    bindRequestDto = new EnrollmentBindRequestDto("test-proof-token");
 
     bindRequest = new EnrollmentBindRequest();
-    bindRequest.setEnrollmentId(123);
     bindRequest.setEnrollmentProofToken("test-proof-token");
 
     bindResponse = new EnrollmentBindResponse();
@@ -216,7 +215,7 @@ class EnrollmentControllerTest {
   void bind_WhenInvalidEnrollmentId_ShouldReturn400() throws Exception {
     // Arrange - Using record constructor
     EnrollmentBindRequestDto invalidRequestDto =
-        new EnrollmentBindRequestDto(999, "invalid-proof-token");
+        new EnrollmentBindRequestDto("invalid-proof-token");
 
     when(enrollmentMapper.toEnrollmentBindRequest(any(EnrollmentBindRequestDto.class)))
         .thenReturn(bindRequest);

@@ -158,12 +158,10 @@ public class EzkeyAppController {
 
   @PostMapping("/enrollment/bind")
   public String bindEnrollment(
-      @RequestParam("enrollmentId") Integer enrollmentId,
       @RequestParam("enrollmentProofToken") String enrollmentProofToken,
       @RequestParam(value = "authApiBaseUrl", required = false) String authApiBaseUrl,
       Model model) {
     model.addAttribute("pageTitle", "Enrollment - Bind");
-    model.addAttribute("enrollmentId", enrollmentId);
     BindResolution bindResolution;
     try {
       bindResolution =
@@ -172,23 +170,20 @@ public class EzkeyAppController {
     } catch (InvalidAuthApiUrlException e) {
       model.addAttribute("pageTitle", "New Enrollment");
       model.addAttribute("configuredAuthApiBase", configuredAuthApiBase);
-      model.addAttribute("enrollmentId", enrollmentId);
       model.addAttribute("enrollmentProofToken", enrollmentProofToken);
       // Do not redisplay a rejected override URL (constant error only; no echo of attacker input)
       model.addAttribute("error", e.getMessage());
       return "phone/ezkey/new_enrollment";
     }
     logger.info(
-        "Bind enrollment {} using Auth API {} (QR override submitted: {})",
-        enrollmentId,
+        "Bind using Auth API {} (QR override submitted: {})",
         LogSanitizer.sanitizeForLog(bindResolution.apiBaseUrl()),
         authApiBaseUrl != null && !authApiBaseUrl.isBlank());
     try {
       EnrollmentBindResponseDto bindResponse =
-          authApiService
-              .bind(enrollmentId, enrollmentProofToken, bindResolution.apiBaseUrl())
-              .block();
-      if (bindResponse != null) {
+          authApiService.bind(enrollmentProofToken, bindResolution.apiBaseUrl()).block();
+      if (bindResponse != null && bindResponse.getEnrollmentId() != null) {
+        Integer enrollmentId = bindResponse.getEnrollmentId();
         // Generate device keys
         ECP256DeviceKeyPair keyPair = cryptoService.generateDeviceKeyPair();
         String devicePublicKeyB64 = keyPair.base64PublicKey();
@@ -258,15 +253,14 @@ public class EzkeyAppController {
     } catch (WebClientResponseException e) {
       // Log status (+ ProblemDetail type when parseable) only — never the raw error body (#754 S4)
       logger.warn(
-          "Bind API error for enrollment {}: status={}, problemType={}",
-          enrollmentId,
+          "Bind API error: status={}, problemType={}",
           e.getStatusCode().value(),
           problemTypeFromError(e));
       String userMessage =
           toBindErrorMessage(e.getStatusCode().value(), e.getResponseBodyAsString());
       model.addAttribute("error", userMessage);
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
-      logger.error("Bind failed for enrollment {}", enrollmentId, e);
+      logger.error("Bind failed", e);
       model.addAttribute("error", "Bind failed: " + e.getMessage());
     }
     return "phone/ezkey/bind_enrollment";

@@ -35,6 +35,7 @@ Each decision is recorded with enough context to be understood years later: why 
 | [ADR-0016](#adr-0016-keyset-blob-single-source-of-truth) | Keyset blob as single source of truth | accepted | 2026-10-21 |
 | [ADR-0017](#adr-0017-product-versioning-one-semver-for-the-monorepo) | Product versioning — one SemVer for the monorepo | accepted | 2026-11-04 |
 | [ADR-0018](#adr-0018--connector-spi-for-external-services) | Connector SPI for external services | accepted | 2026-11-05 |
+| [ADR-0019](#adr-0019--enrollment-invitation-is-the-proof-token) | Enrollment invitation is the proof token | accepted | 2026-11-08 |
 
 ## ADR-0001 — Backend-first cryptographic protocol
 
@@ -1309,3 +1310,62 @@ Admin API machine-to-machine hatch was removed on purpose (`I-2026-08-29`).
 
 - Refines design principle #16; supersedes the email transport in `V-2026-0005`; keeps `V-2026-0007`.
 - Related: ADR-0016 (existing at-rest encryption, reused for any connector credential Ezkey stores).
+
+## ADR-0019 — Enrollment invitation is the proof token
+
+### Metadata
+
+- **ID:** ADR-0019.
+- **Date:** 2026-11-08.
+- **Status:** accepted by Marc in the enrollment-id study (this change).
+- **Scope:** global (Auth API bind, Admin QR, mobile, Demo Device, Dart SDK).
+- **Owners:** Platform architecture / security.
+
+### Context
+
+The enrollment invitation (QR JSON, and the same payload used for paste and future deep links)
+carried `enrollmentId`, `enrollmentProofToken`, and optional `authUrl`. `enrollment_id` is an
+identity column. It is the primary key, the operator handle, and a field inside signed payloads.
+It is not a secret. Putting it in the invitation made a sequential id look like part of the
+credential, and it was the only reason the legacy `id|token` paste existed.
+
+The device does not need the id before bind. `POST /api/v1/enrollments/bind` already returned
+`enrollmentId`. The proof-token hash is unique (`uq_enrollment_proof_token_hash`), so the server
+can resolve the row from the token alone.
+
+Read-once binding stays. A matching token moves `CREATED` to `BOUND`. The id alone never did that.
+Unauthenticated `POST /verify` can still mark a `CREATED` row `INVALID` from a guessed id before
+any proof check. That burn is a separate issue. Dropping the id from the QR does not fix it and
+must not weaken one-shot invalidation after a real bind.
+
+`authUrl` stays optional in this decision. Real installs set `ezkey.qr.auth-base-url`. Making it
+required touches the mobile `EZKEY_API_BASE_URL` fallback and local stacks, so it is a successor
+issue, not this change.
+
+### Decision
+
+1. The invitation is `enrollmentProofToken` and, when `ezkey.qr.auth-base-url` is set, `authUrl`.
+   `enrollmentId` is not an invitation field. A leftover `enrollmentId` key is ignored. It is not
+   documented and it is not sent to the server.
+2. `POST /api/v1/enrollments/bind` accepts the proof token only. The server loads the row with
+   `findByEnrollmentProofTokenHash` (not the active-only finder: a `CREATED` enrollment is
+   inactive). The response still returns `enrollmentId`.
+3. Clients store that returned id and use it for verify, pending, respond, signatures, local ids,
+   and keystore aliases. Signature canonical forms do not change.
+4. The legacy `id|token` paste leaves with the id. A controlled bypass may paste `proofToken|authUrl`.
+5. No new database index. The existing unique hash constraint is the lookup.
+
+### Consequences
+
+- An already-printed QR that still contains `enrollmentId` still binds, because parsers ignore that
+  key. An old client that requires the id inside the QR must take it from the bind response.
+- Copy-token in Admin UI was already the proof token alone. That clipboard value is enough to bind.
+  That was true before this decision as well, once the id was known or omitted by a client that
+  only sent the token.
+- `authUrl` optionality is unchanged.
+
+### Related Decisions
+
+- ADR-0007 (proof tokens stored as hashes).
+- `docs/SECURITY_POSTURE.md` (sequential ids are not a secret once known).
+- `I-2026-11-03-enrollment-invitation-links` (links use this invitation, without `enrollmentId`).

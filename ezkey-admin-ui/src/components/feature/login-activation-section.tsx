@@ -157,7 +157,6 @@ export function LoginActivationSection({
     void (async () => {
       try {
         const payload = buildEnrollmentQrPayloadJson(
-          qrInput.enrollmentId,
           qrInput.proof,
           authApiPublicBaseUrl,
         );

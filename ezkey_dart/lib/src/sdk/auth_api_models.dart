@@ -5,16 +5,11 @@ import 'errors.dart';
 /// [EzkeyIntegrityException] (`malformedResponse`) on contract violations.
 
 class EnrollmentBindRequest {
-  EnrollmentBindRequest({
-    required this.enrollmentId,
-    required this.enrollmentProofToken,
-  });
+  EnrollmentBindRequest({required this.enrollmentProofToken});
 
-  final int enrollmentId;
   final String enrollmentProofToken;
 
   Map<String, Object?> toJson() => <String, Object?>{
-    'enrollmentId': enrollmentId,
     'enrollmentProofToken': enrollmentProofToken,
   };
 }

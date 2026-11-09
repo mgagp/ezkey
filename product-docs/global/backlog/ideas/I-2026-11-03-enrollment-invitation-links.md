@@ -6,7 +6,7 @@
 - **Status:** `captured`
 - **Priority:** `P2` (proposed; Marc sets it at triage)
 - **Created at:** `2026-11-03`
-- **Updated at:** `2026-11-03`
+- **Updated at:** `2026-11-08`
 - **Last reviewed at:** `2026-11-03`
 - **Component tags:** `admin-api`, `admin-ui`, `auth-api`, `mobile`, `sdk-dart`, `infra`, `docs`, `security`
 - **Lane:** program (new client-facing contract across Admin API, Admin UI, `ezkey_dart` and the
@@ -21,15 +21,16 @@ Let an enrollment invitation reach an authenticator as a **link**, not only as a
 that a user who receives it on the device that will hold the key (email, chat, the integrating
 app's page on mobile), a desktop authenticator without a camera, and a third-party authenticator
 can all start enrollment. The 6-digit challenge keeps travelling separately; bind and verify
-stay unchanged.
+stay unchanged. The invitation payload is the one in ADR-0019: `enrollmentProofToken` and
+optional `authUrl`. Links do not carry `enrollmentId`. Bind returns the id.
 
 ## Problem and value
 
-- **Problem:** the bind handle (`enrollmentId`, `enrollmentProofToken`, optional `authUrl`) only
+- **Problem:** the bind invitation (`enrollmentProofToken`, optional `authUrl`; ADR-0019) only
   exists as QR content. Scanning a QR shown on the same phone is impossible, desktops often have
   no camera, and a third-party authenticator has no documented text form to accept. The only text
-  path today is the Admin UI "copy token" button, which copies the raw proof token without the id
-  or the server URL.
+  path today is the Admin UI "copy token" button, which copies the raw proof token without the
+  server URL.
 - **Expected value:** same-device and camera-less enrollment with one defined format that every
   authenticator (reference app, Demo Device, desktop, Open Authenticator fork) parses the same
   way, plus a server-host confirmation that also hardens today's QR path.

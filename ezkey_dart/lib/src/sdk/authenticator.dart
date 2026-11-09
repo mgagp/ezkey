@@ -99,25 +99,21 @@ class EzkeyAuthenticator {
       );
     }
     final baseUrl = urlPolicy.require(rawUrl).toString();
-    final localId = EzkeyEnrollment.localIdFor(baseUrl, code.enrollmentId);
-    if (await enrollmentStore.load(localId) != null) {
-      throw const EzkeyValidationException(
-        'This enrollment already exists on this device',
-      );
-    }
 
     final response = await _api(baseUrl).bind(
-      EnrollmentBindRequest(
-        enrollmentId: code.enrollmentId,
-        enrollmentProofToken: code.enrollmentProofToken,
-      ),
+      EnrollmentBindRequest(enrollmentProofToken: code.enrollmentProofToken),
     );
 
-    if (response.enrollmentId != code.enrollmentId ||
-        response.enrollmentProofToken != code.enrollmentProofToken) {
+    if (response.enrollmentProofToken != code.enrollmentProofToken) {
       throw const EzkeyIntegrityException(
         EzkeyIntegrityCheck.bindConsistency,
         'Bind answer does not match the scanned invitation',
+      );
+    }
+    final localId = EzkeyEnrollment.localIdFor(baseUrl, response.enrollmentId);
+    if (await enrollmentStore.load(localId) != null) {
+      throw const EzkeyValidationException(
+        'This enrollment already exists on this device',
       );
     }
     if (response.integrationKeyAlgorithm != supportedIntegrationKeyAlgorithm) {

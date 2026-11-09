@@ -41,19 +41,18 @@ class QrCodePayloadServiceTest {
   class WithoutAuthUrl {
 
     @Test
-    @DisplayName("Should produce JSON with enrollmentId and enrollmentProofToken only")
+    @DisplayName("Should produce JSON with enrollmentProofToken only")
     void composePayload_withoutAuthUrl_shouldProduceMinimalJson() throws Exception {
       // Arrange
       QrCodeProperties properties = new QrCodeProperties();
       QrCodePayloadService service = new QrCodePayloadService(properties);
 
       // Act
-      String payload = service.composePayload(4, "test-proof-token-abc123");
+      String payload = service.composePayload("test-proof-token-abc123");
 
       // Assert
       assertNotNull(payload);
       JsonNode json = objectMapper.readTree(payload);
-      assertEquals("4", json.get("enrollmentId").asString());
       assertEquals("test-proof-token-abc123", json.get("enrollmentProofToken").asString());
       assertFalse(json.has("authUrl"), "authUrl should not be present when not configured");
     }
@@ -67,7 +66,7 @@ class QrCodePayloadServiceTest {
       QrCodePayloadService service = new QrCodePayloadService(properties);
 
       // Act
-      String payload = service.composePayload(1, "token123");
+      String payload = service.composePayload("token123");
 
       // Assert
       JsonNode json = objectMapper.readTree(payload);
@@ -83,7 +82,7 @@ class QrCodePayloadServiceTest {
       QrCodePayloadService service = new QrCodePayloadService(properties);
 
       // Act
-      String payload = service.composePayload(1, "token123");
+      String payload = service.composePayload("token123");
 
       // Assert
       JsonNode json = objectMapper.readTree(payload);
@@ -104,11 +103,10 @@ class QrCodePayloadServiceTest {
       QrCodePayloadService service = new QrCodePayloadService(properties);
 
       // Act
-      String payload = service.composePayload(42, "proof-token-xyz");
+      String payload = service.composePayload("proof-token-xyz");
 
       // Assert
       JsonNode json = objectMapper.readTree(payload);
-      assertEquals("42", json.get("enrollmentId").asString());
       assertEquals("proof-token-xyz", json.get("enrollmentProofToken").asString());
       assertTrue(json.has("authUrl"), "authUrl should be present when configured");
       assertEquals("https://ezkey.acme.com:8080", json.get("authUrl").asString());
@@ -123,7 +121,7 @@ class QrCodePayloadServiceTest {
       QrCodePayloadService service = new QrCodePayloadService(properties);
 
       // Act
-      String payload = service.composePayload(1, "token");
+      String payload = service.composePayload("token");
 
       // Assert
       JsonNode json = objectMapper.readTree(payload);
@@ -144,12 +142,12 @@ class QrCodePayloadServiceTest {
       QrCodePayloadService service = new QrCodePayloadService(properties);
 
       // Act
-      String payload = service.composePayload(99, "complex.token.with.dots.1234567890");
+      String payload = service.composePayload("complex.token.with.dots.1234567890");
 
       // Assert — simply parsing without exception proves validity
       JsonNode json = objectMapper.readTree(payload);
       assertNotNull(json);
-      assertEquals(3, json.size(), "JSON should have exactly 3 fields");
+      assertEquals(2, json.size(), "JSON should have exactly 2 fields");
     }
 
     @Test
@@ -161,7 +159,7 @@ class QrCodePayloadServiceTest {
       String tokenWithSpecialChars = "abc+/=.123456789.def+/=";
 
       // Act
-      String payload = service.composePayload(1, tokenWithSpecialChars);
+      String payload = service.composePayload(tokenWithSpecialChars);
 
       // Assert
       JsonNode json = objectMapper.readTree(payload);
@@ -169,20 +167,18 @@ class QrCodePayloadServiceTest {
     }
 
     @Test
-    @DisplayName("enrollmentId should be serialized as string for mobile parser compatibility")
-    void composePayload_enrollmentId_shouldBeString() throws Exception {
+    @DisplayName("enrollmentId is not an invitation field")
+    void composePayload_shouldOmitEnrollmentId() throws Exception {
       // Arrange
       QrCodeProperties properties = new QrCodeProperties();
       QrCodePayloadService service = new QrCodePayloadService(properties);
 
       // Act
-      String payload = service.composePayload(123, "token");
+      String payload = service.composePayload("token");
 
       // Assert
       JsonNode json = objectMapper.readTree(payload);
-      assertTrue(
-          json.get("enrollmentId").isString(),
-          "enrollmentId should be a JSON string for mobile parser compatibility");
+      assertFalse(json.has("enrollmentId"), "enrollmentId is not part of the invitation");
     }
   }
 }
