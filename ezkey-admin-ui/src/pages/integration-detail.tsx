@@ -357,10 +357,7 @@ export default function IntegrationDetailPage() {
         {/* Details */}
         {integration && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <Card
-              className="lg:col-span-2"
-              data-testid={isSystemIntegration ? '25b-detail-system-card' : undefined}
-            >
+            <Card className="lg:col-span-2">
               <CardHeader>
                 <CardTitle>{t('detail.integrationDetails')}</CardTitle>
               </CardHeader>

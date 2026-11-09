@@ -100,13 +100,6 @@ export function getTranslatedApiError(error: unknown, t: TFunction, fallback: st
     }
   }
 
-  if (rel === 'domain.system-integration-lifecycle') {
-    const locked = 'pendingAttemptPolicy.systemLocked';
-    if (i18n.exists(locked, { ns: 'integrations' })) {
-      return t(locked, { ns: 'integrations' });
-    }
-  }
-
   if (
     rel != null &&
     params != null &&

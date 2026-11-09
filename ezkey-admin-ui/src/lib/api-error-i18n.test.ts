@@ -183,15 +183,20 @@ describe('getTranslatedApiError', () => {
     expect(getTranslatedApiError(cooldown, t, 'generic')).toBe(
       'Les nouvelles demandes sont suspendues quelques minutes après plusieurs demandes refusées ou codes erronés. Réessayez plus tard.',
     );
-    const lifecycle = new ApiError(403, {}, 'fallback detail', {
+    const locked =
+      'Fixé à Remplacer pour la connexion des administrateurs : une nouvelle connexion remplace celle qui attend.';
+    const retire = new ApiError(403, {}, 'fallback detail', {
       type: `${EZKEY_PROBLEM_TYPE_BASE}/domain/system-integration-lifecycle`,
-      detail:
-        'System integration pending-attempt policy cannot be changed because it is reserved for administrator MFA.',
+      detail: 'System integration cannot be retired because it is reserved for administrator MFA.',
     });
-    expect(getTranslatedApiError(lifecycle, t, 'generic')).toBe(
-      'Fixé à Remplacer pour la connexion des administrateurs : une nouvelle connexion remplace celle qui attend.',
-    );
-    expect(getTranslatedApiError(lifecycle, t, 'generic')).not.toContain('administrator MFA');
+    const deleted = new ApiError(403, {}, 'fallback detail', {
+      type: `${EZKEY_PROBLEM_TYPE_BASE}/domain/system-integration-lifecycle`,
+      detail: 'System integration cannot be deleted because it is reserved for administrator MFA.',
+    });
+    expect(getTranslatedApiError(retire, t, 'generic')).toBe(retire.problemDetail?.detail);
+    expect(getTranslatedApiError(retire, t, 'generic')).not.toBe(locked);
+    expect(getTranslatedApiError(deleted, t, 'generic')).toBe(deleted.problemDetail?.detail);
+    expect(getTranslatedApiError(deleted, t, 'generic')).not.toContain('Fixé à Remplacer');
   });
 });
 

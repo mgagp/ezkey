@@ -1,4 +1,5 @@
--- Alert table for AuthAttemptAlertPersistedPostgresTest. Mirrors V11 without comments.
+-- Hand copy of Flyway migration V11 (ezkey_alert) for AuthAttemptAlertPersistedPostgresTest.
+-- Keep this file aligned with any ezkey_alert migration. V11 comments and the extra indexes are omitted.
 CREATE TABLE IF NOT EXISTS ezkey_alert (
     alert_id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     alert_type            VARCHAR(64)   NOT NULL,

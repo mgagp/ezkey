@@ -69,6 +69,19 @@ describe('policy save', () => {
     cleanup();
   });
 
+  it('uses the lock sentence for a system-integration lifecycle 403 on policy save', () => {
+    const fr = i18nFor('fr');
+    const error = new ApiError(403, {}, 'fallback detail', {
+      type: 'https://ezkey.io/problems/domain/system-integration-lifecycle',
+      detail:
+        'System integration pending-attempt policy cannot be changed because it is reserved for administrator MFA.',
+    });
+    const saveFailed = fr.t('pendingAttemptPolicy.saveFailed', { ns: 'integrations' });
+    expect(policySaveErrorMessage(error, fr.t.bind(fr), saveFailed)).toBe(
+      'Fixé à Remplacer pour la connexion des administrateurs : une nouvelle connexion remplace celle qui attend.',
+    );
+  });
+
   it('uses the French saveFailed sentence for a 500 instead of the English server detail', () => {
     const fr = i18nFor('fr');
     const error = new ApiError(500, {}, 'An unexpected error occurred', {
