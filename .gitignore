@@ -164,3 +164,5 @@ experimental-hybrid/lightsail/.local/
 
 # Claude Code per-user settings
 .claude/settings.local.json
+# SMTP connector real-provider secrets (#1206 step 6)
+docker/connector-smtp.local.env

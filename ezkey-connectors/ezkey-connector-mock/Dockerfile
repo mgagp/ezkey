@@ -1,4 +1,4 @@
-# Test double for the delivery contract v0. Never delivers anything.
+# Test double for the delivery contract v1. Never delivers anything.
 # Build context: the repository root (docker compose sets it), since the connector inherits the
 # root POM: versions, plugins and the committed THIRD-PARTY.txt shipped under META-INF/licenses/ (#1278).
 # Only the parent POMs and this module are copied; Maven builds the module alone with -f.

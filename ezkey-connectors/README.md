@@ -3,8 +3,8 @@
 Optional external services connected to an Ezkey base by configuration. Ezkey stays complete with none.
 Lab posture applies to this folder.
 
-- **Contract:** [`contracts/delivery-v0.openapi.yaml`](contracts/delivery-v0.openapi.yaml). It stays `v0` until
-  the real trial at step 6.
+- **Contract:** [`contracts/delivery-v1.openapi.yaml`](contracts/delivery-v1.openapi.yaml), frozen as `v1`
+  after the real Gmail trial at step 6 (2026-11-09). Any shape change makes a `v2`.
 - **Decisions:** [ADR-0018](../product-docs/global/architecture-decisions.md#adr-0018--connector-spi-for-external-services),
   [decision pack](../product-docs/global/decisions/2026-11-04-connector-spi/README.md) and
   [`TB-2026-11-06`](../product-docs/global/backlog/TB-2026-11-06-connector-delivery-contract-v0.md).
@@ -17,6 +17,14 @@ The connectors are modules of the root Maven reactor (#1278): they share its ver
 `THIRD-PARTY.txt`, and the `backend` CI job runs their unit tests. Their only link to Ezkey is the HTTP contract: an
 enforcer rule in [`pom.xml`](pom.xml) fails the build if a connector depends on any `org.ezkey` module. Each connector
 has its own Dockerfile, built from the repository root.
+
+## Trial with a real provider
+
+[`docker/docker-compose.connector-smtp-gmail.yml`](../docker/docker-compose.connector-smtp-gmail.yml) replaces the
+Mailpit overlay and sends through Gmail with an app password (#1206 step 6). Copy
+[`docker/connector-smtp.local.env.example`](../docker/connector-smtp.local.env.example) to the gitignored
+`docker/connector-smtp.local.env`, and set `EZKEY_QR_AUTH_BASE_URL` to a public HTTPS URL of the Auth API, since the
+email names that server and the phone must reach it.
 
 ```bash
 # from the repository root

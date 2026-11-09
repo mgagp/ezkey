@@ -71,7 +71,7 @@ class SmtpDeliveryControllerTest {
 
     assertThat(response.statusCode()).isEqualTo(200);
     assertThat(response.body())
-        .contains("\"status\":\"ok\"", "\"testMode\":false", "\"contractVersion\":\"v0\"")
+        .contains("\"status\":\"ok\"", "\"testMode\":false", "\"contractVersion\":\"v1\"")
         .doesNotContain("localhost", "invitations@example.com", "3925");
     assertThat(response.body()).contains("\"connectorVersion\":\"" + buildVersion() + "\"");
     assertThat(greenMail.getReceivedMessages()).isEmpty();
@@ -120,6 +120,32 @@ class SmtpDeliveryControllerTest {
     image.getInputStream().transferTo(bytes);
     assertThat(bytes.toByteArray())
         .isEqualTo(Base64.getDecoder().decode(ConnectorClient.PNG_BASE64));
+  }
+
+  @Test
+  @DisplayName("the job's deadline and zone reach the email; a malformed deadline is refused")
+  void deadlineFromJob() throws Exception {
+    String deadline = ",\"expiresAt\":\"2026-11-16T14:43:00Z\",\"timeZone\":\"America/Toronto\"";
+    HttpResponse<String> response =
+        client.post(
+            "current-token",
+            ConnectorClient.job(
+                "fr", "person@example.com", "Acme", ConnectorClient.PNG_BASE64, deadline));
+
+    assertThat(response.statusCode()).isEqualTo(200);
+    String text = bodyOf(leaves(greenMail.getReceivedMessages()[0]), "text/plain");
+    assertThat(text).contains("valable jusqu’au 16 novembre 2026 à 9 h 43");
+
+    String malformed = ",\"expiresAt\":\"next week\"";
+    assertThat(
+            client
+                .post(
+                    "current-token",
+                    ConnectorClient.job(
+                        "fr", "person@example.com", "Acme", ConnectorClient.PNG_BASE64, malformed))
+                .statusCode())
+        .isEqualTo(400);
+    assertThat(greenMail.getReceivedMessages()).hasSize(1);
   }
 
   @Test

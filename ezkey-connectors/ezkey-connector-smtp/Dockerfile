@@ -1,4 +1,4 @@
-# Delivery contract v0 over SMTP (#1206 step 5).
+# Delivery contract v1 over SMTP (#1206 step 5).
 # Build context: the repository root (docker compose sets it), since the connector inherits the
 # root POM: versions, plugins and the committed THIRD-PARTY.txt shipped under META-INF/licenses/ (#1278).
 # Only the parent POMs and this module are copied; Maven builds the module alone with -f.

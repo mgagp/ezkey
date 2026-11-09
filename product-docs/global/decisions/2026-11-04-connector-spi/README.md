@@ -374,7 +374,7 @@ error, timeout and rejected credential, so CI, QA and new connector prototypes s
 ## Questions for step 2, now decided
 
 All six were settled on 2026-11-06. The result is the
-[delivery contract v0](../../../../ezkey-connectors/contracts/delivery-v0.openapi.yaml), the
+delivery contract v0 (now [v1](../../../../ezkey-connectors/contracts/delivery-v1.openapi.yaml)), the
 [directory sketch](directory-sketch.md) and the reasoning in
 [`TB-2026-11-06`](../../backlog/TB-2026-11-06-connector-delivery-contract-v0.md).
 
@@ -389,6 +389,7 @@ All six were settled on 2026-11-06. The result is the
 **Requirements already set for step 2 (Marc, 2026-11-05):**
 
 - **The contract stays `v0` until the real trial at step 6,** and can change without compatibility work.
+  _Done 2026-11-09: the Gmail trial passed, and `v1` is v0 plus the invitation deadline (`expiresAt`, `timeZone`)._
   It becomes `v1` after that trial. The step order stays: the mock and its gate come first, because they
   make the rest safe to build, and all the code lives in the monorepo.
 - **The job carries** the trigger (operator today), the template and locale, and the tenant. An

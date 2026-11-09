@@ -2,7 +2,7 @@
 
 **Status:** sketch, not a contract (step 2 of [#1206](https://github.com/mgagp/ezkey/issues/1206)).
 **Its one job:** check whether directories could force a change to the
-[delivery contract](../../../../ezkey-connectors/contracts/delivery-v0.openapi.yaml).
+[delivery contract](../../../../ezkey-connectors/contracts/delivery-v1.openapi.yaml).
 **Scale:** an SME or a business unit, with a handful of changes per run
 ([`product-intent.md`](../../product-intent.md) § *Scale and positioning compass*).
 

@@ -33,7 +33,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * HTTP adapter for the delivery contract v0. It follows no redirect, since the job carries the QR.
+ * HTTP adapter for the delivery contract v1. It follows no redirect, since the job carries the QR.
  *
  * <p>Logs carry only the send id, the outcome and typed codes: never the job, the recipient, a
  * response body or an exception message.
@@ -98,7 +98,7 @@ public class HttpDeliveryConnector implements DeliveryConnectorPort {
     try {
       response =
           httpClient.send(
-              HttpRequest.newBuilder(uri("/v0/deliveries"))
+              HttpRequest.newBuilder(uri("/v1/deliveries"))
                   .timeout(properties.getReadTimeout())
                   .header("Authorization", "Bearer " + properties.getToken())
                   .header("Content-Type", "application/json")
@@ -154,7 +154,7 @@ public class HttpDeliveryConnector implements DeliveryConnectorPort {
     try {
       HttpResponse<String> response =
           httpClient.send(
-              HttpRequest.newBuilder(uri("/v0/health"))
+              HttpRequest.newBuilder(uri("/v1/health"))
                   .timeout(properties.getHealthTimeout())
                   .header("Authorization", "Bearer " + properties.getToken())
                   .GET()
@@ -200,6 +200,12 @@ public class HttpDeliveryConnector implements DeliveryConnectorPort {
     body.put("recipient", job.recipient());
     body.put("organisationName", job.organisationName());
     body.put("expectedServer", job.expectedServer());
+    if (job.expiresAt() != null) {
+      body.put("expiresAt", job.expiresAt().toString());
+    }
+    if (job.timeZone() != null) {
+      body.put("timeZone", job.timeZone());
+    }
     body.put("qrPngBase64", job.qrPngBase64());
     return objectMapper.writeValueAsString(body);
   }
