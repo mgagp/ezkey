@@ -104,6 +104,8 @@ jobs:
               - 'scripts/lib/ci-ha-lb-smoke-lib.sh'
               - 'scripts/db/verify-grants.sh'
               - 'scripts/db/verify-grants.test.sh'
+              - 'scripts/issue-response-reminder.sh'
+              - 'scripts/issue-response-reminder.test.sh'
               - 'specs/**'
               - '.mvn/**'
               - 'THIRD-PARTY.txt'
@@ -341,6 +343,10 @@ jobs:
       # #1121: role passwords stay off docker exec argv; catalog mode fails closed.
       - name: verify-grants credential and catalog locks (#1121)
         run: bash scripts/db/verify-grants.test.sh
+
+      # 14-day first-response reminder: who is waiting, day 7 / day 12, no write on dry-run.
+      - name: Issue response reminder selection (#1275)
+        run: bash scripts/issue-response-reminder.test.sh
 
       # Lot B (code-scanning 2026-10-13): signup URL allowlist + ACME DOM XSS text rendering.
       - name: Community-signup URL allowlist + ACME biz-status XSS tests

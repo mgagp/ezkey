@@ -188,6 +188,26 @@ class SmtpDeliveryControllerTest {
   }
 
   @Test
+  @DisplayName("expectedServer must be a hostname; a URL, port, path or newline sends nothing")
+  void refusesNonHostnameExpectedServer() throws Exception {
+    // Control: the same job with a plain hostname is accepted, so each 400 below is the server.
+    assertThat(client.post("current-token", jobWithServer("auth.example.com")).statusCode())
+        .isEqualTo(200);
+    int before = greenMail.getReceivedMessages().length;
+    assertRefusedServer("https://evil.example/phish");
+    assertRefusedServer("auth.example.com:443");
+    assertRefusedServer("auth.example.com/login");
+    assertRefusedServer("");
+    assertRefusedServer("auth.example.com.");
+    assertRefusedServer("-bad.example");
+    HttpResponse<String> injected =
+        client.post("current-token", jobWithServer("auth.example.com\\nBcc: x@example.com"));
+    assertThat(injected.statusCode()).isEqualTo(400);
+    assertThat(injected.body()).contains("invalid-request");
+    assertThat(greenMail.getReceivedMessages()).hasSize(before);
+  }
+
+  @Test
   @DisplayName("logs hold the send id, never the recipient, the token or the QR")
   void logCanary(CapturedOutput output) throws Exception {
     client.post(
@@ -210,6 +230,21 @@ class SmtpDeliveryControllerTest {
   private HttpResponse<String> post(String locale, String recipient, String org, String qr)
       throws Exception {
     return client.post("current-token", ConnectorClient.job(locale, recipient, org, qr));
+  }
+
+  private void assertRefusedServer(String expectedServer) throws Exception {
+    HttpResponse<String> response = client.post("current-token", jobWithServer(expectedServer));
+    assertThat(response.statusCode()).isEqualTo(400);
+    assertThat(response.body()).contains("invalid-request");
+  }
+
+  /** A valid job whose expectedServer is replaced by a raw JSON string value. */
+  private static String jobWithServer(String rawJsonValue) {
+    String field = "\"expectedServer\":\"auth.example.com\"";
+    String job =
+        ConnectorClient.job("en", "person@example.com", "Acme", ConnectorClient.PNG_BASE64);
+    assertThat(job).contains(field);
+    return job.replace(field, "\"expectedServer\":\"" + rawJsonValue + "\"");
   }
 
   private static List<Part> leaves(Part part) throws Exception {

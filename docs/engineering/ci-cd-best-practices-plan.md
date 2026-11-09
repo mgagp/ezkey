@@ -48,7 +48,7 @@ five language analyses uploaded on `main` at that commit.
 | [`docs/SECURITY_POSTURE.md`](../SECURITY_POSTURE.md) | Yes | Honest product security claims + § Code scanning policy (SLAs, dismiss rules). |
 | [`.github/workflows/scorecard.yml`](../../.github/workflows/scorecard.yml) | Yes | OpenSSF Scorecard (`ossf/scorecard-action`); push/`main` + weekly cron + `branch_protection_rule` + `workflow_dispatch`; `publish_results: true`; SARIF → code scanning. README badge deferred to a follow-up after first publish. |
 | `dependency-review.yml` | **Yes** | Warn-only on manifest and workflow PRs; not in `ci-gate` (G7). |
-| `issue-response-reminder.yml` | **Yes** | Daily. Reminds the maintainer in one tracking issue when a report from outside the project has had no maintainer response for 7 days (alert at 12), backing the 14-day promise in `SECURITY.md` and `CONTRIBUTING.md` (2026-11-08). Logic in `scripts/issue-response-reminder.sh`, dry-runnable. Does not cover private vulnerability reports or the `security@ezkey.org` mailbox. |
+| `issue-response-reminder.yml` | **Yes** | Daily. Reminds the maintainer in one tracking issue when a report from outside the project has had no maintainer response for 7 days (alert at 12), backing the 14-day promise in `SECURITY.md` and `CONTRIBUTING.md` (2026-11-08). Logic in `scripts/issue-response-reminder.sh`, dry-runnable, locked by `scripts/issue-response-reminder.test.sh` (no GitHub). Does not cover private vulnerability reports or the `security@ezkey.org` mailbox. |
 | SBOM / provenance / release / harden-runner workflows | **No** | Not in `.github/workflows/`. |
 
 #### 1.1.1 Maven dependency submission
