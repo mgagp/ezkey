@@ -132,10 +132,10 @@ Standard clean-start, then `./scripts/provision.sh` and `./scripts/up.sh`.
 The demo user is `testuser` on port 2222 (keyboard-interactive only, not this
 two-factor fixture).
 
-`provision.sh` sets the enrollment `authAttemptChallengeRequired=false`. The
-demo conf still has `challenge_requested=true` (connector default since #995),
-so the attempt arrives with a challenge. That enrollment flag does not turn
-the connector request off. This contract does not change that rule.
+Runbook: `authAttemptChallengeRequired=false` on the enrollment does not
+disable a challenge the PAM connector requested (`challenge_requested=true`).
+The server ORs the two flags. `provision.sh` leaves the enrollment flag false;
+the demo conf still requests the code.
 
 `./scripts/demo-ssh.sh` reads `Ezkey challenge code:` from the SSH prompt and
 calls `./scripts/respond-pending.sh approve` with those digits. That is the
