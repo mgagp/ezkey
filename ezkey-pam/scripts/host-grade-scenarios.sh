@@ -101,6 +101,29 @@ hg_run_scenarios() {
   else
     hg_fail line5_reject_relative_state "relative state directory rc=${rc}"
   fi
+  local state_parent
+  state_parent="$(dirname "${STATE_DIR}")"
+  if [ -e "${STATE_DIR}" ] || [ -e "${state_parent}" ]; then
+    hg_fail line5_reject_fail_after_before_dirs \
+      "state directory already exists before the FAIL_AFTER check"
+  else
+    hash_before="$(hg_base_hash)"
+    export EZKEY_PAM_APPLY_FAIL_AFTER=bogus
+    set +e
+    hg_apply
+    rc=$?
+    set -e
+    unset EZKEY_PAM_APPLY_FAIL_AFTER
+    hash_after="$(hg_base_hash)"
+    if [ "${rc}" -ne 0 ] && [ "${hash_before}" = "${hash_after}" ] \
+      && [ ! -e "${STATE_DIR}" ] && [ ! -e "${state_parent}" ]; then
+      hg_pass line5_reject_fail_after_before_dirs \
+        "an invalid FAIL_AFTER is rejected and creates no state directory"
+    else
+      hg_fail line5_reject_fail_after_before_dirs \
+        "invalid FAIL_AFTER rc=${rc}"
+    fi
+  fi
   saved_conf="${CONF}"
   hash_before="$(sha256sum "${SSHD_CFG}" "${PAM_SSHD}" "${saved_conf}" \
     | awk '{print $1}' | sha256sum | awk '{print $1}')"

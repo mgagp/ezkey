@@ -41,7 +41,7 @@
 #
 # EZKEY_PAM_APPLY_FAIL_AFTER=sshd is the suite hook. apply writes
 # sshd_config, then fails and restores the snapshot. Any other non-empty
-# value is rejected before a write.
+# value is rejected before a directory is created.
 set -euo pipefail
 
 CONF="${EZKEY_PAM_CONF:-/etc/security/pam_ezkey.conf}"
@@ -284,6 +284,8 @@ ha_snapshot_file() {
 }
 
 ha_snapshot() {
+  # An existing READY is an earlier snapshot. Skip it, and do not re-check
+  # modes left by an older copy of this script.
   if [ -f "${SNAP}/READY" ]; then
     return 0
   fi
@@ -490,7 +492,6 @@ ha_apply() {
   ha_refuse_symlinks || return 1
   ha_validate_sshd_bin || return 1
   ha_validate_write_targets || return 1
-  ha_prepare_state_dir || return 1
   case "${EZKEY_PAM_APPLY_FAIL_AFTER:-}" in
     "" | sshd) ;;
     *)
@@ -498,6 +499,7 @@ ha_apply() {
       return 1
       ;;
   esac
+  ha_prepare_state_dir || return 1
   ha_snapshot || return 1
   # set -e would exit before the snapshot is restored.
   set +e

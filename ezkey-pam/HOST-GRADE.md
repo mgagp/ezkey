@@ -10,7 +10,9 @@ and a real-host cutover. The module is not a second PAM framework.
 
 Proof today: `./scripts/host-grade-accept.sh` from `ezkey-pam/` (Docker, no
 manual step). The same script runs inside the existing Rocky Linux 10 and
-Amazon Linux 2023 images. Apply, remove, and rollback are
+Amazon Linux 2023 images. It is not wired into the `ezkey-pam` CI job. A
+pass count from it is local Docker evidence, not a CI result. Apply, remove,
+and rollback are
 [`scripts/host-apply.sh`](scripts/host-apply.sh). That script ships in the
 source tree. `make install` copies the module and the sample conf; it does
 not copy the script. The runner calls it. `install.sh` still only warns, and
@@ -76,11 +78,17 @@ community instance (#955).
    parent is created root-only. A `.hg` temp is removed on exit. `restorecon`
    runs on the destination when the command exists.
    `sshd -t` must pass on the MFA config and the
-   admin config before apply returns 0. If any step fails, the snapshot is
-   restored byte for byte. `remove` restores `sshd_config`, `/etc/pam.d/sshd`,
-   and `pam_ezkey.conf` byte for byte from the snapshot taken before the
-   first apply, runs `sshd -t` on that restored config, and a second remove
-   stays there. A CR or LF in any environment value is rejected and apply
+   admin config before apply returns 0. If any step fails inside the script,
+   the snapshot is restored byte for byte. An apply killed midway removes its
+   temp and does not restore the snapshot. Files already renamed stay as
+   written. Recover with `host-apply.sh remove`, or with `check` after `arm`.
+   `remove` restores `sshd_config` and `/etc/pam.d/sshd` from the snapshot,
+   and restores the conf as `0600` `root:root` even when the original file
+   was `0644`. That tightening is intended. It runs `sshd -t` on that restored
+   config, and a second remove stays there. If `snapshot/READY` already
+   exists, apply skips the snapshot and does not re-check modes left by an
+   earlier version of this script. A CR or LF in any environment value is
+   rejected and apply
    exits non-zero without writing. Group and user must match
    `[A-Za-z_][A-Za-z0-9_-]{0,31}`. A name that contains a dot is refused.
    Ports must be decimal 1–65535 with no
@@ -141,7 +149,8 @@ keyboard-interactive-only host because this fixture exists.
 
 `./scripts/host-grade-accept.sh` builds the Rocky builder, the Rocky runtime,
 the AL2023 builder, and the AL2023 runtime, then runs this same script with
-`--inside` in each runtime. Inside, it sources `host-grade-fixtures.sh` and
+`--inside` in each runtime. The `ezkey-pam` CI job does not run it. Inside,
+it sources `host-grade-fixtures.sh` and
 `host-grade-scenarios.sh`, calls `host-apply.sh`, and talks to
 `scripts/integration-api-stub.py` (approve, deny, expire, API down, HTTP 404).
 Artifacts (no hostname, no address):

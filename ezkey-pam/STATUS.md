@@ -15,7 +15,8 @@ Host-grade contract (#1200): [`HOST-GRADE.md`](HOST-GRADE.md). The operator
 tool is [`scripts/host-apply.sh`](scripts/host-apply.sh). It ships in the
 source tree; `make install` does not copy it. Proved by
 `./scripts/host-grade-accept.sh` on the Rocky and Amazon Linux 2023 Docker
-images (stub, no manual step). Not proved on a real host. Lightsail acceptance
+images (stub, no manual step). That script is not wired into CI. Not proved
+on a real host. Lightsail acceptance
 ([#1201](https://github.com/mgagp/ezkey/issues/1201)) stays blocked until that
 contract is merged. `install.sh` still does not edit `sshd_config`.
 
