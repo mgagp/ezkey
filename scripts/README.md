@@ -25,8 +25,9 @@ Docker-only alternative (no host JDK/Maven): `./scripts/build-docker.sh`. Same D
 ## Product version sync (ADR-0017 / #1211)
 
 Parent POM `${revision}${changelist}` is the product SemVer source of truth. Align npm / Python /
-Android / Jenkins SDK pins, then gate divergence in CI. .NET stays out until a client exists
-(#1219; empty shell removed in #1232):
+Android `versionName` / iOS `MARKETING_VERSION` / Jenkins SDK pins, then gate divergence in CI.
+Android `versionCode` and iOS `CURRENT_PROJECT_VERSION` stay store-local. .NET stays out until a
+client exists (#1219; empty shell removed in #1232):
 
 ```bash
 ./scripts/sync-version.sh

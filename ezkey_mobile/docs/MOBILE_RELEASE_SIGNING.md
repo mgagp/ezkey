@@ -97,13 +97,14 @@ product SemVer:
 (ADR-0017 / [#1211](https://github.com/mgagp/ezkey/issues/1211)).
 
 - **`versionName`** — `ezkey_mobile/package.json` `"version"` equals product `X.Y.Z` (optional
-  matching pre-release). Gradle injects it as Android `versionName`.
+  matching pre-release). Gradle injects it as Android `versionName`. iOS `MARKETING_VERSION`
+  uses the same string. It changes when the product cut changes, not on every Play upload.
 - **`versionCode`** — bump in `android/app/build.gradle` every Play upload (strictly increasing).
 - **Play release name** — `play-upload-internal.sh` sets `'<versionCode> (<versionName>)'`.
 
 Confirm the next `versionCode` against **Play Console → App bundle explorer** before upload.
-vc4 reused `versionName` `0.1.0-alpha` from vc3 — do not repeat that pattern of same name without
-a new `versionCode`.
+Same `versionName` across uploads is fine when `versionCode` increases; vc4 went out as a bare
+name and the Console could not tell it from vc3. The release name carries both.
 
 > Play Console rejects an AAB whose `versionCode` is not strictly greater than
 > every previously uploaded AAB for the app.

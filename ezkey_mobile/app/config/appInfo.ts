@@ -20,9 +20,10 @@ import packageJson from '../../package.json';
 export const APP_DISPLAY_NAME = 'Ezkey';
 
 /**
- * Semantic application version sourced from `package.json`. Mirrors the Android
- * `versionName` and the iOS `CFBundleShortVersionString` and is the single source of truth
- * surfaced to users in the UI.
+ * Semantic application version sourced from `package.json`. Mirrors Android
+ * `versionName` and iOS `MARKETING_VERSION` (`CFBundleShortVersionString`).
+ * `scripts/sync-version.sh` keeps those native fields on this string. It is what
+ * About shows. Store build integers (`versionCode`, `CURRENT_PROJECT_VERSION`) are separate.
  *
  * @since 2025
  */

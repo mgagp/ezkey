@@ -36,12 +36,21 @@ Marc / [#1211](https://github.com/mgagp/ezkey/issues/1211).
 avoids conflating method/deploy pointers with the product line —
 [#1211](https://github.com/mgagp/ezkey/issues/1211).
 
-### Mobile (`versionName` / `versionCode`)
+### Mobile (`versionName` / `versionCode` / iOS)
 
 | Field | Rule |
 |-------|------|
 | **`versionName`** | Equals the product version `X.Y.Z` (same string as the SemVer without the leading `v`; use a matching pre-release suffix when the product tag does). |
-| **`versionCode`** | Monotonic increasing integer (Play requirement). |
+| **iOS `MARKETING_VERSION`** | Same string as `versionName` (`CFBundleShortVersionString`). Debug and Release of `org.ezkey.mobile`. |
+| **`versionCode`** | Monotonic increasing integer (Play requirement). Independent of the Apple build number. |
+| **iOS `CURRENT_PROJECT_VERSION`** | Apple build integer. Starts at **1** for the `0.2.0` line. Increases on each App Store Connect upload. Not tied to `versionCode`. |
+
+**When a number moves (public alpha).** Servers, Admin UI, and the community host stay on the git
+SHA; Maven stays `0.2.0-SNAPSHOT`. The product name (`0.2.0`, `versionName`, `MARKETING_VERSION`)
+moves when a mobile ship is named as a new cut. Each Play upload still raises `versionCode`, and
+each Apple upload still raises `CURRENT_PROJECT_VERSION`, even when the name stays. Several device
+builds of one cut share `0.2.0`; the Play release name `'<versionCode> (<versionName>)'` tells them
+apart.
 
 **Trace:** Mobile `versionName` = product `X.Y.Z` with a monotonic `versionCode` — keeps the store
 upload identity tied to the monorepo product line; an own mobile cadence later would be a
@@ -76,8 +85,9 @@ release-looking local coordinate.
 | npm (Admin UI, `ezkey-javascript-sdk`, generated `ezkey-admin-client` / `ezkey-auth-client`) | Maven string as-is | e.g. `0.2.0-SNAPSHOT` |
 | .NET | deferred | No SDK in tree (#1232). When a client returns (#1219): `PackageVersion` keeps the Maven string; `AssemblyVersion` / `FileVersion` are numeric `major.minor.patch.0` only |
 | Python (`ezkey-python-sdk`, `ezkey-cli`) | `-SNAPSHOT` → `.dev0` (PEP 440) | e.g. `0.2.0.dev0` |
-| Mobile `package.json` / Android `versionName` | strip trailing `-SNAPSHOT` only | e.g. `0.2.0`; keep `-alpha.N` when present |
-| Android `versionCode` | monotonic integer **> 6** | Floor `7` for the `0.2.0` train (Play already shipped vc6) |
+| Mobile `package.json` / Android `versionName` / iOS `MARKETING_VERSION` | strip trailing `-SNAPSHOT` only | e.g. `0.2.0`; keep `-alpha.N` when present |
+| Android `versionCode` | monotonic integer **> 6** | Floor `7` for the `0.2.0` train (Play already shipped vc6). Not copied onto iOS |
+| iOS `CURRENT_PROJECT_VERSION` | left as-is by sync | Apple build integer; `1` on the first `0.2.0` archive |
 | Jenkins lab `ezkey.sdk.version` + install-file pins | Maven string | Lab **plugin** HPI SemVer stays independent (ADR-0017 exception / #1211) |
 
 **Commands:**

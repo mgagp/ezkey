@@ -154,6 +154,20 @@ else
   ok "android versionCode = ${CODE} (> 6, floor ${EZKEY_ANDROID_VERSION_CODE_MIN})"
 fi
 
+# iOS marketing version follows the product name. CURRENT_PROJECT_VERSION is the
+# Apple build integer (starts at 1) and is not compared to Android versionCode.
+PBX="${ROOT}/ezkey_mobile/ios/EzkeyMobile.xcodeproj/project.pbxproj"
+ios_count=0
+while IFS= read -r ios_ver; do
+  ios_ver="${ios_ver//$'\r'/}"
+  [[ -n "$ios_ver" ]] || continue
+  ios_count=$((ios_count + 1))
+  check_eq "iOS MARKETING_VERSION (org.ezkey.mobile)" "$ios_ver" "$ANDROID_NAME"
+done < <(ezkey_read_ios_marketing_versions "$PBX")
+if [[ "$ios_count" -ne 2 ]]; then
+  fail "expected 2 iOS app MARKETING_VERSION entries (Debug and Release), got ${ios_count}"
+fi
+
 # Exclusions (not product-line artifacts — do not fail):
 #   product-docs/site/package.json — methodology explorer
 #   bruno/package.json — API collection tooling

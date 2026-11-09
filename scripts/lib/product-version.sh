@@ -315,3 +315,108 @@ if n2 == 0:
 open(path, "w", encoding="utf-8", newline="\n").write(new2)
 PY
 }
+
+# App-target MARKETING_VERSION only (bundle id org.ezkey.mobile). Debug and Release.
+# CURRENT_PROJECT_VERSION is the Apple build integer and is not rewritten here.
+ezkey_read_ios_marketing_versions() {
+  local pbx="${1:?}"
+  python3 - "$pbx" <<'PY'
+import sys
+
+path = sys.argv[1]
+text = open(path, encoding="utf-8", newline="").read()
+app_id = "PRODUCT_BUNDLE_IDENTIFIER = org.ezkey.mobile;"
+found = 0
+start = 0
+key = "buildSettings = {"
+while True:
+    i = text.find(key, start)
+    if i < 0:
+        break
+    end = text.find("\n", i)
+    pos = end + 1
+    close = None
+    while pos < len(text):
+        nl = text.find("\n", pos)
+        if nl < 0:
+            nl = len(text)
+        if text[pos:nl].strip() == "};":
+            close = nl
+            break
+        pos = nl + 1
+    if close is None:
+        sys.stderr.write(f"error: unclosed buildSettings in {path}\n")
+        sys.exit(2)
+    block = text[i:close]
+    if app_id in block:
+        marker = "MARKETING_VERSION = "
+        m = block.find(marker)
+        if m < 0:
+            sys.stderr.write(f"error: app target missing MARKETING_VERSION in {path}\n")
+            sys.exit(2)
+        value = block[m + len(marker):].split(";", 1)[0].strip().replace("\r", "")
+        sys.stdout.buffer.write(f"{value}\n".encode("utf-8"))
+        found += 1
+    start = close + 1
+if found != 2:
+    sys.stderr.write(
+        f"error: expected 2 app MARKETING_VERSION entries in {path}, got {found}\n"
+    )
+    sys.exit(2)
+PY
+}
+
+ezkey_set_ios_marketing_version() {
+  local pbx="${1:?}"
+  local version="${2:?}"
+  python3 - "$pbx" "$version" <<'PY'
+import sys
+
+path, version = sys.argv[1], sys.argv[2]
+text = open(path, encoding="utf-8", newline="").read()
+app_id = "PRODUCT_BUNDLE_IDENTIFIER = org.ezkey.mobile;"
+out = []
+start = 0
+key = "buildSettings = {"
+updated = 0
+while True:
+    i = text.find(key, start)
+    if i < 0:
+        out.append(text[start:])
+        break
+    out.append(text[start:i])
+    end = text.find("\n", i)
+    pos = end + 1
+    close = None
+    while pos < len(text):
+        nl = text.find("\n", pos)
+        if nl < 0:
+            nl = len(text)
+        if text[pos:nl].strip() == "};":
+            close = nl
+            break
+        pos = nl + 1
+    if close is None:
+        sys.stderr.write(f"error: unclosed buildSettings in {path}\n")
+        sys.exit(2)
+    block = text[i:close]
+    if app_id in block:
+        marker = "MARKETING_VERSION = "
+        m = block.find(marker)
+        if m < 0:
+            sys.stderr.write(f"error: app target missing MARKETING_VERSION in {path}\n")
+            sys.exit(2)
+        semi = block.find(";", m)
+        block = block[: m + len(marker)] + version + block[semi:]
+        updated += 1
+    out.append(block)
+    start = close
+new = "".join(out)
+if updated != 2:
+    sys.stderr.write(
+        f"error: expected to set 2 app MARKETING_VERSION entries in {path}, set {updated}\n"
+    )
+    sys.exit(2)
+open(path, "w", encoding="utf-8", newline="").write(new)
+PY
+}

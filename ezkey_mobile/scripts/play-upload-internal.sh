@@ -9,7 +9,9 @@
 #
 # Default release status is *draft*. Default Play release name is
 # '<versionCode> (<versionName>)' from the AAB manifest.
-# Hard-refuses any track other than internal. Never prints the service-account JSON.
+# Hard-refuses any track other than internal, and a versionCode that is not
+# strictly greater than every build already on Play. The same versionName is
+# allowed: several uploads of one product cut share it. Never prints the service-account JSON.
 #
 # Prerequisites (host Python, not app Gradle):
 #   pip install -r scripts/requirements-play-upload.txt

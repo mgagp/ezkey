@@ -43,7 +43,7 @@ Delivery is **AAB** (not APK). Play App Signing holds the app-signing key; you k
 ## Technical
 
 - [x] **Release signing** path exists (upload key outside the repo). Repeat for the **final GA AAB** before submit.
-- [x] **Version policy** documented below (`versionCode` + `versionName` bump every Play upload; release name `'<code> (<name>)'`). In-app chrome says Public alpha (plus git short SHA on About), not `v1.0.0`.
+- [x] **Version policy** documented below (`versionCode` bumps every Play upload; `versionName` stays on the product cut until that SemVer moves; release name `'<code> (<name>)'`). In-app chrome says Public alpha (plus git short SHA on About), not `v1.0.0`.
 - [x] **Target API level** — `targetSdkVersion` / `compileSdkVersion` **36**. `minSdkVersion` **31** (Android 12+).
 - [x] **16 KB page-size** — NDK r28+, datastore 1.2.1 force, `yarn android:bundle:release` runs
   `scripts/check-16kb-alignment.sh` (see [`MOBILE_ANDROID_PLATFORM_SUPPORT.md`](MOBILE_ANDROID_PLATFORM_SUPPORT.md)).
@@ -68,8 +68,8 @@ mobile; an own cadence later would be a **separate** decision.
 
 | Field | Where | Rule |
 |-------|--------|------|
-| **`versionName`** | `ezkey_mobile/package.json` `"version"` | Equals the product version `X.Y.Z` (optional matching pre-release suffix when the product tag uses one, e.g. `0.2.0-alpha.1`). Product line starts at `0.2.0` because Play already shipped `0.1.2-alpha` (must not go backwards; ADR-0017 / [#1211](https://github.com/mgagp/ezkey/issues/1211)). Gradle injects this as Android `versionName`; Settings/About show the same string. |
-| **`versionCode`** | `android/app/build.gradle` | Strictly increasing integer per Play upload (hard requirement). Monotonic; independent of SemVer patch bumps. |
+| **`versionName`** | `ezkey_mobile/package.json` `"version"` | Equals the product version `X.Y.Z` (optional matching pre-release suffix when the product tag uses one, e.g. `0.2.0-alpha.1`). Product line starts at `0.2.0` because Play already shipped `0.1.2-alpha` (must not go backwards; ADR-0017 / [#1211](https://github.com/mgagp/ezkey/issues/1211)). Gradle injects this as Android `versionName`. iOS `MARKETING_VERSION` uses the same string. Settings/About show it. It stays put across Play uploads of one cut. |
+| **`versionCode`** | `android/app/build.gradle` | Strictly increasing integer per Play upload (hard requirement). Monotonic; independent of SemVer and of the iOS build number. |
 | **Play release name** | set by `play-upload-internal.sh` | `'<versionCode> (<versionName>)'` (e.g. `7 (0.2.0)`). Override with `--release-name` only when needed. |
 
 **Trace:** Mobile `versionName` = product `X.Y.Z` with monotonic `versionCode` — store uploads stay
@@ -78,7 +78,9 @@ tied to the monorepo product line; Console still needs both code and name to tel
 
 **Why `versionCode` stays in the release name:** vc4 went to the internal track as bare
 `0.1.0-alpha` while alpha showed hand-named `3 (0.1.0-alpha)` — same `versionName` as vc3, so the
-Console could not tell the uploads apart. Name releases with both code and name.
+Console could not tell the uploads apart. Name releases with both code and name. Sharing a
+`versionName` across uploads is expected for one product cut; the code in the release name is what
+distinguishes them.
 
 Align from the monorepo parent POM (strips Maven `-SNAPSHOT` for `versionName`):
 
@@ -134,7 +136,7 @@ export EZKEY_PLAY_SERVICE_ACCOUNT_JSON="/c/Users/marcg/.gradle/ezkey-play-publis
 
 **One edit at a time:** the Play Developer API allows only one open edit per app. On 2026-10-19 a parallel `--dry-run` deleted the edit under a concurrent vc5 upload (`HttpError 400 This Edit has been deleted.`); the retry succeeded alone — never run `play-upload-internal.sh` (dry-run or real) concurrently; dry-run first, then upload only after it has exited.
 
-Optional flags: `--dry-run` (auth + list tracks/versionCodes, delete edit, no commit), `--status draft|completed` (default `draft`), `--release-name` (override the default `'<versionCode> (<versionName>)'`), `--allow-same-version-name` (escape hatch if the AAB `versionName` already appears on a Play release — default is refuse). The script refuses any track other than `internal` and refuses an AAB whose `versionCode` is not strictly greater than the highest `versionCode` already on any track. On Windows Git Bash set `EZKEY_PYTHON` if `python3` is the Microsoft Store stub. (Why the proto-manifest fix: AAB `base/manifest/AndroidManifest.xml` is aapt2 protobuf `XmlNode`, not binary AXML — the first upload dry-run failed until the reader handled that format.)
+Optional flags: `--dry-run` (auth + list tracks/versionCodes, delete edit, no commit), `--status draft|completed` (default `draft`), `--release-name` (override the default `'<versionCode> (<versionName>)'`), `--allow-same-version-name` (accepted, no longer required: the same `versionName` warns and continues). The script refuses any track other than `internal` and refuses an AAB whose `versionCode` is not strictly greater than the highest `versionCode` already on any track. On Windows Git Bash set `EZKEY_PYTHON` if `python3` is the Microsoft Store stub. (Why the proto-manifest fix: AAB `base/manifest/AndroidManifest.xml` is aapt2 protobuf `XmlNode`, not binary AXML — the first upload dry-run failed until the reader handled that format.)
 
 ### Track hygiene
 

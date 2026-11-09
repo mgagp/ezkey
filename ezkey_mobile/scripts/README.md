@@ -121,8 +121,8 @@ export EZKEY_PLAY_SERVICE_ACCOUNT_JSON="/c/Users/marcg/.gradle/ezkey-play-publis
 
 Default `--status` is `draft`. Default Play release name is `'<versionCode> (<versionName>)'`
 from the AAB manifest. Hard-refuses any track other than `internal`. Refuses if the AAB
-`versionCode` is ≤ the highest on any track, or if `versionName` already appears on a Play
-release (override with `--allow-same-version-name`). Never prints the service-account JSON.
+`versionCode` is ≤ the highest on any track. The same `versionName` warns and continues
+(`--allow-same-version-name` is accepted and no longer required). Never prints the service-account JSON.
 Docs: [`docs/MOBILE_PLAY_PUBLISHING.md`](../docs/MOBILE_PLAY_PUBLISHING.md).
 
 ## `bundle-release.sh` + `check-16kb-alignment.sh` (16 KB page-size gate)

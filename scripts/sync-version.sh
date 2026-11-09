@@ -10,8 +10,9 @@
 #   - Maven parent <revision>+<changelist> is the source of truth (e.g. 0.2.0-SNAPSHOT).
 #   - npm packages (Admin UI, JS SDK, generated clients) use the Maven string as-is.
 #   - Python (PEP 440) maps trailing -SNAPSHOT → .dev0 (e.g. 0.2.0.dev0).
-#   - Mobile package.json / Android versionName strip trailing -SNAPSHOT only.
+#   - Mobile package.json / Android versionName / iOS MARKETING_VERSION strip trailing -SNAPSHOT only.
 #   - Android versionCode is raised to at least EZKEY_ANDROID_VERSION_CODE_MIN (never lowered).
+#   - iOS CURRENT_PROJECT_VERSION is the Apple build integer and is left alone.
 #   - .NET is not synced: the empty shell was removed (#1232). The PackageVersion rule
 #     returns with a real client (#1219).
 set -euo pipefail
@@ -211,6 +212,25 @@ else
     ezkey_set_android_version_code_and_comment "$GRADLE" "$TARGET_CODE" "$ANDROID_NAME"
     echo "Updated: android versionCode ${CURRENT_CODE} → ${TARGET_CODE}"
   fi
+fi
+
+# iOS user-visible version. Build number (CURRENT_PROJECT_VERSION) stays store-local.
+PBX="${ROOT}/ezkey_mobile/ios/EzkeyMobile.xcodeproj/project.pbxproj"
+ios_needs=false
+while IFS= read -r ios_ver; do
+  ios_ver="${ios_ver//$'\r'/}"
+  [[ -n "$ios_ver" ]] || continue
+  if [[ "$ios_ver" != "$ANDROID_NAME" ]]; then
+    ios_needs=true
+  fi
+done < <(ezkey_read_ios_marketing_versions "$PBX")
+if [[ "$ios_needs" == false ]]; then
+  echo "OK (unchanged): iOS MARKETING_VERSION = ${ANDROID_NAME}"
+elif [[ "$DRY_RUN" == true ]]; then
+  echo "DRY-RUN: would set iOS MARKETING_VERSION → ${ANDROID_NAME}"
+else
+  ezkey_set_ios_marketing_version "$PBX" "$ANDROID_NAME"
+  echo "Updated: iOS MARKETING_VERSION → ${ANDROID_NAME}"
 fi
 
 if [[ "$DRY_RUN" == true ]]; then
