@@ -53,8 +53,32 @@ HARNESSES=(
   test-decision
 )
 
-base_cflags="$(awk 'BEGIN{found=0} /^CFLAGS = / && !found { sub(/^CFLAGS = /,""); print; found=1 }' Makefile)"
-if [[ -z "$base_cflags" ]]; then
+# Join the first CFLAGS assignment, including Make continuations. A raw
+# backslash would be a shell escape and the compiler would treat "-g" as a file.
+base_cflags="$(awk '
+  /^CFLAGS = / && out == "" {
+    sub(/^CFLAGS = /, "")
+    out = $0
+    if (out ~ /\\[[:space:]]*$/) {
+      sub(/\\[[:space:]]*$/, "", out)
+      next
+    }
+    exit
+  }
+  out != "" {
+    sub(/^[[:space:]]+/, "")
+    piece = $0
+    if (piece ~ /\\[[:space:]]*$/) {
+      sub(/\\[[:space:]]*$/, "", piece)
+      out = out " " piece
+      next
+    }
+    out = out " " piece
+    exit
+  }
+  END { print out }
+' Makefile)"
+if [[ -z "$base_cflags" || "$base_cflags" == *"\\" ]]; then
   echo "[pam-doctor-sanitizers] ERROR: could not read CFLAGS from Makefile" >&2
   exit 2
 fi
@@ -109,7 +133,7 @@ signal_of() {
 note_of() {
   local log="$1"
   local line
-  line="$(grep -E -m1 'ERROR: AddressSanitizer|ERROR: LeakSanitizer|runtime error:|definitely lost: [1-9]|indirectly lost: [1-9]|Invalid (read|write) of size|\[FAIL\]|error:|TIMEOUT' "$log" || true)"
+  line="$(grep -E -m1 'ERROR: AddressSanitizer|ERROR: LeakSanitizer|runtime error:|definitely lost: [1-9]|indirectly lost: [1-9]|Invalid (read|write) of size|\[FAIL\]|error:' "$log" || true)"
   line="${line//$'\t'/ }"
   printf '%s' "${line:0:220}"
 }
@@ -121,7 +145,10 @@ record() {
   local log="$4"
   local signal note
   signal="$(signal_of "$log")"
-  note="$(note_of "$log")"
+  note=""
+  if [[ "$signal" != "none" || "$rc" -ne 0 ]]; then
+    note="$(note_of "$log")"
+  fi
   printf '%s\t%s\t%s\t%s\t%s\n' "$axis" "$harness" "$rc" "$signal" "$note" >> "$SUMMARY"
 }
 

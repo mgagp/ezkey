@@ -25,4 +25,5 @@ The macOS install track is out of this lane.
 - Machine suppressions: [`config/pam-doctor/suppressions.json`](../../../../config/pam-doctor/suppressions.json)
 - GitHub: [#1269](https://github.com/mgagp/ezkey/issues/1269)
 - First pass (static): [`2026-11-08-pass-1.md`](2026-11-08-pass-1.md)
+- Second pass (sanitizers): [`2026-11-09-pass-2.md`](2026-11-09-pass-2.md)
 - Sanitizer replay: `./scripts/pam-doctor-sanitizers.sh` (ASan, UBSan, Valgrind; not a CI gate)
