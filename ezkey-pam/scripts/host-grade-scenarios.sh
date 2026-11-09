@@ -1,6 +1,23 @@
 # Sourced by host-grade-accept.sh. One scenario sequence, no second entry point.
 # shellcheck shell=bash
 
+# After a snapshot exists, apply must leave the conf at 0600 root:root.
+hg_expect_conf_forced() {
+  local key="$1"
+  local msg="$2"
+  local rc=0 meta
+  set +e
+  hg_apply
+  rc=$?
+  set -e
+  meta="$(stat -c '%a %u:%g' "${CONF}" 2>/dev/null || printf '%s' missing)"
+  if [ "${rc}" -eq 0 ] && [ "${meta}" = "600 0:0" ]; then
+    hg_pass "${key}" "${msg}"
+  else
+    hg_fail "${key}" "conf is ${meta}, apply rc=${rc}"
+  fi
+}
+
 # apply must fail and leave sshd, pam.d, and conf byte for byte.
 hg_expect_apply_rejected() {
   local key="$1"
@@ -132,6 +149,13 @@ hg_run_scenarios() {
   else
     hg_fail line5_preserve_mode_owner "sshd_config is ${sshd_meta}"
   fi
+  chmod 644 "${CONF}"
+  chown "${MFA_USER}:${MFA_USER}" "${CONF}"
+  hg_expect_conf_forced line5_conf_forced_from_644 \
+    "a 644 conf is rewritten 600 root:root"
+  rm -f "${CONF}"
+  hg_expect_conf_forced line5_conf_forced_when_absent \
+    "a missing conf is created 600 root:root"
 
   hg_control_flag_cases
   if grep -q pam_ezkey.so "${PAM_SSHD}"; then

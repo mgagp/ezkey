@@ -23,12 +23,14 @@
 # EZKEY_PAM_ROLLBACK_SECONDS, when set, must be a positive integer.
 # Snapshot copies use || return, because apply calls ha_snapshot under ||
 # and that disables set -e. A failed copy does not write READY.
-# apply writes each file to a temp in that file's directory, copies the
-# existing mode and owner (644 root:root when the file is new), then renames
-# it over the destination. restorecon runs on that path when the command
-# exists. install(1) is not used: it unlinks the destination before creating
-# the new file, and it replaces the mode and owner. If any step fails, the
-# snapshot is restored.
+# apply writes each file to a temp in that file's directory, then renames it
+# over the destination. sshd_config, pam.d, and the admin config keep the
+# existing mode and owner (644 root:root when the file is new). The conf is
+# always 600 root:root: the module accepts only 0600 or 0400 owned by
+# root:root, and a looser mode would publish the keys. restorecon runs on
+# that path when the command exists. install(1) is not used: it unlinks the
+# destination before creating the new file. If any step fails, the snapshot
+# is restored.
 # sshd -t must pass on the MFA config and the admin config before apply
 # returns 0. remove, and a check that restores, run sshd -t on the restored
 # MFA config. A restoring check then deletes the rollback record.
@@ -174,10 +176,13 @@ ha_sshd_ok() {
 }
 
 # stdin is the file body. The temp file lives in the destination directory so
-# mv is a rename on that filesystem. The existing mode and owner are copied
-# onto the temp file first. A new path falls back to 644 root:root.
+# mv is a rename on that filesystem. With no second argument, the existing
+# mode and owner are copied onto the temp file first. A new path falls back
+# to 644 root:root. A second argument forces that mode and root:root instead.
+# pam_ezkey.conf passes 600.
 ha_write_atomic() {
   local dest="$1"
+  local force="${2:-}"
   local dir tmp
   dir="$(dirname "${dest}")"
   tmp="$(mktemp "${dir}/.hg.XXXXXX")" || return 1
@@ -185,7 +190,16 @@ ha_write_atomic() {
     rm -f "${tmp}"
     return 1
   fi
-  if [ -e "${dest}" ]; then
+  if [ -n "${force}" ]; then
+    chmod "${force}" "${tmp}" || {
+      rm -f "${tmp}"
+      return 1
+    }
+    chown root:root "${tmp}" || {
+      rm -f "${tmp}"
+      return 1
+    }
+  elif [ -e "${dest}" ]; then
     chmod --reference="${dest}" "${tmp}" || {
       rm -f "${tmp}"
       return 1
@@ -218,7 +232,7 @@ ha_write_conf() {
   # lab_http is set twice on purpose. The parser keeps the last key, trims
   # spaces, and accepts FALSE as false. The effective value is on the
   # attempt line, not on a literal lab_http=false row.
-  ha_write_atomic "${CONF}" <<EOF
+  ha_write_atomic "${CONF}" 600 <<EOF
 # Host-grade fixture (#1200). https only. Dummy keys.
 integration_api_url=${url}
 integration_key=${IKEY}

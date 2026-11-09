@@ -62,11 +62,13 @@ community instance (#955).
    `/etc/pam.d/sshd` for every connection; non-members avoid Ezkey only because
    their `AuthenticationMethods` never enter that auth stack.
 5. **Install / remove.** `host-apply.sh apply` is idempotent. It writes
-   `sshd_config`, `/etc/pam.d/sshd`, the conf, and the admin config to a temp
-   file in that directory, copies the existing mode and owner (`644 root:root`
-   when the file is new), then renames it over the destination. `restorecon`
-   runs on that path when the command exists. An existing `640 root:wheel`
-   file stays `640 root:wheel`. `sshd -t` must pass on the MFA config and the
+   `sshd_config`, `/etc/pam.d/sshd`, and the admin config to a temp file in
+   that directory, copies the existing mode and owner (`644 root:root` when
+   the file is new), then renames it over the destination. The conf is always
+   written `0600` `root:root`, including when the live file was `0644` or
+   absent on a later apply. `restorecon` runs on that path when the command
+   exists. An existing `640 root:wheel` file stays `640 root:wheel`.
+   `sshd -t` must pass on the MFA config and the
    admin config before apply returns 0. If any step fails, the snapshot is
    restored byte for byte. `remove` restores `sshd_config`, `/etc/pam.d/sshd`,
    and `pam_ezkey.conf` byte for byte from the snapshot taken before the
@@ -90,7 +92,10 @@ community instance (#955).
    is that tool. A system timer that calls `check` on its own is not
    installed and is not proved; that trigger stays with phase 2 (#1201).
    No systemd unit.
-7. **Files.** Root-owned. Conf mode `0600`. The conf directory and the module
+7. **Files.** Root-owned. Apply forces the conf to mode `0600` and
+   `root:root`. The module accepts only `0600` or `0400` with that owner, so
+   a preserved `0644` would publish the keys and then refuse every member.
+   The conf directory and the module
    directory are not writable by the SSH user. Conf mode `0666` returns
    `UNAVAIL` and no session.
 8. **Logs.** One `pam_ezkey: start` and one `pam_ezkey: attempt` per try that
