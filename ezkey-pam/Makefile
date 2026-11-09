@@ -121,6 +121,7 @@ $(BUILD_DIR)/$(MODULE_NAME): $(OBJECTS)
 debug: CFLAGS += -DDEBUG -g
 debug: all
 
+# Copies the module and the sample conf. Does not copy scripts/host-apply.sh.
 install: $(BUILD_DIR)/$(MODULE_NAME)
 ifeq ($(shell uname -s),Darwin)
 	@echo "error: no install on macOS yet (#1202). A misplaced module can lock out sshd and sudo." >&2
