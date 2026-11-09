@@ -343,6 +343,20 @@ class IntegrationServiceTest {
   }
 
   @Test
+  void updatePendingAttemptPolicy_systemIntegration_sameReplaceIsNoOp() {
+    Integration integration = new Integration();
+    integration.setId(1);
+    integration.setIsSystemIntegration(true);
+    when(repository.findById(1)).thenReturn(Optional.of(integration));
+
+    Integration result = service.updatePendingAttemptPolicy(1, PendingAttemptPolicy.REPLACE);
+
+    assertThat(result).isSameAs(integration);
+    assertThat(result.getPendingAttemptPolicy()).isEqualTo(PendingAttemptPolicy.REPLACE);
+    verify(repository, never()).save(any());
+  }
+
+  @Test
   void retire_setsLifecycleToRetired() {
     Integration integration = new Integration();
     integration.setId(12);

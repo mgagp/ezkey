@@ -49,6 +49,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -95,8 +96,9 @@ class AuthAttemptAlertAfterCommitPostgresTest {
     }
 
     @Bean
-    AuthAttemptEnrollmentAlert enrollmentAlert(AlertService alertService) {
-      return new AuthAttemptEnrollmentAlert(alertService);
+    AuthAttemptEnrollmentAlert enrollmentAlert(
+        AlertService alertService, PlatformTransactionManager transactionManager) {
+      return new AuthAttemptEnrollmentAlert(alertService, transactionManager);
     }
 
     @Bean

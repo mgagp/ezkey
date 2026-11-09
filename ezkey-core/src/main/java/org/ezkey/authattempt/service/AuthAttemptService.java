@@ -547,10 +547,8 @@ public class AuthAttemptService {
    *
    * <p>Only {@code REJECTED} and {@code INVALID} count, on every integration. Supersession and
    * cancel write {@code EXPIRED} and only from {@code PENDING} or {@code READ}, so those rows never
-   * carry a counted status and never raise the enrollment alert. The window uses {@code createdAt}:
-   * a status change lands at most one attempt TTL after creation, and the expiry scheduler ({@code
-   * fixedDelay}, about 60 seconds) may record {@code EXPIRED} about 60 seconds after {@code
-   * expiresAt}.
+   * carry a counted status and never raise the enrollment alert. The window uses {@code createdAt}
+   * of the counted rows. Scheduler-written {@code EXPIRED} is outside that set.
    *
    * @param enrollment enrollment being created against
    * @param now evaluation instant, shared with the attempt row

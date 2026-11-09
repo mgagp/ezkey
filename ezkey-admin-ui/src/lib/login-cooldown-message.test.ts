@@ -38,7 +38,7 @@ describe('loginCooldownMessage', () => {
     const fr = i18nFor('fr');
     const message = loginCooldownMessage(cooldownError(299), fr.t.bind(fr));
     expect(message).toBe(
-      'La connexion est suspendue encore 5 minutes après plusieurs demandes refusées. Réessayez ensuite.',
+      'La connexion est suspendue encore 5 minutes après plusieurs demandes refusées ou codes erronés. Réessayez ensuite.',
     );
     expect(message).not.toContain('erreur inattendue');
   });
@@ -46,7 +46,7 @@ describe('loginCooldownMessage', () => {
   it('uses the English sentence for a one-minute delay', () => {
     const en = i18nFor('en');
     expect(loginCooldownMessage(cooldownError(60), en.t.bind(en))).toBe(
-      'Sign-in is paused for 1 more minute after several refused requests. Try again then.',
+      'Sign-in is paused for 1 more minute after several refused requests or wrong codes. Try again then.',
     );
   });
 
@@ -54,7 +54,7 @@ describe('loginCooldownMessage', () => {
     const en = i18nFor('en');
     const message = loginCooldownMessage(cooldownError(null), en.t.bind(en));
     expect(message).toBe(
-      'Sign-in is paused after several refused requests. Try again in a few minutes.',
+      'Sign-in is paused after several refused requests or wrong codes. Try again in a few minutes.',
     );
     expect(message).not.toBe('An unexpected error occurred.');
   });

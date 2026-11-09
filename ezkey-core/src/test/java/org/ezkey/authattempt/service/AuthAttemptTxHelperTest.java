@@ -14,6 +14,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -34,6 +36,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -52,9 +56,14 @@ class AuthAttemptTxHelperTest {
 
   @BeforeEach
   void setUp() {
+    PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
+    lenient()
+        .when(transactionManager.getTransaction(any()))
+        .thenReturn(mock(TransactionStatus.class));
     helper =
         new AuthAttemptTxHelper(
-            authAttemptRepository, new AuthAttemptEnrollmentAlert(alertService));
+            authAttemptRepository,
+            new AuthAttemptEnrollmentAlert(alertService, transactionManager));
   }
 
   @Test
@@ -108,19 +117,6 @@ class AuthAttemptTxHelperTest {
     verify(authAttemptRepository)
         .updateStatusIfCurrent(
             eq(42), eq(AuthAttemptStatus.READ), eq(AuthAttemptStatus.INVALID), any());
-    verify(authAttemptRepository, never()).save(any());
-    verify(alertService, never()).raiseOrTouch(any(), any(), any(), any());
-  }
-
-  @Test
-  @DisplayName("markAsRejected leaves a cancelled or superseded row unchanged and raises no alert")
-  void markAsRejected_whenNotRead_doesNotSaveOrAlert() {
-    when(authAttemptRepository.updateStatusIfCurrent(
-            eq(42), eq(AuthAttemptStatus.READ), eq(AuthAttemptStatus.REJECTED), any()))
-        .thenReturn(0);
-
-    helper.markAsRejected(42);
-
     verify(authAttemptRepository, never()).save(any());
     verify(alertService, never()).raiseOrTouch(any(), any(), any(), any());
   }

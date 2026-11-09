@@ -51,6 +51,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
 
 /**
  * Unit tests for integration-signed Respond result payloads and #844 status gates in {@link
@@ -90,7 +92,15 @@ class AuthAttemptRespondServiceTest {
             authAttemptTxHelper,
             auditLogService,
             ownershipRateLimiter,
-            new AuthAttemptEnrollmentAlert(alertService));
+            enrollmentAlert());
+  }
+
+  private AuthAttemptEnrollmentAlert enrollmentAlert() {
+    PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
+    lenient()
+        .when(transactionManager.getTransaction(any()))
+        .thenReturn(mock(TransactionStatus.class));
+    return new AuthAttemptEnrollmentAlert(alertService, transactionManager);
   }
 
   @Test

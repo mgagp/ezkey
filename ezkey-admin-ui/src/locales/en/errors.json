@@ -42,7 +42,7 @@
     "api-key-limit-exceeded": "The maximum number of active API keys for this integration has been reached.",
     "auth-attempt-state-conflict": "This authentication attempt is no longer in a state that allows this operation.",
     "auth-attempt-pending-exists": "A request is already waiting on the device. Approve or refuse it there, or wait for it to expire, then try again.",
-    "auth-attempt-creation-cooldown": "New requests are paused for a few minutes after several refused or expired requests. Try again later."
+    "auth-attempt-creation-cooldown": "New requests are paused for a few minutes after several refused requests or wrong codes. Try again later."
   },
   "enrollment": {
     "enrollment-inactive": "This enrollment cannot be used for authentication (inactive or not verified).",

@@ -497,8 +497,9 @@ Logs never include wait JSON bodies, proof tokens, secret keys, or Basic auth he
   returns HTTP 409 `auth-attempt-pending-exists` until it completes or expires. No #955 runbook
   file exists in this module; this is the install line for that integration. The creation cooldown
   counts only device-signed outcomes, so an ignored prompt or a supersession does not suspend the
-  user. An ignored prompt flood stays bounded by the challenge code, by REFUSE (one live attempt at
-  a time), and by the per-API-key bucket.
+  user. The challenge code prevents reflex approval; it does not bound prompt volume. Under
+  REPLACE, prompt volume is bounded only by rate limits (the per-API-key bucket). Under REFUSE,
+  one live attempt at a time also limits how many requests are waiting.
 - **Interaction model:** one SSH login → pre-create `ok` → at most one create →
   optional challenge prompt → `/wait`. Batch / empty clients create nothing.
   See [`docs/INTERACTION-MODEL.md`](docs/INTERACTION-MODEL.md) (scenario catalogue
@@ -575,19 +576,23 @@ Logs never include wait JSON bodies, proof tokens, secret keys, or Basic auth he
       PubkeyAuthentication no
   ```
 
-  Recommendation (Marc, 2026-11-09; Christophe will validate): for the
+  Recommendation (Marc, 2026-11-09; Christophe validated): for the
   `ezkey-mfa` group, require the SSH key before the Ezkey prompt so a username
-  alone cannot start one:
+  alone cannot start one. Partial success does not count toward `MaxAuthTries`,
+  but every refused key and each keyboard-interactive failure does. Recommend
+  client-side `IdentitiesOnly yes` plus `IdentityFile`, and server-side
+  `MaxAuthTries 2` or `3` in that Match. A refused key with `MaxAuthTries 1`
+  makes sshd disconnect. The first matching `Match Group ezkey-mfa` wins;
+  break-glass and admin-port blocks are unchanged as long as Match order is
+  respected. The keyboard-interactive-only Match above stays the dogfood block.
 
   ```text
   Match Group ezkey-mfa
       AuthenticationMethods publickey,keyboard-interactive
+      PubkeyAuthentication yes
+      KbdInteractiveAuthentication yes
+      MaxAuthTries 3
   ```
-
-  OpenSSH runs publickey and then keyboard-interactive. A refused key consumes a
-  try, so `MaxAuthTries 1` beside that line can skip the prompt. The
-  keyboard-interactive-only Match above stays the dogfood block until Christophe
-  validates the try budget.
 
   Keep `PubkeyAuthentication no` inside the keyboard-interactive-only Match
   (security GO): with `MaxAuthTries 1`, a client-offered pubkey that is refused

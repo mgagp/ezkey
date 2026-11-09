@@ -16,8 +16,11 @@ import org.ezkey.alert.service.AlertService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Raises the shared enrollment alert after the status change has committed.
@@ -25,7 +28,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * <p>The alert must not run inside the transaction that writes {@code INVALID} or {@code REJECTED}.
  * A concurrent insert can hit {@code uq_alert_dedupe_key_open} and abort that Postgres transaction;
  * the status change would roll back, the attempt would stay {@code READ}, and respond would return
- * 500. The raise is fail-open: a failure is logged and does not propagate to the caller.
+ * 500. {@code afterCommit} has no transaction left to join, so the raise runs in a new one. The
+ * raise is fail-open: a failure is logged and does not propagate to the caller.
  *
  * @since 2026
  */
@@ -36,13 +40,20 @@ public class AuthAttemptEnrollmentAlert {
 
   private final AlertService alertService;
 
+  private final TransactionTemplate requiresNewTx;
+
   /**
    * Creates the scheduler.
    *
    * @param alertService operator alerts
+   * @param transactionManager starts the transaction used after the status commit
    */
-  public AuthAttemptEnrollmentAlert(AlertService alertService) {
+  public AuthAttemptEnrollmentAlert(
+      AlertService alertService, PlatformTransactionManager transactionManager) {
     this.alertService = alertService;
+    TransactionTemplate tx = new TransactionTemplate(transactionManager);
+    tx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    this.requiresNewTx = tx;
   }
 
   /**
@@ -55,37 +66,59 @@ public class AuthAttemptEnrollmentAlert {
     if (enrollmentId == null) {
       return;
     }
-    Runnable raise = () -> raiseFailOpen(enrollmentId);
     if (TransactionSynchronizationManager.isSynchronizationActive()) {
       TransactionSynchronizationManager.registerSynchronization(
           new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-              raise.run();
+              raiseInNewTransaction(enrollmentId);
             }
           });
       return;
     }
-    raise.run();
+    raiseFailOpen(enrollmentId);
   }
 
   /**
-   * Raises the alert and swallows failures so a dedupe-index race cannot undo the status change.
+   * Persists the alert in a new transaction. {@code afterCommit} has already finished the status
+   * transaction, and {@code raiseOrTouch} is {@code REQUIRED}, so joining that finished transaction
+   * would save nothing.
+   *
+   * @param enrollmentId enrollment id stored in the payload
+   */
+  private void raiseInNewTransaction(Integer enrollmentId) {
+    try {
+      requiresNewTx.executeWithoutResult(_ -> raiseOrTouch(enrollmentId));
+    } catch (RuntimeException ex) { // CHECKSTYLE IGNORE IllegalCatch
+      logFailure(enrollmentId, ex);
+    }
+  }
+
+  /**
+   * Raises the alert and swallows failures when no status transaction is active.
    *
    * @param enrollmentId enrollment id stored in the payload
    */
   private void raiseFailOpen(Integer enrollmentId) {
     try {
-      alertService.raiseOrTouch(
-          AlertType.AUTH_ATTEMPT_REJECTED,
-          AlertSeverity.WARNING,
-          "AUTH_ATTEMPT_REJECTED:" + enrollmentId,
-          "{\"enrollmentId\":" + enrollmentId + "}");
+      raiseOrTouch(enrollmentId);
     } catch (RuntimeException ex) { // CHECKSTYLE IGNORE IllegalCatch
-      logger.warn(
-          "Enrollment attempt alert was not recorded for enrollment {}: {}",
-          enrollmentId,
-          ex.toString());
+      logFailure(enrollmentId, ex);
     }
+  }
+
+  private void raiseOrTouch(Integer enrollmentId) {
+    alertService.raiseOrTouch(
+        AlertType.AUTH_ATTEMPT_REJECTED,
+        AlertSeverity.WARNING,
+        "AUTH_ATTEMPT_REJECTED:" + enrollmentId,
+        "{\"enrollmentId\":" + enrollmentId + "}");
+  }
+
+  private static void logFailure(Integer enrollmentId, RuntimeException ex) {
+    logger.warn(
+        "Enrollment attempt alert was not recorded for enrollment {}: {}",
+        enrollmentId,
+        ex.toString());
   }
 }

@@ -39,6 +39,7 @@ import org.ezkey.integration.domain.IntegrationCreateRequest;
 import org.ezkey.integration.domain.IntegrationCreateResponse;
 import org.ezkey.integration.domain.IntegrationLifecycleStatus;
 import org.ezkey.integration.domain.IntegrationResponse;
+import org.ezkey.integration.domain.PendingAttemptPolicy;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
@@ -528,7 +529,11 @@ public class IntegrationController {
         throw new ResourceNotFoundException("Integration", id);
       }
     }
+    PendingAttemptPolicy before = integration.getPendingAttemptPolicy();
     Integration updated = service.updatePendingAttemptPolicy(id, request.pendingAttemptPolicy());
+    if (before == updated.getPendingAttemptPolicy()) {
+      return ResponseEntity.ok(mapper.toResponse(updated));
+    }
     Integer tenantId = updated.getTenant() != null ? updated.getTenant().getTenantId() : null;
     auditLogService.log(
         AuditHelper.createAdminAudit(

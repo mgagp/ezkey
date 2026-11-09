@@ -20,7 +20,7 @@ export function PendingAttemptPolicyField({
   const { t } = useTranslation('integrations');
   const helpId = `${id}-help`;
   const hintId = hint ? `${id}-lock` : undefined;
-  const describedBy = hintId ? `${helpId} ${hintId}` : helpId;
+  const describedBy = hintId ?? helpId;
   return (
     <div>
       <Label htmlFor={id}>{t('pendingAttemptPolicy.label')}</Label>
@@ -28,14 +28,15 @@ export function PendingAttemptPolicyField({
         <option value="REPLACE">{t('pendingAttemptPolicy.replace')}</option>
         <option value="REFUSE">{t('pendingAttemptPolicy.refuse')}</option>
       </Select>
-      <p id={helpId} data-testid="pending-attempt-policy-help" className="text-[10px] text-fg-muted mt-0.5">
-        {t('pendingAttemptPolicy.help')}
-      </p>
       {hint ? (
         <p id={hintId} data-testid="pending-attempt-policy-lock" className="text-[10px] text-fg-muted mt-0.5">
           {hint}
         </p>
-      ) : null}
+      ) : (
+        <p id={helpId} data-testid="pending-attempt-policy-help" className="text-[10px] text-fg-muted mt-0.5">
+          {t('pendingAttemptPolicy.help')}
+        </p>
+      )}
     </div>
   );
 }

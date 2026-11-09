@@ -44,7 +44,7 @@
     "help": "Refuse is recommended for interactive integrations, where a person is waiting to sign in. Saving this does not change a request that is already waiting. The next request uses this setting: Replace ends the waiting one; Refuse keeps it and rejects the new request.",
     "saved": "Waiting-request setting updated.",
     "saveFailed": "Could not update the waiting-request setting. Try again.",
-    "systemLocked": "Fixed to Replace for administrator sign-in."
+    "systemLocked": "Fixed to Replace for administrator sign-in: a new sign-in replaces the one that is waiting."
   },
   "validation": {
     "codeMin": "Code must be at least {{n}} characters",

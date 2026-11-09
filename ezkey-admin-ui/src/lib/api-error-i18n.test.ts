@@ -181,8 +181,17 @@ describe('getTranslatedApiError', () => {
       "Une demande attend déjà sur l'appareil. Acceptez-la ou refusez-la sur l'appareil, ou attendez qu'elle expire, puis réessayez.",
     );
     expect(getTranslatedApiError(cooldown, t, 'generic')).toBe(
-      'Les nouvelles demandes sont suspendues quelques minutes après plusieurs demandes refusées ou expirées. Réessayez plus tard.',
+      'Les nouvelles demandes sont suspendues quelques minutes après plusieurs demandes refusées ou codes erronés. Réessayez plus tard.',
     );
+    const lifecycle = new ApiError(403, {}, 'fallback detail', {
+      type: `${EZKEY_PROBLEM_TYPE_BASE}/domain/system-integration-lifecycle`,
+      detail:
+        'System integration pending-attempt policy cannot be changed because it is reserved for administrator MFA.',
+    });
+    expect(getTranslatedApiError(lifecycle, t, 'generic')).toBe(
+      'Fixé à Remplacer pour la connexion des administrateurs : une nouvelle connexion remplace celle qui attend.',
+    );
+    expect(getTranslatedApiError(lifecycle, t, 'generic')).not.toContain('administrator MFA');
   });
 });
 

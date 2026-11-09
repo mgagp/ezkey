@@ -119,7 +119,9 @@ describe('policy save', () => {
   it('disables the select and shows the administrator sign-in hint', () => {
     const fr = i18nFor('fr');
     const hint = fr.t('pendingAttemptPolicy.systemLocked', { ns: 'integrations' });
-    expect(hint).toBe('Fixé à Remplacer pour la connexion administrateur.');
+    expect(hint).toBe(
+      'Fixé à Remplacer pour la connexion des administrateurs : une nouvelle connexion remplace celle qui attend.',
+    );
     const onSave = vi.fn();
     render(
       <I18nextProvider i18n={fr}>
@@ -137,7 +139,8 @@ describe('policy save', () => {
     const select = screen.getByRole('combobox') as HTMLSelectElement;
     expect(select.disabled).toBe(true);
     expect(select.value).toBe('REPLACE');
-    expect(select.getAttribute('aria-describedby')).toBe('policy-help policy-lock');
+    expect(select.getAttribute('aria-describedby')).toBe('policy-lock');
+    expect(screen.queryByTestId('pending-attempt-policy-help')).toBeNull();
     expect(screen.getByTestId('pending-attempt-policy-lock').textContent).toBe(hint);
     fireEvent.change(select, { target: { value: 'REFUSE' } });
     expect(onSave).not.toHaveBeenCalled();
