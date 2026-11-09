@@ -12,8 +12,8 @@ import java.util.Locale;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Connector settings, bound from {@code EZKEY_CONNECTOR_SMTP_*}. Secrets stay out of
- * {@link #toString()}.
+ * Connector settings, bound from {@code EZKEY_CONNECTOR_SMTP_*}. Secrets stay out of {@link
+ * #toString()}.
  *
  * @param token bearer token Ezkey presents
  * @param nextToken second token accepted during a rotation, or blank
@@ -24,7 +24,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param fromAddress sender address; blank leaves the connector degraded
  * @param fromName sender display name
  * @param security {@code starttls} (default), {@code tls}, or {@code plain}
- * @param plainPrivateNetwork explicit declaration that a plain connection stays on a private network
+ * @param plainPrivateNetwork explicit declaration that a plain connection stays on a private
+ *     network
  * @param providerTimeoutSeconds connect, read and write timeout towards the provider
  * @param dailyCap sends per UTC day that may reach the provider
  */

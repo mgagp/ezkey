@@ -3,7 +3,8 @@
 services:
   connector-mock:
     build:
-      context: ../ezkey-connectors/ezkey-connector-mock
+      context: ..
+      dockerfile: ezkey-connectors/ezkey-connector-mock/Dockerfile
     container_name: ezkey-connector-mock
     environment:
       EZKEY_CONNECTOR_MOCK_TEST_MODE: "true"

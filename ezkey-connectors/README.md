@@ -11,16 +11,27 @@ Lab posture applies to this folder.
 - **Progress:** [#1206](https://github.com/mgagp/ezkey/issues/1206). Configuration notes:
   [#1246](https://github.com/mgagp/ezkey/issues/1246).
 
-## Mock connector
+## Build
 
-[`ezkey-connector-mock`](ezkey-connector-mock/) is the test double for the contract, outside the root Maven reactor. It
-delivers nothing, identifies itself with `testMode: true`, and refuses to start outside an explicit test mode.
+The connectors are modules of the root Maven reactor (#1278): they share its versions, Spotless, Checkstyle and
+`THIRD-PARTY.txt`, and the `backend` CI job runs their unit tests. Their only link to Ezkey is the HTTP contract: an
+enforcer rule in [`pom.xml`](pom.xml) fails the build if a connector depends on any `org.ezkey` module. Each connector
+has its own Dockerfile, built from the repository root.
 
 ```bash
-cd ezkey-connector-mock
-mvn test
-mvn -DskipTests package
-EZKEY_CONNECTOR_MOCK_TEST_MODE=true EZKEY_CONNECTOR_MOCK_TOKEN=<token> java -jar target/ezkey-connector-mock-0.1.0.jar
+# from the repository root
+mvn -pl ezkey-connectors/ezkey-connector-mock,ezkey-connectors/ezkey-connector-smtp -am verify
+docker build -f ezkey-connectors/ezkey-connector-smtp/Dockerfile .
+```
+
+## Mock connector
+
+[`ezkey-connector-mock`](ezkey-connector-mock/) is the test double for the contract. It delivers nothing, identifies
+itself with `testMode: true`, and refuses to start outside an explicit test mode.
+
+```bash
+EZKEY_CONNECTOR_MOCK_TEST_MODE=true EZKEY_CONNECTOR_MOCK_TOKEN=<token> \
+  java -jar ezkey-connectors/ezkey-connector-mock/target/ezkey-connector-mock-*.jar
 ```
 
 | Setting | Default | Meaning |
@@ -47,13 +58,8 @@ The recipient's local part picks the scenario, so the mock keeps no state:
 ## SMTP connector
 
 [`ezkey-connector-smtp`](ezkey-connector-smtp/) sends the enrollment QR by email (#1206 step 5). It owns fixed templates
-in English and French, attaches the QR inline (`cid:`), and never sends the challenge. Outside the root Maven reactor,
-like the mock.
-
-```bash
-cd ezkey-connector-smtp
-mvn test    # uses an in-JVM SMTP server (GreenMail)
-```
+in English and French, attaches the QR inline (`cid:`), and never sends the challenge. Its unit tests use an in-JVM
+SMTP server (GreenMail, test scope only).
 
 | Setting | Default | Meaning |
 |---------|---------|---------|

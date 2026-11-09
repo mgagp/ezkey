@@ -46,9 +46,10 @@ class MockDeliveryControllerTest {
 
   private static String job(String recipient, String qr, String extra) {
     return """
-        {"sendId":"%s","trigger":"operator","tenantRef":"42","template":"enrollment-qr",
-         "locale":"fr","recipient":"%s","organisationName":"Acme",
-         "expectedServer":"auth.example.com","qrPngBase64":"%s"%s}"""
+    {"sendId":"%s","trigger":"operator","tenantRef":"42","template":"enrollment-qr",
+     "locale":"fr","recipient":"%s","organisationName":"Acme",
+     "expectedServer":"auth.example.com","qrPngBase64":"%s"%s}\
+    """
         .formatted(SEND_ID, recipient, qr, extra);
   }
 
@@ -131,15 +132,20 @@ class MockDeliveryControllerTest {
   @DisplayName("refuses anything outside the contract")
   void refusesOutOfContract() throws Exception {
     assertThat(send("current-token", "not json").statusCode()).isEqualTo(400);
-    assertThat(send("current-token", job("a@example.com", PNG_BASE64, ",\"challenge\":123456")).statusCode())
+    assertThat(
+            send("current-token", job("a@example.com", PNG_BASE64, ",\"challenge\":123456"))
+                .statusCode())
         .isEqualTo(400);
-    assertThat(send("current-token", job("a@example.com", PNG_BASE64, ",\"subject\":\"hi\"")).statusCode())
+    assertThat(
+            send("current-token", job("a@example.com", PNG_BASE64, ",\"subject\":\"hi\""))
+                .statusCode())
         .isEqualTo(400);
     HttpResponse<String> notPng = send("current-token", job("a@example.com", "aGVsbG8=", ""));
     assertThat(notPng.statusCode()).isEqualTo(422);
     assertThat(notPng.body()).contains("invalid-qr");
     String tooLong = "iVBORw0KGgo" + "A".repeat(90_000);
-    assertThat(send("current-token", job("a@example.com", tooLong, "")).statusCode()).isEqualTo(413);
+    assertThat(send("current-token", job("a@example.com", tooLong, "")).statusCode())
+        .isEqualTo(413);
     assertThat(send("current-token", job("not-an-address", PNG_BASE64, "")).body())
         .contains("invalid-recipient");
   }

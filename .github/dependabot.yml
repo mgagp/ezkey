@@ -243,32 +243,6 @@ updates:
           - "minor"
           - "patch"
 
-  # Delivery connectors (#1206, #1278): standalone Maven projects outside the root reactor.
-  # Weekly; minor+patch grouped, majors solo (Spring Boot majors follow the core's BOM pulse).
-  # The SMTP connector is meant for the community instance (#1206 step 7).
-  - package-ecosystem: "maven"
-    directories:
-      - "/ezkey-connectors/ezkey-connector-mock"
-      - "/ezkey-connectors/ezkey-connector-smtp"
-    schedule:
-      interval: "weekly"
-    cooldown:
-      default-days: 3
-      semver-patch-days: 3
-      semver-minor-days: 3
-      semver-major-days: 7
-    open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
-    groups:
-      connectors-minor-patch:
-        applies-to: version-updates
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
-
   # -------------------------------------------------------------------------
   # Wave 0.3 — close Dependabot coverage gaps (security hygiene, config only).
   # Weekly + minor/patch groups keep PR volume low for a solo maintainer.
@@ -371,6 +345,7 @@ updates:
       - "/docker/bootstrap-init"
       - "/docker/javamelody"
       - "/ezkey-admin-ui/docker"
+      # Delivery connectors (#1206). Their Maven dependencies are reactor modules under maven "/" (#1278).
       - "/ezkey-connectors/ezkey-connector-mock"
       - "/ezkey-connectors/ezkey-connector-smtp"
     schedule:

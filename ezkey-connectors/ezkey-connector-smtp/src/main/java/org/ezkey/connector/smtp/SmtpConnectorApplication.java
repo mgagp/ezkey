@@ -31,7 +31,8 @@ public class SmtpConnectorApplication {
   }
 
   /**
-   * Refuses to start without a token, or with a plain SMTP connection that was not declared private.
+   * Refuses to start without a token, or with a plain SMTP connection that was not declared
+   * private.
    *
    * @param settings the connector settings
    * @return the startup guard
@@ -95,6 +96,7 @@ public class SmtpConnectorApplication {
         props.put("mail.smtp.ssl.checkserveridentity", "true");
       }
       case PLAIN -> props.put("mail.smtp.starttls.enable", "false");
+      default -> throw new IllegalStateException("Unsupported SMTP security mode");
     }
     return sender;
   }

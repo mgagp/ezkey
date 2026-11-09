@@ -29,7 +29,8 @@ final class ConnectorClient {
 
   static String job(String locale, String recipient, String organisationName, String qr) {
     return """
-        {"sendId":"%s","trigger":"operator","tenantRef":"42","template":"enrollment-qr",        "locale":"%s","recipient":"%s","organisationName":"%s",        "expectedServer":"auth.example.com","qrPngBase64":"%s"}"""
+    {"sendId":"%s","trigger":"operator","tenantRef":"42","template":"enrollment-qr",        "locale":"%s","recipient":"%s","organisationName":"%s",        "expectedServer":"auth.example.com","qrPngBase64":"%s"}\
+    """
         .formatted(SEND_ID, locale, recipient, organisationName, qr);
   }
 

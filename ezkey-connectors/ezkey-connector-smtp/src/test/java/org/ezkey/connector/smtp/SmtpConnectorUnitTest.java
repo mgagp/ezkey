@@ -29,11 +29,23 @@ class SmtpConnectorUnitTest {
 
   private static SmtpConnectorSettings settings(String token, String security, boolean privateNet) {
     return new SmtpConnectorSettings(
-        token, "", "smtp.example.com", 587, "", "", "a@example.com", "Ezkey", security, privateNet, 15, 100);
+        token,
+        "",
+        "smtp.example.com",
+        587,
+        "",
+        "",
+        "a@example.com",
+        "Ezkey",
+        security,
+        privateNet,
+        15,
+        100);
   }
 
   @Test
-  @DisplayName("startup refuses a missing token, an unknown mode and an undeclared plain connection")
+  @DisplayName(
+      "startup refuses a missing token, an unknown mode and an undeclared plain connection")
   void startupGuard() {
     assertThatThrownBy(() -> SmtpConnectorApplication.check(settings("", "starttls", false)))
         .hasMessageContaining("TOKEN");
@@ -50,7 +62,10 @@ class SmtpConnectorUnitTest {
   @Test
   @DisplayName("STARTTLS is required by default and checks the server identity")
   void starttlsByDefault() {
-    var props = new SmtpConnectorApplication().mailSender(settings("t", "starttls", false)).getJavaMailProperties();
+    var props =
+        new SmtpConnectorApplication()
+            .mailSender(settings("t", "starttls", false))
+            .getJavaMailProperties();
     assertThat(props.getProperty("mail.smtp.starttls.required")).isEqualTo("true");
     assertThat(props.getProperty("mail.smtp.ssl.checkserveridentity")).isEqualTo("true");
     assertThat(props.getProperty("mail.smtp.timeout")).isEqualTo("15000");
@@ -61,14 +76,27 @@ class SmtpConnectorUnitTest {
   void settingsToString() {
     SmtpConnectorSettings s =
         new SmtpConnectorSettings(
-            "tok-123", "", "smtp.example.com", 587, "user", "pw-456", "a@example.com", "Ezkey", "starttls", false, 15, 100);
+            "tok-123",
+            "",
+            "smtp.example.com",
+            587,
+            "user",
+            "pw-456",
+            "a@example.com",
+            "Ezkey",
+            "starttls",
+            false,
+            15,
+            100);
     assertThat(s.toString()).doesNotContain("tok-123", "pw-456", "smtp.example.com", "user");
   }
 
   @Test
   @DisplayName("provider failures map to the contract; only a sure non-delivery is a rejection")
   void classify() {
-    assertThat(SmtpDeliveryController.classify(new MailSendException("x", new SocketTimeoutException())))
+    assertThat(
+            SmtpDeliveryController.classify(
+                new MailSendException("x", new SocketTimeoutException())))
         .isEqualTo("provider-timeout");
     assertThat(SmtpDeliveryController.classify(new MailSendException("x", new ConnectException())))
         .isEqualTo("provider-unavailable");
@@ -77,7 +105,8 @@ class SmtpConnectorUnitTest {
             "x", null, null, null, new jakarta.mail.Address[] {address("a@example.com")});
     assertThat(SmtpDeliveryController.classify(new MailSendException("x", refused)))
         .isEqualTo("recipient-refused");
-    assertThat(SmtpDeliveryController.classify(new MailSendException("x", new RuntimeException("?"))))
+    assertThat(
+            SmtpDeliveryController.classify(new MailSendException("x", new RuntimeException("?"))))
         .isEqualTo("unknown");
   }
 
