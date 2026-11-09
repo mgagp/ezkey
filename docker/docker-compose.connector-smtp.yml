@@ -4,7 +4,7 @@
 # A real provider uses STARTTLS or TLS (EZKEY_CONNECTOR_SMTP_SECURITY), the connector's default.
 services:
   mailpit:
-    image: axllent/mailpit:v1.32.0
+    image: axllent/mailpit:v1.33.0
     container_name: ezkey-mailpit
     ports:
       - "127.0.0.1:8025:8025"
