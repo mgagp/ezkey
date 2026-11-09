@@ -592,6 +592,9 @@ class AuthAttemptRespondServiceTest {
     assertThatThrownBy(() -> respondService.respond(approveRequest(), null))
         .isInstanceOf(AuthAttemptStateConflictException.class)
         .hasMessage("Authentication attempt superseded by newer request");
+    verify(alertService, never()).raiseOrTouch(any(), any(), any(), any());
+    verify(authAttemptTxHelper, never()).markAsInvalid(any());
+    verify(authAttemptRepository, never()).updateStatusIfCurrent(any(), any(), any(), any());
   }
 
   private static AuthAttempt readAttempt() {

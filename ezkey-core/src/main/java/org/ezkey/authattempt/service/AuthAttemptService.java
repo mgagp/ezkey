@@ -25,7 +25,6 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.OptionalLong;
 import org.ezkey.audit.util.ClientContext;
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
@@ -155,6 +154,18 @@ public class AuthAttemptService {
 
   /** Hard ceiling for per-request {@code ttlSeconds} (#895). Above this → clamped. */
   static final int REQUEST_TTL_MAX_SECONDS = 120;
+
+  /**
+   * Device-signed outcomes that arm the creation cooldown on every integration. {@code EXPIRED} is
+   * omitted: supersession, cancel, and timeout must not let an unauthenticated caller suspend the
+   * user.
+   */
+  private static final List<AuthAttemptStatus> COOLDOWN_STATUSES =
+      List.of(AuthAttemptStatus.REJECTED, AuthAttemptStatus.INVALID);
+
+  /** Statuses supersession may expire. A signed status is left as it is. */
+  private static final List<AuthAttemptStatus> OPENABLE_STATUSES =
+      List.of(AuthAttemptStatus.PENDING, AuthAttemptStatus.READ);
 
   private final AuthAttemptRepository authAttemptRepository;
   private final EnrollmentRepository enrollmentRepository;
@@ -480,7 +491,7 @@ public class AuthAttemptService {
       List<Integer> attemptIds = toExpire.stream().map(AuthAttempt::getAuthAttemptId).toList();
       int updatedCount =
           authAttemptRepository.updateStatusForMultipleAttempts(
-              attemptIds, AuthAttemptStatus.EXPIRED);
+              attemptIds, AuthAttemptStatus.EXPIRED, OPENABLE_STATUSES);
       logger.info(
           "Supersession: Marked {} existing auth attempts as EXPIRED for enrollment {}",
           updatedCount,
@@ -532,15 +543,12 @@ public class AuthAttemptService {
   }
 
   /**
-   * Refuses creation while a recent run of counted attempts is still cooling down.
+   * Refuses creation while a recent run of device-signed attempts is still cooling down.
    *
-   * <p>Other integrations count {@code REJECTED}, {@code INVALID} (wrong challenge digits), and
-   * {@code EXPIRED}. Supersession and cancellation both persist {@code EXPIRED}, so those rows
-   * count. The system integration uses the status set {@code REJECTED} and {@code INVALID} only:
-   * {@code EXPIRED} is dropped entirely, with no attempt to tell a supersession from a cancel or a
-   * timeout. Passwordless admin login creates an attempt from a username alone, and counting {@code
-   * EXPIRED} would let a remote caller renew the lock. The window uses {@code createdAt}: a status
-   * change lands at most one attempt TTL after creation, and the expiry scheduler ({@code
+   * <p>Only {@code REJECTED} and {@code INVALID} count, on every integration. Supersession and
+   * cancel write {@code EXPIRED} and only from {@code PENDING} or {@code READ}, so those rows never
+   * carry a counted status and never raise the enrollment alert. The window uses {@code createdAt}:
+   * a status change lands at most one attempt TTL after creation, and the expiry scheduler ({@code
    * fixedDelay}, about 60 seconds) may record {@code EXPIRED} about 60 seconds after {@code
    * expiresAt}.
    *
@@ -558,7 +566,7 @@ public class AuthAttemptService {
     OffsetDateTime since = now.minusSeconds((long) windowSeconds + durationSeconds);
     List<OffsetDateTime> eventTimes =
         authAttemptRepository.findCreatedAtByEnrollmentIdAndStatusInSince(
-            enrollment.getEnrollmentId(), cooldownStatuses(enrollment), since);
+            enrollment.getEnrollmentId(), COOLDOWN_STATUSES, since);
     OptionalLong remaining =
         AuthAttemptCooldown.remainingSeconds(
             eventTimes, now, threshold, windowSeconds, durationSeconds);
@@ -569,41 +577,6 @@ public class AuthAttemptService {
           remaining.getAsLong());
       throw new AuthAttemptCreationCooldownException(remaining.getAsLong());
     }
-  }
-
-  /**
-   * Statuses that arm the creation cooldown for this enrollment.
-   *
-   * @param enrollment enrollment being created against
-   * @return {@code REJECTED} and {@code INVALID} for the system integration; otherwise those plus
-   *     {@code EXPIRED}
-   */
-  private List<AuthAttemptStatus> cooldownStatuses(Enrollment enrollment) {
-    if (systemIntegration(enrollment)) {
-      return List.of(AuthAttemptStatus.REJECTED, AuthAttemptStatus.INVALID);
-    }
-    return List.of(
-        AuthAttemptStatus.REJECTED, AuthAttemptStatus.INVALID, AuthAttemptStatus.EXPIRED);
-  }
-
-  /**
-   * Whether the enrollment belongs to the system integration.
-   *
-   * <p>A missing integration id, or a missing row, is not the system integration. The later policy
-   * lookup still fails closed when an id is set and the row is absent.
-   *
-   * @param enrollment enrollment being created against
-   * @return true when the integration row is the system integration
-   */
-  private boolean systemIntegration(Enrollment enrollment) {
-    if (enrollment.getIntegrationId() == null) {
-      return false;
-    }
-    Optional<Integration> found = integrationRepository.findById(enrollment.getIntegrationId());
-    if (found == null || found.isEmpty()) {
-      return false;
-    }
-    return Boolean.TRUE.equals(found.get().getIsSystemIntegration());
   }
 
   /**

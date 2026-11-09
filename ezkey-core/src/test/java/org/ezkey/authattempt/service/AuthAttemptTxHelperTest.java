@@ -113,6 +113,19 @@ class AuthAttemptTxHelperTest {
   }
 
   @Test
+  @DisplayName("markAsRejected leaves a cancelled or superseded row unchanged and raises no alert")
+  void markAsRejected_whenNotRead_doesNotSaveOrAlert() {
+    when(authAttemptRepository.updateStatusIfCurrent(
+            eq(42), eq(AuthAttemptStatus.READ), eq(AuthAttemptStatus.REJECTED), any()))
+        .thenReturn(0);
+
+    helper.markAsRejected(42);
+
+    verify(authAttemptRepository, never()).save(any());
+    verify(alertService, never()).raiseOrTouch(any(), any(), any(), any());
+  }
+
+  @Test
   @DisplayName("A throwing alert does not escape markAsInvalid; the raise waits for afterCommit")
   void markAsInvalid_alertFailure_isFailOpenAfterCommit() {
     when(authAttemptRepository.updateStatusIfCurrent(

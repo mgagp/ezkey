@@ -307,7 +307,7 @@ public interface AuthAttemptRepository
    * <p>Used to derive the creation cooldown from existing rows. Ordered oldest first.
    *
    * @param enrollmentId enrollment whose attempts are counted
-   * @param statuses counted statuses: REJECTED, INVALID, and EXPIRED
+   * @param statuses counted statuses: device-signed REJECTED and INVALID only
    * @param since inclusive lower bound on {@code createdAt}
    * @return matching creation timestamps
    */
@@ -348,21 +348,25 @@ public interface AuthAttemptRepository
       @Param("expired") AuthAttemptStatus expired);
 
   /**
-   * Updates multiple authentication attempts to EXPIRED status.
+   * Expires live authentication attempts.
    *
-   * <p>This method atomically updates multiple authentication attempts to EXPIRED status, used for
-   * supersession when a new attempt is created.
+   * <p>Used when a new attempt supersedes rows that are still {@code PENDING} or {@code READ}. The
+   * status predicate is part of the update, so a row that already carries {@code REJECTED}, {@code
+   * INVALID}, or another final status is left unchanged and is not treated as superseded.
    *
    * @param authAttemptIds list of authentication attempt IDs to update
+   * @param newStatus status to set, {@code EXPIRED} for supersession
+   * @param liveStatuses statuses this update may replace, {@code PENDING} and {@code READ}
    * @return the number of rows affected
    */
   @Modifying
   @Query(
       "UPDATE AuthAttempt a SET a.authAttemptStatus = :newStatus WHERE a.authAttemptId IN"
-          + " (:authAttemptIds)")
+          + " (:authAttemptIds) AND a.authAttemptStatus IN :liveStatuses")
   int updateStatusForMultipleAttempts(
       @Param("authAttemptIds") List<Integer> authAttemptIds,
-      @Param("newStatus") AuthAttemptStatus newStatus);
+      @Param("newStatus") AuthAttemptStatus newStatus,
+      @Param("liveStatuses") List<AuthAttemptStatus> liveStatuses);
 
   /**
    * Counts auth attempts whose auth attempt proof token was encrypted with the given key id.

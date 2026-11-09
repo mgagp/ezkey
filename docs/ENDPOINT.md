@@ -2165,11 +2165,11 @@ it. Prefer `timeoutSeconds` over comparing wall clocks (PAM / Demo Device).
 `PENDING` or `READ` attempt remains, create returns **409** Problem Details type
 `https://ezkey.io/problems/domain/auth-attempt-pending-exists` with `Retry-After` set to the
 remaining lifetime of that attempt (seconds). A time-elapsed pending row is marked `EXPIRED` and
-does not block. Independently, 3 `REJECTED`, `INVALID` (wrong challenge digits), or `EXPIRED`
+does not block. Independently, 3 device-signed `REJECTED` or `INVALID` (wrong challenge digits)
 attempts in 10 minutes on the same enrollment suspend further creates for 5 minutes (**409** type
 `https://ezkey.io/problems/domain/auth-attempt-creation-cooldown`, `Retry-After` remaining
-suspension). The system integration counts only `REJECTED` and `INVALID`; `EXPIRED` does not arm
-its cooldown. Those defaults are `ezkey.core.auth-attempt.cooldown-*`. **429** stays the per-API-key
+suspension). This set is the same for every integration. `EXPIRED` (supersession, cancel, or
+timeout) does not arm the cooldown. Those defaults are `ezkey.core.auth-attempt.cooldown-*`. **429** stays the per-API-key
 bucket; its limit and window come from `ezkey.api-key.rate-limit`, and `Retry-After` is that window.
 
 **`challengeRequested` (required, unchanged):** `@NotNull` / OpenAPI required since before #895 —

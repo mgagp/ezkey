@@ -107,7 +107,8 @@ class AuthAttemptPendingPolicyTest {
     AuthAttempt stale = attempt(8, OffsetDateTime.ofInstant(NOW, ZoneOffset.UTC).minusSeconds(5));
     when(authAttemptRepository.findByEnrollmentIdAndStatusIn(any(), anyList()))
         .thenReturn(List.of(stale));
-    when(authAttemptRepository.updateStatusForMultipleAttempts(anyList(), any())).thenReturn(1);
+    when(authAttemptRepository.updateStatusForMultipleAttempts(anyList(), any(), anyList()))
+        .thenReturn(1);
     when(signatureService.generateProofToken()).thenReturn("proof");
     when(authAttemptRepository.save(any(AuthAttempt.class)))
         .thenAnswer(invocation -> {
@@ -120,7 +121,10 @@ class AuthAttemptPendingPolicyTest {
 
     assertThat(response.getAuthAttemptId()).isEqualTo(99);
     verify(authAttemptRepository)
-        .updateStatusForMultipleAttempts(List.of(8), AuthAttemptStatus.EXPIRED);
+        .updateStatusForMultipleAttempts(
+            List.of(8),
+            AuthAttemptStatus.EXPIRED,
+            List.of(AuthAttemptStatus.PENDING, AuthAttemptStatus.READ));
   }
 
   @Test
@@ -130,7 +134,8 @@ class AuthAttemptPendingPolicyTest {
     AuthAttempt live = attempt(8, OffsetDateTime.ofInstant(NOW, ZoneOffset.UTC).plusSeconds(40));
     when(authAttemptRepository.findByEnrollmentIdAndStatusIn(any(), anyList()))
         .thenReturn(List.of(live));
-    when(authAttemptRepository.updateStatusForMultipleAttempts(anyList(), any())).thenReturn(1);
+    when(authAttemptRepository.updateStatusForMultipleAttempts(anyList(), any(), anyList()))
+        .thenReturn(1);
     when(signatureService.generateProofToken()).thenReturn("proof");
     when(authAttemptRepository.save(any(AuthAttempt.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
@@ -138,7 +143,10 @@ class AuthAttemptPendingPolicyTest {
     service.create(request());
 
     verify(authAttemptRepository)
-        .updateStatusForMultipleAttempts(List.of(8), AuthAttemptStatus.EXPIRED);
+        .updateStatusForMultipleAttempts(
+            List.of(8),
+            AuthAttemptStatus.EXPIRED,
+            List.of(AuthAttemptStatus.PENDING, AuthAttemptStatus.READ));
   }
 
   @Test
@@ -191,10 +199,6 @@ class AuthAttemptPendingPolicyTest {
   @DisplayName("INVALID attempts arm the cooldown on the fixed clock")
   void cooldown_invalidArmsSuspension() {
     when(enrollmentRepository.findById(1)).thenReturn(Optional.of(verifiedEnrollment()));
-    Integration integration = new Integration();
-    integration.setId(9);
-    integration.setIsSystemIntegration(false);
-    when(integrationRepository.findById(9)).thenReturn(Optional.of(integration));
     OffsetDateTime now = OffsetDateTime.ofInstant(NOW, ZoneOffset.UTC);
     when(authAttemptRepository.findCreatedAtByEnrollmentIdAndStatusInSince(any(), anyList(), any()))
         .thenReturn(List.of(now.minusMinutes(8), now.minusMinutes(4), now.minusMinutes(1)));
@@ -210,8 +214,43 @@ class AuthAttemptPendingPolicyTest {
             argThat(statuses ->
                 statuses.contains(AuthAttemptStatus.INVALID)
                     && statuses.contains(AuthAttemptStatus.REJECTED)
-                    && statuses.contains(AuthAttemptStatus.EXPIRED)),
+                    && !statuses.contains(AuthAttemptStatus.EXPIRED)),
             eq(now.minusSeconds(900)));
+  }
+
+  @Test
+  @DisplayName("Regular integration: superseded and expired rows do not cool down; signed ones do")
+  void cooldown_regularIntegration_supersedeDoesNotSuspend_signedDoes() {
+    stubEnrollment(PendingAttemptPolicy.REPLACE, false);
+    List<AuthAttempt> rows = new ArrayList<>();
+    wireAttemptStore(rows);
+
+    for (int i = 0; i < 4; i++) {
+      assertThat(service.create(request())).isNotNull();
+    }
+    assertThat(rows)
+        .filteredOn(row -> row.getAuthAttemptStatus() == AuthAttemptStatus.EXPIRED)
+        .hasSize(3);
+
+    OffsetDateTime now = OffsetDateTime.ofInstant(NOW, ZoneOffset.UTC);
+    rows.add(stored(90, AuthAttemptStatus.EXPIRED, now.minusMinutes(2)));
+    rows.add(stored(91, AuthAttemptStatus.EXPIRED, now.minusMinutes(3)));
+    assertThat(service.create(request())).isNotNull();
+
+    rows.clear();
+    rows.add(stored(1, AuthAttemptStatus.REJECTED, now.minusMinutes(8)));
+    rows.add(stored(2, AuthAttemptStatus.REJECTED, now.minusMinutes(4)));
+    rows.add(stored(3, AuthAttemptStatus.INVALID, now.minusMinutes(1)));
+    assertThatThrownBy(() -> service.create(request()))
+        .isInstanceOf(AuthAttemptCreationCooldownException.class);
+
+    rows.clear();
+    AuthAttempt signed = stored(7, AuthAttemptStatus.REJECTED, now.minusMinutes(1));
+    rows.add(signed);
+    rows.add(stored(8, AuthAttemptStatus.PENDING, now.plusSeconds(30)));
+    rows.get(1).setExpiresAt(now.plusSeconds(40));
+    assertThat(service.create(request())).isNotNull();
+    assertThat(signed.getAuthAttemptStatus()).isEqualTo(AuthAttemptStatus.REJECTED);
   }
 
   @Test
@@ -219,47 +258,7 @@ class AuthAttemptPendingPolicyTest {
   void cooldown_systemIntegration_supersedeDoesNotSuspend_invalidDoes() {
     stubEnrollment(PendingAttemptPolicy.REPLACE, true);
     List<AuthAttempt> rows = new ArrayList<>();
-    int[] nextId = {1};
-    when(authAttemptRepository.findCreatedAtByEnrollmentIdAndStatusInSince(any(), anyList(), any()))
-        .thenAnswer(invocation -> {
-          List<AuthAttemptStatus> statuses = invocation.getArgument(1);
-          OffsetDateTime since = invocation.getArgument(2);
-          assertThat(statuses)
-              .containsExactlyInAnyOrder(AuthAttemptStatus.REJECTED, AuthAttemptStatus.INVALID);
-          return rows.stream()
-              .filter(row -> statuses.contains(row.getAuthAttemptStatus()))
-              .filter(row -> !row.getCreatedAt().isBefore(since))
-              .map(AuthAttempt::getCreatedAt)
-              .toList();
-        });
-    when(authAttemptRepository.findByEnrollmentIdAndStatusIn(any(), anyList()))
-        .thenAnswer(invocation -> {
-          List<AuthAttemptStatus> statuses = invocation.getArgument(1);
-          return rows.stream()
-              .filter(row -> statuses.contains(row.getAuthAttemptStatus()))
-              .toList();
-        });
-    when(authAttemptRepository.updateStatusForMultipleAttempts(anyList(), any()))
-        .thenAnswer(invocation -> {
-          List<Integer> ids = invocation.getArgument(0);
-          AuthAttemptStatus status = invocation.getArgument(1);
-          int updated = 0;
-          for (AuthAttempt row : rows) {
-            if (ids.contains(row.getAuthAttemptId())) {
-              row.setAuthAttemptStatus(status);
-              updated++;
-            }
-          }
-          return updated;
-        });
-    when(signatureService.generateProofToken()).thenReturn("proof");
-    when(authAttemptRepository.save(any(AuthAttempt.class)))
-        .thenAnswer(invocation -> {
-          AuthAttempt saved = invocation.getArgument(0);
-          saved.setAuthAttemptId(nextId[0]++);
-          rows.add(saved);
-          return saved;
-        });
+    wireAttemptStore(rows);
 
     for (int i = 0; i < 4; i++) {
       assertThat(service.create(request())).isNotNull();
@@ -279,6 +278,53 @@ class AuthAttemptPendingPolicyTest {
 
     assertThatThrownBy(() -> service.create(request()))
         .isInstanceOf(AuthAttemptCreationCooldownException.class);
+  }
+
+  private void wireAttemptStore(List<AuthAttempt> rows) {
+    int[] nextId = {100};
+    when(authAttemptRepository.findCreatedAtByEnrollmentIdAndStatusInSince(any(), anyList(), any()))
+        .thenAnswer(invocation -> {
+          List<AuthAttemptStatus> statuses = invocation.getArgument(1);
+          OffsetDateTime since = invocation.getArgument(2);
+          assertThat(statuses)
+              .containsExactlyInAnyOrder(AuthAttemptStatus.REJECTED, AuthAttemptStatus.INVALID);
+          return rows.stream()
+              .filter(row -> statuses.contains(row.getAuthAttemptStatus()))
+              .filter(row -> !row.getCreatedAt().isBefore(since))
+              .map(AuthAttempt::getCreatedAt)
+              .toList();
+        });
+    when(authAttemptRepository.findByEnrollmentIdAndStatusIn(any(), anyList()))
+        .thenAnswer(invocation -> {
+          List<AuthAttemptStatus> statuses = invocation.getArgument(1);
+          return rows.stream()
+              .filter(row -> statuses.contains(row.getAuthAttemptStatus()))
+              .toList();
+        });
+    when(authAttemptRepository.updateStatusForMultipleAttempts(anyList(), any(), anyList()))
+        .thenAnswer(invocation -> {
+          List<Integer> ids = invocation.getArgument(0);
+          AuthAttemptStatus status = invocation.getArgument(1);
+          List<AuthAttemptStatus> live = invocation.getArgument(2);
+          assertThat(live)
+              .containsExactlyInAnyOrder(AuthAttemptStatus.PENDING, AuthAttemptStatus.READ);
+          int updated = 0;
+          for (AuthAttempt row : rows) {
+            if (ids.contains(row.getAuthAttemptId()) && live.contains(row.getAuthAttemptStatus())) {
+              row.setAuthAttemptStatus(status);
+              updated++;
+            }
+          }
+          return updated;
+        });
+    when(signatureService.generateProofToken()).thenReturn("proof");
+    when(authAttemptRepository.save(any(AuthAttempt.class)))
+        .thenAnswer(invocation -> {
+          AuthAttempt saved = invocation.getArgument(0);
+          saved.setAuthAttemptId(nextId[0]++);
+          rows.add(saved);
+          return saved;
+        });
   }
 
   private void stubEnrollment(PendingAttemptPolicy policy) {

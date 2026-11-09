@@ -113,22 +113,28 @@ public class AuthAttemptTxHelper {
   }
 
   /**
-   * Mark auth attempt as REJECTED in an independent transaction.
+   * Mark auth attempt as REJECTED in an independent transaction, only when status is still {@code
+   * READ}.
    *
-   * <p>Similar to markAsInvalid, ensures the rejection is persisted even if subsequent processing
-   * fails.
+   * <p>A superseded or cancelled row is already {@code EXPIRED} and is not rewritten. This method
+   * does not raise the enrollment alert; the respond path does that after its own conditional
+   * update commits.
    *
    * @param authAttemptId the auth attempt ID to mark as rejected
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void markAsRejected(Integer authAttemptId) {
-    AuthAttempt authAttempt = authAttemptRepository.findById(authAttemptId).orElse(null);
-    if (authAttempt != null) {
-      authAttempt.setAuthAttemptStatus(AuthAttemptStatus.REJECTED);
-      authAttemptRepository.save(authAttempt);
+    OffsetDateTime now = OffsetDateTime.now();
+    int updated =
+        authAttemptRepository.updateStatusIfCurrent(
+            authAttemptId, AuthAttemptStatus.READ, AuthAttemptStatus.REJECTED, now);
+    if (updated == 1) {
       logger.debug(
           "🔒 Auth attempt {} marked as REJECTED (committed independently)", authAttemptId);
+      return;
     }
-    // Transaction commits here when method returns
+    logger.debug(
+        "Skip markAsRejected for auth attempt {}: not READ (superseded, cancelled, or finalized)",
+        authAttemptId);
   }
 }
