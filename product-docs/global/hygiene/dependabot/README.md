@@ -55,6 +55,7 @@ Dependabot alone cannot prove current:
 | Bruno CLI | `npm` at `/bruno` (weekly + cooldown) | Smoke with `./scripts/bruno-health.sh --suite g0` |
 | GitHub Actions | `github-actions` at `/` (weekly); group `codeql-action` (`github/codeql-action/*`) so init/analyze bump together (#1061/#1063 failed alone; fixed by #1072) | — |
 | Python CLI | `pip` at `/ezkey-cli-python` (weekly) | — |
+| Delivery connectors (outside the reactor) | `maven` at `/ezkey-connectors/ezkey-connector-mock` and `-smtp` (weekly + cooldown); their Dockerfiles in the `docker` entry | Spring Boot majors follow the core's **Java BOM pulse**. Licence inventory: open in #1278 |
 
 **Alerts (enabled 2026-11-06, Marc's decision).** Version updates and alerts are complementary:
 transitive dependencies rarely move through version-update PRs, so lockfiles also need a refresh.
