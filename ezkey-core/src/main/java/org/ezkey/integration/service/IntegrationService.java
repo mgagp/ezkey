@@ -285,6 +285,10 @@ public class IntegrationService {
   /**
    * Replaces the pending-attempt policy of an existing integration.
    *
+   * <p>The system integration stays {@code REPLACE}. It is created with that default, and any later
+   * change is refused with {@link SystemIntegrationLifecycleException}. Cooldown behaviour is
+   * unchanged.
+   *
    * @param id integration id
    * @param policy REPLACE or REFUSE
    * @return the updated integration
@@ -298,6 +302,11 @@ public class IntegrationService {
         integrationRepository
             .findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Integration", id));
+    if (Boolean.TRUE.equals(integration.getIsSystemIntegration())) {
+      throw new SystemIntegrationLifecycleException(
+          "System integration pending-attempt policy cannot be changed because it is reserved for"
+              + " administrator MFA.");
+    }
     integration.setPendingAttemptPolicy(policy);
     return integrationRepository.save(integration);
   }

@@ -67,7 +67,7 @@ docs {
   - `code` (required): Unique business identifier code for the integration (2-100 characters, alphanumeric with hyphens and underscores, must be unique per tenant)
   - `name` (required): Display name of the application (e.g., "Administration", "Billing Portal") — use application names, not organization names
   - `description` (optional): Description of the application (e.g., "Console d'administration", "Customer-facing billing portal")
-  - `pendingAttemptPolicy` (optional): `REPLACE` (default, omit the field) or `REFUSE`. REPLACE expires a live attempt and creates the new one. REFUSE returns 409 `auth-attempt-pending-exists` while a live attempt remains. Change later with `POST /api/v1/integrations/{id}/pending-attempt-policy`.
+  - `pendingAttemptPolicy` (optional): `REPLACE` (default, omit the field) or `REFUSE`. REPLACE expires a live attempt and creates the new one. REFUSE returns 409 `auth-attempt-pending-exists` while a live attempt remains. Change later with `POST /api/v1/integrations/{id}/pending-attempt-policy`. The system integration stays REPLACE; that call returns 403 `system-integration-lifecycle`.
   
   **Response (201 Created):**
   - `id`: Unique identifier of the newly created integration

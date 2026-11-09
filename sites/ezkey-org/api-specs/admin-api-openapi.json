@@ -800,7 +800,7 @@
           "Integrations"
         ],
         "summary": "Update pending-attempt policy",
-        "description": "Sets whether a new authentication attempt replaces a live one (REPLACE) or is refused while a live one exists (REFUSE). Default for new integrations is REPLACE.",
+        "description": "Sets whether a new authentication attempt replaces a live one (REPLACE) or is refused while a live one exists (REFUSE). Default for new integrations is REPLACE. The system integration stays REPLACE; changing it returns 403 system-integration-lifecycle.",
         "operationId": "updatePendingAttemptPolicy",
         "parameters": [
           {
@@ -838,6 +838,16 @@
           },
           "400": {
             "description": "Policy missing or invalid",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "System integration pending-attempt policy cannot be changed",
             "content": {
               "*/*": {
                 "schema": {
@@ -11190,42 +11200,42 @@
   },
   "x-tagGroups": [
     {
+      "name": "Getting started",
       "tags": [
         "Public",
         "Admin Authentication"
-      ],
-      "name": "Getting started"
+      ]
     },
     {
+      "name": "Tenant and integration setup",
       "tags": [
         "Tenants",
         "Integrations",
         "Enrollments",
         "API Keys"
-      ],
-      "name": "Tenant and integration setup"
+      ]
     },
     {
+      "name": "MFA operations",
       "tags": [
         "Auth Attempts",
         "Admin Enrollment Management"
-      ],
-      "name": "MFA operations"
+      ]
     },
     {
+      "name": "Administration",
       "tags": [
         "Administrator Provisioning"
-      ],
-      "name": "Administration"
+      ]
     },
     {
+      "name": "Platform operations",
       "tags": [
         "Audit Logs",
         "Encryption Keys",
         "Alerts",
         "Dashboard"
-      ],
-      "name": "Platform operations"
+      ]
     }
   ]
 }

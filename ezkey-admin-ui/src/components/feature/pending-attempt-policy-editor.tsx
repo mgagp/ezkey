@@ -8,6 +8,8 @@ type PendingAttemptPolicyEditorProps = {
   id: string;
   serverValue: PendingAttemptPolicyValue;
   disabled?: boolean;
+  /** Shown under the select when the setting is fixed, such as administrator sign-in. */
+  hint?: string;
   onSave: (next: PendingAttemptPolicyValue) => Promise<unknown>;
   onSaved: () => void;
   onSaveError: (error: unknown) => void;
@@ -22,6 +24,7 @@ export function PendingAttemptPolicyEditor({
   id,
   serverValue,
   disabled = false,
+  hint,
   onSave,
   onSaved,
   onSaveError,
@@ -39,6 +42,7 @@ export function PendingAttemptPolicyEditor({
   return (
     <PendingAttemptPolicyField
       id={id}
+      hint={hint}
       value={shown}
       disabled={disabled || saving}
       onChange={(event) => {

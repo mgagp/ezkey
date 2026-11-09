@@ -934,6 +934,7 @@ slug `^[a-zA-Z0-9_-]+$`, unique per tenant. `name` is required; `description` is
 no API to change `code` after create. Same `code` in a different tenant is allowed.
 Optional `pendingAttemptPolicy` is `REPLACE` (default) or `REFUSE`. Omit it to keep REPLACE.
 `POST /api/v1/integrations/{id}/pending-attempt-policy` changes it later (`{"pendingAttemptPolicy":"REFUSE"}`).
+The system integration stays REPLACE. Changing it returns **403** `system-integration-lifecycle`.
 REPLACE expires a live attempt and creates the new one. REFUSE returns **409** while a live attempt remains.
 
 **Request:**

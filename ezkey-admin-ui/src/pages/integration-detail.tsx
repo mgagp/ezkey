@@ -406,7 +406,12 @@ export default function IntegrationDetailPage() {
                       key={integration.id}
                       id="integration-pending-attempt-policy"
                       serverValue={readPendingAttemptPolicy(integration)}
-                      disabled={integration.lifecycleStatus !== 'ACTIVE'}
+                      disabled={
+                        integration.lifecycleStatus !== 'ACTIVE' || isSystemIntegration
+                      }
+                      hint={
+                        isSystemIntegration ? t('pendingAttemptPolicy.systemLocked') : undefined
+                      }
                       onSave={(next) =>
                         api.post(`/api/v1/integrations/${integrationId}/pending-attempt-policy`, {
                           pendingAttemptPolicy: next,

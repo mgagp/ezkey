@@ -43,7 +43,8 @@
     "refuse": "Garder celle qui attend et refuser la nouvelle",
     "help": "Refuser est recommandé pour les intégrations interactives, où une personne attend pour se connecter. Enregistrer ce réglage ne change pas une demande déjà en attente. La prochaine demande l'applique : Remplacer met fin à celle qui attend ; Refuser la garde et rejette la nouvelle.",
     "saved": "Réglage « demande en attente » mis à jour.",
-    "saveFailed": "Impossible de mettre à jour le réglage « demande en attente ». Réessayez."
+    "saveFailed": "Impossible de mettre à jour le réglage « demande en attente ». Réessayez.",
+    "systemLocked": "Fixé à Remplacer pour la connexion administrateur."
   },
   "validation": {
     "codeMin": "Le code doit contenir au moins {{n}} caractères",

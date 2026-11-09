@@ -482,13 +482,23 @@ public class IntegrationController {
       summary = "Update pending-attempt policy",
       description =
           "Sets whether a new authentication attempt replaces a live one (REPLACE) or is refused"
-              + " while a live one exists (REFUSE). Default for new integrations is REPLACE.")
+              + " while a live one exists (REFUSE). Default for new integrations is REPLACE. The"
+              + " system integration stays REPLACE; changing it returns 403"
+              + " system-integration-lifecycle.")
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "200", description = "Policy updated"),
         @ApiResponse(
             responseCode = "400",
             description = "Policy missing or invalid",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = org.springframework.http.ProblemDetail.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description = "System integration pending-attempt policy cannot be changed",
             content =
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =
