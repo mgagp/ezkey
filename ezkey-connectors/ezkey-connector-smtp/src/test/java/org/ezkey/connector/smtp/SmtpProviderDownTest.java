@@ -38,7 +38,8 @@ class SmtpProviderDownTest {
   @DisplayName("a refused connection is provider-unavailable and does not use the daily cap")
   void providerUnavailable() throws Exception {
     ConnectorClient client = new ConnectorClient(port);
-    String job = ConnectorClient.job("en", "person@example.com", "Acme", ConnectorClient.PNG_BASE64);
+    String job =
+        ConnectorClient.job("en", "person@example.com", "Acme", ConnectorClient.PNG_BASE64);
 
     for (int i = 0; i < 2; i++) {
       HttpResponse<String> response = client.post("current-token", job);

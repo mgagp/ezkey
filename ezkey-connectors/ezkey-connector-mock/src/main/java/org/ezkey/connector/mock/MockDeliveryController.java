@@ -70,9 +70,7 @@ public class MockDeliveryController {
       @Value("${ezkey.connector.mock.degraded}") boolean degraded,
       @Value("${ezkey.connector.mock.slow-seconds}") long slowSeconds) {
     this.tokens =
-        nextToken.isBlank()
-            ? List.of(bytes(token))
-            : List.of(bytes(token), bytes(nextToken));
+        nextToken.isBlank() ? List.of(bytes(token)) : List.of(bytes(token), bytes(nextToken));
     this.degraded = degraded;
     this.slow = Duration.ofSeconds(slowSeconds);
   }
@@ -94,7 +92,8 @@ public class MockDeliveryController {
     body.put("connectorVersion", "0.1.0");
     body.put("contractVersion", "v0");
     body.put("channel", "email");
-    body.put("templates", List.of(Map.of("template", "enrollment-qr", "locales", List.of("en", "fr"))));
+    body.put(
+        "templates", List.of(Map.of("template", "enrollment-qr", "locales", List.of("en", "fr"))));
     body.put("testMode", true);
     return ResponseEntity.ok(body);
   }

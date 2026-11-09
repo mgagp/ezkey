@@ -50,6 +50,7 @@
 		<module>ezkey-demo-app-acme</module>
 		<module>ezkey-demo-device</module>
 		<module>ezkey-tests</module>
+		<module>ezkey-connectors</module>
 	</modules>
 
 	<properties>

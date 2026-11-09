@@ -70,7 +70,8 @@ public class SmtpDeliveryController {
           "qrPngBase64");
   private static final Set<String> LOCALES = Set.of("en", "fr");
   private static final Pattern EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
-  private static final Pattern HOSTNAME = Pattern.compile("^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$");
+  private static final Pattern HOSTNAME =
+      Pattern.compile("^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$");
   private static final Pattern CONTROL = Pattern.compile("\\p{Cntrl}");
   private static final Pattern UUID_FORMAT =
       Pattern.compile("^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$");
@@ -115,7 +116,8 @@ public class SmtpDeliveryController {
     body.put("connectorVersion", CONNECTOR_VERSION);
     body.put("contractVersion", "v0");
     body.put("channel", "email");
-    body.put("templates", List.of(Map.of("template", "enrollment-qr", "locales", List.of("en", "fr"))));
+    body.put(
+        "templates", List.of(Map.of("template", "enrollment-qr", "locales", List.of("en", "fr"))));
     body.put("testMode", false);
     return ResponseEntity.ok(body);
   }
@@ -184,8 +186,11 @@ public class SmtpDeliveryController {
       MimeMessage message = mailSender.createMimeMessage();
       MimeMessageHelper helper =
           new MimeMessageHelper(
-              message, MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED, StandardCharsets.UTF_8.name());
-      helper.setFrom(new InternetAddress(s.fromAddress(), s.fromName(), StandardCharsets.UTF_8.name()));
+              message,
+              MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED,
+              StandardCharsets.UTF_8.name());
+      helper.setFrom(
+          new InternetAddress(s.fromAddress(), s.fromName(), StandardCharsets.UTF_8.name()));
       helper.setTo(job.path("recipient").asString());
       helper.setSubject(email.subject());
       helper.setText(email.text(), email.html());
@@ -223,7 +228,8 @@ public class SmtpDeliveryController {
       if (cause.getClass().getSimpleName().equals("MailConnectException")) {
         return "provider-unavailable";
       }
-      if (cause instanceof MessagingException messaging && messaging.getNextException() != null
+      if (cause instanceof MessagingException messaging
+          && messaging.getNextException() != null
           && messaging.getNextException() != cause.getCause()) {
         String nested = classify(messaging.getNextException());
         if (!"unknown".equals(nested)) {

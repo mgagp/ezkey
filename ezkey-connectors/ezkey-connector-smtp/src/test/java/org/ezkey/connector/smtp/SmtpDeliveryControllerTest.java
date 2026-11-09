@@ -80,7 +80,9 @@ class SmtpDeliveryControllerTest {
     assertThat(client.health(null).statusCode()).isEqualTo(401);
     assertThat(client.health("wrong").statusCode()).isEqualTo(401);
     HttpResponse<String> send =
-        client.post("wrong", ConnectorClient.job("en", "a@example.com", "Acme", ConnectorClient.PNG_BASE64));
+        client.post(
+            "wrong",
+            ConnectorClient.job("en", "a@example.com", "Acme", ConnectorClient.PNG_BASE64));
     assertThat(send.statusCode()).isEqualTo(401);
     assertThat(greenMail.getReceivedMessages()).isEmpty();
   }
@@ -98,20 +100,23 @@ class SmtpDeliveryControllerTest {
     MimeMessage[] received = greenMail.getReceivedMessages();
     assertThat(received).hasSize(1);
     MimeMessage message = received[0];
-    assertThat(message.getSubject()).isEqualTo("Acme vous invite à configurer l’approbation de connexion");
+    assertThat(message.getSubject())
+        .isEqualTo("Acme vous invite à configurer l’approbation de connexion");
     assertThat(message.getFrom()[0].toString()).contains("invitations@example.com");
 
     List<Part> parts = leaves(message);
     String text = bodyOf(parts, "text/plain");
     String html = bodyOf(parts, "text/html");
-    assertThat(text).contains("auth.example.com", "code à 6 chiffres", "Vous n’attendiez pas ce courriel");
+    assertThat(text)
+        .contains("auth.example.com", "code à 6 chiffres", "Vous n’attendiez pas ce courriel");
     assertThat(html).contains("cid:enrollment-qr", "auth.example.com");
     Part image = parts.stream().filter(p -> isType(p, "image/png")).findFirst().orElseThrow();
     assertThat(image.getHeader("Content-ID")[0]).isEqualTo("<enrollment-qr>");
     assertThat(image.getDisposition()).isEqualToIgnoringCase(Part.INLINE);
     ByteArrayOutputStream bytes = new ByteArrayOutputStream();
     image.getInputStream().transferTo(bytes);
-    assertThat(bytes.toByteArray()).isEqualTo(Base64.getDecoder().decode(ConnectorClient.PNG_BASE64));
+    assertThat(bytes.toByteArray())
+        .isEqualTo(Base64.getDecoder().decode(ConnectorClient.PNG_BASE64));
   }
 
   @Test
@@ -120,11 +125,13 @@ class SmtpDeliveryControllerTest {
     HttpResponse<String> response =
         client.post(
             "next-token",
-            ConnectorClient.job("en", "person@example.com", "Bob & <i>Co</i>", ConnectorClient.PNG_BASE64));
+            ConnectorClient.job(
+                "en", "person@example.com", "Bob & <i>Co</i>", ConnectorClient.PNG_BASE64));
 
     assertThat(response.statusCode()).isEqualTo(200);
     MimeMessage message = greenMail.getReceivedMessages()[0];
-    assertThat(message.getSubject()).isEqualTo("Bob & <i>Co</i> invites you to set up sign-in approval");
+    assertThat(message.getSubject())
+        .isEqualTo("Bob & <i>Co</i> invites you to set up sign-in approval");
     String html = bodyOf(leaves(message), "text/html");
     assertThat(html).contains("Bob &amp; &lt;i&gt;Co&lt;/i&gt;").doesNotContain("<i>Co</i>");
   }
@@ -139,9 +146,14 @@ class SmtpDeliveryControllerTest {
     assertThat(post("en", "not-an-address", "Acme", ConnectorClient.PNG_BASE64).body())
         .contains("invalid-recipient");
     HttpResponse<String> injected =
-        post("en", "person@example.com", "Acme\\r\\nBcc: x@example.com", ConnectorClient.PNG_BASE64);
+        post(
+            "en", "person@example.com", "Acme\\r\\nBcc: x@example.com", ConnectorClient.PNG_BASE64);
     assertThat(injected.statusCode()).isEqualTo(400);
-    assertThat(client.post("current-token", "{\"sendId\":\"" + ConnectorClient.SEND_ID + "\",\"extra\":1}").statusCode())
+    assertThat(
+            client
+                .post(
+                    "current-token", "{\"sendId\":\"" + ConnectorClient.SEND_ID + "\",\"extra\":1}")
+                .statusCode())
         .isEqualTo(400);
     assertThat(greenMail.getReceivedMessages()).isEmpty();
   }
@@ -153,7 +165,8 @@ class SmtpDeliveryControllerTest {
         "current-token",
         ConnectorClient.job("en", "canary-7f3a@example.com", "Acme", ConnectorClient.PNG_BASE64));
 
-    // GreenMail plays the provider in this JVM and logs the mailbox it creates; the provider sees the
+    // GreenMail plays the provider in this JVM and logs the mailbox it creates; the provider sees
+    // the
     // recipient by design. Only the connector's own output is under test.
     String connectorOutput =
         (output.getOut() + output.getErr())

@@ -1,6 +1,7 @@
 
-Lists of 180 third-party dependencies.
+Lists of 185 third-party dependencies.
      (EDL-1.0) Angus Activation Registries (org.eclipse.angus:angus-activation:2.0.3 - https://github.com/eclipse-ee4j/angus-activation/angus-activation)
+     (EDL-1.0) (EPL-2.0) (GPL-2.0-with-classpath-exception) Angus Mail Provider (org.eclipse.angus:angus-mail:2.0.5 - http://eclipse-ee4j.github.io/angus-mail/angus-mail)
      (BSD-3-Clause) ANTLR 4 Runtime (org.antlr:antlr4-runtime:4.13.2 - https://www.antlr.org/antlr4-runtime/)
      (Apache-2.0) Apache Commons Codec (commons-codec:commons-codec:1.21.0 - https://commons.apache.org/proper/commons-codec/)
      (Apache-2.0) Apache Commons Lang (org.apache.commons:commons-lang3:3.20.0 - https://commons.apache.org/proper/commons-lang/)
@@ -39,6 +40,7 @@ Lists of 180 third-party dependencies.
      (EDL-1.0) Jakarta Activation API (jakarta.activation:jakarta.activation-api:2.1.4 - https://github.com/jakartaee/jaf-api)
      (EPL-2.0) (GPL-2.0-with-classpath-exception) Jakarta Annotations API (jakarta.annotation:jakarta.annotation-api:3.0.0 - https://projects.eclipse.org/projects/ee4j.ca)
      (Apache-2.0) Jakarta Dependency Injection (jakarta.inject:jakarta.inject-api:2.0.1 - https://github.com/eclipse-ee4j/injection-api)
+     (EDL-1.0) (EPL-2.0) (GPL-2.0-with-classpath-exception) Jakarta Mail API (jakarta.mail:jakarta.mail-api:2.1.5 - https://projects.eclipse.org/projects/ee4j/jakarta.mail-api)
      (EDL-1.0) (Eclipse Public License v. 2.0) Jakarta Persistence API (jakarta.persistence:jakarta.persistence-api:3.2.0 - https://github.com/jakartaee/persistence)
      (Apache-2.0) Jakarta Validation API (jakarta.validation:jakarta.validation-api:3.1.1 - https://beanvalidation.org)
      (EDL-1.0) Jakarta XML Binding API (jakarta.xml.bind:jakarta.xml.bind-api:4.0.5 - https://github.com/jakartaee/jaxb-api/jakarta.xml.bind-api)
@@ -98,6 +100,7 @@ Lists of 180 third-party dependencies.
      (Apache-2.0) Spring Aspects (org.springframework:spring-aspects:7.0.10 - https://github.com/spring-projects/spring-framework)
      (Apache-2.0) Spring Beans (org.springframework:spring-beans:7.0.10 - https://github.com/spring-projects/spring-framework)
      (Apache-2.0) Spring Context (org.springframework:spring-context:7.0.10 - https://github.com/spring-projects/spring-framework)
+     (Apache-2.0) Spring Context Support (org.springframework:spring-context-support:7.0.10 - https://github.com/spring-projects/spring-framework)
      (Apache-2.0) Spring Core (org.springframework:spring-core:7.0.10 - https://github.com/spring-projects/spring-framework)
      (Apache-2.0) Spring Data Core (org.springframework.data:spring-data-commons:4.1.2 - https://spring.io/projects/spring-data)
      (Apache-2.0) Spring Data JPA (org.springframework.data:spring-data-jpa:4.1.2 - https://projects.spring.io/spring-data-jpa)
@@ -123,6 +126,7 @@ Lists of 180 third-party dependencies.
      (Apache-2.0) spring-boot-jackson (org.springframework.boot:spring-boot-jackson:4.1.2 - https://spring.io/projects/spring-boot)
      (Apache-2.0) spring-boot-jdbc (org.springframework.boot:spring-boot-jdbc:4.1.2 - https://spring.io/projects/spring-boot)
      (Apache-2.0) spring-boot-jpa (org.springframework.boot:spring-boot-jpa:4.1.2 - https://spring.io/projects/spring-boot)
+     (Apache-2.0) spring-boot-mail (org.springframework.boot:spring-boot-mail:4.1.2 - https://spring.io/projects/spring-boot)
      (Apache-2.0) spring-boot-micrometer-metrics (org.springframework.boot:spring-boot-micrometer-metrics:4.1.2 - https://spring.io/projects/spring-boot)
      (Apache-2.0) spring-boot-micrometer-observation (org.springframework.boot:spring-boot-micrometer-observation:4.1.2 - https://spring.io/projects/spring-boot)
      (Apache-2.0) spring-boot-netty (org.springframework.boot:spring-boot-netty:4.1.2 - https://spring.io/projects/spring-boot)
@@ -140,6 +144,7 @@ Lists of 180 third-party dependencies.
      (Apache-2.0) spring-boot-starter-jackson (org.springframework.boot:spring-boot-starter-jackson:4.1.2 - https://spring.io/projects/spring-boot)
      (Apache-2.0) spring-boot-starter-jdbc (org.springframework.boot:spring-boot-starter-jdbc:4.1.2 - https://spring.io/projects/spring-boot)
      (Apache-2.0) spring-boot-starter-logging (org.springframework.boot:spring-boot-starter-logging:4.1.2 - https://spring.io/projects/spring-boot)
+     (Apache-2.0) spring-boot-starter-mail (org.springframework.boot:spring-boot-starter-mail:4.1.2 - https://spring.io/projects/spring-boot)
      (Apache-2.0) spring-boot-starter-micrometer-metrics (org.springframework.boot:spring-boot-starter-micrometer-metrics:4.1.2 - https://spring.io/projects/spring-boot)
      (Apache-2.0) spring-boot-starter-reactor-netty (org.springframework.boot:spring-boot-starter-reactor-netty:4.1.2 - https://spring.io/projects/spring-boot)
      (Apache-2.0) spring-boot-starter-security (org.springframework.boot:spring-boot-starter-security:4.1.2 - https://spring.io/projects/spring-boot)

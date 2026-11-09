@@ -18,7 +18,8 @@ services:
 
   connector-smtp:
     build:
-      context: ../ezkey-connectors/ezkey-connector-smtp
+      context: ..
+      dockerfile: ezkey-connectors/ezkey-connector-smtp/Dockerfile
     container_name: ezkey-connector-smtp
     environment:
       EZKEY_CONNECTOR_SMTP_TOKEN: local-test-only-smtp-connector-token

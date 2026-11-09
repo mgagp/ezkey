@@ -34,7 +34,8 @@ class SmtpDegradedTest {
             client
                 .post(
                     "current-token",
-                    ConnectorClient.job("en", "person@example.com", "Acme", ConnectorClient.PNG_BASE64))
+                    ConnectorClient.job(
+                        "en", "person@example.com", "Acme", ConnectorClient.PNG_BASE64))
                 .body())
         .contains("provider-unavailable");
   }
