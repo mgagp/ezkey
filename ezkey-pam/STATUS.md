@@ -11,6 +11,12 @@ a complement to the Ezkey core, not a second product and not a general-purpose P
 How-to and demo commands live in [`README.md`](README.md). This file answers: what it is today,
 what “operable” would mean, and what not to build.
 
+Host-grade contract (#1200): [`HOST-GRADE.md`](HOST-GRADE.md). Proved by
+`./scripts/host-grade-accept.sh` on the Rocky and Amazon Linux 2023 Docker
+images (stub, no manual step). Not proved on a real host. Lightsail acceptance
+([#1201](https://github.com/mgagp/ezkey/issues/1201)) stays blocked until that
+contract is merged. `install.sh` still does not edit `sshd_config`.
+
 ---
 
 ## Product intent (keep this geometry)

@@ -31,6 +31,12 @@ Modes (EZKEY_STUB_MODE):
   cancel_fail    — like expired, but POST …/cancel returns 503 (PAM outcome must not change)
   cancel_final   — like expired, but POST …/cancel returns 409 already-final
                    (PAM keeps EXPIRED; summary cancel=final — Christophe observability)
+  http_404       — every POST and GET on this listener returns HTTP 404
+                   (host-grade fail-closed; #1200). Default modes are unchanged.
+
+Optional TLS (host-grade non-lab URL, #1200): when both EZKEY_STUB_TLS_CERT and
+EZKEY_STUB_TLS_KEY are set, the same listener speaks HTTPS (TLS 1.2+). Unset
+means plain HTTP, as before. This does not disable peer verify in the module.
 
 Request paths (incl. ?timeout=) and POST bodies are appended to EZKEY_STUB_REQ_LOG
 when set so tests can assert ttlSeconds / timeoutSeconds and cancel (#895 PR-B / #897).
@@ -40,6 +46,7 @@ from __future__ import annotations
 
 import json
 import os
+import ssl
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
@@ -151,6 +158,9 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:  # noqa: N802
         body = self._read_body()
         _log_req("POST", self.path, body)
+        if MODE == "http_404":
+            self.send_error(404)
+            return
         path = self.path.split("?", 1)[0].rstrip("/")
 
         if path.endswith("/cancel") and "/api/v1/auth-attempts/" in path:
@@ -236,6 +246,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802
         _log_req("GET", self.path)
+        if MODE == "http_404":
+            self.send_error(404)
+            return
         if "/wait" not in self.path:
             self.send_error(404)
             return
@@ -340,6 +353,12 @@ class Handler(BaseHTTPRequestHandler):
         )
 
 
+class ReuseServer(ThreadingHTTPServer):
+    """Allow a quick restart in the acceptance suite (same port, new mode)."""
+
+    allow_reuse_address = True
+
+
 def main() -> None:
     try:
         open(REQ_LOG, "w", encoding="utf-8").close()
@@ -351,7 +370,14 @@ def main() -> None:
                 os.remove(RELEASE_PATH)
         except OSError:
             pass
-    server = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
+    server = ReuseServer(("0.0.0.0", PORT), Handler)
+    tls_cert = os.environ.get("EZKEY_STUB_TLS_CERT", "")
+    tls_key = os.environ.get("EZKEY_STUB_TLS_KEY", "")
+    if tls_cert and tls_key:
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+        ctx.load_cert_chain(certfile=tls_cert, keyfile=tls_key)
+        server.socket = ctx.wrap_socket(server.socket, server_side=True)
     print(
         f"stub mode={MODE} listening on :{PORT} req_log={REQ_LOG} "
         f"applied_ttl={APPLIED_TTL} ttl_cap={GLOBAL_TTL_CAP} "

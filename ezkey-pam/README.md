@@ -8,7 +8,8 @@ Internal lab evaluation only — experimental SSH MFA dogfood via ezkey-pam; not
 feature, not on the public alpha/community path, and not operable roadmap for Sept 2026.
 
 Current status, product geometry, and what “operable” would mean (Lightsail dogfood vs generic
-Linux extract): [`STATUS.md`](STATUS.md).
+Linux extract): [`STATUS.md`](STATUS.md). Host-grade contract (#1200):
+[`HOST-GRADE.md`](HOST-GRADE.md).
 
 Linux PAM module that calls the **Integration API** (port 7080, Docker service
 `integration-api`). When a user connects over SSH, the module:
@@ -654,7 +655,9 @@ range used by the SSH VM (see your host’s Docker bridge network).
 ezkey-pam/
 ├── src/                 PAM module (C)
 ├── config/              Reference pam_ezkey.conf (debug=false)
-├── scripts/             provision, Docker up, AL2023 build/smoke, SSH demo
+├── scripts/             provision, Docker up, AL2023 build/smoke, SSH demo,
+│                        host-grade-accept.sh (#1200)
+├── HOST-GRADE.md        Host-grade contract (only copy)
 ├── test/                Container self-checks + AL2023 smoke
 ├── Dockerfile           Rocky builder + SSH runtime
 ├── Dockerfile.al2023    AL2023 builder + smoke + SSH mirror
