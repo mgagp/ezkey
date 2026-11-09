@@ -490,12 +490,12 @@ hg_authpriv_has_challenge() {
 }
 
 # Auth stack only. Comments are dropped. Comparison is case-insensitive
-# (PAM is). A leading "-" on the type (for example -auth) is the same type.
-# The control field of pam_ezkey must be required or requisite. "required"
-# buried in module arguments does not count. Before that line, these can
-# short-circuit or pull in another stack, so they fail the check:
-# sufficient, [default=ignore], [success=done ...], [success=1 ...],
-# include, substack, and @include.
+# (PAM is). A leading "-" on some other module is still that type. A leading
+# "-" on the pam_ezkey line is rejected: PAM skips an unloadable module and
+# the stack continues. The control field of pam_ezkey must be required or
+# requisite. "required" buried in module arguments does not count. Before
+# that line, sufficient, include, substack, @include, [default=ignore], any
+# done action, and any jump =N (N>=1) for any key fail the check.
 hg_auth_stack_ok() {
   local file="$1"
   local raw line low token body type control module saw
@@ -523,6 +523,10 @@ hg_auth_stack_ok() {
     fi
     module="$(printf '%s' "${module}" | sed -E 's/^[[:space:]]+//')"
     if printf '%s' "${module}" | grep -q 'pam_ezkey\.so'; then
+      # -auth required pam_ezkey.so is fail-open if the module cannot load.
+      if [ "${token#-}" != "${token}" ]; then
+        return 1
+      fi
       case "${control}" in
         required|requisite) saw=1 ;;
         *) return 1 ;;
@@ -534,11 +538,12 @@ hg_auth_stack_ok() {
       if printf '%s' "${control}" | grep -Eq 'default=ignore'; then
         return 1
       fi
-      if printf '%s' "${control}" | grep -Eq 'success=done([^[:alnum:]_]|$)'; then
+      # Any key=done action. done continues past this line on that result.
+      if printf '%s' "${control}" | grep -Eq '=done([^[:alnum:]_]|$)'; then
         return 1
       fi
-      # success=1 jumps over the next module. success=10 does not match.
-      if printf '%s' "${control}" | grep -Eq 'success=1([^[:digit:]]|$)'; then
+      # A jump of N>=1 on any key (success=1, success=2, default=1, =10).
+      if printf '%s' "${control}" | grep -Eq '=[1-9][0-9]*([[:space:]]|]|$)'; then
         return 1
       fi
     fi
@@ -625,8 +630,24 @@ hg_control_flag_cases() {
   hg_expect_stack line2_accept_uppercase_requisite ok "${dir}/upper-ok" \
     "uppercase requisite is a fail-closed control"
   printf '%s\n' '-auth required pam_ezkey.so' >"${dir}/dash-ok"
-  hg_expect_stack line2_accept_dash_required ok "${dir}/dash-ok" \
-    "a leading dash does not change a required control"
+  hg_expect_stack line2_accept_dash_required bad "${dir}/dash-ok" \
+    "a leading dash on the pam_ezkey line is fail-open"
+  printf '%s\n' '-auth required pam_permit.so' 'auth required pam_ezkey.so' \
+    >"${dir}/dash-other"
+  hg_expect_stack line2_accept_dash_on_other_module ok "${dir}/dash-other" \
+    "a leading dash on a different module does not hide pam_ezkey"
+  printf '%s\n' 'auth [default=done] pam_permit.so' 'auth required pam_ezkey.so' \
+    >"${dir}/default-done"
+  hg_expect_stack line2_reject_default_done_before bad "${dir}/default-done" \
+    "[default=done] before pam_ezkey can short-circuit"
+  printf '%s\n' 'auth [success=2 default=die] pam_permit.so' \
+    'auth required pam_ezkey.so' >"${dir}/success-2"
+  hg_expect_stack line2_reject_success_2_before bad "${dir}/success-2" \
+    "[success=2] before pam_ezkey can skip it"
+  printf '%s\n' 'auth [success=ok default=1] pam_permit.so' \
+    'auth required pam_ezkey.so' >"${dir}/default-jump"
+  hg_expect_stack line2_reject_default_jump_before bad "${dir}/default-jump" \
+    "[success=ok default=1] before pam_ezkey can skip it"
   rm -rf "${dir}"
 }
 

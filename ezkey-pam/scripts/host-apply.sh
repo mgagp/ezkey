@@ -18,6 +18,11 @@
 # and both ports must be simple tokens:
 #   group, user  [A-Za-z_][A-Za-z0-9_-]{0,31}
 #   ports        decimal 1-65535, no leading zero ([1-9][0-9]{0,4})
+# The API URL must match ^https:// with no space or tab. Conf, sshd, pam.d,
+# the admin config, and the state directory must be absolute paths.
+# EZKEY_PAM_ROLLBACK_SECONDS, when set, must be a positive integer.
+# Snapshot copies use || return, because apply calls ha_snapshot under ||
+# and that disables set -e. A failed copy does not write READY.
 # apply writes sshd_config, pam.d, the conf, and the admin config through a
 # temp file, then install(1). If any step fails, the snapshot is restored.
 # sshd -t must pass on the MFA config and the admin config before apply
@@ -108,17 +113,45 @@ ha_validate_tokens() {
   fi
 }
 
+ha_validate_url() {
+  local url="$1"
+  if printf '%s' "${url}" | grep -Eq '^https://[^[:space:]]+$'; then
+    return 0
+  fi
+  echo "host-apply: EZKEY_PAM_API_URL must match ^https:// with no space or tab" >&2
+  return 1
+}
+
+ha_abs_path() {
+  local name="$1"
+  local value="$2"
+  case "${value}" in
+    /*) return 0 ;;
+  esac
+  echo "host-apply: ${name} must be an absolute path" >&2
+  return 1
+}
+
+ha_validate_abs_paths() {
+  ha_abs_path EZKEY_PAM_CONF "${CONF}" || return 1
+  ha_abs_path EZKEY_PAM_SSHD_CONFIG "${SSHD_CFG}" || return 1
+  ha_abs_path EZKEY_PAM_PAM_SSHD "${PAM_SSHD}" || return 1
+  ha_abs_path EZKEY_PAM_ADMIN_SSHD "${ADMIN_CFG}" || return 1
+  ha_abs_path EZKEY_PAM_STATE_DIR "${STATE_DIR}" || return 1
+}
+
 ha_snapshot() {
   if [ -f "${SNAP}/READY" ]; then
     return 0
   fi
-  mkdir -p "${SNAP}"
-  chmod 700 "${STATE_DIR}" "${SNAP}"
-  cp -a "${SSHD_CFG}" "${SNAP}/sshd_config"
-  cp -a "${PAM_SSHD}" "${SNAP}/pam.d-sshd"
-  cp -a "${CONF}" "${SNAP}/pam_ezkey.conf"
-  : >"${SNAP}/READY"
-  chmod 600 "${SNAP}/READY"
+  mkdir -p "${SNAP}" || return 1
+  chmod 700 "${STATE_DIR}" "${SNAP}" || return 1
+  # apply invokes this function with ||, which turns set -e off for the body.
+  cp -a "${SSHD_CFG}" "${SNAP}/sshd_config" || return 1
+  cp -a "${PAM_SSHD}" "${SNAP}/pam.d-sshd" || return 1
+  cp -a "${CONF}" "${SNAP}/pam_ezkey.conf" || return 1
+  : >"${SNAP}/READY" || return 1
+  chmod 600 "${SNAP}/READY" || return 1
 }
 
 ha_restore_snapshot() {
@@ -233,6 +266,8 @@ HostKey /etc/ssh/ssh_host_ecdsa_key
 HostKey /etc/ssh/ssh_host_ed25519_key
 PidFile /run/sshd-hg-admin.pid
 UseDNS no
+SyslogFacility AUTHPRIV
+LogLevel VERBOSE
 PermitRootLogin no
 PubkeyAuthentication yes
 PasswordAuthentication no
@@ -269,6 +304,8 @@ ha_apply() {
   fi
   ha_reject_crlf_env || return 1
   ha_validate_tokens || return 1
+  ha_validate_url "${url}" || return 1
+  ha_validate_abs_paths || return 1
   case "${EZKEY_PAM_APPLY_FAIL_AFTER:-}" in
     "" | sshd) ;;
     *)
@@ -298,6 +335,7 @@ ha_remove() {
     return 1
   fi
   ha_reject_crlf_env || return 1
+  ha_validate_abs_paths || return 1
   ha_restore_snapshot || return 1
   ha_sshd_ok "${SSHD_CFG}" || return 1
 }
@@ -307,17 +345,22 @@ ha_arm() {
   local minutes="${EZKEY_PAM_ROLLBACK_MINUTES:-15}"
   local delay now
   ha_reject_crlf_env || return 1
+  ha_validate_abs_paths || return 1
   if [ ! -f "${SNAP}/READY" ]; then
     echo "host-apply arm: no snapshot" >&2
     return 1
   fi
   if [ -n "${seconds}" ]; then
     case "${seconds}" in
-      '' | *[!0-9]*)
-        echo "host-apply arm: EZKEY_PAM_ROLLBACK_SECONDS must be decimal" >&2
+      *[!0-9]*)
+        echo "host-apply arm: EZKEY_PAM_ROLLBACK_SECONDS must be a positive integer" >&2
         return 1
         ;;
     esac
+    if [ "${seconds}" -lt 1 ]; then
+      echo "host-apply arm: EZKEY_PAM_ROLLBACK_SECONDS must be a positive integer" >&2
+      return 1
+    fi
     delay="${seconds}"
   else
     case "${minutes}" in

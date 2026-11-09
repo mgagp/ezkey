@@ -25,7 +25,7 @@ community instance (#955).
 | Boundary | Posture |
 |---|---|
 | Integration API down, HTTP 404, expiration, deny, bad conf mode, TLS verify failure | **Fail-closed.** No SSH session. |
-| PAM control flag on `pam_ezkey` | **Fail-closed only if** the auth control field is `required` or `requisite`. The suite parses auth lines with comments removed, ignoring case, and treats a leading `-` as the same type. It rejects `optional`, `sufficient`, `required` hidden in module arguments, and a line before `pam_ezkey` that is `sufficient`, `-auth sufficient`, `[default=ignore]`, `[success=done …]`, `[success=1 …]`, `include`, `substack`, `@include`, or the same words in uppercase. |
+| PAM control flag on `pam_ezkey` | **Fail-closed only if** the auth control field is `required` or `requisite` and the line has no leading `-`. A leading `-` on the `pam_ezkey` line is rejected, because PAM skips an unloadable module and continues. The suite parses auth lines with comments removed, ignoring case. A leading `-` on a different module is still that type. It rejects `optional`, `sufficient`, `required` hidden in module arguments, and a line before `pam_ezkey` that is `sufficient`, `-auth sufficient`, `[default=ignore]`, any `done` action, any jump `=N` with N≥1 (`[success=1]`, `[success=2]`, `[default=done]`, `[success=ok default=1]`), `include`, `substack`, `@include`, or the same words in uppercase. |
 | Break-glass | **Separate sshd**, not a fail-open flag in the module. No `failmode=safe`. |
 | Rollback with no confirmation | **Fail-closed for the edit** when `host-apply.sh check` runs after the window. Previous files return. A system timer that would call `check` is not installed. |
 | Authpriv logging | Must not grant a session. A missing line fails the observability check. |
@@ -46,7 +46,10 @@ community instance (#955).
 3. **Break-glass.** A second `sshd` listens on another port with `UsePAM no`,
    public-key only, and an admin account. Removing `pam_ezkey.so` or replacing
    it with a broken file kills sessions for members of `ezkey-mfa` on the MFA
-   port. The admin port still accepts the admin key. A user outside the group
+   port. The admin port still accepts the admin key. An `ezkey-mfa` member
+   is refused there. The suite unlocks that member's shadow first, because a
+   locked account is refused before `AllowUsers`, then authpriv records
+   `not listed in AllowUsers`. A user outside the group
    still gets a key-only session on that same MFA port; the suite fails if
    they do not. `UsePAM no` rejects a locked shadow (`!` or `!!`) before the
    key is read. The fixture gives that account a valid random password so
@@ -68,10 +71,14 @@ community instance (#955).
    stays there. A CR or LF in any environment value is rejected and apply
    exits non-zero without writing. Group and user must match
    `[A-Za-z_][A-Za-z0-9_-]{0,31}`. Ports must be decimal 1–65535 with no
-   leading zero.
+   leading zero. The API URL must match `^https://` with no space or tab.
+   The conf, sshd, pam.d, admin config, and state directory must be absolute
+   paths. Each snapshot copy is checked; a missing conf does not write the
+   snapshot ready mark.
 6. **Rollback function.** `host-apply.sh arm`, `confirm`, and `check`.
    Default window **15 minutes** (`EZKEY_PAM_ROLLBACK_MINUTES`).
-   `EZKEY_PAM_ROLLBACK_SECONDS` overrides for the lab. `check` before the
+   `EZKEY_PAM_ROLLBACK_SECONDS`, when set, must be a positive integer and
+   overrides for the lab. `check` before the
    deadline does not change files. With no confirmation, `check` restores
    the previous files, `sshd -t` passes on that restored config, and the
    rollback record is closed. A later apply is not undone by `check` unless

@@ -52,6 +52,56 @@ hg_run_scenarios() {
   hg_expect_apply_rejected line5_reject_user_token \
     "a user that is not a simple token is rejected and files stay unchanged"
   ADMIN_USER="${saved_user}"
+  local saved_conf saved_state hash_before hash_after rc
+  hash_before="$(hg_base_hash)"
+  set +e
+  hg_apply_url "https://127.0.0.1/bad path"
+  rc=$?
+  set -e
+  hash_after="$(hg_base_hash)"
+  if [ "${rc}" -ne 0 ] && [ "${hash_before}" = "${hash_after}" ] \
+    && [ ! -f "${SNAP}/READY" ]; then
+    hg_pass line5_reject_url_space \
+      "a URL with a space is rejected and files stay unchanged"
+  else
+    hg_fail line5_reject_url_space "URL with a space rc=${rc}"
+  fi
+  saved_state="${STATE_DIR}"
+  STATE_DIR="relative-state"
+  hash_before="$(hg_base_hash)"
+  set +e
+  hg_apply
+  rc=$?
+  set -e
+  STATE_DIR="${saved_state}"
+  hash_after="$(hg_base_hash)"
+  if [ "${rc}" -ne 0 ] && [ "${hash_before}" = "${hash_after}" ] \
+    && [ ! -f "${SNAP}/READY" ] && [ ! -d relative-state ]; then
+    hg_pass line5_reject_relative_state \
+      "a relative state directory is rejected and files stay unchanged"
+  else
+    hg_fail line5_reject_relative_state "relative state directory rc=${rc}"
+  fi
+  saved_conf="${CONF}"
+  hash_before="$(sha256sum "${SSHD_CFG}" "${PAM_SSHD}" "${saved_conf}" \
+    | awk '{print $1}' | sha256sum | awk '{print $1}')"
+  CONF="${saved_conf}.missing"
+  rm -f "${CONF}"
+  set +e
+  hg_apply
+  rc=$?
+  set -e
+  CONF="${saved_conf}"
+  hash_after="$(sha256sum "${SSHD_CFG}" "${PAM_SSHD}" "${CONF}" \
+    | awk '{print $1}' | sha256sum | awk '{print $1}')"
+  if [ "${rc}" -ne 0 ] && [ ! -f "${SNAP}/READY" ] \
+    && [ "${hash_before}" = "${hash_after}" ] && [ ! -f "${ADMIN_CFG}" ]; then
+    hg_pass line5_snapshot_missing_conf \
+      "a missing conf fails the snapshot and does not write READY"
+  else
+    hg_fail line5_snapshot_missing_conf \
+      "missing conf rc=${rc} ready=$( [ -f "${SNAP}/READY" ] && echo yes || echo no )"
+  fi
 
   hg_authpriv_up
   PAM_SO="$(hg_pam_so)"
@@ -360,13 +410,21 @@ hg_run_scenarios() {
     hg_fail line3_admin_port_during_broken_module \
       "admin port failed while the module was broken"
   fi
+  # UsePAM no rejects a locked shadow before it reads AllowUsers. Unlock the
+  # member so the remaining denial is the AllowUsers line. Password
+  # authentication stays off on this daemon.
+  usermod -p "$(openssl passwd -6 "$(openssl rand -hex 16)")" "${MFA_USER}"
+  local allow_before allow_delta
+  allow_before="$(hg_log_count 'not listed in AllowUsers')"
   hg_ssh_batch "${ADMIN_PORT}" "${MFA_USER}" "${KEY_DIR}/${MFA_USER}"
-  if hg_session_yes; then
-    hg_fail line3_admin_port_refuses_mfa_member \
-      "admin port accepted an ezkey-mfa member"
-  else
+  hg_wait_log 'not listed in AllowUsers' "${allow_before}" 1 || true
+  allow_delta="$(($(hg_log_count 'not listed in AllowUsers') - allow_before))"
+  if ! hg_session_yes && [ "${allow_delta}" -ge 1 ]; then
     hg_pass line3_admin_port_refuses_mfa_member \
       "admin port AllowUsers refuses an ezkey-mfa member"
+  else
+    hg_fail line3_admin_port_refuses_mfa_member \
+      "admin port refusal was not an AllowUsers log line (delta=${allow_delta})"
   fi
 
   rm -f "${PAM_SO}"
@@ -394,8 +452,19 @@ hg_run_scenarios() {
   hg_stop_sshd
   hg_stop_stub
 
-  local now deadline delta hash_before hash_after
+  local now deadline delta hash_before hash_after rc
+  set +e
+  EZKEY_PAM_ROLLBACK_SECONDS=0 hg_rollback_arm
+  rc=$?
+  set -e
   unset EZKEY_PAM_ROLLBACK_SECONDS
+  if [ "${rc}" -ne 0 ] && [ ! -f "${ROLL}/state" ]; then
+    hg_pass line6_reject_zero_rollback_seconds \
+      "rollback seconds of 0 is rejected and no record is armed"
+  else
+    hg_fail line6_reject_zero_rollback_seconds \
+      "rollback seconds of 0 rc=${rc}"
+  fi
   hg_rollback_arm
   now="$(date +%s)"
   deadline="$(awk -F= '/^deadline=/{print $2}' "${ROLL}/state")"
