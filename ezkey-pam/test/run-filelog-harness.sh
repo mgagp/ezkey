@@ -17,4 +17,6 @@ ${CC} ${CFLAGS} -DEZKEY_FILELOG_TEST -DEZKEY_LOG_DIR=\"${tmpdir}\" \
   "${SRC_DIR}/ezkey_filelog.c" "$(dirname "$0")/test_filelog_harness.c" \
   -o "${BUILD_DIR}/test_filelog_harness"
 
-"${BUILD_DIR}/test_filelog_harness"
+# EZKEY_TEST_WRAPPER is empty for `make test`. Word-split so `valgrind --tool=…` works.
+# shellcheck disable=SC2086
+${EZKEY_TEST_WRAPPER:-} "${BUILD_DIR}/test_filelog_harness"
