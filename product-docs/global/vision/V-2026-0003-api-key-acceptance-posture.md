@@ -23,8 +23,9 @@
   a person is waiting to sign in, and says that saving does not change a request already waiting.
   Reason: the earlier "repeatedly or automatically" sentence pointed operators at the wrong
   integrations. The system integration (administrator sign-in) stays **REPLACE**; changing it
-  returns the existing `system-integration-lifecycle` refusal. Cooldown behaviour for that
-  integration is unchanged (#1311).
+  returns the existing `system-integration-lifecycle` refusal. Its cooldown counts only
+  device-signed `REJECTED` and `INVALID`; `EXPIRED` does not arm it. Other integrations still
+  count `EXPIRED` (#1311).
 
 ## Related artifacts
 

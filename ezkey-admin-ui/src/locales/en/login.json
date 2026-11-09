@@ -42,7 +42,10 @@
       "authFailed": "Authentication failed. Please try again.",
       "connectionLost": "Connection lost. Please check your network and try again.",
       "loginFailed": "Login failed. Check your username.",
-      "serverUnreachable": "Could not reach the server. Is the Admin API running?"
+      "serverUnreachable": "Could not reach the server. Is the Admin API running?",
+      "cooldown": "Sign-in is paused after several refused requests. Try again in a few minutes.",
+      "cooldownMinutes_one": "Sign-in is paused for {{count}} more minute after several refused requests. Try again then.",
+      "cooldownMinutes_other": "Sign-in is paused for {{count}} more minutes after several refused requests. Try again then."
     }
   },
   "footer": "Powered by {{brand}} — Self-hosted · Full visibility",

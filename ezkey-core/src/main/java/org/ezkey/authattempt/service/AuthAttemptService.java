@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.OptionalLong;
 import org.ezkey.audit.util.ClientContext;
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
@@ -442,7 +443,7 @@ public class AuthAttemptService {
 
     createLock.lockEnrollment(enrollment.getEnrollmentId());
     OffsetDateTime now = OffsetDateTime.now(clock);
-    assertCooldownAllows(enrollment.getEnrollmentId(), now);
+    assertCooldownAllows(enrollment, now);
 
     List<AuthAttempt> existingAttempts =
         authAttemptRepository.findByEnrollmentIdAndStatusIn(
@@ -531,19 +532,21 @@ public class AuthAttemptService {
   }
 
   /**
-   * Refuses creation while a recent run of rejected, invalid, or expired attempts is still cooling
-   * down.
+   * Refuses creation while a recent run of counted attempts is still cooling down.
    *
-   * <p>Counted statuses are {@code REJECTED}, {@code INVALID} (wrong challenge digits), and {@code
-   * EXPIRED}. Supersession and cancellation both persist {@code EXPIRED}, so those rows count. The
-   * window uses {@code createdAt}: a status change lands at most one attempt TTL after creation,
-   * and the expiry scheduler ({@code fixedDelay}, about 60 seconds) may record {@code EXPIRED}
-   * about 60 seconds after {@code expiresAt}.
+   * <p>Other integrations count {@code REJECTED}, {@code INVALID} (wrong challenge digits), and
+   * {@code EXPIRED}. Supersession and cancellation both persist {@code EXPIRED}, so those rows
+   * count. The system integration counts only device-signed outcomes ({@code REJECTED} and {@code
+   * INVALID}): passwordless admin login creates an attempt from a username alone, and counting
+   * {@code EXPIRED} would let a remote caller renew the lock. The window uses {@code createdAt}: a
+   * status change lands at most one attempt TTL after creation, and the expiry scheduler ({@code
+   * fixedDelay}, about 60 seconds) may record {@code EXPIRED} about 60 seconds after {@code
+   * expiresAt}.
    *
-   * @param enrollmentId enrollment being created against
+   * @param enrollment enrollment being created against
    * @param now evaluation instant, shared with the attempt row
    */
-  private void assertCooldownAllows(Integer enrollmentId, OffsetDateTime now) {
+  private void assertCooldownAllows(Enrollment enrollment, OffsetDateTime now) {
     EzkeyCoreProperties.AuthAttempt config = ezkeyCoreProperties.getAuthAttempt();
     int threshold = config.getCooldownThreshold();
     int windowSeconds = config.getCooldownWindowSeconds();
@@ -554,20 +557,51 @@ public class AuthAttemptService {
     OffsetDateTime since = now.minusSeconds((long) windowSeconds + durationSeconds);
     List<OffsetDateTime> eventTimes =
         authAttemptRepository.findCreatedAtByEnrollmentIdAndStatusInSince(
-            enrollmentId,
-            List.of(
-                AuthAttemptStatus.REJECTED, AuthAttemptStatus.INVALID, AuthAttemptStatus.EXPIRED),
-            since);
+            enrollment.getEnrollmentId(), cooldownStatuses(enrollment), since);
     OptionalLong remaining =
         AuthAttemptCooldown.remainingSeconds(
             eventTimes, now, threshold, windowSeconds, durationSeconds);
     if (remaining.isPresent()) {
       logger.info(
           "Auth attempt create suspended: enrollment {} cooldown retryAfterSeconds={}",
-          enrollmentId,
+          enrollment.getEnrollmentId(),
           remaining.getAsLong());
       throw new AuthAttemptCreationCooldownException(remaining.getAsLong());
     }
+  }
+
+  /**
+   * Statuses that arm the creation cooldown for this enrollment.
+   *
+   * @param enrollment enrollment being created against
+   * @return signed outcomes only for the system integration; otherwise includes {@code EXPIRED}
+   */
+  private List<AuthAttemptStatus> cooldownStatuses(Enrollment enrollment) {
+    if (systemIntegration(enrollment)) {
+      return List.of(AuthAttemptStatus.REJECTED, AuthAttemptStatus.INVALID);
+    }
+    return List.of(
+        AuthAttemptStatus.REJECTED, AuthAttemptStatus.INVALID, AuthAttemptStatus.EXPIRED);
+  }
+
+  /**
+   * Whether the enrollment belongs to the system integration.
+   *
+   * <p>A missing integration id, or a missing row, is not the system integration. The later policy
+   * lookup still fails closed when an id is set and the row is absent.
+   *
+   * @param enrollment enrollment being created against
+   * @return true when the integration row is the system integration
+   */
+  private boolean systemIntegration(Enrollment enrollment) {
+    if (enrollment.getIntegrationId() == null) {
+      return false;
+    }
+    Optional<Integration> found = integrationRepository.findById(enrollment.getIntegrationId());
+    if (found == null || found.isEmpty()) {
+      return false;
+    }
+    return Boolean.TRUE.equals(found.get().getIsSystemIntegration());
   }
 
   /**

@@ -130,6 +130,32 @@ describe('fetchApi', () => {
     expect(lifecycleMocks.clearLocalAuthOnSessionInvalidation).not.toHaveBeenCalled();
     expect(replace).not.toHaveBeenCalled();
   });
+
+  it('keeps Retry-After seconds on a cooldown 409', async () => {
+    authMocks.getToken.mockReturnValue(null);
+    vi.mocked(globalThis.fetch).mockResolvedValue({
+      ok: false,
+      status: 409,
+      headers: {
+        get: (name: string) => {
+          const header = name.toLowerCase();
+          if (header === 'content-type') return 'application/problem+json';
+          if (header === 'retry-after') return '299';
+          return null;
+        },
+      },
+      json: () =>
+        Promise.resolve({
+          type: 'https://ezkey.io/problems/domain/auth-attempt-creation-cooldown',
+          detail: 'Authentication attempt creation is temporarily suspended for this enrollment.',
+        }),
+      text: () => Promise.resolve(''),
+    } as Response);
+
+    await expect(
+      fetchApi('/api/v1/admin/auth/login', { method: 'POST', requireAuth: false }),
+    ).rejects.toMatchObject({ status: 409, retryAfterSeconds: 299 });
+  });
 });
 
 describe('fetchBlobUrl', () => {

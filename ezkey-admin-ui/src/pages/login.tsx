@@ -16,6 +16,7 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { I18N_STORAGE_KEY } from '@/i18n';
 import { fetchApi, type FetchOptions } from '@/lib/api-client';
 import { getTranslatedApiError } from '@/lib/api-error-i18n';
+import { loginCooldownMessage } from '@/lib/login-cooldown-message';
 import { mapPasswordlessWaitError } from '@/lib/map-passwordless-wait-error';
 import { isBrowserSessionCookieBuild, type AuthSession } from '@/lib/auth';
 import { persistUsernamePref, readUsernamePref } from '@/lib/last-username-pref';
@@ -245,7 +246,10 @@ export default function LoginPage() {
       }
     } catch (err) {
       setLoginState('error');
-      setErrorMessage(getTranslatedApiError(err, t, t('login:states.error.serverUnreachable')));
+      setErrorMessage(
+        loginCooldownMessage(err, t) ??
+          getTranslatedApiError(err, t, t('login:states.error.serverUnreachable')),
+      );
     }
   };
 
