@@ -12,14 +12,15 @@ type PendingAttemptPolicyFieldProps = {
 /** Per-integration pending-attempt policy. Help text stays generic: no connector names. */
 export function PendingAttemptPolicyField({ id, ...selectProps }: PendingAttemptPolicyFieldProps) {
   const { t } = useTranslation('integrations');
+  const helpId = `${id}-help`;
   return (
     <div>
       <Label htmlFor={id}>{t('pendingAttemptPolicy.label')}</Label>
-      <Select id={id} className="mt-1" {...selectProps}>
+      <Select id={id} className="mt-1" {...selectProps} aria-describedby={helpId}>
         <option value="REPLACE">{t('pendingAttemptPolicy.replace')}</option>
         <option value="REFUSE">{t('pendingAttemptPolicy.refuse')}</option>
       </Select>
-      <p data-testid="pending-attempt-policy-help" className="text-[10px] text-fg-muted mt-0.5">
+      <p id={helpId} data-testid="pending-attempt-policy-help" className="text-[10px] text-fg-muted mt-0.5">
         {t('pendingAttemptPolicy.help')}
       </p>
     </div>

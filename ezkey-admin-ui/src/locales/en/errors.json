@@ -41,8 +41,8 @@
     "system-integration-lifecycle": "The system integration is reserved for administrator MFA and cannot be changed this way.",
     "api-key-limit-exceeded": "The maximum number of active API keys for this integration has been reached.",
     "auth-attempt-state-conflict": "This authentication attempt is no longer in a state that allows this operation.",
-    "auth-attempt-pending-exists": "A request is already waiting for this enrollment.",
-    "auth-attempt-creation-cooldown": "New requests for this enrollment are paused after repeated failed or expired attempts."
+    "auth-attempt-pending-exists": "A request is already waiting on the device. Approve or refuse it there, or wait for it to expire, then try again.",
+    "auth-attempt-creation-cooldown": "New requests are paused for a few minutes after several refused or expired requests. Try again later."
   },
   "enrollment": {
     "enrollment-inactive": "This enrollment cannot be used for authentication (inactive or not verified).",

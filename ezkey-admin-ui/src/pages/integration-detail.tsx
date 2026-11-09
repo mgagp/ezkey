@@ -22,10 +22,9 @@ import { useToast } from '@/context/use-toast';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { getIntegrationName } from '@/hooks/use-integrations';
 import { useDemoModeSession } from '@/context/use-demo-mode-session';
-import {
-  PendingAttemptPolicyField,
-  type PendingAttemptPolicyValue,
-} from '@/components/feature/pending-attempt-policy-field';
+import { PendingAttemptPolicyEditor } from '@/components/feature/pending-attempt-policy-editor';
+import { policySaveErrorMessage } from '@/components/feature/pending-attempt-policy-save';
+import type { PendingAttemptPolicyValue } from '@/components/feature/pending-attempt-policy-field';
 import { api } from '@/lib/api-client';
 import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { isDemoMode } from '@/lib/demo-mode';
@@ -403,25 +402,27 @@ export default function IntegrationDetailPage() {
                     <span className="text-fg-muted">{formatDate(integration.createdAt ?? '')}</span>
                   </InfoRow>
                   <div className="py-2">
-                    <PendingAttemptPolicyField
+                    <PendingAttemptPolicyEditor
+                      key={integration.id}
                       id="integration-pending-attempt-policy"
-                      value={readPendingAttemptPolicy(integration)}
+                      serverValue={readPendingAttemptPolicy(integration)}
                       disabled={integration.lifecycleStatus !== 'ACTIVE'}
-                      onChange={(event) => {
-                        const next = event.target.value as PendingAttemptPolicyValue;
-                        api
-                          .post(`/api/v1/integrations/${integrationId}/pending-attempt-policy`, {
-                            pendingAttemptPolicy: next,
-                          })
-                          .then(() => {
-                            void queryClient.invalidateQueries({ queryKey: ['integration', integrationId] });
-                            void queryClient.invalidateQueries({ queryKey: ['integrations'] });
-                            toast(t('pendingAttemptPolicy.saved'));
-                          })
-                          .catch((e) =>
-                            toast(getTranslatedApiError(e, t, t('pendingAttemptPolicy.saveFailed')), 'error'),
-                          );
+                      onSave={(next) =>
+                        api.post(`/api/v1/integrations/${integrationId}/pending-attempt-policy`, {
+                          pendingAttemptPolicy: next,
+                        })
+                      }
+                      onSaved={() => {
+                        void queryClient.invalidateQueries({ queryKey: ['integration', integrationId] });
+                        void queryClient.invalidateQueries({ queryKey: ['integrations'] });
+                        toast(t('pendingAttemptPolicy.saved'));
                       }}
+                      onSaveError={(error) =>
+                        toast(
+                          policySaveErrorMessage(error, t, t('pendingAttemptPolicy.saveFailed')),
+                          'error',
+                        )
+                      }
                     />
                   </div>
                 </dl>

@@ -178,10 +178,10 @@ describe('getTranslatedApiError', () => {
       detail: 'Authentication attempt creation is temporarily suspended for this enrollment.',
     });
     expect(getTranslatedApiError(pending, t, 'generic')).toBe(
-      'Une demande attend déjà pour cet enrôlement.',
+      "Une demande attend déjà sur l'appareil. Acceptez-la ou refusez-la sur l'appareil, ou attendez qu'elle expire, puis réessayez.",
     );
     expect(getTranslatedApiError(cooldown, t, 'generic')).toBe(
-      'Les nouvelles demandes pour cet enrôlement sont suspendues après des échecs ou des expirations répétés.',
+      'Les nouvelles demandes sont suspendues quelques minutes après plusieurs demandes refusées ou expirées. Réessayez plus tard.',
     );
   });
 });
