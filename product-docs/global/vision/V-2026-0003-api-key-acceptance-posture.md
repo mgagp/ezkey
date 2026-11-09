@@ -22,7 +22,9 @@
   (FR: "Quand une demande attend déjà"). Help recommends Refuse for interactive integrations where
   a person is waiting to sign in, and says that saving does not change a request already waiting.
   Reason: the earlier "repeatedly or automatically" sentence pointed operators at the wrong
-  integrations.
+  integrations. The system integration (administrator sign-in) stays **REPLACE**; changing it
+  returns the existing `system-integration-lifecycle` refusal. Cooldown behaviour for that
+  integration is unchanged (#1311).
 
 ## Related artifacts
 
