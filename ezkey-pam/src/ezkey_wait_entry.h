@@ -20,7 +20,7 @@
  */
 static inline int ezkey_wait_entry_abort_raised(
     const volatile sig_atomic_t *abort_flag) {
-    return abort_flag != NULL && *abort_flag != 0;
+  return abort_flag != NULL && *abort_flag != 0;
 }
 
 #endif /* EZKEY_WAIT_ENTRY_H */

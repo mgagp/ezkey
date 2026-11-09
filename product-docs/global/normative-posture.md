@@ -104,9 +104,9 @@ create SOC 2 roadmaps, policy template farms, Comply setup, or certification che
 reintroduce CC IDs or “required for SOC 2 compliance” at the call site — use the product term and,
 if a mapping is needed, link this page.
 
-The hygiene lanes already in the repo (`java-doctor-curated`, `dependabot-curated`,
-`security-pentest-curated`, `assessment-curated`) **are** the continuous discipline. Do not invent
-a parallel compliance program.
+The hygiene lanes already in the repo (`java-doctor-curated`, `pam-doctor-curated`,
+`dependabot-curated`, `security-pentest-curated`, `assessment-curated`) **are** the continuous
+discipline. Do not invent a parallel compliance program.
 
 ## Related documents
 

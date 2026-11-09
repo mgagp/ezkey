@@ -26,11 +26,11 @@ extern "C" {
  * @return PAM_SUCCESS or PAM_AUTHINFO_UNAVAIL
  */
 static inline int ezkey_pam_rc_for_http(long http_code, long expected) {
-    if (http_code == expected) {
-        return PAM_SUCCESS;
-    }
-    (void)http_code;
-    return PAM_AUTHINFO_UNAVAIL;
+  if (http_code == expected) {
+    return PAM_SUCCESS;
+  }
+  (void)http_code;
+  return PAM_AUTHINFO_UNAVAIL;
 }
 
 /**
@@ -41,16 +41,16 @@ static inline int ezkey_pam_rc_for_http(long http_code, long expected) {
  * @return 1 allowed, 0 rejected
  */
 static inline int ezkey_api_url_allowed_url(const char *url, int lab_http) {
-    if (url == NULL || url[0] == '\0') {
-        return 0;
-    }
-    if (strncasecmp(url, "https://", 8) == 0) {
-        return 1;
-    }
-    if (lab_http && strncasecmp(url, "http://", 7) == 0) {
-        return 1;
-    }
+  if (url == NULL || url[0] == '\0') {
     return 0;
+  }
+  if (strncasecmp(url, "https://", 8) == 0) {
+    return 1;
+  }
+  if (lab_http && strncasecmp(url, "http://", 7) == 0) {
+    return 1;
+  }
+  return 0;
 }
 
 /**
@@ -67,36 +67,36 @@ static inline int ezkey_api_url_allowed_url(const char *url, int lab_http) {
  * @param summary_out receives attempt result literal on terminal
  * @return 1 terminal, 0 continue polling
  */
-static inline int ezkey_wait_status_decide(const char *status_str, int *pam_rc_out,
-                                          const char **summary_out) {
-    if (pam_rc_out == NULL || summary_out == NULL) {
-        return 1;
-    }
-    if (status_str != NULL && strcmp(status_str, "ACCEPTED") == 0) {
-        *pam_rc_out = PAM_SUCCESS;
-        *summary_out = "SUCCESS";
-        return 1;
-    }
-    if (status_str != NULL && strcmp(status_str, "EXPIRED") == 0) {
-        *pam_rc_out = PAM_AUTH_ERR;
-        *summary_out = "EXPIRED";
-        return 1;
-    }
-    if (status_str != NULL &&
-        (strcmp(status_str, "REJECTED") == 0 ||
-         strcmp(status_str, "INVALID") == 0)) {
-        *pam_rc_out = PAM_AUTH_ERR;
-        *summary_out = "DENIED";
-        return 1;
-    }
-    if (status_str != NULL && strcmp(status_str, "PENDING") != 0 &&
-        strcmp(status_str, "READ") != 0) {
-        *pam_rc_out = PAM_AUTH_ERR;
-        *summary_out = "DENIED";
-        return 1;
-    }
-    /* PENDING, READ, or missing → continue. */
-    return 0;
+static inline int ezkey_wait_status_decide(const char *status_str,
+                                           int *pam_rc_out,
+                                           const char **summary_out) {
+  if (pam_rc_out == NULL || summary_out == NULL) {
+    return 1;
+  }
+  if (status_str != NULL && strcmp(status_str, "ACCEPTED") == 0) {
+    *pam_rc_out = PAM_SUCCESS;
+    *summary_out = "SUCCESS";
+    return 1;
+  }
+  if (status_str != NULL && strcmp(status_str, "EXPIRED") == 0) {
+    *pam_rc_out = PAM_AUTH_ERR;
+    *summary_out = "EXPIRED";
+    return 1;
+  }
+  if (status_str != NULL && (strcmp(status_str, "REJECTED") == 0 ||
+                             strcmp(status_str, "INVALID") == 0)) {
+    *pam_rc_out = PAM_AUTH_ERR;
+    *summary_out = "DENIED";
+    return 1;
+  }
+  if (status_str != NULL && strcmp(status_str, "PENDING") != 0 &&
+      strcmp(status_str, "READ") != 0) {
+    *pam_rc_out = PAM_AUTH_ERR;
+    *summary_out = "DENIED";
+    return 1;
+  }
+  /* PENDING, READ, or missing → continue. */
+  return 0;
 }
 
 /**
@@ -106,12 +106,12 @@ static inline int ezkey_wait_status_decide(const char *status_str, int *pam_rc_o
  * @return 1 abort, 0 continue
  */
 static inline int ezkey_xferinfo_should_abort(void *clientp) {
-    volatile sig_atomic_t *flag = (volatile sig_atomic_t *)clientp;
+  volatile sig_atomic_t *flag = (volatile sig_atomic_t *)clientp;
 
-    if (flag != NULL && *flag != 0) {
-        return 1;
-    }
-    return 0;
+  if (flag != NULL && *flag != 0) {
+    return 1;
+  }
+  return 0;
 }
 
 #ifdef __cplusplus

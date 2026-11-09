@@ -1,7 +1,7 @@
 # Hygiene campaign notes
 
 Peripheral HITL decision tracks for punctual **doctor-curated** passes (Admin UI React, Java,
-mobile static analysis), weekly **Dependabot** triage, the **major-upgrades** platform register
+mobile static analysis, Linux PAM), weekly **Dependabot** triage, the **major-upgrades** platform register
 (line / semver-major decisions Dependabot does not open), **security-pentest** campaigns,
 **javamelody-curated** live-stack performance extracts, on-demand **quality-gate** full-suite
 runs (cloud agent), mandate-driven **assessment-curated** white-box investigation follow-ups,
@@ -35,6 +35,7 @@ HITL shape. See root [`AGENTS.md`](../../AGENTS.md) for keywords.
 | [`java-transactional-boundaries/`](java-transactional-boundaries/) | `assessment-curated` (instance) | Java `@Transactional` placement, self-invocation, `*TxHelper` |
 | [`react-doctor/`](react-doctor/) | `doctor-curated` | Admin UI React Doctor curated passes |
 | [`java-doctor/`](java-doctor/) | `java-doctor-curated` | Java SpotBugs / Semgrep / PMD curated passes |
+| [`pam-doctor/`](pam-doctor/) | `pam-doctor-curated` | Linux PAM module (`ezkey-pam/src`) clang-format / clang-tidy / cppcheck passes. On demand; macOS install track excluded |
 | [`mobile-doctor/`](mobile-doctor/) | `mobile-doctor-curated` | Ezkey Mobile static-analysis curated passes |
 | [`dependabot/`](dependabot/) | `dependabot-curated` | Near-continuous Dependabot triage (weekday light + Monday full), Orval O0–O3 grid, Java BOM / Mobile RN pulses |
 | [`major-upgrades/`](major-upgrades/) | (quarterly in `dependabot-curated` + monthly GHA) | Platform / runtime / base-image major-upgrade register (`registry.yaml`); light path vs dedicated issue; monthly [`endoflife-check.yml`](../../../.github/workflows/endoflife-check.yml) |
@@ -103,6 +104,7 @@ Repo-is-memory decisions (one line + reason):
 | **CodeQL workflow** ([`.github/workflows/codeql.yml`](../../../.github/workflows/codeql.yml)) | CI / security | PR + push + schedule | Every PR/`main`; weekly Sun **05:17 UTC** | New/fixed alerts | Feeds triage | None (analysis only) |
 | **CI / `ci-gate`** ([`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml)) | CI | PR + push | Every PR | Job failures | Block merge until green | Author fixes; merge only on owner go |
 | **Java doctor** (`./scripts/java-doctor-curated.sh`; [`java-doctor/`](java-doctor/)) | `java-doctor-curated` | Routine + cloud agent | **Biweekly** rotation slot (Java week) | SpotBugs + Semgrep + PMD shortlist | **P1 / P2 / P3**; write campaign note **only on new P1/P2** | HITL one-finding; suppress-with-reason OK |
+| **PAM doctor** (`./scripts/pam-doctor-curated.sh`; [`pam-doctor/`](pam-doctor/)) | `pam-doctor-curated` | Operator keyword | **On demand** (experimental module; not in the biweekly rotation) | clang-format Google drift + clang-tidy + narrow cppcheck | **P1 / P2 / P3**; note on a pass that has a lot | HITL one-finding; suppress-with-reason OK |
 | **Mobile doctor** (`ezkey_mobile` `yarn doctor:curated`; [`mobile-doctor/`](mobile-doctor/)) | `mobile-doctor-curated` | Routine + cloud agent | **Biweekly** rotation slot (mobile week) | react-doctor + Semgrep + Detekt | **P1 / P2 / P3**; note **only on new P1/P2** | HITL one-finding |
 | **React / Admin UI doctor** (`ezkey-admin-ui` `yarn doctor:curated`; [`react-doctor/`](react-doctor/)) | `doctor-curated` | Routine + cloud agent | **Biweekly** rotation slot (React week) | React Doctor shortlist | **P1 / P2 / P3**; note **only on new P1/P2** | HITL one-finding |
 | **Quality-gate** (`./scripts/quality-gate.sh`; [`quality-gate/`](quality-gate/)) | `quality-gate` | Cloud agent | **Wednesday 19:00 ET** weekly | Exit 0 GO · 1 NO-GO · 3 GO w/ reservations · 4 INCONCLUSIVE | Report **only if verdict ≠ GO** | Marc / operator on NO-GO or INCONCLUSIVE |
@@ -123,6 +125,7 @@ Repo-is-memory decisions (one line + reason):
 | **Host OS H3** (major / new instance blue-green; [`host-os/`](host-os/)) | `host-os` | Ad hoc | **Plan by 2028** (AL2023 EOL 2029-06-30) | EOL proximity + register `amazon-linux-community` | `create-instance` + `bootstrap-host` + pg_dump restore + static IP move | **Marc go**; Edgar executes; Christophe posture |
 
 Doctor biweekly rotation order (repeat): **Java → mobile → React → …**. Empty high-signal lot → no campaign note.
+**PAM doctor** is on demand for the experimental Linux module; it is not inserted into that rotation.
 
 ## Hygiene vs program
 

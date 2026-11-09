@@ -1,5 +1,6 @@
 /*
- * ezkey_session.h — PAM-handle session guards (final verdict / interrupt cancel).
+ * ezkey_session.h — PAM-handle session guards (final verdict / interrupt
+ * cancel).
  *
  * Pure helpers shared by pam_ezkey.c and the session harness (#907 F9):
  * in-process final-verdict marker (fail-closed for same PAM handle only —

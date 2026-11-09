@@ -1,0 +1,24 @@
+{
+  "keyword": "pam-doctor-curated",
+  "description": "Rule-level suppressions for the PAM doctor-curated pass. Each entry needs a written reason.",
+  "suppressions": [
+    {
+      "tool": "cppcheck",
+      "rule": "doubleFree",
+      "pathFragment": "ezkey_filelog.c",
+      "reason": "POSIX fdopen: close(fd) only when fdopen fails, fclose only when it succeeds. cppcheck 2.13 does not model the ownership transfer. The sentinel fd=-1 plus (void)fd was reverted: it existed to quiet the tools and did not change behavior. Revisit if a new doubleFree appears in this file. See hygiene/pam-doctor/2026-11-08-pass-1.md."
+    },
+    {
+      "tool": "cppcheck",
+      "rule": "doubleFree",
+      "pathFragment": "pam_ezkey.c",
+      "reason": "Same fdopen ownership gap, in load_config_file. Scoped to this file because the curator has no line filter. A new doubleFree in pam_ezkey.c must reopen this entry rather than be ignored. See hygiene/pam-doctor/2026-11-08-pass-1.md."
+    },
+    {
+      "tool": "clang-tidy",
+      "rule": "bugprone-branch-clone",
+      "pathFragment": "ezkey_diag.c",
+      "reason": "Empty cancel token and unrecognized cancel token both become EZKEY_CANCEL_SKIPPED on purpose. Two reasons, one outcome. Merging the branches would hide that. A new branch-clone in this file must reopen this entry. See hygiene/pam-doctor/2026-11-08-pass-1.md."
+    }
+  ]
+}

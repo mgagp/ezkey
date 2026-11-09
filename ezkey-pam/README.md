@@ -54,6 +54,15 @@ it needs `brew install coreutils` for the `timeout` watchdog. There is no macOS
 install yet (#1202): `make install` refuses, because a misplaced module can lock
 out `sshd` and `sudo` ([F0 note](../product-docs/global/hygiene/pam-macos/2026-11-04-f0-feasibility.md)).
 
+## Code quality
+
+Layout standard is **clang-format** with the Google preset (`.clang-format`).
+Defect signals are a report-only curated pass, not a CI gate: keyword
+**`pam-doctor-curated`**, `./scripts/pam-doctor-curated.sh` from the repo root.
+The scan covers `src/` on the Linux reference. The macOS install track is out
+of that pass. See
+[`product-docs/global/hygiene/pam-doctor/README.md`](../product-docs/global/hygiene/pam-doctor/README.md).
+
 ## What changed in 2.2.19 (#1016 cycle 2b — decisions / mutations)
 
 - Decision harness pins wait/HTTP/URL/xferinfo/confirm contracts (kills M20).

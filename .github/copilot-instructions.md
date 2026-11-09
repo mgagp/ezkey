@@ -15,6 +15,7 @@ linked skill/README). Do **not** invent `I-*` / `TB-*` per routine finding.
 | --- | --- |
 | `doctor-curated` | Admin UI React Doctor curated pass — `AGENTS.md` § Admin UI lint-polish |
 | `java-doctor-curated` | Java SpotBugs/Semgrep/PMD curated pass — `AGENTS.md` § Java doctor-curated |
+| `pam-doctor-curated` | Linux PAM C curated pass (clang-format Google, clang-tidy, cppcheck) — `AGENTS.md` § PAM doctor-curated; skill `.cursor/skills/pam-doctor-curated/SKILL.md` |
 | `mobile-doctor-curated` | Ezkey Mobile static-analysis curated pass — `AGENTS.md` § Mobile doctor-curated |
 | `dependabot-curated` | Near-continuous Dependabot triage (weekday light + Monday full; Orval O0–O3 grid) — `AGENTS.md` § Dependabot curated; skill `.cursor/skills/dependabot-curated/`; policy `product-docs/global/hygiene/dependabot/README.md`. Cursor Cloud: probe `GH_TOKEN` (`gh auth status`); harness “gh read-only” is the default `cursor` identity, not proof the PAT is missing. Platform majors: `AGENTS.md` § *Major upgrades* + `product-docs/global/hygiene/major-upgrades/`. |
 | `security-pentest-curated` | Live API / DAST-style campaigns — `AGENTS.md` § Security pentest curated; skill `.cursor/skills/security-pentest-curated/SKILL.md`; `product-docs/global/hygiene/security-pentest/` |

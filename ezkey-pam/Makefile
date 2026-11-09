@@ -142,8 +142,11 @@ check-pam:
 		echo "pam_ezkey NOT found in SSH PAM configuration"; \
 	fi
 
+# Narrow bug signal. Layout is clang-format (Google). Curated pass from repo root:
+# ./scripts/pam-doctor-curated.sh  (keyword pam-doctor-curated). Not a CI gate.
 lint:
-	cppcheck --enable=all --std=c99 $(SRC_DIR)/
+	cppcheck --std=c99 --enable=warning,performance,portability --inline-suppr \
+		--suppress=missingIncludeSystem --library=posix $(SRC_DIR)/
 
 # Source guard (#818). Host needs gcc, pam, libcurl, cjson devel packages.
 check-source:
@@ -454,4 +457,4 @@ help:
 	@echo "  test-http     - body cap / PROXY / json long / URL redact (#1016 C1–C8)"
 	@echo "  test-install-sshd-warn - shared MaxAuthTries 1 awk (#908 / #934 B1)"
 	@echo "  test          - check-source + compile + harnesses + hardening"
-	@echo "  lint          - Run static code analysis"
+	@echo "  lint          - Narrow cppcheck (full curated pass: pam-doctor-curated)"
