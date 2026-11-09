@@ -23,13 +23,17 @@
 # EZKEY_PAM_ROLLBACK_SECONDS, when set, must be a positive integer.
 # Snapshot copies use || return, because apply calls ha_snapshot under ||
 # and that disables set -e. A failed copy does not write READY.
-# apply writes sshd_config, pam.d, the conf, and the admin config through a
-# temp file, then install(1). If any step fails, the snapshot is restored.
+# apply writes each file to a temp in that file's directory, copies the
+# existing mode and owner (644 root:root when the file is new), then renames
+# it over the destination. restorecon runs on that path when the command
+# exists. install(1) is not used: it unlinks the destination before creating
+# the new file, and it replaces the mode and owner. If any step fails, the
+# snapshot is restored.
 # sshd -t must pass on the MFA config and the admin config before apply
 # returns 0. remove, and a check that restores, run sshd -t on the restored
 # MFA config. A restoring check then deletes the rollback record.
 #
-# EZKEY_PAM_APPLY_FAIL_AFTER=sshd is the suite hook. apply installs
+# EZKEY_PAM_APPLY_FAIL_AFTER=sshd is the suite hook. apply writes
 # sshd_config, then fails and restores the snapshot. Any other non-empty
 # value is rejected before a write.
 set -euo pipefail
@@ -61,6 +65,9 @@ ha_reject_crlf() {
   return 0
 }
 
+# grep -E matches one line. A newline in the value would satisfy the pattern
+# on the first line and inject another config line. ha_reject_crlf is what
+# blocks that injection. A group or user name that contains a dot stays refused.
 ha_simple_token() {
   local name="$1"
   local value="$2"
@@ -166,21 +173,44 @@ ha_sshd_ok() {
   "${SSHD_BIN}" -t -f "${cfg}"
 }
 
-# stdin is the file body. install(1) replaces dest on the same filesystem.
+# stdin is the file body. The temp file lives in the destination directory so
+# mv is a rename on that filesystem. The existing mode and owner are copied
+# onto the temp file first. A new path falls back to 644 root:root.
 ha_write_atomic() {
   local dest="$1"
-  local mode="$2"
-  local tmp
-  tmp="$(mktemp "${dest}.hg.XXXXXX")" || return 1
-  cat >"${tmp}" || {
+  local dir tmp
+  dir="$(dirname "${dest}")"
+  tmp="$(mktemp "${dir}/.hg.XXXXXX")" || return 1
+  if ! cat >"${tmp}"; then
+    rm -f "${tmp}"
+    return 1
+  fi
+  if [ -e "${dest}" ]; then
+    chmod --reference="${dest}" "${tmp}" || {
+      rm -f "${tmp}"
+      return 1
+    }
+    chown --reference="${dest}" "${tmp}" || {
+      rm -f "${tmp}"
+      return 1
+    }
+  else
+    chmod 644 "${tmp}" || {
+      rm -f "${tmp}"
+      return 1
+    }
+    chown root:root "${tmp}" || {
+      rm -f "${tmp}"
+      return 1
+    }
+  fi
+  mv -f "${tmp}" "${dest}" || {
     rm -f "${tmp}"
     return 1
   }
-  install -m "${mode}" -o root -g root "${tmp}" "${dest}" || {
-    rm -f "${tmp}"
-    return 1
-  }
-  rm -f "${tmp}"
+  if command -v restorecon >/dev/null 2>&1; then
+    restorecon "${dest}" || return 1
+  fi
 }
 
 ha_write_conf() {
@@ -188,7 +218,7 @@ ha_write_conf() {
   # lab_http is set twice on purpose. The parser keeps the last key, trims
   # spaces, and accepts FALSE as false. The effective value is on the
   # attempt line, not on a literal lab_http=false row.
-  ha_write_atomic "${CONF}" 600 <<EOF
+  ha_write_atomic "${CONF}" <<EOF
 # Host-grade fixture (#1200). https only. Dummy keys.
 integration_api_url=${url}
 integration_key=${IKEY}
@@ -206,7 +236,7 @@ EOF
 }
 
 ha_write_sshd() {
-  ha_write_atomic "${SSHD_CFG}" 644 <<EOF
+  ha_write_atomic "${SSHD_CFG}" <<EOF
 # Host-grade MFA daemon fixture (#1200). Lab only.
 # Match does not unload PAM for this daemon. Non-members avoid Ezkey because
 # their AuthenticationMethods never enter the auth stack. See HOST-GRADE.md.
@@ -244,7 +274,7 @@ EOF
 }
 
 ha_write_pam() {
-  ha_write_atomic "${PAM_SSHD}" 644 <<EOF
+  ha_write_atomic "${PAM_SSHD}" <<EOF
 #%PAM-1.0
 # Host-grade fixture (#1200). required keeps MFA fail-closed.
 # Do not use sufficient or [default=ignore] on pam_ezkey.
@@ -257,7 +287,7 @@ EOF
 }
 
 ha_write_admin() {
-  ha_write_atomic "${ADMIN_CFG}" 644 <<EOF
+  ha_write_atomic "${ADMIN_CFG}" <<EOF
 # Break-glass daemon (#1200). UsePAM no. Keys only. Not the MFA daemon.
 Port ${ADMIN_PORT}
 Protocol 2

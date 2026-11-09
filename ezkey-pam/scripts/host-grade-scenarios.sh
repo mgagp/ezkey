@@ -113,8 +113,10 @@ hg_run_scenarios() {
   # shellcheck disable=SC1091
   . "${PAM_ROOT}/scripts/sshd-warn-global-maxauthtries-1.sh"
 
+  chmod 640 "${SSHD_CFG}"
+  chown root:wheel "${SSHD_CFG}"
   hg_apply
-  local hash1 hash2
+  local hash1 hash2 sshd_meta
   hash1="$(hg_content_hash)"
   hg_apply
   hash2="$(hg_content_hash)"
@@ -122,6 +124,13 @@ hg_run_scenarios() {
     hg_pass line5_apply_idempotent "second apply leaves fixture bytes unchanged"
   else
     hg_fail line5_apply_idempotent "second apply changed fixture bytes"
+  fi
+  sshd_meta="$(stat -c '%a %U:%G' "${SSHD_CFG}")"
+  if [ "${sshd_meta}" = "640 root:wheel" ]; then
+    hg_pass line5_preserve_mode_owner \
+      "sshd_config stays 640 root:wheel after apply"
+  else
+    hg_fail line5_preserve_mode_owner "sshd_config is ${sshd_meta}"
   fi
 
   hg_control_flag_cases

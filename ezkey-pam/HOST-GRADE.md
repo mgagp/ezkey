@@ -62,15 +62,19 @@ community instance (#955).
    `/etc/pam.d/sshd` for every connection; non-members avoid Ezkey only because
    their `AuthenticationMethods` never enter that auth stack.
 5. **Install / remove.** `host-apply.sh apply` is idempotent. It writes
-   `sshd_config`, `/etc/pam.d/sshd`, the conf, and the admin config through a
-   temp file, then `install`. `sshd -t` must pass on the MFA config and the
+   `sshd_config`, `/etc/pam.d/sshd`, the conf, and the admin config to a temp
+   file in that directory, copies the existing mode and owner (`644 root:root`
+   when the file is new), then renames it over the destination. `restorecon`
+   runs on that path when the command exists. An existing `640 root:wheel`
+   file stays `640 root:wheel`. `sshd -t` must pass on the MFA config and the
    admin config before apply returns 0. If any step fails, the snapshot is
    restored byte for byte. `remove` restores `sshd_config`, `/etc/pam.d/sshd`,
    and `pam_ezkey.conf` byte for byte from the snapshot taken before the
    first apply, runs `sshd -t` on that restored config, and a second remove
    stays there. A CR or LF in any environment value is rejected and apply
    exits non-zero without writing. Group and user must match
-   `[A-Za-z_][A-Za-z0-9_-]{0,31}`. Ports must be decimal 1–65535 with no
+   `[A-Za-z_][A-Za-z0-9_-]{0,31}`. A name that contains a dot is refused.
+   Ports must be decimal 1–65535 with no
    leading zero. The API URL must match `^https://` with no space or tab.
    The conf, sshd, pam.d, admin config, and state directory must be absolute
    paths. Each snapshot copy is checked; a missing conf does not write the
