@@ -26,6 +26,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import org.ezkey.admin.connector.DeliveryCapabilityService.Capability;
@@ -184,8 +185,34 @@ class EnrollmentQrDeliveryServiceTest {
     assertThat(job.locale()).isEqualTo("fr");
     assertThat(job.organisationName()).isEqualTo("acme-tenant");
     assertThat(job.qrPngBase64()).isEqualTo(java.util.Base64.getEncoder().encodeToString(PNG));
+    assertThat(job.expiresAt()).isNull();
+    assertThat(job.timeZone()).isNull();
     assertThat(List.of(job.sendId(), job.tenantRef(), job.organisationName(), job.qrPngBase64()))
         .noneMatch(value -> value.contains(String.valueOf(CHALLENGE)) || value.contains(TOKEN));
+  }
+
+  @Test
+  @DisplayName("the job says until when the invitation works, in the organisation's zone")
+  void jobDeadline() {
+    OffsetDateTime deadline = OffsetDateTime.now(ZoneOffset.UTC).plusDays(7);
+    when(enrollment.getExpiresAt()).thenReturn(deadline);
+    when(tenant.getTimezone()).thenReturn("America/Toronto");
+
+    send();
+
+    DeliveryJob job = sentJob();
+    assertThat(job.expiresAt()).isEqualTo(deadline);
+    assertThat(job.timeZone()).isEqualTo("America/Toronto");
+  }
+
+  @Test
+  @DisplayName("an unknown organisation zone is left out, so the connector uses UTC")
+  void unknownZone() {
+    when(tenant.getTimezone()).thenReturn("Mars/Olympus");
+
+    send();
+
+    assertThat(sentJob().timeZone()).isNull();
   }
 
   @Test

@@ -10,19 +10,20 @@
 
 package org.ezkey.admin.connector;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
 /**
  * Delivery port: how the Admin API reaches a delivery connector (contract {@code
- * ezkey-connectors/contracts/delivery-v0.openapi.yaml}).
+ * ezkey-connectors/contracts/delivery-v1.openapi.yaml}).
  *
  * @since 2026
  */
 public interface DeliveryConnectorPort {
 
   /** The contract version this core speaks. */
-  String CONTRACT_VERSION = "v0";
+  String CONTRACT_VERSION = "v1";
 
   /** The only template this contract version knows. */
   String TEMPLATE_ENROLLMENT_QR = "enrollment-qr";
@@ -61,6 +62,8 @@ public interface DeliveryConnectorPort {
    * @param recipient the enrollment's contact email
    * @param organisationName the only free text in the job
    * @param expectedServer the server the app should show
+   * @param expiresAt when the invitation stops working, or null when it has no deadline
+   * @param timeZone the organisation's IANA time zone, or null
    * @param qrPngBase64 the QR, a bearer secret until bind
    */
   record DeliveryJob(
@@ -70,6 +73,8 @@ public interface DeliveryConnectorPort {
       String recipient,
       String organisationName,
       String expectedServer,
+      OffsetDateTime expiresAt,
+      String timeZone,
       String qrPngBase64) {
 
     @Override

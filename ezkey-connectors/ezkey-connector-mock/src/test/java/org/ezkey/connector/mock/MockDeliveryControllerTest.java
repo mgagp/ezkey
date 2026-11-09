@@ -57,7 +57,7 @@ class MockDeliveryControllerTest {
 
   private HttpResponse<String> send(String token, String body) throws Exception {
     return client.send(
-        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/v0/deliveries"))
+        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/v1/deliveries"))
             .header("Authorization", "Bearer " + token)
             .header("Content-Type", "application/json")
             .POST(HttpRequest.BodyPublishers.ofString(body))
@@ -71,7 +71,7 @@ class MockDeliveryControllerTest {
 
   private HttpResponse<String> health(String token) throws Exception {
     return client.send(
-        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/v0/health"))
+        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/v1/health"))
             .header("Authorization", "Bearer " + token)
             .GET()
             .build(),
@@ -93,7 +93,7 @@ class MockDeliveryControllerTest {
     HttpResponse<String> health = health("current-token");
     assertThat(health.statusCode()).isEqualTo(200);
     assertThat(health.body())
-        .contains("\"testMode\":true", "\"contractVersion\":\"v0\"", "ezkey-connector-mock");
+        .contains("\"testMode\":true", "\"contractVersion\":\"v1\"", "ezkey-connector-mock");
     assertThat(health.body()).contains("\"connectorVersion\":\"" + buildVersion() + "\"");
 
     HttpResponse<String> accepted = scenario("anyone");
@@ -151,6 +151,18 @@ class MockDeliveryControllerTest {
         .isEqualTo(413);
     assertThat(send("current-token", job("not-an-address", PNG_BASE64, "")).body())
         .contains("invalid-recipient");
+    String deadline =
+        ",\"expiresAt\":\"2026-11-16T09:43:00-05:00\",\"timeZone\":\"America/Toronto\"";
+    assertThat(send("current-token", job("a@example.com", PNG_BASE64, deadline)).statusCode())
+        .isEqualTo(200);
+    assertThat(
+            send("current-token", job("a@example.com", PNG_BASE64, ",\"expiresAt\":\"soon\""))
+                .statusCode())
+        .isEqualTo(400);
+    assertThat(
+            send("current-token", job("a@example.com", PNG_BASE64, ",\"timeZone\":\"../etc\""))
+                .statusCode())
+        .isEqualTo(400);
   }
 
   @Test

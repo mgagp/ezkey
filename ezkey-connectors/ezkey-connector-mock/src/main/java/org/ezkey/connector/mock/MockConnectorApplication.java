@@ -15,7 +15,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 
 /**
- * Test double for the delivery contract v0. It delivers nothing, and it refuses to start outside an
+ * Test double for the delivery contract v1. It delivers nothing, and it refuses to start outside an
  * explicit test mode, so it cannot pass for real delivery.
  */
 @SpringBootApplication

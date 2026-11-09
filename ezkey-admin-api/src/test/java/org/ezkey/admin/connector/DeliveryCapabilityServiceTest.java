@@ -29,7 +29,7 @@ import org.junit.jupiter.api.Test;
 class DeliveryCapabilityServiceTest {
 
   private static final ConnectorHealth HEALTHY =
-      new ConnectorHealth("ok", "mock", "v0", "email", List.of("en", "fr"), true);
+      new ConnectorHealth("ok", "mock", "v1", "email", List.of("en", "fr"), true);
 
   private final DeliveryConnectorPort port = mock(DeliveryConnectorPort.class);
 
@@ -92,10 +92,11 @@ class DeliveryCapabilityServiceTest {
     List<Optional<ConnectorHealth>> cases =
         List.of(
             Optional.empty(),
-            Optional.of(new ConnectorHealth("degraded", "m", "v0", "email", List.of("en"), false)),
-            Optional.of(new ConnectorHealth("ok", "m", "v1", "email", List.of("en"), false)),
-            Optional.of(new ConnectorHealth("ok", "m", "v0", "sms", List.of("en"), false)),
-            Optional.of(new ConnectorHealth("ok", "m", "v0", "email", List.of(), false)));
+            Optional.of(new ConnectorHealth("degraded", "m", "v1", "email", List.of("en"), false)),
+            // A v0 connector no longer matches: v1 is not compatible with it.
+            Optional.of(new ConnectorHealth("ok", "m", "v0", "email", List.of("en"), false)),
+            Optional.of(new ConnectorHealth("ok", "m", "v1", "sms", List.of("en"), false)),
+            Optional.of(new ConnectorHealth("ok", "m", "v1", "email", List.of(), false)));
     for (Optional<ConnectorHealth> health : cases) {
       DeliveryConnectorPort local = mock(DeliveryConnectorPort.class);
       when(local.readHealth()).thenReturn(health);

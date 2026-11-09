@@ -28,15 +28,20 @@ final class ConnectorClient {
   }
 
   static String job(String locale, String recipient, String organisationName, String qr) {
+    return job(locale, recipient, organisationName, qr, "");
+  }
+
+  static String job(
+      String locale, String recipient, String organisationName, String qr, String extra) {
     return """
-    {"sendId":"%s","trigger":"operator","tenantRef":"42","template":"enrollment-qr",        "locale":"%s","recipient":"%s","organisationName":"%s",        "expectedServer":"auth.example.com","qrPngBase64":"%s"}\
+    {"sendId":"%s","trigger":"operator","tenantRef":"42","template":"enrollment-qr",        "locale":"%s","recipient":"%s","organisationName":"%s",        "expectedServer":"auth.example.com","qrPngBase64":"%s"%s}\
     """
-        .formatted(SEND_ID, locale, recipient, organisationName, qr);
+        .formatted(SEND_ID, locale, recipient, organisationName, qr, extra);
   }
 
   HttpResponse<String> post(String token, String body) throws Exception {
     HttpRequest.Builder builder =
-        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/v0/deliveries"))
+        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/v1/deliveries"))
             .header("Content-Type", "application/json")
             .POST(HttpRequest.BodyPublishers.ofString(body));
     if (token != null) {
@@ -47,7 +52,7 @@ final class ConnectorClient {
 
   HttpResponse<String> health(String token) throws Exception {
     HttpRequest.Builder builder =
-        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/v0/health")).GET();
+        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/v1/health")).GET();
     if (token != null) {
       builder.header("Authorization", "Bearer " + token);
     }

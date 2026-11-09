@@ -1,0 +1,40 @@
+# Real-provider trial of the SMTP delivery connector through Gmail (#1206 step 6).
+# Use it instead of docker-compose.connector-smtp.yml (no Mailpit): the email really leaves.
+# Secrets stay in docker/connector-smtp.local.env (gitignored; copy connector-smtp.local.env.example).
+# The email names EZKEY_QR_AUTH_BASE_URL, so a phone off the Mac needs a public HTTPS URL to the Auth API.
+services:
+  connector-smtp:
+    build:
+      context: ..
+      dockerfile: ezkey-connectors/ezkey-connector-smtp/Dockerfile
+    container_name: ezkey-connector-smtp
+    env_file:
+      - path: ./connector-smtp.local.env
+        required: true
+    environment:
+      EZKEY_CONNECTOR_SMTP_TOKEN: local-test-only-smtp-connector-token
+      EZKEY_CONNECTOR_SMTP_HOST: smtp.gmail.com
+      EZKEY_CONNECTOR_SMTP_SMTP_PORT: "587"
+      EZKEY_CONNECTOR_SMTP_SECURITY: starttls
+      EZKEY_CONNECTOR_SMTP_FROM_NAME: Ezkey (trial)
+      # Low on purpose: a trial sends a handful of emails.
+      EZKEY_CONNECTOR_SMTP_DAILY_CAP: ${EZKEY_CONNECTOR_SMTP_DAILY_CAP:-10}
+    networks:
+      - ezkey-network
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'wget -q --header "Authorization: Bearer local-test-only-smtp-connector-token" -O /dev/null http://localhost:8091/v1/health'
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
+  admin-api:
+    environment:
+      EZKEY_ADMIN_CONNECTOR_DELIVERY_URL: http://connector-smtp:8091
+      EZKEY_ADMIN_CONNECTOR_DELIVERY_TOKEN: local-test-only-smtp-connector-token
+      EZKEY_ADMIN_CONNECTOR_DELIVERY_PLAIN_HTTP_PRIVATE_NETWORK: "true"
+      EZKEY_QR_AUTH_BASE_URL: ${EZKEY_QR_AUTH_BASE_URL:?set the public Auth API URL, e.g. https://mac-auth.ezkey.org}
+    depends_on:
+      connector-smtp:
+        condition: service_healthy

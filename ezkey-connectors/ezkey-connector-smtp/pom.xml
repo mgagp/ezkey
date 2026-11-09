@@ -10,7 +10,7 @@
 
   <artifactId>ezkey-connector-smtp</artifactId>
   <name>Ezkey SMTP connector</name>
-  <description>Delivery contract v0 over SMTP: sends the enrollment QR by email with fixed templates.</description>
+  <description>Delivery contract v1 over SMTP: sends the enrollment QR by email with fixed templates.</description>
 
   <properties>
     <!-- Ship the committed root THIRD-PARTY.txt under META-INF/licenses/, like the APIs. -->
@@ -60,7 +60,7 @@
               <goal>repackage</goal>
             </goals>
           </execution>
-          <!-- connectorVersion in /v0/health comes from META-INF/build-info.properties. -->
+          <!-- connectorVersion in /v1/health comes from META-INF/build-info.properties. -->
           <execution>
             <id>build-info</id>
             <goals>
