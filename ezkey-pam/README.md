@@ -656,7 +656,7 @@ ezkey-pam/
 ├── src/                 PAM module (C)
 ├── config/              Reference pam_ezkey.conf (debug=false)
 ├── scripts/             provision, Docker up, AL2023 build/smoke, SSH demo,
-│                        host-grade-accept.sh (#1200)
+│                        host-apply.sh, host-grade-accept.sh (#1200)
 ├── HOST-GRADE.md        Host-grade contract (only copy)
 ├── test/                Container self-checks + AL2023 smoke
 ├── Dockerfile           Rocky builder + SSH runtime
