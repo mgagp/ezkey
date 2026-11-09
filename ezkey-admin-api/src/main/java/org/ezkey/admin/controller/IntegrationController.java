@@ -39,11 +39,13 @@ import org.ezkey.integration.domain.IntegrationCreateRequest;
 import org.ezkey.integration.domain.IntegrationCreateResponse;
 import org.ezkey.integration.domain.IntegrationLifecycleStatus;
 import org.ezkey.integration.domain.IntegrationResponse;
+import org.ezkey.integration.domain.PendingAttemptPolicy;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.integration.dto.IntegrationCreateRequestDto;
 import org.ezkey.integration.dto.IntegrationCreateResponseDto;
+import org.ezkey.integration.dto.IntegrationPendingAttemptPolicyRequestDto;
 import org.ezkey.integration.dto.IntegrationResponseDto;
 import org.ezkey.integration.exception.IntegrationCodeAlreadyExistsException;
 import org.ezkey.integration.exception.IntegrationCreateValidationException;
@@ -467,6 +469,84 @@ public class IntegrationController {
               .build());
       throw e;
     }
+  }
+
+  /**
+   * Changes the pending-attempt policy of an integration.
+   *
+   * @param id integration id
+   * @param request REPLACE or REFUSE
+   * @param httpRequest HTTP request for audit context
+   * @return the updated integration
+   */
+  @Operation(
+      summary = "Update pending-attempt policy",
+      description =
+          "Sets whether a new authentication attempt replaces a live one (REPLACE) or is refused"
+              + " while a live one exists (REFUSE). Default for new integrations is REPLACE. The"
+              + " system integration stays REPLACE; changing it returns 403"
+              + " system-integration-lifecycle.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "200", description = "Policy updated"),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Policy missing or invalid",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = org.springframework.http.ProblemDetail.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description = "System integration pending-attempt policy cannot be changed",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = org.springframework.http.ProblemDetail.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Integration not found",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = org.springframework.http.ProblemDetail.class)))
+      })
+  @PreAuthorize("hasRole('ADMIN')")
+  @PostMapping("/{id}/pending-attempt-policy")
+  public ResponseEntity<IntegrationResponseDto> updatePendingAttemptPolicy(
+      @Parameter(description = "Integration ID", example = "1") @PathVariable("id") Integer id,
+      @jakarta.validation.Valid @RequestBody IntegrationPendingAttemptPolicyRequestDto request,
+      HttpServletRequest httpRequest) {
+    ClientContext context = ClientContext.from(httpRequest);
+    EzkeyAdmin currentAdmin = getCurrentAdmin();
+    Integration integration =
+        service.getById(id).orElseThrow(() -> new ResourceNotFoundException("Integration", id));
+    if (currentAdmin.getAdminType() == EzkeyAdmin.AdminType.TENANT_ADMIN) {
+      if (!integration.getTenant().getTenantId().equals(currentAdmin.getTenant().getTenantId())) {
+        throw new ResourceNotFoundException("Integration", id);
+      }
+    }
+    PendingAttemptPolicy before = integration.getPendingAttemptPolicy();
+    Integration updated = service.updatePendingAttemptPolicy(id, request.pendingAttemptPolicy());
+    if (before == updated.getPendingAttemptPolicy()) {
+      return ResponseEntity.ok(mapper.toResponse(updated));
+    }
+    Integer tenantId = updated.getTenant() != null ? updated.getTenant().getTenantId() : null;
+    auditLogService.log(
+        AuditHelper.createAdminAudit(
+                context,
+                EventType.INTEGRATION_UPDATED,
+                AdminAuditConstants.INTEGRATION_UPDATED,
+                tenantId)
+            .eventStatus(EventStatus.SUCCESS)
+            .adminId(currentAdmin.getAdminId())
+            .integrationId(id)
+            .eventDetails("pendingAttemptPolicy=" + updated.getPendingAttemptPolicy().name())
+            .build());
+    return ResponseEntity.ok(mapper.toResponse(updated));
   }
 
   /**

@@ -118,6 +118,7 @@
   "type": {
     "AUDIT_CHAIN_GAP_PENDING": "Audit chain — undeclared gap",
     "AUDIT_CHAIN_HEARTBEAT_STALE": "Audit chain — heartbeat stale",
-    "AUDIT_INTEGRITY_RUPTURE": "Audit integrity — rupture detected"
+    "AUDIT_INTEGRITY_RUPTURE": "Audit integrity — rupture detected",
+    "AUTH_ATTEMPT_REJECTED": "Authentication attempt rejected by the device"
   }
 }

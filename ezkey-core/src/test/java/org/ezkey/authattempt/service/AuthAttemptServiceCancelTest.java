@@ -18,6 +18,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -28,6 +29,7 @@ import org.ezkey.config.EzkeyCoreProperties;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
+import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.signature.SignatureService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -52,6 +54,10 @@ class AuthAttemptServiceCancelTest {
 
   @Mock private AuthAttemptWaitService waitService;
 
+  @Mock private IntegrationRepository integrationRepository;
+
+  @Mock private AuthAttemptCreateLock createLock;
+
   private AuthAttemptService authAttemptService;
 
   @BeforeEach
@@ -65,7 +71,10 @@ class AuthAttemptServiceCancelTest {
             ezkeyCoreProperties,
             pendingService,
             respondService,
-            waitService);
+            waitService,
+            integrationRepository,
+            createLock,
+            Clock.systemUTC());
   }
 
   @Test

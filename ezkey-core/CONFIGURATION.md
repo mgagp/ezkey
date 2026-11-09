@@ -40,6 +40,9 @@ instance metadata. Applications that depend on ezkey-core declare these properti
 | `ezkey.core.crypto.rsa-key-size` | — | `2048` | optionnel |
 | `ezkey.core.auth-attempt.challenge-digits` | — | `2` | optionnel |
 | `ezkey.core.auth-attempt.ttl-seconds` | — | `120` | optionnel |
+| `ezkey.core.auth-attempt.cooldown-threshold` | — | `3` | optionnel |
+| `ezkey.core.auth-attempt.cooldown-window-seconds` | — | `600` | optionnel |
+| `ezkey.core.auth-attempt.cooldown-duration-seconds` | — | `300` | optionnel |
 
 ---
 
@@ -60,6 +63,9 @@ plus authentication attempt challenge configuration.
 | `ezkey.core.crypto.minimum-key-size` | `int` | `2048` | optionnel | Minimum RSA key size for validation; keys smaller than this are rejected. |
 | `ezkey.core.auth-attempt.challenge-digits` | `int` | `2` | optionnel | Number of digits in the challenge code (range 1–6). |
 | `ezkey.core.auth-attempt.ttl-seconds` | `int` | `120` | optionnel | Default auth attempt TTL when Integration create omits `ttlSeconds` (Bean Validation range **30–600**). **Applied** create TTL is always `min(request\|default, **120**)` (#895 Patrick M2). At startup a configured default **> 120** is clamped to **120** with a WARN. Per-request `ttlSeconds`: min **15**, hard clamp **120**; non-integer JSON rejected. |
+| `ezkey.core.auth-attempt.cooldown-threshold` | `int` | `3` | optionnel | Device-signed REJECTED or INVALID attempts inside the window that suspend further creates for that enrollment, on every integration. `0` disables the cooldown. Derived from existing attempt rows; no extra counter (#992). EXPIRED is not counted. Supersession and cancellation write EXPIRED only from PENDING or READ, so they do not arm the cooldown. |
+| `ezkey.core.auth-attempt.cooldown-window-seconds` | `int` | `600` | optionnel | Counting window (10 minutes) on attempt `createdAt` of the counted statuses only (`REJECTED` and `INVALID`). Scheduler-written `EXPIRED` is not in that set. |
+| `ezkey.core.auth-attempt.cooldown-duration-seconds` | `int` | `300` | optionnel | Suspension length after a crossing (5 minutes). It expires on its own. |
 
 **Exemple minimal :**
 
@@ -67,6 +73,9 @@ plus authentication attempt challenge configuration.
 # All defaults are production-viable; override only if necessary.
 ezkey.core.auth-attempt.challenge-digits=2
 ezkey.core.auth-attempt.ttl-seconds=120
+ezkey.core.auth-attempt.cooldown-threshold=3
+ezkey.core.auth-attempt.cooldown-window-seconds=600
+ezkey.core.auth-attempt.cooldown-duration-seconds=300
 ```
 
 ---

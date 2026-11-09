@@ -13,6 +13,20 @@
   functional tests; `I-2026-0004`, `I-2026-08-29`.
 - **Next step:** implement `TB-2026-08-29-admin-api-remove-m2m-hatch`.
 - **Captured by:** Marc
+- **Decision (2026-11-09, #992):** pending-attempt policy is per integration, default **REPLACE**
+  (expire the live attempt and create the new one) so existing Integration API callers keep that
+  supersession; **REFUSE** is an explicit integration choice. Creation cooldown is a global
+  platform control, not a second rate limiter. It counts device-signed outcomes only (`REJECTED`
+  and `INVALID`). Reason: counting `EXPIRED` would be an unauthenticated denial of service, for
+  example anyone running `ssh user@host` with PAM (#1311).
+- **Decision (2026-11-09, #1311):** Admin UI names the setting "When a request is already waiting"
+  (FR: "Quand une demande attend déjà"). Help recommends Refuse for interactive integrations where
+  a person is waiting to sign in, and says that saving does not change a request already waiting.
+  Reason: the earlier "repeatedly or automatically" sentence pointed operators at the wrong
+  integrations. The system integration (administrator sign-in) stays **REPLACE**; changing it
+  returns the existing `system-integration-lifecycle` refusal. Cooldown on every integration,
+  including this one, counts only `REJECTED` and `INVALID`. Superseded or cancelled attempts do
+  not count and do not raise the enrollment alert, whatever status they carry (#1311).
 
 ## Related artifacts
 

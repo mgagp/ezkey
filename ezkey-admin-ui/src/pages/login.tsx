@@ -16,6 +16,7 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { I18N_STORAGE_KEY } from '@/i18n';
 import { fetchApi, type FetchOptions } from '@/lib/api-client';
 import { getTranslatedApiError } from '@/lib/api-error-i18n';
+import { loginCooldownMessage } from '@/lib/login-cooldown-message';
 import { mapPasswordlessWaitError } from '@/lib/map-passwordless-wait-error';
 import { isBrowserSessionCookieBuild, type AuthSession } from '@/lib/auth';
 import { persistUsernamePref, readUsernamePref } from '@/lib/last-username-pref';
@@ -60,6 +61,7 @@ export default function LoginPage() {
   const [loginState, setLoginState] = useState<LoginState>('idle');
   const [waitingData, setWaitingData] = useState<WaitingData | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [cooldownPaused, setCooldownPaused] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
 
   // Guards against race conditions — once a final state is set, ignore further callbacks.
@@ -220,6 +222,7 @@ export default function LoginPage() {
   const onSubmit = async (formData: LoginForm) => {
     setLoginState('submitting');
     setErrorMessage(null);
+    setCooldownPaused(false);
     try {
       const loginRequestOptions: FetchOptions = { requireAuth: false };
       const result = await loginApi(
@@ -244,8 +247,12 @@ export default function LoginPage() {
         setErrorMessage(result.message ?? t('login:states.error.loginFailed'));
       }
     } catch (err) {
+      const cooldown = loginCooldownMessage(err, t);
+      setCooldownPaused(cooldown != null);
       setLoginState('error');
-      setErrorMessage(getTranslatedApiError(err, t, t('login:states.error.serverUnreachable')));
+      setErrorMessage(
+        cooldown ?? getTranslatedApiError(err, t, t('login:states.error.serverUnreachable')),
+      );
     }
   };
 
@@ -555,7 +562,14 @@ export default function LoginPage() {
           {/* ── Error ── */}
           {authFlow === 'passwordless' && loginState === 'error' && (
             <div data-testid="login-error-state" className="space-y-4">
-              <Alert variant="error" title={t('login:states.error.title')}>
+              <Alert
+                variant={cooldownPaused ? 'warning' : 'error'}
+                title={
+                  cooldownPaused
+                    ? t('login:states.error.cooldownTitle')
+                    : t('login:states.error.title')
+                }
+              >
                 {errorMessage ?? t('login:states.error.messageFallback')}
               </Alert>
               <Button variant="secondary" className="w-full" onClick={handleRetry}>

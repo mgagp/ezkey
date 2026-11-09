@@ -20,6 +20,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import java.time.Clock;
 import java.util.Collections;
 import java.util.Optional;
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
@@ -29,6 +30,7 @@ import org.ezkey.config.EzkeyCoreProperties;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.signature.SignatureService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -57,6 +59,10 @@ class AuthAttemptServiceChallengeLoggingTest {
   @Mock private AuthAttemptRespondService respondService;
   @Mock private AuthAttemptWaitService waitService;
 
+  @Mock private IntegrationRepository integrationRepository;
+
+  @Mock private AuthAttemptCreateLock createLock;
+
   private AuthAttemptService authAttemptService;
   private ListAppender<ILoggingEvent> logAppender;
   private Logger authLogger;
@@ -74,7 +80,10 @@ class AuthAttemptServiceChallengeLoggingTest {
             properties,
             pendingService,
             respondService,
-            waitService);
+            waitService,
+            integrationRepository,
+            createLock,
+            Clock.systemUTC());
 
     authLogger = (Logger) LoggerFactory.getLogger(AuthAttemptService.class);
     previousLevel = authLogger.getLevel();

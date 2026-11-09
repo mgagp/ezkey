@@ -53,6 +53,7 @@ class IntegrationApiStatelessSessionWebMvcTest {
   @MockitoBean private IntegrationRepository integrationRepository;
   @MockitoBean private AuditEntityFkResolver auditEntityFkResolver;
   @MockitoBean private AuditChainHeartbeatGuardService auditChainHeartbeatGuardService;
+  @MockitoBean private ApiKeyRateLimitProperties rateLimitProperties;
 
   @Test
   @DisplayName("Anonymous GET auth-attempts returns 401 without Set-Cookie or servlet session")

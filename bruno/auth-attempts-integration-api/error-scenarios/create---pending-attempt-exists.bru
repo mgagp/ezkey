@@ -1,0 +1,56 @@
+meta {
+  name: create - pending attempt exists
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{base_url_integration_api}}/api/v1/auth-attempts
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "enrollmentId": {{pendingEnrollmentId}},
+      "challengeRequested": false
+  }
+}
+
+script:post-response {
+  test("Status code is 409 - live attempt exists", function () {
+      expect(res.getStatus()).to.equal(409);
+  });
+
+  test("Problem type is auth-attempt-pending-exists", function () {
+      var jsonData = res.getBody();
+      expect(jsonData.type).to.equal("https://ezkey.io/problems/domain/auth-attempt-pending-exists");
+      expect(jsonData.status).to.equal(409);
+  });
+
+  test("Retry-After is present", function () {
+      expect(res.getHeader("Retry-After")).to.exist;
+  });
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Creates an auth attempt while a live PENDING or READ attempt already exists and the integration
+  pending-attempt policy is REFUSE.
+
+  Prerequisite: set `{{pendingEnrollmentId}}` to a VERIFIED enrollment whose integration policy is
+  REFUSE and that already has a live attempt. The default policy is REPLACE, which expires the
+  live attempt instead of returning 409.
+
+  **Expected behavior:**
+  - 409 Conflict
+  - `type`: `https://ezkey.io/problems/domain/auth-attempt-pending-exists`
+  - `Retry-After`: remaining lifetime of the live attempt, in seconds
+
+  Related, not this request: three REJECTED or EXPIRED attempts in 10 minutes return 409
+  `https://ezkey.io/problems/domain/auth-attempt-creation-cooldown` with `Retry-After` set to the
+  remaining suspension. HTTP 429 stays the per-API-key bucket.
+}
