@@ -536,10 +536,11 @@ public class AuthAttemptService {
    *
    * <p>Other integrations count {@code REJECTED}, {@code INVALID} (wrong challenge digits), and
    * {@code EXPIRED}. Supersession and cancellation both persist {@code EXPIRED}, so those rows
-   * count. The system integration counts only device-signed outcomes ({@code REJECTED} and {@code
-   * INVALID}): passwordless admin login creates an attempt from a username alone, and counting
-   * {@code EXPIRED} would let a remote caller renew the lock. The window uses {@code createdAt}: a
-   * status change lands at most one attempt TTL after creation, and the expiry scheduler ({@code
+   * count. The system integration uses the status set {@code REJECTED} and {@code INVALID} only:
+   * {@code EXPIRED} is dropped entirely, with no attempt to tell a supersession from a cancel or a
+   * timeout. Passwordless admin login creates an attempt from a username alone, and counting {@code
+   * EXPIRED} would let a remote caller renew the lock. The window uses {@code createdAt}: a status
+   * change lands at most one attempt TTL after creation, and the expiry scheduler ({@code
    * fixedDelay}, about 60 seconds) may record {@code EXPIRED} about 60 seconds after {@code
    * expiresAt}.
    *
@@ -574,7 +575,8 @@ public class AuthAttemptService {
    * Statuses that arm the creation cooldown for this enrollment.
    *
    * @param enrollment enrollment being created against
-   * @return signed outcomes only for the system integration; otherwise includes {@code EXPIRED}
+   * @return {@code REJECTED} and {@code INVALID} for the system integration; otherwise those plus
+   *     {@code EXPIRED}
    */
   private List<AuthAttemptStatus> cooldownStatuses(Enrollment enrollment) {
     if (systemIntegration(enrollment)) {

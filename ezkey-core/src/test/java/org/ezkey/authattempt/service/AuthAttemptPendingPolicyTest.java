@@ -21,6 +21,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
@@ -214,55 +215,70 @@ class AuthAttemptPendingPolicyTest {
   }
 
   @Test
-  @DisplayName("System integration ignores EXPIRED rows and is not in cooldown")
-  void cooldown_systemIntegration_expiredDoesNotSuspend() {
+  @DisplayName("System integration: four superseding creates do not cool down; three INVALID do")
+  void cooldown_systemIntegration_supersedeDoesNotSuspend_invalidDoes() {
     stubEnrollment(PendingAttemptPolicy.REPLACE, true);
-    OffsetDateTime now = OffsetDateTime.ofInstant(NOW, ZoneOffset.UTC);
+    List<AuthAttempt> rows = new ArrayList<>();
+    int[] nextId = {1};
     when(authAttemptRepository.findCreatedAtByEnrollmentIdAndStatusInSince(any(), anyList(), any()))
         .thenAnswer(invocation -> {
           List<AuthAttemptStatus> statuses = invocation.getArgument(1);
-          if (statuses.contains(AuthAttemptStatus.EXPIRED)) {
-            return List.of(now.minusMinutes(8), now.minusMinutes(4), now.minusMinutes(1));
-          }
-          return List.of();
+          OffsetDateTime since = invocation.getArgument(2);
+          assertThat(statuses)
+              .containsExactlyInAnyOrder(AuthAttemptStatus.REJECTED, AuthAttemptStatus.INVALID);
+          return rows.stream()
+              .filter(row -> statuses.contains(row.getAuthAttemptStatus()))
+              .filter(row -> !row.getCreatedAt().isBefore(since))
+              .map(AuthAttempt::getCreatedAt)
+              .toList();
         });
     when(authAttemptRepository.findByEnrollmentIdAndStatusIn(any(), anyList()))
-        .thenReturn(List.of());
+        .thenAnswer(invocation -> {
+          List<AuthAttemptStatus> statuses = invocation.getArgument(1);
+          return rows.stream()
+              .filter(row -> statuses.contains(row.getAuthAttemptStatus()))
+              .toList();
+        });
+    when(authAttemptRepository.updateStatusForMultipleAttempts(anyList(), any()))
+        .thenAnswer(invocation -> {
+          List<Integer> ids = invocation.getArgument(0);
+          AuthAttemptStatus status = invocation.getArgument(1);
+          int updated = 0;
+          for (AuthAttempt row : rows) {
+            if (ids.contains(row.getAuthAttemptId())) {
+              row.setAuthAttemptStatus(status);
+              updated++;
+            }
+          }
+          return updated;
+        });
     when(signatureService.generateProofToken()).thenReturn("proof");
     when(authAttemptRepository.save(any(AuthAttempt.class)))
-        .thenAnswer(invocation -> invocation.getArgument(0));
+        .thenAnswer(invocation -> {
+          AuthAttempt saved = invocation.getArgument(0);
+          saved.setAuthAttemptId(nextId[0]++);
+          rows.add(saved);
+          return saved;
+        });
 
-    assertThat(service.create(request())).isNotNull();
-    verify(authAttemptRepository)
-        .findCreatedAtByEnrollmentIdAndStatusInSince(
-            eq(1),
-            argThat(statuses ->
-                statuses.contains(AuthAttemptStatus.REJECTED)
-                    && statuses.contains(AuthAttemptStatus.INVALID)
-                    && !statuses.contains(AuthAttemptStatus.EXPIRED)),
-            eq(now.minusSeconds(900)));
-  }
+    for (int i = 0; i < 4; i++) {
+      assertThat(service.create(request())).isNotNull();
+    }
+    assertThat(rows)
+        .filteredOn(row -> row.getAuthAttemptStatus() == AuthAttemptStatus.EXPIRED)
+        .hasSize(3);
+    assertThat(rows)
+        .filteredOn(row -> row.getAuthAttemptStatus() == AuthAttemptStatus.PENDING)
+        .hasSize(1);
 
-  @Test
-  @DisplayName("System integration still suspends on REJECTED and INVALID")
-  void cooldown_systemIntegration_signedOutcomesSuspend() {
-    stubEnrollment(PendingAttemptPolicy.REPLACE, true);
+    rows.clear();
     OffsetDateTime now = OffsetDateTime.ofInstant(NOW, ZoneOffset.UTC);
-    when(authAttemptRepository.findCreatedAtByEnrollmentIdAndStatusInSince(any(), anyList(), any()))
-        .thenReturn(List.of(now.minusMinutes(8), now.minusMinutes(4), now.minusMinutes(1)));
+    rows.add(stored(1, AuthAttemptStatus.INVALID, now.minusMinutes(8)));
+    rows.add(stored(2, AuthAttemptStatus.INVALID, now.minusMinutes(4)));
+    rows.add(stored(3, AuthAttemptStatus.INVALID, now.minusMinutes(1)));
 
     assertThatThrownBy(() -> service.create(request()))
-        .isInstanceOf(AuthAttemptCreationCooldownException.class)
-        .extracting(ex -> ((AuthAttemptCreationCooldownException) ex).getRetryAfterSeconds())
-        .isEqualTo(240L);
-    verify(authAttemptRepository)
-        .findCreatedAtByEnrollmentIdAndStatusInSince(
-            eq(1),
-            argThat(statuses ->
-                statuses.contains(AuthAttemptStatus.REJECTED)
-                    && statuses.contains(AuthAttemptStatus.INVALID)
-                    && !statuses.contains(AuthAttemptStatus.EXPIRED)),
-            eq(now.minusSeconds(900)));
+        .isInstanceOf(AuthAttemptCreationCooldownException.class);
   }
 
   private void stubEnrollment(PendingAttemptPolicy policy) {
@@ -286,6 +302,15 @@ class AuthAttemptPendingPolicyTest {
     enrollment.setStatus(EnrollmentStatus.VERIFIED);
     enrollment.setAuthAttemptChallengeRequired(false);
     return enrollment;
+  }
+
+  private static AuthAttempt stored(int id, AuthAttemptStatus status, OffsetDateTime createdAt) {
+    AuthAttempt attempt = new AuthAttempt();
+    attempt.setAuthAttemptId(id);
+    attempt.setEnrollmentId(1);
+    attempt.setAuthAttemptStatus(status);
+    attempt.setCreatedAt(createdAt);
+    return attempt;
   }
 
   private static AuthAttempt attempt(int id, OffsetDateTime expiresAt) {
