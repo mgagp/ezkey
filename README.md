@@ -109,6 +109,12 @@ Use Git Bash on Windows. Do not start with a bare `mvn checkstyle:check` on an e
 
 Ezkey is developed with strong cryptographic validation and self-hosted operational control in mind. The project also aims to move in a direction that is favorable to operator-visible operational discipline, without claiming certification or standards equivalence. See [`product-docs/global/normative-posture.md`](product-docs/global/normative-posture.md).
 
+## Feedback and Contributing
+
+- **Bugs and requests:** open a [GitHub issue](https://github.com/mgagp/ezkey/issues).
+- **Vulnerabilities:** report them privately, as described in [`SECURITY.md`](SECURITY.md). Do not open a public issue.
+- **Contributions:** see [`CONTRIBUTING.md`](CONTRIBUTING.md) for the workflow and what a change must include.
+
 ## License
 
 This project is licensed under the MIT License. See [`LICENSE`](LICENSE) for details.
