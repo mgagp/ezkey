@@ -25,12 +25,16 @@
 # and that disables set -e. A failed copy does not write READY.
 # apply writes each file to a temp in that file's directory, then renames it
 # over the destination. sshd_config, pam.d, and the admin config keep the
-# existing mode and owner (644 root:root when the file is new). The conf is
-# always 600 root:root: the module accepts only 0600 or 0400 owned by
-# root:root, and a looser mode would publish the keys. restorecon runs on
-# that path when the command exists. install(1) is not used: it unlinks the
-# destination before creating the new file. If any step fails, the snapshot
-# is restored.
+# existing mode and owner (644 root:root when the file is new) and are
+# refused when the file or its directory is not root-owned or is group- or
+# world-writable. The conf and its snapshot copy are always 600 root:root.
+# Other snapshot copies are not made more permissive than the original.
+# An existing state directory that is not root:root mode 700 is refused.
+# A new parent is created root-only. EZKEY_PAM_SSHD must be a root-owned
+# executable that is not a symlink and not writable by group or other.
+# Symlinked config targets are refused. A leftover .hg temp is removed on
+# exit and on INT, TERM, and HUP. restorecon runs when the command exists.
+# If any step fails, the snapshot is restored.
 # sshd -t must pass on the MFA config and the admin config before apply
 # returns 0. remove, and a check that restores, run sshd -t on the restored
 # MFA config. A restoring check then deletes the rollback record.
@@ -54,6 +58,18 @@ ADMIN_USER="${EZKEY_PAM_ADMIN_USER:-hgadmin}"
 IKEY="${EZKEY_PAM_INTEGRATION_KEY:-hgIkeyDoNotLog0001}"
 SKEY="${EZKEY_PAM_SECRET_KEY:-hgSkeyDoNotLog0001}"
 SSHD_BIN="${EZKEY_PAM_SSHD:-/usr/sbin/sshd}"
+# Path of the temp file currently being written. The trap removes it so a
+# killed write cannot leave .hg.XXXXXX in /etc/pam.d, where PAM would treat
+# it as a service.
+HA_TMP=""
+ha_cleanup_tmp() {
+  if [ -n "${HA_TMP}" ]; then
+    rm -f "${HA_TMP}"
+    HA_TMP=""
+  fi
+}
+trap ha_cleanup_tmp EXIT
+trap 'ha_cleanup_tmp; exit 1' INT TERM HUP
 
 ha_reject_crlf() {
   local name="$1"
@@ -149,16 +165,135 @@ ha_validate_abs_paths() {
   ha_abs_path EZKEY_PAM_STATE_DIR "${STATE_DIR}" || return 1
 }
 
+ha_not_symlink() {
+  local name="$1"
+  local path="$2"
+  if [ -L "${path}" ]; then
+    echo "host-apply: ${name} must not be a symlink" >&2
+    return 1
+  fi
+}
+
+ha_refuse_symlinks() {
+  ha_not_symlink EZKEY_PAM_CONF "${CONF}" || return 1
+  ha_not_symlink EZKEY_PAM_SSHD_CONFIG "${SSHD_CFG}" || return 1
+  ha_not_symlink EZKEY_PAM_PAM_SSHD "${PAM_SSHD}" || return 1
+  ha_not_symlink EZKEY_PAM_SSHD "${SSHD_BIN}" || return 1
+  ha_not_symlink EZKEY_PAM_STATE_DIR "${STATE_DIR}" || return 1
+  if [ -e "${ADMIN_CFG}" ] || [ -L "${ADMIN_CFG}" ]; then
+    ha_not_symlink EZKEY_PAM_ADMIN_SSHD "${ADMIN_CFG}" || return 1
+  fi
+}
+
+# uid 0, and not group- or world-writable. World-readable is allowed.
+ha_require_root_not_open() {
+  local name="$1"
+  local path="$2"
+  local mode uid extra
+  mode="$(stat -c '%a' "${path}")" || return 1
+  uid="$(stat -c '%u' "${path}")" || return 1
+  if [ "${uid}" -ne 0 ]; then
+    echo "host-apply: ${name} is not root-owned" >&2
+    return 1
+  fi
+  extra=$(( (8#${mode}) & 022 ))
+  if [ "${extra}" -ne 0 ]; then
+    echo "host-apply: ${name} is group- or world-writable" >&2
+    return 1
+  fi
+}
+
+ha_validate_sshd_bin() {
+  if [ ! -f "${SSHD_BIN}" ] || [ ! -x "${SSHD_BIN}" ]; then
+    echo "host-apply: EZKEY_PAM_SSHD must be a root-owned executable" >&2
+    return 1
+  fi
+  ha_require_root_not_open EZKEY_PAM_SSHD "${SSHD_BIN}" || return 1
+}
+
+ha_validate_write_targets() {
+  ha_require_root_not_open "sshd config directory" "$(dirname "${SSHD_CFG}")" || return 1
+  ha_require_root_not_open "sshd config" "${SSHD_CFG}" || return 1
+  ha_require_root_not_open "pam.d directory" "$(dirname "${PAM_SSHD}")" || return 1
+  ha_require_root_not_open "pam.d sshd" "${PAM_SSHD}" || return 1
+  ha_require_root_not_open "admin config directory" "$(dirname "${ADMIN_CFG}")" || return 1
+  if [ -e "${ADMIN_CFG}" ]; then
+    ha_require_root_not_open "admin config" "${ADMIN_CFG}" || return 1
+  fi
+  ha_require_root_not_open "conf directory" "$(dirname "${CONF}")" || return 1
+}
+
+# An existing state directory must already be root:root mode 700. Do not
+# chmod it into compliance. A missing parent is created root-only.
+ha_prepare_state_dir() {
+  local parent mode ug
+  parent="$(dirname "${STATE_DIR}")"
+  if [ -L "${parent}" ] || [ -L "${STATE_DIR}" ]; then
+    echo "host-apply: state directory must not be a symlink" >&2
+    return 1
+  fi
+  if [ ! -d "${parent}" ]; then
+    mkdir -p "${parent}" || return 1
+    chown root:root "${parent}" || return 1
+    chmod 700 "${parent}" || return 1
+  fi
+  ha_require_root_not_open "state parent" "${parent}" || return 1
+  if [ -e "${STATE_DIR}" ]; then
+    if [ ! -d "${STATE_DIR}" ]; then
+      echo "host-apply: STATE_DIR must be a directory" >&2
+      return 1
+    fi
+    mode="$(stat -c '%a' "${STATE_DIR}")" || return 1
+    ug="$(stat -c '%u:%g' "${STATE_DIR}")" || return 1
+    if [ "${ug}" != "0:0" ] || [ "${mode}" != "700" ]; then
+      echo "host-apply: STATE_DIR must be root:root mode 700" >&2
+      return 1
+    fi
+  else
+    mkdir "${STATE_DIR}" || return 1
+    chown root:root "${STATE_DIR}" || return 1
+    chmod 700 "${STATE_DIR}" || return 1
+  fi
+}
+
+ha_snapshot_file() {
+  local src="$1"
+  local dst="$2"
+  local kind="$3"
+  local src_mode dst_mode extra
+  cp -a "${src}" "${dst}" || return 1
+  if [ -L "${dst}" ]; then
+    rm -f "${dst}"
+    echo "host-apply: snapshot of ${src} is a symlink" >&2
+    return 1
+  fi
+  if [ "${kind}" = "conf" ]; then
+    chmod 600 "${dst}" || return 1
+    chown root:root "${dst}" || return 1
+    return 0
+  fi
+  chmod --reference="${src}" "${dst}" || return 1
+  chown --reference="${src}" "${dst}" || return 1
+  src_mode="$(stat -c '%a' "${src}")" || return 1
+  dst_mode="$(stat -c '%a' "${dst}")" || return 1
+  extra=$(( (8#${dst_mode}) & ~(8#${src_mode}) & 0777 ))
+  if [ "${extra}" -ne 0 ]; then
+    echo "host-apply: snapshot of ${src} is more permissive than the original" >&2
+    return 1
+  fi
+}
+
 ha_snapshot() {
   if [ -f "${SNAP}/READY" ]; then
     return 0
   fi
   mkdir -p "${SNAP}" || return 1
-  chmod 700 "${STATE_DIR}" "${SNAP}" || return 1
+  chown root:root "${SNAP}" || return 1
+  chmod 700 "${SNAP}" || return 1
   # apply invokes this function with ||, which turns set -e off for the body.
-  cp -a "${SSHD_CFG}" "${SNAP}/sshd_config" || return 1
-  cp -a "${PAM_SSHD}" "${SNAP}/pam.d-sshd" || return 1
-  cp -a "${CONF}" "${SNAP}/pam_ezkey.conf" || return 1
+  ha_snapshot_file "${SSHD_CFG}" "${SNAP}/sshd_config" other || return 1
+  ha_snapshot_file "${PAM_SSHD}" "${SNAP}/pam.d-sshd" other || return 1
+  ha_snapshot_file "${CONF}" "${SNAP}/pam_ezkey.conf" conf || return 1
   : >"${SNAP}/READY" || return 1
   chmod 600 "${SNAP}/READY" || return 1
 }
@@ -186,42 +321,44 @@ ha_write_atomic() {
   local dir tmp
   dir="$(dirname "${dest}")"
   tmp="$(mktemp "${dir}/.hg.XXXXXX")" || return 1
+  HA_TMP="${tmp}"
   if ! cat >"${tmp}"; then
-    rm -f "${tmp}"
+    ha_cleanup_tmp
     return 1
   fi
   if [ -n "${force}" ]; then
     chmod "${force}" "${tmp}" || {
-      rm -f "${tmp}"
+      ha_cleanup_tmp
       return 1
     }
     chown root:root "${tmp}" || {
-      rm -f "${tmp}"
+      ha_cleanup_tmp
       return 1
     }
   elif [ -e "${dest}" ]; then
     chmod --reference="${dest}" "${tmp}" || {
-      rm -f "${tmp}"
+      ha_cleanup_tmp
       return 1
     }
     chown --reference="${dest}" "${tmp}" || {
-      rm -f "${tmp}"
+      ha_cleanup_tmp
       return 1
     }
   else
     chmod 644 "${tmp}" || {
-      rm -f "${tmp}"
+      ha_cleanup_tmp
       return 1
     }
     chown root:root "${tmp}" || {
-      rm -f "${tmp}"
+      ha_cleanup_tmp
       return 1
     }
   fi
   mv -f "${tmp}" "${dest}" || {
-    rm -f "${tmp}"
+    ha_cleanup_tmp
     return 1
   }
+  HA_TMP=""
   if command -v restorecon >/dev/null 2>&1; then
     restorecon "${dest}" || return 1
   fi
@@ -350,6 +487,10 @@ ha_apply() {
   ha_validate_tokens || return 1
   ha_validate_url "${url}" || return 1
   ha_validate_abs_paths || return 1
+  ha_refuse_symlinks || return 1
+  ha_validate_sshd_bin || return 1
+  ha_validate_write_targets || return 1
+  ha_prepare_state_dir || return 1
   case "${EZKEY_PAM_APPLY_FAIL_AFTER:-}" in
     "" | sshd) ;;
     *)
@@ -380,6 +521,8 @@ ha_remove() {
   fi
   ha_reject_crlf_env || return 1
   ha_validate_abs_paths || return 1
+  ha_refuse_symlinks || return 1
+  ha_prepare_state_dir || return 1
   ha_restore_snapshot || return 1
   ha_sshd_ok "${SSHD_CFG}" || return 1
 }
@@ -390,6 +533,7 @@ ha_arm() {
   local delay now
   ha_reject_crlf_env || return 1
   ha_validate_abs_paths || return 1
+  ha_prepare_state_dir || return 1
   if [ ! -f "${SNAP}/READY" ]; then
     echo "host-apply arm: no snapshot" >&2
     return 1
@@ -416,10 +560,16 @@ ha_arm() {
     delay=$((minutes * 60))
   fi
   now="$(date +%s)"
-  mkdir -p "${ROLL}"
-  chmod 700 "${ROLL}"
-  printf 'deadline=%s\nconfirmed=0\n' "$((now + delay))" >"${ROLL}/state"
-  chmod 600 "${ROLL}/state"
+  if [ -L "${ROLL}" ]; then
+    echo "host-apply: rollback directory must not be a symlink" >&2
+    return 1
+  fi
+  mkdir -p "${ROLL}" || return 1
+  chown root:root "${ROLL}" || return 1
+  chmod 700 "${ROLL}" || return 1
+  printf 'deadline=%s\nconfirmed=0\n' "$((now + delay))" >"${ROLL}/state" || return 1
+  chown root:root "${ROLL}/state" || return 1
+  chmod 600 "${ROLL}/state" || return 1
 }
 
 ha_confirm() {
@@ -436,9 +586,14 @@ ha_close_rollback() {
 
 ha_check() {
   local deadline confirmed now
+  if [ -L "${ROLL}/state" ]; then
+    echo "host-apply: rollback state must not be a symlink" >&2
+    return 1
+  fi
   if [ ! -f "${ROLL}/state" ]; then
     return 0
   fi
+  ha_prepare_state_dir || return 1
   ha_reject_crlf_env || return 1
   deadline="$(awk -F= '/^deadline=/{print $2}' "${ROLL}/state")"
   confirmed="$(awk -F= '/^confirmed=/{print $2}' "${ROLL}/state")"

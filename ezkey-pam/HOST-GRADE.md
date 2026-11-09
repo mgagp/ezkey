@@ -25,7 +25,7 @@ community instance (#955).
 | Boundary | Posture |
 |---|---|
 | Integration API down, HTTP 404, expiration, deny, bad conf mode, TLS verify failure | **Fail-closed.** No SSH session. |
-| PAM control flag on `pam_ezkey` | **Fail-closed only if** the auth control field is `required` or `requisite` and the line has no leading `-`. A leading `-` on the `pam_ezkey` line is rejected, because PAM skips an unloadable module and continues. The suite parses auth lines with comments removed, ignoring case. A leading `-` on a different module is still that type. It rejects `optional`, `sufficient`, `required` hidden in module arguments, and a line before `pam_ezkey` that is `sufficient`, `-auth sufficient`, `[default=ignore]`, any `done` action, any jump `=N` with N≥1 (`[success=1]`, `[success=2]`, `[default=done]`, `[success=ok default=1]`), `include`, `substack`, `@include`, or the same words in uppercase. |
+| PAM control flag on `pam_ezkey` | **Fail-closed only if** the auth control field is `required` or `requisite` and the line has no leading `-`. A leading `-` on the `pam_ezkey` line is rejected, because PAM skips an unloadable module and continues. The suite parses auth lines with comments removed, ignoring case. A leading `-` on a different module is still that type. It rejects `optional`, `sufficient`, `required` hidden in module arguments, and a line before `pam_ezkey` that is `sufficient`, `-auth sufficient`, `[default=ignore]`, any `done` action, any jump `=N` with N≥1 including leading zeros (`[success=1]`, `[success=01]`, `[success=2]`, `[default=007]`, `[default=done]`, `[success=ok default=1]`), a backslash continuation before or on the `pam_ezkey` line, `include`, `substack`, `@include`, or the same words in uppercase. |
 | Break-glass | **Separate sshd**, not a fail-open flag in the module. No `failmode=safe`. |
 | Rollback with no confirmation | **Fail-closed for the edit** when `host-apply.sh check` runs after the window. Previous files return. A system timer that would call `check` is not installed. |
 | Authpriv logging | Must not grant a session. A missing line fails the observability check. |
@@ -64,10 +64,17 @@ community instance (#955).
 5. **Install / remove.** `host-apply.sh apply` is idempotent. It writes
    `sshd_config`, `/etc/pam.d/sshd`, and the admin config to a temp file in
    that directory, copies the existing mode and owner (`644 root:root` when
-   the file is new), then renames it over the destination. The conf is always
-   written `0600` `root:root`, including when the live file was `0644` or
-   absent on a later apply. `restorecon` runs on that path when the command
-   exists. An existing `640 root:wheel` file stays `640 root:wheel`.
+   the file is new), then renames it over the destination. Those three are
+   refused, with no write, when the file or its directory is not root-owned
+   or is group- or world-writable. An existing `640 root:wheel` file stays
+   `640 root:wheel`. The conf and `snapshot/pam_ezkey.conf` are always
+   `0600` `root:root`, including when the live file was `0644` or absent on
+   a later apply. Other snapshot copies are not more permissive than the
+   originals. A symlinked target is refused. `EZKEY_PAM_SSHD` must be a
+   root-owned executable that is not writable by group or other. An existing
+   state directory that is not `root:root` mode `700` is refused. A missing
+   parent is created root-only. A `.hg` temp is removed on exit. `restorecon`
+   runs on the destination when the command exists.
    `sshd -t` must pass on the MFA config and the
    admin config before apply returns 0. If any step fails, the snapshot is
    restored byte for byte. `remove` restores `sshd_config`, `/etc/pam.d/sshd`,

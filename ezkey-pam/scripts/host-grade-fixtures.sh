@@ -495,7 +495,8 @@ hg_authpriv_has_challenge() {
 # the stack continues. The control field of pam_ezkey must be required or
 # requisite. "required" buried in module arguments does not count. Before
 # that line, sufficient, include, substack, @include, [default=ignore], any
-# done action, and any jump =N (N>=1) for any key fail the check.
+# done action, any jump =N (N>=1, including leading zeros), and a backslash
+# continuation fail the check.
 hg_auth_stack_ok() {
   local file="$1"
   local raw line low token body type control module saw
@@ -514,6 +515,13 @@ hg_auth_stack_ok() {
     body="$(printf '%s' "${body}" | sed -E 's/^[[:space:]]+//')"
     type="${token#-}"
     [ "${type}" != "auth" ] && continue
+    # A trailing backslash joins the next physical line. That can hide a
+    # control before pam_ezkey, or hide arguments on the pam_ezkey line.
+    if [ "${saw}" -eq 0 ]; then
+      case "${line}" in
+        *\\) return 1 ;;
+      esac
+    fi
     if [ "${body#\[}" != "${body}" ]; then
       control="$(printf '%s' "${body}" | sed -E 's/^(\[[^]]+\]).*/\1/')"
       module="${body#"${control}"}"
@@ -542,8 +550,8 @@ hg_auth_stack_ok() {
       if printf '%s' "${control}" | grep -Eq '=done([^[:alnum:]_]|$)'; then
         return 1
       fi
-      # A jump of N>=1 on any key (success=1, success=2, default=1, =10).
-      if printf '%s' "${control}" | grep -Eq '=[1-9][0-9]*([[:space:]]|]|$)'; then
+      # A jump of N>=1 on any key, including leading zeros (success=01, default=007).
+      if printf '%s' "${control}" | grep -Eq '=0*[1-9][0-9]*([[:space:]]|]|$)'; then
         return 1
       fi
     fi
@@ -648,6 +656,22 @@ hg_control_flag_cases() {
     'auth required pam_ezkey.so' >"${dir}/default-jump"
   hg_expect_stack line2_reject_default_jump_before bad "${dir}/default-jump" \
     "[success=ok default=1] before pam_ezkey can skip it"
+  printf '%s\n' 'auth [success=01 default=die] pam_permit.so' \
+    'auth required pam_ezkey.so' >"${dir}/success-01"
+  hg_expect_stack line2_reject_success_01_before bad "${dir}/success-01" \
+    "[success=01] before pam_ezkey can skip it"
+  printf '%s\n' 'auth [default=007] pam_permit.so' 'auth required pam_ezkey.so' \
+    >"${dir}/default-007"
+  hg_expect_stack line2_reject_default_007_before bad "${dir}/default-007" \
+    "[default=007] before pam_ezkey can skip it"
+  printf '%s\n' "auth sufficient pam_permit.so \\" 'auth required pam_ezkey.so' \
+    >"${dir}/backslash-before"
+  hg_expect_stack line2_reject_backslash_before bad "${dir}/backslash-before" \
+    "a backslash continuation before pam_ezkey can hide a control"
+  printf '%s\n' "auth required pam_ezkey.so \\" 'conf=/etc/security/pam_ezkey.conf' \
+    >"${dir}/backslash-ezkey"
+  hg_expect_stack line2_reject_backslash_on_ezkey bad "${dir}/backslash-ezkey" \
+    "a backslash continuation on the pam_ezkey line can hide arguments"
   rm -rf "${dir}"
 }
 

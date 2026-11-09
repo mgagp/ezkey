@@ -10,11 +10,13 @@ hg_expect_conf_forced() {
   hg_apply
   rc=$?
   set -e
+  local snap_meta
   meta="$(stat -c '%a %u:%g' "${CONF}" 2>/dev/null || printf '%s' missing)"
-  if [ "${rc}" -eq 0 ] && [ "${meta}" = "600 0:0" ]; then
+  snap_meta="$(stat -c '%a %u:%g' "${SNAP}/pam_ezkey.conf" 2>/dev/null || printf '%s' missing)"
+  if [ "${rc}" -eq 0 ] && [ "${meta}" = "600 0:0" ] && [ "${snap_meta}" = "600 0:0" ]; then
     hg_pass "${key}" "${msg}"
   else
-    hg_fail "${key}" "conf is ${meta}, apply rc=${rc}"
+    hg_fail "${key}" "conf=${meta} snap=${snap_meta} rc=${rc}"
   fi
 }
 
@@ -119,6 +121,43 @@ hg_run_scenarios() {
     hg_fail line5_snapshot_missing_conf \
       "missing conf rc=${rc} ready=$( [ -f "${SNAP}/READY" ] && echo yes || echo no )"
   fi
+  local sshd_mode before_link after_link fake_sshd
+  sshd_mode="$(stat -c '%a' "${SSHD_CFG}")"
+  chmod g+w "${SSHD_CFG}"
+  hg_expect_apply_rejected line5_reject_group_writable_target \
+    "a group-writable sshd_config is refused and files stay unchanged"
+  chmod "${sshd_mode}" "${SSHD_CFG}"
+  mv "${SSHD_CFG}" "${SSHD_CFG}.hg-orig"
+  ln -s "${SSHD_CFG}.hg-orig" "${SSHD_CFG}"
+  before_link="$(sha256sum "${SSHD_CFG}.hg-orig" | awk '{print $1}')"
+  set +e
+  hg_apply
+  rc=$?
+  set -e
+  after_link="$(sha256sum "${SSHD_CFG}.hg-orig" | awk '{print $1}')"
+  if [ "${rc}" -ne 0 ] && [ "${before_link}" = "${after_link}" ] \
+    && [ -L "${SSHD_CFG}" ] && [ ! -f "${SNAP}/READY" ]; then
+    hg_pass line5_reject_symlink_target \
+      "a symlinked sshd_config is refused and the target stays unchanged"
+  else
+    hg_fail line5_reject_symlink_target "symlink target rc=${rc}"
+  fi
+  rm -f "${SSHD_CFG}"
+  mv "${SSHD_CFG}.hg-orig" "${SSHD_CFG}"
+  chown nobody "${STATE_DIR}"
+  hg_expect_apply_rejected line5_reject_state_dir_owner \
+    "a state directory not owned by root is refused"
+  chown root:root "${STATE_DIR}"
+  chmod 700 "${STATE_DIR}"
+  fake_sshd="$(mktemp /tmp/hg-sshd-open.XXXXXX)"
+  printf '#!/bin/sh\nexit 0\n' >"${fake_sshd}"
+  chown root:root "${fake_sshd}"
+  chmod 777 "${fake_sshd}"
+  export EZKEY_PAM_SSHD="${fake_sshd}"
+  hg_expect_apply_rejected line5_reject_writable_sshd \
+    "a world-writable sshd binary is refused"
+  unset EZKEY_PAM_SSHD
+  rm -f "${fake_sshd}"
 
   hg_authpriv_up
   PAM_SO="$(hg_pam_so)"
@@ -132,7 +171,10 @@ hg_run_scenarios() {
 
   chmod 640 "${SSHD_CFG}"
   chown root:wheel "${SSHD_CFG}"
-  hg_apply
+  chmod 644 "${CONF}"
+  chown "${MFA_USER}:${MFA_USER}" "${CONF}"
+  hg_expect_conf_forced line5_conf_forced_from_644 \
+    "a 644 conf is rewritten 600 root:root, including the snapshot"
   local hash1 hash2 sshd_meta
   hash1="$(hg_content_hash)"
   hg_apply
@@ -149,13 +191,9 @@ hg_run_scenarios() {
   else
     hg_fail line5_preserve_mode_owner "sshd_config is ${sshd_meta}"
   fi
-  chmod 644 "${CONF}"
-  chown "${MFA_USER}:${MFA_USER}" "${CONF}"
-  hg_expect_conf_forced line5_conf_forced_from_644 \
-    "a 644 conf is rewritten 600 root:root"
   rm -f "${CONF}"
   hg_expect_conf_forced line5_conf_forced_when_absent \
-    "a missing conf is created 600 root:root"
+    "a missing conf is created 600 root:root, including the snapshot"
 
   hg_control_flag_cases
   if grep -q pam_ezkey.so "${PAM_SSHD}"; then
