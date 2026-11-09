@@ -55,6 +55,8 @@ import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.EnrollmentInactiveException;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.exception.auth.AuthAttemptCreateValidationException;
+import org.ezkey.exception.auth.AuthAttemptCreationCooldownException;
+import org.ezkey.exception.auth.AuthAttemptPendingExistsException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.exception.auth.AuthAttemptWaitValidationException;
 import org.ezkey.integration.domain.entity.Integration;
@@ -436,6 +438,22 @@ public class AuthAttemptController {
               .build());
       throw e;
     } catch (EnrollmentInactiveException e) {
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.AUTH_ATTEMPT_CREATED,
+                  AdminAuditConstants.AUTH_ATTEMPT_CREATION_FAILED,
+                  auditTenantId)
+              .eventStatus(EventStatus.FAILURE)
+              .adminId(adminIdForAudit)
+              .enrollmentId(auditEntityFkResolver.enrollmentIdForAuditOrNull(effectiveEnrollmentId))
+              .integrationId(
+                  auditEntityFkResolver.integrationIdForAuditOrNull(
+                      resolveIntegrationIdFromEnrollment(effectiveEnrollmentId)))
+              .errorMessage(e.getMessage())
+              .build());
+      throw e;
+    } catch (AuthAttemptPendingExistsException | AuthAttemptCreationCooldownException e) {
       auditLogService.log(
           AuditHelper.createAdminAudit(
                   context,

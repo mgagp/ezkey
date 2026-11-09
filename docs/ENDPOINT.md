@@ -932,6 +932,9 @@ Creates an integration in the caller's tenant: Tenant Admin → that tenant; Glo
 system tenant. There is no `tenantId` on the create body. `code` is required: 2–100 characters,
 slug `^[a-zA-Z0-9_-]+$`, unique per tenant. `name` is required; `description` is optional. There is
 no API to change `code` after create. Same `code` in a different tenant is allowed.
+Optional `pendingAttemptPolicy` is `REPLACE` (default) or `REFUSE`. Omit it to keep REPLACE.
+`POST /api/v1/integrations/{id}/pending-attempt-policy` changes it later (`{"pendingAttemptPolicy":"REFUSE"}`).
+REPLACE expires a live attempt and creates the new one. REFUSE returns **409** while a live attempt remains.
 
 **Request:**
 ```http
@@ -2156,6 +2159,16 @@ gate, `@Valid`, and unreadable/strict-deserialization JSON, whether or not the u
 above 120 are clamped to 120. Absent field → server default (after the min/120 rule). Response
 `timeoutSeconds` is the **applied** TTL (field name unchanged for PAM); `expiresAt` is computed from
 it. Prefer `timeoutSeconds` over comparing wall clocks (PAM / Demo Device).
+
+**Pending attempt and cooldown (#992):** When the integration policy is `REFUSE` and a live
+`PENDING` or `READ` attempt remains, create returns **409** Problem Details type
+`https://ezkey.io/problems/domain/auth-attempt-pending-exists` with `Retry-After` set to the
+remaining lifetime of that attempt (seconds). A time-elapsed pending row is marked `EXPIRED` and
+does not block. Independently, 3 `REJECTED` or `EXPIRED` attempts in 10 minutes on the same
+enrollment suspend further creates for 5 minutes (**409** type
+`https://ezkey.io/problems/domain/auth-attempt-creation-cooldown`, `Retry-After` remaining
+suspension). Those defaults are `ezkey.core.auth-attempt.cooldown-*`. **429** stays the per-API-key
+bucket; its limit and window come from `ezkey.api-key.rate-limit`, and `Retry-After` is that window.
 
 **`challengeRequested` (required, unchanged):** `@NotNull` / OpenAPI required since before #895 —
 omission fails `@Valid` with the same generic 400. Not a contract break from this PR (Patrick M3).

@@ -13,6 +13,10 @@
   functional tests; `I-2026-0004`, `I-2026-08-29`.
 - **Next step:** implement `TB-2026-08-29-admin-api-remove-m2m-hatch`.
 - **Captured by:** Marc
+- **Decision (2026-11-09, #992):** pending-attempt policy is per integration, default **REPLACE**
+  (expire the live attempt and create the new one) so existing Integration API callers keep
+  working; **REFUSE** is an explicit integration choice. Creation cooldown is a global platform
+  control, not a second rate limiter.
 
 ## Related artifacts
 

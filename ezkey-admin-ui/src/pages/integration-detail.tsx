@@ -22,6 +22,10 @@ import { useToast } from '@/context/use-toast';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { getIntegrationName } from '@/hooks/use-integrations';
 import { useDemoModeSession } from '@/context/use-demo-mode-session';
+import {
+  PendingAttemptPolicyField,
+  type PendingAttemptPolicyValue,
+} from '@/components/feature/pending-attempt-policy-field';
 import { api } from '@/lib/api-client';
 import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { isDemoMode } from '@/lib/demo-mode';
@@ -36,6 +40,11 @@ import {
 } from '@/generated/admin-api/integrations/integrations';
 import { search1 } from '@/generated/admin-api/enrollments/enrollments';
 import type { EnrollmentResponseDto, IntegrationResponseDto } from '@/generated/admin-api/model';
+
+function readPendingAttemptPolicy(integration: object): PendingAttemptPolicyValue {
+  const value = (integration as { pendingAttemptPolicy?: unknown }).pendingAttemptPolicy;
+  return value === 'REFUSE' ? 'REFUSE' : 'REPLACE';
+}
 
 // ── Info row helper ──────────────────────────────────────────────────────────
 
@@ -393,6 +402,28 @@ export default function IntegrationDetailPage() {
                   <InfoRow label={t('detail.infoCreated')}>
                     <span className="text-fg-muted">{formatDate(integration.createdAt ?? '')}</span>
                   </InfoRow>
+                  <div className="py-2">
+                    <PendingAttemptPolicyField
+                      id="integration-pending-attempt-policy"
+                      value={readPendingAttemptPolicy(integration)}
+                      disabled={integration.lifecycleStatus !== 'ACTIVE'}
+                      onChange={(event) => {
+                        const next = event.target.value as PendingAttemptPolicyValue;
+                        api
+                          .post(`/api/v1/integrations/${integrationId}/pending-attempt-policy`, {
+                            pendingAttemptPolicy: next,
+                          })
+                          .then(() => {
+                            void queryClient.invalidateQueries({ queryKey: ['integration', integrationId] });
+                            void queryClient.invalidateQueries({ queryKey: ['integrations'] });
+                            toast(t('pendingAttemptPolicy.saved'));
+                          })
+                          .catch((e) =>
+                            toast(getTranslatedApiError(e, t, t('pendingAttemptPolicy.saveFailed')), 'error'),
+                          );
+                      }}
+                    />
+                  </div>
                 </dl>
               </CardContent>
             </Card>

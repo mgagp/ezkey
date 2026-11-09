@@ -292,6 +292,9 @@ public final class AdminAuditConstants {
   /** Audit action for successful integration creation. */
   public static final String INTEGRATION_CREATED = "integration_created";
 
+  /** Audit action for a pending-attempt policy change. */
+  public static final String INTEGRATION_UPDATED = "integration_updated";
+
   /** Audit action for failed integration creation. */
   public static final String INTEGRATION_CREATION_FAILED = "integration_creation_failed";
 

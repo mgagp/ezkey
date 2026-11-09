@@ -15,6 +15,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+import java.time.Clock;
 import java.util.Optional;
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
@@ -25,6 +26,7 @@ import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.EnrollmentInactiveException;
 import org.ezkey.exception.auth.AuthAttemptCreateValidationException;
+import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.signature.SignatureService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -63,6 +65,10 @@ class AuthAttemptServiceEnrollmentGateTest {
 
   @Mock private AuthAttemptWaitService waitService;
 
+  @Mock private IntegrationRepository integrationRepository;
+
+  @Mock private AuthAttemptCreateLock createLock;
+
   private AuthAttemptService authAttemptService;
 
   @BeforeEach
@@ -76,7 +82,10 @@ class AuthAttemptServiceEnrollmentGateTest {
             properties,
             pendingService,
             respondService,
-            waitService);
+            waitService,
+            integrationRepository,
+            createLock,
+            Clock.systemUTC());
   }
 
   @Test

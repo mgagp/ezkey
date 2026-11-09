@@ -491,6 +491,11 @@ Logs never include wait JSON bodies, proof tokens, secret keys, or Basic auth he
 
 ## Runbook notes (Lightsail / host SSH)
 
+- **Pending-attempt policy (#992, before the #955 install notes):** create the integration used by
+  this connector with pending-attempt policy **REFUSE**. The platform default is REPLACE, which
+  lets a later create expire the attempt that is still waiting. REFUSE keeps that attempt and
+  returns HTTP 409 `auth-attempt-pending-exists` until it completes or expires. No #955 runbook
+  file exists in this module; this is the install line for that integration.
 - **Interaction model:** one SSH login → pre-create `ok` → at most one create →
   optional challenge prompt → `/wait`. Batch / empty clients create nothing.
   See [`docs/INTERACTION-MODEL.md`](docs/INTERACTION-MODEL.md) (scenario catalogue

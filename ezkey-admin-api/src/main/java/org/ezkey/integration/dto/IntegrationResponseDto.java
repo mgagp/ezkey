@@ -13,6 +13,7 @@ package org.ezkey.integration.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.OffsetDateTime;
 import org.ezkey.integration.domain.IntegrationLifecycleStatus;
+import org.ezkey.integration.domain.PendingAttemptPolicy;
 
 /**
  * Response DTO for integration data in admin API.
@@ -45,6 +46,7 @@ import org.ezkey.integration.domain.IntegrationLifecycleStatus;
  * @param description Optional description of the integration
  * @param isSystemIntegration Whether this is the system integration (e.g. admin MFA); used by UI to
  *     hide or adapt actions on the integration detail page
+ * @param pendingAttemptPolicy What happens when a live authentication attempt already exists
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.integration.domain.entity.Integration
@@ -78,4 +80,9 @@ public record IntegrationResponseDto(
             description =
                 "Whether this is the system integration (e.g. admin MFA); used by UI to adapt"
                     + " detail page")
-        Boolean isSystemIntegration) {}
+        Boolean isSystemIntegration,
+    @Schema(
+            description =
+                "What happens when a live authentication attempt already exists for an enrollment",
+            example = "REPLACE")
+        PendingAttemptPolicy pendingAttemptPolicy) {}

@@ -44,9 +44,12 @@ import org.ezkey.exception.EnrollmentInactiveException;
 import org.ezkey.exception.RateLimitExceededException;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.exception.auth.AuthAttemptCreateValidationException;
+import org.ezkey.exception.auth.AuthAttemptCreationCooldownException;
+import org.ezkey.exception.auth.AuthAttemptPendingExistsException;
 import org.ezkey.exception.auth.AuthAttemptRequestInvalidException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.exception.auth.AuthAttemptWaitValidationException;
+import org.ezkey.integration.api.config.ApiKeyRateLimitProperties;
 import org.ezkey.integration.api.constants.IntegrationApiAuditConstants;
 import org.ezkey.integration.api.security.RateLimitService;
 import org.ezkey.integration.api.util.AuditHelper;
@@ -115,6 +118,7 @@ public class IntegrationApiAuthAttemptController {
   private final EnrollmentRepository enrollmentRepository;
   private final IntegrationRepository integrationRepository;
   private final AuditEntityFkResolver auditEntityFkResolver;
+  private final ApiKeyRateLimitProperties rateLimitProperties;
 
   /**
    * Constructs the Integration API auth attempt controller with required dependencies.
@@ -126,6 +130,7 @@ public class IntegrationApiAuthAttemptController {
    * @param enrollmentRepository the enrollment repository for resolve-time ownership checks
    * @param integrationRepository the integration repository for tenant resolution in audit logs
    * @param auditEntityFkResolver resolves audit foreign keys only when referenced rows exist
+   * @param rateLimitProperties configured per-key bucket sizes (#1070)
    */
   public IntegrationApiAuthAttemptController(
       AuthAttemptService authAttemptService,
@@ -134,7 +139,8 @@ public class IntegrationApiAuthAttemptController {
       RateLimitService rateLimitService,
       EnrollmentRepository enrollmentRepository,
       IntegrationRepository integrationRepository,
-      AuditEntityFkResolver auditEntityFkResolver) {
+      AuditEntityFkResolver auditEntityFkResolver,
+      ApiKeyRateLimitProperties rateLimitProperties) {
     this.authAttemptService = authAttemptService;
     this.authAttemptMapper = authAttemptMapper;
     this.auditLogService = auditLogService;
@@ -142,6 +148,7 @@ public class IntegrationApiAuthAttemptController {
     this.enrollmentRepository = enrollmentRepository;
     this.integrationRepository = integrationRepository;
     this.auditEntityFkResolver = auditEntityFkResolver;
+    this.rateLimitProperties = rateLimitProperties;
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -181,6 +188,11 @@ public class IntegrationApiAuthAttemptController {
         @ApiResponse(
             responseCode = "403",
             description = "Enrollment does not belong to this integration"),
+        @ApiResponse(
+            responseCode = "409",
+            description =
+                "Live attempt already exists (auth-attempt-pending-exists) or creation is"
+                    + " suspended (auth-attempt-creation-cooldown). Retry-After is set."),
         @ApiResponse(responseCode = "429", description = "Rate limit exceeded"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
@@ -198,7 +210,7 @@ public class IntegrationApiAuthAttemptController {
 
     // Rate limiting check
     if (apiKeyId != null && !rateLimitService.canCreateAuthAttempt(apiKeyId)) {
-      throw new RateLimitExceededException("CREATE_AUTH_ATTEMPT", 100, 0, 15);
+      throw createRateLimitExceeded();
     }
 
     // TTL floor before enrollment/user lookup — non-enumerating 400 (#895).
@@ -311,6 +323,22 @@ public class IntegrationApiAuthAttemptController {
               .build());
       throw e;
 
+    } catch (AuthAttemptPendingExistsException | AuthAttemptCreationCooldownException e) {
+      auditLogService.log(
+          AuditHelper.createIntegrationApiAudit(
+                  context,
+                  EventType.AUTH_ATTEMPT_CREATED,
+                  IntegrationApiAuditConstants.AUTH_ATTEMPT_CREATION_FAILED,
+                  auditTenantId)
+              .eventStatus(EventStatus.FAILURE)
+              .enrollmentId(auditEntityFkResolver.enrollmentIdForAuditOrNull(effectiveEnrollmentId))
+              .integrationId(
+                  auditEntityFkResolver.integrationIdForAuditOrNull(
+                      resolveIntegrationIdFromEnrollment(effectiveEnrollmentId)))
+              .errorMessage(e.getMessage())
+              .build());
+      throw e;
+
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       auditLogService.log(
           AuditHelper.createIntegrationApiAudit(
@@ -392,7 +420,7 @@ public class IntegrationApiAuthAttemptController {
 
     // Rate limiting check
     if (apiKeyId != null && !rateLimitService.canWaitAuthAttempt(apiKeyId)) {
-      throw new RateLimitExceededException("WAIT_AUTH_ATTEMPT", 200, 0, 15);
+      throw waitRateLimitExceeded("WAIT_AUTH_ATTEMPT");
     }
 
     try {
@@ -469,7 +497,7 @@ public class IntegrationApiAuthAttemptController {
 
     // Rate limiting check (reuses wait bucket — cancel is similar in cost)
     if (apiKeyId != null && !rateLimitService.canWaitAuthAttempt(apiKeyId)) {
-      throw new RateLimitExceededException("CANCEL_AUTH_ATTEMPT", 200, 0, 15);
+      throw waitRateLimitExceeded("CANCEL_AUTH_ATTEMPT");
     }
 
     Integer cancelTenantId = resolveTenantIdFromAuthAttempt(id);
@@ -544,6 +572,25 @@ public class IntegrationApiAuthAttemptController {
   // ═══════════════════════════════════════════════════════════════════════════
   // Private helpers
   // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Builds the create-operation rate-limit signal from {@code ezkey.api-key.rate-limit}.
+   *
+   * @return exception carrying the configured request budget and window
+   */
+  private RateLimitExceededException createRateLimitExceeded() {
+    ApiKeyRateLimitProperties.CreateAuthAttemptConfig config =
+        rateLimitProperties.getCreateAuthAttempt();
+    return new RateLimitExceededException(
+        "CREATE_AUTH_ATTEMPT", config.getRequests(), 0, config.getWindowMinutes());
+  }
+
+  private RateLimitExceededException waitRateLimitExceeded(String operation) {
+    ApiKeyRateLimitProperties.WaitAuthAttemptConfig config =
+        rateLimitProperties.getWaitAuthAttempt();
+    return new RateLimitExceededException(
+        operation, config.getRequests(), 0, config.getWindowMinutes());
+  }
 
   /**
    * Extracts a stable API key identifier from the security context for rate limiting.

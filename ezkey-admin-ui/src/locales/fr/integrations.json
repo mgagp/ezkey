@@ -37,6 +37,14 @@
     "submit": "Créer l'intégration",
     "errorCreate": "Échec de la création de l'intégration."
   },
+  "pendingAttemptPolicy": {
+    "label": "Demande en attente",
+    "replace": "Remplacer la demande en attente (valeur par défaut)",
+    "refuse": "Refuser tant qu'une demande est en attente",
+    "help": "Refuser est recommandé pour les intégrations déclenchées de façon répétée ou automatisée.",
+    "saved": "Politique de demande en attente mise à jour.",
+    "saveFailed": "Impossible de mettre à jour la politique de demande en attente."
+  },
   "validation": {
     "codeMin": "Le code doit contenir au moins {{n}} caractères",
     "codeMax": "Le code doit contenir au plus {{n}} caractères",

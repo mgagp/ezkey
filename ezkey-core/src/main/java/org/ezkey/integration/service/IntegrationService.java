@@ -21,6 +21,7 @@ import org.ezkey.exception.SystemTenantNotConfiguredException;
 import org.ezkey.integration.domain.IntegrationCreateRequest;
 import org.ezkey.integration.domain.IntegrationCreateResponse;
 import org.ezkey.integration.domain.IntegrationLifecycleStatus;
+import org.ezkey.integration.domain.PendingAttemptPolicy;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
 import org.ezkey.integration.domain.entity.Integration;
@@ -219,6 +220,9 @@ public class IntegrationService {
         createdByAdmin.getAdminType());
 
     Integration integration = integrationServiceMapper.toEntity(request);
+    if (integration.getPendingAttemptPolicy() == null) {
+      integration.setPendingAttemptPolicy(PendingAttemptPolicy.REPLACE);
+    }
     integration.setLifecycleStatus(IntegrationLifecycleStatus.ACTIVE);
     integration.setCreatedAt(OffsetDateTime.now());
     integration.setCreatedByAdmin(createdByAdmin);
@@ -276,6 +280,26 @@ public class IntegrationService {
         createdByAdmin.getUsername());
 
     return response;
+  }
+
+  /**
+   * Replaces the pending-attempt policy of an existing integration.
+   *
+   * @param id integration id
+   * @param policy REPLACE or REFUSE
+   * @return the updated integration
+   */
+  @Transactional
+  public Integration updatePendingAttemptPolicy(Integer id, PendingAttemptPolicy policy) {
+    if (policy == null) {
+      throw new IntegrationCreateValidationException("pendingAttemptPolicy is required");
+    }
+    Integration integration =
+        integrationRepository
+            .findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Integration", id));
+    integration.setPendingAttemptPolicy(policy);
+    return integrationRepository.save(integration);
   }
 
   /** Retires an integration while preserving its historical footprint. */

@@ -302,6 +302,25 @@ public interface AuthAttemptRepository
       @Param("statuses") List<AuthAttemptStatus> statuses);
 
   /**
+   * Creation times of attempts in the given statuses at or after {@code since}.
+   *
+   * <p>Used to derive the creation cooldown from existing rows. Ordered oldest first.
+   *
+   * @param enrollmentId enrollment whose attempts are counted
+   * @param statuses counted statuses, typically REJECTED and EXPIRED
+   * @param since inclusive lower bound on {@code createdAt}
+   * @return matching creation timestamps
+   */
+  @Query(
+      "SELECT a.createdAt FROM AuthAttempt a WHERE a.enrollmentId = :enrollmentId AND"
+          + " a.authAttemptStatus IN :statuses AND a.createdAt >= :since ORDER BY a.createdAt"
+          + " ASC")
+  List<OffsetDateTime> findCreatedAtByEnrollmentIdAndStatusInSince(
+      @Param("enrollmentId") Integer enrollmentId,
+      @Param("statuses") List<AuthAttemptStatus> statuses,
+      @Param("since") OffsetDateTime since);
+
+  /**
    * Finds non-terminal auth attempts whose {@code expiresAt} is strictly before {@code now}, for
    * scheduled expiry processing.
    *

@@ -14,12 +14,16 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.OffsetDateTime;
 import java.util.Optional;
 import java.util.OptionalLong;
+import org.ezkey.alert.domain.AlertSeverity;
+import org.ezkey.alert.domain.AlertType;
+import org.ezkey.alert.service.AlertService;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.service.AuditLogService;
@@ -71,6 +75,8 @@ class AuthAttemptRespondServiceTest {
 
   @Mock private ObjectProvider<AuthRespondOwnershipRateLimiter> ownershipRateLimiter;
 
+  @Mock private AlertService alertService;
+
   private AuthAttemptRespondService respondService;
 
   @BeforeEach
@@ -83,7 +89,8 @@ class AuthAttemptRespondServiceTest {
             signatureService,
             authAttemptTxHelper,
             auditLogService,
-            ownershipRateLimiter);
+            ownershipRateLimiter,
+            alertService);
   }
 
   @Test
@@ -106,6 +113,7 @@ class AuthAttemptRespondServiceTest {
     AuthAttemptRespondResponse response = respondService.respond(approveRequest(), null);
 
     assertThat(response.getResult()).isEqualTo(AuthenticationResult.APPROVED);
+    verify(alertService, never()).raiseOrTouch(any(), any(), any(), any());
     assertThat(response.getAuthAttemptProofTokenResultSignedByIntegration())
         .isEqualTo("signed-result-b64");
 
@@ -611,6 +619,32 @@ class AuthAttemptRespondServiceTest {
     request.setAuthAttemptAccepted(true);
     request.setAuthAttemptProofTokenSignedByDevice("device-sig");
     return request;
+  }
+
+  @Test
+  @DisplayName("Device REJECTED raises one deduped alert keyed by enrollment id only")
+  void respond_rejected_raisesDedupedEnrollmentAlert() {
+    Enrollment enrollment = enrollmentWithKeys();
+    when(authAttemptRepository.findById(42)).thenAnswer(invocation -> Optional.of(readAttempt()));
+    when(enrollmentRepository.findById(7)).thenReturn(Optional.of(enrollment));
+    when(authAttemptRepository.findNewerAttemptByEnrollmentId(any(), any()))
+        .thenReturn(Optional.empty());
+    when(signatureService.validateSignature(any(), any(), eq(DEVICE_PUBLIC_KEY))).thenReturn(true);
+    when(signatureService.signIntegrationPayload(any(), eq(INTEGRATION_PRIVATE_KEY)))
+        .thenReturn("signed-result-b64");
+    when(authAttemptRepository.updateStatusIfCurrent(
+            eq(42), eq(AuthAttemptStatus.READ), eq(AuthAttemptStatus.REJECTED), any()))
+        .thenReturn(1);
+
+    respondService.respond(denyRequest(), null);
+    respondService.respond(denyRequest(), null);
+
+    verify(alertService, times(2))
+        .raiseOrTouch(
+            eq(AlertType.AUTH_ATTEMPT_REJECTED),
+            eq(AlertSeverity.WARNING),
+            eq("AUTH_ATTEMPT_REJECTED:7"),
+            eq("{\"enrollmentId\":7}"));
   }
 
   private static AuthAttemptRespondRequest denyRequest() {

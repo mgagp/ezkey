@@ -118,6 +118,7 @@
   "type": {
     "AUDIT_CHAIN_GAP_PENDING": "Chaîne d'audit — coupure non déclarée",
     "AUDIT_CHAIN_HEARTBEAT_STALE": "Chaîne d'audit — battement périmé",
-    "AUDIT_INTEGRITY_RUPTURE": "Intégrité d'audit — rupture détectée"
+    "AUDIT_INTEGRITY_RUPTURE": "Intégrité d'audit — rupture détectée",
+    "AUTH_ATTEMPT_REJECTED": "Demande d'authentification refusée par l'appareil"
   }
 }

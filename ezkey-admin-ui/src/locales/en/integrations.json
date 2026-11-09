@@ -37,6 +37,14 @@
     "submit": "Create Integration",
     "errorCreate": "Failed to create integration."
   },
+  "pendingAttemptPolicy": {
+    "label": "Pending request",
+    "replace": "Replace the pending request (default)",
+    "refuse": "Refuse while a request is pending",
+    "help": "Refuse is recommended for integrations triggered repeatedly or automatically.",
+    "saved": "Pending-request policy updated.",
+    "saveFailed": "Could not update the pending-request policy."
+  },
   "validation": {
     "codeMin": "Code must be at least {{n}} characters",
     "codeMax": "Code must be at most {{n}} characters",

@@ -75,6 +75,16 @@
               }
             }
           },
+          "409": {
+            "description": "Live attempt already exists (auth-attempt-pending-exists) or creation is suspended (auth-attempt-creation-cooldown). Retry-After is set.",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
           "429": {
             "description": "Rate limit exceeded",
             "content": {
