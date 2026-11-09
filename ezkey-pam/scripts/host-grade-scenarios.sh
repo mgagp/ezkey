@@ -1,5 +1,25 @@
 # Sourced by host-grade-accept.sh. One scenario sequence, no second entry point.
 # shellcheck shell=bash
+
+# apply must fail and leave sshd, pam.d, and conf byte for byte.
+hg_expect_apply_rejected() {
+  local key="$1"
+  local msg="$2"
+  local hash_before hash_after rc
+  hash_before="$(hg_base_hash)"
+  set +e
+  hg_apply
+  rc=$?
+  set -e
+  hash_after="$(hg_base_hash)"
+  if [ "${rc}" -ne 0 ] && [ "${hash_before}" = "${hash_after}" ] \
+    && [ ! -f "${SNAP}/READY" ]; then
+    hg_pass "${key}" "${msg}"
+  else
+    hg_fail "${key}" "${msg} (rc=${rc})"
+  fi
+}
+
 hg_run_scenarios() {
   hg_refuse_unless_container
   hg_need_root
@@ -11,6 +31,28 @@ hg_run_scenarios() {
   trap hg_cleanup_procs EXIT
 
   hg_packages
+  local saved_group saved_skey saved_port saved_user
+  saved_group="${MFA_GROUP}"
+  MFA_GROUP=$'ezkey-mfa\nPermitRootLogin yes'
+  hg_expect_apply_rejected line5_reject_group_newline \
+    "a newline in the group is rejected and files stay unchanged"
+  MFA_GROUP="${saved_group}"
+  saved_skey="${HG_SKEY}"
+  HG_SKEY=$'hgSkeyDoNotLog0001\nintegration_api_url=https://evil.example'
+  hg_expect_apply_rejected line5_reject_secret_newline \
+    "a newline in the secret is rejected and files stay unchanged"
+  HG_SKEY="${saved_skey}"
+  saved_port="${MFA_PORT}"
+  MFA_PORT=$'22\r'
+  hg_expect_apply_rejected line5_reject_port_cr \
+    "a CR in the port is rejected and files stay unchanged"
+  MFA_PORT="${saved_port}"
+  saved_user="${ADMIN_USER}"
+  ADMIN_USER='hgadmin extra'
+  hg_expect_apply_rejected line5_reject_user_token \
+    "a user that is not a simple token is rejected and files stay unchanged"
+  ADMIN_USER="${saved_user}"
+
   hg_authpriv_up
   PAM_SO="$(hg_pam_so)"
   hg_host_keys
@@ -318,6 +360,14 @@ hg_run_scenarios() {
     hg_fail line3_admin_port_during_broken_module \
       "admin port failed while the module was broken"
   fi
+  hg_ssh_batch "${ADMIN_PORT}" "${MFA_USER}" "${KEY_DIR}/${MFA_USER}"
+  if hg_session_yes; then
+    hg_fail line3_admin_port_refuses_mfa_member \
+      "admin port accepted an ezkey-mfa member"
+  else
+    hg_pass line3_admin_port_refuses_mfa_member \
+      "admin port AllowUsers refuses an ezkey-mfa member"
+  fi
 
   rm -f "${PAM_SO}"
   hg_ssh_prompts "${MFA_USER}" "-i ${KEY_DIR}/${MFA_USER}"
@@ -344,7 +394,7 @@ hg_run_scenarios() {
   hg_stop_sshd
   hg_stop_stub
 
-  local armed now deadline delta hash_before hash_after
+  local now deadline delta hash_before hash_after
   unset EZKEY_PAM_ROLLBACK_SECONDS
   hg_rollback_arm
   now="$(date +%s)"
@@ -354,6 +404,16 @@ hg_run_scenarios() {
     hg_pass line6_default_window "rollback default is about 15 minutes"
   else
     hg_fail line6_default_window "rollback default delta was ${delta}s"
+  fi
+  hash_before="$(hg_content_hash)"
+  hg_rollback_check
+  hash_after="$(hg_content_hash)"
+  if [ "${hash_before}" = "${hash_after}" ] && [ -f "${ROLL}/state" ]; then
+    hg_pass line6_check_before_deadline_noop \
+      "check before the deadline leaves the files and the rollback record"
+  else
+    hg_fail line6_check_before_deadline_noop \
+      "check before the deadline changed files or closed the record"
   fi
   hg_rollback_confirm
 
@@ -378,8 +438,24 @@ hg_run_scenarios() {
   else
     hg_fail line6_rollback_unconfirmed "rollback did not restore a config sshd -t accepts"
   fi
+  if [ ! -f "${ROLL}/state" ]; then
+    hg_pass line6_check_closes_record \
+      "a restoring check closes the rollback record"
+  else
+    hg_fail line6_check_closes_record "rollback record still armed after restore"
+  fi
 
   hg_apply
+  hash_before="$(hg_content_hash)"
+  hg_rollback_check
+  hash_after="$(hg_content_hash)"
+  if [ "${hash_before}" = "${hash_after}" ] && [ ! -f "${ROLL}/state" ]; then
+    hg_pass line6_check_without_arm_keeps \
+      "check without a new arm does not undo apply"
+  else
+    hg_fail line6_check_without_arm_keeps \
+      "check without a new arm changed the fixture"
+  fi
   hg_remove
   if hg_bytes_match_snapshot; then
     hg_pass line5_remove_byte_restore "remove restores sshd, pam.d, and conf byte for byte"
@@ -392,6 +468,46 @@ hg_run_scenarios() {
   else
     hg_fail line5_remove_idempotent "second remove drifted or sshd -t failed"
   fi
+
+  local err rc fake marker
+  export EZKEY_PAM_APPLY_FAIL_AFTER=sshd
+  set +e
+  err="$(hg_apply 2>&1 >/dev/null)"
+  rc=$?
+  set -e
+  unset EZKEY_PAM_APPLY_FAIL_AFTER
+  if [ "${rc}" -ne 0 ] && hg_bytes_match_snapshot \
+    && printf '%s\n' "${err}" | grep -q 'forced failure after sshd_config'; then
+    hg_pass line5_mid_apply_failure_restores \
+      "a failure after sshd_config restores the snapshot byte for byte"
+  else
+    hg_fail line5_mid_apply_failure_restores \
+      "mid-apply failure rc=${rc} did not restore the snapshot"
+  fi
+
+  fake="$(mktemp /tmp/hg-sshd-fail.XXXXXX)"
+  marker="$(mktemp /tmp/hg-sshd-mark.XXXXXX)"
+  rm -f "${marker}"
+  cat >"${fake}" <<EOF
+#!/bin/sh
+echo invoked >"${marker}"
+exit 1
+EOF
+  chmod 755 "${fake}"
+  export EZKEY_PAM_SSHD="${fake}"
+  set +e
+  hg_apply >/dev/null 2>&1
+  rc=$?
+  set -e
+  unset EZKEY_PAM_SSHD
+  if [ "${rc}" -ne 0 ] && hg_bytes_match_snapshot && [ -f "${marker}" ]; then
+    hg_pass line5_sshd_test_failure_restores \
+      "sshd -t failure restores the snapshot byte for byte"
+  else
+    hg_fail line5_sshd_test_failure_restores \
+      "sshd -t failure rc=${rc} did not restore the snapshot"
+  fi
+  rm -f "${fake}" "${marker}"
 
   printf 'pass=%s\nfail=%s\nchecks=%s\n' "${HG_PASS}" "${HG_FAIL}" \
     "$((HG_PASS + HG_FAIL))" >>"${RESULT}"

@@ -85,8 +85,8 @@ hg_authpriv_up() {
   fi
   rsyslogd
   logger -p authpriv.info "hg-authpriv-probe"
-  local i
-  for i in $(seq 1 50); do
+  local _
+  for _ in $(seq 1 50); do
     if grep -qF "hg-authpriv-probe" /var/log/secure 2>/dev/null; then
       return 0
     fi
@@ -136,8 +136,9 @@ hg_users() {
     fi
     hg_user_key "${u}"
   done
-  # UsePAM no treats a locked shadow ("!") as an invalid user before the key
-  # is considered. PasswordAuthentication stays off on the admin daemon.
+  # UsePAM no treats a locked shadow ("!" or "!!") as an invalid user before
+  # the key is read. The hash is a valid random password so the key is
+  # considered. PasswordAuthentication no is what blocks password login.
   usermod -p "$(openssl passwd -6 "$(openssl rand -hex 16)")" "${ADMIN_USER}"
   usermod -aG "${MFA_GROUP}" "${MFA_USER}"
   id -nG "${MFA_USER}" | grep -qw "${MFA_GROUP}"
@@ -161,6 +162,8 @@ hg_tool() {
     EZKEY_PAM_ADMIN_USER="${ADMIN_USER}" \
     EZKEY_PAM_INTEGRATION_KEY="${HG_IKEY}" \
     EZKEY_PAM_SECRET_KEY="${HG_SKEY}" \
+    EZKEY_PAM_SSHD="${EZKEY_PAM_SSHD:-/usr/sbin/sshd}" \
+    EZKEY_PAM_APPLY_FAIL_AFTER="${EZKEY_PAM_APPLY_FAIL_AFTER:-}" \
     "${PAM_ROOT}/scripts/host-apply.sh" "$@"
 }
 
@@ -185,6 +188,12 @@ hg_bytes_match_snapshot() {
 
 hg_content_hash() {
   sha256sum "${SSHD_CFG}" "${PAM_SSHD}" "${CONF}" "${ADMIN_CFG}" 2>/dev/null \
+    | awk '{print $1}' | sha256sum | awk '{print $1}'
+}
+
+# sshd, pam.d, and conf only. Used before the admin config exists.
+hg_base_hash() {
+  sha256sum "${SSHD_CFG}" "${PAM_SSHD}" "${CONF}" \
     | awk '{print $1}' | sha256sum | awk '{print $1}'
 }
 
@@ -235,8 +244,7 @@ hg_start_sshd() {
 
 hg_wait_listen() {
   local port="$1"
-  local i
-  for i in $(seq 1 50); do
+  for _ in $(seq 1 50); do
     if ss -ltn | grep -E "[.:]${port}([^0-9]|\$)" >/dev/null 2>&1; then
       return 0
     fi
@@ -327,6 +335,8 @@ hg_ssh_batch() {
 hg_ctrl_write() {
   local msg="$1"
   local fifo="$2"
+  # $1 and $2 belong to the child shell.
+  # shellcheck disable=SC2016
   timeout 1s sh -c 'printf "%s\n" "$1" >"$2"' _ "${msg}" "${fifo}" \
     >/dev/null 2>&1 || true
 }
@@ -336,7 +346,7 @@ hg_ssh_prompts() {
   local user="$1"
   local keys="$2"
   HG_OUT="$(mktemp /tmp/hg-ssh-pty.XXXXXX)"
-  local ctrl_dir ctrl bg i flat sent_ok sent_enter
+  local ctrl_dir ctrl bg flat sent_ok sent_enter
   ctrl_dir="$(mktemp -d /tmp/hg-kbd.XXXXXX)"
   ctrl="${ctrl_dir}/enter.fifo"
   mkfifo "${ctrl}"
@@ -364,7 +374,7 @@ hg_ssh_prompts() {
     >/dev/null 2>"${HG_OUT}.err" &
   bg=$!
   set -e
-  for i in $(seq 1 300); do
+  for _ in $(seq 1 300); do
     if ! kill -0 "${bg}" 2>/dev/null; then
       break
     fi
@@ -438,8 +448,8 @@ hg_wait_log() {
   local pat="$1"
   local before="$2"
   local want="$3"
-  local i now
-  for i in $(seq 1 50); do
+  local now
+  for _ in $(seq 1 50); do
     now="$(hg_log_count "${pat}")"
     if [ $((now - before)) -ge "${want}" ]; then
       return 0
@@ -479,28 +489,37 @@ hg_authpriv_has_challenge() {
   printf '%s\n' "${stripped}" | grep -qE "(^|[^0-9])${HG_CHALLENGE}([^0-9]|$)"
 }
 
-# Auth stack only. Comments are dropped. The second field (or the bracket
-# control) of pam_ezkey must be required or requisite. A sufficient or
-# [default=ignore] auth line before it can short-circuit, so that fails too.
-# "required" buried in module arguments does not count.
+# Auth stack only. Comments are dropped. Comparison is case-insensitive
+# (PAM is). A leading "-" on the type (for example -auth) is the same type.
+# The control field of pam_ezkey must be required or requisite. "required"
+# buried in module arguments does not count. Before that line, these can
+# short-circuit or pull in another stack, so they fail the check:
+# sufficient, [default=ignore], [success=done ...], [success=1 ...],
+# include, substack, and @include.
 hg_auth_stack_ok() {
   local file="$1"
-  local raw line type rest control module saw
+  local raw line low token body type control module saw
   saw=0
   while IFS= read -r raw || [ -n "${raw}" ]; do
     line="$(printf '%s' "${raw}" | sed -E 's/(^|[[:space:]])#.*$//')"
     line="$(printf '%s' "${line}" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
     [ -z "${line}" ] && continue
-    type="${line%%[[:space:]]*}"
+    low="$(printf '%s' "${line}" | tr '[:upper:]' '[:lower:]')"
+    if printf '%s' "${low}" | grep -Eq '^@include([[:space:]]|$)'; then
+      [ "${saw}" -eq 0 ] && return 1
+      continue
+    fi
+    token="${low%%[[:space:]]*}"
+    body="${low#"${token}"}"
+    body="$(printf '%s' "${body}" | sed -E 's/^[[:space:]]+//')"
+    type="${token#-}"
     [ "${type}" != "auth" ] && continue
-    rest="${line#"${type}"}"
-    rest="$(printf '%s' "${rest}" | sed -E 's/^[[:space:]]+//')"
-    if [ "${rest#\[}" != "${rest}" ]; then
-      control="$(printf '%s' "${rest}" | sed -E 's/^(\[[^]]+\]).*/\1/')"
-      module="${rest#"${control}"}"
+    if [ "${body#\[}" != "${body}" ]; then
+      control="$(printf '%s' "${body}" | sed -E 's/^(\[[^]]+\]).*/\1/')"
+      module="${body#"${control}"}"
     else
-      control="${rest%%[[:space:]]*}"
-      module="${rest#"${control}"}"
+      control="${body%%[[:space:]]*}"
+      module="${body#"${control}"}"
     fi
     module="$(printf '%s' "${module}" | sed -E 's/^[[:space:]]+//')"
     if printf '%s' "${module}" | grep -q 'pam_ezkey\.so'; then
@@ -510,8 +529,18 @@ hg_auth_stack_ok() {
       esac
     elif [ "${saw}" -eq 0 ]; then
       case "${control}" in
-        sufficient|*default=ignore*) return 1 ;;
+        sufficient|include|substack) return 1 ;;
       esac
+      if printf '%s' "${control}" | grep -Eq 'default=ignore'; then
+        return 1
+      fi
+      if printf '%s' "${control}" | grep -Eq 'success=done([^[:alnum:]_]|$)'; then
+        return 1
+      fi
+      # success=1 jumps over the next module. success=10 does not match.
+      if printf '%s' "${control}" | grep -Eq 'success=1([^[:digit:]]|$)'; then
+        return 1
+      fi
     fi
   done <"${file}"
   [ "${saw}" -eq 1 ]
@@ -564,6 +593,40 @@ hg_control_flag_cases() {
     >"${dir}/comment-ok"
   hg_expect_stack line2_accept_requisite_after_comment ok "${dir}/comment-ok" \
     "a comment does not hide a requisite pam_ezkey line"
+  printf '%s\n' '-auth sufficient pam_permit.so' 'auth required pam_ezkey.so' \
+    >"${dir}/dash-sufficient"
+  hg_expect_stack line2_reject_dash_sufficient_before bad "${dir}/dash-sufficient" \
+    "-auth sufficient before pam_ezkey can short-circuit"
+  printf '%s\n' 'auth [success=done default=die] pam_permit.so' \
+    'auth required pam_ezkey.so' >"${dir}/success-done"
+  hg_expect_stack line2_reject_success_done_before bad "${dir}/success-done" \
+    "[success=done] before pam_ezkey can short-circuit"
+  printf '%s\n' 'auth [success=1 default=die] pam_permit.so' \
+    'auth required pam_ezkey.so' >"${dir}/success-1"
+  hg_expect_stack line2_reject_success_1_before bad "${dir}/success-1" \
+    "[success=1] before pam_ezkey can skip it"
+  printf '%s\n' 'auth include common-auth' 'auth required pam_ezkey.so' \
+    >"${dir}/include"
+  hg_expect_stack line2_reject_include_before bad "${dir}/include" \
+    "include before pam_ezkey can pull in another stack"
+  printf '%s\n' 'auth substack common-auth' 'auth required pam_ezkey.so' \
+    >"${dir}/substack"
+  hg_expect_stack line2_reject_substack_before bad "${dir}/substack" \
+    "substack before pam_ezkey can pull in another stack"
+  printf '%s\n' '@include common-auth' 'auth required pam_ezkey.so' \
+    >"${dir}/at-include"
+  hg_expect_stack line2_reject_at_include_before bad "${dir}/at-include" \
+    "@include before pam_ezkey can pull in another stack"
+  printf '%s\n' 'AUTH SUFFICIENT PAM_PERMIT.SO' 'AUTH REQUIRED PAM_EZKEY.SO' \
+    >"${dir}/upper"
+  hg_expect_stack line2_reject_uppercase_sufficient_before bad "${dir}/upper" \
+    "an uppercase sufficient line before pam_ezkey can short-circuit"
+  printf '%s\n' 'AUTH REQUISITE PAM_EZKEY.SO' >"${dir}/upper-ok"
+  hg_expect_stack line2_accept_uppercase_requisite ok "${dir}/upper-ok" \
+    "uppercase requisite is a fail-closed control"
+  printf '%s\n' '-auth required pam_ezkey.so' >"${dir}/dash-ok"
+  hg_expect_stack line2_accept_dash_required ok "${dir}/dash-ok" \
+    "a leading dash does not change a required control"
   rm -rf "${dir}"
 }
 

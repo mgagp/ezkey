@@ -11,8 +11,10 @@ and a real-host cutover. The module is not a second PAM framework.
 Proof today: `./scripts/host-grade-accept.sh` from `ezkey-pam/` (Docker, no
 manual step). The same script runs inside the existing Rocky Linux 10 and
 Amazon Linux 2023 images. Apply, remove, and rollback are
-[`scripts/host-apply.sh`](scripts/host-apply.sh). The runner calls that
-script. `install.sh` still only warns, and it does not edit `sshd_config`.
+[`scripts/host-apply.sh`](scripts/host-apply.sh). That script ships in the
+source tree. `make install` copies the module and the sample conf; it does
+not copy the script. The runner calls it. `install.sh` still only warns, and
+it does not edit `sshd_config`.
 
 Not proved here: a real host, Lightsail (#1201 stays blocked until this
 contract is merged), macOS, Windows, sudo, SELinux, reboot, journald, or the
@@ -23,7 +25,7 @@ community instance (#955).
 | Boundary | Posture |
 |---|---|
 | Integration API down, HTTP 404, expiration, deny, bad conf mode, TLS verify failure | **Fail-closed.** No SSH session. |
-| PAM control flag on `pam_ezkey` | **Fail-closed only if** the auth control field is `required` or `requisite`. The suite parses auth lines with comments removed. It rejects `optional`, `sufficient`, `required` hidden in module arguments, and a `sufficient` or `[default=ignore]` auth line before `pam_ezkey`. |
+| PAM control flag on `pam_ezkey` | **Fail-closed only if** the auth control field is `required` or `requisite`. The suite parses auth lines with comments removed, ignoring case, and treats a leading `-` as the same type. It rejects `optional`, `sufficient`, `required` hidden in module arguments, and a line before `pam_ezkey` that is `sufficient`, `-auth sufficient`, `[default=ignore]`, `[success=done …]`, `[success=1 …]`, `include`, `substack`, `@include`, or the same words in uppercase. |
 | Break-glass | **Separate sshd**, not a fail-open flag in the module. No `failmode=safe`. |
 | Rollback with no confirmation | **Fail-closed for the edit** when `host-apply.sh check` runs after the window. Previous files return. A system timer that would call `check` is not installed. |
 | Authpriv logging | Must not grant a session. A missing line fails the observability check. |
@@ -47,25 +49,36 @@ community instance (#955).
    port. The admin port still accepts the admin key. A user outside the group
    still gets a key-only session on that same MFA port; the suite fails if
    they do not. `UsePAM no` rejects a locked shadow (`!` or `!!`) before the
-   key is read, so the fixture gives that account a non-login password hash
-   and leaves `PasswordAuthentication no`. The #1201 runbook needs the same
-   unlock: a locked break-glass account is refused.
+   key is read. The fixture gives that account a valid random password so
+   the key is considered. `PasswordAuthentication no` is what blocks password
+   login. The #1201 runbook needs that pair: an unlocked hash, and password
+   authentication left off. A locked break-glass account is refused.
 4. **Group scope.** A user outside `ezkey-mfa` gets a session from the key
    alone and creates no auth attempt. A member creates an attempt. **`Match`
    does not unload PAM for the whole daemon.** The module line stays in
    `/etc/pam.d/sshd` for every connection; non-members avoid Ezkey only because
    their `AuthenticationMethods` never enter that auth stack.
-5. **Install / remove.** `host-apply.sh apply` is idempotent. `remove`
-   restores `sshd_config`, `/etc/pam.d/sshd`, and `pam_ezkey.conf` byte for
-   byte from the snapshot taken before the first apply, and a second remove
-   stays there.
+5. **Install / remove.** `host-apply.sh apply` is idempotent. It writes
+   `sshd_config`, `/etc/pam.d/sshd`, the conf, and the admin config through a
+   temp file, then `install`. `sshd -t` must pass on the MFA config and the
+   admin config before apply returns 0. If any step fails, the snapshot is
+   restored byte for byte. `remove` restores `sshd_config`, `/etc/pam.d/sshd`,
+   and `pam_ezkey.conf` byte for byte from the snapshot taken before the
+   first apply, runs `sshd -t` on that restored config, and a second remove
+   stays there. A CR or LF in any environment value is rejected and apply
+   exits non-zero without writing. Group and user must match
+   `[A-Za-z_][A-Za-z0-9_-]{0,31}`. Ports must be decimal 1–65535 with no
+   leading zero.
 6. **Rollback function.** `host-apply.sh arm`, `confirm`, and `check`.
    Default window **15 minutes** (`EZKEY_PAM_ROLLBACK_MINUTES`).
-   `EZKEY_PAM_ROLLBACK_SECONDS` overrides for the lab. With no confirmation,
-   `check` restores the previous files and `sshd -t` passes. Confirmation
-   keeps the new files. What is proved is that tool. A system timer that
-   calls `check` on its own is not installed and is not proved; that trigger
-   stays with phase 2 (#1201). No systemd unit.
+   `EZKEY_PAM_ROLLBACK_SECONDS` overrides for the lab. `check` before the
+   deadline does not change files. With no confirmation, `check` restores
+   the previous files, `sshd -t` passes on that restored config, and the
+   rollback record is closed. A later apply is not undone by `check` unless
+   `arm` is called again. Confirmation keeps the new files. What is proved
+   is that tool. A system timer that calls `check` on its own is not
+   installed and is not proved; that trigger stays with phase 2 (#1201).
+   No systemd unit.
 7. **Files.** Root-owned. Conf mode `0600`. The conf directory and the module
    directory are not writable by the SSH user. Conf mode `0666` returns
    `UNAVAIL` and no session.

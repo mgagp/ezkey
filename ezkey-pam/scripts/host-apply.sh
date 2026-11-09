@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Host-grade fixture tool (#1200). The acceptance runner calls these
-# subcommands. An operator can call them too. This is not a systemd unit
-# and install.sh does not call it.
+# subcommands. An operator can call them too. This is not a systemd unit.
+# The script ships in the source tree. make install does not copy it, and
+# install.sh does not call it.
 #
 #   host-apply.sh apply     snapshot once, then write the fixture
 #   host-apply.sh remove    restore the snapshot byte for byte
@@ -12,6 +13,20 @@
 # apply reads EZKEY_PAM_API_URL (required). arm reads EZKEY_PAM_ROLLBACK_SECONDS
 # or EZKEY_PAM_ROLLBACK_MINUTES (default 15). A system timer that would call
 # check is not part of this script; that trigger is phase 2 (#1201).
+#
+# Every environment value is rejected when it contains CR or LF. Group, user,
+# and both ports must be simple tokens:
+#   group, user  [A-Za-z_][A-Za-z0-9_-]{0,31}
+#   ports        decimal 1-65535, no leading zero ([1-9][0-9]{0,4})
+# apply writes sshd_config, pam.d, the conf, and the admin config through a
+# temp file, then install(1). If any step fails, the snapshot is restored.
+# sshd -t must pass on the MFA config and the admin config before apply
+# returns 0. remove, and a check that restores, run sshd -t on the restored
+# MFA config. A restoring check then deletes the rollback record.
+#
+# EZKEY_PAM_APPLY_FAIL_AFTER=sshd is the suite hook. apply installs
+# sshd_config, then fails and restores the snapshot. Any other non-empty
+# value is rejected before a write.
 set -euo pipefail
 
 CONF="${EZKEY_PAM_CONF:-/etc/security/pam_ezkey.conf}"
@@ -27,6 +42,71 @@ MFA_GROUP="${EZKEY_PAM_MFA_GROUP:-ezkey-mfa}"
 ADMIN_USER="${EZKEY_PAM_ADMIN_USER:-hgadmin}"
 IKEY="${EZKEY_PAM_INTEGRATION_KEY:-hgIkeyDoNotLog0001}"
 SKEY="${EZKEY_PAM_SECRET_KEY:-hgSkeyDoNotLog0001}"
+SSHD_BIN="${EZKEY_PAM_SSHD:-/usr/sbin/sshd}"
+
+ha_reject_crlf() {
+  local name="$1"
+  local value="$2"
+  case "${value}" in
+    *$'\n'*|*$'\r'*)
+      echo "host-apply: ${name} contains a newline or CR" >&2
+      return 1
+      ;;
+  esac
+  return 0
+}
+
+ha_simple_token() {
+  local name="$1"
+  local value="$2"
+  if printf '%s' "${value}" | grep -Eq '^[A-Za-z_][A-Za-z0-9_-]{0,31}$'; then
+    return 0
+  fi
+  echo "host-apply: ${name} must match [A-Za-z_][A-Za-z0-9_-]{0,31}" >&2
+  return 1
+}
+
+ha_port_token() {
+  local name="$1"
+  local value="$2"
+  if printf '%s' "${value}" | grep -Eq '^[1-9][0-9]{0,4}$' \
+    && [ "${value}" -le 65535 ]; then
+    return 0
+  fi
+  echo "host-apply: ${name} must be a decimal port 1-65535 with no leading zero" >&2
+  return 1
+}
+
+# Reject CR/LF in every value this process read from the environment.
+ha_reject_crlf_env() {
+  ha_reject_crlf EZKEY_PAM_CONF "${CONF}" || return 1
+  ha_reject_crlf EZKEY_PAM_SSHD_CONFIG "${SSHD_CFG}" || return 1
+  ha_reject_crlf EZKEY_PAM_PAM_SSHD "${PAM_SSHD}" || return 1
+  ha_reject_crlf EZKEY_PAM_ADMIN_SSHD "${ADMIN_CFG}" || return 1
+  ha_reject_crlf EZKEY_PAM_STATE_DIR "${STATE_DIR}" || return 1
+  ha_reject_crlf EZKEY_PAM_MFA_PORT "${MFA_PORT}" || return 1
+  ha_reject_crlf EZKEY_PAM_ADMIN_PORT "${ADMIN_PORT}" || return 1
+  ha_reject_crlf EZKEY_PAM_MFA_GROUP "${MFA_GROUP}" || return 1
+  ha_reject_crlf EZKEY_PAM_ADMIN_USER "${ADMIN_USER}" || return 1
+  ha_reject_crlf EZKEY_PAM_INTEGRATION_KEY "${IKEY}" || return 1
+  ha_reject_crlf EZKEY_PAM_SECRET_KEY "${SKEY}" || return 1
+  ha_reject_crlf EZKEY_PAM_SSHD "${SSHD_BIN}" || return 1
+  ha_reject_crlf EZKEY_PAM_API_URL "${EZKEY_PAM_API_URL:-}" || return 1
+  ha_reject_crlf EZKEY_PAM_ROLLBACK_SECONDS "${EZKEY_PAM_ROLLBACK_SECONDS:-}" || return 1
+  ha_reject_crlf EZKEY_PAM_ROLLBACK_MINUTES "${EZKEY_PAM_ROLLBACK_MINUTES:-}" || return 1
+  ha_reject_crlf EZKEY_PAM_APPLY_FAIL_AFTER "${EZKEY_PAM_APPLY_FAIL_AFTER:-}" || return 1
+}
+
+ha_validate_tokens() {
+  ha_simple_token EZKEY_PAM_MFA_GROUP "${MFA_GROUP}" || return 1
+  ha_simple_token EZKEY_PAM_ADMIN_USER "${ADMIN_USER}" || return 1
+  ha_port_token EZKEY_PAM_MFA_PORT "${MFA_PORT}" || return 1
+  ha_port_token EZKEY_PAM_ADMIN_PORT "${ADMIN_PORT}" || return 1
+  if [ "${MFA_PORT}" = "${ADMIN_PORT}" ]; then
+    echo "host-apply: MFA and admin ports must differ" >&2
+    return 1
+  fi
+}
 
 ha_snapshot() {
   if [ -f "${SNAP}/READY" ]; then
@@ -41,15 +121,41 @@ ha_snapshot() {
   chmod 600 "${SNAP}/READY"
 }
 
+ha_restore_snapshot() {
+  cp -a "${SNAP}/sshd_config" "${SSHD_CFG}" || return 1
+  cp -a "${SNAP}/pam.d-sshd" "${PAM_SSHD}" || return 1
+  cp -a "${SNAP}/pam_ezkey.conf" "${CONF}" || return 1
+  rm -f "${ADMIN_CFG}" || return 1
+}
+
+ha_sshd_ok() {
+  local cfg="$1"
+  "${SSHD_BIN}" -t -f "${cfg}"
+}
+
+# stdin is the file body. install(1) replaces dest on the same filesystem.
+ha_write_atomic() {
+  local dest="$1"
+  local mode="$2"
+  local tmp
+  tmp="$(mktemp "${dest}.hg.XXXXXX")" || return 1
+  cat >"${tmp}" || {
+    rm -f "${tmp}"
+    return 1
+  }
+  install -m "${mode}" -o root -g root "${tmp}" "${dest}" || {
+    rm -f "${tmp}"
+    return 1
+  }
+  rm -f "${tmp}"
+}
+
 ha_write_conf() {
   local url="$1"
-  local tmp
-  umask 077
-  tmp="$(mktemp /etc/security/pam_ezkey.conf.hg.XXXXXX)"
   # lab_http is set twice on purpose. The parser keeps the last key, trims
   # spaces, and accepts FALSE as false. The effective value is on the
   # attempt line, not on a literal lab_http=false row.
-  cat >"${tmp}" <<EOF
+  ha_write_atomic "${CONF}" 600 <<EOF
 # Host-grade fixture (#1200). https only. Dummy keys.
 integration_api_url=${url}
 integration_key=${IKEY}
@@ -64,12 +170,10 @@ context_title=SSH login
 context_message=host-grade fixture
 debug=false
 EOF
-  install -m 600 -o root -g root "${tmp}" "${CONF}"
-  rm -f "${tmp}"
 }
 
-ha_write_fixture_files() {
-  cat >"${SSHD_CFG}" <<EOF
+ha_write_sshd() {
+  ha_write_atomic "${SSHD_CFG}" 644 <<EOF
 # Host-grade MFA daemon fixture (#1200). Lab only.
 # Match does not unload PAM for this daemon. Non-members avoid Ezkey because
 # their AuthenticationMethods never enter the auth stack. See HOST-GRADE.md.
@@ -104,7 +208,10 @@ Match Group ${MFA_GROUP}
 	KbdInteractiveAuthentication yes
 	MaxAuthTries 6
 EOF
-  cat >"${PAM_SSHD}" <<EOF
+}
+
+ha_write_pam() {
+  ha_write_atomic "${PAM_SSHD}" 644 <<EOF
 #%PAM-1.0
 # Host-grade fixture (#1200). required keeps MFA fail-closed.
 # Do not use sufficient or [default=ignore] on pam_ezkey.
@@ -114,7 +221,10 @@ password   required     pam_deny.so
 session    optional     pam_loginuid.so
 session    required     pam_permit.so
 EOF
-  cat >"${ADMIN_CFG}" <<EOF
+}
+
+ha_write_admin() {
+  ha_write_atomic "${ADMIN_CFG}" 644 <<EOF
 # Break-glass daemon (#1200). UsePAM no. Keys only. Not the MFA daemon.
 Port ${ADMIN_PORT}
 Protocol 2
@@ -134,19 +244,52 @@ AllowUsers ${ADMIN_USER}
 MaxAuthTries 6
 Subsystem sftp internal-sftp
 EOF
-  chmod 644 "${SSHD_CFG}" "${PAM_SSHD}" "${ADMIN_CFG}"
-  chown root:root "${SSHD_CFG}" "${PAM_SSHD}" "${ADMIN_CFG}"
+}
+
+ha_apply_writes() {
+  local url="$1"
+  ha_write_conf "${url}" || return 1
+  ha_write_sshd || return 1
+  if [ "${EZKEY_PAM_APPLY_FAIL_AFTER:-}" = "sshd" ]; then
+    echo "host-apply apply: forced failure after sshd_config" >&2
+    return 1
+  fi
+  ha_write_pam || return 1
+  ha_write_admin || return 1
+  ha_sshd_ok "${SSHD_CFG}" || return 1
+  ha_sshd_ok "${ADMIN_CFG}" || return 1
 }
 
 ha_apply() {
   local url="${EZKEY_PAM_API_URL:-}"
+  local rc
   if [ -z "${url}" ]; then
     echo "host-apply apply: set EZKEY_PAM_API_URL" >&2
     return 1
   fi
-  ha_snapshot
-  ha_write_conf "${url}"
-  ha_write_fixture_files
+  ha_reject_crlf_env || return 1
+  ha_validate_tokens || return 1
+  case "${EZKEY_PAM_APPLY_FAIL_AFTER:-}" in
+    "" | sshd) ;;
+    *)
+      echo "host-apply apply: EZKEY_PAM_APPLY_FAIL_AFTER must be empty or sshd" >&2
+      return 1
+      ;;
+  esac
+  ha_snapshot || return 1
+  # set -e would exit before the snapshot is restored.
+  set +e
+  ha_apply_writes "${url}"
+  rc=$?
+  set -e
+  if [ "${rc}" -ne 0 ]; then
+    echo "host-apply apply: failed; restoring snapshot" >&2
+    if ! ha_restore_snapshot; then
+      echo "host-apply apply: snapshot restore failed" >&2
+      return 1
+    fi
+    return 1
+  fi
 }
 
 ha_remove() {
@@ -154,23 +297,35 @@ ha_remove() {
     echo "host-apply remove: no snapshot" >&2
     return 1
   fi
-  cp -a "${SNAP}/sshd_config" "${SSHD_CFG}"
-  cp -a "${SNAP}/pam.d-sshd" "${PAM_SSHD}"
-  cp -a "${SNAP}/pam_ezkey.conf" "${CONF}"
-  rm -f "${ADMIN_CFG}"
+  ha_reject_crlf_env || return 1
+  ha_restore_snapshot || return 1
+  ha_sshd_ok "${SSHD_CFG}" || return 1
 }
 
 ha_arm() {
   local seconds="${EZKEY_PAM_ROLLBACK_SECONDS:-}"
   local minutes="${EZKEY_PAM_ROLLBACK_MINUTES:-15}"
   local delay now
+  ha_reject_crlf_env || return 1
   if [ ! -f "${SNAP}/READY" ]; then
     echo "host-apply arm: no snapshot" >&2
     return 1
   fi
   if [ -n "${seconds}" ]; then
+    case "${seconds}" in
+      '' | *[!0-9]*)
+        echo "host-apply arm: EZKEY_PAM_ROLLBACK_SECONDS must be decimal" >&2
+        return 1
+        ;;
+    esac
     delay="${seconds}"
   else
+    case "${minutes}" in
+      '' | *[!0-9]*)
+        echo "host-apply arm: EZKEY_PAM_ROLLBACK_MINUTES must be decimal" >&2
+        return 1
+        ;;
+    esac
     delay=$((minutes * 60))
   fi
   now="$(date +%s)"
@@ -188,19 +343,31 @@ ha_confirm() {
   sed -i 's/^confirmed=.*/confirmed=1/' "${ROLL}/state"
 }
 
+ha_close_rollback() {
+  rm -f "${ROLL}/state"
+}
+
 ha_check() {
   local deadline confirmed now
   if [ ! -f "${ROLL}/state" ]; then
     return 0
   fi
+  ha_reject_crlf_env || return 1
   deadline="$(awk -F= '/^deadline=/{print $2}' "${ROLL}/state")"
   confirmed="$(awk -F= '/^confirmed=/{print $2}' "${ROLL}/state")"
   now="$(date +%s)"
   if [ "${confirmed}" = "1" ]; then
     return 0
   fi
+  case "${deadline}" in
+    '' | *[!0-9]*)
+      echo "host-apply check: rollback deadline is not decimal" >&2
+      return 1
+      ;;
+  esac
   if [ "${now}" -ge "${deadline}" ]; then
-    ha_remove
+    ha_remove || return 1
+    ha_close_rollback
   fi
 }
 

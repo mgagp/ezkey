@@ -16,6 +16,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PAM_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
+# Read by host-grade-fixtures.sh and host-grade-scenarios.sh, sourced below.
+# shellcheck disable=SC2034
+hg_suite_vars() {
 HG_IKEY="hgIkeyDoNotLog0001"
 HG_SKEY="hgSkeyDoNotLog0001"
 HG_CHALLENGE="83"
@@ -42,6 +45,8 @@ TLS_STUB_LOG="/tmp/hg-tls-stub-reqs.log"
 KEY_DIR="/etc/ezkey-pam-hostgrade/keys"
 CA_DIR="/etc/ezkey-pam-hostgrade/ca"
 SSHD="/usr/sbin/sshd"
+}
+hg_suite_vars
 
 # shellcheck disable=SC1091
 . "${SCRIPT_DIR}/host-grade-fixtures.sh"
