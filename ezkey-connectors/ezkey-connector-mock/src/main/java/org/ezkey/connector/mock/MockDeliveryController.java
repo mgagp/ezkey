@@ -89,7 +89,7 @@ public class MockDeliveryController {
     Map<String, Object> body = new LinkedHashMap<>();
     body.put("status", degraded ? "degraded" : "ok");
     body.put("connectorName", "ezkey-connector-mock");
-    body.put("connectorVersion", "0.1.0");
+    body.put("connectorVersion", ConnectorVersion.VALUE);
     body.put("contractVersion", "v0");
     body.put("channel", "email");
     body.put(

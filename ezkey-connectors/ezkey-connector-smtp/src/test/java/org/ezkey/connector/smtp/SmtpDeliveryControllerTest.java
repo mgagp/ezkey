@@ -17,10 +17,12 @@ import jakarta.mail.Multipart;
 import jakarta.mail.Part;
 import jakarta.mail.internet.MimeMessage;
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Properties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -71,6 +73,7 @@ class SmtpDeliveryControllerTest {
     assertThat(response.body())
         .contains("\"status\":\"ok\"", "\"testMode\":false", "\"contractVersion\":\"v0\"")
         .doesNotContain("localhost", "invitations@example.com", "3925");
+    assertThat(response.body()).contains("\"connectorVersion\":\"" + buildVersion() + "\"");
     assertThat(greenMail.getReceivedMessages()).isEmpty();
   }
 
@@ -210,5 +213,16 @@ class SmtpDeliveryControllerTest {
       }
     }
     throw new AssertionError("No " + type + " part");
+  }
+
+  /** The version the build wrote, which the health must report (not a hardcoded constant). */
+  private static String buildVersion() throws Exception {
+    try (InputStream in =
+        ConnectorVersion.class.getResourceAsStream("/META-INF/build-info.properties")) {
+      assertThat(in).as("the spring-boot build-info goal must run").isNotNull();
+      Properties properties = new Properties();
+      properties.load(in);
+      return properties.getProperty("build.version");
+    }
   }
 }

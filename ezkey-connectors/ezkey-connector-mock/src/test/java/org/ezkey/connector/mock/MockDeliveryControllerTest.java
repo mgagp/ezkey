@@ -11,10 +11,12 @@ package org.ezkey.connector.mock;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.Properties;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -92,6 +94,7 @@ class MockDeliveryControllerTest {
     assertThat(health.statusCode()).isEqualTo(200);
     assertThat(health.body())
         .contains("\"testMode\":true", "\"contractVersion\":\"v0\"", "ezkey-connector-mock");
+    assertThat(health.body()).contains("\"connectorVersion\":\"" + buildVersion() + "\"");
 
     HttpResponse<String> accepted = scenario("anyone");
     assertThat(accepted.statusCode()).isEqualTo(200);
@@ -155,5 +158,16 @@ class MockDeliveryControllerTest {
   void logsStayClean(CapturedOutput output) throws Exception {
     scenario("private.person");
     assertThat(output.getAll()).contains(SEND_ID).doesNotContain("private.person", "iVBORw0KGgo");
+  }
+
+  /** The version the build wrote, which the health must report (not a hardcoded constant). */
+  private static String buildVersion() throws Exception {
+    try (InputStream in =
+        ConnectorVersion.class.getResourceAsStream("/META-INF/build-info.properties")) {
+      assertThat(in).as("the spring-boot build-info goal must run").isNotNull();
+      Properties properties = new Properties();
+      properties.load(in);
+      return properties.getProperty("build.version");
+    }
   }
 }

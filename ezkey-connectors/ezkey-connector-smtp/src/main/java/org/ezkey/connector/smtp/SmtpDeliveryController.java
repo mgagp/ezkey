@@ -55,7 +55,6 @@ public class SmtpDeliveryController {
   private static final Logger logger = LoggerFactory.getLogger(SmtpDeliveryController.class);
 
   static final String CONNECTOR_NAME = "ezkey-connector-smtp";
-  static final String CONNECTOR_VERSION = "0.1.0";
 
   private static final Set<String> JOB_FIELDS =
       Set.of(
@@ -113,7 +112,7 @@ public class SmtpDeliveryController {
     Map<String, Object> body = new LinkedHashMap<>();
     body.put("status", settings.configured() ? "ok" : "degraded");
     body.put("connectorName", CONNECTOR_NAME);
-    body.put("connectorVersion", CONNECTOR_VERSION);
+    body.put("connectorVersion", ConnectorVersion.VALUE);
     body.put("contractVersion", "v0");
     body.put("channel", "email");
     body.put(

@@ -60,6 +60,13 @@
               <goal>repackage</goal>
             </goals>
           </execution>
+          <!-- connectorVersion in /v0/health comes from META-INF/build-info.properties. -->
+          <execution>
+            <id>build-info</id>
+            <goals>
+              <goal>build-info</goal>
+            </goals>
+          </execution>
         </executions>
       </plugin>
     </plugins>
