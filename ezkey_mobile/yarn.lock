@@ -2576,27 +2576,27 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@orval/angular@npm:8.46.0":
-  version: 8.46.0
-  resolution: "@orval/angular@npm:8.46.0"
+"@orval/angular@npm:8.47.0":
+  version: 8.47.0
+  resolution: "@orval/angular@npm:8.47.0"
   dependencies:
-    "@orval/core": "npm:8.46.0"
-  checksum: 10c0/5671648507ba8acc3c909ad7085cce8dedd9914a9e280e36928af3149ecd73720ac50050a1b1d4de62fbe2acc40763ab4c2c260188c0c61b38c7b8ce547ecda0
+    "@orval/core": "npm:8.47.0"
+  checksum: 10c0/6d5a7d55469fd61e6a71b0b8edf1fce788f47316974102654a3f9b15a23f04398da95ea56420b4bcff38f76bf108232ddfe75246acc0b2e7db4c3620388c0af5
   languageName: node
   linkType: hard
 
-"@orval/axios@npm:8.46.0":
-  version: 8.46.0
-  resolution: "@orval/axios@npm:8.46.0"
+"@orval/axios@npm:8.47.0":
+  version: 8.47.0
+  resolution: "@orval/axios@npm:8.47.0"
   dependencies:
-    "@orval/core": "npm:8.46.0"
-  checksum: 10c0/65769ee7411c0ba14c658d74a76ff49eb26f72a758f33fffa00d9d8d64df932e87c79ba736ae67a1ddc0276c13174c5a948e36851d31bd7e8c197662eb12c5d5
+    "@orval/core": "npm:8.47.0"
+  checksum: 10c0/eaf67bd0572e56b6f7d512cc6e1aaef75e3ba9aa85b21ee495958ad46f28dd7029f71e85563741cd687d2ffb050cb610b4807ffe3c8116d4d18c7b6ef2267a5d
   languageName: node
   linkType: hard
 
-"@orval/core@npm:8.46.0":
-  version: 8.46.0
-  resolution: "@orval/core@npm:8.46.0"
+"@orval/core@npm:8.47.0":
+  version: 8.47.0
+  resolution: "@orval/core@npm:8.47.0"
   dependencies:
     "@scalar/openapi-types": "npm:0.9.8"
     acorn: "npm:^8.15.0"
@@ -2614,65 +2614,65 @@ __metadata:
       optional: true
     "@modelcontextprotocol/server":
       optional: true
-  checksum: 10c0/747ec09ee8974e3117186d5fadf9bf06f18b0d25106747efd368b5b9cacef05b7712eaa04e8f6642f80d509824003f9def3f7444b7c9e60f307cb3d5fda6ed6f
+  checksum: 10c0/c8d65394bdf74616373fe9499c6fa1e52001a55b4c51b7ba8152b67f8c5d9f59967ff1ebc3fbf57995e57964d644dd4795e65d2f26bded78be4630a8d57586f1
   languageName: node
   linkType: hard
 
-"@orval/effect@npm:8.46.0":
-  version: 8.46.0
-  resolution: "@orval/effect@npm:8.46.0"
+"@orval/effect@npm:8.47.0":
+  version: 8.47.0
+  resolution: "@orval/effect@npm:8.47.0"
   dependencies:
-    "@orval/core": "npm:8.46.0"
+    "@orval/core": "npm:8.47.0"
   peerDependencies:
     effect: ">=3"
   peerDependenciesMeta:
     effect:
       optional: true
-  checksum: 10c0/6f2507fa3403da4f6795f783b48a7f2761803a5c7dd77eab6f5d5382da5a7b70532a757cadcc03d91fc73cfe4a3644ffc9839ef7ba1ffb3814f0ccd817331217
+  checksum: 10c0/067524f97c6e138d48152b7460079d6a129c16a65875143660eac1bb49445e56a3583b90917024f75bf1fc8dfaf1d73ac9a778b8f475d4da02e1a8dfb1319445
   languageName: node
   linkType: hard
 
-"@orval/fetch@npm:8.46.0":
-  version: 8.46.0
-  resolution: "@orval/fetch@npm:8.46.0"
+"@orval/fetch@npm:8.47.0":
+  version: 8.47.0
+  resolution: "@orval/fetch@npm:8.47.0"
   dependencies:
-    "@orval/core": "npm:8.46.0"
-  checksum: 10c0/2171d743a1fc95613538d028667237669bf2f43ffd517c8dee7d9c295474306b1c51972e1f526361b72e2169e99b272117c014a894f32c3c39727e9f23256c75
+    "@orval/core": "npm:8.47.0"
+  checksum: 10c0/6875452113c61b0955e2c2368cebc14b7370d2b49140e0ef2ff99d9c429d4985b1c13e783975ca373101a29ba43650e634db5e5abc50a38144d3cb798172a299
   languageName: node
   linkType: hard
 
-"@orval/hono@npm:8.46.0":
-  version: 8.46.0
-  resolution: "@orval/hono@npm:8.46.0"
+"@orval/hono@npm:8.47.0":
+  version: 8.47.0
+  resolution: "@orval/hono@npm:8.47.0"
   dependencies:
-    "@orval/core": "npm:8.46.0"
-    "@orval/zod": "npm:8.46.0"
+    "@orval/core": "npm:8.47.0"
+    "@orval/zod": "npm:8.47.0"
     typescript: "npm:6.0.3"
-  checksum: 10c0/4cd02184b4512c2a7f70f9cdd7968faab2d3b84a5d7a4677882c0942d2024b856e1fee56a7e574f707eb025704ecd9bf4899a686e5bd17e87900e0adecbb57f3
+  checksum: 10c0/2f9d0d7fa56c9115c4de9ce66206637f6132d39cf3fcc30e75350bfb1d4ed60707d091f7811e4deec90f959a752eddbc11f4918c81a42133c4790e149509b40d
   languageName: node
   linkType: hard
 
-"@orval/mcp@npm:8.46.0":
-  version: 8.46.0
-  resolution: "@orval/mcp@npm:8.46.0"
+"@orval/mcp@npm:8.47.0":
+  version: 8.47.0
+  resolution: "@orval/mcp@npm:8.47.0"
   dependencies:
-    "@orval/core": "npm:8.46.0"
-    "@orval/fetch": "npm:8.46.0"
-    "@orval/zod": "npm:8.46.0"
+    "@orval/core": "npm:8.47.0"
+    "@orval/fetch": "npm:8.47.0"
+    "@orval/zod": "npm:8.47.0"
   peerDependencies:
     "@modelcontextprotocol/server": ">=2"
   peerDependenciesMeta:
     "@modelcontextprotocol/server":
       optional: true
-  checksum: 10c0/428bf14af48c8b2b7ab7083fa89b768e27745751b712d5ca6bb933476c455da547774927d28bd609ec4555d2eee33066c05b577e33af359a8831db37da44240e
+  checksum: 10c0/00f7aa6cccef9af31c97244d46cf9776e81a0e1d37ce786d85e4d52aae26cdb9c740536086f26c11582ad5ee6076edec18ecc67e9558e643cffb440241d77944
   languageName: node
   linkType: hard
 
-"@orval/mock@npm:8.46.0":
-  version: 8.46.0
-  resolution: "@orval/mock@npm:8.46.0"
+"@orval/mock@npm:8.47.0":
+  version: 8.47.0
+  resolution: "@orval/mock@npm:8.47.0"
   dependencies:
-    "@orval/core": "npm:8.46.0"
+    "@orval/core": "npm:8.47.0"
   peerDependencies:
     "@faker-js/faker": ">=8"
     msw: ">=2"
@@ -2681,32 +2681,32 @@ __metadata:
       optional: true
     msw:
       optional: true
-  checksum: 10c0/d8c2f42c2140630593af36903c6c949af73c084c5c3eed77069a81041ef1e6385960607986bcdbd7b70c63bec2ee4c8d9033129d9b64a79c735f9fa09746018c
+  checksum: 10c0/a599ed2d87ae25d9bdafe417b3e3d0c82829f89804f001df1d744ce9f60cdfe441b2b0882e57f000407e2cd22b8d6d950ecec616beea1c0a2cca756ff5b6d94e
   languageName: node
   linkType: hard
 
-"@orval/pinia-colada@npm:8.46.0":
-  version: 8.46.0
-  resolution: "@orval/pinia-colada@npm:8.46.0"
+"@orval/pinia-colada@npm:8.47.0":
+  version: 8.47.0
+  resolution: "@orval/pinia-colada@npm:8.47.0"
   dependencies:
-    "@orval/axios": "npm:8.46.0"
-    "@orval/core": "npm:8.46.0"
-    "@orval/fetch": "npm:8.46.0"
+    "@orval/axios": "npm:8.47.0"
+    "@orval/core": "npm:8.47.0"
+    "@orval/fetch": "npm:8.47.0"
   peerDependencies:
     "@pinia/colada": ^1.4.4
   peerDependenciesMeta:
     "@pinia/colada":
       optional: true
-  checksum: 10c0/7c6cc60d2815d3cd2fdddc3c01690ce94db43a19ea33805fd8fd492d9a0eb3de6fa3271a5c148f964b08b869bf14b6dfcda0579eadc280873c55f26da8008ff2
+  checksum: 10c0/3a341acc7bc35d608144b32620a9b8b7bfe021432ad0a96c2823c0ce1398494af237f305007657584ad5089411ee23952e8e7f62e8bfec7cf9e345174a8c5858
   languageName: node
   linkType: hard
 
-"@orval/query@npm:8.46.0":
-  version: 8.46.0
-  resolution: "@orval/query@npm:8.46.0"
+"@orval/query@npm:8.47.0":
+  version: 8.47.0
+  resolution: "@orval/query@npm:8.47.0"
   dependencies:
-    "@orval/core": "npm:8.46.0"
-    "@orval/fetch": "npm:8.46.0"
+    "@orval/core": "npm:8.47.0"
+    "@orval/fetch": "npm:8.47.0"
   peerDependencies:
     "@tanstack/angular-query-experimental": ">=5"
     "@tanstack/react-query": ">=4"
@@ -2724,39 +2724,53 @@ __metadata:
       optional: true
     "@tanstack/vue-query":
       optional: true
-  checksum: 10c0/f96a26aa92bd9a7264a25ae4eb2e082650cbc745d8f13259a988a33cfc320fad0184f1eb7d74afddf783d61774d29d9b8237634591c1ec99c9cf39a175febf5a
+  checksum: 10c0/2f95bfdec02e37aa715c01c799cf2f42d39a4afe9fe83faeba93046c05bf24415edf1c32e25d38bc44ea05e18ec0c31bb65db4b648ae20e654503c61d789c242
   languageName: node
   linkType: hard
 
-"@orval/solid-start@npm:8.46.0":
-  version: 8.46.0
-  resolution: "@orval/solid-start@npm:8.46.0"
+"@orval/solid-start@npm:8.47.0":
+  version: 8.47.0
+  resolution: "@orval/solid-start@npm:8.47.0"
   dependencies:
-    "@orval/core": "npm:8.46.0"
-  checksum: 10c0/a3e9083b39da25929aee27d9218a22eff91bae6a809f1f3acee263c077783bf258dcb710fcd3b3a7ffe3a752a451928842b43a28d62636c94532e41b6879d28e
+    "@orval/core": "npm:8.47.0"
+  checksum: 10c0/761245f4b5716ec0d2f0f72724b358f10546ec2a044be463f1093623451c687a7ef97154cdfa051f47294f33f7d927f3a35a0782f881b6c492d89ea117ffbc20
   languageName: node
   linkType: hard
 
-"@orval/swr@npm:8.46.0":
-  version: 8.46.0
-  resolution: "@orval/swr@npm:8.46.0"
+"@orval/swr@npm:8.47.0":
+  version: 8.47.0
+  resolution: "@orval/swr@npm:8.47.0"
   dependencies:
-    "@orval/core": "npm:8.46.0"
-    "@orval/fetch": "npm:8.46.0"
+    "@orval/core": "npm:8.47.0"
+    "@orval/fetch": "npm:8.47.0"
   peerDependencies:
     swr: ">=2"
   peerDependenciesMeta:
     swr:
       optional: true
-  checksum: 10c0/5a5742735b91914cd695943872acaeeb62ad0f40f0fb08b38207de8570c3382483dd7a3193e3ec4aa26d22d17caa98ba771e1cb1f4904b89f71928d8828c408a
+  checksum: 10c0/344a39d38192fafd6caa7e1301966873f0382ca2e66d53c958469c9d8fd2910aa6fb9b916128cdaaf6dea0011464c0d1bcf99e96f38cff5a2739646bb2d1bb52
   languageName: node
   linkType: hard
 
-"@orval/zod@npm:8.46.0":
-  version: 8.46.0
-  resolution: "@orval/zod@npm:8.46.0"
+"@orval/valibot@npm:8.47.0":
+  version: 8.47.0
+  resolution: "@orval/valibot@npm:8.47.0"
   dependencies:
-    "@orval/core": "npm:8.46.0"
+    "@orval/core": "npm:8.47.0"
+  peerDependencies:
+    valibot: ">=1"
+  peerDependenciesMeta:
+    valibot:
+      optional: true
+  checksum: 10c0/ec01bc96d6d39dfccf0d1035a87a84e3b18463c758f8f65b6f46de76792609464801a4ba9bdd0196f48cca3d5738eac0c8c2e1ddc0fddf03c30781830157a501
+  languageName: node
+  linkType: hard
+
+"@orval/zod@npm:8.47.0":
+  version: 8.47.0
+  resolution: "@orval/zod@npm:8.47.0"
+  dependencies:
+    "@orval/core": "npm:8.47.0"
     globals: "npm:^17.0.0"
     jsesc: "npm:^3.0.0"
     typescript: "npm:6.0.3"
@@ -2765,7 +2779,7 @@ __metadata:
   peerDependenciesMeta:
     zod:
       optional: true
-  checksum: 10c0/fa0982827dfa6d3c8502da414e7d09081fb776b9e2ee4adc1eb805e0e5434bbe06151e08b9a970c9157b9961c6d8873417c88fd33a7125d6a393e00b31312de7
+  checksum: 10c0/6415d9e2fb5a38aef4c3f5788003d98f58457baae7d429690937e4df94bb9d672916e583333d2f245cbe55f780c2d3b7cc8cf517c056a7698075e2719c798f0b
   languageName: node
   linkType: hard
 
@@ -6731,7 +6745,7 @@ __metadata:
     jest: "npm:30.5.2"
     js-sha256: "npm:1.0.0"
     lint-staged: "npm:17.6.0"
-    orval: "npm:8.46.0"
+    orval: "npm:8.47.0"
     prettier: "npm:3.9.10"
     react: "npm:19.3.1"
     react-i18next: "npm:17.1.10"
@@ -9814,24 +9828,25 @@ __metadata:
   languageName: node
   linkType: hard
 
-"orval@npm:8.46.0":
-  version: 8.46.0
-  resolution: "orval@npm:8.46.0"
+"orval@npm:8.47.0":
+  version: 8.47.0
+  resolution: "orval@npm:8.47.0"
   dependencies:
     "@commander-js/extra-typings": "npm:^15.0.0"
-    "@orval/angular": "npm:8.46.0"
-    "@orval/axios": "npm:8.46.0"
-    "@orval/core": "npm:8.46.0"
-    "@orval/effect": "npm:8.46.0"
-    "@orval/fetch": "npm:8.46.0"
-    "@orval/hono": "npm:8.46.0"
-    "@orval/mcp": "npm:8.46.0"
-    "@orval/mock": "npm:8.46.0"
-    "@orval/pinia-colada": "npm:8.46.0"
-    "@orval/query": "npm:8.46.0"
-    "@orval/solid-start": "npm:8.46.0"
-    "@orval/swr": "npm:8.46.0"
-    "@orval/zod": "npm:8.46.0"
+    "@orval/angular": "npm:8.47.0"
+    "@orval/axios": "npm:8.47.0"
+    "@orval/core": "npm:8.47.0"
+    "@orval/effect": "npm:8.47.0"
+    "@orval/fetch": "npm:8.47.0"
+    "@orval/hono": "npm:8.47.0"
+    "@orval/mcp": "npm:8.47.0"
+    "@orval/mock": "npm:8.47.0"
+    "@orval/pinia-colada": "npm:8.47.0"
+    "@orval/query": "npm:8.47.0"
+    "@orval/solid-start": "npm:8.47.0"
+    "@orval/swr": "npm:8.47.0"
+    "@orval/valibot": "npm:8.47.0"
+    "@orval/zod": "npm:8.47.0"
     "@scalar/json-magic": "npm:^0.16.1"
     "@scalar/openapi-parser": "npm:^0.29.15"
     "@scalar/openapi-types": "npm:0.9.8"
@@ -9856,7 +9871,7 @@ __metadata:
       optional: true
   bin:
     orval: dist/bin/orval.mjs
-  checksum: 10c0/1649bb0aa659a5311ccbc4d76c274d06253f86e2a43e58f0ed6de3124b368e0a2c6c827ea488deaffcb0c1fecf78e4d32a3de97b9ff2b5ea1f3eda1effcf9db9
+  checksum: 10c0/df50a2fed6f4ea9647b59dbbd5541e7262e058750c2915456bf83a069e7267fe0b264cd155044d1287e0cfad3eaf3440476ea8062d9284e126152fd348c9303f
   languageName: node
   linkType: hard
 
