@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+Breaking invitation contract (ADR-0019). Any app that vendors this package and still reads
+`enrollmentId` from the QR, or sends it on bind, must switch to the response id.
+
+- `EnrollmentCode` no longer has `enrollmentId`. `EnrollmentCode.parse` accepts JSON
+  `{"enrollmentProofToken", "authUrl"?}` only. A leftover `enrollmentId` key is ignored. The pipe
+  form `enrollmentId|enrollmentProofToken` throws `EzkeyValidationException`.
+- `EnrollmentBindRequest` / `POST /api/v1/enrollments/bind` sends `enrollmentProofToken` only.
+- The id for local storage, the key alias, verify, pending, and respond is
+  `EnrollmentBindResponse.enrollmentId`. Signed payloads still include that id.
+- `bindEnrollment` still requires an Auth API URL: the code's `authUrl`, or
+  `authApiBaseUrlOverride`. This package has no default host.
+- A rescan of a consumed invitation fails at the server (`enrollment-already-bound`) before the
+  local store is consulted. If the server accepts bind again, the local store still refuses a
+  duplicate returned `enrollmentId`.
+
 ## 0.3.0
 
 Aligns the SDK with `docs/CLIENT_BEHAVIOUR_CONTRACT.md` (#1052 code follow-up).

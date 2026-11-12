@@ -124,14 +124,17 @@ void main() {
       expect(server.requestPaths, isEmpty);
     });
 
-    test('a rescan of a completed enrollment is refused by the server', () async {
-      final invitation = server.invite();
-      await enroll(invitation);
-      await expectLater(
-        auth.bindEnrollment(codeFor(invitation)),
-        _api(EzkeyProblemKind.enrollmentAlreadyBound),
-      );
-    });
+    test(
+      'a rescan of a completed enrollment is refused by the server',
+      () async {
+        final invitation = server.invite();
+        await enroll(invitation);
+        await expectLater(
+          auth.bindEnrollment(codeFor(invitation)),
+          _api(EzkeyProblemKind.enrollmentAlreadyBound),
+        );
+      },
+    );
 
     test('local store refuses a bind the server accepts again', () async {
       final invitation = server.invite();

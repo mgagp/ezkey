@@ -6,7 +6,8 @@ that app's protocol logic in pure Dart, so a **Flutter** authenticator app can a
 device. It is tested against the real server stack (see [§6 Running the tests](#6-running-the-tests)).
 
 This README is self-contained: you can integrate Ezkey into a Flutter app with only this file and
-the code in this folder. For application-independent **client behaviour** (decision lock, unknown
+the code in this folder. The invitation no longer carries `enrollmentId` (ADR-0019): see
+[§2.2](#22-enrollment-sequence) and the Unreleased section of [CHANGELOG.md](CHANGELOG.md). For application-independent **client behaviour** (decision lock, unknown
 `respond` outcome, leave-as-deny, approve-only local confirmation, error presentation), also read
 [`../docs/CLIENT_BEHAVIOUR_CONTRACT.md`](../docs/CLIENT_BEHAVIOUR_CONTRACT.md). Deeper protocol
 references in `../docs/` (`MOBILE_DEVELOPER_GUIDE.md`, `CRYPTO.md`,
@@ -90,14 +91,21 @@ Admin UI / app           User                 Phone (this SDK)                 A
      |                     |                        |  verify signature, persist   |
 ```
 
-QR code content (one of):
+Invitation contract (ADR-0019). The QR or pasted code is JSON only:
 
 ```json
 {"enrollmentProofToken": "…", "authUrl": "https://auth.example.com"}
 ```
 
-A leftover `enrollmentId` key is ignored. `authUrl` is optional; the app may configure a default.
-Bind returns `enrollmentId`.
+- `enrollmentProofToken` is required. A leftover `enrollmentId` key is ignored and is not sent to the server.
+- `authUrl` may be omitted from the code. This SDK has no built-in default host: pass
+  `authApiBaseUrlOverride` to `bindEnrollment` when the code has no `authUrl`.
+- `POST /api/v1/enrollments/bind` sends only `{ "enrollmentProofToken" }`. Store `enrollmentId`
+  from that response. Verify, pending, respond, the local id (`<authApiBaseUrl>#<enrollmentId>`),
+  and the device-key alias all use that returned id.
+- The old pipe form `enrollmentId|enrollmentProofToken` is rejected (`Unsupported enrollment code format`).
+- Signed payloads (bind, verify, instance-info) still include `enrollmentId`. It is a server
+  handle disclosed at bind, not part of the invitation.
 
 Server rules you must design the UI around:
 
@@ -167,7 +175,7 @@ final authenticator = EzkeyAuthenticator(
 
 | Method | What it does | Typical errors |
 |--------|--------------|----------------|
-| `bindEnrollment(EnrollmentCode code, {String? authApiBaseUrlOverride})` → `EzkeyBoundEnrollment` | Bind step. Checks the id / token echo, the algorithm (`ed25519`) and the bind signature. Exposes `integrationName`, `tenantName`, `enrollmentName`, `isSystemIntegration`, `adminType` for the confirmation screen. | API `enrollmentAlreadyBound`, `enrollmentInvitationExpired`, `enrollmentBindingFailed`; integrity `bindSignature`, `bindConsistency`, `unsupportedIntegrationKeyAlgorithm`; validation (no URL, already enrolled locally) |
+| `bindEnrollment(EnrollmentCode code, {String? authApiBaseUrlOverride})` → `EzkeyBoundEnrollment` | Bind step. Sends the proof token only. Checks that the answer echoes that token, that the algorithm is `ed25519`, and that the bind signature verifies. `enrollmentId` comes from the response. Exposes `integrationName`, `tenantName`, `enrollmentName`, `isSystemIntegration`, `adminType` for the confirmation screen. | API `enrollmentAlreadyBound`, `enrollmentInvitationExpired`, `enrollmentBindingFailed`; integrity `bindSignature`, `bindConsistency`, `unsupportedIntegrationKeyAlgorithm`; validation (no URL, already enrolled locally) |
 | `completeEnrollment(EzkeyBoundEnrollment bound, {required int enrollmentChallenge})` → `EzkeyEnrollment` | Generates the device key through your key store, signs and sends verify, checks the verify-result signature and `active`, then saves the record. On **any** failure it deletes the new key and saves nothing. | API `enrollmentVerifyFailed` (invitation now dead); integrity `verifySignature`, `verifyNotActive`; network |
 | `enroll(code, {required enrollmentChallenge, authApiBaseUrlOverride})` | `bindEnrollment` + `completeEnrollment`. | same |
 | `fetchInstanceInfo(enrollment)` → `EzkeyInstanceInfo` | Signed installation branding (`instanceName`, `instanceDescription`, `aboutUrl`, `authApiPublicBaseUrl`). | integrity `instanceInfoSignature`, `instanceInfoConsistency` |
@@ -183,8 +191,10 @@ final authenticator = EzkeyAuthenticator(
 
 ### 3.2 Models (`lib/src/sdk/models.dart`)
 
-- `EnrollmentCode.parse(String qr, {EzkeyUrlPolicy policy})` takes the JSON or `id|token` form.
-  An `authUrl` that the policy rejects fails closed.
+- `EnrollmentCode.parse(String qr, {EzkeyUrlPolicy policy})` accepts the invitation JSON from
+  §2.2 only. It has no `enrollmentId` field. A leftover `enrollmentId` key is ignored. The pipe
+  form `id|token` throws `EzkeyValidationException`. An `authUrl` that the policy rejects fails
+  closed. `toString()` does not include the proof token.
 - `parseChallengeCode(String typed)` → `int`. Accepts 1–9 digits and ignores spaces and hyphens
   (`"123 456"`).
 - `EzkeyEnrollment` is the persisted record: `toJson()` / `EzkeyEnrollment.fromJson(...)`,
