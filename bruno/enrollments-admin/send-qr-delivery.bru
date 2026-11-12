@@ -43,5 +43,6 @@ settings {
 
 docs {
   Sends the QR of a CREATED enrollment to its contactEmail through the optional delivery connector.
-  With no connector configured, this returns 503 connector-unavailable.
+  With no connector configured, this returns 503 connector-unavailable. An enrollment of a
+  self-registered tenant returns 409 self-registered-tenant (#1206 step 7).
 }

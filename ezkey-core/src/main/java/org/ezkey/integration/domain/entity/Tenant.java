@@ -138,6 +138,15 @@ public class Tenant {
   private Boolean isSystemTenant = false;
 
   /**
+   * True when anonymous evaluator self-registration created this tenant.
+   *
+   * <p>A fact about the tenant, not a permission. QR delivery through a connector is refused for
+   * such a tenant, which keeps integrated delivery (#1206 step 7).
+   */
+  @Column(name = "self_registered", nullable = false)
+  private Boolean selfRegistered = false;
+
+  /**
    * Legal name of the organization.
    *
    * <p>Distinct from {@code tenantName} which is a short technical identifier. This field holds the
@@ -423,6 +432,24 @@ public class Tenant {
    */
   public void setIsSystemTenant(Boolean isSystemTenant) {
     this.isSystemTenant = isSystemTenant;
+  }
+
+  /**
+   * Gets the self-registered flag.
+   *
+   * @return true if anonymous evaluator self-registration created this tenant
+   */
+  public Boolean getSelfRegistered() {
+    return selfRegistered;
+  }
+
+  /**
+   * Sets the self-registered flag.
+   *
+   * @param selfRegistered true if anonymous evaluator self-registration created this tenant
+   */
+  public void setSelfRegistered(Boolean selfRegistered) {
+    this.selfRegistered = selfRegistered;
   }
 
   /**

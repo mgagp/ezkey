@@ -8,7 +8,7 @@
 - **Decision pack:** [`2026-11-04-connector-spi`](../decisions/2026-11-04-connector-spi/README.md)
 - **GitHub issue:** `#1206` (step 2)
 - **Created at:** `2026-11-06`
-- **Updated at:** `2026-11-06`
+- **Updated at:** `2026-11-12`
 - **Captured by:** Marc
 
 ## Objective
@@ -257,6 +257,22 @@ default clean start has no surprise limit. The mock overlay sets a low tenant ca
   deadline it only says what to do if the invitation no longer works. A `v0` connector no longer matches the core.
 - **Admin UI:** creating an enrollment opens its record, where the send lives (#1307). Whether the contact email
   should read as recommended when a connector is active is parked in #1308.
+
+## What step 7 added (2026-11-12, in progress)
+
+Decisions taken one at a time with Marc:
+
+- **Provider:** Amazon SES in `ca-central-1`, the community instance's AWS region, through the existing
+  SMTP connector. It starts in the SES sandbox: only verified recipients, which suits the pilot.
+- **Sender:** `Ezkey Community <no-reply@mail.ezkey.org>`, no Reply-To. A subdomain keeps the `ezkey.org`
+  root, which already routes `security@`, untouched. Easy DKIM verifies the domain. DMARC is the root's
+  `p=reject`, inherited by the subdomain, with nothing added.
+- **One sender per connector:** recorded with a reopen signal in the decision pack, § *Secrets and
+  parameters*.
+- **Self-registered tenants:** a `self_registered` fact on the tenant (V28, existing `eval-` tenants
+  marked), a `self-registered-tenant` refusal on send, and a capability that reads unavailable for an
+  admin scoped to such a tenant. A permission flag was not chosen: no governance to design without a
+  signal.
 
 ## Configuration guidance
 

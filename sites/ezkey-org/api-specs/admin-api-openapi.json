@@ -4705,7 +4705,7 @@
           "Enrollments"
         ],
         "summary": "Read QR delivery capability",
-        "description": "Says whether a delivery connector can be used, without contacting a provider.",
+        "description": "Says whether a delivery connector can be used by this caller, without contacting a provider. An admin scoped to a self-registered tenant sees it unavailable.",
         "operationId": "capability",
         "responses": {
           "200": {

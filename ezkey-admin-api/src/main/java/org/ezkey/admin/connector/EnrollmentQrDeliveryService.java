@@ -46,6 +46,7 @@ import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.entity.Tenant;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
+import org.ezkey.integration.domain.repository.TenantRepository;
 import org.ezkey.service.EntityEligibilityService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,6 +86,7 @@ public class EnrollmentQrDeliveryService {
   private final DeliveryConnectorProperties properties;
   private final EnrollmentRepository enrollmentRepository;
   private final IntegrationRepository integrationRepository;
+  private final TenantRepository tenantRepository;
   private final EntityEligibilityService eligibilityService;
   private final QrCodePayloadService qrCodePayloadService;
   private final QrCodeGeneratorService qrCodeGeneratorService;
@@ -102,6 +104,7 @@ public class EnrollmentQrDeliveryService {
    * @param properties connector settings
    * @param enrollmentRepository enrollments
    * @param integrationRepository integrations
+   * @param tenantRepository tenants, for the caller-aware capability
    * @param eligibilityService parent-chain eligibility
    * @param qrCodePayloadService QR payload
    * @param qrCodeGeneratorService QR image
@@ -116,6 +119,7 @@ public class EnrollmentQrDeliveryService {
       DeliveryConnectorProperties properties,
       EnrollmentRepository enrollmentRepository,
       IntegrationRepository integrationRepository,
+      TenantRepository tenantRepository,
       EntityEligibilityService eligibilityService,
       QrCodePayloadService qrCodePayloadService,
       QrCodeGeneratorService qrCodeGeneratorService,
@@ -128,6 +132,7 @@ public class EnrollmentQrDeliveryService {
     this.properties = properties;
     this.enrollmentRepository = enrollmentRepository;
     this.integrationRepository = integrationRepository;
+    this.tenantRepository = tenantRepository;
     this.eligibilityService = eligibilityService;
     this.qrCodePayloadService = qrCodePayloadService;
     this.qrCodeGeneratorService = qrCodeGeneratorService;
@@ -136,6 +141,32 @@ public class EnrollmentQrDeliveryService {
     this.auditLogService = auditLogService;
     this.readOnlyTx = new TransactionTemplate(transactionManager);
     this.readOnlyTx.setReadOnly(true);
+  }
+
+  /**
+   * Reads the capability as the caller should see it. An admin scoped to a self-registered tenant
+   * sees no usable connector, so the send action is not offered and the QR stays on screen. The
+   * send path refuses on its own, whatever the caller saw (#1206 step 7).
+   *
+   * @param principal the caller
+   * @return the capability for this caller
+   */
+  public Capability capabilityFor(AdminPrincipal principal) {
+    Capability capability = capabilityService.current();
+    if (!capability.available()
+        || principal == null
+        || principal.isGlobalAdmin()
+        || principal.tenantId() == null) {
+      return capability;
+    }
+    boolean selfRegistered =
+        Boolean.TRUE.equals(
+            readOnlyTx.execute(_ ->
+                tenantRepository
+                    .findById(principal.tenantId())
+                    .map(tenant -> Boolean.TRUE.equals(tenant.getSelfRegistered()))
+                    .orElse(false)));
+    return selfRegistered ? new Capability(false, false, "", List.of()) : capability;
   }
 
   /**
@@ -214,6 +245,7 @@ public class EnrollmentQrDeliveryService {
           enrollment.getStatus(),
           expired,
           Boolean.TRUE.equals(integration.getIsSystemIntegration()),
+          Boolean.TRUE.equals(tenant.getSelfRegistered()),
           eligibilityService.isIntegrationOperational(integration)
               && eligibilityService.isTenantOperational(tenant),
           trimToNull(enrollment.getContactEmail()),
@@ -227,6 +259,9 @@ public class EnrollmentQrDeliveryService {
   private void assertAllowed(SendMaterial material, String locale, Capability capability) {
     if (!capability.available()) {
       throw new QrDeliveryRefusedException(Reason.CONNECTOR_UNAVAILABLE);
+    }
+    if (material.selfRegisteredTenant()) {
+      throw new QrDeliveryRefusedException(Reason.SELF_REGISTERED_TENANT);
     }
     if (!capability.locales().contains(locale)) {
       throw new QrDeliveryRefusedException(Reason.LOCALE_NOT_OFFERED);
@@ -393,6 +428,7 @@ public class EnrollmentQrDeliveryService {
       EnrollmentStatus status,
       boolean expired,
       boolean adminEnrollment,
+      boolean selfRegisteredTenant,
       boolean parentsOperational,
       String recipient,
       String organisationName,

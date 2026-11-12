@@ -119,5 +119,7 @@ class EvaluatorSelfRegistrationServiceTest {
     assertEquals("https://ezkey.org/community-guided-tour.html", response.guidedTourUrl());
     org.junit.jupiter.api.Assertions.assertTrue(response.tenantLabel().startsWith("eval-"));
     verify(rateLimiter).verifyAndRecordSuccess("203.0.113.5");
+    org.junit.jupiter.api.Assertions.assertTrue(tenant.getSelfRegistered());
+    verify(tenantRepository).save(tenant);
   }
 }

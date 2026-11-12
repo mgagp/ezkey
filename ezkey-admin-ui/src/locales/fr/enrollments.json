@@ -219,6 +219,7 @@
         "notCreated": "Cet enrôlement n’attend plus d’appareil : son code QR ne peut pas être envoyé.",
         "expired": "Cette invitation a expiré. Créez un nouvel enrôlement.",
         "adminEnrollment": "Les enrôlements d’administrateur ne sont pas envoyés par courriel. Utilisez l’écran d’intégration de l’administrateur.",
+        "selfRegisteredTenant": "Les locataires d’évaluation auto-inscrits n’envoient pas de courriel. Montrez plutôt le code QR à l’écran.",
         "parentNotOperational": "L’intégration ou le locataire n’est pas opérationnel : rien ne peut être envoyé.",
         "contactEmailMissing": "Cet enrôlement n’a pas d’e-mail de contact. Ajoutez-en un d’abord.",
         "contactEmailInvalid": "L’e-mail de contact n’est pas valide. Corrigez-le d’abord.",
