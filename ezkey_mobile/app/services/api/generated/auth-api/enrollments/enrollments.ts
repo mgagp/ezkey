@@ -154,6 +154,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type BindMutationVariables = {data: BodyType<EnrollmentBindRequestDto>}
 
     /**
+ * Retrieves enrollment binding information using secure enrollment proof token
  * @summary Initiate device binding with proof token
  */
 export const useBind = <TError = ErrorType<ProblemDetail | void>,
@@ -276,6 +277,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type VerifyMutationVariables = {data: BodyType<EnrollmentVerifyRequestDto>}
 
     /**
+ * Submits device cryptographic keys and signatures to finalize enrollment
  * @summary Complete enrollment verification
  */
 export const useVerify = <TError = ErrorType<ProblemDetail | void>,
@@ -393,6 +395,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type InstanceInfoMutationVariables = {data: BodyType<EnrollmentInstanceInfoRequestDto>}
 
     /**
+ * Returns instance branding signed with the enrollment integration key for enrolled clients
  * @summary Get integration-signed installation branding
  */
 export const useInstanceInfo = <TError = ErrorType<ProblemDetail | void>,

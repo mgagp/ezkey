@@ -147,6 +147,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type PendingMutationVariables = {data: BodyType<AuthAttemptPendingRequestDto>}
 
     /**
+ * Retrieve pending authentication attempts using secure enrollment proof token. This endpoint prevents enumeration attacks by requiring cryptographic proof of enrollment ownership.
  * @summary Get pending authentication attempt
  */
 export const usePending = <TError = ErrorType<ProblemDetail | void>,
@@ -274,6 +275,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type RespondMutationVariables = {data: BodyType<AuthAttemptRespondRequestDto>}
 
     /**
+ * Submits mobile device's response to an authentication request. The authAttemptId is provided in the request body for uniform API design. HTTP 200 bodies (APPROVED/DENIED/FAILED) are always integration-signed; the server never emits an unsigned 200 (#844). Not-found, PENDING, and terminal / cancelled / superseded map to 409 auth-attempt-state-conflict (#844 Marc m1). Wall-clock expiry after expiresAt maps to 409 auth-attempt-expired (#895). Missing per-enrollment integration signing key → runtime 503 integration-signing-unavailable (transaction rolls back; no JVM startup gate).
  * @summary Submit authentication response
  */
 export const useRespond = <TError = ErrorType<ProblemDetail | void>,
