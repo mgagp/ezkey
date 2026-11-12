@@ -12,9 +12,9 @@ import { PendingAttemptPolicyField } from './pending-attempt-policy-field';
 import { policySaveErrorMessage } from './pending-attempt-policy-save';
 
 const EN_HELP =
-  'Refuse is recommended for interactive integrations, where a person is waiting to sign in. Saving this does not change a request that is already waiting. The next request uses this setting: Replace ends the waiting one; Refuse keeps it and rejects the new request.';
+  'Replace suits most applications: if the person starts signing in again, the new request replaces the waiting one. Refuse suits cases where several sessions can ask the same person to sign in at once, and a new request must not interrupt the one in progress. Saving this does not change a request that is already waiting: it applies from the next request.';
 const FR_HELP =
-  "Refuser est recommandé pour les intégrations interactives, où une personne attend pour se connecter. Enregistrer ce réglage ne change pas une demande déjà en attente. La prochaine demande l'applique : Remplacer met fin à celle qui attend ; Refuser la garde et rejette la nouvelle.";
+  "Remplacer convient à la plupart des applications : si la personne relance sa connexion, la nouvelle demande remplace celle qui attend. Refuser convient quand plusieurs sessions peuvent demander une connexion à la même personne en même temps, et qu'une nouvelle demande ne doit pas interrompre celle en cours. Enregistrer ce réglage ne change pas une demande déjà en attente : il s'applique à partir de la prochaine.";
 
 function i18nFor(lng: 'en' | 'fr') {
   const instance = i18n.createInstance();

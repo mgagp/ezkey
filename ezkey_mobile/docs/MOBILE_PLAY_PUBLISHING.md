@@ -185,6 +185,10 @@ same branch. GitHub Actions tests the **PR merge commit** with `main` — if `ma
 `package.json` / `yarn.lock` after your branch point, merge or rebase onto the current base first,
 then regenerate. No bot write token is required; the CI failure message spells out the same fix.
 
+`yarn license:app-data` keeps the previous `generatedAt` when nothing else changed, so a no-op
+regeneration leaves the file byte-identical. The `dependabot-mobile-licenses` workflow relies on
+this to commit only real license changes (no timestamp-only commits, no extra CI approval).
+
 Local equivalent: `yarn license:ci` (or `./scripts/check-third-party-licenses-ci.sh`).
 
 ## Client updates after the first official listing

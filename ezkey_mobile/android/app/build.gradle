@@ -238,8 +238,8 @@ dependencies {
     implementation "com.google.android.play:app-update:2.1.0"
 
     // Ed25519 integration signing verification on older API levels (JCA parity with Auth API JDK path).
-    // 2.8.0 ships 16 KB GNU_RELRO-aligned libconscrypt_jni.so (2.5.3 fails; #659).
-    implementation 'org.conscrypt:conscrypt-android:2.8.0'
+    // 2.8.0+ ships 16 KB GNU_RELRO-aligned libconscrypt_jni.so (2.5.3 fails; #659).
+    implementation 'org.conscrypt:conscrypt-android:2.9.0'
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")

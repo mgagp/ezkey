@@ -1581,7 +1581,7 @@
         },
         {
             "uniqueId": "org.conscrypt:conscrypt-android",
-            "artifactVersion": "2.8.0",
+            "artifactVersion": "2.9.0",
             "name": "org.conscrypt:conscrypt-android",
             "description": "Conscrypt: Android",
             "website": "https://conscrypt.org/",
