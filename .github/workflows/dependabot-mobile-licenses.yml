@@ -10,6 +10,11 @@
 #   therefore dispatch CI (`workflow_dispatch`, which GITHUB_TOKEN may trigger) on the
 #   PR branch so the new head gets a `ci-gate` check run. The PR's checks tab shows the
 #   dispatch run, not a pull_request run.
+# - Real changes only: the generator keeps the previous generatedAt when the content is
+#   unchanged, so the `git diff --quiet` below skips timestamp-only regenerations. Before
+#   that, every run committed a new timestamp: each PR needed a manual run approval, and
+#   approving this workflow's own run looped (commit -> new run -> commit). Decision: Marc
+#   2026-11-12 (option A; a GitHub App token to attribute bot commits is deferred).
 # - Install runs with --mode=skip-build (no lifecycle scripts) since the job holds a
 #   write token. Only same-repo branches authored by dependabot[bot] are processed.
 name: dependabot-mobile-licenses

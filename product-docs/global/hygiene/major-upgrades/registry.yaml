@@ -425,16 +425,16 @@
   component: Conscrypt (Android)
   owner: fred
   eol_slug: null
-  current: "2.8"
+  current: "2.9"
   sources:
-    - { file: ezkey_mobile/android/app/build.gradle, expect: "org.conscrypt:conscrypt-android:2.8." }
+    - { file: ezkey_mobile/android/app/build.gradle, expect: "org.conscrypt:conscrypt-android:2.9." }
   eol: null
-  target: "2.8"
+  target: "2.9"
   decision: keep
   security: true
   issue: null
-  last_review: 2026-10-30
-  notes: "In register because Gradle majors ignored per #712. 2.8.0 keeps the 16 KB GNU_RELRO alignment that 2.5.3 failed (#659); CI gate passed on #1062. Local cold AAB rechecks at the end of the mobile train."
+  last_review: 2026-11-12
+  notes: "In register because Gradle majors ignored per #712. 2.8.0+ keeps the 16 KB GNU_RELRO alignment that 2.5.3 failed (#659); CI gate passed on #1062 (2.8.0). Bumped to 2.9.0 via Dependabot #1288 (16 KB CI gate + Pixel 7 Pro smoke). Local cold AAB rechecks at the end of the mobile train."
 
 - id: androidx-biometric
   component: AndroidX Biometric

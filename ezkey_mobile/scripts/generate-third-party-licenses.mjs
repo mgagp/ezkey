@@ -545,6 +545,12 @@ function main() {
     packages,
     texts: sortedTexts,
   };
+  // Keep the previous timestamp when nothing else changed, so a no-op regeneration leaves the
+  // file byte-identical (the Dependabot licenses workflow commits only on a real diff).
+  const previousGeneratedAt = unchangedSnapshotTimestamp(out);
+  if (previousGeneratedAt) {
+    out.generatedAt = previousGeneratedAt;
+  }
   fs.mkdirSync(path.dirname(outPath), {recursive: true});
   fs.writeFileSync(outPath, `${JSON.stringify(out, null, 2)}\n`, 'utf8');
   const missing = packages.filter(pkg => !pkg.textIds && !pkg.termsUrls).map(pkg => pkg.id);
@@ -554,6 +560,25 @@ function main() {
   if (missing.length > 0) {
     console.warn(`No license text or terms link for: ${missing.join(', ')}`);
   }
+}
+
+/**
+ * Returns the existing snapshot's generatedAt when its content (all fields but generatedAt)
+ * equals `next`, else null (missing, unreadable, or changed snapshot).
+ */
+function unchangedSnapshotTimestamp(next) {
+  let previous;
+  try {
+    previous = JSON.parse(fs.readFileSync(outPath, 'utf8'));
+  } catch {
+    return null;
+  }
+  if (typeof previous?.generatedAt !== 'string') {
+    return null;
+  }
+  const {generatedAt: _previousAt, ...previousRest} = previous;
+  const {generatedAt: _nextAt, ...nextRest} = next;
+  return JSON.stringify(previousRest) === JSON.stringify(nextRest) ? previous.generatedAt : null;
 }
 
 main();
