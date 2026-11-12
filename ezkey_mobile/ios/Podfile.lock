@@ -1446,7 +1446,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - react-native-safe-area-context (5.11.0):
+  - react-native-safe-area-context (5.11.1):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -1460,8 +1460,8 @@ PODS:
     - React-graphics
     - React-ImageManager
     - React-jsi
-    - react-native-safe-area-context/common (= 5.11.0)
-    - react-native-safe-area-context/fabric (= 5.11.0)
+    - react-native-safe-area-context/common (= 5.11.1)
+    - react-native-safe-area-context/fabric (= 5.11.1)
     - React-NativeModulesApple
     - React-RCTFabric
     - React-renderercss
@@ -1471,7 +1471,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - react-native-safe-area-context/common (5.11.0):
+  - react-native-safe-area-context/common (5.11.1):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -1494,7 +1494,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - react-native-safe-area-context/fabric (5.11.0):
+  - react-native-safe-area-context/fabric (5.11.1):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -1933,7 +1933,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - RNGestureHandler (3.4.0):
+  - RNGestureHandler (3.5.0):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2029,7 +2029,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - RNSVG (15.16.0):
+  - RNSVG (15.16.1):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2051,9 +2051,9 @@ PODS:
     - ReactCodegen
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
-    - RNSVG/common (= 15.16.0)
+    - RNSVG/common (= 15.16.1)
     - Yoga
-  - RNSVG/common (15.16.0):
+  - RNSVG/common (15.16.1):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2563,7 +2563,7 @@ SPEC CHECKSUMS:
   React-microtasksnativemodule: 0207d6133274a7cbfc3d0dae326e3055c8cfcf9e
   React-mutationobservernativemodule: b97a67c29f724d18a92379e7390f24350acb433a
   react-native-config: 9ed4219cdbe9f3fe862bb9d11cbf75422c0c545d
-  react-native-safe-area-context: e6b7da4a15e6d491e90442715412d9dbb059ac4d
+  react-native-safe-area-context: 56700b839169ce88ffcec68c40447916fe512462
   React-NativeModulesApple: 8cfb2f308f48c48068c96b932e7f0e4297c23342
   React-networking: 3325cf73ecbdaacab0da91260b094baf36061a56
   React-oscompat: a776760fdfa152e12114f8c30d833963daac27e1
@@ -2602,10 +2602,10 @@ SPEC CHECKSUMS:
   ReactCommon: b63ce798b898ed77c6cfdeb80b18080161f52ed5
   ReactNativeDependencies: a5164c3ebbe90d992022b5d9cbabbf770a6d7d05
   RNCMaskedView: 89bb912716973f9715102cfe932f3ca6793b21f9
-  RNGestureHandler: b5512a093e6923dd1c31fbdd8e6186cd0ebb3541
+  RNGestureHandler: 3eb406a87932ac20e2909d36728129821fafbcdb
   RNKeychain: 990ea9078621f2617a9cdabdb4cfb485a8c1560d
   RNScreens: f15a5bda1ddeff8575b8ce41d83885b67129f84b
-  RNSVG: c35beed3dcf6fd14b50ca1fc0d4214a17ec5334d
+  RNSVG: 0851af4352d2e692b44aada9dd7a1d361c18fcfc
   RNWorklets: c05b04d721cccc1d44182425cd09efeddb6b1bbe
   SocketRocket: 37aec555668fb852ec12e3c0de59a86ca58f0871
   VisionCamera: 0f292837bb94d00194221bc7cdc3278299418965
