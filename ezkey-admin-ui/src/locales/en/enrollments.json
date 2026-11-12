@@ -219,6 +219,7 @@
         "notCreated": "This enrollment no longer waits for a device, so its QR cannot be sent.",
         "expired": "This invitation has expired. Create a new enrollment.",
         "adminEnrollment": "Administrator enrollments are not sent by email. Use the onboarding screen of the administrator.",
+        "selfRegisteredTenant": "Self-registered evaluation tenants do not send email. Show the QR on screen instead.",
         "parentNotOperational": "The integration or tenant is not operational, so nothing can be sent.",
         "contactEmailMissing": "This enrollment has no contact email. Add one first.",
         "contactEmailInvalid": "The contact email is not valid. Correct it first.",

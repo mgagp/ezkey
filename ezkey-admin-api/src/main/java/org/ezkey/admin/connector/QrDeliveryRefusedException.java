@@ -42,6 +42,7 @@ public class QrDeliveryRefusedException extends RuntimeException {
     ENROLLMENT_NOT_CREATED("enrollment-not-created", 409),
     ENROLLMENT_EXPIRED("enrollment-expired", 409),
     ADMIN_ENROLLMENT("admin-enrollment", 409),
+    SELF_REGISTERED_TENANT("self-registered-tenant", 409),
     PARENT_NOT_OPERATIONAL("parent-not-operational", 409),
     CONTACT_EMAIL_MISSING("contact-email-missing", 422),
     CONTACT_EMAIL_INVALID("contact-email-invalid", 422),

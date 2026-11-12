@@ -25,6 +25,7 @@ const REFUSAL_KEYS: Record<string, string> = {
   'enrollment-not-created': 'refused.notCreated',
   'enrollment-expired': 'refused.expired',
   'admin-enrollment': 'refused.adminEnrollment',
+  'self-registered-tenant': 'refused.selfRegisteredTenant',
   'parent-not-operational': 'refused.parentNotOperational',
   'contact-email-missing': 'refused.contactEmailMissing',
   'contact-email-invalid': 'refused.contactEmailInvalid',

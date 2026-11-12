@@ -101,6 +101,9 @@ public class EvaluatorSelfRegistrationService {
     Tenant tenant =
         provisioningService.createTenant(
             slug, description, null, null, null, null, null, null, null, systemPrincipal);
+    // No QR delivery through a connector for this tenant (#1206 step 7).
+    tenant.setSelfRegistered(true);
+    tenantRepository.save(tenant);
 
     String adminSuffix = slug.substring(TENANT_PREFIX.length());
     String username = ADMIN_USERNAME_PREFIX + adminSuffix;

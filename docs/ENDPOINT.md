@@ -1775,14 +1775,14 @@ Content-Type: application/json
 | Status | `code` | Meaning |
 |--------|--------|---------|
 | 404 | | Enrollment not found or not visible to this admin |
-| 409 | `enrollment-not-created`, `enrollment-expired`, `admin-enrollment`, `parent-not-operational` | This enrollment cannot be sent |
+| 409 | `enrollment-not-created`, `enrollment-expired`, `admin-enrollment`, `self-registered-tenant`, `parent-not-operational` | This enrollment cannot be sent. `self-registered-tenant`: its tenant came from anonymous evaluator signup and keeps integrated delivery |
 | 422 | `contact-email-missing`, `contact-email-invalid`, `expected-server-missing`, `locale-not-offered` | Sending data is missing or invalid |
 | 429 | `daily-cap-reached` | Tenant or instance daily cap reached |
 | 503 | `connector-unavailable` | No connector, or it is unreachable, `degraded` or on another contract version |
 
 #### **GET /api/v1/enrollments/qr-delivery/capability** (QR delivery capability)
 
-Says whether the send action can be offered. Reads the connector's health with a short cache, and never contacts a provider. Denied to evaluator temporary sessions.
+Says whether the send action can be offered to the caller. Reads the connector's health with a short cache, and never contacts a provider. An admin scoped to a self-registered tenant reads `available: false`. Denied to evaluator temporary sessions.
 
 ```json
 { "available": true, "testMode": false, "locales": ["en", "fr"] }

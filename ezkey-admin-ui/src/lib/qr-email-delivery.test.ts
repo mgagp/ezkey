@@ -12,6 +12,7 @@ describe('qr email delivery', () => {
   it('maps known refusals and falls back for others', () => {
     expect(qrEmailNoticeForRefusal('daily-cap-reached').key).toBe('refused.dailyCapReached');
     expect(qrEmailNoticeForRefusal('contact-email-missing').key).toBe('refused.contactEmailMissing');
+    expect(qrEmailNoticeForRefusal('self-registered-tenant').key).toBe('refused.selfRegisteredTenant');
     expect(qrEmailNoticeForRefusal('something-new').key).toBe('refused.other');
     expect(qrEmailNoticeForRefusal(undefined).key).toBe('refused.other');
   });

@@ -57,37 +57,36 @@ import org.springframework.web.bind.annotation.RestController;
 public class EnrollmentQrDeliveryController {
 
   private final EnrollmentQrDeliveryService deliveryService;
-  private final DeliveryCapabilityService capabilityService;
   private final AccessControlService accessControlService;
 
   /**
    * Builds the controller.
    *
    * @param deliveryService send path
-   * @param capabilityService connector capability
    * @param accessControlService tenant access checks
    */
   public EnrollmentQrDeliveryController(
-      EnrollmentQrDeliveryService deliveryService,
-      DeliveryCapabilityService capabilityService,
-      AccessControlService accessControlService) {
+      EnrollmentQrDeliveryService deliveryService, AccessControlService accessControlService) {
     this.deliveryService = deliveryService;
-    this.capabilityService = capabilityService;
     this.accessControlService = accessControlService;
   }
 
   /**
-   * Says whether the send action can be offered.
+   * Says whether the send action can be offered to this caller.
    *
    * @return the capability, with no connector detail beyond what an operator needs
    */
   @Operation(
       summary = "Read QR delivery capability",
-      description = "Says whether a delivery connector can be used, without contacting a provider.")
+      description =
+          "Says whether a delivery connector can be used by this caller, without contacting a"
+              + " provider. An admin scoped to a self-registered tenant sees it unavailable.")
   @PreAuthorize("hasRole('ADMIN')")
   @GetMapping("/qr-delivery/capability")
   public QrDeliveryCapabilityDto capability() {
-    DeliveryCapabilityService.Capability capability = capabilityService.current();
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    DeliveryCapabilityService.Capability capability =
+        deliveryService.capabilityFor(AdminProvisioningService.extractAdminPrincipal(auth));
     return new QrDeliveryCapabilityDto(
         capability.available(), capability.testMode(), capability.locales());
   }

@@ -253,6 +253,13 @@ the Admin UI. **Benefit:** no secret vault to build, and a compromised Ezkey dat
 provider credential. **Limit:** a stolen connector credential reveals no provider secret, but it can
 still send as the organisation until rotated.
 
+**One sender per connector (Marc, 2026-11-12).** The sender address and name are connector settings,
+so every tenant behind one connector shares them; the email body names the inviting organisation. An
+adopter running its own instance sets its own domain in the connector. **Reopen when** an instance
+serving several organisations needs a sender per tenant. Two leads then: one connector per tenant,
+routed by the core; or the sender carried in the job (contract `v2`), which needs proof that the
+tenant owns the domain, or it becomes spoofing.
+
 ## Security invariants
 
 1. **One message, one factor.** The core refuses a job that combines the QR and the challenge, and any
@@ -316,7 +323,10 @@ signup creates a real tenant and `contact_email` carries no proof of ownership (
   route is open until listed.
 - **Daily caps** per tenant and per instance, on every installation.
 - **No sending for self-registered tenants on the community instance.** They keep integrated delivery.
-  Open it later if evaluators ask. Nothing marks such a tenant today, so this needs a small addition.
+  Open it later if evaluators ask. Done at step 7 (Marc, 2026-11-12): the tenant carries a
+  `self_registered` fact (V28, existing `eval-` tenants marked), the send is refused with
+  `self-registered-tenant`, and the capability reads unavailable for an admin scoped to that tenant,
+  so no send button is offered. The rule holds on any installation, since only self-signup sets it.
 
 ## Failure postures (principle #17)
 
