@@ -41,7 +41,7 @@
     "label": "Quand une demande attend déjà",
     "replace": "Remplacer celle qui attend par la nouvelle (par défaut)",
     "refuse": "Garder celle qui attend et refuser la nouvelle",
-    "help": "Refuser est recommandé pour les intégrations interactives, où une personne attend pour se connecter. Enregistrer ce réglage ne change pas une demande déjà en attente. La prochaine demande l'applique : Remplacer met fin à celle qui attend ; Refuser la garde et rejette la nouvelle.",
+    "help": "Remplacer convient à la plupart des applications : si la personne relance sa connexion, la nouvelle demande remplace celle qui attend. Refuser convient quand plusieurs sessions peuvent demander une connexion à la même personne en même temps, et qu'une nouvelle demande ne doit pas interrompre celle en cours. Enregistrer ce réglage ne change pas une demande déjà en attente : il s'applique à partir de la prochaine.",
     "saved": "Réglage « demande en attente » mis à jour.",
     "saveFailed": "Impossible de mettre à jour le réglage « demande en attente ». Réessayez.",
     "systemLocked": "Fixé à Remplacer pour la connexion des administrateurs : une nouvelle connexion remplace celle qui attend."
