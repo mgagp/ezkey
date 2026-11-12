@@ -16,7 +16,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 
-/** Delivery contract v0 over SMTP (#1206 step 5). */
+/** Delivery contract v1 over SMTP (#1206 step 5). */
 @SpringBootApplication
 @EnableConfigurationProperties(SmtpConnectorSettings.class)
 public class SmtpConnectorApplication {

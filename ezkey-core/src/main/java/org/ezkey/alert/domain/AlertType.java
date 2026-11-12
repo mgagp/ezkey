@@ -41,5 +41,12 @@ public enum AlertType {
    * Nightly retroactive integrity validation detected checkpoint or per-audit HMAC rupture in the
    * configured window. Resolution flows are owned by {@code I-2026-0005} (B2).
    */
-  AUDIT_INTEGRITY_RUPTURE
+  AUDIT_INTEGRITY_RUPTURE,
+
+  /**
+   * A device rejected an authentication attempt after a valid signature. Deduped per enrollment.
+   * Payload is the enrollment id only. Resolved manually by a Global Admin; there is no automatic
+   * resolution.
+   */
+  AUTH_ATTEMPT_REJECTED
 }

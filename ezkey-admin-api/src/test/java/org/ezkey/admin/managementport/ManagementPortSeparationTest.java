@@ -18,6 +18,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import org.ezkey.admin.config.JavaMelodyStartupGuardConfig;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -71,6 +73,30 @@ import org.springframework.test.context.TestPropertySource;
           + "org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration"
     })
 class ManagementPortSeparationTest {
+
+  /**
+   * JavaMelody writes {@code javamelody.disabled} onto the JVM when an earlier Spring test loads
+   * {@code javamelody.enabled=false}. That flag outlives the context and skips filter init here, so
+   * {@code /actuator/monitoring} returns 500. Isolate it for this class.
+   */
+  private static final String JAVAMELODY_DISABLED = "javamelody.disabled";
+
+  private static String previousJavaMelodyDisabled;
+
+  @BeforeAll
+  static void clearStickyJavaMelodyDisabledFlag() {
+    previousJavaMelodyDisabled = System.getProperty(JAVAMELODY_DISABLED);
+    System.clearProperty(JAVAMELODY_DISABLED);
+  }
+
+  @AfterAll
+  static void restoreJavaMelodyDisabledFlag() {
+    if (previousJavaMelodyDisabled == null) {
+      System.clearProperty(JAVAMELODY_DISABLED);
+    } else {
+      System.setProperty(JAVAMELODY_DISABLED, previousJavaMelodyDisabled);
+    }
+  }
 
   @LocalServerPort private int businessPort;
 

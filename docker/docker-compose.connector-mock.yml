@@ -15,7 +15,7 @@ services:
     healthcheck:
       test:
         - CMD-SHELL
-        - 'wget -q --header "Authorization: Bearer local-test-only-connector-token" -O /dev/null http://localhost:8090/v0/health'
+        - 'wget -q --header "Authorization: Bearer local-test-only-connector-token" -O /dev/null http://localhost:8090/v1/health'
       interval: 3s
       timeout: 3s
       retries: 30

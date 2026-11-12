@@ -11,6 +11,11 @@ CFLAGS = -fPIC -Wall -Wextra -O2 -std=c99 -D_POSIX_C_SOURCE=200809L \
 # record libcurl / libcjson in DT_NEEDED (required with -z now + dlopen).
 LDFLAGS = -shared -Wl,-z,relro,-z,now
 LDLIBS = -lpam -lcurl -lcjson -lm
+# Optional prefix for harness binaries (Valgrind). Empty for `make test`.
+# The sanitizer replay sets it; ASan/UBSan travel in CFLAGS instead.
+# Not a CI gate. #1269
+EZKEY_TEST_WRAPPER ?=
+export EZKEY_TEST_WRAPPER
 MODULE_NAME = pam_ezkey.so
 SRC_DIR = src
 BUILD_DIR = build
@@ -44,7 +49,7 @@ endif
 .PHONY: all debug install uninstall clean check-pam check-source check-hardening \
 	lint help test test-filelog test-sanitize test-challenge test-conf \
 	test-budget test-session test-diag test-http test-decision \
-	test-install-sshd-warn
+	test-install-sshd-warn sanitizers
 
 all: $(BUILD_DIR)/$(MODULE_NAME)
 
@@ -116,6 +121,7 @@ $(BUILD_DIR)/$(MODULE_NAME): $(OBJECTS)
 debug: CFLAGS += -DDEBUG -g
 debug: all
 
+# Copies the module and the sample conf. Does not copy scripts/host-apply.sh.
 install: $(BUILD_DIR)/$(MODULE_NAME)
 ifeq ($(shell uname -s),Darwin)
 	@echo "error: no install on macOS yet (#1202). A misplaced module can lock out sshd and sudo." >&2
@@ -360,7 +366,7 @@ test-filelog: $(SRC_DIR)/ezkey_filelog.c $(TEST_DIR)/test_filelog_harness.c | $(
 test-sanitize: $(BUILD_DIR)/ezkey_sanitize.o $(TEST_DIR)/test_sanitize_harness.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -I$(SRC_DIR) $(TEST_DIR)/test_sanitize_harness.c \
 		$(BUILD_DIR)/ezkey_sanitize.o -o $(BUILD_DIR)/test_sanitize_harness
-	$(BUILD_DIR)/test_sanitize_harness
+	$(EZKEY_TEST_WRAPPER) $(BUILD_DIR)/test_sanitize_harness
 
 # Harness: challenge 0..99 + display_ok + waiting prompt sanitize (Christophe / #941).
 test-challenge: $(BUILD_DIR)/ezkey_challenge.o $(BUILD_DIR)/ezkey_sanitize.o \
@@ -368,7 +374,7 @@ test-challenge: $(BUILD_DIR)/ezkey_challenge.o $(BUILD_DIR)/ezkey_sanitize.o \
 	$(CC) $(CFLAGS) -I$(SRC_DIR) $(TEST_DIR)/test_challenge_harness.c \
 		$(BUILD_DIR)/ezkey_challenge.o $(BUILD_DIR)/ezkey_sanitize.o \
 		-lpam -o $(BUILD_DIR)/test_challenge_harness
-	$(BUILD_DIR)/test_challenge_harness
+	$(EZKEY_TEST_WRAPPER) $(BUILD_DIR)/test_challenge_harness
 
 # Harness: conf missing challenge_requested key + bool typo fallback (#995 B1/m1).
 test-conf: $(BUILD_DIR)/ezkey_conf.o $(BUILD_DIR)/ezkey_budget.o \
@@ -377,19 +383,19 @@ test-conf: $(BUILD_DIR)/ezkey_conf.o $(BUILD_DIR)/ezkey_budget.o \
 		$(BUILD_DIR)/ezkey_conf.o $(BUILD_DIR)/ezkey_budget.o \
 		$(BUILD_DIR)/ezkey_sanitize.o \
 		-o $(BUILD_DIR)/test_conf_harness
-	$(BUILD_DIR)/test_conf_harness
+	$(EZKEY_TEST_WRAPPER) $(BUILD_DIR)/test_conf_harness
 
 # Harness: AUTH_BUDGET 105 + rem-too-small → −1 (Patrick #897 CHANGES).
 test-budget: $(BUILD_DIR)/ezkey_budget.o $(TEST_DIR)/test_budget_harness.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -I$(SRC_DIR) $(TEST_DIR)/test_budget_harness.c \
 		$(BUILD_DIR)/ezkey_budget.o -o $(BUILD_DIR)/test_budget_harness
-	$(BUILD_DIR)/test_budget_harness
+	$(EZKEY_TEST_WRAPPER) $(BUILD_DIR)/test_budget_harness
 
 # Harness: final-verdict block + interrupt cancel timeout (#907 F9).
 test-session: $(BUILD_DIR)/ezkey_session.o $(TEST_DIR)/test_session_harness.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -I$(SRC_DIR) $(TEST_DIR)/test_session_harness.c \
 		$(BUILD_DIR)/ezkey_session.o -o $(BUILD_DIR)/test_session_harness
-	$(BUILD_DIR)/test_session_harness
+	$(EZKEY_TEST_WRAPPER) $(BUILD_DIR)/test_session_harness
 
 # Harness: attempt-line fields + signal-safe emit gate (#1011).
 # #1016 P-a: external timeout so a blocking /dev/log write cannot hang CI.
@@ -404,7 +410,7 @@ test-diag: $(BUILD_DIR)/ezkey_diag.o $(BUILD_DIR)/ezkey_sanitize.o \
 		$(BUILD_DIR)/ezkey_diag.o $(BUILD_DIR)/ezkey_sanitize.o \
 		-o $(BUILD_DIR)/test_diag_harness
 	@test -n "$(TIMEOUT_CMD)" || (echo "$(TIMEOUT_MISSING)" >&2; exit 1)
-	$(TIMEOUT_CMD) --foreground $(TEST_DIAG_TIMEOUT_SECS)s $(BUILD_DIR)/test_diag_harness
+	$(TIMEOUT_CMD) --foreground $(TEST_DIAG_TIMEOUT_SECS)s $(EZKEY_TEST_WRAPPER) $(BUILD_DIR)/test_diag_harness
 
 # Harness: body cap / PROXY "" / json long / URL redact (#1016 C1/C2/C4/C8).
 TEST_HTTP_TIMEOUT_SECS ?= 30
@@ -414,7 +420,7 @@ test-http: $(BUILD_DIR)/ezkey_http.o $(BUILD_DIR)/ezkey_sanitize.o \
 		$(BUILD_DIR)/ezkey_http.o $(BUILD_DIR)/ezkey_sanitize.o \
 		-lcurl -lm -o $(BUILD_DIR)/test_http_harness
 	@test -n "$(TIMEOUT_CMD)" || (echo "$(TIMEOUT_MISSING)" >&2; exit 1)
-	$(TIMEOUT_CMD) --foreground $(TEST_HTTP_TIMEOUT_SECS)s $(BUILD_DIR)/test_http_harness
+	$(TIMEOUT_CMD) --foreground $(TEST_HTTP_TIMEOUT_SECS)s $(EZKEY_TEST_WRAPPER) $(BUILD_DIR)/test_http_harness
 
 # Harness: wait/HTTP/URL decision contracts (#1016 cycle 2b P1).
 test-decision: $(BUILD_DIR)/ezkey_challenge.o $(BUILD_DIR)/ezkey_sanitize.o \
@@ -422,7 +428,7 @@ test-decision: $(BUILD_DIR)/ezkey_challenge.o $(BUILD_DIR)/ezkey_sanitize.o \
 	$(CC) $(CFLAGS) -I$(SRC_DIR) $(TEST_DIR)/test_decision_harness.c \
 		$(BUILD_DIR)/ezkey_challenge.o $(BUILD_DIR)/ezkey_sanitize.o \
 		-lpam -o $(BUILD_DIR)/test_decision_harness
-	$(BUILD_DIR)/test_decision_harness
+	$(EZKEY_TEST_WRAPPER) $(BUILD_DIR)/test_decision_harness
 
 # Host-side: shared sshd-warn-global-maxauthtries-1.awk (Patrick #908 / #934 B1).
 test-install-sshd-warn:
@@ -458,3 +464,8 @@ help:
 	@echo "  test-install-sshd-warn - shared MaxAuthTries 1 awk (#908 / #934 B1)"
 	@echo "  test          - check-source + compile + harnesses + hardening"
 	@echo "  lint          - Narrow cppcheck (full curated pass: pam-doctor-curated)"
+	@echo "  sanitizers    - pointer to ./scripts/pam-doctor-sanitizers.sh (#1269)"
+
+sanitizers:
+	@echo "Sanitizer replay runs in Docker from the repository root:"
+	@echo "  ./scripts/pam-doctor-sanitizers.sh"

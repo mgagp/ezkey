@@ -18,6 +18,7 @@ import java.net.ConnectException;
 import java.net.SocketTimeoutException;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.DisplayName;
@@ -147,5 +148,52 @@ class SmtpConnectorUnitTest {
     } catch (jakarta.mail.internet.AddressException e) {
       throw new IllegalStateException(e);
     }
+  }
+
+  private static final OffsetDateTime DEADLINE = OffsetDateTime.parse("2026-11-16T14:43:00Z");
+
+  @Test
+  @DisplayName("the email says until when the invitation works, in the organisation's zone")
+  void deadlineWording() {
+    EnrollmentEmailRenderer.EnrollmentEmail fr =
+        EnrollmentEmailRenderer.render(
+            "fr", "Acme", "auth.example.com", DEADLINE, "America/Toronto");
+    assertThat(fr.text())
+        .contains(
+            "Cette invitation est valable jusqu’au 16 novembre 2026 à 9 h 43 (heure de l’Est"
+                + " nord-américain). Passé ce délai, demandez-en une nouvelle à Acme.")
+        .doesNotContain("expire");
+    assertThat(fr.html()).contains("16 novembre 2026 à 9 h 43");
+
+    EnrollmentEmailRenderer.EnrollmentEmail en =
+        EnrollmentEmailRenderer.render(
+            "en", "Acme", "auth.example.com", DEADLINE, "America/Toronto");
+    assertThat(en.text())
+        .contains(
+            "This invitation is valid until November 16, 2026 at 9:43 AM (Eastern Time). After"
+                + " that, ask Acme for a new one.");
+  }
+
+  @Test
+  @DisplayName("first of the month in French, UTC for no or an unknown zone, no deadline sentence")
+  void deadlineEdges() {
+    assertThat(
+            EnrollmentEmailRenderer.render(
+                    "fr",
+                    "Acme",
+                    "a.example.com",
+                    OffsetDateTime.parse("2026-12-01T12:00:00Z"),
+                    null)
+                .text())
+        .contains("jusqu’au 1er décembre 2026 à 12 h 00 (temps universel coordonné)");
+    assertThat(
+            EnrollmentEmailRenderer.render("en", "Acme", "a.example.com", DEADLINE, "Mars/Olympus")
+                .text())
+        .contains("November 16, 2026 at 2:43 PM (Coordinated Universal Time)");
+    assertThat(EnrollmentEmailRenderer.render("fr", "Acme", "a.example.com", null, null).text())
+        .contains("Si cette invitation ne fonctionne plus, demandez-en une nouvelle à Acme.")
+        .doesNotContain("jusqu’au");
+    assertThat(EnrollmentEmailRenderer.render("en", "Acme", "a.example.com", null, null).text())
+        .contains("If this invitation no longer works, ask Acme for a new one.");
   }
 }

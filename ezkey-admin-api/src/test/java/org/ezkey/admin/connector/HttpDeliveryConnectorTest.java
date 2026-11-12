@@ -16,6 +16,7 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.OffsetDateTime;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.ezkey.admin.connector.DeliveryConnectorPort.ConnectorHealth;
@@ -41,6 +42,8 @@ class HttpDeliveryConnectorTest {
           "person@example.com",
           "Acme",
           "auth.example.com",
+          OffsetDateTime.parse("2026-11-16T09:43:00-05:00"),
+          "America/Toronto",
           "iVBORw0KGgoAAAA");
 
   private HttpServer server;
@@ -64,7 +67,7 @@ class HttpDeliveryConnectorTest {
           exchange.close();
         });
     server.createContext(
-        "/v0/",
+        "/v1/",
         exchange -> {
           receivedAuth.set(exchange.getRequestHeaders().getFirst("Authorization"));
           receivedBody.set(
@@ -136,9 +139,36 @@ class HttpDeliveryConnectorTest {
             "recipient",
             "organisationName",
             "expectedServer",
+            "expiresAt",
+            "timeZone",
             "qrPngBase64");
     assertThat(body.path("trigger").asString()).isEqualTo("operator");
+    assertThat(body.path("expiresAt").asString()).isEqualTo("2026-11-16T09:43-05:00");
+    assertThat(body.path("timeZone").asString()).isEqualTo("America/Toronto");
     assertThat(body.path("template").asString()).isEqualTo("enrollment-qr");
+  }
+
+  @Test
+  @DisplayName("leaves out the deadline and the zone when the invitation has none")
+  void omitsAbsentDeadline() {
+    answer(200, "{\"outcome\":\"accepted\",\"sendId\":\"x\",\"testMode\":false}");
+
+    connector(baseUrl())
+        .send(
+            new DeliveryJob(
+                JOB.sendId(),
+                JOB.tenantRef(),
+                JOB.locale(),
+                JOB.recipient(),
+                JOB.organisationName(),
+                JOB.expectedServer(),
+                null,
+                null,
+                JOB.qrPngBase64()));
+
+    JsonNode body = new ObjectMapper().readTree(receivedBody.get());
+    assertThat(body.has("expiresAt")).isFalse();
+    assertThat(body.has("timeZone")).isFalse();
   }
 
   @Test
@@ -249,13 +279,13 @@ class HttpDeliveryConnectorTest {
     answer(
         200,
         "{\"status\":\"ok\",\"connectorName\":\"mock\",\"connectorVersion\":\"1\","
-            + "\"contractVersion\":\"v0\",\"channel\":\"email\",\"testMode\":true,"
+            + "\"contractVersion\":\"v1\",\"channel\":\"email\",\"testMode\":true,"
             + "\"templates\":[{\"template\":\"enrollment-qr\",\"locales\":[\"en\",\"fr\"]}]}");
 
     ConnectorHealth health = connector(baseUrl()).readHealth().orElseThrow();
 
     assertThat(health.status()).isEqualTo("ok");
-    assertThat(health.contractVersion()).isEqualTo("v0");
+    assertThat(health.contractVersion()).isEqualTo("v1");
     assertThat(health.locales()).containsExactly("en", "fr");
     assertThat(health.testMode()).isTrue();
     assertThat(receivedAuth.get()).isEqualTo("Bearer test-token");

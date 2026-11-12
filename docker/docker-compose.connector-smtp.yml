@@ -4,7 +4,7 @@
 # A real provider uses STARTTLS or TLS (EZKEY_CONNECTOR_SMTP_SECURITY), the connector's default.
 services:
   mailpit:
-    image: axllent/mailpit:v1.32.0
+    image: axllent/mailpit:v1.33.0
     container_name: ezkey-mailpit
     ports:
       - "127.0.0.1:8025:8025"
@@ -38,7 +38,7 @@ services:
     healthcheck:
       test:
         - CMD-SHELL
-        - 'wget -q --header "Authorization: Bearer local-test-only-smtp-connector-token" -O /dev/null http://localhost:8091/v0/health'
+        - 'wget -q --header "Authorization: Bearer local-test-only-smtp-connector-token" -O /dev/null http://localhost:8091/v1/health'
       interval: 3s
       timeout: 3s
       retries: 40

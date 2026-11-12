@@ -28,6 +28,7 @@ import { integrationDemoPresets, isDemoMode, resolveIntegrationDemoPresetForLoca
 import { buildListDetailNavState } from '@/lib/list-detail-navigation';
 import { formatDate } from '@/lib/utils';
 import { INTEGRATION_LIFECYCLE_FILTER_PARAM } from '@/lib/dashboard-drilldown-links';
+import { PendingAttemptPolicyField } from '@/components/feature/pending-attempt-policy-field';
 import { create, search } from '@/generated/admin-api/integrations/integrations';
 import type { IntegrationCreateRequestDto, IntegrationCreateResponseDto, IntegrationResponseDto } from '@/generated/admin-api/model';
 
@@ -60,6 +61,7 @@ function CreateIntegrationDialog({ open, onClose }: { open: boolean; onClose: ()
           .regex(/^[a-zA-Z0-9_-]+$/, t('validation.codeRegex')),
         name: z.string().min(1, t('validation.nameRequired')).max(255, t('validation.nameMax', { n: 255 })),
         description: z.string().max(500).optional().or(z.literal('')),
+        pendingAttemptPolicy: z.enum(['REPLACE', 'REFUSE']),
       }),
     [t],
   );
@@ -67,6 +69,7 @@ function CreateIntegrationDialog({ open, onClose }: { open: boolean; onClose: ()
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<CreateFormValues>({
     resolver: zodResolver(createSchema),
+    defaultValues: { pendingAttemptPolicy: 'REPLACE' },
   });
 
   const createMutation = useMutation({
@@ -91,7 +94,8 @@ function CreateIntegrationDialog({ open, onClose }: { open: boolean; onClose: ()
       code: values.code,
       name: values.name,
       description: values.description || undefined,
-    });
+      pendingAttemptPolicy: values.pendingAttemptPolicy,
+    } as IntegrationCreateRequestDto);
   };
 
   return (
@@ -106,7 +110,7 @@ function CreateIntegrationDialog({ open, onClose }: { open: boolean; onClose: ()
                 type="button"
                 variant="secondary"
                 size="sm"
-                onClick={() => reset(preset.values)}
+                onClick={() => reset({ ...preset.values, pendingAttemptPolicy: 'REPLACE' })}
               >
                 {preset.label}
               </Button>
@@ -143,6 +147,10 @@ function CreateIntegrationDialog({ open, onClose }: { open: boolean; onClose: ()
             rows={2}
           />
         </div>
+        <PendingAttemptPolicyField
+          id="create-pending-attempt-policy"
+          {...register('pendingAttemptPolicy')}
+        />
         {createMutation.isError && (
           <p className="text-xs text-error">
             {createMutation.error instanceof ApiError

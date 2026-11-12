@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import org.ezkey.integration.domain.PendingAttemptPolicy;
 
 /**
  * Request DTO for creating new Integration entities in admin API.
@@ -41,6 +42,7 @@ import jakarta.validation.constraints.Size;
  *     alphanumeric with hyphens/underscores)
  * @param name Display name for the integration (required)
  * @param description Optional description of the integration
+ * @param pendingAttemptPolicy Optional pending-attempt policy. Omitted or null means REPLACE
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.integration.domain.IntegrationCreateRequest
@@ -64,4 +66,21 @@ public record IntegrationCreateRequestDto(
         @Schema(
             description = "Optional description of the integration",
             example = "Administration console")
-        String description) {}
+        String description,
+    @Schema(
+            description =
+                "What to do when a live authentication attempt already exists. Omit for REPLACE.",
+            example = "REPLACE")
+        PendingAttemptPolicy pendingAttemptPolicy) {
+
+  /**
+   * Creates a request that keeps the default pending-attempt policy.
+   *
+   * @param code integration code
+   * @param name display name
+   * @param description optional description
+   */
+  public IntegrationCreateRequestDto(String code, String name, String description) {
+    this(code, name, description, null);
+  }
+}

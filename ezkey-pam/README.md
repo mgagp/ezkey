@@ -8,7 +8,8 @@ Internal lab evaluation only — experimental SSH MFA dogfood via ezkey-pam; not
 feature, not on the public alpha/community path, and not operable roadmap for Sept 2026.
 
 Current status, product geometry, and what “operable” would mean (Lightsail dogfood vs generic
-Linux extract): [`STATUS.md`](STATUS.md).
+Linux extract): [`STATUS.md`](STATUS.md). Host-grade contract (#1200):
+[`HOST-GRADE.md`](HOST-GRADE.md).
 
 Linux PAM module that calls the **Integration API** (port 7080, Docker service
 `integration-api`). When a user connects over SSH, the module:
@@ -341,8 +342,12 @@ cd ezkey-tests && ./clean-start.sh
 cd ../ezkey-pam
 ./scripts/provision.sh    # integration + API key + Demo Device enrollment
 ./scripts/up.sh           # compile PAM in Docker and start the SSH VM
-./scripts/demo-ssh.sh     # ssh + approve on Demo Device
+./scripts/demo-ssh.sh     # ssh + approve on Demo Device, with the challenge digits
 ```
+
+`authAttemptChallengeRequired=false` on the enrollment does not disable a
+challenge the PAM connector requested (`challenge_requested=true`): the server
+ORs the two flags. `demo-ssh.sh` sends the digits from the SSH prompt.
 
 Manual SSH:
 
@@ -491,6 +496,15 @@ Logs never include wait JSON bodies, proof tokens, secret keys, or Basic auth he
 
 ## Runbook notes (Lightsail / host SSH)
 
+- **Pending-attempt policy (#992, before the #955 install notes):** create the integration used by
+  this connector with pending-attempt policy **REFUSE**. The platform default is REPLACE, which
+  lets a later create expire the attempt that is still waiting. REFUSE keeps that attempt and
+  returns HTTP 409 `auth-attempt-pending-exists` until it completes or expires. No #955 runbook
+  file exists in this module; this is the install line for that integration. The creation cooldown
+  counts only device-signed outcomes, so an ignored prompt or a supersession does not suspend the
+  user. The challenge code prevents reflex approval; it does not bound prompt volume. Under
+  REPLACE, prompt volume is bounded only by rate limits (the per-API-key bucket). Under REFUSE,
+  one live attempt at a time also limits how many requests are waiting.
 - **Interaction model:** one SSH login → pre-create `ok` → at most one create →
   optional challenge prompt → `/wait`. Batch / empty clients create nothing.
   See [`docs/INTERACTION-MODEL.md`](docs/INTERACTION-MODEL.md) (scenario catalogue
@@ -567,13 +581,31 @@ Logs never include wait JSON bodies, proof tokens, secret keys, or Basic auth he
       PubkeyAuthentication no
   ```
 
-  Keep `PubkeyAuthentication no` inside the Match (security GO): with
-  `MaxAuthTries 1`, a client-offered pubkey that is refused consumes the single
-  try before keyboard-interactive and locks out the MFA account;
-  `AuthenticationMethods keyboard-interactive` makes pubkey unused anyway.
-  Combining `publickey,keyboard-interactive` requires raising `MaxAuthTries`
-  (out of scope here; document separately if funded). Prefer pinning
-  `AuthenticationMethods keyboard-interactive` **inside the Match** (not only
+  Recommendation (#992): for the `ezkey-mfa` group, require the SSH key before
+  the Ezkey prompt so a username alone cannot start one. Partial success does
+  not count toward `MaxAuthTries`, but every refused key and each
+  keyboard-interactive failure does. Recommend client-side `IdentitiesOnly yes`
+  plus `IdentityFile`, and server-side `MaxAuthTries 2` or `3` in that Match.
+  With `MaxAuthTries 3`, each keyboard-interactive failure starts a new attempt,
+  so one connection can show up to about 3 prompts, and only for holders of an
+  authorized key. A refused key with `MaxAuthTries 1` makes sshd disconnect.
+  The first matching `Match Group ezkey-mfa` wins; break-glass and admin-port
+  blocks are unchanged as long as Match order is respected. The
+  keyboard-interactive-only Match above stays the dogfood block.
+
+  ```text
+  Match Group ezkey-mfa
+      AuthenticationMethods publickey,keyboard-interactive
+      PubkeyAuthentication yes
+      KbdInteractiveAuthentication yes
+      MaxAuthTries 3
+  ```
+
+  Keep `PubkeyAuthentication no` inside the keyboard-interactive-only Match
+  (security GO): with `MaxAuthTries 1`, a client-offered pubkey that is refused
+  consumes the single try before keyboard-interactive and locks out the MFA
+  account; `AuthenticationMethods keyboard-interactive` makes pubkey unused
+  anyway. Prefer pinning `AuthenticationMethods` **inside the Match** (not only
   globally). **Avoid global `MaxAuthTries 1`:** refused public keys also consume
   tries and can lock out mixed auth methods for non-MFA users. **Match limits:**
   applies until EOF or the next `Match`; first matching value wins; protection is
@@ -654,7 +686,9 @@ range used by the SSH VM (see your host’s Docker bridge network).
 ezkey-pam/
 ├── src/                 PAM module (C)
 ├── config/              Reference pam_ezkey.conf (debug=false)
-├── scripts/             provision, Docker up, AL2023 build/smoke, SSH demo
+├── scripts/             provision, Docker up, AL2023 build/smoke, SSH demo,
+│                        host-apply.sh, host-grade-accept.sh (#1200)
+├── HOST-GRADE.md        Host-grade contract (only copy)
 ├── test/                Container self-checks + AL2023 smoke
 ├── Dockerfile           Rocky builder + SSH runtime
 ├── Dockerfile.al2023    AL2023 builder + smoke + SSH mirror

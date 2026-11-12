@@ -62,17 +62,12 @@
     "noIntegration": "No integration available.",
     "createIntegrationFirst": "Create an integration first",
     "successMessage": "Enrollment {{name}} created successfully.",
-    "previewNotice": "Integrated delivery: this dialog shows the enrollment QR and binding challenge in the Admin UI so Ezkey works without email or SMS adapters. For stronger assurance, you may split them across your own channels (for example, send a screenshot of the QR by email and the 6-digit binding challenge by SMS or chat). Optional SMTP-assisted delivery can be configured later when the email channel is available.",
-    "qrHint": "User can scan the QR code below to set up their device.",
     "showQrCode": "Show QR Code",
     "hideQrCode": "Hide QR Code",
     "bindingChallengeCode": "Binding Challenge Code",
-    "invitationExpiresAt": "Invitation expires",
     "customInvitationExpiry": "Set a custom invitation deadline",
     "customInvitationExpiryHint": "When unchecked, the server applies the instance default (typically several days). Enable this to choose an exact date and time before bind/verify must complete.",
-    "invitationExpiryDatetime": "Invitation deadline (local)",
-    "viewEnrollment": "View enrollment",
-    "done": "Done"
+    "invitationExpiryDatetime": "Invitation deadline (local)"
   },
   "status": {
     "labelVerified": "Verified",
@@ -153,7 +148,7 @@
     "errorUpdate": "Failed to update enrollment.",
     "errorConflict": "Someone else changed this enrollment. Refresh and try again.",
     "enrollmentToken": "Enrollment Token",
-    "credentialsPreviewNotice": "Integrated delivery: this screen shows the enrollment proof token, binding challenge, and QR in the Admin UI so Ezkey works without email or SMS adapters. For stronger assurance, you may split them across your own channels (for example, email a screenshot of the QR and send the 6-digit binding challenge by SMS or chat). Optional SMTP-assisted delivery can be configured later when the email channel is available.",
+    "credentialsPreviewNotice": "Integrated delivery: this screen shows the enrollment proof token, binding challenge, and QR in the Admin UI so Ezkey works without email or SMS adapters. For stronger assurance, you may split them across your own channels (for example, email a screenshot of the QR and send the 6-digit binding challenge by SMS or chat). When a delivery connector is configured, this screen can also send the QR by email; the binding challenge still goes through another channel.",
     "boundChallengeWarning": "A device has already scanned this enrollment. Confirm who you are speaking to before giving this code.",
     "tokenHint": "Share this token with the user to set up their EZKey mobile app.",
     "hide": "Hide",

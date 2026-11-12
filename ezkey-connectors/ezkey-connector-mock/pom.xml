@@ -10,7 +10,7 @@
 
   <artifactId>ezkey-connector-mock</artifactId>
   <name>Ezkey connector mock</name>
-  <description>Test double for the delivery contract v0. Never delivers anything.</description>
+  <description>Test double for the delivery contract v1. Never delivers anything.</description>
 
   <properties>
     <!-- Ship the committed root THIRD-PARTY.txt under META-INF/licenses/, like the APIs. -->
@@ -49,7 +49,7 @@
               <goal>repackage</goal>
             </goals>
           </execution>
-          <!-- connectorVersion in /v0/health comes from META-INF/build-info.properties. -->
+          <!-- connectorVersion in /v1/health comes from META-INF/build-info.properties. -->
           <execution>
             <id>build-info</id>
             <goals>

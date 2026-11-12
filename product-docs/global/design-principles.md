@@ -52,6 +52,8 @@ Every product concept has one canonical home in the documentation. When a concep
 
 The Admin UI is a sober, pragmatic operator tool. It avoids decorative clutter and respects the clear role split: **Global Admin** handles IT-level concerns; **Tenant Admin** handles business-level concerns. Visual identity supports that intent; it does not compete with it.
 
+A creation ends on the object's canonical record; a confirmation dialog does not repeat the record's actions. A second copy is justified only when it saves the operator a real step, and it is re-checked whenever the flow changes. Example: once the record could send the enrollment QR by email (#1206 step 5), the create dialog's QR and challenge became a detour, so creating an enrollment now opens its record.
+
 ### 11. Lifecycle without surprise
 
 Lifecycle rules prefer reversible actions first. Irreversible actions (revoke, retire, delete) require a reason and strong guards. No persistent downstream cascade; reactivation restores healthy state cleanly. See [ADR-0004](architecture-decisions.md#adr-0004-lifecycle-without-persistent-cascade) and [`lifecycle-model.md`](lifecycle-model.md).

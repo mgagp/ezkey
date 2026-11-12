@@ -18,7 +18,7 @@
 	<!--
 	  One reactor for the monorepo (Marc, 2026-11-08, #1278): connectors share the root versions,
 	  quality gates and THIRD-PARTY.txt. Their boundary is the HTTP contract
-	  (contracts/delivery-v0.openapi.yaml), never core code: the enforcer rule below fails the
+	  (contracts/delivery-v1.openapi.yaml), never core code: the enforcer rule below fails the
 	  build if a connector depends on any org.ezkey module, so a connector stays extractable and
 	  writable by a third party.
 	-->

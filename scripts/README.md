@@ -78,6 +78,15 @@ See root [`AGENTS.md`](../AGENTS.md) § PAM doctor-curated.
 Config: [`config/pam-doctor/`](../config/pam-doctor/) plus `ezkey-pam/.clang-format` and
 `ezkey-pam/.clang-tidy`. Outputs: `logs/pam-doctor/` (gitignored).
 
+Runtime axis, same lane, not a CI gate: rebuild the existing `make test` harnesses with
+ASan and UBSan, then Valgrind. `--skip-valgrind` skips Memcheck.
+
+```bash
+./scripts/pam-doctor-sanitizers.sh
+```
+
+Outputs: `logs/pam-doctor/sanitizers/` (gitignored).
+
 ## End-of-life check (major-upgrades register)
 
 Monthly non-blocking check of

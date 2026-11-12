@@ -62,17 +62,12 @@
     "noIntegration": "Aucune intégration disponible.",
     "createIntegrationFirst": "Créez d'abord une intégration",
     "successMessage": "Enrôlement {{name}} créé avec succès.",
-    "previewNotice": "Livraison intégrée : cette boîte affiche le code QR d'enrôlement et le défi de liaison dans l'interface d'administration pour qu'Ezkey fonctionne sans adaptateur courriel ni SMS. Pour une assurance plus forte, vous pouvez les séparer sur vos propres canaux (par exemple, envoyer une capture du QR par courriel et le défi à six chiffres par SMS ou messagerie). Une livraison assistée par SMTP pourra être configurée plus tard lorsque le canal courriel sera disponible.",
-    "qrHint": "L'utilisateur peut scanner le code QR ci-dessous pour configurer son appareil.",
     "showQrCode": "Afficher le code QR",
     "hideQrCode": "Masquer le code QR",
     "bindingChallengeCode": "Code défi de liaison",
-    "invitationExpiresAt": "Expiration de l'invitation",
     "customInvitationExpiry": "Définir une échéance d'invitation personnalisée",
     "customInvitationExpiryHint": "Si non coché, le serveur applique la valeur par défaut de l'instance (en général quelques jours). Activez cette option pour choisir une date et une heure précises avant la liaison / la vérification.",
-    "invitationExpiryDatetime": "Échéance de l'invitation (heure locale)",
-    "viewEnrollment": "Voir l'enrôlement",
-    "done": "Terminé"
+    "invitationExpiryDatetime": "Échéance de l'invitation (heure locale)"
   },
   "status": {
     "labelVerified": "Vérifié",
@@ -153,7 +148,7 @@
     "errorUpdate": "Échec de la mise à jour de l'enrôlement.",
     "errorConflict": "L'enrôlement a été modifié entre-temps. Actualisez la page et réessayez.",
     "enrollmentToken": "Jeton d'enrôlement",
-    "credentialsPreviewNotice": "Livraison intégrée : cet écran affiche le jeton de preuve, le défi de liaison et le code QR dans l'interface d'administration pour qu'Ezkey fonctionne sans adaptateur courriel ni SMS. Pour une assurance plus forte, vous pouvez les séparer sur vos propres canaux (par exemple, envoyer une capture du QR par courriel et le défi à six chiffres par SMS ou messagerie). Une livraison assistée par SMTP pourra être configurée plus tard lorsque le canal courriel sera disponible.",
+    "credentialsPreviewNotice": "Livraison intégrée : cet écran affiche le jeton de preuve, le défi de liaison et le code QR dans l'interface d'administration pour qu'Ezkey fonctionne sans adaptateur courriel ni SMS. Pour une assurance plus forte, vous pouvez les séparer sur vos propres canaux (par exemple, envoyer une capture du QR par courriel et le défi à six chiffres par SMS ou messagerie). Si un connecteur de livraison est configuré, cet écran peut aussi envoyer le QR par courriel ; le défi de liaison passe toujours par un autre canal.",
     "boundChallengeWarning": "Un appareil a déjà scanné cet enrôlement. Confirmez à qui vous parlez avant de donner ce code.",
     "tokenHint": "Partagez ce jeton avec l'utilisateur pour configurer l'application mobile EZKey.",
     "hide": "Masquer",

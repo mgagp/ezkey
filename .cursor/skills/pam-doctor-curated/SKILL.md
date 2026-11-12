@@ -58,3 +58,22 @@ Scan `ezkey-pam/src` only, on the Linux reference (container with PAM, curl, and
    handler): counter-read the code before a refactor. A format-only apply is
    `clang-format -i` on `ezkey-pam/src` after an explicit go, then `make test` where
    a Linux toolchain exists.
+
+## Runtime sanitizers
+
+Separate from the static pass. Not a CI gate. Fuzzing stays out.
+
+```bash
+./scripts/pam-doctor-sanitizers.sh
+./scripts/pam-doctor-sanitizers.sh --skip-valgrind
+```
+
+The command rebuilds the existing `make test` C harnesses with ASan and UBSan
+(`-fsanitize=address,undefined`, fortify off on that build only), runs them in
+`ubuntu:24.04`, then repeats the run under Valgrind on a non-sanitized build.
+`make test` itself is unchanged. Logs: `logs/pam-doctor/sanitizers/` (gitignored).
+
+A hit that needs a source or behavior change is described in the campaign note and
+left for one-at-a-time HITL. Do not edit `ezkey-pam/src` to silence the log in the
+same pass. `docs/SECURITY_POSTURE.md` changes only when the run changes the
+dynamic-analysis claim (a one-shot replay is not routine use).

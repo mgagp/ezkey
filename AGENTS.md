@@ -388,6 +388,11 @@ When the operator asks for a **`java-doctor-curated`** improvement pass:
 - Campaign notes: `product-docs/global/hygiene/pam-doctor/`. Do **not** invent `I-*` / `TB-*` /
   GitHub issues per finding. On demand (experimental module); not part of the Java → mobile →
   React biweekly rotation.
+- Runtime axis (existing `make test` harnesses, not a CI gate): `./scripts/pam-doctor-sanitizers.sh`
+  runs AddressSanitizer and UndefinedBehaviorSanitizer, then Valgrind Memcheck, in Docker
+  (`ubuntu:24.04`, same image default as the static pass). `--skip-valgrind` skips Memcheck.
+  A finding that needs a source or behavior change waits for one-at-a-time HITL. Do not edit
+  `ezkey-pam/src` from a sanitizer log alone. Fuzzing stays out of this command.
 
 ### HITL contract (mandatory for cold agents)
 

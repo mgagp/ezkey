@@ -15,6 +15,8 @@ import java.net.URI;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.ezkey.exception.auth.AuthAttemptCreateValidationException;
+import org.ezkey.exception.auth.AuthAttemptCreationCooldownException;
+import org.ezkey.exception.auth.AuthAttemptPendingExistsException;
 import org.ezkey.exception.auth.AuthAttemptWaitValidationException;
 import org.ezkey.integration.exception.ApiKeyCreateValidationException;
 import org.ezkey.integration.exception.ApiKeyIpWhitelistValidationException;
@@ -22,6 +24,7 @@ import org.ezkey.integration.exception.ApiKeyUpdateValidationException;
 import org.ezkey.integration.exception.IntegrationCreateValidationException;
 import org.springframework.core.annotation.Order;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -269,6 +272,54 @@ public class ValidationExceptionHandler {
         AdminApiProblemCatalog.TITLE_INVALID_ARGUMENT,
         ex.getMessage(),
         request);
+  }
+
+  /**
+   * Live attempt already exists under the integration REFUSE policy.
+   *
+   * <p>Declared here, ahead of the generic {@link IllegalStateException} handler, so the typed
+   * problem and {@code Retry-After} win.
+   *
+   * @param ex refusal carrying the remaining attempt lifetime
+   * @param request current request
+   * @return HTTP 409 with Retry-After
+   */
+  @ExceptionHandler(AuthAttemptPendingExistsException.class)
+  public ResponseEntity<ProblemDetail> handleAuthAttemptPendingExists(
+      AuthAttemptPendingExistsException ex, WebRequest request) {
+    return conflictWithRetryAfter(
+        AuthAttemptPendingExistsException.TYPE,
+        AuthAttemptPendingExistsException.TITLE,
+        AuthAttemptPendingExistsException.DETAIL,
+        ex.getRetryAfterSeconds(),
+        request);
+  }
+
+  /**
+   * Enrollment crossed the platform creation cooldown.
+   *
+   * @param ex suspension carrying the remaining cooldown
+   * @param request current request
+   * @return HTTP 409 with Retry-After
+   */
+  @ExceptionHandler(AuthAttemptCreationCooldownException.class)
+  public ResponseEntity<ProblemDetail> handleAuthAttemptCreationCooldown(
+      AuthAttemptCreationCooldownException ex, WebRequest request) {
+    return conflictWithRetryAfter(
+        AuthAttemptCreationCooldownException.TYPE,
+        AuthAttemptCreationCooldownException.TITLE,
+        AuthAttemptCreationCooldownException.DETAIL,
+        ex.getRetryAfterSeconds(),
+        request);
+  }
+
+  private static ResponseEntity<ProblemDetail> conflictWithRetryAfter(
+      String type, String title, String detail, long retryAfterSeconds, WebRequest request) {
+    ResponseEntity<ProblemDetail> response =
+        problemResponse(HttpStatus.CONFLICT, type, title, detail, request);
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .header(HttpHeaders.RETRY_AFTER, Long.toString(Math.max(1L, retryAfterSeconds)))
+        .body(response.getBody());
   }
 
   /**
