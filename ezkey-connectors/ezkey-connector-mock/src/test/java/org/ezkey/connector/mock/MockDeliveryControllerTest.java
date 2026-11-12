@@ -11,10 +11,12 @@ package org.ezkey.connector.mock;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.Properties;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -46,15 +48,16 @@ class MockDeliveryControllerTest {
 
   private static String job(String recipient, String qr, String extra) {
     return """
-        {"sendId":"%s","trigger":"operator","tenantRef":"42","template":"enrollment-qr",
-         "locale":"fr","recipient":"%s","organisationName":"Acme",
-         "expectedServer":"auth.example.com","qrPngBase64":"%s"%s}"""
+    {"sendId":"%s","trigger":"operator","tenantRef":"42","template":"enrollment-qr",
+     "locale":"fr","recipient":"%s","organisationName":"Acme",
+     "expectedServer":"auth.example.com","qrPngBase64":"%s"%s}\
+    """
         .formatted(SEND_ID, recipient, qr, extra);
   }
 
   private HttpResponse<String> send(String token, String body) throws Exception {
     return client.send(
-        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/v0/deliveries"))
+        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/v1/deliveries"))
             .header("Authorization", "Bearer " + token)
             .header("Content-Type", "application/json")
             .POST(HttpRequest.BodyPublishers.ofString(body))
@@ -68,7 +71,7 @@ class MockDeliveryControllerTest {
 
   private HttpResponse<String> health(String token) throws Exception {
     return client.send(
-        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/v0/health"))
+        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/v1/health"))
             .header("Authorization", "Bearer " + token)
             .GET()
             .build(),
@@ -90,7 +93,8 @@ class MockDeliveryControllerTest {
     HttpResponse<String> health = health("current-token");
     assertThat(health.statusCode()).isEqualTo(200);
     assertThat(health.body())
-        .contains("\"testMode\":true", "\"contractVersion\":\"v0\"", "ezkey-connector-mock");
+        .contains("\"testMode\":true", "\"contractVersion\":\"v1\"", "ezkey-connector-mock");
+    assertThat(health.body()).contains("\"connectorVersion\":\"" + buildVersion() + "\"");
 
     HttpResponse<String> accepted = scenario("anyone");
     assertThat(accepted.statusCode()).isEqualTo(200);
@@ -131,17 +135,34 @@ class MockDeliveryControllerTest {
   @DisplayName("refuses anything outside the contract")
   void refusesOutOfContract() throws Exception {
     assertThat(send("current-token", "not json").statusCode()).isEqualTo(400);
-    assertThat(send("current-token", job("a@example.com", PNG_BASE64, ",\"challenge\":123456")).statusCode())
+    assertThat(
+            send("current-token", job("a@example.com", PNG_BASE64, ",\"challenge\":123456"))
+                .statusCode())
         .isEqualTo(400);
-    assertThat(send("current-token", job("a@example.com", PNG_BASE64, ",\"subject\":\"hi\"")).statusCode())
+    assertThat(
+            send("current-token", job("a@example.com", PNG_BASE64, ",\"subject\":\"hi\""))
+                .statusCode())
         .isEqualTo(400);
     HttpResponse<String> notPng = send("current-token", job("a@example.com", "aGVsbG8=", ""));
     assertThat(notPng.statusCode()).isEqualTo(422);
     assertThat(notPng.body()).contains("invalid-qr");
     String tooLong = "iVBORw0KGgo" + "A".repeat(90_000);
-    assertThat(send("current-token", job("a@example.com", tooLong, "")).statusCode()).isEqualTo(413);
+    assertThat(send("current-token", job("a@example.com", tooLong, "")).statusCode())
+        .isEqualTo(413);
     assertThat(send("current-token", job("not-an-address", PNG_BASE64, "")).body())
         .contains("invalid-recipient");
+    String deadline =
+        ",\"expiresAt\":\"2026-11-16T09:43:00-05:00\",\"timeZone\":\"America/Toronto\"";
+    assertThat(send("current-token", job("a@example.com", PNG_BASE64, deadline)).statusCode())
+        .isEqualTo(200);
+    assertThat(
+            send("current-token", job("a@example.com", PNG_BASE64, ",\"expiresAt\":\"soon\""))
+                .statusCode())
+        .isEqualTo(400);
+    assertThat(
+            send("current-token", job("a@example.com", PNG_BASE64, ",\"timeZone\":\"../etc\""))
+                .statusCode())
+        .isEqualTo(400);
   }
 
   @Test
@@ -149,5 +170,16 @@ class MockDeliveryControllerTest {
   void logsStayClean(CapturedOutput output) throws Exception {
     scenario("private.person");
     assertThat(output.getAll()).contains(SEND_ID).doesNotContain("private.person", "iVBORw0KGgo");
+  }
+
+  /** The version the build wrote, which the health must report (not a hardcoded constant). */
+  private static String buildVersion() throws Exception {
+    try (InputStream in =
+        ConnectorVersion.class.getResourceAsStream("/META-INF/build-info.properties")) {
+      assertThat(in).as("the spring-boot build-info goal must run").isNotNull();
+      Properties properties = new Properties();
+      properties.load(in);
+      return properties.getProperty("build.version");
+    }
   }
 }

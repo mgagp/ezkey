@@ -18,11 +18,14 @@ import java.util.Set;
 import org.ezkey.audit.integrity.AuditChainHeartbeatEvaluation;
 import org.ezkey.audit.integrity.AuditChainHeartbeatGuardService;
 import org.ezkey.exception.EnrollmentInactiveException;
+import org.ezkey.exception.RateLimitExceededException;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.exception.TenantInactiveException;
 import org.ezkey.exception.audit.AuditChainHeartbeatDegradedException;
 import org.ezkey.exception.auth.AuthAttemptCreateValidationException;
+import org.ezkey.exception.auth.AuthAttemptCreationCooldownException;
 import org.ezkey.exception.auth.AuthAttemptExpiredException;
+import org.ezkey.exception.auth.AuthAttemptPendingExistsException;
 import org.ezkey.exception.auth.AuthAttemptRequestInvalidException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.exception.auth.AuthAttemptWaitValidationException;
@@ -362,6 +365,68 @@ public class GlobalExceptionHandler {
   }
 
   /**
+   * Live attempt already exists under the integration REFUSE policy.
+   *
+   * @param ex refusal carrying the remaining attempt lifetime
+   * @param request HTTP servlet request for path extraction
+   * @return HTTP 409 with Retry-After
+   */
+  @ExceptionHandler(AuthAttemptPendingExistsException.class)
+  public ResponseEntity<ProblemDetail> handleAuthAttemptPendingExists(
+      AuthAttemptPendingExistsException ex, HttpServletRequest request) {
+    return conflictWithRetryAfter(
+        AuthAttemptPendingExistsException.TYPE,
+        AuthAttemptPendingExistsException.TITLE,
+        AuthAttemptPendingExistsException.DETAIL,
+        ex.getRetryAfterSeconds(),
+        request);
+  }
+
+  /**
+   * Enrollment crossed the platform creation cooldown.
+   *
+   * @param ex suspension carrying the remaining cooldown
+   * @param request HTTP servlet request for path extraction
+   * @return HTTP 409 with Retry-After
+   */
+  @ExceptionHandler(AuthAttemptCreationCooldownException.class)
+  public ResponseEntity<ProblemDetail> handleAuthAttemptCreationCooldown(
+      AuthAttemptCreationCooldownException ex, HttpServletRequest request) {
+    return conflictWithRetryAfter(
+        AuthAttemptCreationCooldownException.TYPE,
+        AuthAttemptCreationCooldownException.TITLE,
+        AuthAttemptCreationCooldownException.DETAIL,
+        ex.getRetryAfterSeconds(),
+        request);
+  }
+
+  /**
+   * Per-API-key bucket exhausted. Limit and window come from configuration (#1070).
+   *
+   * @param ex rate-limit signal
+   * @param request HTTP servlet request for path extraction
+   * @return HTTP 429 with Retry-After equal to the configured window
+   */
+  @ExceptionHandler(RateLimitExceededException.class)
+  public ResponseEntity<ProblemDetail> handleRateLimitExceeded(
+      RateLimitExceededException ex, HttpServletRequest request) {
+    long retryAfterSeconds = Math.max(1L, ex.getWindowSizeMinutes() * 60L);
+    logger.warn(
+        "Integration API 429 rate limit (path={}, operation={})",
+        LogSanitizer.sanitizeForLog(request.getRequestURI()),
+        LogSanitizer.sanitizeForLog(ex.getOperation()));
+    ProblemDetail problem =
+        ProblemDetail.forStatusAndDetail(
+            HttpStatus.TOO_MANY_REQUESTS, IntegrationApiProblemCatalog.DETAIL_RATE_LIMIT_EXCEEDED);
+    problem.setType(URI.create(IntegrationApiProblemCatalog.TYPE_RATE_LIMIT_EXCEEDED));
+    problem.setTitle(IntegrationApiProblemCatalog.TITLE_TOO_MANY_REQUESTS);
+    problem.setProperty("path", request.getRequestURI());
+    return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+        .header(HttpHeaders.RETRY_AFTER, Long.toString(retryAfterSeconds))
+        .body(problem);
+  }
+
+  /**
    * Fail-closed Integration auth-attempt creation when audit-chain checkpoints appear stalled.
    *
    * @param ex degraded heartbeat guard signal
@@ -418,15 +483,30 @@ public class GlobalExceptionHandler {
   }
 
   /**
-   * Builds an RFC 9457 ProblemDetail response.
+   * Builds an HTTP 409 ProblemDetail with a Retry-After header.
    *
-   * @param detail specific error message
-   * @param status HTTP status
-   * @param typeUri problem type URI
-   * @param title human-readable error title
+   * @param type problem type URI
+   * @param title short title
+   * @param detail stable detail text
+   * @param retryAfterSeconds seconds the client should wait
    * @param request HTTP servlet request for path extraction
-   * @return ResponseEntity with RFC 9457 ProblemDetail
+   * @return ResponseEntity with HTTP 409 and Retry-After
    */
+  private ResponseEntity<ProblemDetail> conflictWithRetryAfter(
+      String type,
+      String title,
+      String detail,
+      long retryAfterSeconds,
+      HttpServletRequest request) {
+    ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, detail);
+    problem.setType(URI.create(type));
+    problem.setTitle(title);
+    problem.setProperty("path", request.getRequestURI());
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .header(HttpHeaders.RETRY_AFTER, Long.toString(Math.max(1L, retryAfterSeconds)))
+        .body(problem);
+  }
+
   private ResponseEntity<ProblemDetail> buildProblemDetail(
       String detail, HttpStatus status, String typeUri, String title, HttpServletRequest request) {
     ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);

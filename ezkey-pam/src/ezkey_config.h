@@ -27,7 +27,8 @@
 
 /*
  * No compiled-in default Integration API URL (Patrick B1 / M1 review).
- * integration_api_url must be set in the conf file; empty → PAM_AUTHINFO_UNAVAIL.
+ * integration_api_url must be set in the conf file; empty →
+ * PAM_AUTHINFO_UNAVAIL.
  */
 
 /*
@@ -79,10 +80,12 @@
 #define EZKEY_WAIT_CHUNK_SECS 5
 #define EZKEY_INTERRUPT_CANCEL_MAX 5
 
-/* Configuration file path loaded at PAM runtime (override only via pam.d conf=) */
+/* Configuration file path loaded at PAM runtime (override only via pam.d conf=)
+ */
 #define EZKEY_DEFAULT_CONFIG_FILE "/etc/security/pam_ezkey.conf"
 
-/* Debug compile-time flag (also forces debug=1 at init; conf can still override) */
+/* Debug compile-time flag (also forces debug=1 at init; conf can still
+ * override) */
 #ifdef DEBUG
 #define EZKEY_DEBUG 1
 #else

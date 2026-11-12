@@ -22,6 +22,11 @@ COPY ezkey-demo-device/pom.xml ./ezkey-demo-device/pom.xml
 COPY specs/auth-api/openapi-spec.json ./specs/auth-api/openapi-spec.json
 COPY ezkey-demo-app-acme/pom.xml ./ezkey-demo-app-acme/pom.xml
 COPY ezkey-tests/pom.xml ./ezkey-tests/pom.xml
+# Delivery connectors are reactor modules (#1278): Maven needs their POMs to read the reactor,
+# even though this image does not build them (each connector has its own Dockerfile).
+COPY ezkey-connectors/pom.xml ./ezkey-connectors/pom.xml
+COPY ezkey-connectors/ezkey-connector-mock/pom.xml ./ezkey-connectors/ezkey-connector-mock/pom.xml
+COPY ezkey-connectors/ezkey-connector-smtp/pom.xml ./ezkey-connectors/ezkey-connector-smtp/pom.xml
 
 # Download all dependencies with shared Maven cache (shared across all parallel builds)
 # BuildKit cache mount: id=maven-cache is a *cache ID* inside BuildKit, not the Docker named volume.
@@ -75,6 +80,8 @@ RUN --mount=type=cache,target=/root/.m2,id=maven-cache,sharing=shared \
 # ============================================
 FROM build AS build-validation
 COPY ezkey-tests/src ./ezkey-tests/src
+COPY ezkey-connectors/ezkey-connector-mock/src ./ezkey-connectors/ezkey-connector-mock/src
+COPY ezkey-connectors/ezkey-connector-smtp/src ./ezkey-connectors/ezkey-connector-smtp/src
 RUN --mount=type=cache,target=/root/.m2,id=maven-cache,sharing=shared \
     echo "🔍 Validating reactor (Spotless check, Checkstyle, install, unit tests)..." && \
     mvn install -pl checkstyle-config -DskipTests -B && \

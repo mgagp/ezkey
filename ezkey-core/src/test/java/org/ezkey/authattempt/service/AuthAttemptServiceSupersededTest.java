@@ -28,6 +28,7 @@ import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.signature.SignatureService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -61,6 +62,10 @@ class AuthAttemptServiceSupersededTest {
   @Mock private AuthAttemptRespondService respondService;
 
   @Mock private AuthAttemptWaitService waitService;
+
+  @Mock private IntegrationRepository integrationRepository;
+
+  @Mock private AuthAttemptCreateLock createLock;
 
   @InjectMocks private AuthAttemptService authAttemptService;
 

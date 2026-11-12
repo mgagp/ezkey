@@ -65,6 +65,28 @@ build gate. See root [`AGENTS.md`](../AGENTS.md) § Java doctor-curated.
 
 Config: [`config/java-doctor/`](../config/java-doctor/). Outputs: `logs/java-doctor/` (gitignored).
 
+## PAM doctor-curated (punctual hygiene)
+
+Keyword: **`pam-doctor-curated`**. Report-only shortlist for `ezkey-pam/src` (clang-format Google
+preset, clang-tidy, narrow cppcheck). Not a CI gate. Linux reference; macOS install track excluded.
+See root [`AGENTS.md`](../AGENTS.md) § PAM doctor-curated.
+
+```bash
+./scripts/pam-doctor-curated.sh
+```
+
+Config: [`config/pam-doctor/`](../config/pam-doctor/) plus `ezkey-pam/.clang-format` and
+`ezkey-pam/.clang-tidy`. Outputs: `logs/pam-doctor/` (gitignored).
+
+Runtime axis, same lane, not a CI gate: rebuild the existing `make test` harnesses with
+ASan and UBSan, then Valgrind. `--skip-valgrind` skips Memcheck.
+
+```bash
+./scripts/pam-doctor-sanitizers.sh
+```
+
+Outputs: `logs/pam-doctor/sanitizers/` (gitignored).
+
 ## End-of-life check (major-upgrades register)
 
 Monthly non-blocking check of

@@ -24,19 +24,19 @@
  * Runtime settings loaded from pam_ezkey.conf (and pam.d overrides).
  */
 typedef struct {
-    char api_url[EZKEY_CONF_URL_MAX];
-    char integration_key[EZKEY_CONF_KEY_MAX];
-    char secret_key[EZKEY_CONF_KEY_MAX];
-    int wait_timeout;
-    int wait_polling;
-    int api_timeout;
-    int challenge_requested;
-    /* When 0 (default), only https:// Integration API URLs are accepted. */
-    int lab_http;
-    char context_title[EZKEY_CONF_TITLE_MAX + 1];
-    char context_message[EZKEY_CONF_MESSAGE_MAX + 1];
-    int debug;
-    char config_file[EZKEY_CONF_URL_MAX];
+  char api_url[EZKEY_CONF_URL_MAX];
+  char integration_key[EZKEY_CONF_KEY_MAX];
+  char secret_key[EZKEY_CONF_KEY_MAX];
+  int wait_timeout;
+  int wait_polling;
+  int api_timeout;
+  int challenge_requested;
+  /* When 0 (default), only https:// Integration API URLs are accepted. */
+  int lab_http;
+  char context_title[EZKEY_CONF_TITLE_MAX + 1];
+  char context_message[EZKEY_CONF_MESSAGE_MAX + 1];
+  int debug;
+  char config_file[EZKEY_CONF_URL_MAX];
 } EzkeyConfig;
 
 /**

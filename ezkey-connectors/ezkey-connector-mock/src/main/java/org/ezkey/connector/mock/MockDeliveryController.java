@@ -12,6 +12,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Duration;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.LinkedHashMap;
@@ -33,7 +35,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Implements the delivery contract v0 and plays a scenario chosen by the recipient's local part, so
+ * Implements the delivery contract v1 and plays a scenario chosen by the recipient's local part, so
  * it keeps no state. It logs only the send id and the scenario.
  */
 @RestController
@@ -52,6 +54,9 @@ public class MockDeliveryController {
           "organisationName",
           "expectedServer",
           "qrPngBase64");
+  private static final Set<String> OPTIONAL_JOB_FIELDS = Set.of("expiresAt", "timeZone");
+  private static final Pattern TIME_ZONE =
+      Pattern.compile("^[A-Za-z0-9_+\\-]+(/[A-Za-z0-9_+\\-]+)*$");
   private static final Set<String> LOCALES = Set.of("en", "fr");
   private static final Pattern EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s]+$");
   private static final Pattern UUID_FORMAT =
@@ -70,9 +75,7 @@ public class MockDeliveryController {
       @Value("${ezkey.connector.mock.degraded}") boolean degraded,
       @Value("${ezkey.connector.mock.slow-seconds}") long slowSeconds) {
     this.tokens =
-        nextToken.isBlank()
-            ? List.of(bytes(token))
-            : List.of(bytes(token), bytes(nextToken));
+        nextToken.isBlank() ? List.of(bytes(token)) : List.of(bytes(token), bytes(nextToken));
     this.degraded = degraded;
     this.slow = Duration.ofSeconds(slowSeconds);
   }
@@ -83,7 +86,7 @@ public class MockDeliveryController {
    * @param request the request
    * @return the health
    */
-  @GetMapping("/v0/health")
+  @GetMapping("/v1/health")
   ResponseEntity<Map<String, Object>> health(HttpServletRequest request) {
     if (!authorized(request)) {
       return error(HttpStatus.UNAUTHORIZED, "unauthorized", null);
@@ -91,10 +94,11 @@ public class MockDeliveryController {
     Map<String, Object> body = new LinkedHashMap<>();
     body.put("status", degraded ? "degraded" : "ok");
     body.put("connectorName", "ezkey-connector-mock");
-    body.put("connectorVersion", "0.1.0");
-    body.put("contractVersion", "v0");
+    body.put("connectorVersion", ConnectorVersion.VALUE);
+    body.put("contractVersion", "v1");
     body.put("channel", "email");
-    body.put("templates", List.of(Map.of("template", "enrollment-qr", "locales", List.of("en", "fr"))));
+    body.put(
+        "templates", List.of(Map.of("template", "enrollment-qr", "locales", List.of("en", "fr"))));
     body.put("testMode", true);
     return ResponseEntity.ok(body);
   }
@@ -107,7 +111,7 @@ public class MockDeliveryController {
    * @return the contract's answer for the scenario
    * @throws InterruptedException if interrupted during a slow scenario
    */
-  @PostMapping("/v0/deliveries")
+  @PostMapping("/v1/deliveries")
   ResponseEntity<?> deliver(HttpServletRequest request, @RequestBody String rawBody)
       throws InterruptedException {
     if (!authorized(request)) {
@@ -153,7 +157,7 @@ public class MockDeliveryController {
       case "mock-provider-timeout" -> error(HttpStatus.GATEWAY_TIMEOUT, "provider-timeout", sendId);
       case "mock-server-error" -> ResponseEntity.internalServerError().build();
       case "mock-redirect" ->
-          ResponseEntity.status(HttpStatus.FOUND).header("Location", "/v0/health").build();
+          ResponseEntity.status(HttpStatus.FOUND).header("Location", "/v1/health").build();
       case "mock-unreadable" -> ResponseEntity.ok("not json");
       case "mock-slow" -> {
         Thread.sleep(slow);
@@ -177,9 +181,33 @@ public class MockDeliveryController {
     return scenario.startsWith("mock-") && scenario.matches("[a-z-]{1,40}") ? scenario : "accepted";
   }
 
+  /** Every required field, and nothing outside the contract. */
+  private static boolean fieldsMatch(JsonNode job) {
+    Set<String> fields = Set.copyOf(job.propertyNames());
+    return fields.containsAll(JOB_FIELDS)
+        && fields.stream()
+            .allMatch(field -> JOB_FIELDS.contains(field) || OPTIONAL_JOB_FIELDS.contains(field));
+  }
+
+  /** The optional deadline is an ISO date-time, and the optional zone an IANA-shaped name. */
+  private static boolean deadlineValid(JsonNode job) {
+    if (job.has("expiresAt")) {
+      try {
+        OffsetDateTime.parse(job.path("expiresAt").asString(""));
+      } catch (DateTimeParseException e) {
+        return false;
+      }
+    }
+    if (!job.has("timeZone")) {
+      return true;
+    }
+    String zone = job.path("timeZone").asString("");
+    return inRange(zone, 64) && TIME_ZONE.matcher(zone).matches();
+  }
+
   /** Checks the job against the contract's schema, so core tests catch a drift. */
   private static String validate(JsonNode job) {
-    if (!job.isObject() || !Set.copyOf(job.propertyNames()).equals(JOB_FIELDS)) {
+    if (!job.isObject() || !fieldsMatch(job) || !deadlineValid(job)) {
       return "invalid-request";
     }
     if (!"operator".equals(job.path("trigger").asString(""))

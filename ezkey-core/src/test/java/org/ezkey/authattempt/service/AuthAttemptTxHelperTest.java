@@ -13,12 +13,18 @@ package org.ezkey.authattempt.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.OffsetDateTime;
 import java.util.Optional;
+import org.ezkey.alert.domain.AlertSeverity;
+import org.ezkey.alert.domain.AlertType;
+import org.ezkey.alert.service.AlertService;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
@@ -29,6 +35,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Unit tests for {@link AuthAttemptTxHelper#markAsInvalid} atomic READ → INVALID update.
@@ -39,12 +50,20 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class AuthAttemptTxHelperTest {
 
   @Mock private AuthAttemptRepository authAttemptRepository;
+  @Mock private AlertService alertService;
 
   private AuthAttemptTxHelper helper;
 
   @BeforeEach
   void setUp() {
-    helper = new AuthAttemptTxHelper(authAttemptRepository);
+    PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
+    lenient()
+        .when(transactionManager.getTransaction(any()))
+        .thenReturn(mock(TransactionStatus.class));
+    helper =
+        new AuthAttemptTxHelper(
+            authAttemptRepository,
+            new AuthAttemptEnrollmentAlert(alertService, transactionManager));
   }
 
   @Test
@@ -53,6 +72,11 @@ class AuthAttemptTxHelperTest {
     when(authAttemptRepository.updateStatusIfCurrent(
             eq(42), eq(AuthAttemptStatus.READ), eq(AuthAttemptStatus.INVALID), any()))
         .thenReturn(1);
+    AuthAttempt marked = new AuthAttempt();
+    marked.setAuthAttemptId(42);
+    marked.setEnrollmentId(7);
+    marked.setAuthAttemptChallenge(42);
+    when(authAttemptRepository.findById(42)).thenReturn(Optional.of(marked));
 
     helper.markAsInvalid(42);
 
@@ -62,6 +86,12 @@ class AuthAttemptTxHelperTest {
             eq(42), eq(AuthAttemptStatus.READ), eq(AuthAttemptStatus.INVALID), nowCaptor.capture());
     assertThat(nowCaptor.getValue()).isNotNull();
     verify(authAttemptRepository, never()).save(any());
+    verify(alertService)
+        .raiseOrTouch(
+            eq(AlertType.AUTH_ATTEMPT_REJECTED),
+            eq(AlertSeverity.WARNING),
+            eq("AUTH_ATTEMPT_REJECTED:7"),
+            eq("{\"enrollmentId\":7}"));
   }
 
   /**
@@ -88,5 +118,40 @@ class AuthAttemptTxHelperTest {
         .updateStatusIfCurrent(
             eq(42), eq(AuthAttemptStatus.READ), eq(AuthAttemptStatus.INVALID), any());
     verify(authAttemptRepository, never()).save(any());
+    verify(alertService, never()).raiseOrTouch(any(), any(), any(), any());
+  }
+
+  @Test
+  @DisplayName("A throwing alert does not escape markAsInvalid; the raise waits for afterCommit")
+  void markAsInvalid_alertFailure_isFailOpenAfterCommit() {
+    when(authAttemptRepository.updateStatusIfCurrent(
+            eq(42), eq(AuthAttemptStatus.READ), eq(AuthAttemptStatus.INVALID), any()))
+        .thenReturn(1);
+    AuthAttempt marked = new AuthAttempt();
+    marked.setEnrollmentId(7);
+    marked.setAuthAttemptChallenge(84);
+    when(authAttemptRepository.findById(42)).thenReturn(Optional.of(marked));
+    doThrow(new DataIntegrityViolationException("uq_alert_dedupe_key_open"))
+        .when(alertService)
+        .raiseOrTouch(any(), any(), any(), any());
+
+    TransactionSynchronizationManager.initSynchronization();
+    try {
+      helper.markAsInvalid(42);
+      verify(alertService, never()).raiseOrTouch(any(), any(), any(), any());
+      for (TransactionSynchronization synchronization :
+          TransactionSynchronizationManager.getSynchronizations()) {
+        synchronization.afterCommit();
+      }
+    } finally {
+      TransactionSynchronizationManager.clearSynchronization();
+    }
+
+    verify(alertService)
+        .raiseOrTouch(
+            eq(AlertType.AUTH_ATTEMPT_REJECTED),
+            eq(AlertSeverity.WARNING),
+            eq("AUTH_ATTEMPT_REJECTED:7"),
+            eq("{\"enrollmentId\":7}"));
   }
 }

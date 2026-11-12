@@ -14,6 +14,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.Collections;
 import java.util.Optional;
@@ -26,6 +27,7 @@ import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.auth.AuthAttemptCreateValidationException;
+import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.signature.SignatureService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -51,6 +53,10 @@ class AuthAttemptServiceTtlTest {
   @Mock private AuthAttemptRespondService respondService;
   @Mock private AuthAttemptWaitService waitService;
 
+  @Mock private IntegrationRepository integrationRepository;
+
+  @Mock private AuthAttemptCreateLock createLock;
+
   private AuthAttemptService authAttemptService;
   private EzkeyCoreProperties properties;
 
@@ -66,7 +72,10 @@ class AuthAttemptServiceTtlTest {
             properties,
             pendingService,
             respondService,
-            waitService);
+            waitService,
+            integrationRepository,
+            createLock,
+            Clock.systemUTC());
   }
 
   @Test

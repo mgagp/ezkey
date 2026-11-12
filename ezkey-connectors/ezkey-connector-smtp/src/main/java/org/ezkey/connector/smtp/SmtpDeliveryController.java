@@ -20,6 +20,8 @@ import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Clock;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.LinkedHashMap;
@@ -46,7 +48,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Implements the delivery contract v0 over SMTP. It logs only the send id and a typed outcome:
+ * Implements the delivery contract v1 over SMTP. It logs only the send id and a typed outcome:
  * never the recipient, the QR, a request body or provider text.
  */
 @RestController
@@ -55,7 +57,6 @@ public class SmtpDeliveryController {
   private static final Logger logger = LoggerFactory.getLogger(SmtpDeliveryController.class);
 
   static final String CONNECTOR_NAME = "ezkey-connector-smtp";
-  static final String CONNECTOR_VERSION = "0.1.0";
 
   private static final Set<String> JOB_FIELDS =
       Set.of(
@@ -68,9 +69,13 @@ public class SmtpDeliveryController {
           "organisationName",
           "expectedServer",
           "qrPngBase64");
+  private static final Set<String> OPTIONAL_JOB_FIELDS = Set.of("expiresAt", "timeZone");
+  private static final Pattern TIME_ZONE =
+      Pattern.compile("^[A-Za-z0-9_+\\-]+(/[A-Za-z0-9_+\\-]+)*$");
   private static final Set<String> LOCALES = Set.of("en", "fr");
   private static final Pattern EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
-  private static final Pattern HOSTNAME = Pattern.compile("^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$");
+  private static final Pattern HOSTNAME =
+      Pattern.compile("^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$");
   private static final Pattern CONTROL = Pattern.compile("\\p{Cntrl}");
   private static final Pattern UUID_FORMAT =
       Pattern.compile("^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$");
@@ -104,7 +109,7 @@ public class SmtpDeliveryController {
    * @param request the request
    * @return the health
    */
-  @GetMapping("/v0/health")
+  @GetMapping("/v1/health")
   ResponseEntity<Map<String, Object>> health(HttpServletRequest request) {
     if (!authorized(request)) {
       return error(HttpStatus.UNAUTHORIZED, "unauthorized", null);
@@ -112,10 +117,11 @@ public class SmtpDeliveryController {
     Map<String, Object> body = new LinkedHashMap<>();
     body.put("status", settings.configured() ? "ok" : "degraded");
     body.put("connectorName", CONNECTOR_NAME);
-    body.put("connectorVersion", CONNECTOR_VERSION);
-    body.put("contractVersion", "v0");
+    body.put("connectorVersion", ConnectorVersion.VALUE);
+    body.put("contractVersion", "v1");
     body.put("channel", "email");
-    body.put("templates", List.of(Map.of("template", "enrollment-qr", "locales", List.of("en", "fr"))));
+    body.put(
+        "templates", List.of(Map.of("template", "enrollment-qr", "locales", List.of("en", "fr"))));
     body.put("testMode", false);
     return ResponseEntity.ok(body);
   }
@@ -127,7 +133,7 @@ public class SmtpDeliveryController {
    * @param rawBody the raw job, parsed strictly
    * @return the contract's answer
    */
-  @PostMapping("/v0/deliveries")
+  @PostMapping("/v1/deliveries")
   ResponseEntity<?> deliver(HttpServletRequest request, @RequestBody String rawBody) {
     if (!authorized(request)) {
       return error(HttpStatus.UNAUTHORIZED, "unauthorized", null);
@@ -179,13 +185,18 @@ public class SmtpDeliveryController {
         EnrollmentEmailRenderer.render(
             job.path("locale").asString(),
             job.path("organisationName").asString(),
-            job.path("expectedServer").asString());
+            job.path("expectedServer").asString(),
+            job.has("expiresAt") ? OffsetDateTime.parse(job.path("expiresAt").asString()) : null,
+            job.has("timeZone") ? job.path("timeZone").asString() : null);
     try {
       MimeMessage message = mailSender.createMimeMessage();
       MimeMessageHelper helper =
           new MimeMessageHelper(
-              message, MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED, StandardCharsets.UTF_8.name());
-      helper.setFrom(new InternetAddress(s.fromAddress(), s.fromName(), StandardCharsets.UTF_8.name()));
+              message,
+              MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED,
+              StandardCharsets.UTF_8.name());
+      helper.setFrom(
+          new InternetAddress(s.fromAddress(), s.fromName(), StandardCharsets.UTF_8.name()));
       helper.setTo(job.path("recipient").asString());
       helper.setSubject(email.subject());
       helper.setText(email.text(), email.html());
@@ -223,7 +234,8 @@ public class SmtpDeliveryController {
       if (cause.getClass().getSimpleName().equals("MailConnectException")) {
         return "provider-unavailable";
       }
-      if (cause instanceof MessagingException messaging && messaging.getNextException() != null
+      if (cause instanceof MessagingException messaging
+          && messaging.getNextException() != null
           && messaging.getNextException() != cause.getCause()) {
         String nested = classify(messaging.getNextException());
         if (!"unknown".equals(nested)) {
@@ -234,9 +246,33 @@ public class SmtpDeliveryController {
     return "unknown";
   }
 
+  /** Every required field, and nothing outside the contract. */
+  private static boolean fieldsMatch(JsonNode job) {
+    Set<String> fields = Set.copyOf(job.propertyNames());
+    return fields.containsAll(JOB_FIELDS)
+        && fields.stream()
+            .allMatch(field -> JOB_FIELDS.contains(field) || OPTIONAL_JOB_FIELDS.contains(field));
+  }
+
+  /** The optional deadline is an ISO date-time, and the optional zone an IANA-shaped name. */
+  private static boolean deadlineValid(JsonNode job) {
+    if (job.has("expiresAt")) {
+      try {
+        OffsetDateTime.parse(job.path("expiresAt").asString(""));
+      } catch (DateTimeParseException e) {
+        return false;
+      }
+    }
+    if (!job.has("timeZone")) {
+      return true;
+    }
+    String zone = job.path("timeZone").asString("");
+    return inRange(zone, 64) && TIME_ZONE.matcher(zone).matches();
+  }
+
   /** Checks the job against the contract's schema. */
   private static String validate(JsonNode job) {
-    if (!job.isObject() || !Set.copyOf(job.propertyNames()).equals(JOB_FIELDS)) {
+    if (!job.isObject() || !fieldsMatch(job) || !deadlineValid(job)) {
       return "invalid-request";
     }
     String organisationName = job.path("organisationName").asString("");

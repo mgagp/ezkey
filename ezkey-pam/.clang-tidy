@@ -1,0 +1,20 @@
+# Narrow bug signal for ezkey-pam. Layout belongs to clang-format, not here.
+# Families kept: path-sensitive analyzer, bugprone, CERT C.
+# Families left off: readability, modernize, cppcoreguidelines, performance
+# (those reopen style debates or target C++).
+---
+Checks: >-
+  -*,
+  clang-analyzer-*,
+  bugprone-*,
+  cert-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-reserved-identifier,
+  -cert-dcl37-c,
+  -cert-dcl51-cpp,
+  -cert-err33-c,
+  -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
+  -clang-analyzer-security.insecureAPI.strcpy
+HeaderFilterRegex: '(ezkey_|pam_ezkey)'
+FormatStyle: none
+WarningsAsErrors: ''

@@ -16,7 +16,7 @@
 Define the delivery contract v0 in OpenAPI, and show on one page that the directory case holds on paper,
 before any core or connector code is written.
 
-- **Contract:** [`ezkey-connectors/contracts/delivery-v0.openapi.yaml`](../../../ezkey-connectors/contracts/delivery-v0.openapi.yaml)
+- **Contract:** [`ezkey-connectors/contracts/delivery-v1.openapi.yaml`](../../../ezkey-connectors/contracts/delivery-v1.openapi.yaml) (v0 frozen as v1 after the step 6 trial, see decision 7)
 - **Directory sketch:** [`directory-sketch.md`](../decisions/2026-11-04-connector-spi/directory-sketch.md)
 
 ## Decisions for the contract
@@ -31,6 +31,7 @@ Taken one at a time with Marc.
 | 4 | What the audit records about the recipient | The full address, with the rules below | 2026-11-06 |
 | 5 | Email wording, locale and template owner | The connector owns fixed templates, with the rules below | 2026-11-06 |
 | 6 | What the health check returns | State and capabilities, with no provider call | 2026-11-06 |
+| 7 | Contract after the real trial (step 6) | Frozen as `v1`: v0 plus the invitation deadline. Any shape change makes a `v2` | 2026-11-09 |
 
 ### 1. Authentication
 
@@ -244,6 +245,18 @@ default clean start has no surprise limit. The mock overlay sets a low tenant ca
 - **Admin UI:** "Send by email" sits in the QR card of a `CREATED` enrollment when a connector is usable. It names the
   recipient and the language, shows a test-mode badge for the mock, says what comes next after a send, and keeps the
   QR on screen when the send fails.
+
+## What step 6 added (2026-11-09)
+
+- **Real trial:** Marc received the QR through Gmail (app password, `docker-compose.connector-smtp-gmail.yml`),
+  enrolled an Android phone through a public Auth API URL, and ran a test authentication.
+- **Contract `v1`** (decision 7, Marc): paths move to `/v1`, and the job gains two optional fields. `expiresAt` is
+  the invitation deadline, absent when the instance sets none. `timeZone` is the organisation's IANA zone, absent
+  when it has none or an unknown one. The email now says "valid until November 16, 2026 at 9:43 AM (Eastern
+  Time)" instead of "this invitation expires", which told the person nothing (Marc, trial feedback). Without a
+  deadline it only says what to do if the invitation no longer works. A `v0` connector no longer matches the core.
+- **Admin UI:** creating an enrollment opens its record, where the send lives (#1307). Whether the contact email
+  should read as recommended when a connector is active is parked in #1308.
 
 ## Configuration guidance
 

@@ -120,6 +120,8 @@ public class AuthAttemptRespondService {
 
   private final ObjectProvider<AuthRespondOwnershipRateLimiter> ownershipRateLimiter;
 
+  private final AuthAttemptEnrollmentAlert enrollmentAlert;
+
   /**
    * Constructs the respond service with required dependencies.
    *
@@ -130,6 +132,7 @@ public class AuthAttemptRespondService {
    * @param auditLogService audit trail (signature-rejected probes, #912)
    * @param ownershipRateLimiter optional post-ownership per-id budget (#912 C1); empty when rate
    *     limiting is disabled
+   * @param enrollmentAlert operator alert raised after a device deny commits
    */
   public AuthAttemptRespondService(
       AuthAttemptRepository authAttemptRepository,
@@ -137,13 +140,15 @@ public class AuthAttemptRespondService {
       SignatureService signatureService,
       AuthAttemptTxHelper authAttemptTxHelper,
       AuditLogService auditLogService,
-      ObjectProvider<AuthRespondOwnershipRateLimiter> ownershipRateLimiter) {
+      ObjectProvider<AuthRespondOwnershipRateLimiter> ownershipRateLimiter,
+      AuthAttemptEnrollmentAlert enrollmentAlert) {
     this.authAttemptRepository = authAttemptRepository;
     this.enrollmentRepository = enrollmentRepository;
     this.authAttemptTxHelper = authAttemptTxHelper;
     this.signatureService = signatureService;
     this.auditLogService = auditLogService;
     this.ownershipRateLimiter = ownershipRateLimiter;
+    this.enrollmentAlert = enrollmentAlert;
   }
 
   /**
@@ -498,6 +503,8 @@ public class AuthAttemptRespondService {
     if (newStatus == AuthAttemptStatus.ACCEPTED) {
       enrollment.setLastUsedAt(OffsetDateTime.now());
       enrollmentRepository.save(enrollment);
+    } else if (newStatus == AuthAttemptStatus.REJECTED) {
+      enrollmentAlert.raiseAfterCommit(authAttempt.getEnrollmentId());
     }
   }
 

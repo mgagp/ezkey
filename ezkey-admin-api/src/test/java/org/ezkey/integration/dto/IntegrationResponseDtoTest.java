@@ -14,6 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import org.ezkey.integration.domain.IntegrationLifecycleStatus;
+import org.ezkey.integration.domain.PendingAttemptPolicy;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -70,7 +71,8 @@ class IntegrationResponseDtoTest {
             TEST_CREATED_AT,
             TEST_NAME,
             TEST_DESCRIPTION,
-            null);
+            null,
+            PendingAttemptPolicy.REPLACE);
 
     assertThat(dto.id()).isEqualTo(TEST_ID);
     assertThat(dto.code()).isEqualTo(TEST_CODE);
@@ -98,7 +100,8 @@ class IntegrationResponseDtoTest {
             TEST_CREATED_AT,
             null,
             null,
-            null);
+            null,
+            PendingAttemptPolicy.REPLACE);
 
     assertThat(dto.id()).isEqualTo(TEST_ID);
     assertThat(dto.name()).isNull();
@@ -119,7 +122,8 @@ class IntegrationResponseDtoTest {
             TEST_CREATED_AT,
             TEST_NAME,
             null,
-            null);
+            null,
+            PendingAttemptPolicy.REPLACE);
 
     assertThat(dto.name()).isEqualTo(TEST_NAME);
     assertThat(dto.description()).isNull();
@@ -139,7 +143,8 @@ class IntegrationResponseDtoTest {
             TEST_CREATED_AT,
             TEST_NAME,
             TEST_DESCRIPTION,
-            null);
+            null,
+            PendingAttemptPolicy.REPLACE);
 
     assertThat(dto.operational()).isFalse();
     assertThat(dto.lifecycleStatus()).isEqualTo(IntegrationLifecycleStatus.RETIRED);
@@ -159,7 +164,8 @@ class IntegrationResponseDtoTest {
             TEST_CREATED_AT,
             TEST_NAME,
             TEST_DESCRIPTION,
-            null);
+            null,
+            PendingAttemptPolicy.REPLACE);
     IntegrationResponseDto dto2 =
         new IntegrationResponseDto(
             TEST_ID,
@@ -171,7 +177,8 @@ class IntegrationResponseDtoTest {
             TEST_CREATED_AT,
             TEST_NAME,
             TEST_DESCRIPTION,
-            null);
+            null,
+            PendingAttemptPolicy.REPLACE);
     IntegrationResponseDto dto3 =
         new IntegrationResponseDto(
             2,
@@ -183,7 +190,8 @@ class IntegrationResponseDtoTest {
             TEST_CREATED_AT,
             TEST_NAME,
             TEST_DESCRIPTION,
-            null);
+            null,
+            PendingAttemptPolicy.REPLACE);
 
     assertThat(dto1).isEqualTo(dto2);
     assertThat(dto1).isNotEqualTo(dto3);
@@ -204,7 +212,8 @@ class IntegrationResponseDtoTest {
             TEST_CREATED_AT,
             TEST_NAME,
             TEST_DESCRIPTION,
-            null);
+            null,
+            PendingAttemptPolicy.REPLACE);
 
     String toString = dto.toString();
 
@@ -229,7 +238,8 @@ class IntegrationResponseDtoTest {
             utcTime,
             TEST_NAME,
             TEST_DESCRIPTION,
-            null);
+            null,
+            PendingAttemptPolicy.REPLACE);
     IntegrationResponseDto dtoEst =
         new IntegrationResponseDto(
             2,
@@ -241,7 +251,8 @@ class IntegrationResponseDtoTest {
             estTime,
             TEST_NAME,
             TEST_DESCRIPTION,
-            null);
+            null,
+            PendingAttemptPolicy.REPLACE);
     IntegrationResponseDto dtoJst =
         new IntegrationResponseDto(
             3,
@@ -253,7 +264,8 @@ class IntegrationResponseDtoTest {
             jstTime,
             TEST_NAME,
             TEST_DESCRIPTION,
-            null);
+            null,
+            PendingAttemptPolicy.REPLACE);
 
     assertThat(dtoUtc.createdAt().getOffset()).isEqualTo(ZoneOffset.UTC);
     assertThat(dtoEst.createdAt().getOffset()).isEqualTo(ZoneOffset.ofHours(-5));
@@ -277,7 +289,8 @@ class IntegrationResponseDtoTest {
               TEST_CREATED_AT,
               TEST_NAME,
               TEST_DESCRIPTION,
-              null);
+              null,
+              PendingAttemptPolicy.REPLACE);
       assertThat(dto.id()).isEqualTo(id);
     }
   }
@@ -296,7 +309,8 @@ class IntegrationResponseDtoTest {
             null,
             TEST_NAME,
             TEST_DESCRIPTION,
-            null);
+            null,
+            PendingAttemptPolicy.REPLACE);
 
     assertThat(dto.createdAt()).isNull();
   }
@@ -315,7 +329,8 @@ class IntegrationResponseDtoTest {
             TEST_CREATED_AT,
             TEST_NAME,
             TEST_DESCRIPTION,
-            null);
+            null,
+            PendingAttemptPolicy.REPLACE);
 
     assertThat(dto.operational()).isNull();
     assertThat(dto.lifecycleStatus()).isNull();

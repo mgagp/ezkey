@@ -40,7 +40,9 @@
     "integration-lifecycle-state": "Cette action n'est pas valide pour l'état du cycle de vie actuel de l'intégration.",
     "system-integration-lifecycle": "L'intégration système est réservée à l'authentification multifacteur des administrateurs et ne peut pas être modifiée ainsi.",
     "api-key-limit-exceeded": "Le nombre maximal de clés API actives pour cette intégration est atteint.",
-    "auth-attempt-state-conflict": "Cette tentative d'authentification n'est plus dans un état permettant cette opération."
+    "auth-attempt-state-conflict": "Cette tentative d'authentification n'est plus dans un état permettant cette opération.",
+    "auth-attempt-pending-exists": "Une demande attend déjà sur l'appareil. Acceptez-la ou refusez-la sur l'appareil, ou attendez qu'elle expire, puis réessayez.",
+    "auth-attempt-creation-cooldown": "Les nouvelles demandes sont suspendues quelques minutes après plusieurs demandes refusées ou codes erronés. Réessayez plus tard."
   },
   "enrollment": {
     "enrollment-inactive": "Cet enrôlement ne peut pas servir à l'authentification (inactif ou non vérifié).",

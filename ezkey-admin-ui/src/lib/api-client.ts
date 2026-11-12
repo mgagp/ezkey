@@ -38,14 +38,35 @@ export class ApiError extends Error {
   public readonly body: unknown;
   /** Parsed RFC 9457 problem when the response body conforms to it. */
   public readonly problemDetail: ProblemDetail | null;
+  /** Parsed {@code Retry-After} delay in seconds, when the response sent one. */
+  public readonly retryAfterSeconds: number | null;
 
-  constructor(status: number, body: unknown, message: string, problemDetail: ProblemDetail | null = null) {
+  constructor(
+    status: number,
+    body: unknown,
+    message: string,
+    problemDetail: ProblemDetail | null = null,
+    retryAfterSeconds: number | null = null,
+  ) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.body = body;
     this.problemDetail = problemDetail ?? (isProblemDetail(body) ? (body as ProblemDetail) : null);
+    this.retryAfterSeconds = retryAfterSeconds;
   }
+}
+
+function retryAfterSecondsFrom(response: Response): number | null {
+  const raw = response.headers.get('Retry-After');
+  if (raw == null || raw.trim() === '') {
+    return null;
+  }
+  const seconds = Number(raw);
+  if (!Number.isFinite(seconds) || seconds < 0) {
+    return null;
+  }
+  return Math.ceil(seconds);
 }
 
 function isProblemDetail(v: unknown): boolean {
@@ -133,10 +154,11 @@ export async function fetchApi<T>(path: string, options: FetchOptions = {}): Pro
       }
     }
 
+    const retryAfterSeconds = retryAfterSecondsFrom(response);
     if (response.status === 401) {
       if (bearerToken) {
         const { message, problem } = messageFromProblemBody(401, body);
-        throw new ApiError(401, body, message, problem);
+        throw new ApiError(401, body, message, problem, retryAfterSeconds);
       }
       /** Session-scoped request (not login/public, not recovery bearer) — 401 always sends user to login. */
       if (requireAuth) {
@@ -152,7 +174,7 @@ export async function fetchApi<T>(path: string, options: FetchOptions = {}): Pro
     }
 
     const { message, problem } = messageFromProblemBody(response.status, body);
-    throw new ApiError(response.status, body, message, problem);
+    throw new ApiError(response.status, body, message, problem, retryAfterSeconds);
   }
 
   if (response.status === 204 || !isJson) {

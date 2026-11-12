@@ -1,0 +1,53 @@
+# Daily reminder for reports that still wait for a first response.
+#
+# Promise in SECURITY.md and CONTRIBUTING.md: a first response within 14 days.
+# The logic lives in scripts/issue-response-reminder.sh so it can be dry-run
+# locally. It reminds from day 7 and alerts from day 12 in one tracking issue
+# that mentions the maintainer, then closes that issue when nothing waits.
+#
+# Not covered: private vulnerability reports (GitHub notifies the maintainer
+# directly) and the security@ezkey.org mailbox.
+name: Issue response reminder
+
+on:
+  schedule:
+    # Daily, 13:20 UTC.
+    - cron: "20 13 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "List waiting reports without writing anything"
+        type: boolean
+        default: true
+
+permissions: {}
+
+concurrency:
+  group: issue-response-reminder
+  cancel-in-progress: false
+
+jobs:
+  remind:
+    name: remind
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Remind about reports awaiting a first response
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          MAINTAINER: mgagp
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            ./scripts/issue-response-reminder.sh --dry-run
+          else
+            ./scripts/issue-response-reminder.sh
+          fi

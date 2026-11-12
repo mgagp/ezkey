@@ -14,6 +14,7 @@ import com.google.zxing.WriterException;
 import java.io.IOException;
 import java.net.URI;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.Base64;
 import java.util.LinkedHashMap;
@@ -217,6 +218,8 @@ public class EnrollmentQrDeliveryService {
               && eligibilityService.isTenantOperational(tenant),
           trimToNull(enrollment.getContactEmail()),
           organisationName(tenant),
+          enrollment.getExpiresAt(),
+          timeZone(tenant),
           enrollment.getEnrollmentProofToken());
     });
   }
@@ -288,6 +291,8 @@ public class EnrollmentQrDeliveryService {
         material.recipient(),
         material.organisationName(),
         expectedServer(),
+        material.expiresAt(),
+        material.timeZone(),
         Base64.getEncoder().encodeToString(png));
   }
 
@@ -310,6 +315,12 @@ public class EnrollmentQrDeliveryService {
       name = tenant.getTenantName();
     }
     return name.length() > ORGANISATION_NAME_MAX ? name.substring(0, ORGANISATION_NAME_MAX) : name;
+  }
+
+  /** The tenant's IANA time zone when it is a known region, or null so the connector uses UTC. */
+  private static String timeZone(Tenant tenant) {
+    String zone = trimToNull(tenant.getTimezone());
+    return zone != null && ZoneId.getAvailableZoneIds().contains(zone) ? zone : null;
   }
 
   private static String trimToNull(String value) {
@@ -385,6 +396,8 @@ public class EnrollmentQrDeliveryService {
       boolean parentsOperational,
       String recipient,
       String organisationName,
+      OffsetDateTime expiresAt,
+      String timeZone,
       String proofToken) {
 
     @Override

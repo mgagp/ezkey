@@ -34,6 +34,7 @@ Root [`PRD.md`](PRD.md) is a **stub** that points at `product-intent.md` (canon 
 | Mobile-primary work | [`ezkey_mobile/AGENTS.md`](ezkey_mobile/AGENTS.md), [`ezkey_mobile/docs/README.md`](ezkey_mobile/docs/README.md) |
 | Experimental PAM (host sshd lab) | `ezkey-pam` is **experimental** (personal lab; loaded in host root sshd/login, not containerised) — see [`ezkey-pam/README.md`](ezkey-pam/README.md) (line 3). Hardening backlog: [`I-2026-10-13-pam-tmp-log-hardening`](product-docs/global/backlog/ideas/I-2026-10-13-pam-tmp-log-hardening.md). |
 | Dismissing or accepting a dependency vulnerability (`tolerable_risk`, risk acceptance, security evaluation) | Check upstream first: [`product-docs/global/hygiene/dependabot/README.md`](product-docs/global/hygiene/dependabot/README.md) § *Check upstream before dismissing a vulnerability* |
+| Answering reports on time (14-day promise, `security@ezkey.org`, issue reminder) | [`product-docs/global/hygiene/report-intake/README.md`](product-docs/global/hygiene/report-intake/README.md) |
 | Mandate-driven hygiene assessment (HITL + handoff) | Keyword **`assessment-curated`** → [`product-docs/global/hygiene/assessment-curated/README.md`](product-docs/global/hygiene/assessment-curated/README.md) |
 | Legacy document hygiene (canonicality / discoverability / archive-vs-delete) | Keyword **`document-hygiene-curated`** → [`product-docs/global/hygiene/document-hygiene/README.md`](product-docs/global/hygiene/document-hygiene/README.md) |
 | New idea / method | [`product-docs/methodology/README.md`](product-docs/methodology/README.md) — the whole method fits in that one document since the 2026-08 ablation |
@@ -362,6 +363,52 @@ When the operator asks for a **`java-doctor-curated`** improvement pass:
 - Authority: `product-docs/global/java-doctor-curated-evaluation-2026-07-11.md`,
   `I-2026-07-11-java-doctor-curated-hygiene`, `TB-2026-07-11-java-doctor-curated-mvp`,
   `product-docs/global/hygiene/java-doctor/README.md`.
+
+## PAM doctor-curated keyword
+
+- For the Linux PAM module (`ezkey-pam/src`), the shared keyword is **`pam-doctor-curated`**.
+- Purpose: a **punctual curated pass** in the same family as `java-doctor-curated` — clang-format
+  (Google preset) drift + clang-tidy (analyzer / bugprone / CERT) + cppcheck
+  (warning / performance / portability) → P1/P2/P3 shortlist. **Not** a CI gate and **not** a
+  zero-warning campaign. The macOS install track is out of this pass.
+- Skill: [`.cursor/skills/pam-doctor-curated/SKILL.md`](.cursor/skills/pam-doctor-curated/SKILL.md).
+- Default command from repo root (Git Bash on Windows):
+
+```bash
+./scripts/pam-doctor-curated.sh
+```
+
+  Optional: `--offline` to re-curate an existing `logs/pam-doctor/raw/` without the container.
+  The scan runs in Docker (`ubuntu:24.04`) so the Linux PAM, curl, and cJSON headers are present.
+- Outputs under `logs/pam-doctor/` (gitignored):
+  - `pam-doctor.curated.md` — deduped shortlist grouped by rule
+  - `pam-doctor.curated.json` — machine-readable summary
+  - `raw/` — clang-format TSV, cppcheck text, clang-tidy text, tool versions
+- Config: `ezkey-pam/.clang-format`, `ezkey-pam/.clang-tidy`, `config/pam-doctor/`.
+- Campaign notes: `product-docs/global/hygiene/pam-doctor/`. Do **not** invent `I-*` / `TB-*` /
+  GitHub issues per finding. On demand (experimental module); not part of the Java → mobile →
+  React biweekly rotation.
+- Runtime axis (existing `make test` harnesses, not a CI gate): `./scripts/pam-doctor-sanitizers.sh`
+  runs AddressSanitizer and UndefinedBehaviorSanitizer, then Valgrind Memcheck, in Docker
+  (`ubuntu:24.04`, same image default as the static pass). `--skip-valgrind` skips Memcheck.
+  A finding that needs a source or behavior change waits for one-at-a-time HITL. Do not edit
+  `ezkey-pam/src` from a sanitizer log alone. Fuzzing stays out of this command.
+
+### HITL contract (mandatory for cold agents)
+
+When the operator asks for a **`pam-doctor-curated`** improvement pass:
+
+1. Run the script; read `logs/pam-doctor/pam-doctor.curated.md`.
+2. Propose a **small prioritized lot** (usually 3–6 rule groups), not a zero-warning campaign.
+3. **Before any code change — one finding at a time.** Wait for fix / suppress / skip on that
+   item before presenting the next. A format-only apply (`clang-format -i` on `ezkey-pam/src`)
+   still waits for an explicit go.
+4. Fuzzy signal: skip. Harmless over-defense: leave it and suppress with a reason. Do not add
+   tests for a leave.
+5. Record the pass from `product-docs/global/hygiene/pam-doctor/TEMPLATE.md`.
+6. Accepted fixes: name the existing `make test` harness and extend it only when the decision
+   is not already pinned. Auth decision, cancel, conf secrets, TLS verify, and the signal
+   handler need a counter-read before a refactor.
 
 ## Dependabot curated keyword
 

@@ -79,6 +79,21 @@ public class EzkeyCoreProperties {
     @Max(value = 600, message = "TTL cannot exceed 600 seconds (10 minutes)")
     private int ttlSeconds = 120;
 
+    /**
+     * Rejected or expired attempts inside the window that suspend further creates. Default: 3. Zero
+     * or negative disables the cooldown.
+     */
+    @Min(value = 0, message = "Cooldown threshold cannot be negative")
+    private int cooldownThreshold = 3;
+
+    /** Counting window for the cooldown, in seconds. Default: 600 (10 minutes). */
+    @Min(value = 0, message = "Cooldown window cannot be negative")
+    private int cooldownWindowSeconds = 600;
+
+    /** How long a crossing suspends creates, in seconds. Default: 300 (5 minutes). */
+    @Min(value = 0, message = "Cooldown duration cannot be negative")
+    private int cooldownDurationSeconds = 300;
+
     // Getters and setters
     public int getChallengeDigits() {
       return challengeDigits;
@@ -94,6 +109,30 @@ public class EzkeyCoreProperties {
 
     public void setTtlSeconds(int ttlSeconds) {
       this.ttlSeconds = ttlSeconds;
+    }
+
+    public int getCooldownThreshold() {
+      return cooldownThreshold;
+    }
+
+    public void setCooldownThreshold(int cooldownThreshold) {
+      this.cooldownThreshold = cooldownThreshold;
+    }
+
+    public int getCooldownWindowSeconds() {
+      return cooldownWindowSeconds;
+    }
+
+    public void setCooldownWindowSeconds(int cooldownWindowSeconds) {
+      this.cooldownWindowSeconds = cooldownWindowSeconds;
+    }
+
+    public int getCooldownDurationSeconds() {
+      return cooldownDurationSeconds;
+    }
+
+    public void setCooldownDurationSeconds(int cooldownDurationSeconds) {
+      this.cooldownDurationSeconds = cooldownDurationSeconds;
     }
   }
 

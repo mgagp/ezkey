@@ -86,6 +86,7 @@ jobs:
               - 'ezkey-demo-app-acme/**'
               - 'ezkey-demo-device/**'
               - 'ezkey-tests/**'
+              - 'ezkey-connectors/**'
               - 'sites/ezkey-org/js/**'
               - 'sites/ezkey-org/community-signup.html'
               - 'sites/ezkey-org/fr/community-signup.html'
@@ -299,7 +300,7 @@ jobs:
         run: bash scripts/check-ezkey-org-api-specs.sh
 
       - name: Set up JDK 25
-        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           java-version: '25'
           distribution: 'temurin'
@@ -394,7 +395,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up JDK 25
-        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           java-version: '25'
           distribution: 'temurin'
@@ -601,8 +602,9 @@ jobs:
       - name: ezkey-lab-auth mvn test (Docker maven:3.9-eclipse-temurin-21)
         run: ./ezkey-jenkins/scripts/ci-plugin-test.sh
 
-  # Connector program (#1206): thin and path-filtered. Mock unit tests, then the Docker scenarios
-  # and the log canary. Heavy: runs on pull requests and nightly, not on the post-merge push.
+  # Connector program (#1206): thin and path-filtered. The Docker scenarios and the log canary;
+  # the connectors' unit tests run in the backend job, since they are reactor modules (#1278).
+  # Heavy: runs on pull requests and nightly, not on the post-merge push.
   connectors:
     name: connectors
     needs: changes
@@ -618,19 +620,11 @@ jobs:
           persist-credentials: false
 
       - name: Set up JDK 25
-        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           java-version: '25'
           distribution: 'temurin'
           cache: maven
-
-      - name: Mock connector unit tests
-        working-directory: ezkey-connectors/ezkey-connector-mock
-        run: mvn -B test
-
-      - name: SMTP connector unit tests
-        working-directory: ezkey-connectors/ezkey-connector-smtp
-        run: mvn -B test
 
       - name: Delivery scenarios and log canary
         run: ./scripts/ci-connector-scenarios.sh

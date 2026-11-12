@@ -12,6 +12,8 @@ export const EZKEY_PROBLEM_TYPE_BASE = 'https://ezkey.io/problems';
  * For dynamic {@code detail} (duplicate names, limits with counts, etc.), the server message must win when present.
  */
 const PREFER_I18N_OVER_DETAIL_RELS = new Set<string>([
+  'domain.auth-attempt-pending-exists',
+  'domain.auth-attempt-creation-cooldown',
   'domain.integration-has-enrollments',
   'domain.pending-encryption-key-exists',
   'domain.encryption-rotation-disabled',

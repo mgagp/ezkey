@@ -1,11 +1,13 @@
 openapi: 3.1.0
 info:
   title: Ezkey delivery connector contract
-  version: 0.1.0
+  version: 1.0.0
   description: |
     What a delivery connector exposes to Ezkey. Ezkey is the only caller.
 
-    **v0 can change without compatibility work until the real trial at step 6 of #1206, where it becomes v1.**
+    **v1 is frozen.** It is v0 after the real trial at step 6 of #1206, plus the invitation's deadline.
+    Any change to a request or response shape makes a new version (`/v2`); a connector keeps refusing
+    fields it does not know.
 
     Rules that hold for every connector:
 
@@ -26,7 +28,7 @@ tags:
 security:
   - connectorToken: []
 paths:
-  /v0/deliveries:
+  /v1/deliveries:
     post:
       tags: [delivery]
       operationId: sendDelivery
@@ -52,6 +54,8 @@ paths:
                   recipient: person@example.com
                   organisationName: Acme
                   expectedServer: auth.example.com
+                  expiresAt: '2026-11-16T09:43:00-05:00'
+                  timeZone: America/Toronto
                   qrPngBase64: iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==
       responses:
         '200':
@@ -74,7 +78,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DeliveryError'
-  /v0/health:
+  /v1/health:
     get:
       tags: [health]
       operationId: getHealth
@@ -140,6 +144,20 @@ components:
           format: hostname
           maxLength: 253
           description: The server the app should show, so the person can compare.
+        expiresAt:
+          type: string
+          format: date-time
+          description: |
+            When the invitation stops working, so the message can say until when it is valid.
+            Absent when the instance sets no deadline. The connector renders it in `timeZone`.
+        timeZone:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: '^[A-Za-z0-9_+\-]+(/[A-Za-z0-9_+\-]+)*$'
+          description: |
+            IANA time zone of the organisation, for example `America/Toronto`. Absent when the
+            organisation has none; the connector then uses UTC. An unknown zone also falls back to UTC.
         qrPngBase64:
           type: string
           contentEncoding: base64
@@ -208,7 +226,7 @@ components:
           maxLength: 32
         contractVersion:
           type: string
-          const: v0
+          const: v1
         channel:
           type: string
           enum: [email]
