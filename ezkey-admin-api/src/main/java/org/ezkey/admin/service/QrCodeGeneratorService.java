@@ -32,7 +32,7 @@ import org.springframework.stereotype.Service;
  * <p><b>QR Code JSON Format:</b>
  *
  * <pre>
- * {"enrollmentId":"4","enrollmentProofToken":"abc...","authUrl":"https://..."}
+ * {"enrollmentProofToken":"abc...","authUrl":"https://..."}
  * </pre>
  *
  * <p>The {@code authUrl} field is included only when {@code ezkey.qr.auth-base-url} is configured.

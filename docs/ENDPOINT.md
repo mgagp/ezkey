@@ -304,7 +304,7 @@ Canonical signed payload format: see `docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md` (R
 
 **POST /api/v1/enrollments/bind**
 
-- **Description**: Initiates the process of binding an enrollment to a mobile device using secure enrollment proof token. The device retrieves the necessary information to start enrollment.
+- **Description**: Initiates the process of binding an enrollment to a mobile device using the enrollment proof token. The server resolves the row from the token hash and returns `enrollmentId` (ADR-0019). The device stores that id for verify and later signed calls.
 
 **Request**
 ```http
@@ -312,7 +312,6 @@ POST /api/v1/enrollments/bind
 Content-Type: application/json
 
 {
-  "enrollmentId": 456,
   "enrollmentProofToken": "abc123-def456-ghi789"
 }
 ```
@@ -1386,7 +1385,7 @@ Authorization: Bearer ezkey_admin_token...
 The QR code contains enrollment credentials as a JSON payload:
 
 ```json
-{"enrollmentId":"123","enrollmentProofToken":"abc...","authUrl":"https://ezkey.acme.com:8080"}
+{"enrollmentProofToken":"abc...","authUrl":"https://ezkey.acme.com:8080"}
 ```
 
 The `authUrl` field is included only when `ezkey.qr.auth-base-url` is configured. When absent, the mobile app falls back to its default base URL.
@@ -1737,7 +1736,7 @@ Authorization: Bearer ezkey_admin_token...
 
 #### **GET /api/v1/enrollments/{id}/qrcode** (Enrollment bind-handle QR)
 
-Returns a PNG QR encoding the bind handle (`enrollmentId` + `enrollmentProofToken`, plus optional `authUrl`). Same tenant gate as JSON GET (`canAccessEnrollment`). Cross-tenant and unknown ids return **404** (hide-existence), not 403. Auth API bind stays token-gated and is not tenant-filtered.
+Returns a PNG QR encoding the bind invitation (`enrollmentProofToken`, plus optional `authUrl`). The enrollment id is not in the QR; bind returns it (ADR-0019). Same tenant gate as JSON GET (`canAccessEnrollment`). Cross-tenant and unknown ids return **404** (hide-existence), not 403. Auth API bind stays token-gated and is not tenant-filtered.
 
 **Request:**
 ```http

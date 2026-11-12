@@ -698,7 +698,6 @@ public class AdminBootstrapService {
     RestAssuredTestConfig.configureForAuthApi(dockerStackConfig);
 
     Map<String, Object> bindRequest = new HashMap<>();
-    bindRequest.put("enrollmentId", enrollmentId);
     bindRequest.put("enrollmentProofToken", enrollmentProofToken);
 
     // Retry logic for rate limiting (429)

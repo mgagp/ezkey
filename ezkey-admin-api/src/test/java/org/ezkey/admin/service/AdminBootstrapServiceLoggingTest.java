@@ -162,7 +162,7 @@ class AdminBootstrapServiceLoggingTest {
     when(signatureService.generateEd25519KeyPair()).thenReturn(new Ed25519KeyPair("priv", "pub"));
     when(signatureService.generateProofToken()).thenReturn(PROOF_TOKEN);
     when(signatureService.generateSecureChallenge(6)).thenReturn(CHALLENGE);
-    when(qrCodePayloadService.composePayload(any(), any())).thenReturn("{}");
+    when(qrCodePayloadService.composePayload(any())).thenReturn("{}");
     when(qrCodeAsciiRenderer.renderAscii(any())).thenReturn("QRLINE1\nQRLINE2");
 
     when(enrollmentRepository.save(any(Enrollment.class)))

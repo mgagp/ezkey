@@ -45,19 +45,15 @@ public class AuthApiService {
   /**
    * Calls POST /api/v1/enrollments/bind to start enrollment binding with proof token.
    *
-   * @param enrollmentId id to bind
    * @param enrollmentProofToken proof token for authentication
    * @param authApiBaseUrl optional per-enrollment Auth API base URL override
-   * @return typed response DTO with integrationPublicKey, enrollmentProofToken, etc.
+   * @return typed response DTO with enrollmentId, integrationPublicKey, enrollmentProofToken, etc.
    */
-  public Mono<EnrollmentBindResponseDto> bind(
-      Integer enrollmentId, String enrollmentProofToken, String authApiBaseUrl) {
+  public Mono<EnrollmentBindResponseDto> bind(String enrollmentProofToken, String authApiBaseUrl) {
     String uri = "/api/v1/enrollments/bind";
 
     EnrollmentBindRequestDto requestDto =
-        new EnrollmentBindRequestDto()
-            .enrollmentId(enrollmentId)
-            .enrollmentProofToken(enrollmentProofToken);
+        new EnrollmentBindRequestDto().enrollmentProofToken(enrollmentProofToken);
 
     WebClient client = clientFor(authApiBaseUrl);
     Mono<EnrollmentBindResponseDto> responseMono =
@@ -70,8 +66,11 @@ public class AuthApiService {
             .timeout(Duration.ofSeconds(15));
 
     return responseMono
-        .doOnSuccess(_ -> logger.info("Bind API completed for enrollment {}", enrollmentId))
-        .doOnError(e -> logger.error("Bind failed for enrollment {}", enrollmentId, e))
+        .doOnSuccess(response ->
+            logger.info(
+                "Bind API completed for enrollment {}",
+                response != null ? response.getEnrollmentId() : null))
+        .doOnError(e -> logger.error("Bind failed", e))
         .onErrorResume(WebClientResponseException.class, ex -> Mono.error(ex))
         .onErrorResume(Exception.class, ex -> Mono.error(ex));
   }

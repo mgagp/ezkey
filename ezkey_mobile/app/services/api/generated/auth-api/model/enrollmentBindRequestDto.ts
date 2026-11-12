@@ -21,8 +21,6 @@
  * Request DTO for enrollment binding initiation with proof token
  */
 export interface EnrollmentBindRequestDto {
-  /** Enrollment ID to bind to the mobile device */
-  enrollmentId: number;
   /** Enrollment proof token for authentication */
   enrollmentProofToken: string;
 }

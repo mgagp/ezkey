@@ -75,7 +75,7 @@ class AdminProvisioningControllerOnboardingQrTest {
         .thenReturn(
             new OnboardingCredentialsResult(
                 ENROLLMENT_ID, "proof-token", 654321, null, EnrollmentStatus.CREATED));
-    when(qrCodePayloadService.composePayload(ENROLLMENT_ID, "proof-token")).thenReturn("{}");
+    when(qrCodePayloadService.composePayload("proof-token")).thenReturn("{}");
     when(qrCodeGeneratorService.generateQrCodeImage("{}", 300, 300)).thenReturn(png);
 
     ResponseEntity<?> response =
@@ -99,7 +99,7 @@ class AdminProvisioningControllerOnboardingQrTest {
         controller.getAdminOnboardingQrCode(ADMIN_ID, authentication, httpRequest);
 
     assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
-    verify(qrCodePayloadService, never()).composePayload(any(), any());
+    verify(qrCodePayloadService, never()).composePayload(any());
     verify(qrCodeGeneratorService, never()).generateQrCodeImage(any(), anyInt(), anyInt());
   }
 }

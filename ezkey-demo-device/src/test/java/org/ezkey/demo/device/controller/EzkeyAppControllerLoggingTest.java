@@ -162,14 +162,12 @@ class EzkeyAppControllerLoggingTest {
             HttpHeaders.EMPTY,
             leakBody.getBytes(StandardCharsets.UTF_8),
             StandardCharsets.UTF_8);
-    when(authApiService.bind(eq(ENROLLMENT_ID), anyString(), anyString()))
-        .thenReturn(Mono.error(error));
+    when(authApiService.bind(anyString(), anyString())).thenReturn(Mono.error(error));
 
     Model model = new ConcurrentModel();
-    controller.bindEnrollment(ENROLLMENT_ID, ENROLLMENT_PROOF, null, model);
+    controller.bindEnrollment(ENROLLMENT_PROOF, null, model);
 
     String joined = joinedMessages();
-    assertThat(joined).contains(String.valueOf(ENROLLMENT_ID));
     assertThat(joined).contains("status=400");
     assertThat(joined).contains("https://ezkey.org/problems/bind-failed");
     assertThat(joined).doesNotContain("body-SECRET-VALUE-do-not-log");
@@ -191,11 +189,10 @@ class EzkeyAppControllerLoggingTest {
             HttpHeaders.EMPTY,
             leakBody.getBytes(StandardCharsets.UTF_8),
             StandardCharsets.UTF_8);
-    when(authApiService.bind(eq(ENROLLMENT_ID), anyString(), anyString()))
-        .thenReturn(Mono.error(error));
+    when(authApiService.bind(anyString(), anyString())).thenReturn(Mono.error(error));
 
     Model model = new ConcurrentModel();
-    controller.bindEnrollment(ENROLLMENT_ID, ENROLLMENT_PROOF, null, model);
+    controller.bindEnrollment(ENROLLMENT_PROOF, null, model);
 
     String joined = joinedMessages();
     assertThat(joined).doesNotContain("\r");
@@ -223,7 +220,7 @@ class EzkeyAppControllerLoggingTest {
   void bindEnrollmentRejectedOverrideDoesNotEchoUrl() {
     String evil = "https://evil.example/capture-tokens";
     Model model = new ConcurrentModel();
-    String view = controller.bindEnrollment(ENROLLMENT_ID, ENROLLMENT_PROOF, evil, model);
+    String view = controller.bindEnrollment(ENROLLMENT_PROOF, evil, model);
 
     assertThat(view).isEqualTo("phone/ezkey/new_enrollment");
     assertThat(model.getAttribute("error")).isEqualTo(AuthApiUrlValidator.HOST_NOT_ALLOWED_MESSAGE);

@@ -231,7 +231,6 @@ public class OperationalChurnTest extends AbstractSecurityTest {
     configureForAuthApi(dockerStackConfig);
 
     Map<String, Object> bindRequest = new HashMap<>();
-    bindRequest.put("enrollmentId", enrollmentId);
     bindRequest.put("enrollmentProofToken", enrollmentProofToken);
 
     Response bindResponse =

@@ -101,37 +101,30 @@
    * Parses enrollment QR text (JSON or pipe-delimited).
    *
    * @param {string} raw decoded QR string
-   * @returns {{ enrollmentId: string, enrollmentProofToken: string, language?: string, authUrl?: string }}
+   * @returns {{ enrollmentProofToken: string, language?: string, authUrl?: string }}
    */
   function parseQrPayload(raw) {
     var trimmed = String(raw).trim();
     if (!trimmed) {
       throw new Error('Empty payload');
     }
+    var json;
     try {
-      var json = JSON.parse(trimmed);
-      if (json.enrollmentId != null && json.enrollmentProofToken != null) {
-        if (json.authUrl !== undefined && validateAuthUrl(json.authUrl) == null) {
-          throw new Error('Invalid Auth API URL in QR payload.');
-        }
-        return {
-          enrollmentId: String(json.enrollmentId),
-          enrollmentProofToken: String(json.enrollmentProofToken),
-          language: json.language ? String(json.language) : undefined,
-          authUrl: validateAuthUrl(json.authUrl),
-        };
-      }
+      json = JSON.parse(trimmed);
     } catch {
-      // try pipe format
+      throw new Error('Unsupported QR format');
     }
-    var pipeParts = trimmed.split('|');
-    if (pipeParts.length >= 2) {
-      return {
-        enrollmentId: pipeParts[0],
-        enrollmentProofToken: pipeParts.slice(1).join('|'),
-      };
+    if (json == null || json.enrollmentProofToken == null) {
+      throw new Error('Unsupported QR format');
     }
-    throw new Error('Unsupported QR format');
+    if (json.authUrl !== undefined && validateAuthUrl(json.authUrl) == null) {
+      throw new Error('Invalid Auth API URL in QR payload.');
+    }
+    return {
+      enrollmentProofToken: String(json.enrollmentProofToken),
+      language: json.language ? String(json.language) : undefined,
+      authUrl: validateAuthUrl(json.authUrl),
+    };
   }
 
   /**
@@ -226,7 +219,6 @@
    * @returns {Promise<void>}
    */
   function processImageBlob(blob) {
-    var enrollmentIdEl = document.getElementById('enrollmentId');
     var tokenEl = document.getElementById('enrollmentProofToken');
     var errEl = document.getElementById('qrImportError');
     var warnEl = document.getElementById('qrImportWarning');
@@ -263,9 +255,6 @@
           );
         }
         var payload = parseQrPayload(data);
-        if (enrollmentIdEl) {
-          enrollmentIdEl.value = payload.enrollmentId;
-        }
         if (tokenEl) {
           tokenEl.value = payload.enrollmentProofToken;
         }

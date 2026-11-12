@@ -126,7 +126,7 @@ class EnrollmentQrDeliveryServiceTest {
     when(tenant.getTenantName()).thenReturn("acme-tenant");
     when(eligibilityService.isIntegrationOperational(integration)).thenReturn(true);
     when(eligibilityService.isTenantOperational(tenant)).thenReturn(true);
-    when(qrCodePayloadService.composePayload(ENROLLMENT_ID, TOKEN)).thenReturn("payload");
+    when(qrCodePayloadService.composePayload(TOKEN)).thenReturn("payload");
     when(qrCodeGeneratorService.generateQrCodeImage(anyString(), anyInt(), anyInt()))
         .thenReturn(PNG);
     when(port.send(any())).thenReturn(new DeliveryResult(Outcome.ACCEPTED, null, "ref-1", false));

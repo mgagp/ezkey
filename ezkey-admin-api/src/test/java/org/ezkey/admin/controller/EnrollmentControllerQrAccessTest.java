@@ -121,7 +121,7 @@ class EnrollmentControllerQrAccessTest {
 
     when(accessControlService.canAccessEnrollment(authentication, ENROLLMENT_ID)).thenReturn(true);
     when(enrollmentService.getById(ENROLLMENT_ID)).thenReturn(enrollment);
-    when(qrCodePayloadService.composePayload(ENROLLMENT_ID, "proof-token")).thenReturn("{}");
+    when(qrCodePayloadService.composePayload("proof-token")).thenReturn("{}");
     when(qrCodeGeneratorService.generateQrCodeImage("{}", 300, 300)).thenReturn(png);
 
     ResponseEntity<byte[]> response = enrollmentController.getQrCode(ENROLLMENT_ID);
@@ -147,7 +147,7 @@ class EnrollmentControllerQrAccessTest {
     ResponseEntity<byte[]> response = enrollmentController.getQrCode(ENROLLMENT_ID);
 
     assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
-    verify(qrCodePayloadService, never()).composePayload(any(), any());
+    verify(qrCodePayloadService, never()).composePayload(any());
     verify(qrCodeGeneratorService, never()).generateQrCodeImage(any(), anyInt(), anyInt());
   }
 }

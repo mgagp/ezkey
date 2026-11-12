@@ -28,7 +28,6 @@ import tools.jackson.databind.node.ObjectNode;
  *
  * <pre>
  * {
- *   "enrollmentId": "4",
  *   "enrollmentProofToken": "abc123...",
  *   "authUrl": "https://ezkey.acme.com:8080"
  * }
@@ -64,19 +63,17 @@ public class QrCodePayloadService {
   /**
    * Composes a JSON payload for QR code encoding.
    *
-   * <p>The payload always includes {@code enrollmentId} and {@code enrollmentProofToken}. If {@code
-   * ezkey.qr.auth-base-url} is configured, an {@code authUrl} field is added so the mobile
-   * application can dynamically connect to the correct auth-api instance.
+   * <p>The payload is the enrollment proof token. {@code enrollmentId} is not an invitation field
+   * (ADR-0019). If {@code ezkey.qr.auth-base-url} is configured, an {@code authUrl} field is added
+   * so the device can reach the Auth API for this instance.
    *
-   * @param enrollmentId the enrollment ID
    * @param enrollmentProofToken the enrollment proof token
    * @return JSON string suitable for QR code encoding
    * @throws IllegalStateException if JSON serialization fails
    */
-  public String composePayload(Integer enrollmentId, String enrollmentProofToken) {
+  public String composePayload(String enrollmentProofToken) {
     try {
       ObjectNode payload = objectMapper.createObjectNode();
-      payload.put("enrollmentId", String.valueOf(enrollmentId));
       payload.put("enrollmentProofToken", enrollmentProofToken);
 
       String authBaseUrl = qrCodeProperties.getAuthBaseUrl();

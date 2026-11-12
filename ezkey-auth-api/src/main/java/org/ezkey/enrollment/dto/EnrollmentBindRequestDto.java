@@ -17,13 +17,11 @@ import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
  * Request DTO for enrollment binding initiation with proof token in auth API.
  *
  * <p>This DTO represents the request data needed to initiate the enrollment binding process for
- * mobile devices. It requires both the enrollment ID and the enrollment proof token to prevent
- * enumeration attacks and ensure secure access to enrollment data.
+ * mobile devices. The enrollment proof token is the invitation secret. The enrollment id is not
+ * sent; the server resolves the row from the token hash and returns the id (ADR-0019).
  *
- * <p><b>Security Enhancement:</b> This DTO implements enumeration protection by requiring the
- * enrollment proof token in addition to the enrollment ID. This prevents attackers from
- * systematically testing enrollment IDs to discover valid enrollments and obtain sensitive
- * information.
+ * <p><b>Security:</b> The proof token is the bearer secret for a {@code CREATED} enrollment. A
+ * sequential enrollment id is not a second secret and is not part of this request.
  *
  * <p><b>Usage Context:</b> Used by mobile devices to start the enrollment binding process with the
  * auth-api. The enrollment proof token must be obtained from the enrollment creation process
@@ -36,7 +34,6 @@ import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
  * <p><b>Fields:</b>
  *
  * <ul>
- *   <li><b>enrollmentId:</b> The enrollment ID to bind to the mobile device
  *   <li><b>enrollmentProofToken:</b> The enrollment proof token for authentication
  * </ul>
  *
@@ -51,19 +48,6 @@ import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
  */
 @Schema(description = "Request DTO for enrollment binding initiation with proof token")
 public record EnrollmentBindRequestDto(
-    /**
-     * The enrollment ID to bind to the mobile device.
-     *
-     * <p>Must reference an existing enrollment created through the admin API. This ID is typically
-     * obtained by the mobile device through QR code scanning or deep link navigation from the
-     * integration website.
-     */
-    @Schema(
-            description = "Enrollment ID to bind to the mobile device",
-            example = "123",
-            requiredMode = RequiredMode.REQUIRED)
-        Integer enrollmentId,
-
     /**
      * The enrollment proof token for authentication.
      *
@@ -84,10 +68,7 @@ public record EnrollmentBindRequestDto(
    */
   @Override
   public String toString() {
-    return "EnrollmentBindRequestDto{"
-        + "enrollmentId="
-        + enrollmentId
-        + ", enrollmentProofToken="
+    return "EnrollmentBindRequestDto{enrollmentProofToken="
         + (enrollmentProofToken != null ? "[PROTECTED]" : "null")
         + '}';
   }

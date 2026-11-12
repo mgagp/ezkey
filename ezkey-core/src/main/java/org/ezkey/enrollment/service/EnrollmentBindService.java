@@ -120,11 +120,12 @@ public class EnrollmentBindService {
    * @throws EnrollmentAlreadyBoundException if the enrollment is already processed
    */
   public EnrollmentBindResponse bind(EnrollmentBindRequest request) {
-    logger.info(
-        "Starting enrollment bind process for enrollment ID: {}", request.getEnrollmentId());
+    logger.info("Starting enrollment bind");
 
     // Step 1: Validate enrollment and proof token
     Enrollment enrollment = validateEnrollment(request);
+
+    logger.info("Enrollment located for bind, id={}", enrollment.getEnrollmentId());
 
     // Step 2: Load integration
     Integration integration = loadIntegration(enrollment.getIntegrationId());
@@ -132,7 +133,8 @@ public class EnrollmentBindService {
     String integrationDescription = integration.getDescription();
 
     // Step 3: Acquire lock and validate state
-    Enrollment lockedEnrollment = acquireLockAndValidate(request);
+    Enrollment lockedEnrollment =
+        acquireLockAndValidate(enrollment.getEnrollmentId(), request.getEnrollmentProofToken());
 
     // Step 4: Mark as BOUND (read-once guarantee)
     markAsBound(lockedEnrollment);
@@ -144,41 +146,32 @@ public class EnrollmentBindService {
   }
 
   /**
-   * Validates the enrollment using the proof token and enrollment ID.
+   * Validates the enrollment using the proof token.
    *
-   * <p>This method ensures that the enrollment exists, is active, and that the provided enrollment
-   * ID matches the proof token to prevent unauthorized access.
+   * <p>The proof-token hash is unique, so it is the invitation handle. The enrollment id is read
+   * from the row and is not supplied by the caller (ADR-0019).
    *
-   * @param request the bind request containing enrollment proof token and ID
+   * @param request the bind request containing the enrollment proof token
    * @return the validated enrollment
    * @throws EnrollmentBindingFailedException if enrollment validation fails
    * @throws EnrollmentAlreadyBoundException if enrollment is not in CREATED state
    * @throws EnrollmentInvitationExpiredException if the invitation has expired
    */
   private Enrollment validateEnrollment(EnrollmentBindRequest request) {
-    logger.debug(
-        "Step 1: Performing read-only pre-checks with proof token validation for enrollment ID: {}",
-        request.getEnrollmentId());
+    logger.debug("Step 1: Performing read-only pre-checks with proof token validation");
 
     String proofTokenHash = SensitiveDataHasher.sha256Hex(request.getEnrollmentProofToken());
 
     if (proofTokenHash == null) {
-      logger.warn(
-          "Validation failed: Missing or blank enrollment proof token for ID: {}",
-          request.getEnrollmentId());
+      logger.warn("Validation failed: Missing or blank enrollment proof token");
       throw new EnrollmentBindingFailedException("Enrollment binding failed");
     }
 
     Enrollment enrollment =
-        enrollmentRepository
-            .findByEnrollmentIdAndEnrollmentProofTokenHash(
-                request.getEnrollmentId(), proofTokenHash)
-            .orElse(null);
+        enrollmentRepository.findByEnrollmentProofTokenHash(proofTokenHash).orElse(null);
 
     if (enrollment == null) {
-      logger.warn(
-          "Validation failed: Enrollment not found or invalid proof token for ID: {}",
-          request.getEnrollmentId());
+      logger.warn("Validation failed: Enrollment not found or invalid proof token");
       throw new EnrollmentBindingFailedException("Enrollment binding failed");
     }
 
@@ -275,31 +268,31 @@ public class EnrollmentBindService {
    * <p>This method implements the read-once guarantee by atomically locking and validating the
    * enrollment state.
    *
-   * @param request the bind request
+   * @param enrollmentId the enrollment located by proof-token hash
+   * @param enrollmentProofToken the proof token from the request, re-checked after the lock
    * @return the locked enrollment
    * @throws EnrollmentNotAvailableAfterLockException if enrollment is not found or already bound
    * @throws EnrollmentBindingFailedException if proof token mismatch after lock
    * @throws EnrollmentAlreadyBoundException if enrollment is in invalid state
    */
-  private Enrollment acquireLockAndValidate(EnrollmentBindRequest request) {
-    logger.debug("Step 4: Acquiring lock for enrollment ID: {}", request.getEnrollmentId());
+  private Enrollment acquireLockAndValidate(Integer enrollmentId, String enrollmentProofToken) {
+    logger.debug("Step 4: Acquiring lock for enrollment ID: {}", enrollmentId);
 
-    Enrollment enrollment =
-        enrollmentRepository.findAndLockUnreadById(request.getEnrollmentId()).orElse(null);
+    Enrollment enrollment = enrollmentRepository.findAndLockUnreadById(enrollmentId).orElse(null);
 
     if (enrollment == null) {
       logger.warn(
           "Validation failed: Enrollment not found or already bound after lock acquisition for ID:"
               + " {}",
-          request.getEnrollmentId());
+          enrollmentId);
       throw new EnrollmentNotAvailableAfterLockException("Enrollment not found or already bound");
     }
 
     // Additional validation: ensure the proof token still matches after lock
-    if (!enrollment.getEnrollmentProofToken().equals(request.getEnrollmentProofToken())) {
+    if (!enrollment.getEnrollmentProofToken().equals(enrollmentProofToken)) {
       logger.warn(
           "Validation failed: Proof token mismatch after lock acquisition for ID: {}",
-          request.getEnrollmentId());
+          enrollmentId);
       throw new EnrollmentBindingFailedException("Enrollment binding failed");
     }
 

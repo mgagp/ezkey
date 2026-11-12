@@ -119,7 +119,6 @@ beforeEach(() => {
     mutateAsync: mockSaveEnrollmentMutateAsync,
   } as unknown as ReturnType<typeof useSaveEnrollment>);
   mockParseQrPayload.mockReturnValue({
-    enrollmentId: '1',
     enrollmentProofToken: 'token-abc',
     authUrl: 'https://auth.example.com',
   });

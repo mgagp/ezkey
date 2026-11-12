@@ -131,7 +131,6 @@ class FakeEzkeyServer {
     FakeEnrollment enrollment, {
     String? authUrl = fakeAuthApiBaseUrl,
   }) => jsonEncode(<String, Object?>{
-    'enrollmentId': enrollment.id,
     'enrollmentProofToken': enrollment.proofToken,
     if (authUrl != null) 'authUrl': authUrl,
   });
@@ -201,9 +200,15 @@ class FakeEzkeyServer {
   }
 
   Future<http.Response> _bind(Map<String, dynamic> body) async {
-    final enrollment = enrollments[body['enrollmentId']];
-    if (enrollment == null ||
-        enrollment.proofToken != body['enrollmentProofToken']) {
+    final token = body['enrollmentProofToken'];
+    FakeEnrollment? enrollment;
+    for (final candidate in enrollments.values) {
+      if (candidate.proofToken == token) {
+        enrollment = candidate;
+        break;
+      }
+    }
+    if (enrollment == null) {
       return _problem(
         400,
         'https://ezkey.io/problems/auth/enrollment-binding-failed',

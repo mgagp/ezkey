@@ -26,18 +26,16 @@ export function redactSeedBlobForLog(value: string): string {
 
 /**
  * Structured redaction for a parsed enrollment QR payload.
- * Keeps {@code enrollmentId}; replaces the proof token with length + hash prefix.
+ * Replaces the proof token with length + hash prefix. The invitation has no enrollment id.
  *
  * @param parsed parsed QR payload
  * @returns JSON-serializable redacted view
  */
 export function redactParsedQrPayloadForLog(parsed: QrPayload): {
-  enrollmentId: string;
   proofToken: string;
   authUrl: 'present' | 'absent';
 } {
   return {
-    enrollmentId: parsed.enrollmentId,
     proofToken: `redacted ${redactSeedBlobForLog(parsed.enrollmentProofToken)}`,
     authUrl: parsed.authUrl ? 'present' : 'absent',
   };

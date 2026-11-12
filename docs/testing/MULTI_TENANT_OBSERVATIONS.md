@@ -393,7 +393,7 @@ Cette séparation est plus sécuritaire et devrait être appliquée aussi pour l
 
 3. **Créer GET /api/v1/admins/{id}/onboarding/qrcode**:
    - Générer un QR code PNG pour l'onboarding
-   - Contient un payload JSON: `{"enrollmentId":"...","enrollmentProofToken":"...","authUrl":"..."}` (authUrl optionnel)
+   - Contient un payload JSON: `{"enrollmentProofToken":"...","authUrl":"..."}` (authUrl optionnel)
    - **Sécurité**: Généré à la demande, pas stocké
 
 **Avantages:**
@@ -446,7 +446,7 @@ Cette séparation est plus sécuritaire et devrait être appliquée aussi pour l
 
 3. **Création de GET /api/v1/admins/{id}/onboarding/qrcode**:
    - Génère un QR code PNG pour l'onboarding
-   - Format JSON: `{"enrollmentId":"...","enrollmentProofToken":"...","authUrl":"..."}` (authUrl optionnel, configurable via `ezkey.qr.auth-base-url`)
+   - Format JSON: `{"enrollmentProofToken":"...","authUrl":"..."}` (authUrl optionnel, configurable via `ezkey.qr.auth-base-url`)
    - **Sécurité**: Généré à la demande, pas stocké
    - **Autorisation**: Même règles que GET /api/v1/admins/{id}/onboarding
 

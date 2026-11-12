@@ -720,7 +720,7 @@ public class EnrollmentController {
    * <p>Returns a PNG image containing a QR code with a JSON payload:
    *
    * <pre>
-   * {"enrollmentId":"4","enrollmentProofToken":"abc...","authUrl":"https://..."}
+   * {"enrollmentProofToken":"abc...","authUrl":"https://..."}
    * </pre>
    *
    * <p>The {@code authUrl} field is included only when {@code ezkey.qr.auth-base-url} is
@@ -746,7 +746,7 @@ public class EnrollmentController {
       summary = "Generate QR code for enrollment",
       description =
           "Returns a PNG QR code image containing enrollment credentials as JSON"
-              + " ({enrollmentId, enrollmentProofToken, authUrl}). Only while the enrollment is"
+              + " ({enrollmentProofToken, authUrl}). Only while the enrollment is"
               + " CREATED; 409 otherwise")
   @ApiResponses(
       value = {
@@ -784,9 +784,7 @@ public class EnrollmentController {
       }
 
       // Compose JSON payload with optional authUrl
-      String qrContent =
-          qrCodePayloadService.composePayload(
-              enrollment.getEnrollmentId(), enrollment.getEnrollmentProofToken());
+      String qrContent = qrCodePayloadService.composePayload(enrollment.getEnrollmentProofToken());
 
       // Generate QR code (300x300 pixels)
       byte[] qrCodeImage = qrCodeGeneratorService.generateQrCodeImage(qrContent, 300, 300);

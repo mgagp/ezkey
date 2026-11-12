@@ -124,9 +124,22 @@ void main() {
       expect(server.requestPaths, isEmpty);
     });
 
-    test('refuses to enroll twice locally', () async {
+    test(
+      'a rescan of a completed enrollment is refused by the server',
+      () async {
+        final invitation = server.invite();
+        await enroll(invitation);
+        await expectLater(
+          auth.bindEnrollment(codeFor(invitation)),
+          _api(EzkeyProblemKind.enrollmentAlreadyBound),
+        );
+      },
+    );
+
+    test('local store refuses a bind the server accepts again', () async {
       final invitation = server.invite();
       await enroll(invitation);
+      invitation.status = 'PENDING';
       await expectLater(
         auth.bindEnrollment(codeFor(invitation)),
         throwsA(isA<EzkeyValidationException>()),
@@ -184,8 +197,9 @@ void main() {
       );
     });
 
-    test('bind: answer for another enrollment is rejected', () async {
-      server.mutateResponse = (path, body) => body..['enrollmentId'] = 1;
+    test('bind: proof token in the answer must match the invitation', () async {
+      server.mutateResponse =
+          (path, body) => body..['enrollmentProofToken'] = 'other-token';
       await expectLater(
         auth.bindEnrollment(codeFor(server.invite())),
         _integrity(EzkeyIntegrityCheck.bindConsistency),

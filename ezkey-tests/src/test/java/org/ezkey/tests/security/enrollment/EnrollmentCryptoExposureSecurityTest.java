@@ -59,7 +59,7 @@ public class EnrollmentCryptoExposureSecurityTest extends AbstractSecurityTest {
     Response bind =
         given()
             .contentType(ContentType.JSON)
-            .body(Map.of("enrollmentId", enrollmentId, "enrollmentProofToken", proofToken))
+            .body(Map.of("enrollmentProofToken", proofToken))
             .when()
             .post("/enrollments/bind")
             .then()

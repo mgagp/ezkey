@@ -66,7 +66,7 @@ test('@elective @device-backed enrollment detail shows bind material only while 
   const updated = await page.request.get(`/api/v1/enrollments/${enrollmentId}`, { headers });
   expect((await updated.json()).contactEmail).toBe(`alice-${suffix}@example.com`);
 
-  const form = { enrollmentId: String(enrollmentId), enrollmentProofToken };
+  const form = { enrollmentProofToken };
   const bind = await context.request.post(`${testEnv.demoDeviceUrl}/phone/ezkey/enrollment/bind`, {
     form,
   });
@@ -81,7 +81,13 @@ test('@elective @device-backed enrollment detail shows bind material only while 
 
   const verify = await context.request.post(
     `${testEnv.demoDeviceUrl}/phone/ezkey/enrollment/verify`,
-    { form: { ...form, challengeResponse: String(enrollmentChallenge) } },
+    {
+      form: {
+        enrollmentId: String(enrollmentId),
+        enrollmentProofToken,
+        challengeResponse: String(enrollmentChallenge),
+      },
+    },
   );
   expect(await verify.text()).toContain('demo-device-verify-success');
 

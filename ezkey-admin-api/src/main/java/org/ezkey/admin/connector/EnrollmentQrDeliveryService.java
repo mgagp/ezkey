@@ -313,7 +313,7 @@ public class EnrollmentQrDeliveryService {
     try {
       png =
           qrCodeGeneratorService.generateQrCodeImage(
-              qrCodePayloadService.composePayload(material.enrollmentId(), material.proofToken()),
+              qrCodePayloadService.composePayload(material.proofToken()),
               QR_SIZE_PIXELS,
               QR_SIZE_PIXELS);
     } catch (IOException | WriterException e) {

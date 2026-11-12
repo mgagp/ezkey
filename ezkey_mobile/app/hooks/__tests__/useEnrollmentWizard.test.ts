@@ -122,7 +122,6 @@ function renderHook(popToTop = mockPopToTop): {result: {current: EnrollmentWizar
 /** Drives the hook to a state where `draft` is set (after a successful QR scan + bind). */
 async function renderHookWithDraft(): Promise<{result: {current: EnrollmentWizardState}}> {
   mockParseQrPayload.mockReturnValue({
-    enrollmentId: 'enr-1',
     enrollmentProofToken: 'token-abc',
     authUrl: 'https://auth.example.com',
   });
@@ -373,7 +372,6 @@ describe('handleQrScanned — bind success', () => {
 
   it('sets bindError when the integration signature is invalid', async () => {
     mockParseQrPayload.mockReturnValue({
-      enrollmentId: 'enr-1',
       enrollmentProofToken: 'token-abc',
       authUrl: 'https://auth.example.com',
     });
@@ -402,7 +400,6 @@ describe('handleQrScanned — bind success', () => {
 
   it('sets bindError when the bind API call fails', async () => {
     mockParseQrPayload.mockReturnValue({
-      enrollmentId: 'enr-1',
       enrollmentProofToken: 'token-abc',
       authUrl: 'https://auth.example.com',
     });
@@ -421,7 +418,6 @@ describe('handleQrScanned — bind success', () => {
 
   it('sets bindError when the integration key algorithm is unsupported', async () => {
     mockParseQrPayload.mockReturnValue({
-      enrollmentId: 'enr-1',
       enrollmentProofToken: 'token-abc',
       authUrl: 'https://auth.example.com',
     });

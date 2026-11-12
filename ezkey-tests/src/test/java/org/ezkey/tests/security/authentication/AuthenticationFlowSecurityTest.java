@@ -87,7 +87,6 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
 
       // Bind
       Map<String, Object> bindRequest = new HashMap<>();
-      bindRequest.put("enrollmentId", enrollmentId);
       bindRequest.put("enrollmentProofToken", enrollmentProofToken);
 
       Response bindResponse =
@@ -245,7 +244,6 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
       configureForAuthApi(dockerStackConfig);
 
       Map<String, Object> bindRequest = new HashMap<>();
-      bindRequest.put("enrollmentId", enrollmentId);
       bindRequest.put("enrollmentProofToken", enrollmentProofToken);
 
       Response bindResponse =
@@ -911,7 +909,6 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
     configureForAuthApi(dockerStackConfig);
 
     Map<String, Object> bindRequest = new HashMap<>();
-    bindRequest.put("enrollmentId", enrollmentId);
     bindRequest.put("enrollmentProofToken", enrollmentProofToken);
 
     Response bindResponse =
