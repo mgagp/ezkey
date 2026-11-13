@@ -6759,7 +6759,7 @@ __metadata:
     react-native: "npm:0.88.1"
     react-native-config: "npm:1.7.2"
     react-native-gesture-handler: "npm:3.5.0"
-    react-native-keychain: "npm:10.0.0"
+    react-native-keychain: "npm:11.0.0"
     react-native-nitro-image: "npm:0.15.2"
     react-native-nitro-modules: "npm:0.37.2"
     react-native-safe-area-context: "npm:5.11.1"
@@ -10362,10 +10362,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-keychain@npm:10.0.0":
-  version: 10.0.0
-  resolution: "react-native-keychain@npm:10.0.0"
-  checksum: 10c0/a632ad27e58264506d2b373d329a867f042fb014e8a78db3a63031e953d61b5c98066eed1be238ee6c186d3f213d0efaa2a26526fb3a1d36a624c4460e982230
+"react-native-keychain@npm:11.0.0":
+  version: 11.0.0
+  resolution: "react-native-keychain@npm:11.0.0"
+  peerDependencies:
+    react: ">=19.1.1"
+    react-native: ">=0.82.0"
+  checksum: 10c0/6646589898c95324c6c25682f677ad6da83c09a2c8c3f538985a3cb62ba03f40efc67e6287b8c94384de774ffe56e30b8241c20ae144b982044c6b65f65bc0ab
   languageName: node
   linkType: hard
 
