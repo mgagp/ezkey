@@ -34,8 +34,9 @@ import org.junit.jupiter.api.TestMethodOrder;
  * SEC-022 / SEC-023 regression: object-level authorization on API key get, per-integration list,
  * and revoke.
  *
- * <p>Tenant Admin A must receive 403 for Tenant B key/integration targets; Tenant B's key must
- * remain active after a rejected cross-tenant revoke. Same-tenant revoke remains 204.
+ * <p>Tenant Admin A must receive 404 for a Tenant B key (hide-existence, same as an unknown id) and
+ * 403 for the per-integration list of a Tenant B integration; Tenant B's key must remain active
+ * after a rejected cross-tenant revoke. Same-tenant revoke remains 204.
  *
  * @since 2026
  */
@@ -117,7 +118,7 @@ public class ApiKeyObjectAuthorizationSecurityTest extends AbstractSecurityTest 
 
   @Test
   @Order(1)
-  @DisplayName("SEC-023: TenantAdmin A cannot GET Tenant B API key by id (403)")
+  @DisplayName("SEC-023: TenantAdmin A cannot GET Tenant B API key by id (404, hide-existence)")
   public void tenantAdminACannotGetTenantBApiKey() {
     configureForAdminApi(dockerStackConfig);
 
@@ -131,9 +132,22 @@ public class ApiKeyObjectAuthorizationSecurityTest extends AbstractSecurityTest 
             .extract()
             .response();
 
+    Response missing =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + tenantAdminAToken)
+            .when()
+            .get("/api-keys/2000000000")
+            .then()
+            .extract()
+            .response();
+
+    // SQL-ISO-006: a foreign-tenant key answers exactly like a missing key (hide-existence)
     assertThat(response.getStatusCode())
-        .as("Cross-tenant GET /api-keys/{keyId} must be denied")
-        .isEqualTo(403);
+        .as("Cross-tenant GET /api-keys/{keyId} must be denied as not found")
+        .isEqualTo(404);
+    assertThat(missing.getStatusCode()).isEqualTo(404);
+    assertThat(response.getBody().asString()).isEqualTo(missing.getBody().asString());
   }
 
   @Test
@@ -161,7 +175,9 @@ public class ApiKeyObjectAuthorizationSecurityTest extends AbstractSecurityTest 
 
   @Test
   @Order(3)
-  @DisplayName("SEC-022: TenantAdmin A cannot revoke Tenant B API key (403); key stays active")
+  @DisplayName(
+      "SEC-022: TenantAdmin A cannot revoke Tenant B API key (404, hide-existence); key stays"
+          + " active")
   public void tenantAdminACannotRevokeTenantBApiKey() {
     configureForAdminApi(dockerStackConfig);
 
@@ -177,8 +193,8 @@ public class ApiKeyObjectAuthorizationSecurityTest extends AbstractSecurityTest 
             .response();
 
     assertThat(revokeResponse.getStatusCode())
-        .as("Cross-tenant DELETE /api-keys/{keyId} must be denied")
-        .isEqualTo(403);
+        .as("Cross-tenant DELETE /api-keys/{keyId} must be denied as not found (SQL-ISO-006)")
+        .isEqualTo(404);
 
     Response verifyResponse =
         given()

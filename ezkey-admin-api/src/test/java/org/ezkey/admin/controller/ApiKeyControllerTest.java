@@ -512,16 +512,21 @@ class ApiKeyControllerTest {
     }
 
     @Test
-    @DisplayName("Should return 403 FORBIDDEN when integration access denied (SEC-023)")
-    void shouldReturnForbiddenWhenIntegrationAccessDenied() {
+    @DisplayName(
+        "Foreign-tenant key answers like a missing key: 404, no body (SEC-023, SQL-ISO-006)")
+    void shouldAnswerForeignKeyLikeMissingKey() {
       Integer keyId = 42;
       ApiKey mockApiKey = createMockApiKey(keyId);
       when(apiKeyService.getApiKey(keyId)).thenReturn(Optional.of(mockApiKey));
       when(accessControlService.canAccessIntegration(any(), eq(123))).thenReturn(false);
+      when(apiKeyService.getApiKey(999)).thenReturn(Optional.empty());
 
-      ResponseEntity<ApiKeyResponseDto> response = controller.getApiKey(keyId);
+      ResponseEntity<ApiKeyResponseDto> foreign = controller.getApiKey(keyId);
+      ResponseEntity<ApiKeyResponseDto> missing = controller.getApiKey(999);
 
-      assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+      assertEquals(HttpStatus.NOT_FOUND, foreign.getStatusCode());
+      assertEquals(missing.getStatusCode(), foreign.getStatusCode());
+      assertEquals(missing.getBody(), foreign.getBody());
     }
   }
 
@@ -561,16 +566,21 @@ class ApiKeyControllerTest {
     }
 
     @Test
-    @DisplayName("Should return 403 FORBIDDEN when integration access denied (SEC-022)")
-    void shouldReturnForbiddenWhenIntegrationAccessDenied() {
+    @DisplayName("Foreign-tenant key is not revoked and answers 404 like a missing key (SEC-022)")
+    void shouldAnswerForeignKeyLikeMissingKeyOnRevoke() {
       Integer keyId = 42;
       when(apiKeyService.getApiKey(keyId)).thenReturn(Optional.of(createMockApiKey(keyId)));
       when(accessControlService.canAccessIntegration(any(), eq(123))).thenReturn(false);
+      when(apiKeyService.getApiKey(999)).thenReturn(Optional.empty());
 
-      ResponseEntity<Void> response = controller.revokeApiKey(keyId, null, httpServletRequest);
+      ResponseEntity<Void> foreign = controller.revokeApiKey(keyId, null, httpServletRequest);
+      ResponseEntity<Void> missing = controller.revokeApiKey(999, null, httpServletRequest);
 
-      assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+      assertEquals(HttpStatus.NOT_FOUND, foreign.getStatusCode());
+      assertEquals(missing.getStatusCode(), foreign.getStatusCode());
       verify(apiKeyService, never()).revokeApiKey(anyInt(), any(EzkeyAdmin.class));
+      // Same audit row for both: a Tenant Admin can read their own tenant's audit log
+      verify(auditLogService, times(2)).log(any());
     }
   }
 

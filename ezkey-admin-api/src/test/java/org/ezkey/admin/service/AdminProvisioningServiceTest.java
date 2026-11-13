@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -57,7 +58,6 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
-import org.springframework.security.access.AccessDeniedException;
 
 /**
  * Unit tests for AdminProvisioningService listAdmins method.
@@ -544,13 +544,46 @@ class AdminProvisioningServiceTest {
     }
 
     @Test
-    @DisplayName("TenantAdmin cannot get admin from other tenant")
+    @DisplayName(
+        "TenantAdmin gets the same not-found for an other-tenant admin as for a missing id")
     void tenantAdminCannotGetAdminFromOtherTenant() {
       AdminPrincipal principal = new AdminPrincipal(1, AdminType.TENANT_ADMIN, 1, null);
       when(adminRepository.findById(4)).thenReturn(java.util.Optional.of(otherTenantAdmin));
+      when(adminRepository.findById(999)).thenReturn(java.util.Optional.empty());
 
-      assertThrows(IllegalArgumentException.class, () -> service.getAdminById(4, principal));
-      verify(adminRepository).findById(4);
+      ResourceNotFoundException foreign =
+          assertThrows(ResourceNotFoundException.class, () -> service.getAdminById(4, principal));
+      ResourceNotFoundException missing =
+          assertThrows(ResourceNotFoundException.class, () -> service.getAdminById(999, principal));
+
+      // SQL-ISO-002: same type, same wording; only the caller-supplied id differs
+      assertEquals(
+          new ResourceNotFoundException("Administrator", 4).getMessage(), foreign.getMessage());
+      assertEquals(
+          new ResourceNotFoundException("Administrator", 999).getMessage(), missing.getMessage());
+    }
+
+    @Test
+    @DisplayName("TenantAdmin gets not-found for a Global Admin on the system tenant")
+    void tenantAdminCannotGetGlobalAdminOnSystemTenant() {
+      // A bootstrapped Global Admin row carries the system tenant, not a null tenant
+      Tenant systemTenant = new Tenant();
+      systemTenant.setTenantId(99);
+      globalAdmin.setTenant(systemTenant);
+      AdminPrincipal principal = new AdminPrincipal(2, AdminType.TENANT_ADMIN, 1, null);
+      when(adminRepository.findById(1)).thenReturn(java.util.Optional.of(globalAdmin));
+
+      assertThrows(ResourceNotFoundException.class, () -> service.getAdminById(1, principal));
+    }
+
+    @Test
+    @DisplayName("TenantAdmin gets not-found for a Global Admin with no tenant")
+    void tenantAdminCannotGetGlobalAdminWithoutTenant() {
+      globalAdmin.setTenant(null);
+      AdminPrincipal principal = new AdminPrincipal(2, AdminType.TENANT_ADMIN, 1, null);
+      when(adminRepository.findById(1)).thenReturn(java.util.Optional.of(globalAdmin));
+
+      assertThrows(ResourceNotFoundException.class, () -> service.getAdminById(1, principal));
     }
 
     @Test
@@ -760,9 +793,12 @@ class AdminProvisioningServiceTest {
       AdminPrincipal principal = new AdminPrincipal(2, AdminType.TENANT_ADMIN, 1, null);
       when(adminRepository.findById(4)).thenReturn(java.util.Optional.of(otherTenantAdmin));
 
+      // SQL-ISO-002: out-of-tenant answers like a missing id (was AccessDeniedException -> 403)
       assertThrows(
-          AccessDeniedException.class, () -> service.regenerateRecoveryCodes(4, principal));
-      verify(adminRepository).findById(4);
+          ResourceNotFoundException.class, () -> service.regenerateRecoveryCodes(4, principal));
+      assertThrows(
+          ResourceNotFoundException.class, () -> service.issueInitialRecoveryCodes(4, principal));
+      verify(recoveryService, never()).rotateRecoveryCodes(any());
     }
 
     @Test
@@ -811,6 +847,15 @@ class AdminProvisioningServiceTest {
       when(enrollmentRepository.findById(40)).thenReturn(java.util.Optional.of(enrollment));
       return service.getAdminOnboarding(
           2, new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null));
+    }
+
+    @Test
+    @DisplayName("TenantAdmin gets not-found for onboarding of an other-tenant admin (SQL-ISO-002)")
+    void tenantAdminCannotGetOnboardingOfOtherTenantAdmin() {
+      AdminPrincipal principal = new AdminPrincipal(2, AdminType.TENANT_ADMIN, 1, null);
+      when(adminRepository.findById(4)).thenReturn(java.util.Optional.of(otherTenantAdmin));
+
+      assertThrows(ResourceNotFoundException.class, () -> service.getAdminOnboarding(4, principal));
     }
 
     @Test

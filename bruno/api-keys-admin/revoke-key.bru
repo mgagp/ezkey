@@ -57,5 +57,5 @@ docs {
   - 204: API key revoked successfully
   - 400: Invalid `reason` when provided (must be 10-500 chars)
   - 401: Unauthorized - admin token required
-  - 404: API key not found
+  - 404: API key not found, or key of another tenant (hide-existence: same answer; the key stays active)
 }

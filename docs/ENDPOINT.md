@@ -1586,8 +1586,8 @@ Authorization: Bearer ezkey_admin_token...
 **Status Codes:**
 - 200: Administrator retrieved successfully
 - 401: Unauthorized - admin token required
-- 403: Forbidden - not authorized for this admin
-- 404: Administrator not found
+- 403: Forbidden - caller is not an administrator
+- 404: Administrator not found, or outside the caller's tenant. A Tenant Admin gets the same 404 (`admin/resource-not-found`) for an unknown id, an admin of another tenant, and a Global Admin (hide-existence). The same rule applies to `PATCH /admins/{id}`, `GET /admins/{id}/onboarding`, `GET /admins/{id}/onboarding/qrcode` and the two recovery-code POSTs.
 - 500: Internal server error
 
 ---
@@ -2033,7 +2033,7 @@ Authorization: Bearer ezkey_admin_token...
 
 **GET /api/v1/api-keys/{keyId}**
 
-Retrieves details of a specific API key. Secret key is never included. TenantAdmin may access only keys for integrations in their tenant; cross-tenant requests return **403**.
+Retrieves details of a specific API key. Secret key is never included. TenantAdmin may access only keys for integrations in their tenant; a cross-tenant request returns **404**, exactly like an unknown key id (hide-existence).
 
 **Request:**
 ```http
@@ -2090,8 +2090,7 @@ Content-Type: application/json
 **Status Codes:**
 - 200: API key updated successfully
 - 400: Invalid data, key revoked, or ipWhitelist validation failed (invalid CIDR)
-- 403: Access denied
-- 404: API key not found
+- 404: API key not found, or key of another tenant (hide-existence: same answer)
 - 409: Optimistic lock conflict — resource was modified, re-fetch and retry
 
 **Constraints:**
@@ -2104,7 +2103,7 @@ Content-Type: application/json
 
 **DELETE /api/v1/api-keys/{keyId}**
 
-Immediately revokes an API key, making it unusable. Preserved for audit. TenantAdmin may revoke only keys for integrations in their tenant; cross-tenant requests return **403** and the key remains active (SEC-022).
+Immediately revokes an API key, making it unusable. Preserved for audit. TenantAdmin may revoke only keys for integrations in their tenant; a cross-tenant request returns **404**, exactly like an unknown key id (hide-existence), and the key remains active (SEC-022).
 
 **Request:**
 ```http
@@ -2278,6 +2277,7 @@ Content-Type: application/json
 - 400: Invalid data (enrollment not found, etc.)
 - 401: Unauthorized - authentication required
 - 403: Forbidden - access denied to enrollment
+- 404: `userIdentifier` + `integrationId` where the integration does not exist or is outside the caller's tenant (`admin/resource-not-found`, hide-existence). The check runs before the `userIdentifier` lookup, so a hit and a miss on a foreign integration cannot be told apart. On an accessible integration, an unknown `userIdentifier` stays 400.
 - 500: Internal server error
 
 ---

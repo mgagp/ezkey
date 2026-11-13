@@ -35,12 +35,12 @@ import org.junit.jupiter.api.TestMethodOrder;
  * Live probes for the 2026-09 tenant SQL isolation assessment.
  *
  * <p>These tests prove that Tenant Admin / Integration API key callers <b>cannot consume</b>
- * foreign-tenant rows (fail-closed authorization). They also capture Problem details so the
- * assessment register can record hide-existence oracles (SQL-ISO-001, SQL-ISO-002, SQL-ISO-003)
- * without locking those dialects into CI. When a finding is remediated, keep the rejection
- * assertions; expect the two details/status pairs to converge.
+ * foreign-tenant rows (fail-closed authorization). For remediated findings (SQL-ISO-002,
+ * SQL-ISO-004) they also lock hide-existence: a row that exists outside the caller's tenant and a
+ * row that does not exist must share one client outcome. SQL-ISO-001 and SQL-ISO-003 still only
+ * record their dialect in the log until they are remediated or dispositioned.
  *
- * Register: {@code docs/java-tenant-sql-isolation-assessment-2026-09.md}.
+ * <p>Register: {@code docs/java-tenant-sql-isolation-assessment-2026-09.md}.
  *
  * @since 2026
  */
@@ -57,6 +57,9 @@ public class TenantSqlIsolationOracleSecurityTest extends AbstractSecurityTest {
   private String globalAdminToken;
   private String tenantAdminAToken;
   private Integer tenantAId;
+  private Integer tenantAdminAId;
+  private Integer tenantAdminBId;
+  private Integer integrationBId;
   private Integer enrollmentBId;
   private String apiKeyACredentials;
   private Integer globalAdminId;
@@ -86,7 +89,7 @@ public class TenantSqlIsolationOracleSecurityTest extends AbstractSecurityTest {
       Integer integrationAId =
           testDataFactory.createIntegrationForTenant(
               "SQLISO Integration A " + suffix, tenantAId, tenantAdminAToken);
-      Integer integrationBId =
+      integrationBId =
           testDataFactory.createIntegrationForTenant(
               "SQLISO Integration B " + suffix, tenantBId, tenantAdminBToken);
 
@@ -99,6 +102,8 @@ public class TenantSqlIsolationOracleSecurityTest extends AbstractSecurityTest {
           testDataFactory.createApiKeyForIntegration(integrationAId, tenantAdminAToken);
 
       resolveGlobalAdminIdentity();
+      tenantAdminAId = resolveAdminId(tenantAdminAToken);
+      tenantAdminBId = resolveAdminId(tenantAdminBToken);
     } catch (IllegalStateException e) {
       org.junit.jupiter.api.Assumptions.assumeTrue(
           false,
@@ -133,40 +138,73 @@ public class TenantSqlIsolationOracleSecurityTest extends AbstractSecurityTest {
 
   @Test
   @Order(2)
-  @DisplayName("SQL-ISO-002: TenantAdmin A cannot read Global Admin by id")
-  public void tenantAdminACannotGetGlobalAdminById() {
+  @DisplayName("SQL-ISO-002: out-of-tenant admin ids answer exactly like a missing id (404)")
+  public void tenantAdminACannotTellForeignAdminFromMissing() {
     configureForAdminApi(dockerStackConfig);
+    Map<String, Object> patchBody = Map.of("firstName", "Probe");
 
-    Response globalAdmin =
-        given()
-            .contentType(ContentType.JSON)
-            .header("Authorization", "Bearer " + tenantAdminAToken)
-            .when()
-            .get("/admins/" + globalAdminId)
-            .then()
-            .extract()
-            .response();
+    String[][] routes = {
+      {"GET", ""},
+      {"PATCH", ""},
+      {"GET", "/onboarding"},
+      {"GET", "/onboarding/qrcode"},
+      {"POST", "/recovery-codes/regenerate"},
+      {"POST", "/recovery-codes/issue-initial"},
+    };
 
+    for (String[] route : routes) {
+      String method = route[0];
+      String suffix = route[1];
+      Response missing = adminRoute(method, UNKNOWN_ADMIN_ID, suffix, patchBody);
+      Response globalAdmin = adminRoute(method, globalAdminId, suffix, patchBody);
+      Response otherTenant = adminRoute(method, tenantAdminBId, suffix, patchBody);
+
+      log.info(
+          "SQL-ISO-002 {} /admins/{{id}}{} → GA {} / other tenant {} / missing {}",
+          method,
+          suffix,
+          globalAdmin.getStatusCode(),
+          otherTenant.getStatusCode(),
+          missing.getStatusCode());
+
+      String label = method + " /admins/{id}" + suffix;
+      assertThat(missing.getStatusCode()).as(label + " missing").isEqualTo(404);
+      assertThat(globalAdmin.getStatusCode()).as(label + " Global Admin").isEqualTo(404);
+      assertThat(otherTenant.getStatusCode()).as(label + " other tenant").isEqualTo(404);
+      assertThat(problemType(globalAdmin)).as(label + " type").isEqualTo(problemType(missing));
+      assertThat(problemType(otherTenant)).as(label + " type").isEqualTo(problemType(missing));
+      assertThat(globalAdmin.getBody().asString()).doesNotContain(globalAdminUsername);
+      assertThat(globalAdmin.getBody().asString()).doesNotContainIgnoringCase("tenant admin");
+      assertThat(otherTenant.getBody().asString()).doesNotContain("sqliso_b_");
+    }
+
+    // Control: the same caller still reads an admin of their own tenant
+    assertThat(adminRoute("GET", tenantAdminAId, "", patchBody).getStatusCode()).isEqualTo(200);
+  }
+
+  @Test
+  @Order(4)
+  @DisplayName(
+      "SQL-ISO-004: userIdentifier lookup on a foreign integration answers like a missing one")
+  public void tenantAdminACannotProbeUserIdentifiersOfForeignIntegration() {
+    Response foreign = postAdminAuthAttemptByUserIdentifier(integrationBId, "sqliso-probe-user");
     Response missing =
-        given()
-            .contentType(ContentType.JSON)
-            .header("Authorization", "Bearer " + tenantAdminAToken)
-            .when()
-            .get("/admins/" + UNKNOWN_ADMIN_ID)
-            .then()
-            .extract()
-            .response();
+        postAdminAuthAttemptByUserIdentifier(UNKNOWN_ENROLLMENT_ID, "sqliso-probe-user");
 
     log.info(
-        "SQL-ISO-002 GET /admins/{} (GA) → HTTP {}", globalAdminId, globalAdmin.getStatusCode());
-    log.info(
-        "SQL-ISO-002 GET /admins/{} (missing) → HTTP {}",
-        UNKNOWN_ADMIN_ID,
+        "SQL-ISO-004 userIdentifier on foreign integration {} → HTTP {} / unknown integration →"
+            + " HTTP {}",
+        integrationBId,
+        foreign.getStatusCode(),
         missing.getStatusCode());
 
-    assertThat(globalAdmin.getStatusCode()).isIn(403, 404);
-    assertThat(globalAdmin.getBody().asString()).doesNotContain(globalAdminUsername);
+    // The integration check runs before the lookup, so a hit and a miss on Tenant B cannot differ:
+    // both stop here. The "lookup never runs" half is unit-tested in admin-api
+    // (AuthAttemptControllerOwnershipTest).
+    assertThat(foreign.getStatusCode()).isEqualTo(404);
     assertThat(missing.getStatusCode()).isEqualTo(404);
+    assertThat(problemType(foreign)).isEqualTo(problemType(missing));
+    assertThat(foreign.getBody().asString()).doesNotContain("SQLISO Integration B");
   }
 
   @Test
@@ -202,6 +240,66 @@ public class TenantSqlIsolationOracleSecurityTest extends AbstractSecurityTest {
 
     assertThat(response.getStatusCode()).isIn(400, 403, 409);
     assertThat(response.getStatusCode()).isNotEqualTo(201);
+  }
+
+  private Response adminRoute(String method, Integer adminId, String suffix, Object body) {
+    configureForAdminApi(dockerStackConfig);
+    var request =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + tenantAdminAToken);
+    String path = "/admins/" + adminId + suffix;
+    return switch (method) {
+      case "GET" -> request.when().get(path).then().extract().response();
+      case "PATCH" -> request.body(body).when().patch(path).then().extract().response();
+      default -> request.when().post(path).then().extract().response();
+    };
+  }
+
+  private Response postAdminAuthAttemptByUserIdentifier(
+      Integer integrationId, String userIdentifier) {
+    Map<String, Object> body = new HashMap<>();
+    body.put("integrationId", integrationId);
+    body.put("userIdentifier", userIdentifier);
+    body.put("challengeRequested", false);
+
+    configureForAdminApi(dockerStackConfig);
+    return given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + tenantAdminAToken)
+        .body(body)
+        .when()
+        .post("/auth-attempts")
+        .then()
+        .extract()
+        .response();
+  }
+
+  /** RFC 9457 {@code type}, or null when the response has no JSON body (empty 404). */
+  private static String problemType(Response response) {
+    String body = response.getBody().asString();
+    return body == null || body.isBlank() || !body.trim().startsWith("{")
+        ? null
+        : response.jsonPath().getString("type");
+  }
+
+  private Integer resolveAdminId(String bearerToken) {
+    configureForAdminApi(dockerStackConfig);
+    Object id =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + bearerToken)
+            .when()
+            .get("/admin/auth/me")
+            .then()
+            .statusCode(200)
+            .extract()
+            .jsonPath()
+            .get("adminId");
+    if (id instanceof Number number) {
+      return number.intValue();
+    }
+    throw new IllegalStateException("GET /admin/auth/me did not return adminId");
   }
 
   private Response postIntegrationAuthAttempt(Integer enrollmentId) {

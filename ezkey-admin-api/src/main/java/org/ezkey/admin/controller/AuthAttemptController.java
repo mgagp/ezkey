@@ -334,6 +334,15 @@ public class AuthAttemptController {
         @ApiResponse(responseCode = "201", description = "Auth attempt created successfully"),
         @ApiResponse(responseCode = "400", description = "Invalid data"),
         @ApiResponse(
+            responseCode = "403",
+            description = "Forbidden - no access to the enrollment (missing or other tenant)"),
+        @ApiResponse(
+            responseCode = "404",
+            description =
+                "userIdentifier lookup on an integration that does not exist or is not visible to"
+                    + " this admin (hide-existence)",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+        @ApiResponse(
             responseCode = "409",
             description =
                 "Live attempt already exists (auth-attempt-pending-exists) or creation is"
@@ -353,6 +362,28 @@ public class AuthAttemptController {
     AdminPrincipal principal =
         auth != null ? AdminProvisioningService.extractAdminPrincipal(auth) : null;
     Integer adminIdForAudit = principal != null ? principal.adminId() : null;
+
+    // userIdentifier lookups run on the request integrationId. Check the object first, so the
+    // lookup result (hit vs miss) of a foreign integration never reaches the caller (SQL-ISO-004).
+    boolean userIdentifierLookup =
+        request.userIdentifier() != null && !request.userIdentifier().isBlank();
+    if (userIdentifierLookup
+        && request.integrationId() != null
+        && !accessControlService.canAccessIntegration(auth, request.integrationId())) {
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.AUTH_ATTEMPT_CREATED,
+                  AdminAuditConstants.AUTH_ATTEMPT_CREATION_FAILED)
+              .eventStatus(EventStatus.FAILURE)
+              .adminId(adminIdForAudit)
+              .errorMessage(
+                  "Access denied: admin does not have access to integration "
+                      + request.integrationId())
+              .build());
+      // Hide existence: missing and foreign integrations share one 404
+      throw new ResourceNotFoundException("Integration", request.integrationId());
+    }
 
     // Resolve effective enrollment ID from enrollmentId and/or userIdentifier
     Integer effectiveEnrollmentId;

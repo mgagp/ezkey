@@ -93,5 +93,6 @@ docs {
   - 400: Invalid data (e.g., enrollment not found)
   - 401: Unauthorized - admin token required
   - 403: Forbidden - TenantAdmin trying to create auth attempt for enrollment from another tenant
+  - 404: `userIdentifier` + `integrationId` where the integration does not exist or belongs to another tenant (hide-existence; the userIdentifier lookup is not run)
   - 500: Internal server error
 }

@@ -101,7 +101,7 @@ docs {
   - 200: Initial recovery codes issued successfully
   - 400: Target administrator is not eligible yet or already has recovery codes
   - 401: Unauthorized - admin token required
-  - 403: Forbidden - not authorized for this administrator
-  - 404: Administrator not found
+  - 403: Forbidden - caller is not an administrator
+  - 404: Administrator not found, or outside the caller's tenant (hide-existence: same answer as an unknown id)
   - 500: Internal server error
 }
