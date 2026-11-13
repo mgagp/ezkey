@@ -56,7 +56,7 @@
             }
           },
           "400": {
-            "description": "Invalid request parameters, or enrollment not found. An enrollmentId of another integration gets the same answer as an unknown id (hide-existence).",
+            "description": "Invalid request parameters",
             "content": {
               "*/*": {
                 "schema": {
@@ -71,6 +71,16 @@
               "*/*": {
                 "schema": {
                   "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "enrollmentId does not exist or belongs to another integration (hide-existence: same answer in both cases)",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -349,6 +359,34 @@
         "required": [
           "challengeRequested"
         ]
+      },
+      "ProblemDetail": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "format": "uri"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "instance": {
+            "type": "string",
+            "format": "uri-reference",
+            "description": "URI-reference of the occurrence. Ezkey uses the request path (relative), matching RFC 9457; it is not an absolute URI."
+          },
+          "properties": {
+            "type": "object",
+            "additionalProperties": {}
+          }
+        }
       },
       "AuthAttemptDto": {
         "type": "object",
