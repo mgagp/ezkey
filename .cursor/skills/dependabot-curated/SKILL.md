@@ -1,6 +1,6 @@
 ---
 name: dependabot-curated
-description: Triages open Dependabot PRs into risk-tiered lots (weekday light or Monday full), applies maximum agent autonomy for minimum risk with proportional tests, merges individually after CI green, and closes with a short daily log or weekly campaign note. Use when the operator says dependabot-curated or asks to triage Dependabot upgrade PRs.
+description: Triages open Dependabot PRs into risk-tiered lots (weekday light or Monday full), applies maximum agent autonomy for minimum risk with proportional tests, merges individually after CI green, and closes with a short daily log or weekly campaign note. Monday full includes the Admin UI advisory pulse (npm audit reduced to distinct GHSA). Use when the operator says dependabot-curated or asks to triage Dependabot upgrade PRs.
 disable-model-invocation: true
 ---
 # Dependabot curated
@@ -32,11 +32,14 @@ full pass (keep, tune, or roll back).
 
 | Pass | When | Scope | Reporting |
 |------|------|-------|-----------|
-| **Weekday light** | **Weekdays 09:14 ET** (Mon–Fri) | T1–T3 lots + Orval **O0/O1** only (Admin UI and mobile **separately**). Skip Java BOM pulse, Mobile RN pulse, and holds/deferral deep review. **Silent when the actionable queue is empty** (no file write). | Short append-only dated section in [`daily-log.md`](../../product-docs/global/hygiene/dependabot/daily-log.md) **only when something was merged/held/deferred** |
-| **Monday full** | **Monday 09:14 ET** (or first working day of the week) | Full pass: T1–T4, Orval O0–O3, **Java BOM pulse**, **Mobile RN pulse** (`yarn deps:monitor --strict`), holds review, ecosystem-gate check | One consolidated campaign note `YYYY-MM-DD-pass-N.md` from [`TEMPLATE.md`](../../product-docs/global/hygiene/dependabot/TEMPLATE.md); may summarize the prior week's daily-log entries |
+| **Weekday light** | **Weekdays 09:14 ET** (Mon–Fri) | T1–T3 lots + Orval **O0/O1** only (Admin UI and mobile **separately**). Skip Java BOM pulse, Mobile RN pulse, Admin UI advisory pulse, and holds/deferral deep review. **Silent when the actionable queue is empty** (no file write). | Short append-only dated section in [`daily-log.md`](../../product-docs/global/hygiene/dependabot/daily-log.md) **only when something was merged/held/deferred** |
+| **Monday full** | **Monday 09:14 ET** (or first working day of the week) | Full pass: T1–T4, Orval O0–O3, **Java BOM pulse**, **Mobile RN pulse** (`yarn deps:monitor --strict`), **Admin UI advisory pulse** (`npm audit --json`, reduced to distinct GHSA), holds review, ecosystem-gate check | One consolidated campaign note `YYYY-MM-DD-pass-N.md` from [`TEMPLATE.md`](../../product-docs/global/hygiene/dependabot/TEMPLATE.md); may summarize the prior week's daily-log entries |
 
 **2026-10-19:** clock fixed at **09:14 ET** and Monday full requires `yarn deps:monitor --strict`
 (Marc hygiene-cadence approval; avoids collision with code-scanning triage at **10:15 ET**).
+**2026-11-13:** Monday full adds the **Admin UI advisory pulse**. `npm install` had reported 10
+moderate for one `minimatch` advisory already on the waiting-upstream table
+(GHSA-g3hv-75wg-m249, alerts 260 and 289). An empty PR queue had hidden it.
 Authority: [`product-docs/global/hygiene/README.md`](../../product-docs/global/hygiene/README.md)
 § *Cadence & automation*.
 
@@ -148,14 +151,20 @@ not a mandatory top-level sort.
      A package whose fix moved from `none` to a version needs a new decision. Also review the table
      of alerts waiting on upstream and its fallback dates. Before any new dismissal, follow
      hygiene README § *Check upstream before dismissing a vulnerability*.
-5. Classify each **remaining** PR **T1–T4** from the title SemVer digits and ecosystem path.
+5. **Admin UI advisory pulse** — **Monday full only** (same weight as the Mobile RN pulse).
+   Weekday light skips. An empty Dependabot PR queue does not prove the Admin UI lockfile is
+   free of advisories. Run `npm audit --json` in `ezkey-admin-ui/` and apply **npm audit
+   reduction**. Record the distinct rows. Propose a lot only for a GHSA absent from the
+   waiting-upstream table, or for a row whose fallback date is this Monday.
+6. Classify each **remaining** PR **T1–T4** from the title SemVer digits and ecosystem path.
    Orval / OpenAPI-generator PRs: classify with the **Orval risk grid** (Admin UI and mobile
    **separately**, never batched together). Surface ambiguity to the operator (e.g. icon library
    minor spanning several patch bumps → T3).
-6. Propose **3–6 lots max** for the session (80/20). Prefer fewer lots over one-PR theater.
-   A BOM-pulse Boot bump or a Mobile RN pulse actionable lot counts even when no Dependabot PR
-   exists (Monday full). Weekday light: if nothing actionable after peel → **silent exit**.
-7. Present a **short lots overview** (deferred block first, then active lots).
+7. Propose **3–6 lots max** for the session (80/20). Prefer fewer lots over one-PR theater.
+   A BOM-pulse Boot bump, a Mobile RN pulse actionable lot, or an Admin UI advisory row that is
+   new or due counts even when no Dependabot PR exists (Monday full). Weekday light: if nothing
+   actionable after peel → **silent exit**.
+8. Present a **short lots overview** (deferred block first, then active lots).
    - **Weekday light:** default autonomy on T1–T3 + Orval O0/O1; pause on T4 / O2–O3 / crypto
      majors / ecosystem gates.
    - **Monday full — Default (HITL):** then **HITL one lot at a time** — wait for Go / No-Go /
@@ -163,12 +172,12 @@ not a mandatory top-level sort.
      `1A, 2B, 3B…` reply as the primary vehicle.
    - **Autonomous validation mode** (see below): after the overview, proceed without waiting for
      per-lot Go when the operator explicitly delegated autonomy for this pass.
-8. On **Go** (or autonomous proceed): apply the lot (see **Apply modes**), then continue.
-9. On **Defer:** leave open or close with a rationale comment; apply `deferred:later-train` (or a
-   more specific `deferred:*` label) when the PR should stay out of routine lots for weeks/months.
-   If investigation cost should not be lost, create **one** `I-*` for that dependency (program
-   deferral), not a Dependabot methodology program.
-10. After all lot decisions: run **session closeout** proportional to pass type and highest
+9. On **Go** (or autonomous proceed): apply the lot (see **Apply modes**), then continue.
+10. On **Defer:** leave open or close with a rationale comment; apply `deferred:later-train` (or a
+    more specific `deferred:*` label) when the PR should stay out of routine lots for weeks/months.
+    If investigation cost should not be lost, create **one** `I-*` for that dependency (program
+    deferral), not a Dependabot methodology program.
+11. After all lot decisions: run **session closeout** proportional to pass type and highest
     accepted tier. **Monday full:** write
     `product-docs/global/hygiene/dependabot/YYYY-MM-DD-pass-N.md` from the template.
     **Weekday light with activity:** append a short dated section to `daily-log.md`.
@@ -306,6 +315,53 @@ in-repo. Authority: lane
 [`product-docs/global/hygiene/dependabot/README.md`](../../product-docs/global/hygiene/dependabot/README.md)
 § *Mobile RN pulse*.
 
+## npm audit reduction
+
+`npm audit`, including the summary `npm install` prints, counts every ancestor that can reach a
+vulnerable module. One advisory becomes many lines. `npm audit fix --force` proposes whatever
+version makes that count drop, including a downgrade of a direct devDependency onto an older major.
+
+Apply this reduction whenever an audit count is on the table (an operator report, or the Monday
+**Admin UI advisory pulse**):
+
+1. Run `npm audit --json` in the workspace that printed the count (`ezkey-admin-ui/` for the Admin
+   UI pulse).
+2. Keep a row only when `via` contains an advisory object (a GHSA or a numeric advisory source).
+   Drop rows whose `via` is only other package names: those are ancestors, not separate advisories.
+3. One row per GHSA + package. Name every manifest GitHub already alerts on for that GHSA.
+   `package-lock.json` and `yarn.lock` for the same GHSA are one advisory and two manifests.
+4. Match each row to the waiting-upstream table in the dependabot hygiene README. A row already in
+   that table, with its fallback date still ahead, is **waiting**. A row whose fallback date is
+   this Monday, or a GHSA absent from the table, is the only thing that becomes a lot.
+5. The ancestor count is not the work queue. Do not run `npm audit fix --force` from this reduction.
+
+Weekday light does not run the pulse. If the operator brings an `npm audit` count mid-week, apply
+this reduction and answer from the waiting-upstream table. Leave the Monday pulse for Monday.
+
+## Admin UI advisory pulse
+
+Dependabot version updates at `directory: "/ezkey-admin-ui"` move declared dependencies. They do
+not prove the lockfile is free of advisories: a transitive module stays put while its parents
+still reject the patched range, so no PR opens and the weekday queue looks empty.
+
+**Monday full only.** Same weight as the **Mobile RN pulse**. Weekday light skips it.
+
+On every Monday `dependabot-curated` full pass, before proposing lots:
+
+1. From `ezkey-admin-ui/`, run `npm audit --json` and apply **npm audit reduction**.
+2. Record each distinct row in the campaign note: GHSA, package, manifests, severity, and either
+   the waiting-table match (including the fallback date) or **new**.
+3. Propose a lot only for a **new** GHSA or a waiting-table row whose fallback date is due. Leave
+   written fallback dates in place until that Monday.
+
+Triage by **what ships**, the same rule as the alerts section of the dependabot hygiene README.
+A moderate advisory that exists only on the lint toolchain stays a recorded row until its fallback
+date. It does not become a CI gate.
+
+Authority: lane
+[`product-docs/global/hygiene/dependabot/README.md`](../../product-docs/global/hygiene/dependabot/README.md)
+§ *Admin UI advisory pulse*.
+
 ## Autonomous validation mode
 
 Autonomy means **who owns the validation ladder and evidence**, not **how bumps land on
@@ -403,7 +459,8 @@ stack/Playwright were deferred to the next T2+ session or weekly milestone.
 Record the **Java BOM pulse** result in the campaign note even when no Boot bump was needed
 (`none` is a valid outcome). Same for the nested `google-java-format` check. Record the
 **Mobile RN pulse** (`deps:monitor --strict` + declared RN versions + Dependabot mobile PRs
-peeled) even when no mobile lot was proposed. Same for the **Dismissed-alert check**.
+peeled) even when no mobile lot was proposed. Same for the **Dismissed-alert check** and the
+**Admin UI advisory pulse** (distinct GHSA rows, or `none`).
 
 ## Pin, install, and codegen hygiene (after merges)
 
@@ -448,11 +505,12 @@ Record completion (or N/A) in the campaign note validation table (Monday) or the
 ## HITL contract (default for cold agents)
 
 1. Determine **pass type** (weekday light vs Monday full); run **Concurrency** check; list and
-   classify; peel off `deferred:*` first. **Monday full:** run the **Java BOM pulse** and the
-   **Mobile RN pulse**. **Weekday light:** skip those pulses. **Probe `GH_TOKEN` / `gh auth
-   status`** (skill § *Cloud GitHub identities*) before choosing hygiene-branch vs merge-existing;
-   propose lots overview (3–6 active lots; Monday may include a Boot or Mobile RN pulse lot when
-   the pulse found actionable work with no Dependabot PR). Empty weekday queue → silent exit.
+   classify; peel off `deferred:*` first. **Monday full:** run the **Java BOM pulse**, the
+   **Mobile RN pulse**, and the **Admin UI advisory pulse**. **Weekday light:** skip those pulses.
+   **Probe `GH_TOKEN` / `gh auth status`** (skill § *Cloud GitHub identities*) before choosing
+   hygiene-branch vs merge-existing; propose lots overview (3–6 active lots; Monday may include a
+   Boot, Mobile RN, or due Admin UI advisory lot when the pulse found actionable work with no
+   Dependabot PR). Empty weekday queue → silent exit.
 2. Iterate **one lot at a time** when HITL applies: members, tier (and Orval **O-tier** when
    relevant), blast radius, CI status, open question → wait for Go / No-Go / hold / defer —
    **unless** weekday-light defaults or autonomous validation mode apply (then proceed for

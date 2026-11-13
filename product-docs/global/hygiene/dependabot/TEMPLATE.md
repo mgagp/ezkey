@@ -54,6 +54,7 @@ Do not paste full chat transcripts.
 | Nested pin: `google-java-format` | yes / n/a | current / bump proposed |
 | Mobile RN pulse (declared `react` / `react-native` + coupled libs) | yes / n/a | versions recorded (Monday full) |
 | Mobile `yarn deps:monitor` (actionable / deferred / high audit) | yes / n/a | summary or none |
+| Admin UI advisory pulse (`npm audit --json`, distinct GHSA) | yes / n/a | GHSA, package, manifests, waiting-table match or new (Monday full) |
 | Dependabot mobile PRs peeled | yes / n/a / none | PR #s or empty queue |
 | Orval codegen diff (Admin UI and/or mobile; O-tier) | yes / n/a | O0–O3 + one-line summary |
 | Characterization tests (O2 only; before + after) | yes / n/a | |

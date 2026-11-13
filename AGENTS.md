@@ -425,7 +425,7 @@ When the operator asks for a **`pam-doctor-curated`** improvement pass:
 - Standing policy: [`product-docs/global/hygiene/dependabot/README.md`](product-docs/global/hygiene/dependabot/README.md).
 - **Cadence:** Dependabot daily (Maven + npm) with cooldown; weekday **light** pass (T1–T3 + Orval
   O0/O1; silent when empty); **Monday full** at **09:14 ET** (BOM + Mobile RN pulses with
-  `yarn deps:monitor --strict` + holds + campaign note). Cadence index:
+  `yarn deps:monitor --strict` + Admin UI advisory pulse + holds + campaign note). Cadence index:
   [`product-docs/global/hygiene/README.md`](product-docs/global/hygiene/README.md)
   § *Cadence & automation*.
   **One owning pass per day** — back off if concurrent merges (~30 min) or another in-flight pass.
@@ -474,9 +474,9 @@ When the operator asks for a **`dependabot-curated`** pass:
    *Concurrency*). List open Dependabot PRs (`gh pr list --author "app/dependabot" --state open`).
    Probe Cursor Cloud `GH_TOKEN` (`gh auth status`; never print the secret) before choosing
    hygiene-branch vs merging the existing Dependabot PRs.
-2. Peel off any PR labeled `deferred:*`. **Monday full only:** run the **Java BOM pulse** and
-   **Mobile RN pulse** (skill §§), plus the **Dismissed-alert check**. Weekday light skips those pulses; empty actionable queue →
-   silent exit.
+2. Peel off any PR labeled `deferred:*`. **Monday full only:** run the **Java BOM pulse**, the
+   **Mobile RN pulse**, and the **Admin UI advisory pulse** (skill §§), plus the **Dismissed-alert
+   check**. Weekday light skips those pulses; empty actionable queue → silent exit.
 3. Classify remaining PRs T1–T4; Orval via **Orval risk grid** (Admin UI and mobile separately).
    Propose **3–6 lots** (overview only).
 4. **Weekday light:** default autonomy on T1–T3 + Orval O0/O1; pause on T4 / O2–O3 / crypto majors.

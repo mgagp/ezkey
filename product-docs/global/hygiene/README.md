@@ -37,7 +37,7 @@ HITL shape. See root [`AGENTS.md`](../../AGENTS.md) for keywords.
 | [`java-doctor/`](java-doctor/) | `java-doctor-curated` | Java SpotBugs / Semgrep / PMD curated passes |
 | [`pam-doctor/`](pam-doctor/) | `pam-doctor-curated` | Linux PAM module (`ezkey-pam/src`) clang-format / clang-tidy / cppcheck passes, plus an on-demand ASan / UBSan / Valgrind replay (`./scripts/pam-doctor-sanitizers.sh`). macOS install track excluded |
 | [`mobile-doctor/`](mobile-doctor/) | `mobile-doctor-curated` | Ezkey Mobile static-analysis curated passes |
-| [`dependabot/`](dependabot/) | `dependabot-curated` | Near-continuous Dependabot triage (weekday light + Monday full), Orval O0–O3 grid, Java BOM / Mobile RN pulses |
+| [`dependabot/`](dependabot/) | `dependabot-curated` | Near-continuous Dependabot triage (weekday light + Monday full), Orval O0–O3 grid, Java BOM / Mobile RN / Admin UI advisory pulses |
 | [`major-upgrades/`](major-upgrades/) | (quarterly in `dependabot-curated` + monthly GHA) | Platform / runtime / base-image major-upgrade register (`registry.yaml`); light path vs dedicated issue; monthly [`endoflife-check.yml`](../../../.github/workflows/endoflife-check.yml) |
 | [`report-intake/`](report-intake/) | (standing procedure) | First response within 14 days on every report channel: issue reminder workflow, GitHub private reports, `security@ezkey.org` mail contract |
 | [`stabilization-lessons/`](stabilization-lessons/) | (read before HA, startup, exposure or test-helper work) | Lessons from the #1180 / #1259 stabilization, with evidence and checks |
@@ -84,6 +84,10 @@ Repo-is-memory decisions (one line + reason):
   Mathieu, 2026-10-19); do not invent a calendar until that lands.
 - **Mobile `yarn deps:monitor --strict` on Monday full** — empty Dependabot mobile queue is not
   proof the stack is current; strict monitor feeds the Mobile RN pulse.
+- **Admin UI advisory pulse on Monday full** — `npm audit --json` in `ezkey-admin-ui/`, reduced to
+  distinct GHSA. An empty Dependabot PR queue is not proof the lockfile is free of advisories.
+  `package-lock.json` and `yarn.lock` for the same GHSA count once. A row already waiting on
+  upstream, with its fallback date still ahead, stays waiting (Marc 2026-11-13).
 - **Host OS H1 monthly Monday (or ≤7 days for Critical/Important kernel/openssh/openssl/glibc)** —
   community Lightsail stays on a locked AL2023 `releasever`; autonomous rootbeer agent after
   snapshot; Marc go only if reboot needed (#909).
@@ -96,8 +100,9 @@ Repo-is-memory decisions (one line + reason):
 
 | Procedure | Owner lane | Trigger | Cadence | Signal | Prioritization rule | Human gate |
 |-----------|------------|---------|---------|--------|---------------------|------------|
-| **Dependabot curated** (skill [`.cursor/skills/dependabot-curated`](../../../.cursor/skills/dependabot-curated/SKILL.md); docs [`dependabot/`](dependabot/)) | `dependabot-curated` | Cloud agent / operator keyword | **Weekdays 09:14 ET** light; **Monday** full | Open Dependabot PRs + Java BOM + Mobile RN pulses | **T1–T4**; Orval **O0–O3** (Admin UI ≠ mobile) | Weekday light: autonomous T1–T3 + O0/O1; Monday full HITL default; Marc on T4 / O3 / crypto majors |
+| **Dependabot curated** (skill [`.cursor/skills/dependabot-curated`](../../../.cursor/skills/dependabot-curated/SKILL.md); docs [`dependabot/`](dependabot/)) | `dependabot-curated` | Cloud agent / operator keyword | **Weekdays 09:14 ET** light; **Monday** full | Open Dependabot PRs + Java BOM + Mobile RN + Admin UI advisory pulses | **T1–T4**; Orval **O0–O3** (Admin UI ≠ mobile) | Weekday light: autonomous T1–T3 + O0/O1; Monday full HITL default; Marc on T4 / O3 / crypto majors |
 | **Mobile `deps:monitor --strict`** (`ezkey_mobile` `yarn deps:monitor --strict`) | `dependabot-curated` (Monday full) | Part of Monday full Mobile RN pulse | **Monday** with full pass | Actionable vs ecosystem-gated deferred | Feeds mobile lots (T1–T4 / Orval grid) | Same as Dependabot curated |
+| **Admin UI advisory pulse** (`ezkey-admin-ui` `npm audit --json`, reduced to distinct GHSA) | `dependabot-curated` (Monday full) | Part of Monday full | **Monday** with full pass | Distinct GHSA vs waiting-upstream table; duplicate lockfile manifests count once | A lot only when the GHSA is new or the fallback date is due | Same as Dependabot curated |
 | **Dependabot opens PRs** ([`.github/dependabot.yml`](../../../.github/dependabot.yml)) | Dependabot app | Schedule | **Daily** Maven + npm; **weekly** Actions + pip (cooldown ~3d patch/minor, ~7d major) | New upgrade PRs | N/A (feeds curated) | None — curation owns merge |
 | **Maven dependency submission** ([`.github/workflows/maven-dependency-submission.yml`](../../../.github/workflows/maven-dependency-submission.yml)) | CI / Insights | Push to `main` (pom paths) + `workflow_dispatch` | On change | GitHub dependency graph | N/A | Maintainer: Automatic Dependency Submission stays **Disabled** |
 | **Code scanning triage + remediation** ([`code-scanning/`](code-scanning/); policy [`docs/SECURITY_POSTURE.md`](../../../docs/SECURITY_POSTURE.md)) | `code-scanning` | Fred proposes; Christophe executes; cloud agent opens fix PRs | **Monday 10:15 ET** full; **weekday light** for new high/critical | Open CodeQL alerts | Exposure-aware **SLAs** (critical/high deployed → 24h triage / 14d fix; medium 60d; low 180d; KEV 3d). Remediates **≤3 real alerts/week** (severity first, then nearest deadline); **one fix PR per alert** via cloud agent | Christophe decides/executes dismissals; **Christophe** reviews security/crypto fix PRs; **Marc** for high-impact dismissals and any behavior-change fix; **no deploy** |
