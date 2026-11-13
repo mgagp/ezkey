@@ -419,4 +419,60 @@ class EnrollmentQrDeliveryServiceTest {
         .noneMatch(
             line -> line.contains(RECIPIENT) || line.contains(TOKEN) || line.contains(base64));
   }
+
+  @Test
+  @DisplayName("organisation name prefers the legal name, falls back, and stays within 120")
+  void organisationName() {
+    when(tenant.getOrganizationName()).thenReturn("  Legal Name  ");
+    send();
+    assertThat(sentJob().organisationName()).isEqualTo("Legal Name");
+
+    org.mockito.Mockito.clearInvocations(port, auditLogService);
+    when(tenant.getOrganizationName()).thenReturn("   ");
+    send();
+    assertThat(sentJob().organisationName()).isEqualTo("acme-tenant");
+
+    org.mockito.Mockito.clearInvocations(port, auditLogService);
+    when(tenant.getOrganizationName()).thenReturn(null);
+    send();
+    assertThat(sentJob().organisationName()).isEqualTo("acme-tenant");
+
+    org.mockito.Mockito.clearInvocations(port, auditLogService);
+    when(tenant.getOrganizationName()).thenReturn("A".repeat(120) + "TAIL");
+    send();
+    assertThat(sentJob().organisationName()).hasSize(120).doesNotContain("TAIL").startsWith("A");
+  }
+
+  @Test
+  @DisplayName("contact email is stripped before it is sent")
+  void contactEmailIsStripped() {
+    when(enrollment.getContactEmail()).thenReturn("  person@example.com  ");
+    send();
+    assertThat(sentJob().recipient()).isEqualTo("person@example.com");
+  }
+
+  @Test
+  @DisplayName("expected server is the host only, so userinfo, port and path stay out")
+  void expectedServerIsHostOnly() {
+    qrCodeProperties.setAuthBaseUrl("https://operator:s3cret@auth.example.com:8443/cb?x=1#frag");
+    send();
+    DeliveryJob job = sentJob();
+    assertThat(job.expectedServer()).isEqualTo("auth.example.com");
+    assertThat(job.expectedServer()).doesNotContain("s3cret", "operator", "8443", "/cb");
+  }
+
+  @Test
+  @DisplayName("an auth URL with no host is refused, so the email cannot name a bad server")
+  void authUrlWithoutHost() {
+    qrCodeProperties.setAuthBaseUrl("auth.example.com");
+    assertRefused(Reason.EXPECTED_SERVER_MISSING);
+
+    org.mockito.Mockito.clearInvocations(auditLogService, port);
+    qrCodeProperties.setAuthBaseUrl("https://");
+    assertRefused(Reason.EXPECTED_SERVER_MISSING);
+
+    org.mockito.Mockito.clearInvocations(auditLogService, port);
+    qrCodeProperties.setAuthBaseUrl("not a url");
+    assertRefused(Reason.EXPECTED_SERVER_MISSING);
+  }
 }
