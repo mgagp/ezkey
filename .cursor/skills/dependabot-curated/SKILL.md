@@ -234,20 +234,19 @@ Dependabot list as "Java is current."**
 3. If a newer patch exists and there is **no** Dependabot PR for it, propose one hygiene-branch
    lot (SemVer patch, closeout as T3 runtime because the BOM is shipped). Provenance example:
    `hygiene/spring-boot-4.1.1` / campaign `2026-08-21-pass-1`.
-4. After any accepted Boot bump (Dependabot or manual), review parent overrides that sit ahead of
-   the Boot BOM. **Dropped 2026-11-13 (Marc):** the SEC-019 pins `logback.version`,
-   `jackson-bom.version`, and `jackson-2-bom.version`. Spring Boot 4.1.2 already manages versions
-   past the original CVEs (logback **1.5.38**, Jackson 3 **3.1.7**, Jackson 2 **2.21.7**). No
-   active GHSA or OSV advisory applies to those Boot-managed versions. `postgresql.version` /
-   `tomcat.version` were dropped earlier with the same Boot bump (BOM manages those lines;
-   #1031 / #939). **Still present:** `caffeine.version` is a rate-limiting compatibility pin,
-   not a CVE pin — do not drop it in a Boot-catch-up pass. **Drop** any future override when
-   Boot has caught up. **Keep** one only when Ezkey is still intentionally ahead (CVE or
-   compatibility). Record the keep/drop table in the campaign note. On every Monday full, also
-   walk **Active overrides** in the Dependabot README (npm `overrides` and the remaining parent
-   pins), not only after a Boot bump: expiry at most 90 days, removal condition, cap (5 per
-   manifest, 10 total). A row with no expiry, or past it, is that pass's question for Marc. New
-   overrides follow `docs/SECURITY_POSTURE.md` § *Transitive dependency overrides*.
+4. After any accepted Boot bump (Dependabot or manual), do not restore the removed SEC-019 pins
+   `logback.version`, `jackson-bom.version`, and `jackson-2-bom.version`. **Dropped 2026-11-13
+   (Marc):** Spring Boot 4.1.2 already manages versions past the original CVEs (logback **1.5.38**,
+   Jackson 3 **3.1.7**, Jackson 2 **2.21.7**). No active GHSA or OSV advisory applies to those
+   Boot-managed versions. `postgresql.version` / `tomcat.version` were dropped earlier with the
+   same Boot bump (BOM manages those lines; #1031 / #939). **Still present:** `caffeine.version`
+   is a rate-limiting compatibility pin, not a CVE pin — do not drop it in a Boot-catch-up pass.
+   A new pin follows the Dependabot README § *Active overrides*: an advisory (GHSA), a reason,
+   and an issue number, never just to sit ahead of the BOM. On every Monday full, walk **Active
+   overrides** (npm `overrides` and the remaining parent pins), not the removed SEC-019 rows:
+   expiry at most 90 days, removal condition, cap (5 per manifest, 10 total). A row with no
+   expiry, or past it, is that pass's question for Marc. New overrides follow
+   `docs/SECURITY_POSTURE.md` § *Transitive dependency overrides*.
 5. **Nested pin Dependabot typically misses:** `google-java-format.version` in the root
    `pom.xml` (Spotless `<googleJavaFormat>`). Check Maven Central in this same pulse — do
    **not** invent a weekly lot if unchanged. Bump only when Spotless itself moved, JDK

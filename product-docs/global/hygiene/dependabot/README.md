@@ -303,10 +303,9 @@ On every Monday-full `dependabot-curated` pass the agent must:
 
 1. Compare root `spring-boot.version` to the latest **same-minor** Boot release.
 2. If newer and no Dependabot PR exists, propose a hygiene-branch lot (closeout as T3 runtime).
-3. After an accepted Boot bump, review parent overrides that sit ahead of Boot. SEC-019 logback
-   and Jackson pins were removed on 2026-11-13 (Boot 4.1.2 covers the original CVEs; no active
-   GHSA or OSV advisory on the Boot-managed versions). `caffeine.version` stays as a compatibility
-   pin.
+3. Do not restore the removed SEC-019 pins (`logback.version`, `jackson-bom.version`,
+   `jackson-2-bom.version`). They were removed on 2026-11-13. `caffeine.version` stays as a
+   compatibility pin. A new pin follows the rule under § *Active overrides*.
 4. Check `google-java-format.version` (Spotless nested pin; Dependabot typically misses it).
    Bump only when Spotless, JDK compatibility, or a real formatter bug requires it (T2 tooling).
    **Current pin `2.0.0` (adopted 2026-11-02 hygiene trial):** keep cleanup default on; Spotless
@@ -408,6 +407,9 @@ Registry for the posture in
 overrides*. **2026-11-13, Marc:** an override is a dated exception. Upstream and a Dependabot
 parent bump are the default. Patch or minor only. Expiry at most **90 days**. At most **5** per
 manifest and **10** in the repo. Above either cap, Marc decides.
+
+A pin only comes back with an advisory (GHSA), a reason and an issue number, never just to be
+ahead of the BOM.
 
 The Monday full pass reads this table even when no Boot bump landed: drop a row whose parent
 has caught up, and flag a row with no expiry or a past expiry. A CI warning for a missing
