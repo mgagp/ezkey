@@ -49,8 +49,9 @@ way as a missing `canAccess*` (enrollment QR) or a missing `GLOBAL_ADMIN` gate
   not the target status). Future execution slices may peel those to 404; do not
   document a deliberate JSON-403 vs mutate-404 split as the product story.
   **Peeled 2026-11 (SQL-ISO-002/004/006):** every `/admins/{id}` route a Tenant Admin
-  can reach, API-key get/update/revoke, and auth-attempt create by `userIdentifier`
-  on a foreign `integrationId` answer 404 for missing and foreign alike.
+  can reach, API-key get/update/revoke, and auth-attempt create (enrollment or
+  integration) answer 404 for missing and foreign alike, always as the Problem
+  `admin/resource-not-found` (throw `ResourceNotFoundException`; no empty 404).
 - **Same outcome means same audit row too:** a Tenant Admin reads their own tenant's
   audit log. When missing and foreign share an HTTP answer, the failure audit row
   (constant, `errorMessage`) must be the same as well, or the audit log becomes the

@@ -66,7 +66,7 @@ docs {
   - **GlobalAdmin**: Can create auth attempts for any enrollment (any tenant)
   - **TenantAdmin**: Can only create auth attempts for enrollments within their tenant
   - Access is validated via `AccessControlService.canAccessEnrollment()`
-  - Returns 403 Forbidden if TenantAdmin tries to create auth attempt for enrollment from another tenant
+  - Returns 404 Not Found if TenantAdmin tries to create auth attempt for enrollment from another tenant (hide-existence: same answer as an unknown enrollment)
   
   **Request Body:**
   Provide either `enrollmentId` OR `userIdentifier` (plus `integrationId` when using admin token):
@@ -90,9 +90,8 @@ docs {
   
   **Status Codes:**
   - 201: Auth attempt created successfully
-  - 400: Invalid data (e.g., enrollment not found)
+  - 400: Invalid data (e.g., no identifier, unknown userIdentifier on an accessible integration)
   - 401: Unauthorized - admin token required
-  - 403: Forbidden - TenantAdmin trying to create auth attempt for enrollment from another tenant
-  - 404: `userIdentifier` + `integrationId` where the integration does not exist or belongs to another tenant (hide-existence; the userIdentifier lookup is not run)
+  - 404: Enrollment or integration that does not exist or belongs to another tenant (hide-existence: same answer in both cases; with `userIdentifier` the lookup is not run)
   - 500: Internal server error
 }

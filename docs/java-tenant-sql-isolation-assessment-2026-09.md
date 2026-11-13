@@ -124,7 +124,7 @@ dynamic evidence.
 
 | ID | Title | Severity | Confidence | Quick win |
 | --- | --- | --- | --- | --- |
-| SQL-ISO-001 | Integration API unscoped `enrollmentRepository.findById` + distinct Problem details (missing vs other-integration) | P2 | Confirmed | **closed** 2026-11-13 — missing and other-integration share HTTP 400 and one generic detail, `Enrollment not found.` |
+| SQL-ISO-001 | Integration API unscoped `enrollmentRepository.findById` + distinct Problem details (missing vs other-integration) | P2 | Confirmed | **closed** 2026-11-13 — missing and other-integration share HTTP 404 `resource/not-found` |
 | SQL-ISO-002 | Admin `getAdminById` unscoped `findById` then 404 vs 403 (Global Admin existence) | P2 | Confirmed | **closed** 2026-11-13 — every `/admins/{id}` route answers 404 for missing and out-of-tenant alike (`AdminProvisioningService.loadAdminVisibleTo`) |
 | SQL-ISO-003 | `existsByUsername` / `existsByEmail` instance-global; Tenant Admin peer-create identity oracle | P2 | Confirmed | **fix authorized** 2026-09-15 — [`HANDOFF-SQL-ISO-003-tenant-admin-username-email-oracle.md`](../product-docs/global/backlog/handoffs/HANDOFF-SQL-ISO-003-tenant-admin-username-email-oracle.md) |
 | SQL-ISO-004 | Admin auth-attempt create Path 2/3 looks up `userIdentifier` by **request** `integrationId` before ACS | P2 | Confirmed (static) | **closed** 2026-11-13 — `canAccessIntegration` runs before the `userIdentifier` lookup; missing and foreign integration share 404 |
@@ -221,7 +221,7 @@ numeric id in `detail`. Keep WARN logs server-side. Add a functional test that b
 status + type (or `detail`). Out of GO: Hibernate tenant filters; changing API-key principal
 shape.
 
-**HITL 2026-09-15:** operator **GO** (`fix`). **Closed 2026-11-13** with the authorized default below (HTTP 400 kept). Scope at HITL:
+**HITL 2026-09-15:** operator **GO** (`fix`). **Closed 2026-11-13** with HTTP 404 `resource/not-found` (the other authorized shape; see §11, closure). Scope at HITL:
 Authorized default: keep HTTP 400 + one generic `detail`; 404 `resource-not-found` also
 authorized.
 
@@ -451,10 +451,11 @@ Replayed on a clean-start stack built from the fix:
 | Route (Tenant Admin A) | Global Admin / other tenant | Missing |
 | --- | --- | --- |
 | `GET`, `PATCH /admins/{id}` | 404 `admin/resource-not-found` | same |
-| `GET /admins/{id}/onboarding`, `/onboarding/qrcode` | 404 empty | same |
+| `GET /admins/{id}/onboarding`, `/onboarding/qrcode` | 404 `admin/resource-not-found` | same |
 | `POST /admins/{id}/recovery-codes/regenerate`, `/issue-initial` | 404 `admin/resource-not-found` | same |
-| `GET`, `PATCH`, `DELETE /api-keys/{id}` | 404 empty | same |
+| `GET`, `PATCH`, `DELETE /api-keys/{id}` | 404 `admin/resource-not-found` | same |
 | `POST /auth-attempts` with `userIdentifier` + Tenant B `integrationId` | 404, for a hit and for a miss | 404 |
+| `POST /auth-attempts` with a Tenant B `enrollmentId` | 404 `admin/resource-not-found` (was 403) | same |
 
 Found while fixing, not in pass-1:
 
@@ -466,13 +467,22 @@ Found while fixing, not in pass-1:
 - `deactivate`, `activate` and `activation-code/regenerate` are Global Admin only and already
   answer 403 for any id: no oracle.
 
-Left as is: `GET /integrations/{id}`, `GET /enrollments/{id}` and Admin create Path 1 answer 403
-for missing and foreign alike. No oracle; 404 remains the target status for a later peel.
+**Posture 2026-11-13 (operator):** Ezkey is alpha with no production integrator, so contracts are
+made uniform now rather than preserved. Applied here: every deny in this PR is the same 404
+Problem (no empty 404, no 403 for "exists elsewhere"), Admin create answers 404 for a foreign or
+missing enrollment as well, and a Global Admin gets 404 (not a "no enrollment" 400) for an
+integration that does not exist.
+
+Left as is: `GET` / `PATCH /enrollments/{id}`, `GET /integrations/{id}` and its three bulk POSTs,
+create enrollment / API key on a foreign integration, and auth-attempt get / wait / cancel still
+answer 403 for missing and foreign alike. No oracle; 404 is the target status (CTRL-ROLE-003
+peel).
+
 ### Closure 2026-11-13 — Integration API (SQL-ISO-001)
 
 `POST /api/v1/auth-attempts` with an `enrollmentId`: a missing id and an id owned by another
-integration both answer HTTP 400, type `validation/auth-attempt-create-invalid`, detail
-`Enrollment not found.` The cross-integration attempt keeps its server WARN. HTTP 400 was kept
-over 404 (authorized default): smallest change to the public integrator contract. The failure
-audit row carries no tenant, so no tenant can read it: no second channel here. 403
-`enrollment-inactive` stays reserved for the caller's own integration.
+integration both answer HTTP 404, type `https://ezkey.io/problems/resource/not-found`. The
+cross-integration attempt keeps its server WARN. The first cut kept HTTP 400 with a generic detail
+to spare integrators; under the alpha posture above it was moved to 404, the same hide-existence
+answer as the Admin API. The failure audit row carries no tenant, so no tenant can read it: no
+second channel here. 403 `enrollment-inactive` stays reserved for the caller's own integration.

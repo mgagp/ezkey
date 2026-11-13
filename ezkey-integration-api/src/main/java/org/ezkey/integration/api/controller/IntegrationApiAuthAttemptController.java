@@ -58,6 +58,7 @@ import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -110,12 +111,6 @@ public class IntegrationApiAuthAttemptController {
 
   private static final Logger logger =
       LoggerFactory.getLogger(IntegrationApiAuthAttemptController.class);
-
-  /**
-   * Single client message for an {@code enrollmentId} that is missing or owned by another
-   * integration. No id, no ownership hint: the two cases must not be told apart (SQL-ISO-001).
-   */
-  static final String ENROLLMENT_NOT_FOUND_DETAIL = "Enrollment not found.";
 
   private final AuthAttemptService authAttemptService;
   private final AuthAttemptIntegrationApiMapper authAttemptMapper;
@@ -190,16 +185,18 @@ public class IntegrationApiAuthAttemptController {
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "201", description = "Auth attempt created successfully"),
-        @ApiResponse(
-            responseCode = "400",
-            description =
-                "Invalid request parameters, or enrollment not found. An enrollmentId of another"
-                    + " integration gets the same answer as an unknown id (hide-existence)."),
+        @ApiResponse(responseCode = "400", description = "Invalid request parameters"),
         @ApiResponse(
             responseCode = "403",
             description =
                 "Enrollment of this integration is not active for authentication (revoked,"
                     + " deactivated or not verified)"),
+        @ApiResponse(
+            responseCode = "404",
+            description =
+                "enrollmentId does not exist or belongs to another integration (hide-existence:"
+                    + " same answer in both cases)",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
         @ApiResponse(
             responseCode = "409",
             description =
@@ -252,7 +249,7 @@ public class IntegrationApiAuthAttemptController {
               .errorMessage(e.getMessage())
               .build());
       throw e;
-    } catch (AuthAttemptCreateValidationException e) {
+    } catch (AuthAttemptCreateValidationException | ResourceNotFoundException e) {
       auditLogService.log(
           AuditHelper.createIntegrationApiAudit(
                   context,
@@ -682,7 +679,7 @@ public class IntegrationApiAuthAttemptController {
             "Unable to determine integration from API key. Contact support.");
       }
       // Hide existence: findById is tenant-blind, so a missing id and an id owned by another
-      // integration must share one client message. The reason stays in the server log.
+      // integration share one answer, HTTP 404 resource/not-found. The reason stays in the log.
       Enrollment enrollmentForPath1 =
           enrollmentRepository
               .findById(enrollmentId)
@@ -692,7 +689,7 @@ public class IntegrationApiAuthAttemptController {
                         + " (integration {})",
                     enrollmentId,
                     integrationIdForPath1);
-                return new AuthAttemptCreateValidationException(ENROLLMENT_NOT_FOUND_DETAIL);
+                return new ResourceNotFoundException("Enrollment", enrollmentId);
               });
       if (!integrationIdForPath1.equals(enrollmentForPath1.getIntegrationId())) {
         logger.warn(
@@ -701,7 +698,7 @@ public class IntegrationApiAuthAttemptController {
             integrationIdForPath1,
             enrollmentId,
             enrollmentForPath1.getIntegrationId());
-        throw new AuthAttemptCreateValidationException(ENROLLMENT_NOT_FOUND_DETAIL);
+        throw new ResourceNotFoundException("Enrollment", enrollmentId);
       }
       if (!Boolean.TRUE.equals(enrollmentForPath1.getActive())
           || !EnrollmentStatus.VERIFIED.equals(enrollmentForPath1.getStatus())) {

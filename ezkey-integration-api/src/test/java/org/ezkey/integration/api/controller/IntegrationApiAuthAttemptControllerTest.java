@@ -31,6 +31,7 @@ import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.EnrollmentInactiveException;
 import org.ezkey.exception.RateLimitExceededException;
+import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.exception.auth.AuthAttemptCreateValidationException;
 import org.ezkey.exception.auth.AuthAttemptPendingExistsException;
 import org.ezkey.exception.auth.AuthAttemptRequestInvalidException;
@@ -122,21 +123,26 @@ class IntegrationApiAuthAttemptControllerTest {
     when(enrollmentRepository.findById(999)).thenReturn(Optional.empty());
 
     HttpServletRequest request = new MockHttpServletRequest();
-    AuthAttemptCreateValidationException foreignFailure =
+    ResourceNotFoundException foreignFailure =
         assertThrows(
-            AuthAttemptCreateValidationException.class,
+            ResourceNotFoundException.class,
             () ->
                 controller.create(
                     new AuthAttemptCreateRequestDto(500, null, false, null, null, null), request));
-    AuthAttemptCreateValidationException missingFailure =
+    ResourceNotFoundException missingFailure =
         assertThrows(
-            AuthAttemptCreateValidationException.class,
+            ResourceNotFoundException.class,
             () ->
                 controller.create(
                     new AuthAttemptCreateRequestDto(999, null, false, null, null, null), request));
 
-    assertEquals(missingFailure.getMessage(), foreignFailure.getMessage());
-    assertEquals("Enrollment not found.", foreignFailure.getMessage());
+    // Same exception type and wording (-> 404 resource/not-found); only the caller's id differs
+    assertEquals(
+        new ResourceNotFoundException("Enrollment", 500).getMessage(), foreignFailure.getMessage());
+    assertEquals(
+        new ResourceNotFoundException("Enrollment", 999).getMessage(), missingFailure.getMessage());
+    // Both failures are audited the same way
+    verify(auditLogService, org.mockito.Mockito.times(2)).log(any());
     verify(authAttemptService, org.mockito.Mockito.never()).create(any());
   }
 

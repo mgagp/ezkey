@@ -53,6 +53,7 @@ public class TenantSqlIsolationOracleSecurityTest extends AbstractSecurityTest {
 
   private static final int UNKNOWN_ENROLLMENT_ID = 2_000_000_000;
   private static final int UNKNOWN_ADMIN_ID = 2_000_000_000;
+  private static final String NOT_FOUND_TYPE = "https://ezkey.io/problems/admin/resource-not-found";
 
   private String globalAdminToken;
   private String tenantAdminAToken;
@@ -130,15 +131,13 @@ public class TenantSqlIsolationOracleSecurityTest extends AbstractSecurityTest {
         missing.jsonPath().getString("detail"));
 
     // Hide existence: an enrollment of another integration answers exactly like an unknown id
-    assertThat(foreign.getStatusCode()).isEqualTo(400);
-    assertThat(missing.getStatusCode()).isEqualTo(foreign.getStatusCode());
+    assertThat(foreign.getStatusCode()).isEqualTo(404);
+    assertThat(missing.getStatusCode()).isEqualTo(404);
     assertThat(foreign.jsonPath().getString("type"))
-        .isEqualTo(missing.jsonPath().getString("type"));
-    assertThat(foreign.jsonPath().getString("detail"))
-        .isEqualTo(missing.jsonPath().getString("detail"));
-    assertThat(foreign.jsonPath().getString("detail"))
-        .doesNotContain(String.valueOf(enrollmentBId))
-        .doesNotContainIgnoringCase("belong");
+        .isEqualTo("https://ezkey.io/problems/resource/not-found");
+    assertThat(missing.jsonPath().getString("type"))
+        .isEqualTo(foreign.jsonPath().getString("type"));
+    assertThat(foreign.jsonPath().getString("detail")).doesNotContainIgnoringCase("belong");
     assertThat(foreign.getBody().asString()).doesNotContain("SQLISO Tenant B");
     assertThat(foreign.getBody().asString()).doesNotContain("SQLISO Device B");
     assertThat(foreign.getBody().asString()).doesNotContain("SQLISO Integration B");
@@ -179,6 +178,7 @@ public class TenantSqlIsolationOracleSecurityTest extends AbstractSecurityTest {
       assertThat(missing.getStatusCode()).as(label + " missing").isEqualTo(404);
       assertThat(globalAdmin.getStatusCode()).as(label + " Global Admin").isEqualTo(404);
       assertThat(otherTenant.getStatusCode()).as(label + " other tenant").isEqualTo(404);
+      assertThat(problemType(missing)).as(label + " type").isEqualTo(NOT_FOUND_TYPE);
       assertThat(problemType(globalAdmin)).as(label + " type").isEqualTo(problemType(missing));
       assertThat(problemType(otherTenant)).as(label + " type").isEqualTo(problemType(missing));
       assertThat(globalAdmin.getBody().asString()).doesNotContain(globalAdminUsername);
@@ -211,7 +211,8 @@ public class TenantSqlIsolationOracleSecurityTest extends AbstractSecurityTest {
     // (AuthAttemptControllerOwnershipTest).
     assertThat(foreign.getStatusCode()).isEqualTo(404);
     assertThat(missing.getStatusCode()).isEqualTo(404);
-    assertThat(problemType(foreign)).isEqualTo(problemType(missing));
+    assertThat(problemType(foreign)).isEqualTo(NOT_FOUND_TYPE);
+    assertThat(problemType(missing)).isEqualTo(NOT_FOUND_TYPE);
     assertThat(foreign.getBody().asString()).doesNotContain("SQLISO Integration B");
   }
 

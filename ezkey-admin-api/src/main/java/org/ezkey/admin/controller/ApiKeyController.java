@@ -572,7 +572,7 @@ public class ApiKeyController {
               .adminId(currentAdmin.getAdminId())
               .errorMessage("API key not found: " + keyId)
               .build());
-      return ResponseEntity.notFound().build();
+      throw new org.ezkey.exception.ResourceNotFoundException("API key", keyId);
     }
 
     ApiKey existing = existingOpt.get();
@@ -677,7 +677,7 @@ public class ApiKeyController {
     // Hide existence: a missing key and a foreign-tenant key share one 404
     Optional<ApiKey> apiKeyOpt = apiKeyService.getApiKey(keyId);
     if (!isVisibleToCurrentAdmin(apiKeyOpt, keyId)) {
-      return ResponseEntity.notFound().build();
+      throw new org.ezkey.exception.ResourceNotFoundException("API key", keyId);
     }
 
     return ResponseEntity.ok(mapToResponseDto(apiKeyOpt.get()));
@@ -685,8 +685,9 @@ public class ApiKeyController {
 
   /**
    * Object check for a loaded API key: present, and its integration is accessible to the current
-   * admin. Callers answer {@code false} as HTTP 404 so that a missing key and a foreign-tenant key
-   * cannot be told apart (hide existence). The reason is logged server-side only.
+   * admin. Callers answer {@code false} by throwing {@code ResourceNotFoundException} (HTTP 404
+   * Problem {@code admin/resource-not-found}) so that a missing key and a foreign-tenant key cannot
+   * be told apart (hide existence). The reason is logged server-side only.
    *
    * @param apiKeyOpt the key loaded by ID ({@code ApiKeyService.getApiKey} is tenant-blind)
    * @param keyId the requested key ID, for the log line
@@ -776,7 +777,7 @@ public class ApiKeyController {
               .adminId(currentAdmin.getAdminId())
               .errorMessage("API key not found: " + keyId)
               .build());
-      return ResponseEntity.notFound().build();
+      throw new org.ezkey.exception.ResourceNotFoundException("API key", keyId);
     }
 
     ApiKey existing = existingOpt.get();
@@ -817,7 +818,7 @@ public class ApiKeyController {
               .adminId(currentAdmin.getAdminId())
               .errorMessage("API key not found: " + keyId)
               .build());
-      return ResponseEntity.notFound().build();
+      throw new org.ezkey.exception.ResourceNotFoundException("API key", keyId);
     }
   }
 

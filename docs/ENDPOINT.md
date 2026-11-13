@@ -2175,10 +2175,10 @@ omission fails `@Valid` with the same generic 400. Not a contract break from thi
 
 **Ownership on create (Integration API, `enrollmentId`):** the enrollment must belong to the API
 key's integration. An `enrollmentId` that does not exist and one that belongs to another
-integration return the **same** answer — **400**, type
-`https://ezkey.io/problems/validation/auth-attempt-create-invalid`, detail `Enrollment not found.`
-(hide-existence: no id, no ownership hint). **403** `enrollment-inactive` is reserved for an
-enrollment of the caller's own integration that is revoked, deactivated or not verified.
+integration return the **same** answer — **404**, type
+`https://ezkey.io/problems/resource/not-found` (hide-existence, same rule as the Admin API).
+**403** `enrollment-inactive` is reserved for an enrollment of the caller's own integration that is
+revoked, deactivated or not verified.
 
 **Ownership on wait/cancel:** Integration API `@PreAuthorize` requires the auth attempt’s enrollment
 to belong to the API key’s integration (`AccessControlService.canAccessAuthAttempt`). Foreign
@@ -2281,10 +2281,9 @@ Content-Type: application/json
 
 **Status Codes:**
 - 201: Authentication attempt created successfully
-- 400: Invalid data (enrollment not found, etc.)
+- 400: Invalid data (missing identifier, unknown `userIdentifier` on an accessible integration, etc.)
 - 401: Unauthorized - authentication required
-- 403: Forbidden - access denied to enrollment
-- 404: `userIdentifier` + `integrationId` where the integration does not exist or is outside the caller's tenant (`admin/resource-not-found`, hide-existence). The check runs before the `userIdentifier` lookup, so a hit and a miss on a foreign integration cannot be told apart. On an accessible integration, an unknown `userIdentifier` stays 400.
+- 404: Enrollment or integration that does not exist or is outside the caller's tenant (`admin/resource-not-found`, hide-existence: same answer in both cases). With `userIdentifier`, the integration check runs before the lookup, so a hit and a miss on a foreign integration cannot be told apart. On an accessible integration, an unknown `userIdentifier` stays 400.
 - 500: Internal server error
 
 ---
