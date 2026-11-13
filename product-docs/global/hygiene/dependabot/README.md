@@ -48,7 +48,7 @@ Dependabot alone cannot prove current:
 
 | Surface | Dependabot | Mandatory pulse |
 |---------|------------|-----------------|
-| Java / Maven (reactor root) | `maven` at `/` (daily + cooldown) | **Java BOM pulse** (`spring-boot.version`, SEC-019, `google-java-format`) — Monday full |
+| Java / Maven (reactor root) | `maven` at `/` (daily + cooldown) | **Java BOM pulse** (`spring-boot.version`, parent overrides, `google-java-format`) — Monday full |
 | Admin UI | `npm` at `/ezkey-admin-ui` (daily + cooldown) | Orval via **Orval risk grid** (skill); **Admin UI advisory pulse** Monday full; evaluate **separately** from mobile |
 | Ezkey Mobile (Yarn 4) | `npm` at `/ezkey_mobile` (daily + cooldown) | **Mobile RN pulse** Monday full; Orval via **Orval risk grid** (separate from Admin UI) |
 | SDK JS | `npm` at `/ezkey-sdk/javascript` (daily + cooldown) | — |
@@ -303,7 +303,10 @@ On every Monday-full `dependabot-curated` pass the agent must:
 
 1. Compare root `spring-boot.version` to the latest **same-minor** Boot release.
 2. If newer and no Dependabot PR exists, propose a hygiene-branch lot (closeout as T3 runtime).
-3. After an accepted Boot bump, review SEC-019 overrides (keep only when still ahead of Boot).
+3. After an accepted Boot bump, review parent overrides that sit ahead of Boot. SEC-019 logback
+   and Jackson pins were removed on 2026-11-13 (Boot 4.1.2 covers the original CVEs; no active
+   GHSA or OSV advisory on the Boot-managed versions). `caffeine.version` stays as a compatibility
+   pin.
 4. Check `google-java-format.version` (Spotless nested pin; Dependabot typically misses it).
    Bump only when Spotless, JDK compatibility, or a real formatter bug requires it (T2 tooling).
    **Current pin `2.0.0` (adopted 2026-11-02 hygiene trial):** keep cleanup default on; Spotless
@@ -312,7 +315,8 @@ On every Monday-full `dependabot-curated` pass the agent must:
 
 **Boot 4.1.2 (2026-10-26, replaces Dependabot [#1031](https://github.com/mgagp/ezkey/pull/1031)):**
 dropped parent `postgresql.version` / `tomcat.version` SEC-019 overrides — Boot BOM already
-manages **42.7.14** / **11.0.27**. Kept `logback` 1.6.5 (and jackson / caffeine ahead pins).
+manages **42.7.14** / **11.0.27**. Kept `logback` 1.6.5 (and jackson / caffeine ahead pins)
+at that bump. Logback and both Jackson pins were removed on 2026-11-13; `caffeine.version` stays.
 Dependabot `#1031` `backend` failed resolving Spotless plugin transitive
 `commons-codec:1.22.1` (`PluginResolutionException`) — same Maven Central flake family as
 [#939](https://github.com/mgagp/ezkey/issues/939); hygiene PR retries the bump without pinning
@@ -411,8 +415,10 @@ expiry, a past expiry, or a cap breach is a follow-up. It is not implemented her
 
 **Cap check (2026-11-13, Marc).** The cap stays **5** per manifest and **10** in the repo.
 Pins that are not security pins sit outside it. The six Admin UI overrides are obsolete. A
-cleanup PR removes all of them; after it, that manifest has **0** active overrides. SEC-019 is
-removed in another PR once the build is green. `caffeine.version` stays, as a compatibility pin.
+cleanup PR removes all of them; after it, that manifest has **0** active overrides. SEC-019
+(logback, Jackson 3, Jackson 2) was removed on 2026-11-13: Boot 4.1.2 covers the original CVEs,
+and no active GHSA or OSV advisory applies to the Boot-managed versions. `caffeine.version`
+stays, as a compatibility pin.
 Neither PR number is assigned here. Do not add an Admin UI override while the cleanup is open.
 
 Dismissal lines use this shape (also in the posture doc):
@@ -437,21 +443,20 @@ Versions below are the manifests on `02f683b99`. GHSA ids are from the GitHub Ad
 
 ### Pins ahead of Boot / compatibility (outside the cap)
 
-`pom.xml` properties at lines 75–80 and `caffeine.version`. SEC-019 was the July 2026
+`caffeine.version` is the remaining parent pin in this table. SEC-019 was the July 2026
 security-challenge set (PostgreSQL, Logback, Jackson, Tomcat; see
 [`docs/SECURITY_CHALLENGE_REPORT_2026-07.md`](../../../../docs/SECURITY_CHALLENGE_REPORT_2026-07.md)
 § SEC-019). PostgreSQL and Tomcat were dropped when Boot 4.1.2 already managed 42.7.14 and
-11.0.27 (#1031, #939). Spring Boot 4.1.2 already covers the original CVEs (CVE-2026-13006,
-CVE-2026-59889). Logback and both Jackson pins are ahead of Boot, not security pins, and have
-no current GHSA. **2026-11-13 (Marc):** remove them in a separate PR once the build is green.
-`caffeine.version` stays, as a compatibility pin. Boot-managed versions are the 2026-11-02
-Java BOM pulse.
+11.0.27 (#1031, #939). **2026-11-13 (Marc):** logback, Jackson 3, and Jackson 2 were removed.
+Boot 4.1.2 covers the original CVEs (CVE-2026-13006, CVE-2026-59889). No active GHSA or OSV
+advisory applies to the Boot-managed versions (logback 1.5.38, Jackson 3 3.1.7, Jackson 2
+2.21.7). `caffeine.version` stays, as a compatibility pin.
 
 | Pin | GHSA | Blocking parent | Removal condition | Expiry | Status | Owner |
 |---|---|---|---|---|---|---|
-| `logback.version` 1.6.6 (`logback-classic`, `logback-core`) | none | Spring Boot BOM 4.1.2 already covers CVE-2026-13006. Pulse 2026-11-02: Boot managed 1.5.38 | Ahead of Boot, not a security pin. Separate PR from the Admin UI cleanup, once the build is green. | none | Removal planned (cleanup PR) | Marc, `0319fcd18` (2026-07-16) |
-| `jackson-bom.version` 3.3.0 (`tools.jackson` `jackson-bom`, forced `jackson-databind` and `jackson-core`) | none | Spring Boot BOM 4.1.2 already covers CVE-2026-59889. Pulse 2026-11-02: Boot managed 3.1.7 | Ahead of Boot, not a security pin. Same SEC-019 removal, once the build is green. | none | Removal planned (cleanup PR) | Marc, `0319fcd18` (2026-07-16) |
-| `jackson-2-bom.version` 2.23.0 (`com.fasterxml.jackson` `jackson-bom`, forced `jackson-databind` 2.23.0 and `jackson-annotations` 2.23) | none | Spring Boot BOM 4.1.2 already covers CVE-2026-59889. Pulse 2026-11-02: Boot managed 2.21.7 | Ahead of Boot, not a security pin. Same SEC-019 removal, once the build is green. `jackson-annotations` is the 2.23 line without a patch digit (pom comment). | none | Removal planned (cleanup PR) | Marc, `0319fcd18` (2026-07-16) |
+| `logback.version` (removed; was 1.6.6 on `logback-classic` / `logback-core`) | none | Spring Boot BOM 4.1.2 manages 1.5.38 | Boot 4.1.2 covers the original CVEs; no active GHSA or OSV advisory on the Boot-managed versions. | none | Removed (2026-11-13) | Marc, `0319fcd18` (2026-07-16) |
+| `jackson-bom.version` (removed; was 3.3.0 on `tools.jackson` `jackson-bom`, `jackson-databind`, and `jackson-core`) | none | Spring Boot BOM 4.1.2 manages 3.1.7 | Boot 4.1.2 covers the original CVEs; no active GHSA or OSV advisory on the Boot-managed versions. | none | Removed (2026-11-13) | Marc, `0319fcd18` (2026-07-16) |
+| `jackson-2-bom.version` (removed; was 2.23.0 on `com.fasterxml.jackson` `jackson-bom`, `jackson-databind` 2.23.0, and `jackson-annotations` 2.23) | none | Spring Boot BOM 4.1.2 manages 2.21.7 (`jackson-annotations` 2.21) | Boot 4.1.2 covers the original CVEs; no active GHSA or OSV advisory on the Boot-managed versions. | none | Removed (2026-11-13) | Marc, `0319fcd18` (2026-07-16) |
 | `caffeine.version` 3.3.1 | none | Compatibility pin for rate limiting (`cf4144f4b`, 2025-10-03). Pulse 2026-11-02: Boot managed 3.2.4 | Stays. Outside the cap. | none | Keep | Marc, `cf4144f4b` |
 
 ## Related
