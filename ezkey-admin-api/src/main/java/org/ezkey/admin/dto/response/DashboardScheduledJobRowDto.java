@@ -21,6 +21,7 @@ import java.time.OffsetDateTime;
  * @param lastStatus outcome of the most recent execution
  * @param lastRunScope human-readable scope of the last run
  * @param lastErrorSummary safe operator-facing error summary when lastStatus is FAILED
+ * @param partitionHorizon structured months for PARTITION_CREATION; null for other jobs
  * @since 2026
  */
 @Schema(description = "Scheduled job last-run row for dashboard batch health widgets")
@@ -44,4 +45,9 @@ public record DashboardScheduledJobRowDto(
     @Schema(description = "Human-readable scope of the last run (e.g. validated window)")
         String lastRunScope,
     @Schema(description = "Safe operator-facing error summary when lastStatus is FAILED")
-        String lastErrorSummary) {}
+        String lastErrorSummary,
+    @Schema(
+            description =
+                "Structured months for PARTITION_CREATION. Null for other jobs. The dashboard"
+                    + " uses this instead of lastRunScope and lastErrorSummary.")
+        DashboardPartitionHorizonDto partitionHorizon) {}

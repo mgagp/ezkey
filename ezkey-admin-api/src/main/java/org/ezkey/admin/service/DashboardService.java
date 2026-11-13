@@ -16,12 +16,15 @@ import java.util.List;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.ezkey.admin.dto.response.DashboardAlertItemDto;
 import org.ezkey.admin.dto.response.DashboardAuth24hStatsDto;
 import org.ezkey.admin.dto.response.DashboardEnrollmentStatsDto;
 import org.ezkey.admin.dto.response.DashboardIntegrationStatsDto;
 import org.ezkey.admin.dto.response.DashboardIntegrityConfigSummaryDto;
 import org.ezkey.admin.dto.response.DashboardOverviewDto;
+import org.ezkey.admin.dto.response.DashboardPartitionHorizonDto;
 import org.ezkey.admin.dto.response.DashboardRecentActivityItemDto;
 import org.ezkey.admin.dto.response.DashboardScheduledJobRowDto;
 import org.ezkey.admin.security.AdminPrincipal;
@@ -70,6 +73,18 @@ public class DashboardService {
 
   private static final List<ScheduledJobKey> OPERATIONAL_JOB_KEYS =
       List.of(ScheduledJobKey.REENCRYPTION, ScheduledJobKey.PARTITION_CREATION);
+
+  /** Scope written by {@code PartitionSchedulerService}: months, then an optional failure count. */
+  private static final Pattern PARTITION_SCOPE =
+      Pattern.compile(
+          "UTC (\\d{4}-\\d{2})\\.\\.(\\d{4}-\\d{2}) monthsAhead=(\\d+)"
+              + "(?: failed=(\\d+)/(\\d+))?");
+
+  private static final int FROM_GROUP = 1;
+  private static final int TO_GROUP = 2;
+  private static final int MONTHS_AHEAD_GROUP = 3;
+  private static final int FAILED_GROUP = 4;
+  private static final int TARGETS_GROUP = 5;
 
   private final IntegrationService integrationService;
   private final EnrollmentService enrollmentService;
@@ -208,7 +223,36 @@ public class DashboardService {
         row.getLastExecutionAt(),
         status != null ? status.name() : ScheduledJobLastRunStatus.NEVER_RUN.name(),
         row.getLastRunScope(),
-        row.getLastErrorSummary());
+        row.getLastErrorSummary(),
+        partitionHorizon(row.getJobKey(), row.getLastRunScope()));
+  }
+
+  /**
+   * Splits the partition job scope into months and counts. Other jobs, and a scope that does not
+   * match the scheduler format, stay null so the dashboard does not invent a horizon.
+   *
+   * @param key job that produced the scope
+   * @param scope stored scope, for example {@code UTC 2026-11..2027-02 monthsAhead=3 failed=8/8}
+   * @return the horizon, or null when this row is not a partition run
+   */
+  static DashboardPartitionHorizonDto partitionHorizon(ScheduledJobKey key, String scope) {
+    if (key != ScheduledJobKey.PARTITION_CREATION || scope == null) {
+      return null;
+    }
+    Matcher matcher = PARTITION_SCOPE.matcher(scope);
+    if (!matcher.matches()) {
+      return null;
+    }
+    Integer failed =
+        matcher.group(FAILED_GROUP) == null ? null : Integer.valueOf(matcher.group(FAILED_GROUP));
+    Integer targets =
+        matcher.group(TARGETS_GROUP) == null ? null : Integer.valueOf(matcher.group(TARGETS_GROUP));
+    return new DashboardPartitionHorizonDto(
+        matcher.group(FROM_GROUP),
+        matcher.group(TO_GROUP),
+        Integer.parseInt(matcher.group(MONTHS_AHEAD_GROUP)),
+        failed,
+        targets);
   }
 
   private DashboardIntegrationStatsDto buildIntegrationStats(

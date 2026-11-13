@@ -26,7 +26,7 @@
       "gapPending": "Anchor checkpoint #{{anchorCheckpointId}} · ~{{gapMinutes}} min gap",
       "heartbeatStale": "{{phase}} · anchor #{{anchorCheckpointId}}",
       "integrityRupture": "{{entryCount}} entry + {{chainCount}} chain · {{gapCount}} undeclared gap(s)",
-      "partitionCreationFailed": "{{from}} to {{to}} · {{failedTargets}} partition target(s) failed",
+      "partitionCreationFailed": "{{from}} to {{to}} · {{failedTargets}} monthly table(s) not created",
       "unavailable": "—"
     },
     "emptyMessage": "No alerts match the current filters.",
@@ -51,7 +51,8 @@
     "labelCreatedAt": "First raised",
     "labelLastSeenAt": "Last seen",
     "labelResolvedAt": "Resolved at",
-    "labelResolvedBy": "Resolved by admin",
+    "labelResolvedBy": "Resolved by",
+    "resolvedByAutomatic": "Automatic",
     "labelResolutionReason": "Resolution reason",
     "payloadEmpty": "No payload.",
     "payloadRawHeading": "Raw payload",
@@ -89,6 +90,10 @@
         "ACKNOWLEDGED": "Acknowledged (known invalid)",
         "RE_TAMPER_SUSPECTED": "Changed since acknowledgement"
       }
+    },
+    "partitionCreation": {
+      "summary": "Months {{from}} to {{to}} · Not created {{failedTargets}} · Error {{error}}",
+      "guidance": "Ezkey could not create, ahead of time, the monthly tables that store authentication attempts and the audit log ({{from}} to {{to}}). Ezkey retries at startup and every day, and closes this alert by itself after the next successful run. If it stays open, check the Admin API logs and the database permission on create_monthly_partition. Act before the first month with no table begins: a missing authentication-attempt table makes sign-ins fail, and a missing audit table means those events are not recorded."
     }
   },
   "reconcileDialog": {
@@ -108,7 +113,7 @@
     "GAP_DECLARED": "Gap declared",
     "HEARTBEAT_RESTORED": "Heartbeat restored",
     "INTEGRITY_RUPTURE_CONCILIATED": "Integrity rupture reconciled",
-    "PARTITION_HORIZON_RESTORED": "Partition horizon restored",
+    "PARTITION_HORIZON_RESTORED": "Monthly tables created (next run succeeded)",
     "MANUAL": "Manual"
   },
   "heartbeatPhase": {

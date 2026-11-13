@@ -84,6 +84,9 @@
     "lastRun": "Last run",
     "scope": "Scope",
     "error": "Error",
+    "partitionScope": "Scope: {{from}} to {{to}} (current month + {{monthsAhead}})",
+    "partitionFailed": "Scope: {{from}} to {{to}} (current month + {{monthsAhead}}) · {{failed}} of {{targets}} not created",
+    "viewAlert": "View alert →",
     "neverRun": "Never run",
     "quietInactive": "Inactive",
     "status": {

@@ -26,7 +26,7 @@
       "gapPending": "Checkpoint d'ancrage n°{{anchorCheckpointId}} · coupure ~{{gapMinutes}} min",
       "heartbeatStale": "{{phase}} · ancrage n°{{anchorCheckpointId}}",
       "integrityRupture": "{{entryCount}} entrée(s) + {{chainCount}} chaîne · {{gapCount}} trou(s) non déclaré(s)",
-      "partitionCreationFailed": "{{from}} à {{to}} · {{failedTargets}} cible(s) de partition en échec",
+      "partitionCreationFailed": "{{from}} à {{to}} · {{failedTargets}} table(s) mensuelle(s) non créée(s)",
       "unavailable": "—"
     },
     "emptyMessage": "Aucune alerte ne correspond aux filtres.",
@@ -52,6 +52,7 @@
     "labelLastSeenAt": "Dernière vue",
     "labelResolvedAt": "Résolue le",
     "labelResolvedBy": "Résolue par",
+    "resolvedByAutomatic": "Automatique",
     "labelResolutionReason": "Motif de résolution",
     "payloadEmpty": "Aucune charge utile.",
     "payloadRawHeading": "Charge utile brute",
@@ -89,6 +90,10 @@
         "ACKNOWLEDGED": "Concilié (invalidité connue)",
         "RE_TAMPER_SUSPECTED": "Modifié depuis la conciliation"
       }
+    },
+    "partitionCreation": {
+      "summary": "Mois {{from}} à {{to}} · Non créées {{failedTargets}} · Erreur {{error}}",
+      "guidance": "Ezkey n'a pas pu créer d'avance les tables mensuelles qui reçoivent les tentatives d'authentification et le journal d'audit ({{from}} à {{to}}). Ezkey réessaie au démarrage et chaque jour, et ferme cette alerte tout seul après la prochaine exécution réussie. Si elle reste ouverte, consultez les journaux de l'Admin API et la permission de la base de données sur create_monthly_partition. Agissez avant le début du premier mois sans table : sans table de tentatives d'authentification, les connexions échouent ; sans table d'audit, ces événements ne sont pas enregistrés."
     }
   },
   "reconcileDialog": {
@@ -108,7 +113,7 @@
     "GAP_DECLARED": "Coupure déclarée",
     "HEARTBEAT_RESTORED": "Battement rétabli",
     "INTEGRITY_RUPTURE_CONCILIATED": "Rupture d'intégrité conciliée",
-    "PARTITION_HORIZON_RESTORED": "Horizon de partitions rétabli",
+    "PARTITION_HORIZON_RESTORED": "Tables mensuelles créées (exécution suivante réussie)",
     "MANUAL": "Manuelle"
   },
   "heartbeatPhase": {

@@ -144,11 +144,57 @@ class DashboardServiceTest {
     assertThat(overview.operationalJobs().get(0).lastStatus()).isEqualTo("NEVER_RUN");
     assertThat(overview.operationalJobs().get(1).jobKey()).isEqualTo("PARTITION_CREATION");
     assertThat(overview.operationalJobs().get(1).lastStatus()).isEqualTo("NEVER_RUN");
+    assertThat(overview.operationalJobs().get(1).partitionHorizon()).isNull();
     assertThat(overview.integrityConfigSummary()).isNotNull();
     assertThat(overview.integrityConfigSummary().chainLookbackMinutes()).isEqualTo(60);
     assertThat(overview.integrityConfigSummary().nightlyWindowHours()).isEqualTo(24);
     assertThat(overview.integrityConfigSummary().chainCheckpointsEnabled()).isTrue();
     assertThat(overview.integrityConfigSummary().nightlyValidationEnabled()).isTrue();
+  }
+
+  @Test
+  @DisplayName("partition job exposes months and counts instead of the raw scope string")
+  void buildOverview_partitionFailure_shouldExposeStructuredHorizon() {
+    AdminPrincipal principal = new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null);
+    stubCommonTenantStats(null);
+    when(alertService.countOpen()).thenReturn(1L);
+    when(alertService.findRecentOpen(10)).thenReturn(List.of());
+    when(scheduledJobLastRunRepository.findById(ScheduledJobKey.AUDIT_CHAIN_CHECKPOINT))
+        .thenReturn(Optional.of(neverRunRow(ScheduledJobKey.AUDIT_CHAIN_CHECKPOINT)));
+    when(scheduledJobLastRunRepository.findById(ScheduledJobKey.NIGHTLY_INTEGRITY_VALIDATION))
+        .thenReturn(Optional.of(neverRunRow(ScheduledJobKey.NIGHTLY_INTEGRITY_VALIDATION)));
+    when(scheduledJobLastRunRepository.findById(ScheduledJobKey.REENCRYPTION))
+        .thenReturn(Optional.of(neverRunRow(ScheduledJobKey.REENCRYPTION)));
+    when(scheduledJobLastRunRepository.findById(ScheduledJobKey.PARTITION_CREATION))
+        .thenReturn(Optional.of(failedPartitionRow()));
+
+    var horizon = service.buildOverview(principal).operationalJobs().get(1).partitionHorizon();
+
+    assertThat(horizon).isNotNull();
+    assertThat(horizon.from()).isEqualTo("2026-11");
+    assertThat(horizon.to()).isEqualTo("2027-02");
+    assertThat(horizon.monthsAhead()).isEqualTo(3);
+    assertThat(horizon.failedTargets()).isEqualTo(8);
+    assertThat(horizon.targets()).isEqualTo(8);
+  }
+
+  @Test
+  @DisplayName("a successful partition scope has months and no failure counts")
+  void partitionHorizon_success_shouldOmitFailureCounts() {
+    var horizon =
+        DashboardService.partitionHorizon(
+            ScheduledJobKey.PARTITION_CREATION, "UTC 2026-11..2027-02 monthsAhead=3");
+
+    assertThat(horizon).isNotNull();
+    assertThat(horizon.from()).isEqualTo("2026-11");
+    assertThat(horizon.to()).isEqualTo("2027-02");
+    assertThat(horizon.monthsAhead()).isEqualTo(3);
+    assertThat(horizon.failedTargets()).isNull();
+    assertThat(horizon.targets()).isNull();
+    assertThat(
+            DashboardService.partitionHorizon(
+                ScheduledJobKey.REENCRYPTION, "UTC 2026-11..2027-02 monthsAhead=3"))
+        .isNull();
   }
 
   private void stubCommonTenantStats(Integer tenantId) {
@@ -202,6 +248,17 @@ class DashboardServiceTest {
     row.setLastStatus(ScheduledJobLastRunStatus.SUCCESS);
     row.setLastRunScope(scope);
     row.setUpdatedAt(OffsetDateTime.parse("2026-07-03T02:00:00Z"));
+    return row;
+  }
+
+  private static ScheduledJobLastRun failedPartitionRow() {
+    ScheduledJobLastRun row = new ScheduledJobLastRun();
+    row.setJobKey(ScheduledJobKey.PARTITION_CREATION);
+    row.setLastExecutionAt(OffsetDateTime.parse("2026-11-13T15:00:00Z"));
+    row.setLastStatus(ScheduledJobLastRunStatus.FAILED);
+    row.setLastRunScope("UTC 2026-11..2027-02 monthsAhead=3 failed=8/8");
+    row.setLastErrorSummary("PSQLException");
+    row.setUpdatedAt(OffsetDateTime.parse("2026-11-13T15:00:00Z"));
     return row;
   }
 

@@ -58,12 +58,21 @@ type DashboardIntegrationStatsWithRetired = NonNullable<DashboardOverviewDto['in
   retired?: number;
 };
 
+type PartitionHorizon = {
+  from?: string;
+  to?: string;
+  monthsAhead?: number;
+  failedTargets?: number | null;
+  targets?: number | null;
+};
+
 type DashboardScheduledJobRow = {
   jobKey?: string;
   lastExecutionAt?: string;
   lastStatus?: 'SUCCESS' | 'FAILED' | 'NEVER_RUN';
   lastRunScope?: string;
   lastErrorSummary?: string;
+  partitionHorizon?: PartitionHorizon | null;
 };
 
 type DashboardIntegrityConfigSummary = {
@@ -124,6 +133,16 @@ function BatchJobRow({
   const jobLabel = row.jobKey
     ? t(`dashboard:batchHealth.jobs.${row.jobKey}`, { defaultValue: row.jobKey })
     : '—';
+  const horizon = row.jobKey === 'PARTITION_CREATION' ? row.partitionHorizon : undefined;
+  const horizonMonths =
+    horizon?.from != null && horizon.to != null && horizon.monthsAhead != null
+      ? { from: horizon.from, to: horizon.to, monthsAhead: horizon.monthsAhead }
+      : null;
+  const partitionFailed =
+    row.jobKey === 'PARTITION_CREATION'
+    && status === 'FAILED'
+    && horizon?.failedTargets != null
+    && horizon.targets != null;
 
   const content = (
     <div className="space-y-1.5 py-2 border-b border-fg/10 last:border-0 last:pb-0">
@@ -143,23 +162,51 @@ function BatchJobRow({
             <span className="text-fg-muted"> · {formatDate(row.lastExecutionAt)}</span>
           ) : null}
         </p>
-        {row.lastRunScope ? (
+        {horizonMonths ? (
+          <p>
+            {partitionFailed
+              ? t('dashboard:batchHealth.partitionFailed', {
+                  from: horizonMonths.from,
+                  to: horizonMonths.to,
+                  monthsAhead: horizonMonths.monthsAhead,
+                  failed: horizon?.failedTargets,
+                  targets: horizon?.targets,
+                })
+              : t('dashboard:batchHealth.partitionScope', {
+                  from: horizonMonths.from,
+                  to: horizonMonths.to,
+                  monthsAhead: horizonMonths.monthsAhead,
+                })}
+          </p>
+        ) : null}
+        {!horizonMonths && row.jobKey !== 'PARTITION_CREATION' && row.lastRunScope ? (
           <p>
             <span className="font-semibold text-fg/80">{t('dashboard:batchHealth.scope')}:</span>{' '}
             {row.lastRunScope}
           </p>
         ) : null}
-        {status === 'FAILED' && row.lastErrorSummary ? (
+        {status === 'FAILED' && row.lastErrorSummary && row.jobKey !== 'PARTITION_CREATION' ? (
           <p className="text-error">
             <span className="font-semibold">{t('dashboard:batchHealth.error')}:</span>{' '}
             {row.lastErrorSummary}
+          </p>
+        ) : null}
+        {partitionFailed ? (
+          <p>
+            <Link
+              to="/alerts"
+              data-testid="dashboard-partition-view-alert"
+              className="inline-flex items-center gap-1 text-xs font-bold text-accent hover:underline"
+            >
+              {t('dashboard:batchHealth.viewAlert')}
+            </Link>
           </p>
         ) : null}
       </div>
     </div>
   );
 
-  if (deepLink) {
+  if (deepLink && !partitionFailed) {
     return (
       <Link
         to={deepLink}
