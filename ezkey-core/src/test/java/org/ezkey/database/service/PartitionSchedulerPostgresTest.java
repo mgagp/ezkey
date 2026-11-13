@@ -160,6 +160,10 @@ class PartitionSchedulerPostgresTest {
   @BeforeEach
   void resetHorizon() {
     dropExtraPartitions();
+    jdbc.execute("DROP FUNCTION IF EXISTS " + FUNCTION);
+    jdbc.execute(
+        "DROP FUNCTION IF EXISTS create_monthly_partition_real(TEXT, TEXT, TIMESTAMPTZ,"
+            + " TIMESTAMPTZ)");
     jdbc.execute(functionSql);
     jdbc.execute("GRANT EXECUTE ON FUNCTION " + FUNCTION + " TO PUBLIC");
     jdbc.update(
@@ -281,6 +285,68 @@ class PartitionSchedulerPostgresTest {
 
     assertThat(jobRow().status()).isEqualTo("SUCCESS");
     assertThat(alertCount()).isZero();
+  }
+
+  @Test
+  @DisplayName("one partition in the middle fails and the other seven still commit")
+  void midHorizonFailure_commitsTheOtherTargetsThenResolves() {
+    jdbc.execute("ALTER FUNCTION " + FUNCTION + " RENAME TO create_monthly_partition_real");
+    jdbc.execute(wrapperThatRejects("ezkey_auth_attempt_2026_12"));
+
+    scheduler.createNextMonthPartitions();
+
+    assertThat(partitionExists("ezkey_auth_attempt_2026_11")).isTrue();
+    assertThat(partitionExists("ezkey_audit_log_2026_11")).isTrue();
+    assertThat(partitionExists("ezkey_auth_attempt_2026_12")).isFalse();
+    assertAuditMonth("ezkey_audit_log_2026_12");
+    assertThat(partitionExists("ezkey_auth_attempt_2027_01")).isTrue();
+    assertAuditMonth("ezkey_audit_log_2027_01");
+    assertThat(partitionExists("ezkey_auth_attempt_2027_02")).isTrue();
+    assertAuditMonth("ezkey_audit_log_2027_02");
+
+    JobRow job = jobRow();
+    assertThat(job.status()).isEqualTo("FAILED");
+    assertThat(job.scope()).isEqualTo("UTC 2026-11..2027-02 monthsAhead=3 failed=1/8");
+    assertThat(job.errorSummary()).isNotBlank();
+    assertThat(job.errorSummary()).doesNotContain(" ");
+    assertThat(alertCount()).isEqualTo(1);
+    AlertRow alert = alertRow();
+    assertThat(alert.type()).isEqualTo("PARTITION_CREATION_FAILED");
+    assertThat(alert.severity()).isEqualTo("CRITICAL");
+    assertThat(alert.status()).isEqualTo("OPEN");
+
+    jdbc.execute(functionSql);
+    jdbc.execute("GRANT EXECUTE ON FUNCTION " + FUNCTION + " TO PUBLIC");
+    scheduler.createNextMonthPartitions();
+
+    assertThat(partitionExists("ezkey_auth_attempt_2026_12")).isTrue();
+    assertThat(jobRow().status()).isEqualTo("SUCCESS");
+    assertThat(jobRow().scope()).isEqualTo("UTC 2026-11..2027-02 monthsAhead=3");
+    assertThat(jobRow().errorSummary()).isNull();
+    assertThat(alertCount()).isEqualTo(1);
+    AlertRow resolved = alertRow();
+    assertThat(resolved.status()).isEqualTo("RESOLVED");
+    assertThat(resolved.reason()).isEqualTo("PARTITION_HORIZON_RESTORED");
+  }
+
+  private static String wrapperThatRejects(String partitionName) {
+    return "CREATE FUNCTION create_monthly_partition("
+        + " p_table_name TEXT, p_partition_name TEXT, p_start_date TIMESTAMPTZ,"
+        + " p_end_date TIMESTAMPTZ) RETURNS BOOLEAN LANGUAGE plpgsql"
+        + " SECURITY DEFINER SET search_path = public AS $$ BEGIN"
+        + " IF p_partition_name = '"
+        + partitionName
+        + "' THEN RAISE EXCEPTION 'mid-horizon partition refused'"
+        + " USING ERRCODE = '42501'; END IF;"
+        + " RETURN create_monthly_partition_real(p_table_name, p_partition_name, p_start_date,"
+        + " p_end_date); END $$";
+  }
+
+  private void assertAuditMonth(String parent) {
+    assertThat(partitionExists(parent)).isTrue();
+    assertThat(partitionExists(parent + "_admin")).isTrue();
+    assertThat(partitionExists(parent + "_auth")).isTrue();
+    assertThat(partitionExists(parent + "_integration")).isTrue();
   }
 
   private static String failingFunction(String message) {

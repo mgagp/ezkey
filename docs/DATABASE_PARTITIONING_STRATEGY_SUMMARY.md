@@ -154,7 +154,7 @@ ezkey-core/src/main/resources/db/migration/
 **Location:** `ezkey-core/src/main/java/org/ezkey/database/service/`
 
 **What the Scheduled Batch Does:**
-1. At startup and daily, covers the current UTC month plus three future months (configurable)
+1. At startup and daily, covers the current month on the platform clock (UTC in production) plus three future months (configurable). The function bounds are a zone-less `LocalDateTime` and follow the JVM/JDBC session time zone
 2. Calls `create_monthly_partition()` for each month and both tables
 3. Function executes with owner privileges (SECURITY DEFINER)
 4. Creates the partition when it is missing (idempotent)
@@ -168,7 +168,7 @@ ezkey.database.partition.scheduler.enabled=true
 # Cron expression (default: daily at 1 AM)
 ezkey.database.partition.scheduler.cron=0 0 1 * * ?
 
-# Future months beyond the current UTC month (default: 3)
+# Future months beyond the month selected by the platform clock (default: 3)
 ezkey.database.partition.scheduler.months-ahead=3
 
 # Also run when Admin API becomes ready (default: true)

@@ -1,4 +1,5 @@
--- Mirrors create_monthly_partition in V4__partitioning_auth_audit_and_function.sql.
+-- copy of V4 function; keep in sync
+-- Source: V4__partitioning_auth_audit_and_function.sql
 -- PartitionSchedulerPostgresTest re-applies this file before each test.
 CREATE OR REPLACE FUNCTION create_monthly_partition(
     p_table_name TEXT,

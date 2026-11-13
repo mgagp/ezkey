@@ -425,13 +425,13 @@ enrollments. Used only by Admin API.
 
 **Defined in:** `PartitionSchedulerService` (`@Value`, not a `@ConfigurationProperties` type).
 
-The horizon is the current UTC month plus `months-ahead` future months. Startup and the daily job both cover that horizon. A failure records `PARTITION_CREATION` as `FAILED` in `ezkey_scheduled_job_last_run` and raises alert `PARTITION_CREATION_FAILED`. The next clean run resolves it with `PARTITION_HORIZON_RESTORED`. There is no DEFAULT partition: a default child would hide rows from month-based purge. `months-ahead` is clamped to 1–12. The daily job and startup share ShedLock name `DB_PARTITION_CREATION`.
+The horizon is the current month on the platform clock (UTC in production) plus `months-ahead` future months. Only that selection uses the clock. The bounds sent to `create_monthly_partition` are a zone-less `LocalDateTime` and follow the JVM/JDBC session time zone. Startup and the daily job both cover that horizon. A failure records `PARTITION_CREATION` as `FAILED` in `ezkey_scheduled_job_last_run` and raises alert `PARTITION_CREATION_FAILED`. The next clean run resolves it with `PARTITION_HORIZON_RESTORED`. There is no DEFAULT partition: a default child would hide rows from month-based purge. `months-ahead` is clamped to 1–12. The daily job and startup share ShedLock name `DB_PARTITION_CREATION`.
 
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
 | `ezkey.database.partition.scheduler.enabled` | `boolean` | `true` | optionnel | When false, the bean is not created. |
 | `ezkey.database.partition.scheduler.cron` | `string` | `0 0 1 * * ?` | optionnel | Spring cron for the daily pass. |
-| `ezkey.database.partition.scheduler.months-ahead` | `integer` | `3` | optionnel | Future months beyond the current UTC month. Clamped to 1–12. |
+| `ezkey.database.partition.scheduler.months-ahead` | `integer` | `3` | optionnel | Future months beyond the month selected by the platform clock (UTC in production). Bounds follow the JDBC session time zone. Clamped to 1–12. |
 | `ezkey.database.partition.scheduler.startup-enabled` | `boolean` | `true` | optionnel | When false, startup does not create partitions. The daily job still runs. |
 
 ---

@@ -46,8 +46,11 @@ import org.springframework.transaction.support.TransactionTemplate;
 /**
  * Creates monthly partitions for {@code ezkey_auth_attempt} and {@code ezkey_audit_log}.
  *
- * <p>The horizon is the current UTC month plus {@code months-ahead} future months (default {@value
- * #DEFAULT_MONTHS_AHEAD}). That buffer is why a stretch of failed runs (for example EXECUTE grants
+ * <p>The horizon is the current month on the injected clock plus {@code months-ahead} future months
+ * (default {@value #DEFAULT_MONTHS_AHEAD}). Production supplies a UTC clock, so that selection is a
+ * UTC month. The bounds sent to {@code create_monthly_partition} are a zone-less {@link
+ * LocalDateTime} ({@code atStartOfDay}) and follow the JVM/JDBC session time zone. This service
+ * does not set that zone. The buffer is why a stretch of failed runs (for example EXECUTE grants
  * drifting off {@code create_monthly_partition}) does not become an MFA outage on the first day of
  * the next month. Flyway still creates the current and next month at migrate time; this service
  * re-checks the same horizon at startup and once a day.
@@ -149,7 +152,8 @@ public class PartitionSchedulerService {
    * @param alertService operator alert raise and resolve
    * @param transactionManager commits each partition call on its own
    * @param lockProvider ShedLock provider; absent only outside Admin API
-   * @param clock UTC clock that selects the current month
+   * @param clock clock that selects the current month; production supplies UTC. Bounds are not
+   *     taken from this clock
    * @param monthsAhead future months beyond the current one
    * @param startupEnabled when false, the ready event does not create partitions
    */
@@ -309,6 +313,7 @@ public class PartitionSchedulerService {
 
   private Boolean invokeCreateFunction(
       String tableName, String partitionName, LocalDate startDate, LocalDate endDate) {
+    // Zone-less. PostgreSQL reads these in the JDBC session time zone, not from the clock.
     LocalDateTime startDateTime = startDate.atStartOfDay();
     LocalDateTime endDateTime = endDate.atStartOfDay();
     Object result =
@@ -332,19 +337,24 @@ public class PartitionSchedulerService {
       String fromLabel,
       String toLabel,
       int failed) {
-    try {
-      if (success) {
+    if (success) {
+      try {
         jobLastRunService.recordSuccess(ScheduledJobKey.PARTITION_CREATION, scope);
+      } catch (Exception ex) { // CHECKSTYLE IGNORE IllegalCatch
+        logger.error("Could not record partition job success: {}", safeErrorName(ex), ex);
+      }
+      try {
         alertService.resolveByDedupeKey(
             ALERT_DEDUPE_KEY, AlertResolutionReason.PARTITION_HORIZON_RESTORED, null);
-        return;
+      } catch (Exception ex) { // CHECKSTYLE IGNORE IllegalCatch
+        logger.error("Could not resolve partition creation alert: {}", safeErrorName(ex), ex);
       }
+      return;
+    }
+    try {
       jobLastRunService.recordFailure(ScheduledJobKey.PARTITION_CREATION, scope, errorName);
     } catch (Exception ex) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Could not record partition job outcome: {}", safeErrorName(ex), ex);
-    }
-    if (success) {
-      return;
     }
     try {
       String payload =

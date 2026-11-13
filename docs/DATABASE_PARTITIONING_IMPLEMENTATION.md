@@ -63,7 +63,7 @@ This document summarizes the implementation of database table partitioning for E
 **Location:** `ezkey-core/src/main/java/org/ezkey/database/service/PartitionSchedulerService.java`
 
 **Functionality:**
-- Creates or verifies the current UTC month and the next `months-ahead` months (default 3) for both partitioned tables
+- Creates or verifies the current month on the platform clock (UTC in production) and the next `months-ahead` months (default 3) for both partitioned tables. Only that month selection uses the clock. The bounds passed to `create_monthly_partition` are a zone-less `LocalDateTime` and follow the JVM/JDBC session time zone
 - Runs at Admin API startup and daily at 1 AM (configurable)
 - Uses SECURITY DEFINER function (no DDL privileges needed)
 - Idempotent — the function returns false when the partition already exists
@@ -82,7 +82,7 @@ ezkey.database.partition.scheduler.enabled=true
 # Cron expression for schedule (default: 0 0 1 * * ? - daily at 1 AM)
 ezkey.database.partition.scheduler.cron=0 0 1 * * ?
 
-# Future months beyond the current UTC month (default: 3, clamped to 1-12)
+# Future months beyond the month selected by the platform clock (default: 3, clamped to 1-12)
 ezkey.database.partition.scheduler.months-ahead=3
 
 # Create or verify the horizon when Admin API is ready (default: true)
@@ -91,7 +91,7 @@ ezkey.database.partition.scheduler.startup-enabled=true
 
 **How It Works:**
 1. At startup, one instance takes ShedLock `DB_PARTITION_CREATION` (same name as the daily job). If another instance holds it, startup skips and does not record a failure
-2. Calculates the current UTC month through `months-ahead` future months
+2. Selects the current month from the platform clock (UTC in production) through `months-ahead` future months. The function bounds are a zone-less `LocalDateTime` and follow the JVM/JDBC session time zone
 3. Calls `create_monthly_partition()` for `ezkey_auth_attempt` and `ezkey_audit_log`. Each call commits on its own
 4. Records SUCCESS, or FAILED plus the operator alert
 5. The daily job repeats the same horizon under `@SchedulerLock`
