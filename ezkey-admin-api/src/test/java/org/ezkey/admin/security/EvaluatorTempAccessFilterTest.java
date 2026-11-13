@@ -67,6 +67,8 @@ class EvaluatorTempAccessFilterTest {
     authenticateTemp(42);
     assertEquals(403, filterGet("/api/v1/enrollments/7/qr-delivery").getStatus());
     assertEquals(403, filterGet("/api/v1/enrollments/qr-delivery/capability").getStatus());
+    assertEquals(403, filterGet("/api/v1/enrollments/0x7/qr-delivery").getStatus());
+    assertEquals(403, filterGet("/api/v1/enrollments/7/qr-delivery/").getStatus());
     assertEquals(200, filterGet("/api/v1/enrollments/7/qrcode").getStatus());
   }
 
@@ -115,6 +117,22 @@ class EvaluatorTempAccessFilterTest {
   void temp_deniesPeerRecoveryCodeRegeneration() throws Exception {
     authenticateTemp(42);
     assertEquals(403, filterPost("/api/v1/admins/99/recovery-codes/regenerate").getStatus());
+  }
+
+  @Test
+  @DisplayName("TEMP denies non-canonical admin ids, including self-only suffixes")
+  void temp_deniesNonCanonicalAdminIds() throws Exception {
+    authenticateTemp(42);
+    assertEquals(403, filterPost("/api/v1/admins/0x63/recovery-codes/regenerate").getStatus());
+    assertEquals(403, filterPost("/api/v1/admins/+99/recovery-codes/regenerate").getStatus());
+    assertEquals(403, filterPost("/api/v1/admins/099/recovery-codes/regenerate").getStatus());
+    assertEquals(403, filterPost("/api/v1/admins/99/recovery-codes/regenerate/").getStatus());
+    assertEquals(403, filterGet("/api/v1/admins/0x2a/onboarding").getStatus());
+    assertEquals(403, filterGet("/api/v1/admins/0x2a/onboarding/qrcode").getStatus());
+    assertEquals(403, filterGet("/api/v1/admins/+42").getStatus());
+    assertEquals(403, filterGet("/api/v1/admins/042").getStatus());
+    assertEquals(403, filterGet("/api/v1/admins/42/").getStatus());
+    assertEquals(403, filterGet("/api/v1/admins/42/onboarding/").getStatus());
   }
 
   @Test

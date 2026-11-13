@@ -35,17 +35,30 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * <p>Admin-by-id routes are the exception: anything other than the caller's own profile and
  * onboarding is denied, including recovery codes, activation-code reissue, and deactivate/activate.
  * That subtree is deny-by-default so a new admin credential route is closed until someone adds it
- * to the self-only set. The rest of the API stays deny-list, because a full allowlist would empty
- * the navigable console.
+ * to the self-only set. The id segment must be the canonical decimal form of the caller's own id.
+ * Any other spelling is denied, including hex, a leading sign, leading zeros, and a trailing slash,
+ * because Spring parses {@code @PathVariable Integer} with {@code NumberUtils.parseNumber} while
+ * this filter sees the raw URI. The rest of the API stays deny-list, because a full allowlist would
+ * empty the navigable console.
  */
 @Component
 public class EvaluatorTempAccessFilter extends OncePerRequestFilter {
 
-  /** Admin-by-id path. Group 2 is the suffix after the id, or null when the path is the profile. */
-  private static final Pattern ADMIN_BY_ID = Pattern.compile("^/api/v1/admins/(\\d+)(?:/(.*))?$");
+  /**
+   * Admin-by-id path. Group 1 is the raw id segment. Group 2 is the suffix after the id, or null
+   * when the path is the profile with no trailing slash.
+   */
+  private static final Pattern ADMIN_BY_ID = Pattern.compile("^/api/v1/admins/([^/]+)(?:/(.*))?$");
 
+  /** Canonical decimal id: {@code 0} or a digit string with no sign and no leading zero. */
+  private static final Pattern CANONICAL_DECIMAL = Pattern.compile("0|[1-9][0-9]*");
+
+  /**
+   * Any enrollment QR-delivery path. The id segment is not restricted to digits: a hex or signed
+   * spelling still resolves to an enrollment id in the controller, so a miss would fail open.
+   */
   private static final Pattern QR_DELIVERY =
-      Pattern.compile("^/api/v1/enrollments/(qr-delivery/.*|\\d+/qr-delivery)$");
+      Pattern.compile("^/api/v1/enrollments/(?:qr-delivery(?:/.*)?|[^/]+/qr-delivery(?:/.*)?)$");
 
   /**
    * Deny-list seed (Patrick craft steer): GLOBAL/cross-tenant; mint SESSION without bind; integrity
@@ -137,22 +150,34 @@ public class EvaluatorTempAccessFilter extends OncePerRequestFilter {
     if (!matcher.matches()) {
       return false;
     }
-    if (isSelfOnlyAdminSuffix(matcher.group(2))) {
-      Integer targetAdminId = parseAdminId(matcher.group(1));
-      return targetAdminId == null || !targetAdminId.equals(principal.adminId());
+    if (!isCanonicalSelfAdminId(matcher.group(1), principal.adminId())) {
+      return true;
     }
-    return true;
+    return !isSelfOnlyAdminSuffix(matcher.group(2));
   }
 
   private static boolean isSelfOnlyAdminSuffix(String suffix) {
     return suffix == null || "onboarding".equals(suffix) || "onboarding/qrcode".equals(suffix);
   }
 
-  private static Integer parseAdminId(String raw) {
+  /**
+   * True only when the raw segment is the canonical decimal spelling of {@code adminId}.
+   *
+   * <p>{@code 099}, {@code +99}, and {@code 0x63} are rejected even when they parse to the same
+   * number. A value that does not fit in an {@link Integer} is rejected.
+   *
+   * @param segment raw path segment
+   * @param adminId caller admin id, or null when the principal has none
+   * @return true when the segment is the canonical form of the caller's own id
+   */
+  private static boolean isCanonicalSelfAdminId(String segment, Integer adminId) {
+    if (adminId == null || segment == null || !CANONICAL_DECIMAL.matcher(segment).matches()) {
+      return false;
+    }
     try {
-      return Integer.valueOf(raw);
+      return Integer.valueOf(segment).equals(adminId);
     } catch (NumberFormatException _) {
-      return null;
+      return false;
     }
   }
 }

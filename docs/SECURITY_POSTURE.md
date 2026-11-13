@@ -274,12 +274,17 @@ See [`../product-docs/global/normative-posture.md`](../product-docs/global/norma
   sub-resources. Reason: the Mode C deny-list matched onboarding and QR only, so
   `POST /api/v1/admins/{id}/recovery-codes/regenerate` and `…/issue-initial` stayed open. In a
   multi-admin tenant a temporary session could replace a peer's unused recovery codes with a
-  plaintext set and then take over that peer through `/auth/recover`. Fix: under
-  `/api/v1/admins/{id}`, only the caller's own profile and onboarding (including QR) stay
-  reachable; every other suffix is denied, including activation-code reissue and
-  deactivate/activate. The rest of the console stays a deny-list so the evaluator can still
-  navigate. Encryption keys, enrollment reset, recover, and passwordless session mint were
-  already denied.
+  plaintext set and then take over that peer through `/auth/recover`. A decimal-only match on the
+  raw URI also failed open: Spring binds `@PathVariable Integer` with `NumberUtils.parseNumber`,
+  which accepts hex (`0x63`) and a leading `+`. Fix, fail closed: an id segment is allowed only
+  when it is the canonical decimal form of the caller's own id (no sign, no hex, no leading
+  zeros, no trailing slash). That caller may open only their own profile and onboarding
+  (including QR). Every other suffix is denied, including activation-code reissue and
+  deactivate/activate, and any non-canonical spelling is denied even for profile and onboarding.
+  The same five mutations are refused again in `AdminProvisioningService`. The rest of the
+  console stays a deny-list so the evaluator can still navigate. Enrollment QR delivery is denied
+  for any id spelling. Encryption keys, enrollment reset, recover, and passwordless session mint
+  were already denied.
 
 ## Traceability
 

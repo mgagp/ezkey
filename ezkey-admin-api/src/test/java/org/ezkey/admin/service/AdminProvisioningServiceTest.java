@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.OffsetDateTime;
@@ -35,6 +36,7 @@ import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.integration.domain.AdminTokenPurpose;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminLifecycleStatus;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
@@ -846,6 +848,25 @@ class AdminProvisioningServiceTest {
       assertEquals(status, result.enrollmentStatus());
       assertNull(result.enrollmentProofToken());
       assertNull(result.enrollmentChallenge());
+    }
+  }
+
+  @Nested
+  @DisplayName("EVALUATOR_TEMP credential mutations")
+  class EvaluatorTempCredentialMutations {
+
+    @Test
+    @DisplayName("TEMP cannot regenerate, issue, reissue, deactivate, or activate")
+    void evaluatorTempRefusedBeforeAnyLookup() {
+      AdminPrincipal temp =
+          new AdminPrincipal(42, AdminType.TENANT_ADMIN, 3, null, AdminTokenPurpose.EVALUATOR_TEMP);
+
+      assertThrows(AccessDeniedException.class, () -> service.regenerateRecoveryCodes(99, temp));
+      assertThrows(AccessDeniedException.class, () -> service.issueInitialRecoveryCodes(42, temp));
+      assertThrows(AccessDeniedException.class, () -> service.reissueActivationCode(99, temp));
+      assertThrows(AccessDeniedException.class, () -> service.deactivateAdmin(99, temp));
+      assertThrows(AccessDeniedException.class, () -> service.activateAdmin(42, temp));
+      verifyNoInteractions(adminRepository);
     }
   }
 }
