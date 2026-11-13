@@ -93,7 +93,7 @@
     },
     "partitionCreation": {
       "summary": "Mois {{from}} à {{to}} · Non créées {{failedTargets}} · Erreur {{error}}",
-      "guidance": "Ezkey n'a pas pu créer d'avance les tables mensuelles qui reçoivent les tentatives d'authentification et le journal d'audit ({{from}} à {{to}}). Ezkey réessaie au démarrage et chaque jour, et ferme cette alerte tout seul après la prochaine exécution réussie. Si elle reste ouverte, consultez les journaux de l'Admin API et la permission de la base de données sur create_monthly_partition. Agissez avant le début du premier mois sans table : sans table de tentatives d'authentification, les connexions échouent ; sans table d'audit, ces événements ne sont pas enregistrés."
+      "guidance": "Ezkey n'a pas pu créer d'avance les tables mensuelles qui reçoivent les tentatives d'authentification et le journal d'audit ({{from}} à {{to}}). Ezkey réessaie au démarrage de l'Admin API et chaque jour, et ferme cette alerte tout seul après la prochaine exécution réussie. Si elle reste ouverte, consultez les journaux de l'Admin API et la permission de la base de données sur create_monthly_partition. Agissez avant le début du premier mois sans table : à partir de là, les nouvelles connexions échoueront et les événements d'audit de la période ne seront pas enregistrés."
     }
   },
   "reconcileDialog": {
