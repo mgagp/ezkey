@@ -62,8 +62,11 @@ transitive dependencies rarely move through version-update PRs, so lockfiles als
 Triage by **what ships**, not by GitHub's `runtime` / `development` label, which is unreliable on
 the Yarn mobile lockfile: at activation, 79 of its 82 alerts were outside the React Native release
 bundle (checked from Android and iOS source maps). Fix what ships first; refresh tooling lockfiles;
-dismiss the rest with a written reason. Security-update PRs are on since the stock was triaged
-(2026-11-06); patch-level ones go through `dependabot-auto-merge.yml` with its exclusions.
+dismiss the rest with a written reason. Transitive overrides and the dismissal line are
+[`docs/SECURITY_POSTURE.md`](../../../../docs/SECURITY_POSTURE.md) § *Transitive dependency
+overrides*; the live list is § *Active overrides* below. Security-update PRs are on since the
+stock was triaged (2026-11-06); patch-level ones go through `dependabot-auto-merge.yml` with
+its exclusions.
 `update-types` in an `ignore` rule filters version updates only, so a security PR can still propose
 a deferred major such as TypeScript 7. It will not auto-merge. Treat it as T4 (Marc decides) and
 label it `deferred:later-train` if deferred; it is not a configuration error.
@@ -80,7 +83,8 @@ situation will not change, so verify that first:
 1. **Read the upstream default branch, not only the latest release:** its version pins, its open PRs
    and issues on the advisory, and its release cadence.
 2. **Name what blocks the fix:** a version range, a pin, a major with breaking changes, or no patch
-   at all. If it matters, test the fix in a scratch copy with `overrides`.
+   at all. If it matters, test the fix in a scratch copy with `overrides`. A scratch override is
+   not a registry row until it is committed, and a committed one follows § *Active overrides*.
 3. **If upstream is moving, leave the alert open** and add a row to the table below. An open alert
    closes itself when the lockfile leaves the vulnerable range.
 4. **Dismiss only when no fix is coming** (no patch published, or upstream declined), with a written
@@ -96,7 +100,7 @@ lint on the Admin UI. Dismissing would have hidden all of it.
 |---|---|---|
 | Bruno: `axios` (9), `form-data`, `js-yaml`, `csv-parse` | Next `@usebruno/cli` release, through the weekly Dependabot PR | None needed: tooling, not shipped |
 | Bruno: `@faker-js/faker`, `uuid` | Upstream moves off `^9` and `^10` (still there on its default branch) | Re-decide if still open after the next release |
-| Admin UI: `minimatch` | ESLint, `config-array` and `typescript-estree` allow `^11` | Monday full of **2026-11-30**: apply the tested `overrides` |
+| Admin UI: `minimatch` | ESLint, `config-array` and `typescript-estree` allow `^11` | Monday full of **2026-11-30**: apply the tested `overrides` (patch or minor only, one **Active overrides** row, expiry ≤ 90 days) |
 | SDK JS: `minimatch` | `openapi-generator-cli` leaves `glob` 13 | Review with #1218 |
 | Mobile: `minimatch` | `typescript-estree` allows `^11` and tooling leaves `glob` 10 | Longest wait: tooling only, not in the release bundle |
 
@@ -392,6 +396,63 @@ recorded row until its fallback date. This pulse is not a CI gate.
 Authority: skill `dependabot-curated` § *Admin UI advisory pulse*. Provenance: 2026-11-13,
 `npm install` reported 10 moderate for GHSA-g3hv-75wg-m249 (`minimatch`), already in the table
 above (alerts 260 and 289).
+
+## Active overrides
+
+Registry for the posture in
+[`docs/SECURITY_POSTURE.md`](../../../../docs/SECURITY_POSTURE.md) § *Transitive dependency
+overrides*. **2026-11-13, Marc:** an override is a dated exception. Upstream and a Dependabot
+parent bump are the default. Patch or minor only. Expiry at most **90 days**. At most **5** per
+manifest and **10** in the repo. Above either cap, Marc decides.
+
+The Monday full pass reads this table even when no Boot bump landed: drop a row whose parent
+has caught up, and flag a row with no expiry or a past expiry. A CI warning for a missing
+expiry, a past expiry, or a cap breach is a follow-up. It is not implemented here.
+
+**Cap check (2026-11-13, Marc).** The cap stays **5** per manifest and **10** in the repo.
+Pins that are not security pins sit outside it. The six Admin UI overrides are obsolete. A
+cleanup PR removes all of them; after it, that manifest has **0** active overrides. SEC-019 is
+removed in another PR once the build is green. `caffeine.version` stays, as a compatibility pin.
+Neither PR number is assigned here. Do not add an Admin UI override while the cleanup is open.
+
+Dismissal lines use this shape (also in the posture doc):
+
+```text
+<Reason>: <fact path:line>; <why not exploitable or not deployed>; ref <triage YYYY-MM-DD / #NNN>
+```
+
+Versions below are the manifests on `02f683b99`. GHSA ids are from the GitHub Advisory Database
+(`gh api /advisories`, 2026-11-13). **none** means no current advisory for that pin.
+
+### Admin UI npm (`ezkey-admin-ui/package.json` `overrides`)
+
+| Pin | GHSA | Blocking parent | Removal condition | Expiry | Status | Owner |
+|---|---|---|---|---|---|---|
+| `brace-expansion` 5.0.12 | [GHSA-q2hr-2g5m-vwhr](https://github.com/advisories/GHSA-q2hr-2g5m-vwhr) (`>= 4.0.0, < 5.0.12`) | `minimatch` `^5.0.8` already allows 5.0.12 | Parent range already includes the fix. | none | Removal planned (cleanup PR) | Marc, `9f641bfba` (2026-08-10) |
+| `fast-uri` 3.1.9 | [GHSA-333x-w4r6-6crp](https://github.com/advisories/GHSA-333x-w4r6-6crp) (`>= 3.0.0, < 3.1.9`) | `ajv` `^3.0.1` (production path). The range resolves to 3.1.9 | The parent range already resolves to the patched release. | none | Removal planned (cleanup PR) | Marc, `9f641bfba` (2026-08-10) |
+| `js-yaml` 4.3.2 | [GHSA-2883-xcg3-v3hh](https://github.com/advisories/GHSA-2883-xcg3-v3hh) (`>= 4.0.0, < 4.3.2`) | `orval` already depends on `js-yaml` 4.3.2 exactly | Override has no effect. First added as 4.2.0 in `470ccbf28` (2026-06-16, closes #220). | none | Removal planned (cleanup PR) | Marc, `470ccbf28` |
+| `linkify-it` 5.0.2 | [GHSA-v245-v573-v5vm](https://github.com/advisories/GHSA-v245-v573-v5vm) (`<= 5.0.1`). The package is no longer in the lockfile. | none — no `linkify-it` entry in `ezkey-admin-ui/package-lock.json` | Dead override. | none | Removal planned (cleanup PR) | Marc, `9f641bfba` (2026-08-10) |
+| `browserslist` 4.28.9 | none | `@babel/helper-compilation-targets` `^4.24.0` | Exact pin, not a security pin. | none | Removal planned (cleanup PR) | Marc, `c5baf0d11` (2026-09-14) |
+| `baseline-browser-mapping` 2.11.23 | [GHSA-w5vr-8v7q-w6rv](https://github.com/advisories/GHSA-w5vr-8v7q-w6rv) (`>= 2.0.0, < 2.11.0`) | `browserslist` `^2.11.20` already allows a patched release | Parent range already includes the fix. | none | Removal planned (cleanup PR) | Marc, `c5baf0d11` (2026-09-14) |
+
+### Pins ahead of Boot / compatibility (outside the cap)
+
+`pom.xml` properties at lines 75–80 and `caffeine.version`. SEC-019 was the July 2026
+security-challenge set (PostgreSQL, Logback, Jackson, Tomcat; see
+[`docs/SECURITY_CHALLENGE_REPORT_2026-07.md`](../../../../docs/SECURITY_CHALLENGE_REPORT_2026-07.md)
+§ SEC-019). PostgreSQL and Tomcat were dropped when Boot 4.1.2 already managed 42.7.14 and
+11.0.27 (#1031, #939). Spring Boot 4.1.2 already covers the original CVEs (CVE-2026-13006,
+CVE-2026-59889). Logback and both Jackson pins are ahead of Boot, not security pins, and have
+no current GHSA. **2026-11-13 (Marc):** remove them in a separate PR once the build is green.
+`caffeine.version` stays, as a compatibility pin. Boot-managed versions are the 2026-11-02
+Java BOM pulse.
+
+| Pin | GHSA | Blocking parent | Removal condition | Expiry | Status | Owner |
+|---|---|---|---|---|---|---|
+| `logback.version` 1.6.6 (`logback-classic`, `logback-core`) | none | Spring Boot BOM 4.1.2 already covers CVE-2026-13006. Pulse 2026-11-02: Boot managed 1.5.38 | Ahead of Boot, not a security pin. Separate PR from the Admin UI cleanup, once the build is green. | none | Removal planned (cleanup PR) | Marc, `0319fcd18` (2026-07-16) |
+| `jackson-bom.version` 3.3.0 (`tools.jackson` `jackson-bom`, forced `jackson-databind` and `jackson-core`) | none | Spring Boot BOM 4.1.2 already covers CVE-2026-59889. Pulse 2026-11-02: Boot managed 3.1.7 | Ahead of Boot, not a security pin. Same SEC-019 removal, once the build is green. | none | Removal planned (cleanup PR) | Marc, `0319fcd18` (2026-07-16) |
+| `jackson-2-bom.version` 2.23.0 (`com.fasterxml.jackson` `jackson-bom`, forced `jackson-databind` 2.23.0 and `jackson-annotations` 2.23) | none | Spring Boot BOM 4.1.2 already covers CVE-2026-59889. Pulse 2026-11-02: Boot managed 2.21.7 | Ahead of Boot, not a security pin. Same SEC-019 removal, once the build is green. `jackson-annotations` is the 2.23 line without a patch digit (pom comment). | none | Removal planned (cleanup PR) | Marc, `0319fcd18` (2026-07-16) |
+| `caffeine.version` 3.3.1 | none | Compatibility pin for rate limiting (`cf4144f4b`, 2025-10-03). Pulse 2026-11-02: Boot managed 3.2.4 | Stays. Outside the cap. | none | Keep | Marc, `cf4144f4b` |
 
 ## Related
 

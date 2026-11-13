@@ -51,6 +51,7 @@ Do not paste full chat transcripts.
 | Dependabot PR CI (per merged PR) | yes / no | |
 | Java BOM pulse (`spring-boot.version` vs current same-minor) | yes / n/a | newer? applied? none (Monday full) |
 | Parent overrides vs Boot (SEC-019 logback/Jackson dropped 2026-11-13; caffeine compatibility pin remains) | yes / n/a | kept / dropped |
+| Active overrides registry (expiry, parent caught up, cap) | yes / n/a | [`README.md`](README.md) § Active overrides |
 | Nested pin: `google-java-format` | yes / n/a | current / bump proposed |
 | Mobile RN pulse (declared `react` / `react-native` + coupled libs) | yes / n/a | versions recorded (Monday full) |
 | Mobile `yarn deps:monitor` (actionable / deferred / high audit) | yes / n/a | summary or none |
