@@ -98,7 +98,7 @@
 		<shedlock.version>7.11.0</shedlock.version>
 		<javamelody.version>2.9.0</javamelody.version>
 		<ipaddress.version>5.6.2</ipaddress.version>
-		<license-maven-plugin.version>2.8.0</license-maven-plugin.version>
+		<license-maven-plugin.version>2.9.0</license-maven-plugin.version>
 		<!-- Skip copying root THIRD-PARTY.txt into META-INF/licenses/ unless a shipped
 		     server/backend module opts in (see ezkey-admin-api and siblings). -->
 		<ezkey.skip.third-party.licenses.copy>true</ezkey.skip.third-party.licenses.copy>
