@@ -193,6 +193,29 @@ spring.jpa.open-in-view=false
 
 ---
 
+## Tenant scope of service loaders (caller contract)
+
+Core SQL is tenant-blind by design. There is no Hibernate `@Filter` and no tenant interceptor.
+
+- **Unscoped by PK:** `EnrollmentService.getById` / `getAll`, `IntegrationService.getById` /
+  `getAll`, `AuthAttemptService.getById` / `getAll`, `ApiKeyService.getApiKey` / `findAll` /
+  `revokeApiKey` (native `revokeKey`). They return or mutate any row, whatever the tenant.
+- **Caller owns the scope:** an HTTP surface must authorize **before** calling them. Admin API:
+  `AccessControlService.canAccess*` for get-by-id and mutations; list endpoints overwrite
+  `tenantId` from the principal before building the `Specification`. Integration API: compare
+  the row's integration id with the API-key principal.
+- **Deny must not leak existence:** when the load happens before the check, missing and
+  foreign rows must share one client outcome (Admin API: HTTP 404
+  `admin/resource-not-found`). Two different errors after an unscoped load is the SQL-ISO
+  oracle class.
+- **Do not tenant-filter proof-token lookups:** Auth API bind / pending / respond are bound by
+  `enrollmentProofToken` hash and device key, not by tenant. A tenant predicate there breaks
+  the device flow.
+- `getAll` / `findAll` have no production HTTP caller (tests only, checked 2026-11-13). Do not
+  expose one without a principal-scoped `Specification`.
+
+Provenance: `docs/java-tenant-sql-isolation-assessment-2026-09.md` (SQL-ISO-005).
+
 ## Transaction boundaries (JPA / Spring)
 
 - **Self-invocation bypasses proxy:** Calling `this::method` or `this.helper()` does not go through the Spring proxy. `@Transactional` on the called method is ignored. Place `@Transactional` on the entry point (e.g. event listener, controller-called service) so the whole flow runs in one transaction.

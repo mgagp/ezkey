@@ -344,8 +344,11 @@ public class ApiKeyService {
   /**
    * Lists all API keys across all integrations and tenants.
    *
-   * <p>This method is used by GlobalAdmin to view all API keys in the system. Should be used with
-   * caution in production due to potential large result sets.
+   * <p>Intended for a Global Admin view of all API keys in the system. Should be used with caution
+   * in production due to potential large result sets.
+   *
+   * <p><b>Tenant scope:</b> unscoped. Returns rows of every tenant. No production HTTP caller; do
+   * not expose without a principal-scoped query (see {@code ezkey-core/AGENTS.md}).
    *
    * @return List of all API keys in the system
    */
@@ -383,6 +386,9 @@ public class ApiKeyService {
 
   /**
    * Gets a specific API key by ID.
+   *
+   * <p><b>Tenant scope:</b> unscoped. Loads by primary key whatever the tenant. The caller must
+   * authorize first (see {@code ezkey-core/AGENTS.md}, tenant scope of service loaders).
    *
    * @param keyId the API key ID
    * @return Optional containing the API key if found
@@ -459,6 +465,9 @@ public class ApiKeyService {
    * </ol>
    *
    * <p><b>Usage:</b> Use for compromised keys or during key rotation cleanup
+   *
+   * <p><b>Tenant scope:</b> unscoped. Revokes by primary key whatever the tenant. The caller must
+   * authorize first (see {@code ezkey-core/AGENTS.md}, tenant scope of service loaders).
    *
    * @param keyId the API key ID to revoke
    * @param revokedByAdmin the admin performing the revocation
