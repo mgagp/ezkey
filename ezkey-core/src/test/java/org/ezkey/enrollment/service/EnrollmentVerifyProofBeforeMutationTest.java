@@ -47,8 +47,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
  *
  * <p>A keypair the caller generates can sign a payload they choose. Verification uses the
  * server-built payload, which includes the stored proof token, so that signature does not prove
- * possession and must not invalidate the row. A signature over the real payload still completes
- * enrollment, and a wrong challenge after that proof still invalidates once.
+ * possession and must not invalidate the row. An expired row is not marked {@code EXPIRED} on that
+ * failure. An unknown id gets the same state-conflict refusal (HTTP 409) and writes nothing. A
+ * signature over the real payload still completes enrollment, and a wrong challenge after that
+ * proof still invalidates once.
  *
  * @since 2026
  */
@@ -124,6 +126,65 @@ class EnrollmentVerifyProofBeforeMutationTest {
     assertEquals(PROOF_TOKEN, enrollment.getEnrollmentProofToken());
     assertEquals(CHALLENGE, enrollment.getEnrollmentChallenge());
     verify(enrollmentTxHelper, never()).markInvalidAndClear(any());
+  }
+
+  @Test
+  @DisplayName("expired BOUND with a forged signature is not marked EXPIRED")
+  void forgedSignatureOnExpiredBoundIsNotMarkedExpired() {
+    Enrollment enrollment = pending(EnrollmentStatus.BOUND);
+    enrollment.setExpiresAt(OffsetDateTime.now().minusMinutes(1));
+    when(enrollmentRepository.findById(ENROLLMENT_ID)).thenReturn(Optional.of(enrollment));
+
+    ECP256KeyPair attacker = signatureService.generateECP256KeyPair();
+    String attackerPayload =
+        EnrollmentSignaturePayload.buildVerifyDevicePayload(
+            "guessed-token", ENROLLMENT_ID, CHALLENGE, attacker.base64PublicKey());
+    String attackerSignature =
+        signatureService.signEcdsaSha256(attackerPayload, attacker.base64PrivateKey());
+
+    assertThrows(
+        EnrollmentVerifyStateConflictException.class,
+        () ->
+            verifyService.verify(
+                request(CHALLENGE, attacker.base64PublicKey(), attackerSignature)));
+
+    assertEquals(EnrollmentStatus.BOUND, enrollment.getStatus());
+    verify(enrollmentTxHelper, never()).markExpiredAndEmitAudit(any(), any(), any(), any());
+    verify(enrollmentTxHelper, never()).markInvalidAndClear(any());
+  }
+
+  @Test
+  @DisplayName("unknown id gets the same 409 refusal as a forged signature and writes nothing")
+  void unknownIdGetsSameRefusalAsForgedSignature() {
+    when(enrollmentRepository.findById(ENROLLMENT_ID)).thenReturn(Optional.empty());
+    EnrollmentVerifyStateConflictException unknown =
+        assertThrows(
+            EnrollmentVerifyStateConflictException.class,
+            () -> verifyService.verify(request(CHALLENGE, "not-a-key", "not-a-signature")));
+
+    Enrollment enrollment = pending(EnrollmentStatus.BOUND);
+    when(enrollmentRepository.findById(ENROLLMENT_ID)).thenReturn(Optional.of(enrollment));
+    ECP256KeyPair attacker = signatureService.generateECP256KeyPair();
+    String attackerPayload =
+        EnrollmentSignaturePayload.buildVerifyDevicePayload(
+            "guessed-token", ENROLLMENT_ID, CHALLENGE, attacker.base64PublicKey());
+    String attackerSignature =
+        signatureService.signEcdsaSha256(attackerPayload, attacker.base64PrivateKey());
+    EnrollmentVerifyStateConflictException forged =
+        assertThrows(
+            EnrollmentVerifyStateConflictException.class,
+            () ->
+                verifyService.verify(
+                    request(CHALLENGE, attacker.base64PublicKey(), attackerSignature)));
+
+    assertEquals(forged.getClass(), unknown.getClass());
+    assertEquals(forged.getMessage(), unknown.getMessage());
+    assertEquals("Enrollment verification failed", unknown.getMessage());
+    assertEquals(EnrollmentStatus.BOUND, enrollment.getStatus());
+    verify(enrollmentRepository, never()).save(any());
+    verify(enrollmentRepository, never()).saveAndFlush(any());
+    verify(enrollmentTxHelper, never()).markInvalidAndClear(any());
+    verify(enrollmentTxHelper, never()).markExpiredAndEmitAudit(any(), any(), any(), any());
   }
 
   @Test

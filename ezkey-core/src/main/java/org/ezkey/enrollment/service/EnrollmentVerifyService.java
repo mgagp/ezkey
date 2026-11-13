@@ -40,9 +40,9 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <ul>
  *   <li><b>Proof before mutation (#1024):</b> No invalidation, expiry write, or other state change
- *       until the signature verifies over the server-built payload (stored proof token included).
- *       The device public key in the request is the key the device introduces here; it is not a
- *       trust root and cannot forge that payload.
+ *       until the signature verifies over the server-built payload. Security rests on the stored
+ *       proof token (encrypted at rest). The device public key is still supplied in the request and
+ *       is the verification key; it is not the secret and cannot forge that payload.
  *   <li><b>Device Key Uniqueness:</b> Prevents replay attacks using same public key, after proof
  *   <li><b>Challenge Verification:</b> One-shot challenge check after proof
  *   <li><b>State Consistency:</b> Ensures enrollment state integrity
