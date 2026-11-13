@@ -189,7 +189,7 @@ services:
   # HAProxy for Admin API
   haproxy-admin:
     # Pin tag + digest (Christophe #1134); 3.4 LTS, image 3.4.7 as of 2026-11-02
-    image: haproxy:3.4-alpine@sha256:2caaf8b1a1ef67f3f1ea9b721f2821675d3ba4500fb518e23884fecb93e8dbaa
+    image: haproxy:3.4-alpine@sha256:5312d37032c079c4937d45ef63758852434351f3b425a3703521fd999837abcf
     container_name: ezkey-haproxy-admin
     depends_on:
       admin-api-1:
@@ -303,7 +303,7 @@ services:
   # HAProxy for Auth API
   haproxy-auth:
     # Pin tag + digest (Christophe #1134); 3.4 LTS, image 3.4.7 as of 2026-11-02
-    image: haproxy:3.4-alpine@sha256:2caaf8b1a1ef67f3f1ea9b721f2821675d3ba4500fb518e23884fecb93e8dbaa
+    image: haproxy:3.4-alpine@sha256:5312d37032c079c4937d45ef63758852434351f3b425a3703521fd999837abcf
     container_name: ezkey-haproxy-auth
     depends_on:
       auth-api-1:
@@ -413,7 +413,7 @@ services:
   # HAProxy for Integration API
   haproxy-integration:
     # Pin tag + digest (Christophe #1134); 3.4 LTS, image 3.4.7 as of 2026-11-02
-    image: haproxy:3.4-alpine@sha256:2caaf8b1a1ef67f3f1ea9b721f2821675d3ba4500fb518e23884fecb93e8dbaa
+    image: haproxy:3.4-alpine@sha256:5312d37032c079c4937d45ef63758852434351f3b425a3703521fd999837abcf
     container_name: ezkey-haproxy-integration
     depends_on:
       integration-api-1:
