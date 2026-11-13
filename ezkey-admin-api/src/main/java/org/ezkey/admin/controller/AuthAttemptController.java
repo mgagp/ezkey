@@ -293,14 +293,17 @@ public class AuthAttemptController {
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "200", description = "Auth attempt found"),
-        @ApiResponse(responseCode = "404", description = "Auth attempt not found"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Auth attempt not found or not visible to this admin (hide-existence)"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
-  @PreAuthorize("@accessControlService.canAccessAuthAttempt(authentication, #id)")
+  @PreAuthorize("hasRole('ADMIN')")
   @GetMapping("/{id}")
   public ResponseEntity<AuthAttemptDto> getById(
       @Parameter(description = "Unique auth attempt ID", example = "1") @PathVariable("id")
           Integer id) {
+    requireVisibleAuthAttempt(id);
     try {
       AuthAttempt authAttempt = authAttemptService.getById(id);
       Enrollment enrollment =
@@ -312,7 +315,8 @@ public class AuthAttemptController {
           authAttemptMapper.toDtoWithLabels(authAttempt, enrollment, integration);
       return ResponseEntity.ok(response);
     } catch (ResourceNotFoundException e) {
-      return ResponseEntity.notFound().build();
+      // 404 Problem (admin/resource-not-found) from the global handler, not an empty 404
+      throw e;
     }
   }
 
@@ -648,15 +652,18 @@ public class AuthAttemptController {
         @ApiResponse(
             responseCode = "409",
             description = "Auth attempt already in final state (cannot be cancelled)"),
-        @ApiResponse(responseCode = "404", description = "Auth attempt not found"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Auth attempt not found or not visible to this admin (hide-existence)"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
-  @PreAuthorize("@accessControlService.canAccessAuthAttempt(authentication, #id)")
+  @PreAuthorize("hasRole('ADMIN')")
   @PostMapping("/{id}/cancel")
   public ResponseEntity<AuthAttemptDto> cancel(
       @Parameter(description = "Auth attempt ID to cancel", example = "1") @PathVariable("id")
           Integer id,
       HttpServletRequest httpRequest) {
+    requireVisibleAuthAttempt(id);
 
     ClientContext context = ClientContext.from(httpRequest);
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -700,7 +707,7 @@ public class AuthAttemptController {
               .errorMessage("Authentication attempt not found")
               .build());
 
-      return ResponseEntity.notFound().build();
+      throw e;
 
     } catch (AuthAttemptStateConflictException e) {
       auditLogService.log(
@@ -767,7 +774,7 @@ public class AuthAttemptController {
    * @return ResponseEntity containing authentication status with HTTP 200 for completion, 408 for
    *     timeout, 404 for not found, or 400 for invalid parameters
    */
-  @PreAuthorize("@accessControlService.canAccessAuthAttempt(authentication, #id)")
+  @PreAuthorize("hasRole('ADMIN')")
   @GetMapping("/{id}/wait")
   @Operation(
       summary = "Wait for authentication response",
@@ -784,7 +791,9 @@ public class AuthAttemptController {
         @ApiResponse(
             responseCode = "408",
             description = "Timeout reached, authentication still pending"),
-        @ApiResponse(responseCode = "404", description = "Auth attempt not found"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Auth attempt not found or not visible to this admin (hide-existence)"),
         @ApiResponse(responseCode = "400", description = "Invalid parameters (timeout, polling)"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
@@ -805,6 +814,7 @@ public class AuthAttemptController {
           @RequestParam(value = "polling", defaultValue = "2")
           Integer pollingSeconds,
       HttpServletRequest httpRequest) {
+    requireVisibleAuthAttempt(id);
 
     try {
       // Build request DTO from parameters using record constructor
@@ -824,7 +834,8 @@ public class AuthAttemptController {
       return ResponseEntity.ok(responseDto);
 
     } catch (ResourceNotFoundException e) {
-      return ResponseEntity.notFound().build();
+      // 404 Problem (admin/resource-not-found) from the global handler, not an empty 404
+      throw e;
     } catch (AuthAttemptWaitValidationException e) {
       throw e;
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
@@ -893,6 +904,23 @@ public class AuthAttemptController {
       return resolveTenantIdFromEnrollment(attempt.getEnrollmentId());
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       return null;
+    }
+  }
+
+  /**
+   * Object check for get / cancel / wait on one auth attempt.
+   *
+   * <p>A missing attempt and an attempt of another tenant throw the same {@link
+   * ResourceNotFoundException} (HTTP 404 Problem {@code admin/resource-not-found}): hide existence.
+   * This replaces a {@code @PreAuthorize} object check, which answered 403.
+   *
+   * @param id the auth attempt ID from the path
+   * @throws ResourceNotFoundException if the attempt does not exist or is not visible to the caller
+   */
+  private void requireVisibleAuthAttempt(Integer id) {
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (!accessControlService.canAccessAuthAttempt(auth, id)) {
+      throw new ResourceNotFoundException("Authentication attempt", id);
     }
   }
 

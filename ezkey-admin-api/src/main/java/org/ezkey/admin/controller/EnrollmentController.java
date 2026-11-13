@@ -282,7 +282,9 @@ public class EnrollmentController {
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "200", description = "Enrollment found"),
-        @ApiResponse(responseCode = "404", description = "Enrollment not found"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Enrollment not found or not visible to this admin (hide-existence)"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
   @PreAuthorize("hasRole('ADMIN')")
@@ -294,7 +296,8 @@ public class EnrollmentController {
       // Validate tenant scoping: admin must have access to this enrollment
       Authentication auth = SecurityContextHolder.getContext().getAuthentication();
       if (!accessControlService.canAccessEnrollment(auth, id)) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        // Hide existence: missing and out-of-tenant share one 404 Problem
+        throw new org.ezkey.exception.ResourceNotFoundException("Enrollment", id);
       }
 
       var enrollment = enrollmentService.getById(id);
@@ -306,7 +309,8 @@ public class EnrollmentController {
           mapEnrollmentDetailResponse(enrollment, integration.orElse(null));
       return ResponseEntity.ok(response);
     } catch (ResourceNotFoundException e) {
-      return ResponseEntity.notFound().build();
+      // 404 Problem (admin/resource-not-found) from the global handler, not an empty 404
+      throw e;
     }
   }
 
@@ -337,8 +341,9 @@ public class EnrollmentController {
             responseCode = "400",
             description =
                 "Invalid data, enrollment not updatable (revoked/inactive), or validation failed"),
-        @ApiResponse(responseCode = "403", description = "Access denied"),
-        @ApiResponse(responseCode = "404", description = "Enrollment not found"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Enrollment not found or not visible to this admin (hide-existence)"),
         @ApiResponse(
             responseCode = "409",
             description = "Optimistic lock conflict - resource was modified, re-fetch and retry")
@@ -356,7 +361,8 @@ public class EnrollmentController {
     AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
 
     if (!accessControlService.canAccessEnrollment(auth, id)) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+      // Hide existence: missing and out-of-tenant share one 404 Problem
+      throw new org.ezkey.exception.ResourceNotFoundException("Enrollment", id);
     }
 
     try {
@@ -482,7 +488,9 @@ public class EnrollmentController {
                   "Access denied: admin does not have access to integration "
                       + request.integrationId())
               .build());
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+      // Hide existence: missing and out-of-tenant share one 404 Problem
+      throw new org.ezkey.exception.ResourceNotFoundException(
+          "Integration", request.integrationId());
     }
 
     // Resolve tenant from integration for audit log association
@@ -636,7 +644,9 @@ public class EnrollmentController {
         @ApiResponse(
             responseCode = "403",
             description = "Cannot delete your own MFA enrollment (RFC 9457)"),
-        @ApiResponse(responseCode = "404", description = "Enrollment not found"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Enrollment not found or not visible to this admin (hide-existence)"),
         @ApiResponse(
             responseCode = "409",
             description =
@@ -796,7 +806,8 @@ public class EnrollmentController {
           .body(qrCodeImage);
 
     } catch (ResourceNotFoundException e) {
-      return ResponseEntity.notFound().build();
+      // 404 Problem (admin/resource-not-found) from the global handler, not an empty 404
+      throw e;
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
@@ -831,8 +842,10 @@ public class EnrollmentController {
         @ApiResponse(responseCode = "400", description = "Invalid parameters"),
         @ApiResponse(
             responseCode = "403",
-            description = "Access denied, self-revocation attempted, or system integration guard"),
-        @ApiResponse(responseCode = "404", description = "Enrollment not found"),
+            description = "Self-revocation attempted, or system integration guard"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Enrollment not found or not visible to this admin (hide-existence)"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
   @PreAuthorize("hasRole('ADMIN')")
@@ -851,7 +864,8 @@ public class EnrollmentController {
 
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
     if (!accessControlService.canRevokeEnrollment(auth, id)) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+      // Hide existence: missing and out-of-tenant share one 404 Problem
+      throw new org.ezkey.exception.ResourceNotFoundException("Enrollment", id);
     }
 
     ClientContext context = ClientContext.from(httpRequest);
@@ -887,8 +901,10 @@ public class EnrollmentController {
       value = {
         @ApiResponse(responseCode = "204", description = "Enrollment deactivated successfully"),
         @ApiResponse(responseCode = "400", description = "Invalid parameters or state conflict"),
-        @ApiResponse(responseCode = "403", description = "Access denied or self-deactivation"),
-        @ApiResponse(responseCode = "404", description = "Enrollment not found"),
+        @ApiResponse(responseCode = "403", description = "Self-deactivation attempted"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Enrollment not found or not visible to this admin (hide-existence)"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
   @PreAuthorize("hasRole('ADMIN')")
@@ -906,7 +922,8 @@ public class EnrollmentController {
 
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
     if (!accessControlService.canRevokeEnrollment(auth, id)) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+      // Hide existence: missing and out-of-tenant share one 404 Problem
+      throw new org.ezkey.exception.ResourceNotFoundException("Enrollment", id);
     }
 
     ClientContext context = ClientContext.from(httpRequest);
@@ -939,8 +956,9 @@ public class EnrollmentController {
         @ApiResponse(
             responseCode = "400",
             description = "Enrollment is already active, revoked, or not in VERIFIED status"),
-        @ApiResponse(responseCode = "403", description = "Access denied"),
-        @ApiResponse(responseCode = "404", description = "Enrollment not found"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Enrollment not found or not visible to this admin (hide-existence)"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
   @PreAuthorize("hasRole('ADMIN')")
@@ -958,7 +976,8 @@ public class EnrollmentController {
 
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
     if (!accessControlService.canRevokeEnrollment(auth, id)) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+      // Hide existence: missing and out-of-tenant share one 404 Problem
+      throw new org.ezkey.exception.ResourceNotFoundException("Enrollment", id);
     }
 
     ClientContext context = ClientContext.from(httpRequest);

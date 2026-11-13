@@ -22,6 +22,7 @@ import org.ezkey.authattempt.mapper.AuthAttemptIntegrationApiMapper;
 import org.ezkey.authattempt.service.AuthAttemptService;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.integration.api.controller.IntegrationApiAuthAttemptController;
+import org.ezkey.integration.api.security.AccessControlService;
 import org.ezkey.integration.api.security.RateLimitService;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -54,6 +55,7 @@ class IntegrationApiStatelessSessionWebMvcTest {
   @MockitoBean private AuditEntityFkResolver auditEntityFkResolver;
   @MockitoBean private AuditChainHeartbeatGuardService auditChainHeartbeatGuardService;
   @MockitoBean private ApiKeyRateLimitProperties rateLimitProperties;
+  @MockitoBean private AccessControlService accessControlService;
 
   @Test
   @DisplayName("Anonymous GET auth-attempts returns 401 without Set-Cookie or servlet session")

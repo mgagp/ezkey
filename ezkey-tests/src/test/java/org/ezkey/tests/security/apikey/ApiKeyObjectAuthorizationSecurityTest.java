@@ -34,8 +34,8 @@ import org.junit.jupiter.api.TestMethodOrder;
  * SEC-022 / SEC-023 regression: object-level authorization on API key get, per-integration list,
  * and revoke.
  *
- * <p>Tenant Admin A must receive 404 for a Tenant B key (hide-existence, same as an unknown id) and
- * 403 for the per-integration list of a Tenant B integration; Tenant B's key must remain active
+ * <p>Tenant Admin A must receive 404 for a Tenant B key and for the per-integration list of a
+ * Tenant B integration (hide-existence, same as an unknown id); Tenant B's key must remain active
  * after a rejected cross-tenant revoke. Same-tenant revoke remains 204.
  *
  * @since 2026
@@ -155,7 +155,7 @@ public class ApiKeyObjectAuthorizationSecurityTest extends AbstractSecurityTest 
 
   @Test
   @Order(2)
-  @DisplayName("SEC-023: TenantAdmin A cannot list API keys for Tenant B integration (403)")
+  @DisplayName("SEC-023: TenantAdmin A cannot list API keys for Tenant B integration (404)")
   public void tenantAdminACannotListTenantBIntegrationApiKeys() {
     configureForAdminApi(dockerStackConfig);
 
@@ -173,7 +173,7 @@ public class ApiKeyObjectAuthorizationSecurityTest extends AbstractSecurityTest 
 
     assertThat(response.getStatusCode())
         .as("Cross-tenant GET /api-keys/integration/{id} must be denied")
-        .isEqualTo(403);
+        .isEqualTo(404);
   }
 
   @Test

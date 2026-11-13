@@ -59,7 +59,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -310,7 +309,8 @@ public class IntegrationController {
     // Validate tenant scoping: admin must have access to this integration
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
     if (!accessControlService.canAccessIntegration(auth, id)) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+      // Hide existence: missing and out-of-tenant share one 404 Problem
+      throw new org.ezkey.exception.ResourceNotFoundException("Integration", id);
     }
 
     Integration integration =
@@ -886,10 +886,10 @@ public class IntegrationController {
             responseCode = "200",
             description = "Bulk revocation completed successfully with result summary"),
         @ApiResponse(responseCode = "400", description = "Invalid parameters"),
+        @ApiResponse(responseCode = "403", description = "System integration guard triggered"),
         @ApiResponse(
-            responseCode = "403",
-            description = "Access denied or system integration guard triggered"),
-        @ApiResponse(responseCode = "404", description = "Integration not found"),
+            responseCode = "404",
+            description = "Integration not found or not visible to this admin (hide-existence)"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
   @PreAuthorize("hasRole('ADMIN')")
@@ -906,7 +906,8 @@ public class IntegrationController {
 
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
     if (!accessControlService.canAccessIntegration(auth, id)) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+      // Hide existence: missing and out-of-tenant share one 404 Problem
+      throw new org.ezkey.exception.ResourceNotFoundException("Integration", id);
     }
 
     ClientContext context = ClientContext.from(httpRequest);
@@ -945,10 +946,10 @@ public class IntegrationController {
         @ApiResponse(
             responseCode = "200",
             description = "Bulk deactivation completed successfully with result summary"),
+        @ApiResponse(responseCode = "403", description = "System integration guard triggered"),
         @ApiResponse(
-            responseCode = "403",
-            description = "Access denied or system integration guard triggered"),
-        @ApiResponse(responseCode = "404", description = "Integration not found"),
+            responseCode = "404",
+            description = "Integration not found or not visible to this admin (hide-existence)"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
   @PreAuthorize("hasRole('ADMIN')")
@@ -963,7 +964,8 @@ public class IntegrationController {
 
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
     if (!accessControlService.canAccessIntegration(auth, id)) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+      // Hide existence: missing and out-of-tenant share one 404 Problem
+      throw new org.ezkey.exception.ResourceNotFoundException("Integration", id);
     }
 
     ClientContext context = ClientContext.from(httpRequest);
@@ -999,8 +1001,9 @@ public class IntegrationController {
         @ApiResponse(
             responseCode = "200",
             description = "Bulk reactivation completed successfully with result summary"),
-        @ApiResponse(responseCode = "403", description = "Access denied"),
-        @ApiResponse(responseCode = "404", description = "Integration not found"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Integration not found or not visible to this admin (hide-existence)"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
   @PreAuthorize("hasRole('ADMIN')")
@@ -1015,7 +1018,8 @@ public class IntegrationController {
 
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
     if (!accessControlService.canAccessIntegration(auth, id)) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+      // Hide existence: missing and out-of-tenant share one 404 Problem
+      throw new org.ezkey.exception.ResourceNotFoundException("Integration", id);
     }
 
     ClientContext context = ClientContext.from(httpRequest);

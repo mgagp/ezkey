@@ -342,16 +342,15 @@ class ApiKeyControllerTest {
     }
 
     @Test
-    @DisplayName("Should return 403 FORBIDDEN when integration access denied (SEC-023)")
-    void shouldReturnForbiddenWhenIntegrationAccessDenied() {
+    @DisplayName("Integration access denied answers 404 like a missing integration (SEC-023)")
+    void shouldAnswerNotFoundWhenIntegrationAccessDenied() {
       Integer integrationId = 123;
       Pageable pageable = PageRequest.of(0, 20);
       when(accessControlService.canAccessIntegration(any(), eq(integrationId))).thenReturn(false);
 
-      ResponseEntity<org.springframework.data.domain.Page<ApiKeyResponseDto>> response =
-          controller.listApiKeys(integrationId, null, pageable);
-
-      assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+      assertThrows(
+          org.ezkey.exception.ResourceNotFoundException.class,
+          () -> controller.listApiKeys(integrationId, null, pageable));
       verify(apiKeyRepository, never())
           .findAll(isA(org.springframework.data.jpa.domain.Specification.class), eq(pageable));
     }

@@ -52,7 +52,7 @@ docs {
   - **GlobalAdmin**: Can cancel any auth attempt (any tenant)
   - **TenantAdmin**: Can only cancel auth attempts for enrollments within their tenant
   - Access is validated via `AccessControlService.canAccessAuthAttempt()`
-  - Returns 403 Forbidden if TenantAdmin tries to cancel auth attempt from another tenant
+  - Returns 404 Not Found if TenantAdmin tries to cancel auth attempt from another tenant (hide-existence: same 404 as an unknown id)
   
   **Path Parameters:**
   - `id` (required): Authentication attempt ID to cancel
@@ -69,7 +69,6 @@ docs {
   - 400: Bad Request - authentication attempt already in final state (cannot be cancelled)
   - 404: Not Found - authentication attempt not found
   - 401: Unauthorized - authentication required
-  - 403: Forbidden - access denied to authentication attempt
   - 500: Internal server error
   
   **Notes:**

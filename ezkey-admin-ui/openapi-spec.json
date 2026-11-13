@@ -926,7 +926,7 @@
             }
           },
           "403": {
-            "description": "Access denied or system integration guard triggered",
+            "description": "System integration guard triggered",
             "content": {
               "*/*": {
                 "schema": {
@@ -936,7 +936,7 @@
             }
           },
           "404": {
-            "description": "Integration not found",
+            "description": "Integration not found or not visible to this admin (hide-existence)",
             "content": {
               "*/*": {
                 "schema": {
@@ -1004,18 +1004,8 @@
               }
             }
           },
-          "403": {
-            "description": "Access denied",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/BulkEnrollmentOperationResultDto"
-                }
-              }
-            }
-          },
           "404": {
-            "description": "Integration not found",
+            "description": "Integration not found or not visible to this admin (hide-existence)",
             "content": {
               "*/*": {
                 "schema": {
@@ -1084,7 +1074,7 @@
             }
           },
           "403": {
-            "description": "Access denied or system integration guard triggered",
+            "description": "System integration guard triggered",
             "content": {
               "*/*": {
                 "schema": {
@@ -1094,7 +1084,7 @@
             }
           },
           "404": {
-            "description": "Integration not found",
+            "description": "Integration not found or not visible to this admin (hide-existence)",
             "content": {
               "*/*": {
                 "schema": {
@@ -1383,10 +1373,10 @@
             "description": "Invalid parameters"
           },
           "403": {
-            "description": "Access denied, self-revocation attempted, or system integration guard"
+            "description": "Self-revocation attempted, or system integration guard"
           },
           "404": {
-            "description": "Enrollment not found"
+            "description": "Enrollment not found or not visible to this admin (hide-existence)"
           },
           "500": {
             "description": "Internal server error"
@@ -1436,11 +1426,8 @@
           "400": {
             "description": "Enrollment is already active, revoked, or not in VERIFIED status"
           },
-          "403": {
-            "description": "Access denied"
-          },
           "404": {
-            "description": "Enrollment not found"
+            "description": "Enrollment not found or not visible to this admin (hide-existence)"
           },
           "500": {
             "description": "Internal server error"
@@ -1592,10 +1579,10 @@
             "description": "Invalid parameters or state conflict"
           },
           "403": {
-            "description": "Access denied or self-deactivation"
+            "description": "Self-deactivation attempted"
           },
           "404": {
-            "description": "Enrollment not found"
+            "description": "Enrollment not found or not visible to this admin (hide-existence)"
           },
           "500": {
             "description": "Internal server error"
@@ -2209,7 +2196,7 @@
             }
           },
           "404": {
-            "description": "Auth attempt not found",
+            "description": "Auth attempt not found or not visible to this admin (hide-existence)",
             "content": {
               "*/*": {
                 "schema": {
@@ -3948,7 +3935,7 @@
             }
           },
           "404": {
-            "description": "Enrollment not found",
+            "description": "Enrollment not found or not visible to this admin (hide-existence)",
             "content": {
               "*/*": {
                 "schema": {
@@ -4011,7 +3998,7 @@
             "description": "Cannot delete your own MFA enrollment (RFC 9457)"
           },
           "404": {
-            "description": "Enrollment not found"
+            "description": "Enrollment not found or not visible to this admin (hide-existence)"
           },
           "409": {
             "description": "Enrollment has authentication history (revoke instead) or is linked as an administrator's MFA (use recovery flow to reset that admin's MFA) (RFC 9457)"
@@ -4075,18 +4062,8 @@
               }
             }
           },
-          "403": {
-            "description": "Access denied",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/EnrollmentResponseDto"
-                }
-              }
-            }
-          },
           "404": {
-            "description": "Enrollment not found",
+            "description": "Enrollment not found or not visible to this admin (hide-existence)",
             "content": {
               "*/*": {
                 "schema": {
@@ -5220,7 +5197,7 @@
             }
           },
           "404": {
-            "description": "Auth attempt not found",
+            "description": "Auth attempt not found or not visible to this admin (hide-existence)",
             "content": {
               "*/*": {
                 "schema": {
@@ -5314,7 +5291,7 @@
             }
           },
           "404": {
-            "description": "Auth attempt not found",
+            "description": "Auth attempt not found or not visible to this admin (hide-existence)",
             "content": {
               "*/*": {
                 "schema": {
@@ -6622,8 +6599,8 @@
               }
             }
           },
-          "403": {
-            "description": "Forbidden - no access to the integration's tenant",
+          "404": {
+            "description": "Integration not found or not visible to this admin (hide-existence)",
             "content": {
               "*/*": {
                 "schema": {

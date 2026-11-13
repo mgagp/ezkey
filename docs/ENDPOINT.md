@@ -388,6 +388,22 @@ See **Error responses (RFC 9457)** above. Verification failures return **400** o
 
 ## 2. Admin API Endpoints (internal)
 
+### Out-of-scope rows: one answer (hide-existence)
+
+Applies to the Admin API and the Integration API, to reads and mutations alike. When a request
+names a row by id (enrollment, integration, API key, auth attempt, administrator) and the
+caller must not see it — it belongs to another tenant or another integration, or it does not
+exist — the answer is always the same: **HTTP 404**, RFC 9457 Problem with type
+`https://ezkey.io/problems/admin/resource-not-found` (Admin API) or
+`https://ezkey.io/problems/resource/not-found` (Integration API). The caller cannot tell "exists
+elsewhere" from "does not exist". The failure audit row is the same in both cases.
+
+**403** means something else: the caller's role may not call this class of endpoint at all
+(for example a Tenant Admin on a Global Admin surface), or a guard on a row the caller *can* see
+(self-revocation, system integration, inactive enrollment). Settled 2026-11-13 while Ezkey is
+alpha; per-endpoint status lists below follow this rule.
+
+
 **Error responses (RFC 9457):** HTTP **4xx** and **5xx** responses from the Admin API use **RFC 9457** Problem Details (`Content-Type: application/problem+json`) with `type`, `title`, `status`, `detail`, and extension property `path`. RFC 9457 `instance` is the request path (a URI-reference, not an absolute URI). Some problems include an optional extension property **`parameters`** (JSON object of scalar values, **camelCase** keys) for client-side localization when `detail` contains dynamic fragments; clients should still branch on **`type`** and HTTP status. Unsupported HTTP methods on a mapped path return **405** (`type` `https://ezkey.io/problems/admin/method-not-allowed`) with an `Allow` header; they are not mapped as **500**. Missing or invalid session credentials on protected operations return **401** with an empty body (Spring `HttpStatusEntryPoint`). Login-family **400 / 401 / 408 / 500** remain Problem Details. Login and passwordless-wait **429** from the rate-limit filter are an **empty body** plus `Retry-After`.
 
 Public operations (`GET /api/v1/public/instance-info`, `POST /api/v1/public/evaluator-signup`) declare no HTTP security requirement in OpenAPI (`security: []`).
@@ -1068,7 +1084,7 @@ retired and only when no enrollments remain linked to it. System integrations ca
 
 ## Tenant management
 
-Tenant management endpoints allow GlobalAdmins to create, list, update, deactivate, and activate tenants. TenantAdmins cannot list tenants (`GET /tenants` → 403); they may get their own tenant by ID only.
+Tenant management endpoints allow GlobalAdmins to create, list, update, deactivate, and activate tenants. TenantAdmins cannot list tenants (`GET /tenants` → 403); nor get a tenant by ID, their own included (`GET /tenants/{id}` → 403): the whole tenant surface is Global Admin only.
 
 **Lifecycle:** A tenant is either **active** or **inactive**. Deactivation sets `active = false`, revokes all admin tokens for that tenant, and blocks new integrations, enrollments, and API keys; data is preserved for audit. Activation sets `active = true` and restores full access; deactivation metadata (who/when) is preserved for traceability. The **system tenant** cannot be deactivated.
 
@@ -1354,7 +1370,7 @@ Authorization: Bearer ezkey_admin_token...
 - 200: Onboarding credentials retrieved successfully
 - 400: Bad request (e.g., admin does not have an enrollment)
 - 401: Unauthorized - admin token required
-- 403: Forbidden - not authorized to access this admin's credentials
+- 403: Forbidden - caller is not an administrator
 - 404: Administrator or enrollment not found
 - 500: Internal server error
 
@@ -1396,7 +1412,7 @@ This allows the mobile app to automatically populate enrollment credentials and 
 - 200: QR code generated successfully
 - 400: Bad request (e.g., enrollment missing proof token)
 - 401: Unauthorized - admin token required
-- 403: Forbidden - not authorized to access this admin's credentials
+- 403: Forbidden - caller is not an administrator
 - 404: Administrator or enrollment not found
 - 409: Enrollment is not `CREATED`; the QR encodes the proof token, so it follows the same rule as the JSON GET (#1266)
 - 500: Internal server error
@@ -1444,7 +1460,7 @@ Authorization: Bearer ezkey_admin_token...
 - 200: Recovery codes regenerated successfully
 - 400: Target administrator is inactive
 - 401: Unauthorized - admin token required
-- 403: Forbidden - not authorized for this administrator
+- 403: Forbidden - caller is not an administrator
 - 404: Administrator not found
 - 500: Internal server error
 
@@ -1822,7 +1838,7 @@ Content-Type: application/json
 **Status Codes:**
 - 200: Enrollment updated successfully
 - 400: Invalid data, enrollment not updatable (revoked/inactive), or validation failed (e.g. duplicate name, expiresAt in past)
-- 403: Access denied
+- 404: Enrollment not found, or outside the caller's tenant (hide-existence: same answer as an unknown id)
 - 404: Enrollment not found
 - 409: Optimistic lock conflict — resource was modified, re-fetch and retry
 
@@ -2006,7 +2022,7 @@ Authorization: Bearer ezkey_admin_token...
 
 **GET /api/v1/api-keys/integration/{integrationId}**
 
-Lists API keys for a specific integration with server-side pagination. When `active` is omitted, only active keys are returned. When `active` is provided, results are filtered by that value. Secret keys are never included. TenantAdmin may access only integrations in their tenant; cross-tenant requests return **403**.
+Lists API keys for a specific integration with server-side pagination. When `active` is omitted, only active keys are returned. When `active` is provided, results are filtered by that value. Secret keys are never included. TenantAdmin may access only integrations in their tenant; a cross-tenant integration id returns **404**, exactly like an unknown one (hide-existence).
 
 **Query parameters:**
 - `page` (optional, default 0): Zero-based page index.
@@ -2025,7 +2041,7 @@ Authorization: Bearer ezkey_admin_token...
 **Status Codes:**
 - 200: Paginated list
 - 401: Unauthorized
-- 403: Access denied (caller cannot access the integration)
+- 404: Integration not found, or outside the caller's tenant (hide-existence: same answer as an unknown id)
 
 ---
 
@@ -2061,7 +2077,7 @@ Authorization: Bearer ezkey_admin_token...
 **Status Codes:**
 - 200: API key details
 - 401: Unauthorized
-- 403: Access denied (caller cannot access the key's integration)
+- 404: API key not found, or outside the caller's tenant (hide-existence: same answer as an unknown id)
 - 404: API key not found
 
 ---
@@ -2119,7 +2135,7 @@ HTTP/1.1 204 No Content
 **Status Codes:**
 - 204: API key revoked
 - 401: Unauthorized
-- 403: Access denied (caller cannot access the key's integration)
+- 404: API key not found, or outside the caller's tenant (hide-existence: same answer as an unknown id)
 - 404: API key not found
 - 429: Rate limit exceeded
 
@@ -2182,7 +2198,7 @@ revoked, deactivated or not verified.
 
 **Ownership on wait/cancel:** Integration API `@PreAuthorize` requires the auth attempt’s enrollment
 to belong to the API key’s integration (`AccessControlService.canAccessAuthAttempt`). Foreign
-attempts → **403**. Cancel marks the row `EXPIRED` (no separate `CANCELLED` status).
+attempts → **404** `resource/not-found`, exactly like an unknown attempt id (hide-existence). Cancel marks the row `EXPIRED` (no separate `CANCELLED` status).
 
 **Rate Limiting (Integration API):**
 - Create auth attempt: 100 requests per minute per API key (default)
@@ -2318,7 +2334,7 @@ Authorization: Bearer ezkey_admin_token...
 - 409: Conflict - authentication attempt already in final state (cannot be cancelled)
 - 404: Not Found - authentication attempt not found
 - 401: Unauthorized - authentication required
-- 403: Forbidden - access denied to authentication attempt
+- 404: Authentication attempt outside the caller's tenant answers like an unknown id (hide-existence)
 - 500: Internal server error
 
 **Notes:**
@@ -2374,7 +2390,7 @@ Authorization: Bearer ezkey_admin_token...
 - 404: Not Found - authentication attempt not found
 - 400: Bad Request - invalid parameters (timeout, polling)
 - 401: Unauthorized - authentication required
-- 403: Forbidden - access denied to authentication attempt
+- 404: Authentication attempt outside the caller's tenant answers like an unknown id (hide-existence)
 - 500: Internal server error
 
 ---

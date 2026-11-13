@@ -55,7 +55,8 @@ import org.junit.jupiter.api.TestMethodOrder;
  *   <li><b>Key Principle:</b> "No Impersonation" - TenantAdmin cannot access other tenant resources
  *   <li><b>Read Operations:</b> TenantAdmin sees ONLY own tenant (automatic filtering)
  *   <li><b>Write Operations:</b> TenantAdmin creates ONLY in own tenant (automatic assignment)
- *   <li><b>Cross-Tenant Access:</b> Returns 403 Forbidden or 404 Not Found
+ *   <li><b>Cross-Tenant Access:</b> Returns 404 Not Found (hide-existence: same answer as an
+ *       unknown id)
  * </ul>
  *
  * <p><b>Test Strategy:</b>
@@ -84,7 +85,7 @@ import org.junit.jupiter.api.TestMethodOrder;
  * </tr>
  * <tr>
  * <td>GET /integrations/{B}</td>
- * <td>403/404</td>
+ * <td>404</td>
  * <td>200 OK</td>
  * <td>200 OK</td>
  * </tr>
@@ -96,7 +97,7 @@ import org.junit.jupiter.api.TestMethodOrder;
  * </tr>
  * <tr>
  * <td>GET /api-keys/{B}</td>
- * <td>403/404</td>
+ * <td>404</td>
  * <td>200 OK</td>
  * <td>200 OK</td>
  * </tr>
@@ -234,7 +235,7 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
 
   @Test
   @Order(2)
-  @DisplayName("TenantAdmin A cannot get Tenant B integration by ID (403)")
+  @DisplayName("TenantAdmin A cannot get Tenant B integration by ID (404)")
   public void testTenantAdminACannotGetTenantBIntegration() {
     configureForAdminApi(dockerStackConfig);
 
@@ -248,7 +249,7 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
             .extract()
             .response();
 
-    assertThat(response.getStatusCode()).isIn(403, 404);
+    assertThat(response.getStatusCode()).isEqualTo(404);
   }
 
   /**
@@ -331,7 +332,7 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
 
   @Test
   @Order(6)
-  @DisplayName("TenantAdmin A cannot get Tenant B enrollment by ID (403/404)")
+  @DisplayName("TenantAdmin A cannot get Tenant B enrollment by ID (404)")
   public void testTenantAdminACannotGetTenantBEnrollment() {
     configureForAdminApi(dockerStackConfig);
 
@@ -345,7 +346,7 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
             .extract()
             .response();
 
-    assertThat(response.getStatusCode()).isIn(403, 404);
+    assertThat(response.getStatusCode()).isEqualTo(404);
   }
 
   /**
@@ -403,7 +404,7 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
 
   @Test
   @Order(7)
-  @DisplayName("TenantAdmin A cannot create enrollment for Tenant B integration (400/403)")
+  @DisplayName("TenantAdmin A cannot create enrollment for Tenant B integration (404)")
   public void testTenantAdminACannotCreateEnrollmentForTenantBIntegration() {
     configureForAdminApi(dockerStackConfig);
 
@@ -423,12 +424,12 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
             .extract()
             .response();
 
-    assertThat(response.getStatusCode()).isIn(400, 403);
+    assertThat(response.getStatusCode()).isEqualTo(404);
   }
 
   @Test
   @Order(8)
-  @DisplayName("TenantAdmin A cannot delete Tenant B enrollment (403/404)")
+  @DisplayName("TenantAdmin A cannot delete Tenant B enrollment (404)")
   public void testTenantAdminACannotDeleteTenantBEnrollment() {
     configureForAdminApi(dockerStackConfig);
 
@@ -522,7 +523,7 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
 
   @Test
   @Order(10)
-  @DisplayName("TenantAdmin A cannot create API key for Tenant B integration (400/403)")
+  @DisplayName("TenantAdmin A cannot create API key for Tenant B integration (404)")
   public void testTenantAdminACannotCreateApiKeyForTenantBIntegration() {
     configureForAdminApi(dockerStackConfig);
 
@@ -541,7 +542,7 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
             .extract()
             .response();
 
-    assertThat(response.getStatusCode()).isIn(400, 403);
+    assertThat(response.getStatusCode()).isEqualTo(404);
   }
 
   // ========== BIDIRECTIONAL ISOLATION TESTS ==========
@@ -563,7 +564,7 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
             .extract()
             .response();
 
-    assertThat(integrationResponse.getStatusCode()).isIn(403, 404);
+    assertThat(integrationResponse.getStatusCode()).isEqualTo(404);
 
     // Try to get Tenant A enrollment
     Response enrollmentResponse =
@@ -576,7 +577,7 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
             .extract()
             .response();
 
-    assertThat(enrollmentResponse.getStatusCode()).isIn(403, 404);
+    assertThat(enrollmentResponse.getStatusCode()).isEqualTo(404);
   }
 
   // ========== GLOBALADMIN CROSS-TENANT ACCESS TESTS ==========
