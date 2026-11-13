@@ -36,12 +36,14 @@ The associated medium findings are also closed:
 - **SEC-026:** recovery state is cleared at login, logout, and 401 session boundaries.
 - **SEC-027:** cookie-mode logout fails closed and presents a retryable error.
 
-The dependency review found security advisories in the Maven graph. SEC-019 is closed through
-patched dependency overrides, including the PostgreSQL JDBC correction relevant to deployments
-that require TLS channel binding:
+The dependency review found security advisories in the Maven graph. SEC-019 is closed. The July
+remediation used patched dependency overrides, including the PostgreSQL JDBC correction relevant
+to deployments that require TLS channel binding. Those overrides were later removed once Spring
+Boot managed the patched lines:
 
 - **SEC-019 (MEDIUM, conditional): Backend security patch lag.** Closed — parent `dependencyManagement`
-  overrides bump PostgreSQL JDBC, Logback, Jackson, and Tomcat to patched versions (see § SEC-019).
+  overrides bumped PostgreSQL JDBC, Logback, Jackson, and Tomcat to patched versions (see § SEC-019).
+  As of 2026-11-13 those overrides are removed: Spring Boot 4.1.2 manages the patched lines.
 
 No high-severity production dependency issue was reported for the Admin UI. The UI also has strong
 baseline controls: no unsafe HTML rendering was found, production Caddy enforces a strict CSP, the
@@ -253,9 +255,14 @@ in the original SEC-019 set and is left for a separate Spring Boot / logging hyg
 
 #### Implementation
 
-Overrides live in `pom.xml` (`postgresql.version`, `logback.version`, `tomcat.version`,
-`jackson-bom.version`, `jackson-2-bom.version`) with explicit `dependencyManagement` entries after the
+The July 2026 remediation added parent `dependencyManagement` overrides (`postgresql.version`,
+`logback.version`, `tomcat.version`, `jackson-bom.version`, `jackson-2-bom.version`) after the
 Spring Boot BOM import (imported BOMs do not inherit caller property values).
+
+**Later (2026-11-13):** those overrides are gone. PostgreSQL and Tomcat were dropped when Boot
+4.1.2 already managed the patched lines. Logback, Jackson 3, and Jackson 2 were dropped once that
+same Boot BOM managed versions past the original CVEs and no current GHSA applied to them.
+`caffeine.version` remains a compatibility pin and was not one of these CVE overrides.
 
 #### PostgreSQL-specific risk
 
@@ -738,7 +745,8 @@ None of these candidates is presented as a demonstrated authentication bypass.
 
 ### Dependency maintenance
 
-11. **SEC-019:** closed — PostgreSQL JDBC, Logback, Jackson, and Tomcat overrides in parent `pom.xml`.
+11. **SEC-019:** closed — original PostgreSQL JDBC, Logback, Jackson, and Tomcat overrides. As of
+    2026-11-13 the parent no longer pins them; Spring Boot 4.1.2 manages the patched versions.
 12. Re-run Maven SCA and preserve a deduplicated advisory/precondition summary.
 
 ### Deployment hardening
@@ -812,7 +820,7 @@ required for SEC-017, SEC-021, SEC-022, SEC-023, and SEC-025.
 | --- | --- | --- |
 | A01 Broken Access Control | SEC-017, SEC-021, SEC-022, SEC-023, SEC-025 | HIGH |
 | A05 Security Misconfiguration | SEC-020 | LOW |
-| A06 Vulnerable and Outdated Components | SEC-019 | Closed — dependency overrides |
+| A06 Vulnerable and Outdated Components | SEC-019 | Closed — Boot 4.1.2 manages the patched lines |
 | A07 Identification and Authentication Failures | SEC-021, SEC-024, SEC-026, SEC-027 | HIGH |
 | A09 Security Logging and Monitoring Failures | SEC-018 | MEDIUM |
 
