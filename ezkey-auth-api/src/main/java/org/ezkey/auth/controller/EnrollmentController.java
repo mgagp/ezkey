@@ -325,7 +325,9 @@ public class EnrollmentController {
                             implementation = EnrollmentVerifyResponseDto.class))),
         @ApiResponse(
             responseCode = "400",
-            description = "Invalid verification data or cryptographic validation failed",
+            description =
+                "Proof accepted, but challenge, device-key uniqueness, or invitation expiry"
+                    + " failed",
             content =
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =
@@ -333,7 +335,9 @@ public class EnrollmentController {
                             implementation = ProblemDetail.class))),
         @ApiResponse(
             responseCode = "409",
-            description = "Enrollment state conflict or already verified",
+            description =
+                "Refused before proof of the stored enrollment proof token, or enrollment state"
+                    + " conflict",
             content =
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =
@@ -441,8 +445,8 @@ public class EnrollmentController {
 
       throw e;
     } catch (EnrollmentVerifyFailedException e) {
-      // Log verification failure (invalid challenge, invalid signature, duplicate device key,
-      // etc.).
+      // Log verification failure after proof (invalid challenge, duplicate device key, expiry).
+      // Invalid signatures are state conflicts and do not reach this branch (#1024).
       // AuditLogService.log() uses REQUIRES_NEW so the audit commits independently; the service
       // already emits ENROLLMENT_EXPIRED for expired enrollments, and having both that and
       // enrollment_verify_failed for the same request is acceptable for traceability.

@@ -119,7 +119,7 @@ Rate-limit **429** on `bind` / `verify` / enrolled `instance-info` / `pending` /
 
 Unsupported HTTP methods on a mapped path return **405** Problem Details (`type` `https://ezkey.io/problems/auth/method-not-allowed`) with an `Allow` header listing the supported methods. They are not mapped as **500**.
 
-IP-keyed enrollment surfaces (`verify`, `bind`, enrolled `instance-info`) also have a **process-wide** rate-limit backstop (unkeyed Bucket4j, per Auth instance). A distributed rotation of client IPs can still receive **429** after that instance budget. The cap is not aggregated across replicas (ADR-0010).
+IP-keyed `bind` and enrolled `instance-info` also have a **process-wide** rate-limit backstop (unkeyed Bucket4j, per Auth instance). `POST /api/v1/enrollments/verify` is per client IP only (#1024): a shared verify bucket let about ten IPs exhaust every other client's budget. A distributed rotation of client IPs can still receive **429** on bind and instance-info after that instance budget. The cap is not aggregated across replicas (ADR-0010).
 
 **204 No Content** on `POST /api/v1/auth-attempts/pending` when there is no pending attempt is a **success** (no body), not an error.
 
@@ -380,7 +380,7 @@ Canonical verify-result format: `docs/ENROLLMENT_SIGNATURE_PAYLOAD.md`.
 
 **Error responses**
 
-See **Error responses (RFC 9457)** above. Verification failures return **400** or **409** with stable `type` URIs under `https://ezkey.io/problems/auth/`. Wrong `challengeResponse` invalidates the enrollment; a subsequent verify call for the same enrollment may return **409**. Rate-limit **429** is an empty body plus `Retry-After` (per client IP and per-instance backstop).
+See **Error responses (RFC 9457)** above. Before the signature verifies over the server-built payload (the stored enrollment proof token is part of those bytes), verify returns **409** `enrollment-state-conflict` and does not change enrollment status. That includes a `CREATED` row and a `BOUND` row presented with a key the caller generated (#1024). After that proof, a wrong `challengeResponse` or a device public key already used on a verified enrollment invalidates the enrollment (one-shot); a later verify may return **409**. Invitation expiry after proof returns **400** `enrollment-verify-failed`. Rate-limit **429** on verify is an empty body plus `Retry-After` for that client IP only. Bind and enrolled instance-info **429** can also come from the per-instance backstop.
 
 **Uniqueness:** Verify is rejected when **any** `VERIFIED` enrollment already exists for the same `(integrationId, enrollmentName)`, including an inactive one. Partial unique index + application checks; no automatic supersession — see `docs/LIFECYCLE_GOVERNANCE.md` §3.3.
 
