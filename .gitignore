@@ -166,3 +166,5 @@ experimental-hybrid/lightsail/.local/
 .claude/settings.local.json
 # SMTP connector real-provider secrets (#1206 step 6)
 docker/connector-smtp.local.env
+# SMTP connector secrets on the community host (#1206 step 7)
+experimental-hybrid/lightsail/connector-smtp.env

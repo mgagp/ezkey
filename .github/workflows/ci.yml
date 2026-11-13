@@ -144,6 +144,7 @@ jobs:
               - 'experimental-hybrid/scripts/export-backend-images-to-lightsail.sh'
               - 'experimental-hybrid/scripts/full-exp-environment-upgrade.sh'
               - 'experimental-hybrid/lightsail/docker-compose.yml'
+              - 'experimental-hybrid/lightsail/docker-compose.connector-smtp.yml'
               - 'docker/docker-compose.yml'
               - 'docker/docker-compose.docker-dev.yml'
               - 'docs/lightsail/**'
