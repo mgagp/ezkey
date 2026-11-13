@@ -17,8 +17,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * Periodically processes expired {@code EVALUATOR_TEMP} tokens (revoke + identity / soft tenant
- * deactivate per predicate).
+ * Periodically processes expired {@code EVALUATOR_TEMP} tokens. The token is always revoked.
+ * Identity and soft-tenant cleanup run only for a self-registered evaluator tenant.
  */
 @Component
 public class EvaluatorTempSessionExpiryScheduler {
