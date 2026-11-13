@@ -108,7 +108,7 @@ Default URLs:
 
 Optional Playwright env:
 
-- `EZKEY_DEMO_DEVICE_TEST_ENROLLMENT_ID` — select a specific Demo Device enrollment row (matches `data-enrollment-id` on the home list). Use when multiple enrollments exist and `.first()` would be non-deterministic.
+- `EZKEY_DEMO_DEVICE_TEST_ENROLLMENT_ID` — pin one Demo Device enrollment row (matches `data-enrollment-id` on the home list). Optional: without it, the login helper watches every row and uses the one that receives the request, since specs may bind more enrollments to the shared Demo Device (#1321).
 
 ### Docker-only QA path
 

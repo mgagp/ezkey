@@ -364,8 +364,12 @@ the main Java `docker/docker-compose.yml` / daily `clean-start` (would slow ever
   - start the EZKey backend stack with `clean-start`
   - use the pre-seeded **Demo Device** on `http://localhost:8083`
   - run the Admin UI either with `npm run dev` or `./start.sh`
-  - `EZKEY_DEMO_DEVICE_TEST_ENROLLMENT_ID` selects a Demo Device row when multiple enrollments exist
-    (matches `data-enrollment-id` on the home list)
+  - `EZKEY_DEMO_DEVICE_TEST_ENROLLMENT_ID` optionally pins one Demo Device row
+    (matches `data-enrollment-id` on the home list); without it the login helper watches every row
+- **The Demo Device is shared by the whole suite.** Specs may bind more enrollments to it (the
+  admin onboarding spec does, and it runs first). Never select a row by position. A spec that adds
+  shared state closes with the full `./scripts/run-ui-tests.sh` in default order on a clean-start,
+  not the new spec alone (stabilization lesson 16, #1321).
 - Preferred commands:
   - Local dev path: `./scripts/run-ui-tests.sh` (runs `npm run test:browser:install` for Chromium first)
   - Docker-only QA path: `./scripts/run-ui-tests-docker.sh`

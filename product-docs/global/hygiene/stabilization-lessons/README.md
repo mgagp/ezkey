@@ -1,6 +1,6 @@
 # Stabilization lessons
 
-What the November 2026 stabilization around #1180 and #1259 taught us about analysis, design, tests and code structure. Read this before you touch startup code, HA behaviour, an exposure rule, a test helper, or a CI failure that looks random.
+What the November 2026 stabilization around #1180 and #1259, and the #1321 gate, taught us about analysis, design, tests and code structure. Read this before you touch startup code, HA behaviour, an exposure rule, a test helper, or a CI failure that looks random.
 
 Each lesson states a rule, the evidence behind it, and a check you can run. Candidates not yet reproduced are in #1267.
 
@@ -14,6 +14,7 @@ Each lesson states a rule, the evidence behind it, and a check you can run. Cand
 **1. A red job is evidence, not a verdict.** Before rerunning or blaming the PR, compare the failure across branches and get the logs.
 - Evidence: 3 of 115 `ha-smoke` runs shared one signature on unrelated branches. The `start_period` theory had no logs behind it.
 - Check: `gh run list` and job logs across branches, then reproduce locally.
+- Evidence: the 2026-11-12 gate NO-GO (#1321) was first blamed on #1301, which merged after the run. Before suspecting a commit, list `git log <last-green>..<tested-tip>` and confirm with `git merge-base --is-ancestor <suspect> <tested-tip>`.
 
 **2. An inventory by reading is a hypothesis.** Prove "no consumer needs this field" by running the consumers.
 - Evidence: the #1180 inventory said no consumer needed `integrationPublicKey`. `DemoDeviceEnrollmentWriter` read it from the Admin GET.
@@ -58,6 +59,10 @@ Each lesson states a rule, the evidence behind it, and a check you can run. Cand
 - Local rates can be far higher than CI (7 of 12 against about 2.6%), which makes reproducing cheap.
 
 **13. A job that destroys its stack must print evidence first.** `ci-ha-lb-smoke.sh` now does. Scripts with teardown need the same.
+
+**16. A shared fixture belongs to the whole suite.** A test that adds state to the Demo Device, the seed, or any resource other tests read must not change what they select. Before adding one, find who else reads that resource. Before closing, run the full suite in its default order on a clean-start, not the new test or a filtered subset.
+- Evidence: #1271 added `admin-onboarding-bind-material.spec.ts`, which runs first alphabetically and binds more enrollments to the Demo Device. The login helper took the first row of the list, so the five `@device-backed` tests after it watched the wrong enrollment. The PR reported 6 of 6 while the suite had 8. CI does not run Playwright, so the weekly gate found it four days later (#1321). The helper now watches every row.
+- Check: `grep -rn 'first()' ezkey-admin-ui/e2e/support`, then `./ezkey-admin-ui/scripts/run-ui-tests.sh` with no `--grep`.
 
 ## Code structure
 
