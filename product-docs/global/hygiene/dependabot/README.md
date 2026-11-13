@@ -57,6 +57,8 @@ Dependabot alone cannot prove current:
 | Python CLI | `pip` at `/ezkey-cli-python` (weekly) | — |
 | Delivery connectors | Reactor modules since #1278, so `maven` at `/` covers them; their Dockerfiles in the `docker` entry | Same **Java BOM pulse** as the core; licences in root `THIRD-PARTY.txt` |
 
+The Gradle wrapper (ignored by Dependabot in the `/ezkey_mobile/android` entry, with its `distributionSha256Sum`) and the PyYAML pin in `scripts/requirements-endoflife.txt` (no pip entry for `/scripts`) are updated by hand, with their checksums. Forgetting either fails the build loudly, never silently.
+
 **Alerts (enabled 2026-11-06, Marc's decision).** Version updates and alerts are complementary:
 transitive dependencies rarely move through version-update PRs, so lockfiles also need a refresh.
 Triage by **what ships**, not by GitHub's `runtime` / `development` label, which is unreliable on
