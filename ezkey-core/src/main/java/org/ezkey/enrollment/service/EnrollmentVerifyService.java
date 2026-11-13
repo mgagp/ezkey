@@ -39,9 +39,12 @@ import org.springframework.transaction.annotation.Transactional;
  * <p><b>Security Features:</b>
  *
  * <ul>
- *   <li><b>Signature Validation:</b> Verifies device cryptographic signature
- *   <li><b>Device Key Uniqueness:</b> Prevents replay attacks using same public key
- *   <li><b>Challenge Verification:</b> Validates enrollment challenge response
+ *   <li><b>Proof before mutation (#1024):</b> No invalidation, expiry write, or other state change
+ *       until the signature verifies over the server-built payload. Security rests on the stored
+ *       proof token (encrypted at rest). The device public key is still supplied in the request and
+ *       is the verification key; it is not the secret and cannot forge that payload.
+ *   <li><b>Device Key Uniqueness:</b> Prevents replay attacks using same public key, after proof
+ *   <li><b>Challenge Verification:</b> One-shot challenge check after proof
  *   <li><b>State Consistency:</b> Ensures enrollment state integrity
  *   <li><b>Atomic Operations:</b> Uses row-level locking for thread safety
  * </ul>
@@ -65,6 +68,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class EnrollmentVerifyService {
 
   private static final Logger logger = LoggerFactory.getLogger(EnrollmentVerifyService.class);
+
+  /**
+   * Single refusal before the caller has proved the stored enrollment proof token. The same text
+   * covers a missing row, a non-{@code BOUND} row, and a signature that does not verify over the
+   * server-built payload, so sequential ids do not distinguish those cases (#1024).
+   */
+  private static final String PRE_PROOF_REFUSAL = "Enrollment verification failed";
 
   private final EnrollmentRepository enrollmentRepository;
   private final EzkeyAdminRepository ezkeyAdminRepository;
@@ -103,22 +113,31 @@ public class EnrollmentVerifyService {
    * challenge verification. It implements the same security principles as AuthAttemptService to
    * prevent replay attacks and ensure enrollment integrity.
    *
+   * <p>State changes (invalidation, expiry persistence) run only after signature verification. A
+   * caller who does not know the stored proof token cannot produce a signature over the
+   * server-built payload, including with a keypair they generated for this request (#1024, same
+   * ordering as #912 on respond).
+   *
    * @param request the verify request containing device keys and signatures
    * @return the verify response confirming successful enrollment
-   * @throws EnrollmentVerifyFailedException if validation fails (signature, uniqueness, or
-   *     challenge)
-   * @throws EnrollmentVerifyStateConflictException if enrollment is in invalid state or already
-   *     processed
+   * @throws EnrollmentVerifyFailedException if a check fails after proof (uniqueness, challenge, or
+   *     expiry)
+   * @throws EnrollmentVerifyStateConflictException if the request is refused before proof, or the
+   *     enrollment state conflicts after proof
    */
   public EnrollmentVerifyResponse verify(EnrollmentVerifyRequest request) {
     logger.info(
         "Starting enrollment verify process for enrollment ID: {}", request.getEnrollmentId());
 
-    // Step 1: Validate enrollment state
+    // Step 1: Read-only. Non-BOUND and unknown ids do not mutate (#1024).
     Enrollment enrollment = validateEnrollmentState(request);
 
-    // Step 2: Validate signature
+    // Step 2: Proof of the stored proof token. Failure does not mutate.
     validateSignature(request, enrollment);
+
+    // Steps below may change enrollment state. They run only after proof.
+    validateAdminLinkedEnrollmentEligibility(enrollment);
+    rejectIfPendingExpired(enrollment);
 
     // Step 3: Validate device public key uniqueness
     validateDeviceKeyUniqueness(request);
@@ -145,13 +164,14 @@ public class EnrollmentVerifyService {
   /**
    * Validates the enrollment state and ensures it's ready for verification.
    *
-   * <p>This method performs read-only pre-checks to ensure the enrollment exists and is in the
-   * correct state for verification.
+   * <p>This method performs read-only pre-checks. It does not invalidate, expire, or otherwise
+   * write the row: those transitions wait until the signature proves the stored proof token
+   * (#1024).
    *
    * @param request the verify request
-   * @return the validated enrollment
-   * @throws EnrollmentVerifyStateConflictException if enrollment is not found or in invalid state
-   * @throws EnrollmentVerifyFailedException if invitation expired or enrollment ID is missing
+   * @return the validated enrollment, present and {@code BOUND}
+   * @throws EnrollmentVerifyStateConflictException if enrollment is not found or not BOUND
+   * @throws EnrollmentVerifyFailedException if the enrollment ID is missing
    */
   private Enrollment validateEnrollmentState(EnrollmentVerifyRequest request) {
     logger.debug(
@@ -168,60 +188,55 @@ public class EnrollmentVerifyService {
             .orElseThrow(() -> {
               logger.warn(
                   "Validation failed: Enrollment not found for ID: {}", request.getEnrollmentId());
-              return new EnrollmentVerifyStateConflictException(
-                  "Enrollment not available for verification");
+              return new EnrollmentVerifyStateConflictException(PRE_PROOF_REFUSAL);
             });
 
     logger.debug(
         "Enrollment found: ID={}, Status={}", enrollment.getEnrollmentId(), enrollment.getStatus());
 
-    if (enrollment.getStatus() == EnrollmentStatus.VERIFIED) {
-      logger.warn(
-          "Validation failed: Enrollment already verified - ID: {}, Status: {}",
-          enrollment.getEnrollmentId(),
-          enrollment.getStatus());
-      throw new EnrollmentVerifyStateConflictException("Enrollment verification failed");
-    }
-
-    logger.debug("Enrollment status validation passed: Status is not VERIFIED");
-
     if (enrollment.getStatus() != EnrollmentStatus.BOUND) {
-      String message = resolveNotBoundMessage(enrollment.getStatus());
       logger.warn(
-          "Validation failed: Enrollment not in BOUND state - ID: {}, Status: {}",
+          "Validation failed before proof: enrollment not BOUND - ID: {}, Status: {}",
           enrollment.getEnrollmentId(),
           enrollment.getStatus());
-      enrollmentTxHelper.markInvalidAndClear(request.getEnrollmentId());
-      throw new EnrollmentVerifyStateConflictException(message);
+      throw new EnrollmentVerifyStateConflictException(PRE_PROOF_REFUSAL);
     }
-
-    // Reject if pending enrollment has expired (expires_at in the past)
-    OffsetDateTime now = OffsetDateTime.now();
-    if (enrollment.isExpired(now)) {
-      logger.warn(
-          "Validation failed: Enrollment invitation expired - ID: {}, expiresAt: {}",
-          enrollment.getEnrollmentId(),
-          enrollment.getExpiresAt());
-      try {
-        enrollmentTxHelper.markExpiredAndEmitAudit(
-            enrollment.getEnrollmentId(),
-            enrollment.getIntegrationId(),
-            enrollment.getExpiresAt(),
-            "enrollment_expired_verify_rejected");
-      } catch (DataAccessException | IllegalArgumentException | IllegalStateException e) {
-        logger.warn(
-            "Failed to mark enrollment {} as EXPIRED and emit audit (client will still get 400):"
-                + " {}",
-            enrollment.getEnrollmentId(),
-            e.getMessage());
-      }
-      throw new EnrollmentVerifyFailedException("Enrollment invitation has expired");
-    }
-
-    validateAdminLinkedEnrollmentEligibility(enrollment);
 
     logger.debug("Enrollment status validation passed: Status is BOUND");
     return enrollment;
+  }
+
+  /**
+   * Persists {@code EXPIRED} when a proven verify finds a pending invitation past {@code
+   * expiresAt}.
+   *
+   * <p>Called only after signature verification. An unproven request must not flip the row (#1024).
+   *
+   * @param enrollment the BOUND enrollment already proven by signature
+   * @throws EnrollmentVerifyFailedException if the invitation has expired
+   */
+  private void rejectIfPendingExpired(Enrollment enrollment) {
+    OffsetDateTime now = OffsetDateTime.now();
+    if (!enrollment.isExpired(now)) {
+      return;
+    }
+    logger.warn(
+        "Validation failed: Enrollment invitation expired - ID: {}, expiresAt: {}",
+        enrollment.getEnrollmentId(),
+        enrollment.getExpiresAt());
+    try {
+      enrollmentTxHelper.markExpiredAndEmitAudit(
+          enrollment.getEnrollmentId(),
+          enrollment.getIntegrationId(),
+          enrollment.getExpiresAt(),
+          "enrollment_expired_verify_rejected");
+    } catch (DataAccessException | IllegalArgumentException | IllegalStateException e) {
+      logger.warn(
+          "Failed to mark enrollment {} as EXPIRED and emit audit (client will still get 400): {}",
+          enrollment.getEnrollmentId(),
+          e.getMessage());
+    }
+    throw new EnrollmentVerifyFailedException("Enrollment invitation has expired");
   }
 
   private void validateAdminLinkedEnrollmentEligibility(Enrollment enrollment) {
@@ -252,9 +267,16 @@ public class EnrollmentVerifyService {
    * <p>This method ensures that the device signature is valid and corresponds to the enrollment
    * proof token.
    *
+   * <p>The verification key is {@code request.devicePublicKey} because this call is where the
+   * device introduces that key (bind does not store it). The key is not proof of possession by
+   * itself. {@code signedPayload} is built here from the stored proof token, so a keypair the
+   * caller generated can produce a verifying signature only when they already know that token. A
+   * signature that is valid under the supplied key for any other payload is rejected, and the
+   * enrollment is left unchanged (#1024).
+   *
    * @param request the verify request containing device signature
    * @param enrollment the enrollment containing proof token
-   * @throws EnrollmentVerifyFailedException if signature validation fails
+   * @throws EnrollmentVerifyStateConflictException if the signature does not prove the stored token
    */
   private void validateSignature(EnrollmentVerifyRequest request, Enrollment enrollment) {
     logger.debug("Step 2: Validating signature for enrollment ID: {}", request.getEnrollmentId());
@@ -271,10 +293,10 @@ public class EnrollmentVerifyService {
 
     if (!valid) {
       logger.warn(
-          "Validation failed: Invalid bind proof token signature for enrollment ID: {}",
+          "Validation failed before proof: device signature does not match the stored proof token"
+              + " for enrollment ID: {}",
           request.getEnrollmentId());
-      enrollmentTxHelper.markInvalidAndClear(request.getEnrollmentId());
-      throw new EnrollmentVerifyFailedException("Invalid bind proof token signature");
+      throw new EnrollmentVerifyStateConflictException(PRE_PROOF_REFUSAL);
     }
 
     logger.debug("Signature validation passed for enrollment ID: {}", request.getEnrollmentId());

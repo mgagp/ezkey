@@ -161,7 +161,7 @@
             }
           },
           "400": {
-            "description": "Invalid verification data or cryptographic validation failed",
+            "description": "Proof accepted, but challenge, device-key uniqueness, or invitation expiry failed",
             "content": {
               "*/*": {
                 "schema": {
@@ -171,7 +171,7 @@
             }
           },
           "409": {
-            "description": "Enrollment state conflict or already verified",
+            "description": "Refused before proof of the stored enrollment proof token, or enrollment state conflict",
             "content": {
               "*/*": {
                 "schema": {

@@ -62,13 +62,13 @@ Global flag: `ezkey.rate-limit.enabled` (default `false`; **`true` in docker pro
 |----------|--------|--------|--------------|-------------------|--------------------------|-------------|
 | `/api/v1/auth-attempts/pending` | POST | D | `enrollment-id` (docker) / `client-ip` (code default) | 10 / 1 min | 10 / 1 min, `enrollment-id` | high |
 | `/api/v1/auth-attempts/respond` | POST | D | `auth-attempt-id` | **1 / 5 min** | 1 / 5 min | **critical** — do not loosen |
-| `/api/v1/enrollments/verify` | POST | D | `client-ip` | 10 / 1 min | 5 / 5 min | high |
+| `/api/v1/enrollments/verify` | POST | D | `client-ip` | 10 / 1 min | 5 / 5 min | high — per IP only; no shared bucket (#1024) |
 | `/api/v1/enrollments/bind` | POST | D | `client-ip` | 10 / 1 min | 3 / 5 min | high |
 | `/api/v1/enrollments/instance-info` | POST | D | `client-ip` (shares bind) | same as bind | same as bind | high |
-| Backstop `verify` | POST | D | **none** (per-instance) | 100 / 1 min | 50 / 5 min | high — IP-rotation residual |
+| Backstop `verify` | — | D | **not applied** (#1024) | property retained, unused | property retained, unused | was a shared 50 / 5 min bucket ~10 IPs could exhaust |
 | Backstop `bind` (+ instance-info) | POST | D | **none** (per-instance) | 60 / 1 min | 30 / 5 min | high — IP-rotation residual |
 
-**Unrate-limited Auth API:** `GET /api/v1/public/instance-info` (public metadata). `pending` / `respond` stay target-id keyed and have no process-wide backstop.
+**Unrate-limited Auth API:** `GET /api/v1/public/instance-info` (public metadata). `pending` / `respond` stay target-id keyed and have no process-wide backstop. `verify` is per client IP only and has no process-wide backstop (#1024).
 
 Reference: [`ezkey-auth-api/CONFIGURATION.md`](../../ezkey-auth-api/CONFIGURATION.md), [`RateLimitFilter.java`](../../ezkey-auth-api/src/main/java/org/ezkey/auth/config/RateLimitFilter.java).
 

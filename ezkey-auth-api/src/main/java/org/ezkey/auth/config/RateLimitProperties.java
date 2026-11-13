@@ -77,8 +77,8 @@ public class RateLimitProperties {
   private EndpointConfig respond = defaultRespondConfig();
 
   /**
-   * Process-wide (no key) budgets on client-IP-keyed device surfaces. Per-instance, not distributed
-   * — N replicas imply N times this headroom (ADR-0010).
+   * Process-wide (no key) budgets on bind and enrolled instance-info. Verify is per client IP only
+   * (#1024). Per-instance, not distributed — N replicas imply N times this headroom (ADR-0010).
    */
   private BackstopConfig backstop = new BackstopConfig();
 
@@ -211,15 +211,19 @@ public class RateLimitProperties {
   }
 
   /**
-   * Unkeyed per-process caps for IP-keyed enrollment surfaces ({@code verify}, {@code bind}, {@code
-   * instance-info}).
+   * Unkeyed per-process caps for IP-keyed bind and enrolled instance-info. Verify is not included
+   * (#1024).
    */
   public static class BackstopConfig {
 
     /** When false, only the keyed buckets apply. Default true. */
     private boolean enabled = true;
 
-    /** Process-wide verify budget. Default: 100 / 1 minute. */
+    /**
+     * Retained so existing {@code ezkey.rate-limit.backstop.verify.*} settings still bind. Not
+     * applied (#1024): verify is limited per client IP only, so one set of IPs cannot exhaust
+     * another client's budget. Default values are unused.
+     */
     private EndpointConfig verify = defaultBackstop(100, 1);
 
     /** Process-wide bind + enrolled instance-info budget. Default: 60 / 1 minute. */

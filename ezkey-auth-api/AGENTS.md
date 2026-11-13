@@ -89,6 +89,11 @@ caught, logged, and re-thrown — the audit log is the primary observability mec
   device signature still marks **INVALID** (conditional on `READ`). Rate limiting on
   `POST /api/v1/auth-attempts/respond` is per `authAttemptId` (from request body), default 1 request
   per 5 minutes.
+- **Verify endpoint**: No enrollment status change until the signature verifies over the
+  server-built payload that includes the stored proof token (#1024). A key supplied in the request
+  is not that proof. Unknown id, non-`BOUND`, and a bad signature leave the row unchanged. After
+  proof, a wrong challenge still invalidates (one-shot). Rate limit is per client IP only; there is
+  no shared verify bucket.
 - **Device UX for auth attempts:** Approve and Deny only (`POST /respond`). There is **no**
   device-initiated cancel. Closing or ignoring the prompt leaves `PENDING`/`READ` until TTL; the
   **Admin API** `AuthAttemptExpiryScheduler` persists `EXPIRED` (see `docs/ENDPOINT.md` cancel /
