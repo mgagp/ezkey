@@ -1,0 +1,44 @@
+meta {
+  name: create - unknown or foreign enrollment id
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{base_url_integration_api}}/api/v1/auth-attempts
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{integrationKey}}
+  password: {{secretKey}}
+}
+
+body:json {
+  {
+      "enrollmentId": 2000000000,
+      "challengeRequested": false
+  }
+}
+
+script:post-response {
+  test("Status code is 400", function () {
+      expect(res.getStatus()).to.equal(400);
+  });
+  test("Problem is auth-attempt-create-invalid with the generic detail", function () {
+      const body = res.getBody();
+      expect(body.type).to.equal("https://ezkey.io/problems/validation/auth-attempt-create-invalid");
+      expect(body.detail).to.equal("Enrollment not found.");
+  });
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  `enrollmentId` that does not exist. Expects 400 with detail `Enrollment not found.`
+
+  An `enrollmentId` that exists but belongs to another integration returns the **same** status, type and detail (hide-existence): an API key cannot tell the two cases apart. The detail carries no id and no ownership hint.
+}

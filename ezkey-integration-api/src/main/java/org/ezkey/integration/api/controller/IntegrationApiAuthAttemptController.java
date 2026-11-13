@@ -111,6 +111,12 @@ public class IntegrationApiAuthAttemptController {
   private static final Logger logger =
       LoggerFactory.getLogger(IntegrationApiAuthAttemptController.class);
 
+  /**
+   * Single client message for an {@code enrollmentId} that is missing or owned by another
+   * integration. No id, no ownership hint: the two cases must not be told apart (SQL-ISO-001).
+   */
+  static final String ENROLLMENT_NOT_FOUND_DETAIL = "Enrollment not found.";
+
   private final AuthAttemptService authAttemptService;
   private final AuthAttemptIntegrationApiMapper authAttemptMapper;
   private final AuditLogService auditLogService;
@@ -184,10 +190,16 @@ public class IntegrationApiAuthAttemptController {
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "201", description = "Auth attempt created successfully"),
-        @ApiResponse(responseCode = "400", description = "Invalid request parameters"),
+        @ApiResponse(
+            responseCode = "400",
+            description =
+                "Invalid request parameters, or enrollment not found. An enrollmentId of another"
+                    + " integration gets the same answer as an unknown id (hide-existence)."),
         @ApiResponse(
             responseCode = "403",
-            description = "Enrollment does not belong to this integration"),
+            description =
+                "Enrollment of this integration is not active for authentication (revoked,"
+                    + " deactivated or not verified)"),
         @ApiResponse(
             responseCode = "409",
             description =
@@ -669,12 +681,19 @@ public class IntegrationApiAuthAttemptController {
         throw new AuthAttemptCreateValidationException(
             "Unable to determine integration from API key. Contact support.");
       }
+      // Hide existence: findById is tenant-blind, so a missing id and an id owned by another
+      // integration must share one client message. The reason stays in the server log.
       Enrollment enrollmentForPath1 =
           enrollmentRepository
               .findById(enrollmentId)
-              .orElseThrow(() ->
-                  new AuthAttemptCreateValidationException(
-                      "Enrollment not found for ID: " + enrollmentId));
+              .orElseThrow(() -> {
+                logger.warn(
+                    "Integration API auth attempt rejected: enrollment {} not found"
+                        + " (integration {})",
+                    enrollmentId,
+                    integrationIdForPath1);
+                return new AuthAttemptCreateValidationException(ENROLLMENT_NOT_FOUND_DETAIL);
+              });
       if (!integrationIdForPath1.equals(enrollmentForPath1.getIntegrationId())) {
         logger.warn(
             "Integration API cross-integration access attempt: API key from integration {} tried to"
@@ -682,8 +701,7 @@ public class IntegrationApiAuthAttemptController {
             integrationIdForPath1,
             enrollmentId,
             enrollmentForPath1.getIntegrationId());
-        throw new AuthAttemptCreateValidationException(
-            "Enrollment does not belong to this integration.");
+        throw new AuthAttemptCreateValidationException(ENROLLMENT_NOT_FOUND_DETAIL);
       }
       if (!Boolean.TRUE.equals(enrollmentForPath1.getActive())
           || !EnrollmentStatus.VERIFIED.equals(enrollmentForPath1.getStatus())) {

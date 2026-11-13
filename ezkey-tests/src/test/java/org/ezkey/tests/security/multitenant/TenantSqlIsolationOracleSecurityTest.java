@@ -129,8 +129,16 @@ public class TenantSqlIsolationOracleSecurityTest extends AbstractSecurityTest {
         missing.getStatusCode(),
         missing.jsonPath().getString("detail"));
 
-    assertThat(foreign.getStatusCode()).isIn(400, 403, 404);
-    assertThat(missing.getStatusCode()).isIn(400, 403, 404);
+    // Hide existence: an enrollment of another integration answers exactly like an unknown id
+    assertThat(foreign.getStatusCode()).isEqualTo(400);
+    assertThat(missing.getStatusCode()).isEqualTo(foreign.getStatusCode());
+    assertThat(foreign.jsonPath().getString("type"))
+        .isEqualTo(missing.jsonPath().getString("type"));
+    assertThat(foreign.jsonPath().getString("detail"))
+        .isEqualTo(missing.jsonPath().getString("detail"));
+    assertThat(foreign.jsonPath().getString("detail"))
+        .doesNotContain(String.valueOf(enrollmentBId))
+        .doesNotContainIgnoringCase("belong");
     assertThat(foreign.getBody().asString()).doesNotContain("SQLISO Tenant B");
     assertThat(foreign.getBody().asString()).doesNotContain("SQLISO Device B");
     assertThat(foreign.getBody().asString()).doesNotContain("SQLISO Integration B");

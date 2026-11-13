@@ -2173,6 +2173,13 @@ bucket; its limit and window come from `ezkey.api-key.rate-limit`, and `Retry-Af
 **`challengeRequested` (required, unchanged):** `@NotNull` / OpenAPI required since before #895 —
 omission fails `@Valid` with the same generic 400. Not a contract break from this PR (Patrick M3).
 
+**Ownership on create (Integration API, `enrollmentId`):** the enrollment must belong to the API
+key's integration. An `enrollmentId` that does not exist and one that belongs to another
+integration return the **same** answer — **400**, type
+`https://ezkey.io/problems/validation/auth-attempt-create-invalid`, detail `Enrollment not found.`
+(hide-existence: no id, no ownership hint). **403** `enrollment-inactive` is reserved for an
+enrollment of the caller's own integration that is revoked, deactivated or not verified.
+
 **Ownership on wait/cancel:** Integration API `@PreAuthorize` requires the auth attempt’s enrollment
 to belong to the API key’s integration (`AccessControlService.canAccessAuthAttempt`). Foreign
 attempts → **403**. Cancel marks the row `EXPIRED` (no separate `CANCELLED` status).
