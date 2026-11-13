@@ -19,7 +19,7 @@ full pass (keep, tune, or roll back).
 |-------|---------|-------|
 | Dependabot opens PRs | **Daily** for Maven (`/`) and npm (`/ezkey-admin-ui`, `/ezkey-sdk/javascript`, `/ezkey_mobile`); **weekly** for `github-actions`, `pip`, and npm at `/bruno` | Cooldown ~**3** days patch/minor, ~**7** days semver-major (npm/maven/pip); Actions uses `default-days: 3` only (schema has no semver keys). `open-pull-requests-limit: 10` per ecosystem — see `.github/dependabot.yml` |
 | Agent curation — weekday light | **Weekdays 09:14 ET** | T1–T3 + Orval **O0/O1** only; **silent when queue empty**; default autonomy on that scope |
-| Agent curation — Monday full | **Monday 09:14 ET** (or first working day) | Full lots + **Java BOM** + **Mobile RN** pulses (`yarn deps:monitor --strict`) + holds review; one campaign note from `TEMPLATE.md` |
+| Agent curation — Monday full | **Monday 09:14 ET** (or first working day) | Full lots + **Java BOM** + **Mobile RN** pulses (`yarn deps:monitor --strict`) + **Admin UI advisory pulse** (`npm audit --json`, reduced to distinct GHSA) + holds review; one campaign note from `TEMPLATE.md` |
 | Concurrency | **One owning pass per day** | Before merge/close/hygiene PR: if concurrent merges (~30 min) or another in-flight pass → back off, report only |
 
 **2026-10-19:** fixed **09:14 ET** weekday/Monday slot (Marc hygiene-cadence approval) so Dependabot
@@ -49,7 +49,7 @@ Dependabot alone cannot prove current:
 | Surface | Dependabot | Mandatory pulse |
 |---------|------------|-----------------|
 | Java / Maven (reactor root) | `maven` at `/` (daily + cooldown) | **Java BOM pulse** (`spring-boot.version`, SEC-019, `google-java-format`) — Monday full |
-| Admin UI | `npm` at `/ezkey-admin-ui` (daily + cooldown) | Orval via **Orval risk grid** (skill); evaluate **separately** from mobile |
+| Admin UI | `npm` at `/ezkey-admin-ui` (daily + cooldown) | Orval via **Orval risk grid** (skill); **Admin UI advisory pulse** Monday full; evaluate **separately** from mobile |
 | Ezkey Mobile (Yarn 4) | `npm` at `/ezkey_mobile` (daily + cooldown) | **Mobile RN pulse** Monday full; Orval via **Orval risk grid** (separate from Admin UI) |
 | SDK JS | `npm` at `/ezkey-sdk/javascript` (daily + cooldown) | — |
 | Bruno CLI | `npm` at `/bruno` (weekly + cooldown) | Smoke with `./scripts/bruno-health.sh --suite g0` |
@@ -67,6 +67,8 @@ dismiss the rest with a written reason. Security-update PRs are on since the sto
 `update-types` in an `ignore` rule filters version updates only, so a security PR can still propose
 a deferred major such as TypeScript 7. It will not auto-merge. Treat it as T4 (Marc decides) and
 label it `deferred:later-train` if deferred; it is not a configuration error.
+An `npm audit` count is not a second queue. Reduce it with the skill § *npm audit reduction*.
+The Monday **Admin UI advisory pulse** is the standing run of that reduction.
 Mobile refresh recipe: `yarn up -R <alert packages> --mode=update-lockfile`, then compare the
 release bundles line by line (Android and iOS). `package.json` must not move.
 
@@ -109,8 +111,8 @@ Dependency graph → Automatic dependency submission); set to **Disabled** (2026
 dedicated workflow feeds the graph. Details:
 [`docs/DEVELOPMENT.md`](../../../../docs/DEVELOPMENT.md) § Continuous Integration.
 
-Empty Dependabot queue for Maven or mobile ≠ stack current on Monday. Authority: skill
-`dependabot-curated` §§ *Java BOM pulse*, *Mobile RN pulse*.
+Empty Dependabot queue for Maven, mobile, or Admin UI advisories ≠ stack current on Monday.
+Authority: skill `dependabot-curated` §§ *Java BOM pulse*, *Mobile RN pulse*, *Admin UI advisory pulse*.
 
 ## Orval risk grid (pointer)
 
@@ -363,6 +365,33 @@ On every Monday-full `dependabot-curated` pass the agent must:
    RN-core / vision-camera without Marc.
 
 Authority: skill `dependabot-curated` § *Mobile RN pulse*.
+
+## Admin UI advisory pulse (Monday full)
+
+Dependabot version updates at `/ezkey-admin-ui` move declared dependencies. A transitive module
+stays put while its parents reject the patched range, so the PR queue can be empty while
+`npm install` still prints a vulnerability count. That count lists every ancestor of the advisory.
+`npm audit fix --force` will offer a downgrade when that is what clears the count.
+
+On every Monday-full `dependabot-curated` pass the agent must:
+
+1. From `ezkey-admin-ui/`, run `npm audit --json` and apply the skill § *npm audit reduction*:
+   one row per GHSA + package. `package-lock.json` and `yarn.lock` for the same GHSA are one
+   advisory and two manifests.
+2. Match each row to the waiting-upstream table above. Record GHSA, package, manifests, severity,
+   and the match (including the fallback date) or **new** in the campaign note.
+3. Propose a lot only for a **new** GHSA or a row whose fallback date is this Monday. A row whose
+   fallback is still ahead stays waiting. The ancestor count is not a lot.
+
+Weekday light does not run this pulse. If the operator brings an `npm audit` count mid-week, apply
+the same reduction and answer from the waiting-upstream table.
+
+Triage by **what ships**. A moderate advisory that lives only on the lint toolchain stays a
+recorded row until its fallback date. This pulse is not a CI gate.
+
+Authority: skill `dependabot-curated` § *Admin UI advisory pulse*. Provenance: 2026-11-13,
+`npm install` reported 10 moderate for GHSA-g3hv-75wg-m249 (`minimatch`), already in the table
+above (alerts 260 and 289).
 
 ## Related
 
