@@ -94,7 +94,8 @@
     "jobs": {
       "AUDIT_CHAIN_CHECKPOINT": "Point de contrôle chaîne d'audit",
       "NIGHTLY_INTEGRITY_VALIDATION": "Validation d'intégrité nocturne",
-      "REENCRYPTION": "Re-chiffrement"
+      "REENCRYPTION": "Re-chiffrement",
+      "PARTITION_CREATION": "Partitions mensuelles"
     },
     "links": {
       "integrityPanel": "Ouvrir Intégrité →",

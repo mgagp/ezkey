@@ -154,11 +154,11 @@ ezkey-core/src/main/resources/db/migration/
 **Location:** `ezkey-core/src/main/java/org/ezkey/database/service/`
 
 **What the Scheduled Batch Does:**
-1. Calculates next month's date range
-2. Calls `create_monthly_partition()` function via JDBC
+1. At startup and daily, covers the current UTC month plus three future months (configurable)
+2. Calls `create_monthly_partition()` for each month and both tables
 3. Function executes with owner privileges (SECURITY DEFINER)
-4. Creates partition if it doesn't exist (idempotent)
-5. Logs success/failure
+4. Creates the partition when it is missing (idempotent)
+5. Records SUCCESS in `ezkey_scheduled_job_last_run`, or FAILED plus alert `PARTITION_CREATION_FAILED`
 
 **Configuration:**
 ```properties
@@ -167,6 +167,12 @@ ezkey.database.partition.scheduler.enabled=true
 
 # Cron expression (default: daily at 1 AM)
 ezkey.database.partition.scheduler.cron=0 0 1 * * ?
+
+# Future months beyond the current UTC month (default: 3)
+ezkey.database.partition.scheduler.months-ahead=3
+
+# Also run when Admin API becomes ready (default: true)
+ezkey.database.partition.scheduler.startup-enabled=true
 ```
 
 ### Role Separation Diagram
@@ -660,17 +666,14 @@ WHERE created_at >= '2025-02-01' AND created_at < '2025-03-01';
 ### Monitor Partition Creation
 ```bash
 # Check application logs for partition creation
-grep "partition" /var/log/ezkey/admin-api.log
-
-# Expected output:
-# ✅ Created partition: ezkey_auth_attempt_2025_03 for table: ezkey_auth_attempt
-# ℹ️ Partition ezkey_auth_attempt_2025_03 already exists for table: ezkey_auth_attempt
+grep "Created partition:" /var/log/ezkey/admin-api.log
 ```
 
-### Alerting Recommendations
-- Alert if next month's partition doesn't exist 7 days before month boundary
-- Alert if partition creation fails 3 consecutive times
-- Alert if partition size exceeds expected threshold (indicates data spike)
+The operational signal is not a log line. Dashboard job `PARTITION_CREATION` and alert `PARTITION_CREATION_FAILED` (Alerts page) report a failed horizon. The alert is raised on the first failure, not after three consecutive runs.
+
+### Alerting
+- `PARTITION_CREATION_FAILED` is raised as soon as one partition in the horizon fails
+- Partition size thresholds are not implemented
 
 ---
 

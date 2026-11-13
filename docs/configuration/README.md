@@ -43,6 +43,7 @@ Central registry for all `ezkey.*` configuration properties across the backend m
 | `ezkey.organization` | `ezkey-core` (`OrganizationProperties`) | admin-api, auth-api | [core §org](../../ezkey-core/CONFIGURATION.md#organization-ezkeyorganization) |
 | `ezkey.core` | `ezkey-core` (`EzkeyCoreProperties`) | admin-api, auth-api | [core §core](../../ezkey-core/CONFIGURATION.md#core-crypto--auth-attempt-ezkeycore) |
 | `ezkey.enrollment` | `ezkey-core` (`EnrollmentProperties`) | admin-api | [core §enrollment](../../ezkey-core/CONFIGURATION.md#enrollment-ezkeyenrollment) |
+| `ezkey.database.partition` | `ezkey-core` (`PartitionSchedulerService`) | admin-api | [core §partition scheduler](../../ezkey-core/CONFIGURATION.md#partition-scheduler-ezkeydatabasepartitionscheduler) |
 | `ezkey.auth.api.url` | `ezkey-demo-device` | demo-device | [demo-device](../../ezkey-demo-device/CONFIGURATION.md) |
 | `ezkey.demo-device` | `ezkey-demo-device` (`DemoDeviceProperties`) | demo-device | [demo-device](../../ezkey-demo-device/CONFIGURATION.md) |
 | `ezkey.audit.integrity` | `ezkey-core` (`AuditHmacProperties`, `IntegrityWindowCapProperties`) | admin-api, auth-api, integration-api | [core §audit-integrity](../../ezkey-core/CONFIGURATION.md#audit-log-integrity-ezkeyauditintegrity); [core §window-caps](../../ezkey-core/CONFIGURATION.md#integrity-heavy-crypto-window-caps-ezkeyauditintegritymax--window-days) |
@@ -72,6 +73,7 @@ Central registry for all `ezkey.*` configuration properties across the backend m
 | `ezkey.organization.*` | ✓ | ✓ | — | — |
 | `ezkey.qr.*` | ✓ | ✓ | — | — |
 | `ezkey.enrollment.*` | ✓ | — | — | — |
+| `ezkey.database.partition.*` | ✓ | — | — | — |
 | `ezkey.core.*` | ✓ | ✓ | — | — |
 
 ¹ Auth API and Integration API set `ezkey.audit.chain.enabled=false` (no scheduler) but still bind `AuditChainProperties`; **`ezkey.audit.chain.window-minutes` must match Admin API** wherever heartbeat supervision runs — Docker profiles declare it explicitly on all three services.

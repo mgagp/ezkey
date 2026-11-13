@@ -250,6 +250,8 @@ High-volume tables `ezkey_audit_log` and `ezkey_auth_attempt` are **range-partit
   `false` already existed). Call it with `SELECT …` + `getSingleResult()` (see
   `PartitionSchedulerService`). Do **not** use `executeUpdate()` on that SELECT — Hibernate
   expects no result set and fails with “A result was returned when none was expected”.
+  The scheduler covers the current UTC month plus three future months, at startup and daily,
+  and records a failure as alert `PARTITION_CREATION_FAILED`. There is no DEFAULT partition.
 
 Authoritative detail: `docs/DATABASE_PARTITIONING_IMPLEMENTATION.md` (§ Flyway greenfield patterns),
 `.cursor/rules/flyway-partitioned-tables.mdc`.

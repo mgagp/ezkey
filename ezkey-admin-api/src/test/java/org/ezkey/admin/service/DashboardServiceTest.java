@@ -129,6 +129,8 @@ class DashboardServiceTest {
                     "Validated 24 h ending 2026-07-03T02:00Z")));
     when(scheduledJobLastRunRepository.findById(ScheduledJobKey.REENCRYPTION))
         .thenReturn(Optional.of(neverRunRow(ScheduledJobKey.REENCRYPTION)));
+    when(scheduledJobLastRunRepository.findById(ScheduledJobKey.PARTITION_CREATION))
+        .thenReturn(Optional.of(neverRunRow(ScheduledJobKey.PARTITION_CREATION)));
 
     var overview = service.buildOverview(principal);
 
@@ -137,8 +139,11 @@ class DashboardServiceTest {
     assertThat(overview.integrityJobs()).hasSize(2);
     assertThat(overview.integrityJobs().get(0).jobKey()).isEqualTo("AUDIT_CHAIN_CHECKPOINT");
     assertThat(overview.integrityJobs().get(0).lastStatus()).isEqualTo("SUCCESS");
-    assertThat(overview.operationalJobs()).hasSize(1);
+    assertThat(overview.operationalJobs()).hasSize(2);
+    assertThat(overview.operationalJobs().get(0).jobKey()).isEqualTo("REENCRYPTION");
     assertThat(overview.operationalJobs().get(0).lastStatus()).isEqualTo("NEVER_RUN");
+    assertThat(overview.operationalJobs().get(1).jobKey()).isEqualTo("PARTITION_CREATION");
+    assertThat(overview.operationalJobs().get(1).lastStatus()).isEqualTo("NEVER_RUN");
     assertThat(overview.integrityConfigSummary()).isNotNull();
     assertThat(overview.integrityConfigSummary().chainLookbackMinutes()).isEqualTo(60);
     assertThat(overview.integrityConfigSummary().nightlyWindowHours()).isEqualTo(24);

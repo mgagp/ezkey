@@ -31,7 +31,8 @@ public record DashboardScheduledJobRowDto(
             allowableValues = {
               "AUDIT_CHAIN_CHECKPOINT",
               "NIGHTLY_INTEGRITY_VALIDATION",
-              "REENCRYPTION"
+              "REENCRYPTION",
+              "PARTITION_CREATION"
             })
         String jobKey,
     @Schema(description = "Timestamp of the most recent execution (null when never run)")

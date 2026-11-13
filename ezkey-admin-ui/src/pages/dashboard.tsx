@@ -105,6 +105,8 @@ function jobDeepLink(jobKey: string | undefined): string | null {
       return '/integrity';
     case 'REENCRYPTION':
       return '/encryption-keys';
+    case 'PARTITION_CREATION':
+      return '/alerts';
     default:
       return null;
   }

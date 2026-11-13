@@ -94,7 +94,8 @@
     "jobs": {
       "AUDIT_CHAIN_CHECKPOINT": "Audit chain checkpoint",
       "NIGHTLY_INTEGRITY_VALIDATION": "Nightly integrity validation",
-      "REENCRYPTION": "Re-encryption"
+      "REENCRYPTION": "Re-encryption",
+      "PARTITION_CREATION": "Monthly partitions"
     },
     "links": {
       "integrityPanel": "Open Integrity →",

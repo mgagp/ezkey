@@ -69,7 +69,7 @@ public class DashboardService {
       List.of(ScheduledJobKey.AUDIT_CHAIN_CHECKPOINT, ScheduledJobKey.NIGHTLY_INTEGRITY_VALIDATION);
 
   private static final List<ScheduledJobKey> OPERATIONAL_JOB_KEYS =
-      List.of(ScheduledJobKey.REENCRYPTION);
+      List.of(ScheduledJobKey.REENCRYPTION, ScheduledJobKey.PARTITION_CREATION);
 
   private final IntegrationService integrationService;
   private final EnrollmentService enrollmentService;

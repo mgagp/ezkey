@@ -11,92 +11,79 @@
 package org.ezkey.database.service;
 
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.PersistenceException;
-import jakarta.transaction.Transactional;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import net.javacrumbs.shedlock.core.LockConfiguration;
+import net.javacrumbs.shedlock.core.LockProvider;
+import net.javacrumbs.shedlock.core.SimpleLock;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.ezkey.alert.domain.AlertResolutionReason;
+import org.ezkey.alert.domain.AlertSeverity;
+import org.ezkey.alert.domain.AlertType;
+import org.ezkey.alert.service.AlertService;
+import org.ezkey.audit.integrity.ScheduledJobKey;
+import org.ezkey.audit.integrity.ScheduledJobLastRunService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Scheduled service for automatic creation of monthly partitions.
+ * Creates monthly partitions for {@code ezkey_auth_attempt} and {@code ezkey_audit_log}.
  *
- * <p>This service automatically creates partitions for the next month to ensure seamless data
- * insertion. It runs daily to check if the next month's partition exists and creates it if needed.
+ * <p>The horizon is the current UTC month plus {@code months-ahead} future months (default {@value
+ * #DEFAULT_MONTHS_AHEAD}). That buffer is why a stretch of failed runs (for example EXECUTE grants
+ * drifting off {@code create_monthly_partition}) does not become an MFA outage on the first day of
+ * the next month. Flyway still creates the current and next month at migrate time; this service
+ * re-checks the same horizon at startup and once a day.
  *
- * <p><b>Security Design:</b>
+ * <p>There is no DEFAULT partition. A default child would accept rows outside the planned months,
+ * so a later month drop or audit purge could not tell those rows from the months operators intend
+ * to keep. {@code ezkey_audit_log} is RANGE then LIST({@code api_name}); a default child would need
+ * its own list sub-partitions or inserts would still fail. The horizon plus an operator alert is
+ * the safety net.
  *
- * <p>This service uses a PostgreSQL SECURITY DEFINER function ({@code create_monthly_partition}) to
- * create partitions without requiring DDL privileges on the application role. This maintains
- * security best practices:
+ * <p>Creation uses the PostgreSQL SECURITY DEFINER function {@code create_monthly_partition}. The
+ * application role needs EXECUTE, not CREATE TABLE. The function returns {@code true} when it
+ * created the partition and {@code false} when it already existed.
  *
- * <ul>
- *   <li><b>Role Separation:</b> Application role (EZKEY_app) only needs EXECUTE privilege, not
- *       CREATE TABLE
- *   <li><b>Owner Privileges:</b> Function executes with owner role (EZKEY_owner) privileges via
- *       SECURITY DEFINER
- *   <li><b>Compliance:</b> Maintains separation of duties (DDL vs DML privileges)
- * </ul>
+ * <p>Each partition call runs in its own transaction. One failure does not stop the remaining
+ * targets. Any failure records {@link ScheduledJobKey#PARTITION_CREATION} as FAILED and raises
+ * {@link AlertType#PARTITION_CREATION_FAILED}. A later clean run records SUCCESS and resolves that
+ * alert. The registry stores the exception class name only, not the driver message.
  *
- * <p><b>Function Return Value:</b>
+ * <p><b>HA:</b> the daily run keeps {@code @SchedulerLock} name {@value #LOCK_NAME}. Startup takes
+ * the same lock through {@link LockProvider}. If another instance holds it, startup skips and does
+ * not record a failure. If the lock store itself errors, startup still creates partitions: the
+ * function is idempotent, and skipping would recreate the outage the lock is meant to protect.
  *
- * <p>The {@code create_monthly_partition} function returns a BOOLEAN indicating the operation
- * result:
- *
- * <ul>
- *   <li>{@code true} - Partition was created successfully
- *   <li>{@code false} - Partition already existed (idempotent operation)
- * </ul>
- *
- * <p><b>Supported Tables:</b>
- *
- * <ul>
- *   <li>ezkey_auth_attempt - Partitioned by created_at (monthly)
- *   <li>ezkey_audit_log - Partitioned by created_at (monthly)
- * </ul>
- *
- * <p><b>Default Schedule:</b> Daily at 1 AM (configurable via cron expression)
- *
- * <p><b>Configuration Properties:</b>
+ * <p><b>Configuration:</b>
  *
  * <ul>
- *   <li>ezkey.database.partition.scheduler.enabled - Enable/disable scheduler (default: true)
- *   <li>ezkey.database.partition.scheduler.cron - Cron expression for schedule (default: 0 0 1 * *
- *       ?)
+ *   <li>{@code ezkey.database.partition.scheduler.enabled} (default {@code true})
+ *   <li>{@code ezkey.database.partition.scheduler.cron} (default {@code 0 0 1 * * ?})
+ *   <li>{@code ezkey.database.partition.scheduler.months-ahead} (default {@value
+ *       #DEFAULT_MONTHS_AHEAD}, clamped to {@value #MIN_MONTHS_AHEAD}–{@value #MAX_MONTHS_AHEAD})
+ *   <li>{@code ezkey.database.partition.scheduler.startup-enabled} (default {@code true})
  * </ul>
- *
- * <p><b>Partition Naming Convention:</b>
- *
- * <ul>
- *   <li>ezkey_auth_attempt_YYYY_MM (e.g., ezkey_auth_attempt_2025_01)
- *   <li>ezkey_audit_log_YYYY_MM (e.g., ezkey_audit_log_2025_01)
- * </ul>
- *
- * <p><b>Production Setup:</b>
- *
- * <p>In production environments with separated database roles:
- *
- * <ol>
- *   <li>Function must be owned by owner role (EZKEY_owner) - set in migration or manually
- *   <li>Application role (EZKEY_app) must have EXECUTE privilege on function
- *   <li>Function uses SECURITY DEFINER to execute with owner privileges
- * </ol>
- *
- * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
- *
- * <p><b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
- * @see <a href="https://www.postgresql.org/docs/current/sql-createfunction.html">PostgreSQL
- *     SECURITY DEFINER</a>
  */
 @Component
 @ConditionalOnProperty(
@@ -107,126 +94,326 @@ public class PartitionSchedulerService {
 
   private static final Logger logger = LoggerFactory.getLogger(PartitionSchedulerService.class);
 
-  private static final DateTimeFormatter PARTITION_DATE_FORMAT =
-      DateTimeFormatter.ofPattern("yyyy_MM");
+  /** ShedLock name shared by the daily job and the startup pass. */
+  public static final String LOCK_NAME = "DB_PARTITION_CREATION";
 
-  @PersistenceContext // Checkstyle rule
-  private EntityManager entityManager;
-
-  @Value("${ezkey.database.partition.scheduler.cron:0 0 1 * * ?}")
-  private String scheduleCron;
+  /** Singleton dedupe key for the partition-creation alert. */
+  public static final String ALERT_DEDUPE_KEY = "PARTITION_CREATION_FAILED";
 
   /**
-   * Scheduled job to create partitions for the next month.
+   * Future months beyond the current one. Three months means a full month of failed daily runs
+   * still leaves the next two months already created.
+   */
+  public static final int DEFAULT_MONTHS_AHEAD = 3;
+
+  /** At least the next month, which is the previous scheduler's only target. */
+  static final int MIN_MONTHS_AHEAD = 1;
+
+  /** Caps a bad configuration value so a typo cannot create a year of empty partitions. */
+  static final int MAX_MONTHS_AHEAD = 12;
+
+  private static final Duration LOCK_AT_MOST = Duration.ofMinutes(10);
+
+  private static final DateTimeFormatter PARTITION_SUFFIX = DateTimeFormatter.ofPattern("yyyy_MM");
+
+  private static final DateTimeFormatter MONTH_LABEL = DateTimeFormatter.ofPattern("yyyy-MM");
+
+  private static final String AUTH_ATTEMPT = "ezkey_auth_attempt";
+
+  private static final String AUDIT_LOG = "ezkey_audit_log";
+
+  private static final String FUNCTION_CALL =
+      "SELECT create_monthly_partition(:tableName, :partitionName, :startDate, :endDate)";
+
+  private final EntityManager entityManager;
+
+  private final ScheduledJobLastRunService jobLastRunService;
+
+  private final AlertService alertService;
+
+  private final ObjectProvider<LockProvider> lockProvider;
+
+  private final Clock clock;
+
+  private final int monthsAhead;
+
+  private final boolean startupEnabled;
+
+  private final TransactionTemplate partitionTransaction;
+
+  /**
+   * Constructs the scheduler.
    *
-   * <p>Runs daily to ensure the next month's partition exists. Creates partitions for both
-   * ezkey_auth_attempt and ezkey_audit_log tables if they don't already exist.
+   * @param entityManager persistence context used for the partition function call
+   * @param jobLastRunService last-run registry
+   * @param alertService operator alert raise and resolve
+   * @param transactionManager commits each partition call on its own
+   * @param lockProvider ShedLock provider; absent only outside Admin API
+   * @param clock UTC clock that selects the current month
+   * @param monthsAhead future months beyond the current one
+   * @param startupEnabled when false, the ready event does not create partitions
+   */
+  public PartitionSchedulerService(
+      EntityManager entityManager,
+      ScheduledJobLastRunService jobLastRunService,
+      AlertService alertService,
+      PlatformTransactionManager transactionManager,
+      ObjectProvider<LockProvider> lockProvider,
+      Clock clock,
+      @Value("${ezkey.database.partition.scheduler.months-ahead:" + DEFAULT_MONTHS_AHEAD + "}")
+          int monthsAhead,
+      @Value("${ezkey.database.partition.scheduler.startup-enabled:true}") boolean startupEnabled) {
+    this.entityManager = entityManager;
+    this.jobLastRunService = jobLastRunService;
+    this.alertService = alertService;
+    this.lockProvider = lockProvider;
+    this.clock = clock;
+    this.monthsAhead = clampMonthsAhead(monthsAhead);
+    this.startupEnabled = startupEnabled;
+    this.partitionTransaction = new TransactionTemplate(transactionManager);
+    this.partitionTransaction.setPropagationBehavior(
+        TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    if (monthsAhead != this.monthsAhead) {
+      logger.warn(
+          "ezkey.database.partition.scheduler.months-ahead={} is outside {}-{}; using {}",
+          monthsAhead,
+          MIN_MONTHS_AHEAD,
+          MAX_MONTHS_AHEAD,
+          this.monthsAhead);
+    }
+  }
+
+  /**
+   * Daily pass. ShedLock allows one Admin API instance to run it.
    *
-   * <p>This job is idempotent - it checks if partitions exist before creating them, so it's safe to
-   * run multiple times.
-   *
-   * <p><b>HA Safety:</b> Uses distributed locking to ensure only one instance executes this job at
-   * a time.
+   * <p>The method itself is not transactional: each partition commits on its own, so a failure
+   * cannot mark the rest of the horizon rollback-only.
    */
   @Scheduled(cron = "${ezkey.database.partition.scheduler.cron:0 0 1 * * ?}")
-  @SchedulerLock(name = "DB_PARTITION_CREATION", lockAtMostFor = "PT10M")
-  @Transactional
+  @SchedulerLock(name = LOCK_NAME, lockAtMostFor = "PT10M")
   public void createNextMonthPartitions() {
+    ensurePartitionHorizon();
+  }
+
+  /**
+   * Creates or verifies the horizon once the application is ready to use the database.
+   *
+   * <p>Uses {@value #LOCK_NAME}, the same name as the daily job, so startup does not race another
+   * instance. A held lock skips this pass without a failure record.
+   */
+  @EventListener(ApplicationReadyEvent.class)
+  public void ensurePartitionsOnStartup() {
+    if (!startupEnabled) {
+      logger.info("Partition creation at startup is disabled");
+      return;
+    }
+    LockProvider provider = lockProvider.getIfAvailable();
+    if (provider == null) {
+      logger.warn(
+          "ShedLock LockProvider is absent; creating partitions at startup without {}", LOCK_NAME);
+      ensurePartitionHorizon();
+      return;
+    }
+    Optional<SimpleLock> acquired = tryLock(provider);
+    if (acquired == null) {
+      ensurePartitionHorizon();
+      return;
+    }
+    if (acquired.isEmpty()) {
+      logger.info("Skipping partition creation at startup; another instance holds {}", LOCK_NAME);
+      return;
+    }
+    SimpleLock held = acquired.get();
     try {
-      logger.info("🔧 Starting partition creation check for next month");
-
-      LocalDate nextMonth = LocalDate.now().plusMonths(1);
-      LocalDate nextMonthStart = nextMonth.withDayOfMonth(1);
-      LocalDate nextMonthEnd = nextMonthStart.plusMonths(1);
-
-      String partitionSuffix = nextMonthStart.format(PARTITION_DATE_FORMAT);
-
-      // Create partition for ezkey_auth_attempt
-      createPartitionIfNotExists(
-          "ezkey_auth_attempt",
-          "ezkey_auth_attempt_" + partitionSuffix,
-          nextMonthStart,
-          nextMonthEnd);
-
-      // Create partition for ezkey_audit_log
-      createPartitionIfNotExists(
-          "ezkey_audit_log", "ezkey_audit_log_" + partitionSuffix, nextMonthStart, nextMonthEnd);
-
-      logger.info("✅ Partition creation check completed");
-
-    } catch (PersistenceException | IllegalArgumentException | IllegalStateException e) {
-      logger.error("❌ Error creating partitions: {}", e.getMessage(), e);
+      ensurePartitionHorizon();
+    } finally {
+      held.unlock();
     }
   }
 
   /**
-   * Creates a partition for a table if it doesn't already exist.
+   * Creates the horizon without waiting for the daily schedule.
    *
-   * <p>Uses PostgreSQL SECURITY DEFINER function to create partitions without requiring DDL
-   * privileges on the application role. This maintains security best practices by separating DDL
-   * privileges (owner role) from DML privileges (application role).
-   *
-   * <p>The function returns a BOOLEAN indicating whether the partition was created:
-   *
-   * <ul>
-   *   <li>{@code true} - Partition was created successfully
-   *   <li>{@code false} - Partition already existed (idempotent operation)
-   * </ul>
-   *
-   * @param tableName the name of the partitioned table
-   * @param partitionName the name of the partition to create
-   * @param startDate the start date for the partition (inclusive)
-   * @param endDate the end date for the partition (exclusive)
+   * <p>Does not take the distributed lock. Prefer the scheduled method in a multi-instance
+   * deployment.
    */
-  private void createPartitionIfNotExists(
-      String tableName, String partitionName, LocalDate startDate, LocalDate endDate) {
+  public void createPartitionsManually() {
+    logger.info("Manually triggering partition creation");
+    ensurePartitionHorizon();
+  }
 
+  /** Creates the current month and the configured future months for both partitioned tables. */
+  void ensurePartitionHorizon() {
+    LocalDate currentMonth = LocalDate.now(clock).withDayOfMonth(1);
+    LocalDate lastMonth = currentMonth.plusMonths(monthsAhead);
+    String fromLabel = currentMonth.format(MONTH_LABEL);
+    String toLabel = lastMonth.format(MONTH_LABEL);
+    List<String> errorNames = new ArrayList<>();
+    int targets = 0;
+    logger.info(
+        "Starting partition horizon check UTC {}..{} monthsAhead={}",
+        fromLabel,
+        toLabel,
+        monthsAhead);
+    for (int offset = 0; offset <= monthsAhead; offset++) {
+      LocalDate start = currentMonth.plusMonths(offset);
+      LocalDate end = start.plusMonths(1);
+      String suffix = start.format(PARTITION_SUFFIX);
+      targets +=
+          createPartitionIfNotExists(
+              AUTH_ATTEMPT, AUTH_ATTEMPT + "_" + suffix, start, end, errorNames);
+      targets +=
+          createPartitionIfNotExists(AUDIT_LOG, AUDIT_LOG + "_" + suffix, start, end, errorNames);
+    }
+    String scope = "UTC " + fromLabel + ".." + toLabel + " monthsAhead=" + monthsAhead;
+    if (errorNames.isEmpty()) {
+      recordOutcome(true, scope, null, fromLabel, toLabel, 0);
+      logger.info("Partition horizon check completed");
+      return;
+    }
+    String failedScope = scope + " failed=" + errorNames.size() + "/" + targets;
+    recordOutcome(false, failedScope, errorNames.get(0), fromLabel, toLabel, errorNames.size());
+  }
+
+  private int createPartitionIfNotExists(
+      String tableName,
+      String partitionName,
+      LocalDate startDate,
+      LocalDate endDate,
+      List<String> errorNames) {
     try {
-      // Use SECURITY DEFINER function to create partition
-      // Function executes with owner privileges, application role only needs EXECUTE
-      LocalDateTime startDateTime = startDate.atStartOfDay();
-      LocalDateTime endDateTime = endDate.atStartOfDay();
-
-      String functionCall =
-          "SELECT create_monthly_partition(:tableName, :partitionName, :startDate, :endDate)";
-
-      Object result =
-          entityManager
-              .createNativeQuery(functionCall)
-              .setParameter("tableName", tableName)
-              .setParameter("partitionName", partitionName)
-              .setParameter("startDate", startDateTime)
-              .setParameter("endDate", endDateTime)
-              .getSingleResult();
-
-      // Function returns BOOLEAN: true if created, false if already existed
-      Boolean wasCreated = (Boolean) result;
-      if (wasCreated) {
-        logger.info("✅ Created partition: {} for table: {}", partitionName, tableName);
-      } else {
-        logger.debug("ℹ️ Partition {} already exists for table: {}", partitionName, tableName);
+      Boolean created =
+          partitionTransaction.execute(
+              _ -> invokeCreateFunction(tableName, partitionName, startDate, endDate));
+      if (created == null) {
+        errorNames.add("IllegalStateException");
+        logger.error("Partition function returned no result for {}", partitionName);
+        return 1;
       }
-
-    } catch (PersistenceException | IllegalArgumentException | IllegalStateException e) {
+      if (created) {
+        logger.info("Created partition: {} for table: {}", partitionName, tableName);
+      } else {
+        logger.debug("Partition {} already exists for table: {}", partitionName, tableName);
+      }
+    } catch (Exception ex) { // CHECKSTYLE IGNORE IllegalCatch
+      errorNames.add(safeErrorName(ex));
       logger.error(
-          "❌ Error creating partition {} for table {}: {}",
+          "Error creating partition {} for table {}: {}",
           partitionName,
           tableName,
-          e.getMessage(),
-          e);
-      throw e;
+          safeErrorName(ex),
+          ex);
+    }
+    return 1;
+  }
+
+  private Boolean invokeCreateFunction(
+      String tableName, String partitionName, LocalDate startDate, LocalDate endDate) {
+    LocalDateTime startDateTime = startDate.atStartOfDay();
+    LocalDateTime endDateTime = endDate.atStartOfDay();
+    Object result =
+        entityManager
+            .createNativeQuery(FUNCTION_CALL)
+            .setParameter("tableName", tableName)
+            .setParameter("partitionName", partitionName)
+            .setParameter("startDate", startDateTime)
+            .setParameter("endDate", endDateTime)
+            .getSingleResult();
+    if (result instanceof Boolean created) {
+      return created;
+    }
+    throw new IllegalStateException("Unexpected partition function result");
+  }
+
+  private void recordOutcome(
+      boolean success,
+      String scope,
+      String errorName,
+      String fromLabel,
+      String toLabel,
+      int failed) {
+    try {
+      if (success) {
+        jobLastRunService.recordSuccess(ScheduledJobKey.PARTITION_CREATION, scope);
+        alertService.resolveByDedupeKey(
+            ALERT_DEDUPE_KEY, AlertResolutionReason.PARTITION_HORIZON_RESTORED, null);
+        return;
+      }
+      jobLastRunService.recordFailure(ScheduledJobKey.PARTITION_CREATION, scope, errorName);
+    } catch (Exception ex) { // CHECKSTYLE IGNORE IllegalCatch
+      logger.error("Could not record partition job outcome: {}", safeErrorName(ex), ex);
+    }
+    if (success) {
+      return;
+    }
+    try {
+      String payload =
+          "{\"monthsAhead\":"
+              + monthsAhead
+              + ",\"from\":\""
+              + fromLabel
+              + "\",\"to\":\""
+              + toLabel
+              + "\",\"failedTargets\":"
+              + failed
+              + ",\"error\":\""
+              + errorName
+              + "\"}";
+      alertService.raiseOrTouch(
+          AlertType.PARTITION_CREATION_FAILED, AlertSeverity.CRITICAL, ALERT_DEDUPE_KEY, payload);
+    } catch (Exception ex) { // CHECKSTYLE IGNORE IllegalCatch
+      logger.error("Could not raise partition creation alert: {}", safeErrorName(ex), ex);
     }
   }
 
   /**
-   * Manually trigger partition creation (useful for testing or manual operations).
+   * Tries to take {@value #LOCK_NAME}.
    *
-   * <p>This method can be called programmatically to create partitions without waiting for the
-   * scheduled job.
+   * @param provider ShedLock provider
+   * @return the lock when acquired, empty when another instance holds it, or null when the lock
+   *     store failed and the caller should run without a lock
    */
-  @Transactional
-  public void createPartitionsManually() {
-    logger.info("🔧 Manually triggering partition creation");
-    createNextMonthPartitions();
+  private Optional<SimpleLock> tryLock(LockProvider provider) {
+    LockConfiguration configuration =
+        new LockConfiguration(Instant.now(), LOCK_NAME, LOCK_AT_MOST, Duration.ZERO);
+    try {
+      return provider.lock(configuration);
+    } catch (Exception ex) { // CHECKSTYLE IGNORE IllegalCatch
+      logger.error(
+          "Could not acquire {} at startup; creating partitions without the lock because the"
+              + " function is idempotent",
+          LOCK_NAME,
+          ex);
+      return null;
+    }
+  }
+
+  private static int clampMonthsAhead(int configured) {
+    if (configured < MIN_MONTHS_AHEAD) {
+      return MIN_MONTHS_AHEAD;
+    }
+    if (configured > MAX_MONTHS_AHEAD) {
+      return MAX_MONTHS_AHEAD;
+    }
+    return configured;
+  }
+
+  /**
+   * Root exception class name. Driver messages can contain SQL text and must not land in the
+   * registry or the alert payload.
+   *
+   * @param error failure from the partition call or the registry
+   * @return simple class name of the root cause
+   */
+  static String safeErrorName(Throwable error) {
+    Throwable root = error;
+    while (root.getCause() != null && root.getCause() != root) {
+      root = root.getCause();
+    }
+    String name = root.getClass().getSimpleName();
+    if (name == null || name.isBlank()) {
+      return "Exception";
+    }
+    return name;
   }
 }

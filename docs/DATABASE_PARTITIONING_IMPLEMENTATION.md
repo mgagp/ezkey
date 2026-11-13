@@ -63,12 +63,16 @@ This document summarizes the implementation of database table partitioning for E
 **Location:** `ezkey-core/src/main/java/org/ezkey/database/service/PartitionSchedulerService.java`
 
 **Functionality:**
-- Automatically creates partitions for the next month
-- Runs daily at 1 AM (configurable)
+- Creates or verifies the current UTC month and the next `months-ahead` months (default 3) for both partitioned tables
+- Runs at Admin API startup and daily at 1 AM (configurable)
 - Uses SECURITY DEFINER function (no DDL privileges needed)
-- Idempotent - function checks if partition exists before creating
-- For `ezkey_auth_attempt`: creates one monthly partition
-- For `ezkey_audit_log`: creates one monthly partition plus three LIST(api_name) sub-partitions (_admin, _auth, _integration)
+- Idempotent — the function returns false when the partition already exists
+- For `ezkey_auth_attempt`: one monthly partition
+- For `ezkey_audit_log`: one monthly partition plus three LIST(api_name) sub-partitions (_admin, _auth, _integration)
+- On any failure: `ezkey_scheduled_job_last_run` row `PARTITION_CREATION` becomes `FAILED` (exception class name only) and alert `PARTITION_CREATION_FAILED` is raised. A later clean run records `SUCCESS` and resolves the alert with `PARTITION_HORIZON_RESTORED`
+- No DEFAULT partition. Rows outside the horizon must fail so purge and archive stay month-shaped
+
+**Why three months ahead:** the daily job can fail for a whole month (grants drift is the example). Creating only the next month means December is missing on 1 December if November's runs all failed. Three future months means a month of failures still leaves the next two months already created, and the alert is open the whole time.
 
 **Configuration Properties:**
 ```properties
@@ -77,14 +81,22 @@ ezkey.database.partition.scheduler.enabled=true
 
 # Cron expression for schedule (default: 0 0 1 * * ? - daily at 1 AM)
 ezkey.database.partition.scheduler.cron=0 0 1 * * ?
+
+# Future months beyond the current UTC month (default: 3, clamped to 1-12)
+ezkey.database.partition.scheduler.months-ahead=3
+
+# Create or verify the horizon when Admin API is ready (default: true)
+ezkey.database.partition.scheduler.startup-enabled=true
 ```
 
 **How It Works:**
-1. Runs daily at configured time
-2. Calculates next month's date range
-3. Checks if partition already exists
-4. Creates partition if it doesn't exist
-5. Logs success/failure
+1. At startup, one instance takes ShedLock `DB_PARTITION_CREATION` (same name as the daily job). If another instance holds it, startup skips and does not record a failure
+2. Calculates the current UTC month through `months-ahead` future months
+3. Calls `create_monthly_partition()` for `ezkey_auth_attempt` and `ezkey_audit_log`. Each call commits on its own
+4. Records SUCCESS, or FAILED plus the operator alert
+5. The daily job repeats the same horizon under `@SchedulerLock`
+
+ShedLock behaviour of the daily job is unchanged. See `docs/HA-JOB-COORDINATION.md`.
 
 ---
 
@@ -283,17 +295,19 @@ ezkey.database.partition.scheduler.enabled=false
 
 ### Partition Creation Fails
 
-**Symptoms:** Logs show error creating partition
+**Symptoms:** Dashboard operational job `PARTITION_CREATION` is `FAILED`, and alert `PARTITION_CREATION_FAILED` is open (Alerts page, Global Admin). Inserts into `ezkey_auth_attempt` or `ezkey_audit_log` fail at a month boundary with `no partition of relation ... found` if the horizon was not created in time.
 
 **Possible Causes:**
-- Partition already exists (idempotent check should prevent this)
-- Insufficient permissions
-- Invalid date range
+- `ezkey_admin` lost EXECUTE on `create_monthly_partition` (grants drift)
+- Function owner is not the migrate role, so SECURITY DEFINER cannot create the child table
+- Invalid date range rejected by the function
 
 **Solution:**
-- Check logs for specific error message
-- Verify database user has CREATE TABLE permissions
-- Manually create partition if needed
+- Read `last_error_summary` on `ezkey_scheduled_job_last_run` (exception class name) and the API log for the stack
+- Restore EXECUTE for the application role (`scripts/db/apply-grants.sql`). The role does not need CREATE TABLE
+- Restart Admin API or wait for the next daily run. A clean run resolves the alert
+
+There is no DEFAULT partition to catch the uncovered month. Add one only if you accept rows that month-based purge cannot see.
 
 ### Partition Pruning Not Working
 
