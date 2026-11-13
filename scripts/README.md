@@ -95,7 +95,7 @@ against [endoflife.date](https://endoflife.date). Driven by
 [`.github/workflows/endoflife-check.yml`](../.github/workflows/endoflife-check.yml).
 
 ```bash
-pip install pyyaml   # once, if needed
+pip install --require-hashes -r scripts/requirements-endoflife.txt   # once, if needed
 python3 scripts/endoflife-check.py
 python3 scripts/endoflife-check.py --json
 # GITHUB_TOKEN + GITHUB_REPOSITORY required for issue sync:
