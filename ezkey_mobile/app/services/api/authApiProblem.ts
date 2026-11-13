@@ -34,6 +34,14 @@ export const AUTH_ATTEMPT_EXPIRED_TYPE = `${EZKEY_PROBLEM_TYPE_BASE}/auth/auth-a
 export const INTEGRATION_SIGNING_UNAVAILABLE_TYPE = `${EZKEY_PROBLEM_TYPE_BASE}/auth/integration-signing-unavailable`;
 
 /**
+ * Matches {@code AuthApiProblemCatalog.TYPE_AUTH_ATTEMPT_BINDING_FAILED}. On
+ * {@code POST /auth-attempts/pending} the server sends it when the stored proof token no longer
+ * maps to an active enrollment (deleted, revoked, deactivated, database reset) or the device
+ * proof does not match it. Either way this local enrollment cannot work anymore.
+ */
+export const AUTH_ATTEMPT_BINDING_FAILED_TYPE = `${EZKEY_PROBLEM_TYPE_BASE}/auth/auth-attempt-binding-failed`;
+
+/**
  * Shape of RFC 9457 Problem Details from the Auth API (extension properties allowed).
  */
 export type AuthApiProblemDetail = {
@@ -145,6 +153,17 @@ function httpErrorBody(error: unknown): unknown {
 export function isAuthAttemptStateConflict(error: unknown): boolean {
   const problem = parseAuthApiProblemDetail(httpErrorBody(error));
   return problem?.type?.trim() === AUTH_ATTEMPT_STATE_CONFLICT_TYPE;
+}
+
+/**
+ * True when the Auth API reported {@link AUTH_ATTEMPT_BINDING_FAILED_TYPE}. Transport errors and
+ * other problem types return false, so a network outage is never read as a dead enrollment.
+ *
+ * @param error thrown value (typically Axios)
+ */
+export function isAuthAttemptBindingFailed(error: unknown): boolean {
+  const problem = parseAuthApiProblemDetail(httpErrorBody(error));
+  return problem?.type?.trim() === AUTH_ATTEMPT_BINDING_FAILED_TYPE;
 }
 
 function normalizeCatalog(

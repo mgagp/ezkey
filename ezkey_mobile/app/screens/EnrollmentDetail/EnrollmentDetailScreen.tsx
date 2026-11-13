@@ -21,7 +21,10 @@ import {
   useMarkEnrollmentPendingChecked,
 } from '../../hooks/useEnrollments';
 import {RootStackParamList} from '../../navigation/types';
-import {userFacingAuthApiError} from '../../services/api/authApiProblem';
+import {
+  isAuthAttemptBindingFailed,
+  userFacingAuthApiError,
+} from '../../services/api/authApiProblem';
 import {useEnrollmentStore} from '../../state/enrollmentStore';
 import {claimPendingAttempt} from '../../services/pendingAuth/claimPendingAttempt';
 import {useAccessibilityAnnouncement} from '../../hooks/useAccessibilityAnnouncement';
@@ -53,6 +56,9 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
   const targetId = enrollmentId ?? selectedId;
   const [isCheckingPending, setIsCheckingPending] = useState(false);
   const [inlineFeedback, setInlineFeedback] = useState<string | undefined>();
+  // Set when the last pending check got auth-attempt-binding-failed: the server no longer accepts
+  // this local enrollment. Session-only (not persisted): the next successful check clears it.
+  const [noLongerActive, setNoLongerActive] = useState(false);
   const recentResultStatusLabel = recentAuthResult
     ? recentAuthResult.status === 'approved'
       ? t('enrollmentDetail.recentActionApproved')
@@ -68,6 +74,9 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
     recentAuthResult?.completedAt,
   );
   useAccessibilityAnnouncement(inlineFeedback);
+  useAccessibilityAnnouncement(
+    noLongerActive ? t('enrollmentDetail.noLongerActiveTitle') : undefined,
+  );
 
   const enrollment = useMemo(() => {
     if (!targetId || !data) {
@@ -117,6 +126,7 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
     }
 
     setInlineFeedback(undefined);
+    setNoLongerActive(false);
     setIsCheckingPending(true);
     try {
       const checkedAt = new Date().toISOString();
@@ -152,7 +162,11 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
         initialAttempt: result.attempt,
       });
     } catch (error) {
-      setInlineFeedback(extractErrorMessage(error));
+      if (isAuthAttemptBindingFailed(error)) {
+        setNoLongerActive(true);
+      } else {
+        setInlineFeedback(extractErrorMessage(error));
+      }
     } finally {
       setIsCheckingPending(false);
     }
@@ -313,6 +327,48 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
         <View style={styles.feedbackBanner}>
           <Text style={styles.feedbackText}>{inlineFeedback}</Text>
         </View>
+      ) : null}
+
+      {noLongerActive ? (
+        <>
+          <View style={styles.unusableBanner} testID="ezkey.e2e.enrollmentDetail.noLongerActive">
+            <Text style={styles.unusableTitle}>{t('enrollmentDetail.noLongerActiveTitle')}</Text>
+            <Text style={styles.unusableBody}>{t('enrollmentDetail.noLongerActiveBody')}</Text>
+          </View>
+          <TouchableOpacity
+            testID="ezkey.e2e.enrollmentDetail.removeNoLongerActive"
+            style={styles.removeButton}
+            onPress={() =>
+              // Pull-only posture: the server cannot wipe the phone, so removal stays the
+              // person's decision, confirmed like the unusable-data path (MOB-015).
+              Alert.alert(
+                t('home.brokenRemoveConfirmTitle'),
+                t('home.brokenRemoveConfirmMessage', {
+                  name: resolvedIdentity.accountLabel ?? resolvedIdentity.heroTitle,
+                }),
+                [
+                  {text: t('home.brokenRemoveCancel'), style: 'cancel'},
+                  {
+                    text: t('home.brokenRowRemove'),
+                    style: 'destructive',
+                    onPress: async () => {
+                      try {
+                        await deleteEnrollment.mutateAsync(enrollment.id);
+                        navigation.popToTop();
+                      } catch (error) {
+                        console.warn('[EnrollmentDetail] Failed to remove inactive enrollment:', error);
+                      }
+                    },
+                  },
+                ],
+              )
+            }
+            disabled={deleteEnrollment.isPending}
+            accessibilityRole="button"
+            accessibilityLabel={t('enrollmentDetail.removeEnrollment')}>
+            <Text style={styles.removeLabel}>{t('enrollmentDetail.removeEnrollment')}</Text>
+          </TouchableOpacity>
+        </>
       ) : null}
 
       <TouchableOpacity
