@@ -235,7 +235,9 @@ public class ApiKeyController {
           "Admin {} attempted to create API key for integration {} without access",
           currentAdmin.getUsername(),
           request.integrationId());
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+      // Hide existence: missing and out-of-tenant share one 404 Problem
+      throw new org.ezkey.exception.ResourceNotFoundException(
+          "Integration", request.integrationId());
     }
 
     // Check rate limiting for admin operations
@@ -459,8 +461,8 @@ public class ApiKeyController {
                     schema = @Schema(implementation = ApiKeyResponseDto.class))),
         @ApiResponse(responseCode = "401", description = "Unauthorized - admin token required"),
         @ApiResponse(
-            responseCode = "403",
-            description = "Forbidden - no access to the integration's tenant")
+            responseCode = "404",
+            description = "Integration not found or not visible to this admin (hide-existence)")
       })
   public ResponseEntity<Page<ApiKeyResponseDto>> listApiKeys(
       @Parameter(description = "Integration ID", example = "123") @PathVariable("integrationId")
@@ -476,7 +478,8 @@ public class ApiKeyController {
 
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
     if (!accessControlService.canAccessIntegration(auth, integrationId)) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+      // Hide existence: missing and out-of-tenant share one 404 Problem
+      throw new org.ezkey.exception.ResourceNotFoundException("Integration", integrationId);
     }
 
     // When active is not provided, default to true (preserve previous behavior: active-only)

@@ -35,10 +35,11 @@ import org.junit.jupiter.api.TestMethodOrder;
  * Live probes for the 2026-09 tenant SQL isolation assessment.
  *
  * <p>These tests prove that Tenant Admin / Integration API key callers <b>cannot consume</b>
- * foreign-tenant rows (fail-closed authorization). For remediated findings (SQL-ISO-002,
- * SQL-ISO-004) they also lock hide-existence: a row that exists outside the caller's tenant and a
- * row that does not exist must share one client outcome. SQL-ISO-001 and SQL-ISO-003 still only
- * record their dialect in the log until they are remediated or dispositioned.
+ * foreign-tenant rows (fail-closed authorization), and they lock hide-existence for the remediated
+ * findings (SQL-ISO-001, SQL-ISO-002, SQL-ISO-004): a row that exists outside the caller's scope
+ * and a row that does not exist share one client outcome, HTTP 404. SQL-ISO-003 is suppressed
+ * (accepted posture: usernames are instance-global because login is); its test only keeps the
+ * rejection.
  *
  * <p>Register: {@code docs/java-tenant-sql-isolation-assessment-2026-09.md}.
  *

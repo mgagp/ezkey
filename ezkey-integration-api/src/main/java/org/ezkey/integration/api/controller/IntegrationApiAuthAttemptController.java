@@ -51,6 +51,7 @@ import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.exception.auth.AuthAttemptWaitValidationException;
 import org.ezkey.integration.api.config.ApiKeyRateLimitProperties;
 import org.ezkey.integration.api.constants.IntegrationApiAuditConstants;
+import org.ezkey.integration.api.security.AccessControlService;
 import org.ezkey.integration.api.security.RateLimitService;
 import org.ezkey.integration.api.util.AuditHelper;
 import org.ezkey.integration.domain.entity.Integration;
@@ -120,6 +121,7 @@ public class IntegrationApiAuthAttemptController {
   private final IntegrationRepository integrationRepository;
   private final AuditEntityFkResolver auditEntityFkResolver;
   private final ApiKeyRateLimitProperties rateLimitProperties;
+  private final AccessControlService accessControlService;
 
   /**
    * Constructs the Integration API auth attempt controller with required dependencies.
@@ -141,7 +143,8 @@ public class IntegrationApiAuthAttemptController {
       EnrollmentRepository enrollmentRepository,
       IntegrationRepository integrationRepository,
       AuditEntityFkResolver auditEntityFkResolver,
-      ApiKeyRateLimitProperties rateLimitProperties) {
+      ApiKeyRateLimitProperties rateLimitProperties,
+      AccessControlService accessControlService) {
     this.authAttemptService = authAttemptService;
     this.authAttemptMapper = authAttemptMapper;
     this.auditLogService = auditLogService;
@@ -150,6 +153,7 @@ public class IntegrationApiAuthAttemptController {
     this.integrationRepository = integrationRepository;
     this.auditEntityFkResolver = auditEntityFkResolver;
     this.rateLimitProperties = rateLimitProperties;
+    this.accessControlService = accessControlService;
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -402,13 +406,13 @@ public class IntegrationApiAuthAttemptController {
             content =
                 @Content(schema = @Schema(implementation = AuthAttemptWaitResponseDto.class))),
         @ApiResponse(
-            responseCode = "403",
-            description = "Auth attempt does not belong to this integration"),
-        @ApiResponse(responseCode = "404", description = "Auth attempt not found"),
+            responseCode = "404",
+            description =
+                "Auth attempt not found, or owned by another integration (hide-existence)"),
         @ApiResponse(responseCode = "429", description = "Rate limit exceeded"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
-  @PreAuthorize("@accessControlService.canAccessAuthAttempt(authentication, #id)")
+  @PreAuthorize("hasRole('API_KEY')")
   @GetMapping("/{id}/wait")
   public ResponseEntity<AuthAttemptWaitResponseDto> waitForResponse(
       @Parameter(description = "Auth attempt ID to wait for", example = "42") @PathVariable("id")
@@ -424,6 +428,7 @@ public class IntegrationApiAuthAttemptController {
           @RequestParam(value = "polling", defaultValue = "2")
           Integer pollingSeconds,
       HttpServletRequest httpRequest) {
+    requireOwnAuthAttempt(id);
 
     String apiKeyId = extractApiKeyId();
 
@@ -448,7 +453,8 @@ public class IntegrationApiAuthAttemptController {
       return ResponseEntity.ok(responseDto);
 
     } catch (ResourceNotFoundException e) {
-      return ResponseEntity.notFound().build();
+      // 404 Problem (resource/not-found) from the global handler, not an empty 404
+      throw e;
     } catch (AuthAttemptWaitValidationException e) {
       throw e;
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
@@ -485,21 +491,22 @@ public class IntegrationApiAuthAttemptController {
             responseCode = "200",
             description = "Auth attempt cancelled successfully (status EXPIRED)"),
         @ApiResponse(
-            responseCode = "403",
-            description = "Auth attempt does not belong to this integration"),
-        @ApiResponse(
             responseCode = "409",
             description = "Auth attempt already in final state (cannot be cancelled)"),
-        @ApiResponse(responseCode = "404", description = "Auth attempt not found"),
+        @ApiResponse(
+            responseCode = "404",
+            description =
+                "Auth attempt not found, or owned by another integration (hide-existence)"),
         @ApiResponse(responseCode = "429", description = "Rate limit exceeded"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
-  @PreAuthorize("@accessControlService.canAccessAuthAttempt(authentication, #id)")
+  @PreAuthorize("hasRole('API_KEY')")
   @PostMapping("/{id}/cancel")
   public ResponseEntity<AuthAttemptDto> cancel(
       @Parameter(description = "Auth attempt ID to cancel", example = "42") @PathVariable("id")
           Integer id,
       HttpServletRequest httpRequest) {
+    requireOwnAuthAttempt(id);
 
     ClientContext context = ClientContext.from(httpRequest);
     String apiKeyId = extractApiKeyId();
@@ -546,7 +553,7 @@ public class IntegrationApiAuthAttemptController {
               .integrationId(resolveIntegrationIdFromAuthAttempt(id))
               .errorMessage("Authentication attempt not found")
               .build());
-      return ResponseEntity.notFound().build();
+      throw e;
 
     } catch (AuthAttemptStateConflictException e) {
       auditLogService.log(
@@ -638,6 +645,24 @@ public class IntegrationApiAuthAttemptController {
       }
     }
     return null;
+  }
+
+  /**
+   * Object check for wait / cancel on one auth attempt.
+   *
+   * <p>A missing attempt and an attempt of another integration throw the same {@link
+   * ResourceNotFoundException} (HTTP 404 Problem {@code resource/not-found}): hide existence. This
+   * replaces a {@code @PreAuthorize} object check, which answered 403.
+   *
+   * @param id the auth attempt ID from the path
+   * @throws ResourceNotFoundException if the attempt does not exist or belongs to another
+   *     integration
+   */
+  private void requireOwnAuthAttempt(Integer id) {
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (!accessControlService.canAccessAuthAttempt(auth, id)) {
+      throw new ResourceNotFoundException("Authentication attempt", id);
+    }
   }
 
   /**

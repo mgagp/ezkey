@@ -45,7 +45,7 @@ docs {
   - **GlobalAdmin**: Can access any integration (any tenant)
   - **TenantAdmin**: Can only access integrations within their tenant
   - Access is validated via `AccessControlService.canAccessIntegration()`
-  - Returns 403 Forbidden if TenantAdmin tries to access integration from another tenant
+  - Returns 404 Not Found if TenantAdmin tries to access integration from another tenant (hide-existence: same 404 as an unknown id)
   
   **Path Parameters:**
   - `id` (required): Integration ID to retrieve
@@ -62,7 +62,6 @@ docs {
   **Status Codes:**
   - 200: Integration found
   - 401: Unauthorized - admin token required
-  - 403: Forbidden - TenantAdmin trying to access integration from another tenant
   - 404: Integration not found
   - 500: Internal server error
 }

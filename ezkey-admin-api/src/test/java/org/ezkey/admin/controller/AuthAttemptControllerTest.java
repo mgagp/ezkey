@@ -85,6 +85,7 @@ class AuthAttemptControllerTest {
   void setUp() {
     SecurityContextHolder.clearContext();
     lenient().when(integrationRepository.existsById(any())).thenReturn(true);
+    lenient().when(accessControlService.canAccessAuthAttempt(any(), any())).thenReturn(true);
     lenient().when(enrollmentRepository.existsById(any())).thenReturn(true);
     AuditEntityFkResolver auditEntityFkResolver =
         new AuditEntityFkResolver(integrationRepository, enrollmentRepository);
@@ -457,5 +458,19 @@ class AuthAttemptControllerTest {
                         .equals(auditLog.getErrorMessage())
                     && Integer.valueOf(123).equals(auditLog.getEnrollmentId())
                     && Integer.valueOf(456).equals(auditLog.getIntegrationId())));
+  }
+
+  @Test
+  @DisplayName("get / cancel / wait on a missing or foreign-tenant attempt answer the same 404")
+  void objectCheckDenyIsNotFoundForGetCancelAndWait() {
+    when(accessControlService.canAccessAuthAttempt(any(), eq(404))).thenReturn(false);
+
+    assertThrows(
+        org.ezkey.exception.ResourceNotFoundException.class, () -> controller.getById(404));
+    assertThrows(
+        org.ezkey.exception.ResourceNotFoundException.class, () -> controller.cancel(404, null));
+    assertThrows(
+        org.ezkey.exception.ResourceNotFoundException.class,
+        () -> controller.waitForResponse(404, 30, 2, null));
   }
 }

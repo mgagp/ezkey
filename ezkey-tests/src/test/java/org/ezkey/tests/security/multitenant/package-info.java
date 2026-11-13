@@ -58,7 +58,7 @@
  * <tr>
  * <td>GET /integrations/{B}</td>
  * <td>200 OK</td>
- * <td>403/404</td>
+ * <td>404</td>
  * <td>200 OK</td>
  * </tr>
  * <tr>
@@ -80,9 +80,9 @@
  * <p><b>P0 - Critical Isolation:</b>
  *
  * <ul>
- *   <li>TenantAdmin A cannot GET Integration B (403/404)
- *   <li>TenantAdmin A cannot GET API Key B (403/404)
- *   <li>TenantAdmin A cannot GET Enrollment B (403/404)
+ *   <li>TenantAdmin A cannot GET Integration B (404)
+ *   <li>TenantAdmin A cannot GET API Key B (404)
+ *   <li>TenantAdmin A cannot GET Enrollment B (404)
  *   <li>TenantAdmin A list endpoints show only Tenant A resources
  * </ul>
  *

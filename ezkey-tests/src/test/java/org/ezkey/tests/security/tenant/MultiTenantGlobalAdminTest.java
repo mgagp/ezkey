@@ -272,7 +272,7 @@ public class MultiTenantGlobalAdminTest extends AbstractSecurityTest {
             .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
             .get("/integrations/" + integrationToDeleteId);
 
-    assertThat(response.statusCode()).isIn(404, 403);
+    assertThat(response.statusCode()).isEqualTo(404);
   }
 
   // ============================================================================

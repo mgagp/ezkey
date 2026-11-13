@@ -55,7 +55,7 @@ docs {
   - **GlobalAdmin**: Can wait for any auth attempt (any tenant)
   - **TenantAdmin**: Can only wait for auth attempts for enrollments within their tenant
   - Access is validated via `AccessControlService.canAccessAuthAttempt()`
-  - Returns 403 Forbidden if TenantAdmin tries to wait for auth attempt from another tenant
+  - Returns 404 Not Found if TenantAdmin tries to wait for auth attempt from another tenant (hide-existence: same 404 as an unknown id)
   
   **Path Parameters:**
   - `id` (required): Authentication attempt ID to wait for
@@ -78,6 +78,5 @@ docs {
   - 404: Auth attempt not found
   - 400: Invalid parameters (timeout, polling)
   - 401: Unauthorized - admin token required
-  - 403: Forbidden - TenantAdmin trying to access auth attempt from another tenant
   - 500: Internal server error
 }

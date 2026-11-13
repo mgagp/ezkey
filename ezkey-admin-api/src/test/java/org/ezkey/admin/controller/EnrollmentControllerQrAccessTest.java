@@ -104,9 +104,10 @@ class EnrollmentControllerQrAccessTest {
   void getQrCode_whenAccessDenied_returns404WithoutLoadingEnrollment() {
     when(accessControlService.canAccessEnrollment(authentication, ENROLLMENT_ID)).thenReturn(false);
 
-    ResponseEntity<byte[]> response = enrollmentController.getQrCode(ENROLLMENT_ID);
-
-    assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+    // ResourceNotFoundException -> 404 Problem (admin/resource-not-found), not an empty 404
+    org.junit.jupiter.api.Assertions.assertThrows(
+        org.ezkey.exception.ResourceNotFoundException.class,
+        () -> enrollmentController.getQrCode(ENROLLMENT_ID));
     verify(enrollmentService, never()).getById(any());
   }
 

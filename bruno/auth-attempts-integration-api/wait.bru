@@ -107,8 +107,7 @@ docs {
   - 408: Timeout reached, attempt still pending
   - 400: Invalid parameters (timeout/polling out of range, polling >= timeout)
   - 401: Invalid or missing API key
-  - 403: Attempt does not belong to this integration
-  - 404: Auth attempt not found
+  - 404: Attempt not found, or owned by another integration (hide-existence: same 404 as an unknown id)
   - 429: Rate limit exceeded (200 requests per minute per integration key)
   - 500: Internal server error
 }

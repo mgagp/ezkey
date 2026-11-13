@@ -37,21 +37,22 @@ way as a missing `canAccess*` (enrollment QR) or a missing `GLOBAL_ADMIN` gate
   first is a regression (`ezkey-core/AGENTS.md` § Tenant scope of service loaders).
 - **Greenfield note:** if assigning authorities from scratch, issue only the two type
   roles (no umbrella). Isolation still is not a Spring role.
-- **Cross-tenant deny (hide existence):** get-by-id style reads (JSON, PNG QR,
-  onboarding artifacts) return **HTTP 404** with Problem type
-  `https://ezkey.io/problems/admin/resource-not-found` when the caller must not see
-  the row (foreign tenant or not found). Do not return 200 with a secret, and do not
-  404 with `authorization/access-denied` (that re-leaks). Do not prefer 403 for that
-  class of endpoint going forward. Enrollment QR already follows HTTP 404
-  (`canAccessEnrollment`). **Known debt (do not mass-change in a drive-by):** JSON
-  GET/PATCH/revoke on integrations, enrollments and auth attempts still often return
-  empty 403 on `canAccess*` false (for missing and foreign alike, so no oracle, but
-  not the target status). Future execution slices may peel those to 404; do not
-  document a deliberate JSON-403 vs mutate-404 split as the product story.
-  **Peeled 2026-11 (SQL-ISO-002/004/006):** every `/admins/{id}` route a Tenant Admin
-  can reach, API-key get/update/revoke, and auth-attempt create (enrollment or
-  integration) answer 404 for missing and foreign alike, always as the Problem
-  `admin/resource-not-found` (throw `ResourceNotFoundException`; no empty 404).
+- **Out-of-scope rows (hide existence) — settled 2026-11-13, no exception:** when a
+  request names a row by id and the caller must not see it (foreign tenant, or it
+  does not exist), answer **HTTP 404** with Problem type
+  `https://ezkey.io/problems/admin/resource-not-found`. Reads and mutations alike.
+  In code: `throw new ResourceNotFoundException("<Resource>", id)` on `canAccess*`
+  false. Never an empty `ResponseEntity.notFound()`, never 403, never 400 with a
+  message, and never 404 with `authorization/access-denied` (that re-leaks).
+  403 is for the function split (role may not call this class of endpoint) and for
+  guards on a row the caller can see (self-revocation, system integration).
+  Do not put the object check in `@PreAuthorize("@accessControlService...")`: a
+  failed SpEL check is a 403. Keep the role in the annotation and call the check in
+  the method body (see `AuthAttemptController.requireVisibleAuthAttempt`).
+  History: SQL-ISO-002/004/006 closed the real oracles; the remaining 403s were
+  peeled in the same campaign because Ezkey is alpha and contracts are made uniform
+  now. Global-Admin-only controllers (alerts, encryption keys, integrity jobs) still
+  return an empty 404 for a missing row; switch them to the Problem on touch.
 - **Same outcome means same audit row too:** a Tenant Admin reads their own tenant's
   audit log. When missing and foreign share an HTTP answer, the failure audit row
   (constant, `errorMessage`) must be the same as well, or the audit log becomes the

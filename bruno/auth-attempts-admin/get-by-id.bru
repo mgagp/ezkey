@@ -43,7 +43,7 @@ docs {
   - **GlobalAdmin**: Can access any auth attempt (any tenant)
   - **TenantAdmin**: Can only access auth attempts for enrollments within their tenant
   - Access is validated via `AccessControlService.canAccessAuthAttempt()`
-  - Returns 403 Forbidden if TenantAdmin tries to access auth attempt from another tenant
+  - Returns 404 Not Found if TenantAdmin tries to access auth attempt from another tenant (hide-existence: same 404 as an unknown id)
   
   **Path Parameters:**
   - `id` (required): Authentication attempt ID to retrieve
@@ -59,7 +59,6 @@ docs {
   **Status Codes:**
   - 200: Auth attempt found
   - 401: Unauthorized - admin token required
-  - 403: Forbidden - TenantAdmin trying to access auth attempt from another tenant
   - 404: Auth attempt not found
   - 500: Internal server error
 }

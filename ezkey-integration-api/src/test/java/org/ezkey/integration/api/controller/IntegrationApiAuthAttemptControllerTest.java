@@ -81,7 +81,11 @@ class IntegrationApiAuthAttemptControllerTest {
             enrollmentRepository,
             integrationRepository,
             auditEntityFkResolver,
-            new ApiKeyRateLimitProperties());
+            new ApiKeyRateLimitProperties(),
+            accessControlService);
+    org.mockito.Mockito.lenient()
+        .when(accessControlService.canAccessAuthAttempt(any(), any()))
+        .thenReturn(true);
   }
 
   @AfterEach
@@ -296,7 +300,8 @@ class IntegrationApiAuthAttemptControllerTest {
             enrollmentRepository,
             integrationRepository,
             new AuditEntityFkResolver(integrationRepository, enrollmentRepository),
-            properties);
+            properties,
+            accessControlService);
     setupApiKeyAuthentication(77);
     when(rateLimitService.canCreateAuthAttempt(any())).thenReturn(false);
     when(rateLimitService.canWaitAuthAttempt(any())).thenReturn(false);
@@ -323,6 +328,20 @@ class IntegrationApiAuthAttemptControllerTest {
     assertEquals("CANCEL_AUTH_ATTEMPT", cancelLimit.getOperation());
     assertEquals(9, cancelLimit.getLimit());
     assertEquals(6, cancelLimit.getWindowSizeMinutes());
+  }
+
+  @Test
+  @DisplayName("wait / cancel on a missing or foreign attempt answer the same 404, before any work")
+  void waitAndCancel_objectCheckDenyIsNotFound() {
+    setupApiKeyAuthentication(77);
+    when(accessControlService.canAccessAuthAttempt(any(), org.mockito.ArgumentMatchers.eq(404)))
+        .thenReturn(false);
+    HttpServletRequest request = new MockHttpServletRequest();
+
+    assertThrows(
+        ResourceNotFoundException.class, () -> controller.waitForResponse(404, 30, 2, request));
+    assertThrows(ResourceNotFoundException.class, () -> controller.cancel(404, request));
+    verify(authAttemptService, org.mockito.Mockito.never()).cancel(any());
   }
 
   private void setupApiKeyAuthentication(Integer integrationId) {

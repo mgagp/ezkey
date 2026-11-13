@@ -78,7 +78,6 @@ docs {
   - 200: Attempt cancelled successfully (status is now EXPIRED)
   - 400: Attempt is already in a final state (cannot be cancelled)
   - 401: Invalid or missing API key
-  - 403: Attempt does not belong to this integration
-  - 404: Auth attempt not found
+  - 404: Attempt not found, or owned by another integration (hide-existence: same 404 as an unknown id)
   - 500: Internal server error
 }

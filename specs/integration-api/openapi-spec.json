@@ -177,18 +177,8 @@
               }
             }
           },
-          "403": {
-            "description": "Auth attempt does not belong to this integration",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthAttemptWaitResponseDto"
-                }
-              }
-            }
-          },
           "404": {
-            "description": "Auth attempt not found",
+            "description": "Auth attempt not found, or owned by another integration (hide-existence)",
             "content": {
               "*/*": {
                 "schema": {
@@ -255,16 +245,6 @@
               }
             }
           },
-          "403": {
-            "description": "Auth attempt does not belong to this integration",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthAttemptDto"
-                }
-              }
-            }
-          },
           "409": {
             "description": "Auth attempt already in final state (cannot be cancelled)",
             "content": {
@@ -276,7 +256,7 @@
             }
           },
           "404": {
-            "description": "Auth attempt not found",
+            "description": "Auth attempt not found, or owned by another integration (hide-existence)",
             "content": {
               "*/*": {
                 "schema": {
