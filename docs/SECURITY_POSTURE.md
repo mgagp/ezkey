@@ -303,6 +303,14 @@ schedule, `workflow_dispatch` and any change to the CodeQL setup analyze every l
   Security/crypto fixes need **Christophe's** review; behavior changes need **Marc's** go;
   **no deploy**. (**2026-10-19**, Marc — triage without a bounded fix budget leaves the open
   stock growing.)
+- **Same Monday slot — Scorecard and Dependabot (2026-11-13, Marc):** the pass covers CodeQL,
+  OpenSSF Scorecard SARIF
+  ([`.github/workflows/scorecard.yml`](../.github/workflows/scorecard.yml)), and Dependabot
+  alerts. CodeQL keeps the budget above (**one fix PR per alert**, at most 3). Scorecard and
+  Dependabot alerts open **one grouped issue per rule** (one Scorecard check, or one GHSA
+  across every manifest), not one pull request per alert. Dependabot version-update pull
+  requests stay on the **09:14** curated pass. The grouped issue carries the five label groups
+  (lane, type, component, priority, status).
 - **Weekday light:** check for **new high/critical** alerts without waiting for Monday
   (same immediate-trigger table below).
 - Fred (hygiene bot) runs the weekly pass and proposes dispositions; Christophe
@@ -331,6 +339,7 @@ schedule, `workflow_dispatch` and any change to the CodeQL setup analyze every l
 | Critical/high on **non-deployed** code (CLI, PAM) | **30 days**, or mark experimental only if paired with a dated hardening issue (CLI [#802](https://github.com/mgagp/ezkey/issues/802); PAM [#818](https://github.com/mgagp/ezkey/issues/818), target 2026-11-13) |
 | Medium | **60 days** ([OpenSSF `vulnerabilities_fixed_60_days`](https://www.bestpractices.dev/en/criteria/0#vulnerabilities_fixed_60_days)) |
 | Low | **180 days** |
+| Dev / build tooling | **30 / 60 / 180 days** (critical or high / medium / low). Wait for the parent release. No override, except a CI job that holds secrets and processes untrusted input. At the deadline, `tolerable_risk` dated at most **90 days**. If the only fix is a major, `tolerable_risk` immediately, still dated |
 | False positive / won't-fix | Motivated dismissal at the **next triage** |
 
 ### Dependency alerts
@@ -338,7 +347,84 @@ schedule, `workflow_dispatch` and any change to the CodeQL setup analyze every l
 Dependabot alerts are triaged by what ships. Before dismissing or accepting a third-party
 vulnerability, check upstream, because the fix may already be on its way: see
 [`hygiene/dependabot/README.md`](../product-docs/global/hygiene/dependabot/README.md)
-§ *Check upstream before dismissing a vulnerability*.
+§ *Check upstream before dismissing a vulnerability*. Transitive overrides, the dev-tooling
+row above, and the dismissal line follow § *Transitive dependency overrides*.
+
+### Transitive dependency overrides
+
+**Principle (2026-11-13, Marc).** Rely on the upstream fix process and on a normal Dependabot
+parent bump. An override (`package.json` `overrides`, a parent `dependencyManagement` pin
+ahead of an imported BOM, or the same shape in another manifest) is a dated, temporary
+exception. It is never a permanent habit: a standing override becomes maintenance debt and
+drifts from upstream.
+
+**D** is first detection on `main` (same clock as rule 1 in this policy). Deployed,
+exposed code is the set in the immediate-trigger table (`admin-api`, `auth-api`,
+`integration-api`, `admin-ui`, `crypto-api`, `demo-app-acme`, Caddy).
+
+#### Decision matrix
+
+| Situation | Action | Override |
+|---|---|---|
+| Parent range already allows the fixed version | Refresh the lockfile or bump the parent | Never |
+| Deployed, advisory on the **CISA KEV** list | Override or mitigate now. Deadline **3 days** | Immediate |
+| Deployed critical or high, parent blocks the fix | Wait **7 days** for upstream, then meet the **14 day** SLA | Patch or minor, from **D+7** |
+| Deployed medium, parent blocks the fix | Wait **30 days**, then meet the **60 day** SLA | Patch or minor, from **D+30** |
+| Deployed low, parent blocks the fix | Wait **90 days**, then meet the **180 day** SLA | Patch or minor, from **D+90** |
+| Shipped, and the vulnerable path is shown to be unreachable | Dismiss `not_used`, plus an [osv-scanner](https://google.github.io/osv-scanner/configuration/) exception with `effectiveUntil` | No |
+| Dev or build tooling | Wait for the parent release until the dev-tooling SLA (**30 / 60 / 180 days**) | No, except a CI job that holds secrets and processes untrusted input. At the deadline, `tolerable_risk` for at most **90 days**. If the only fix is a major, `tolerable_risk` immediately, still dated |
+
+Medium and low findings on non-deployed product code (CLI, PAM) keep the **60 day** and
+**180 day** SLAs. No separate override window was set for them.
+
+Critical or high on non-deployed code (CLI, PAM) waits **21 days**. A patch or minor override
+is allowed from **D+21** when the path is reachable. Deadline **30 days**. An unreachable path
+uses the `not_used` row.
+
+#### Timeline
+
+| Class | Upstream wait | Override allowed | Deadline |
+|---|---|---|---|
+| KEV, deployed | 0 | Immediate | 3 days |
+| Critical or high, deployed and exposed | 7 days | From D+7 | 14 days |
+| Medium, deployed | 30 days | From D+30 | 60 days |
+| Low, deployed | 90 days | From D+90 | 180 days |
+| Critical or high, non-deployed (CLI, PAM) | 21 days | From D+21, when the path is reachable | 30 days |
+| Dev / build tooling | Until the deadline | No, except a CI job that holds secrets and processes untrusted input | 30 / 60 / 180 days |
+
+#### Override guardrails
+
+- Patch or minor only. A major stays on the Dependabot T4 path (Marc decides). Dev tooling
+  whose only fix is a major takes dated `tolerable_risk`, as in the matrix.
+- Every live override is one row under **Active overrides** in
+  [`../product-docs/global/hygiene/dependabot/README.md`](../product-docs/global/hygiene/dependabot/README.md).
+  Columns: GHSA, manifest, blocking parent, removal condition, expiry (at most **90 days**),
+  owner.
+- At most **5** overrides per manifest and **10** in the repo. SEC-019 pins count. Above
+  either cap, Marc decides. The Admin UI manifest is already at 6; the registry records that.
+- A CI warning when a row has no expiry, is past expiry, or crosses a cap is a follow-up.
+  This change does not add that check.
+- The repo has no osv-scanner config yet. The `not_used` row is the rule for the exception
+  file when that config is added. Adding the scanner is a follow-up.
+
+#### Dismissal reason
+
+One line:
+
+```text
+<Reason>: <fact path:line>; <why not exploitable or not deployed>; ref <triage YYYY-MM-DD / #NNN>
+```
+
+`Reason` is the GitHub dismissal (`not_used`, `tolerable_risk`, false positive, won't fix).
+The fact is a path and line a reviewer can open. The ref is the campaign-note date or the
+grouped issue number.
+
+**Sources:** [OWASP Top 10 2025 A03](https://owasp.org/Top10/2025/A03_2025-Software_Supply_Chain_Failures/)
+(software supply chain failures);
+[OpenSSF Concise Guide for Developing More Secure Software](https://best.openssf.org/Concise-Guide-for-Developing-More-Secure-Software);
+[About Dependabot security updates](https://docs.github.com/en/code-security/dependabot/dependabot-security-updates/about-dependabot-security-updates);
+[osv-scanner configuration](https://google.github.io/osv-scanner/configuration/);
+[Backstage `SECURITY.md`](https://github.com/backstage/backstage/blob/master/SECURITY.md).
 
 ### PAM / experimental components
 
@@ -379,6 +465,11 @@ there; direct XLSX URL 404 as of 2026-10-14);
   ([#815](https://github.com/mgagp/ezkey/issues/815)). Reason: replace the interim
   critical-7 / high-30 / medium-90 shorthand with exposure-aware SLAs aligned to
   CISA BOD 26-04 / SSVC risk factors while keeping lab-proportionate windows.
+- **2026-11-13 (Marc):** transitive fixes default to upstream and to a Dependabot parent bump.
+  An override is a dated exception (patch or minor, expiry at most 90 days) listed under
+  **Active overrides** in the Dependabot hygiene README. Monday 10:15 also covers Scorecard
+  and Dependabot alerts: one grouped issue per rule. Matrix and timeline:
+  § *Transitive dependency overrides*.
 - **2026-10-14 13:16 ET (Marc):** high-impact dismissals require Marc's explicit go;
   high-impact = critical/high on deployed exposed code. All other alerts: Fred
   proposes, Christophe decides and executes alone with a one-line reason

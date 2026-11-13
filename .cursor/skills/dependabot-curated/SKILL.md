@@ -239,7 +239,11 @@ Dependabot list as "Java is current."**
    the Caffeine pin when present; `postgresql.version` / `tomcat.version` were dropped with Boot
    4.1.2 — BOM manages those lines, see hygiene README + #1031 / #939). **Drop** an override when
    Boot has caught up. **Keep** it only when Ezkey is still intentionally ahead (CVE or
-   compatibility). Record the keep/drop table in the campaign note.
+   compatibility). Record the keep/drop table in the campaign note. On every Monday full, also
+   walk **Active overrides** in the Dependabot README (npm `overrides` and these pins), not only
+   after a Boot bump: expiry at most 90 days, removal condition, cap (5 per manifest, 10 total).
+   A row with no expiry, or past it, is that pass's question for Marc. New overrides follow
+   `docs/SECURITY_POSTURE.md` § *Transitive dependency overrides*.
 5. **Nested pin Dependabot typically misses:** `google-java-format.version` in the root
    `pom.xml` (Spotless `<googleJavaFormat>`). Check Maven Central in this same pulse — do
    **not** invent a weekly lot if unchanged. Bump only when Spotless itself moved, JDK
