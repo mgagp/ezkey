@@ -35,6 +35,7 @@ import {i18n} from '../../i18n';
 import {
   buildEnrollmentIdentityDisplay,
   buildHomeCardLabels,
+  findAmbiguousEnrollmentIds,
   identityDisplayCopy,
 } from '../../utils/enrollmentDisplay';
 
@@ -168,6 +169,11 @@ const buildDeleteMessage = (
     lines.push(t('dangerZone.installation', {value: installationLabel}));
   }
 
+  const addedAt = formatDateTime(enrollment.createdAt, i18n.language);
+  if (addedAt) {
+    lines.push(t('home.addedAt', {value: addedAt}));
+  }
+
   const lastActivity = formatDateTime(enrollment.lastActivityAt, i18n.language);
   if (lastActivity) {
     lines.push(t('dangerZone.lastActivity', {value: lastActivity}));
@@ -188,6 +194,8 @@ const buildDeleteMessage = (
 type DangerZoneEnrollmentRowProps = {
   item: EnrollmentMetadataRecord;
   isBroken: boolean;
+  /** Another row has the same labels: show the local enrollment date to tell them apart. */
+  showAddedAt: boolean;
   deletePending: boolean;
   onDelete: (enrollment: EnrollmentMetadataRecord) => void;
 };
@@ -198,11 +206,13 @@ type DangerZoneEnrollmentRowProps = {
 const DangerZoneEnrollmentRow = React.memo(function DangerZoneEnrollmentRow({
   item,
   isBroken,
+  showAddedAt,
   deletePending,
   onDelete,
 }: DangerZoneEnrollmentRowProps) {
   const styles = useStyles();
   const {t} = useTranslation();
+  const addedAt = showAddedAt ? formatDateTime(item.createdAt, i18n.language) : undefined;
 
   const handlePress = useCallback(() => {
     onDelete(item);
@@ -238,6 +248,9 @@ const DangerZoneEnrollmentRow = React.memo(function DangerZoneEnrollmentRow({
             .filter(Boolean)
             .join(' · ')}
         </Text>
+        {addedAt ? (
+          <Text style={styles.rowMeta}>{t('home.addedAt', {value: addedAt})}</Text>
+        ) : null}
         <Text
           style={[styles.rowRecency, wasRecentlyActive(item) && styles.rowRecencyRecent]}>
           {buildRecencyLabel(item, t)}
@@ -283,6 +296,15 @@ export const DangerZoneScreen: React.FC = () => {
         ...(data?.broken ?? []).map(item => item.metadata),
       ]),
     [data],
+  );
+  const ambiguousIds = useMemo(
+    () =>
+      findAmbiguousEnrollmentIds(
+        sortedEnrollments,
+        t('dangerZone.installationFallback'),
+        identityDisplayCopy(t),
+      ),
+    [sortedEnrollments, t],
   );
 
   const handleDelete = useCallback(
@@ -346,11 +368,12 @@ export const DangerZoneScreen: React.FC = () => {
       <DangerZoneEnrollmentRow
         item={item}
         isBroken={brokenIds.has(item.id)}
+        showAddedAt={ambiguousIds.has(item.id)}
         deletePending={deleteMutation.isPending}
         onDelete={handleDelete}
       />
     ),
-    [brokenIds, deleteMutation.isPending, handleDelete],
+    [ambiguousIds, brokenIds, deleteMutation.isPending, handleDelete],
   );
 
   if (isLoading) {
