@@ -452,21 +452,21 @@ version stayed at or above its advisory floor (`linkify-it` was already absent).
 
 ### Pins ahead of Boot / compatibility (outside the cap)
 
-`caffeine.version` is the remaining parent pin in this table. SEC-019 was the July 2026
-security-challenge set (PostgreSQL, Logback, Jackson, Tomcat; see
+`caffeine.version` in the root `pom.xml` is the remaining parent pin in this table. SEC-019
+was the July 2026 security-challenge set (PostgreSQL, Logback, Jackson, Tomcat; see
 [`docs/SECURITY_CHALLENGE_REPORT_2026-07.md`](../../../../docs/SECURITY_CHALLENGE_REPORT_2026-07.md)
 § SEC-019). PostgreSQL and Tomcat were dropped when Boot 4.1.2 already managed 42.7.14 and
-11.0.27 (#1031, #939). **2026-11-13 (Marc):** logback, Jackson 3, and Jackson 2 were removed.
-Boot 4.1.2 covers the original CVEs (CVE-2026-13006, CVE-2026-59889). No active GHSA or OSV
-advisory applies to the Boot-managed versions (logback 1.5.38, Jackson 3 3.1.7, Jackson 2
+11.0.27 (#1031, #939). **2026-11-13 (Marc):** logback, Jackson 3, and Jackson 2 were removed
+(#1349). Boot 4.1.2 covers the original CVEs (CVE-2026-13006, CVE-2026-59889). No active GHSA
+or OSV advisory applies to the Boot-managed versions (logback 1.5.38, Jackson 3 3.1.7, Jackson 2
 2.21.7). `caffeine.version` stays, as a compatibility pin.
 
 | Pin | GHSA | Blocking parent | Removal condition | Expiry | Status | Owner |
 |---|---|---|---|---|---|---|
-| `logback.version` (removed; was 1.6.6 on `logback-classic` / `logback-core`) | none | Spring Boot BOM 4.1.2 manages 1.5.38 | Boot 4.1.2 covers the original CVEs; no active GHSA or OSV advisory on the Boot-managed versions. | none | Removed (2026-11-13) | Marc, `0319fcd18` (2026-07-16) |
-| `jackson-bom.version` (removed; was 3.3.0 on `tools.jackson` `jackson-bom`, `jackson-databind`, and `jackson-core`) | none | Spring Boot BOM 4.1.2 manages 3.1.7 | Boot 4.1.2 covers the original CVEs; no active GHSA or OSV advisory on the Boot-managed versions. | none | Removed (2026-11-13) | Marc, `0319fcd18` (2026-07-16) |
-| `jackson-2-bom.version` (removed; was 2.23.0 on `com.fasterxml.jackson` `jackson-bom`, `jackson-databind` 2.23.0, and `jackson-annotations` 2.23) | none | Spring Boot BOM 4.1.2 manages 2.21.7 (`jackson-annotations` 2.21) | Boot 4.1.2 covers the original CVEs; no active GHSA or OSV advisory on the Boot-managed versions. | none | Removed (2026-11-13) | Marc, `0319fcd18` (2026-07-16) |
-| `caffeine.version` 3.3.1 | none | Compatibility pin for rate limiting (`cf4144f4b`, 2025-10-03). Pulse 2026-11-02: Boot managed 3.2.4 | Stays. Outside the cap. | none | Keep | Marc, `cf4144f4b` |
+| `logback.version` (removed; was 1.6.6 on `logback-classic` / `logback-core`) | none | Spring Boot BOM 4.1.2 manages 1.5.38 | Boot 4.1.2 covers the original CVEs; no active GHSA or OSV advisory on the Boot-managed versions. | none | Removed (#1349), 2026-11-13 | Marc, `0319fcd18` (2026-07-16) |
+| `jackson-bom.version` (removed; was 3.3.0 on `tools.jackson` `jackson-bom`, `jackson-databind`, and `jackson-core`) | none | Spring Boot BOM 4.1.2 manages 3.1.7 | Boot 4.1.2 covers the original CVEs; no active GHSA or OSV advisory on the Boot-managed versions. | none | Removed (#1349), 2026-11-13 | Marc, `0319fcd18` (2026-07-16) |
+| `jackson-2-bom.version` (removed; was 2.23.0 on `com.fasterxml.jackson` `jackson-bom`, `jackson-databind` 2.23.0, and `jackson-annotations` 2.23) | none | Spring Boot BOM 4.1.2 manages 2.21.7 (`jackson-annotations` 2.21) | Boot 4.1.2 covers the original CVEs; no active GHSA or OSV advisory on the Boot-managed versions. | none | Removed (#1349), 2026-11-13 | Marc, `0319fcd18` (2026-07-16) |
+| `caffeine.version` 3.3.1 | none | Compatibility pin for rate limiting (`cf4144f4b`, 2025-10-03). Pulse 2026-11-02: Boot managed 3.2.4 | Stays. Outside the cap. Reviewed 2026-11-13. | none | Keep | Marc, `cf4144f4b` |
 
 ## Related
 
