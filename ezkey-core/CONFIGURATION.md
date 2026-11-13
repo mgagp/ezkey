@@ -37,6 +37,10 @@ instance metadata. Applications that depend on ezkey-core declare these properti
 | `ezkey.organization.about-url` | `EZKEY_ORGANIZATION_ABOUT_URL` | *(null)* | optionnel |
 | `ezkey.qr.auth-base-url` | `EZKEY_QR_AUTH_BASE_URL` | *(null)* | requis [docker] |
 | `ezkey.enrollment.pending-expiration-days` | — | `7` | optionnel |
+| `ezkey.database.partition.scheduler.enabled` | — | `true` | optionnel |
+| `ezkey.database.partition.scheduler.cron` | — | `0 0 1 * * ?` | optionnel |
+| `ezkey.database.partition.scheduler.months-ahead` | — | `3` | optionnel |
+| `ezkey.database.partition.scheduler.startup-enabled` | — | `true` | optionnel |
 | `ezkey.core.crypto.rsa-key-size` | — | `2048` | optionnel |
 | `ezkey.core.auth-attempt.challenge-digits` | — | `2` | optionnel |
 | `ezkey.core.auth-attempt.ttl-seconds` | — | `120` | optionnel |
@@ -412,6 +416,23 @@ enrollments. Used only by Admin API.
 |---|---|---|---|---|
 | `ezkey.enrollment.pending-expiration-days` | `Integer` | `7` | optionnel | Days after creation before a pending enrollment expires when `POST /api/v1/enrollments` omits `expiresAt`. Use `0` to disable this default (explicit `expiresAt` on create still applies). |
 | `ezkey.enrollment.expired-cleanup-cron` | `String` | `0 0 1 * * ?` | optionnel | Cron expression for the job that marks expired enrollments and emits `ENROLLMENT_EXPIRED` events. |
+
+---
+
+### Partition scheduler (`ezkey.database.partition.scheduler.*`)
+
+**Description:** creates or verifies monthly partitions for `ezkey_auth_attempt` and `ezkey_audit_log`. Admin API only. Auth API and Integration API do not scan `org.ezkey.database`.
+
+**Defined in:** `PartitionSchedulerService` (`@Value`, not a `@ConfigurationProperties` type).
+
+The horizon is the current month on the platform clock (UTC in production) plus `months-ahead` future months. Only that selection uses the clock. The bounds sent to `create_monthly_partition` are a zone-less `LocalDateTime` and follow the JVM/JDBC session time zone. Startup and the daily job both cover that horizon. A failure records `PARTITION_CREATION` as `FAILED` in `ezkey_scheduled_job_last_run` and raises alert `PARTITION_CREATION_FAILED`. The next clean run resolves it with `PARTITION_HORIZON_RESTORED`. There is no DEFAULT partition: a default child would hide rows from month-based purge. `months-ahead` is clamped to 1–12. The daily job and startup share ShedLock name `DB_PARTITION_CREATION`.
+
+| Property | Type | Default | Obligation | Description |
+|---|---|---|---|---|
+| `ezkey.database.partition.scheduler.enabled` | `boolean` | `true` | optionnel | When false, the bean is not created. |
+| `ezkey.database.partition.scheduler.cron` | `string` | `0 0 1 * * ?` | optionnel | Spring cron for the daily pass. |
+| `ezkey.database.partition.scheduler.months-ahead` | `integer` | `3` | optionnel | Future months beyond the month selected by the platform clock (UTC in production). Bounds follow the JDBC session time zone. Clamped to 1–12. |
+| `ezkey.database.partition.scheduler.startup-enabled` | `boolean` | `true` | optionnel | When false, startup does not create partitions. The daily job still runs. |
 
 ---
 

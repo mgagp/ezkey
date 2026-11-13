@@ -38,5 +38,8 @@ public enum AlertResolutionReason {
    * Resolved after Global Admin reconciled an {@code AUDIT_INTEGRITY_RUPTURE} alert with a signed
    * {@code MANIPULATION_CONCILIATION} checkpoint.
    */
-  INTEGRITY_RUPTURE_CONCILIATED
+  INTEGRITY_RUPTURE_CONCILIATED,
+
+  /** Resolved automatically because a later partition run created the configured month horizon. */
+  PARTITION_HORIZON_RESTORED
 }

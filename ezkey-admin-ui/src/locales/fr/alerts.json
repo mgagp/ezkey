@@ -26,6 +26,7 @@
       "gapPending": "Checkpoint d'ancrage n°{{anchorCheckpointId}} · coupure ~{{gapMinutes}} min",
       "heartbeatStale": "{{phase}} · ancrage n°{{anchorCheckpointId}}",
       "integrityRupture": "{{entryCount}} entrée(s) + {{chainCount}} chaîne · {{gapCount}} trou(s) non déclaré(s)",
+      "partitionCreationFailed": "{{from}} à {{to}} · {{failedTargets}} table(s) mensuelle(s) non créée(s)",
       "unavailable": "—"
     },
     "emptyMessage": "Aucune alerte ne correspond aux filtres.",
@@ -40,6 +41,7 @@
     "breadcrumb": "Alertes",
     "cardDetails": "Détails",
     "cardPayload": "Charge utile",
+    "cardWhatHappened": "Ce qui s'est passé",
     "cardResolution": "Résolution",
     "labelId": "Id",
     "labelType": "Type",
@@ -51,6 +53,7 @@
     "labelLastSeenAt": "Dernière vue",
     "labelResolvedAt": "Résolue le",
     "labelResolvedBy": "Résolue par",
+    "resolvedByAutomatic": "Automatique",
     "labelResolutionReason": "Motif de résolution",
     "payloadEmpty": "Aucune charge utile.",
     "payloadRawHeading": "Charge utile brute",
@@ -88,6 +91,10 @@
         "ACKNOWLEDGED": "Concilié (invalidité connue)",
         "RE_TAMPER_SUSPECTED": "Modifié depuis la conciliation"
       }
+    },
+    "partitionCreation": {
+      "summary": "Mois : {{from}} à {{to}} · Tables non créées : {{failedTargets}} · Erreur : {{error}}",
+      "guidance": "Ezkey n'a pas pu créer d'avance les tables mensuelles qui reçoivent les tentatives d'authentification et le journal d'audit ({{from}} à {{to}}). Ezkey réessaie au démarrage de l'Admin API et chaque jour, et ferme automatiquement cette alerte après la prochaine exécution réussie. Si elle reste ouverte, consultez les journaux de l'Admin API et la permission de la base de données sur create_monthly_partition. Agissez avant le début du premier mois sans table : à partir de là, les nouvelles connexions échoueront et les événements d'audit de la période ne seront pas enregistrés."
     }
   },
   "reconcileDialog": {
@@ -107,6 +114,7 @@
     "GAP_DECLARED": "Coupure déclarée",
     "HEARTBEAT_RESTORED": "Battement rétabli",
     "INTEGRITY_RUPTURE_CONCILIATED": "Rupture d'intégrité conciliée",
+    "PARTITION_HORIZON_RESTORED": "Tables mensuelles créées (exécution suivante réussie)",
     "MANUAL": "Manuelle"
   },
   "heartbeatPhase": {
@@ -119,6 +127,7 @@
     "AUDIT_CHAIN_GAP_PENDING": "Chaîne d'audit — coupure non déclarée",
     "AUDIT_CHAIN_HEARTBEAT_STALE": "Chaîne d'audit — battement périmé",
     "AUDIT_INTEGRITY_RUPTURE": "Intégrité d'audit — rupture détectée",
-    "AUTH_ATTEMPT_REJECTED": "Demande d'authentification refusée par l'appareil"
+    "AUTH_ATTEMPT_REJECTED": "Demande d'authentification refusée par l'appareil",
+    "PARTITION_CREATION_FAILED": "Création des partitions mensuelles en échec"
   }
 }

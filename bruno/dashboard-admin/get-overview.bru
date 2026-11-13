@@ -76,7 +76,7 @@ docs {
   
   **Role-aware response:**
   - **Tenant Admin** (`tenantId` set): `integrations`, `enrollments`, `auth24h`, `recentActivity` are tenant-scoped. `alerts` is null or empty.
-  - **Global Admin** (`tenantId` null): Same structure with instance-wide counts; `alerts` is populated with the most recent OPEN alerts from the alerts subsystem (e.g. `AUDIT_CHAIN_GAP_PENDING` raised by the audit chain scheduler when it detects an undeclared gap).
+  - **Global Admin** (`tenantId` null): Same structure with instance-wide counts; `alerts` is populated with the most recent OPEN alerts from the alerts subsystem (e.g. `AUDIT_CHAIN_GAP_PENDING` raised by the audit chain scheduler when it detects an undeclared gap). `operationalJobs` includes `PARTITION_CREATION`. That row adds `partitionHorizon` `{ from, to, monthsAhead, failedTargets, targets }` parsed from the stored scope (`failedTargets` and `targets` are null on success). The UI uses those fields and does not show `lastErrorSummary` for this job (#1352).
   
   **Response (200 OK) — main sections:**
   - `integrations`: `{ total, active, retired }`

@@ -21,7 +21,7 @@ In a distributed deployment with multiple Admin API instances:
 | `checkAndRotate()` (`KEY_ROTATION`) | Daily 2 AM | Important | Short, transactional | 1 |
 | `processReencryptionBatches()` (`REENCRYPTION`) | Daily 3 AM | Important | Batch, transactional | 1 |
 | `purgeLifecycleEligibleAuditLogs()` (`AUDIT_LIFECYCLE_PURGE`) | Daily 2 AM | Maintenance | Short, transactional | 1 |
-| `createNextMonthPartitions()` (`DB_PARTITION_CREATION`) | Daily | Maintenance | DDL via SECURITY DEFINER | 1 |
+| `createNextMonthPartitions()` (`DB_PARTITION_CREATION`) | Daily, and once at startup | Maintenance | DDL via SECURITY DEFINER | 1 |
 | `cleanupExpiredTokens()` (`ADMIN_TOKEN_CLEANUP`) | Scheduled | Maintenance | Short | — |
 | Other Admin-scheduled jobs (`AUTH_ATTEMPT_EXPIRY`, `ENROLLMENT_EXPIRED_CLEANUP`, audit chain / integrity, …) | Varies | — | Each has `@SchedulerLock` | — |
 
@@ -31,7 +31,7 @@ In a distributed deployment with multiple Admin API instances:
 - All jobs are **idempotent** (can be safely retried without side effects)
 - Jobs do NOT require **leadership continuity** between executions
 
----
+Startup partition creation uses the same lock name `DB_PARTITION_CREATION` through `LockProvider` (not a second lock). If another Admin API instance holds it, startup skips and does not write a FAILED last-run row. The daily `@SchedulerLock` on `createNextMonthPartitions` is unchanged. If the lock store itself errors, startup still creates partitions because `create_monthly_partition` is idempotent.
 
 ## Decision: ShedLock (shipped)
 
