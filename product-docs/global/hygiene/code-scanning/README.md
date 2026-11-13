@@ -18,10 +18,9 @@ Use this folder for:
   § Code scanning policy.
 
 Do **not** use this folder for live DAST / API fuzzing — that stays in
-[`../security-pentest/`](../security-pentest/) (`security-pentest-curated`). Dependabot campaign
-notes stay in [`../dependabot/`](../dependabot/). Monday 10:15 still reads those alerts (one
-grouped issue per GHSA) and Scorecard SARIF (one grouped issue per check). The rule is
-[`docs/SECURITY_POSTURE.md`](../../../../docs/SECURITY_POSTURE.md) § Code scanning policy.
+[`../security-pentest/`](../security-pentest/) (`security-pentest-curated`). SCA companion tools
+stay out unless methodology explicitly merges lanes. Dependabot campaign notes stay in
+[`../dependabot/`](../dependabot/).
 
 ## Contents
 
@@ -34,12 +33,10 @@ grouped issue per GHSA) and Scorecard SARIF (one grouped issue per check). The r
 
 - **Monday 10:15 ET** weekly triage (Fred proposes, Christophe decides/executes).
 - **Same slot — remediation:** up to **3 real alerts/week** (severity then nearest SLA
-  deadline); one fix PR each via cloud agent for CodeQL. Security/crypto → Christophe review;
-  behavior change → Marc's go; **no deploy**. (**2026-10-19**, Marc.)
-- **2026-11-13 (Marc):** the same slot also covers Scorecard SARIF and Dependabot alerts. Those
-  open **one grouped issue per rule** (one Scorecard check, or one GHSA), not one PR per alert.
-  CodeQL keeps one fix PR per alert. Transitive-override matrix:
-  [`docs/SECURITY_POSTURE.md`](../../../../docs/SECURITY_POSTURE.md) § *Transitive dependency overrides*.
+  deadline); one fix PR each via cloud agent. Security/crypto → Christophe review; behavior
+  change → Marc's go; **no deploy**. (**2026-10-19**, Marc.)
+- **2026-11-13, proposed, not adopted:** extend this slot to Scorecard SARIF and Dependabot
+  alerts, one grouped issue per rule. Monday 10:15 stays CodeQL.
 - **Weekday light:** new high/critical alerts (do not wait for Monday).
 - **2026-10-19:** Monday slot moved from 09:17 ET to avoid Dependabot curated collision — see
   [`../README.md`](../README.md) § *Cadence & automation* and

@@ -303,14 +303,6 @@ schedule, `workflow_dispatch` and any change to the CodeQL setup analyze every l
   Security/crypto fixes need **Christophe's** review; behavior changes need **Marc's** go;
   **no deploy**. (**2026-10-19**, Marc — triage without a bounded fix budget leaves the open
   stock growing.)
-- **Same Monday slot — Scorecard and Dependabot (2026-11-13, Marc):** the pass covers CodeQL,
-  OpenSSF Scorecard SARIF
-  ([`.github/workflows/scorecard.yml`](../.github/workflows/scorecard.yml)), and Dependabot
-  alerts. CodeQL keeps the budget above (**one fix PR per alert**, at most 3). Scorecard and
-  Dependabot alerts open **one grouped issue per rule** (one Scorecard check, or one GHSA
-  across every manifest), not one pull request per alert. Dependabot version-update pull
-  requests stay on the **09:14** curated pass. The grouped issue carries the five label groups
-  (lane, type, component, priority, status).
 - **Weekday light:** check for **new high/critical** alerts without waiting for Monday
   (same immediate-trigger table below).
 - Fred (hygiene bot) runs the weekly pass and proposes dispositions; Christophe
@@ -417,7 +409,7 @@ One line:
 
 `Reason` is the GitHub dismissal (`not_used`, `tolerable_risk`, false positive, won't fix).
 The fact is a path and line a reviewer can open. The ref is the campaign-note date or the
-grouped issue number.
+issue number.
 
 **Sources:** [OWASP Top 10 2025 A03](https://owasp.org/Top10/2025/A03_2025-Software_Supply_Chain_Failures/)
 (software supply chain failures);
@@ -467,9 +459,11 @@ there; direct XLSX URL 404 as of 2026-10-14);
   CISA BOD 26-04 / SSVC risk factors while keeping lab-proportionate windows.
 - **2026-11-13 (Marc):** transitive fixes default to upstream and to a Dependabot parent bump.
   An override is a dated exception (patch or minor, expiry at most 90 days) listed under
-  **Active overrides** in the Dependabot hygiene README. Monday 10:15 also covers Scorecard
-  and Dependabot alerts: one grouped issue per rule. Matrix and timeline:
+  **Active overrides** in the Dependabot hygiene README. Matrix and timeline:
   § *Transitive dependency overrides*.
+- **2026-11-13, proposed, not adopted:** extend Monday 10:15 from CodeQL to Scorecard SARIF
+  and Dependabot alerts, one grouped issue per rule (one Scorecard check, or one GHSA).
+  Monday 10:15 stays CodeQL, one fix PR per alert.
 - **2026-10-14 13:16 ET (Marc):** high-impact dismissals require Marc's explicit go;
   high-impact = critical/high on deployed exposed code. All other alerts: Fred
   proposes, Christophe decides and executes alone with a one-line reason
