@@ -753,7 +753,8 @@ public class AdminProvisioningController {
 
       return ResponseEntity.ok(response);
     } catch (ResourceNotFoundException e) {
-      return ResponseEntity.notFound().build();
+      // Same 404 Problem (admin/resource-not-found) as every other get-by-id deny
+      throw e;
     } catch (IllegalArgumentException e) {
       return badRequest(
           httpRequest,
@@ -1259,7 +1260,8 @@ public class AdminProvisioningController {
       return ResponseEntity.ok().headers(headers).body(qrCodeImage);
 
     } catch (ResourceNotFoundException e) {
-      return ResponseEntity.notFound().build();
+      // Same 404 Problem (admin/resource-not-found) as every other get-by-id deny
+      throw e;
     } catch (IllegalArgumentException e) {
       return badRequest(
           httpRequest,

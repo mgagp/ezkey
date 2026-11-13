@@ -13,6 +13,7 @@ package org.ezkey.admin.controller;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -504,16 +505,13 @@ class ApiKeyControllerTest {
       Integer keyId = 999;
       when(apiKeyService.getApiKey(keyId)).thenReturn(Optional.empty());
 
-      // Act
-      ResponseEntity<ApiKeyResponseDto> response = controller.getApiKey(keyId);
-
-      // Assert
-      assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+      // Act + Assert: ResourceNotFoundException -> 404 Problem (admin/resource-not-found)
+      assertThrows(
+          org.ezkey.exception.ResourceNotFoundException.class, () -> controller.getApiKey(keyId));
     }
 
     @Test
-    @DisplayName(
-        "Foreign-tenant key answers like a missing key: 404, no body (SEC-023, SQL-ISO-006)")
+    @DisplayName("Foreign-tenant key answers like a missing key: same 404 (SEC-023, SQL-ISO-006)")
     void shouldAnswerForeignKeyLikeMissingKey() {
       Integer keyId = 42;
       ApiKey mockApiKey = createMockApiKey(keyId);
@@ -521,12 +519,21 @@ class ApiKeyControllerTest {
       when(accessControlService.canAccessIntegration(any(), eq(123))).thenReturn(false);
       when(apiKeyService.getApiKey(999)).thenReturn(Optional.empty());
 
-      ResponseEntity<ApiKeyResponseDto> foreign = controller.getApiKey(keyId);
-      ResponseEntity<ApiKeyResponseDto> missing = controller.getApiKey(999);
+      org.ezkey.exception.ResourceNotFoundException foreign =
+          assertThrows(
+              org.ezkey.exception.ResourceNotFoundException.class,
+              () -> controller.getApiKey(keyId));
+      org.ezkey.exception.ResourceNotFoundException missing =
+          assertThrows(
+              org.ezkey.exception.ResourceNotFoundException.class, () -> controller.getApiKey(999));
 
-      assertEquals(HttpStatus.NOT_FOUND, foreign.getStatusCode());
-      assertEquals(missing.getStatusCode(), foreign.getStatusCode());
-      assertEquals(missing.getBody(), foreign.getBody());
+      // Same exception type and wording; only the caller-supplied id differs
+      assertEquals(
+          new org.ezkey.exception.ResourceNotFoundException("API key", keyId).getMessage(),
+          foreign.getMessage());
+      assertEquals(
+          new org.ezkey.exception.ResourceNotFoundException("API key", 999).getMessage(),
+          missing.getMessage());
     }
   }
 
@@ -557,11 +564,10 @@ class ApiKeyControllerTest {
       Integer keyId = 999;
       when(apiKeyService.getApiKey(keyId)).thenReturn(Optional.empty());
 
-      // Act
-      ResponseEntity<Void> response = controller.revokeApiKey(keyId, null, httpServletRequest);
-
-      // Assert
-      assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+      // Act + Assert: ResourceNotFoundException -> 404 Problem (admin/resource-not-found)
+      assertThrows(
+          org.ezkey.exception.ResourceNotFoundException.class,
+          () -> controller.revokeApiKey(keyId, null, httpServletRequest));
       verify(apiKeyService, never()).revokeApiKey(anyInt(), any(EzkeyAdmin.class));
     }
 
@@ -573,11 +579,13 @@ class ApiKeyControllerTest {
       when(accessControlService.canAccessIntegration(any(), eq(123))).thenReturn(false);
       when(apiKeyService.getApiKey(999)).thenReturn(Optional.empty());
 
-      ResponseEntity<Void> foreign = controller.revokeApiKey(keyId, null, httpServletRequest);
-      ResponseEntity<Void> missing = controller.revokeApiKey(999, null, httpServletRequest);
+      assertThrows(
+          org.ezkey.exception.ResourceNotFoundException.class,
+          () -> controller.revokeApiKey(keyId, null, httpServletRequest));
+      assertThrows(
+          org.ezkey.exception.ResourceNotFoundException.class,
+          () -> controller.revokeApiKey(999, null, httpServletRequest));
 
-      assertEquals(HttpStatus.NOT_FOUND, foreign.getStatusCode());
-      assertEquals(missing.getStatusCode(), foreign.getStatusCode());
       verify(apiKeyService, never()).revokeApiKey(anyInt(), any(EzkeyAdmin.class));
       // Same audit row for both: a Tenant Admin can read their own tenant's audit log
       verify(auditLogService, times(2)).log(any());

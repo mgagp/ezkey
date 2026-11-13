@@ -140,6 +140,37 @@ class AuthAttemptControllerOwnershipTest {
   }
 
   @Test
+  @DisplayName("enrollmentId that is missing or in another tenant is 404, not 403")
+  void inaccessibleEnrollmentIsNotFound() {
+    setupAdminAuthentication();
+    when(accessControlService.canAccessEnrollment(any(), eq(500))).thenReturn(false);
+
+    AuthAttemptCreateRequestDto request =
+        new AuthAttemptCreateRequestDto(500, null, null, false, null, null);
+
+    assertThrows(ResourceNotFoundException.class, () -> controller.create(request, null));
+    verify(authAttemptService, never()).create(any());
+  }
+
+  @Test
+  @DisplayName("userIdentifier lookup on an integration that does not exist is 404 for any admin")
+  void userIdentifierLookupOnMissingIntegrationIsNotFound() {
+    Integer missingIntegrationId = 4040;
+    setupAdminAuthentication();
+    // Global Admin: canAccessIntegration answers true without an existence check
+    when(accessControlService.canAccessIntegration(any(), eq(missingIntegrationId)))
+        .thenReturn(true);
+    when(integrationRepository.existsById(missingIntegrationId)).thenReturn(false);
+
+    AuthAttemptCreateRequestDto request =
+        new AuthAttemptCreateRequestDto(null, "bob", missingIntegrationId, false, null, null);
+
+    assertThrows(ResourceNotFoundException.class, () -> controller.create(request, null));
+    verify(enrollmentRepository, never())
+        .findByIntegrationIdAndUserIdentifierAndStatusAndActive(any(), any(), any(), any());
+  }
+
+  @Test
   @DisplayName("userIdentifier miss on an accessible integration stays a 400 validation error")
   void userIdentifierMissOnAccessibleIntegrationStaysValidationError() {
     Integer ownIntegrationId = 12;

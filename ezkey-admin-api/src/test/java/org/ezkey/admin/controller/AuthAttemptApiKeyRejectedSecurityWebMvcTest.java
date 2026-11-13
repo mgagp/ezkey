@@ -83,7 +83,8 @@ class AuthAttemptApiKeyRejectedSecurityWebMvcTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(CREATE_BODY)
                 .with(user("admin").roles("ADMIN")))
-        .andExpect(status().isForbidden());
+        // Past the security layer: the mocked object check denies, answered as 404 (hide-existence)
+        .andExpect(status().isNotFound());
   }
 
   private static String basic(String username, String password) {

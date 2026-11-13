@@ -147,7 +147,10 @@ public class ApiKeyObjectAuthorizationSecurityTest extends AbstractSecurityTest 
         .as("Cross-tenant GET /api-keys/{keyId} must be denied as not found")
         .isEqualTo(404);
     assertThat(missing.getStatusCode()).isEqualTo(404);
-    assertThat(response.getBody().asString()).isEqualTo(missing.getBody().asString());
+    assertThat(response.jsonPath().getString("type"))
+        .isEqualTo("https://ezkey.io/problems/admin/resource-not-found");
+    assertThat(missing.jsonPath().getString("type"))
+        .isEqualTo(response.jsonPath().getString("type"));
   }
 
   @Test

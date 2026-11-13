@@ -452,10 +452,11 @@ Replayed on a clean-start stack built from the fix:
 | Route (Tenant Admin A) | Global Admin / other tenant | Missing |
 | --- | --- | --- |
 | `GET`, `PATCH /admins/{id}` | 404 `admin/resource-not-found` | same |
-| `GET /admins/{id}/onboarding`, `/onboarding/qrcode` | 404 empty | same |
+| `GET /admins/{id}/onboarding`, `/onboarding/qrcode` | 404 `admin/resource-not-found` | same |
 | `POST /admins/{id}/recovery-codes/regenerate`, `/issue-initial` | 404 `admin/resource-not-found` | same |
-| `GET`, `PATCH`, `DELETE /api-keys/{id}` | 404 empty | same |
+| `GET`, `PATCH`, `DELETE /api-keys/{id}` | 404 `admin/resource-not-found` | same |
 | `POST /auth-attempts` with `userIdentifier` + Tenant B `integrationId` | 404, for a hit and for a miss | 404 |
+| `POST /auth-attempts` with a Tenant B `enrollmentId` | 404 `admin/resource-not-found` (was 403) | same |
 
 Found while fixing, not in pass-1:
 
@@ -467,5 +468,13 @@ Found while fixing, not in pass-1:
 - `deactivate`, `activate` and `activation-code/regenerate` are Global Admin only and already
   answer 403 for any id: no oracle.
 
-Left as is: `GET /integrations/{id}`, `GET /enrollments/{id}` and Admin create Path 1 answer 403
-for missing and foreign alike. No oracle; 404 remains the target status for a later peel.
+**Posture 2026-11-13 (operator):** Ezkey is alpha with no production integrator, so contracts are
+made uniform now rather than preserved. Applied here: every deny in this PR is the same 404
+Problem (no empty 404, no 403 for "exists elsewhere"), Admin create answers 404 for a foreign or
+missing enrollment as well, and a Global Admin gets 404 (not a "no enrollment" 400) for an
+integration that does not exist.
+
+Left as is: `GET` / `PATCH /enrollments/{id}`, `GET /integrations/{id}` and its three bulk POSTs,
+create enrollment / API key on a foreign integration, and auth-attempt get / wait / cancel still
+answer 403 for missing and foreign alike. No oracle; 404 is the target status (CTRL-ROLE-003
+peel).

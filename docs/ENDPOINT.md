@@ -2274,10 +2274,9 @@ Content-Type: application/json
 
 **Status Codes:**
 - 201: Authentication attempt created successfully
-- 400: Invalid data (enrollment not found, etc.)
+- 400: Invalid data (missing identifier, unknown `userIdentifier` on an accessible integration, etc.)
 - 401: Unauthorized - authentication required
-- 403: Forbidden - access denied to enrollment
-- 404: `userIdentifier` + `integrationId` where the integration does not exist or is outside the caller's tenant (`admin/resource-not-found`, hide-existence). The check runs before the `userIdentifier` lookup, so a hit and a miss on a foreign integration cannot be told apart. On an accessible integration, an unknown `userIdentifier` stays 400.
+- 404: Enrollment or integration that does not exist or is outside the caller's tenant (`admin/resource-not-found`, hide-existence: same answer in both cases). With `userIdentifier`, the integration check runs before the lookup, so a hit and a miss on a foreign integration cannot be told apart. On an accessible integration, an unknown `userIdentifier` stays 400.
 - 500: Internal server error
 
 ---
