@@ -13,6 +13,7 @@ package org.ezkey.admin.controller;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -504,24 +505,35 @@ class ApiKeyControllerTest {
       Integer keyId = 999;
       when(apiKeyService.getApiKey(keyId)).thenReturn(Optional.empty());
 
-      // Act
-      ResponseEntity<ApiKeyResponseDto> response = controller.getApiKey(keyId);
-
-      // Assert
-      assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+      // Act + Assert: ResourceNotFoundException -> 404 Problem (admin/resource-not-found)
+      assertThrows(
+          org.ezkey.exception.ResourceNotFoundException.class, () -> controller.getApiKey(keyId));
     }
 
     @Test
-    @DisplayName("Should return 403 FORBIDDEN when integration access denied (SEC-023)")
-    void shouldReturnForbiddenWhenIntegrationAccessDenied() {
+    @DisplayName("Foreign-tenant key answers like a missing key: same 404 (SEC-023, SQL-ISO-006)")
+    void shouldAnswerForeignKeyLikeMissingKey() {
       Integer keyId = 42;
       ApiKey mockApiKey = createMockApiKey(keyId);
       when(apiKeyService.getApiKey(keyId)).thenReturn(Optional.of(mockApiKey));
       when(accessControlService.canAccessIntegration(any(), eq(123))).thenReturn(false);
+      when(apiKeyService.getApiKey(999)).thenReturn(Optional.empty());
 
-      ResponseEntity<ApiKeyResponseDto> response = controller.getApiKey(keyId);
+      org.ezkey.exception.ResourceNotFoundException foreign =
+          assertThrows(
+              org.ezkey.exception.ResourceNotFoundException.class,
+              () -> controller.getApiKey(keyId));
+      org.ezkey.exception.ResourceNotFoundException missing =
+          assertThrows(
+              org.ezkey.exception.ResourceNotFoundException.class, () -> controller.getApiKey(999));
 
-      assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+      // Same exception type and wording; only the caller-supplied id differs
+      assertEquals(
+          new org.ezkey.exception.ResourceNotFoundException("API key", keyId).getMessage(),
+          foreign.getMessage());
+      assertEquals(
+          new org.ezkey.exception.ResourceNotFoundException("API key", 999).getMessage(),
+          missing.getMessage());
     }
   }
 
@@ -552,25 +564,31 @@ class ApiKeyControllerTest {
       Integer keyId = 999;
       when(apiKeyService.getApiKey(keyId)).thenReturn(Optional.empty());
 
-      // Act
-      ResponseEntity<Void> response = controller.revokeApiKey(keyId, null, httpServletRequest);
-
-      // Assert
-      assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+      // Act + Assert: ResourceNotFoundException -> 404 Problem (admin/resource-not-found)
+      assertThrows(
+          org.ezkey.exception.ResourceNotFoundException.class,
+          () -> controller.revokeApiKey(keyId, null, httpServletRequest));
       verify(apiKeyService, never()).revokeApiKey(anyInt(), any(EzkeyAdmin.class));
     }
 
     @Test
-    @DisplayName("Should return 403 FORBIDDEN when integration access denied (SEC-022)")
-    void shouldReturnForbiddenWhenIntegrationAccessDenied() {
+    @DisplayName("Foreign-tenant key is not revoked and answers 404 like a missing key (SEC-022)")
+    void shouldAnswerForeignKeyLikeMissingKeyOnRevoke() {
       Integer keyId = 42;
       when(apiKeyService.getApiKey(keyId)).thenReturn(Optional.of(createMockApiKey(keyId)));
       when(accessControlService.canAccessIntegration(any(), eq(123))).thenReturn(false);
+      when(apiKeyService.getApiKey(999)).thenReturn(Optional.empty());
 
-      ResponseEntity<Void> response = controller.revokeApiKey(keyId, null, httpServletRequest);
+      assertThrows(
+          org.ezkey.exception.ResourceNotFoundException.class,
+          () -> controller.revokeApiKey(keyId, null, httpServletRequest));
+      assertThrows(
+          org.ezkey.exception.ResourceNotFoundException.class,
+          () -> controller.revokeApiKey(999, null, httpServletRequest));
 
-      assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
       verify(apiKeyService, never()).revokeApiKey(anyInt(), any(EzkeyAdmin.class));
+      // Same audit row for both: a Tenant Admin can read their own tenant's audit log
+      verify(auditLogService, times(2)).log(any());
     }
   }
 

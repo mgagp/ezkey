@@ -534,8 +534,10 @@ public class ApiKeyController {
             responseCode = "400",
             description =
                 "Invalid data, key revoked, or ipWhitelist validation failed (invalid CIDR)"),
-        @ApiResponse(responseCode = "403", description = "Access denied"),
-        @ApiResponse(responseCode = "404", description = "API key not found"),
+        @ApiResponse(
+            responseCode = "404",
+            description =
+                "API key not found, or not visible to this admin (other tenant; hide-existence)"),
         @ApiResponse(
             responseCode = "409",
             description = "Optimistic lock conflict - resource was modified, re-fetch and retry"),
@@ -556,8 +558,10 @@ public class ApiKeyController {
             ? currentAdmin.getTenant().getTenantId()
             : null;
 
+    // Hide existence: a missing key and a foreign-tenant key share one outcome, HTTP status and
+    // audit row included (a Tenant Admin can read their own tenant's audit log).
     Optional<ApiKey> existingOpt = apiKeyService.getApiKey(keyId);
-    if (existingOpt.isEmpty()) {
+    if (!isVisibleToCurrentAdmin(existingOpt, keyId)) {
       auditLogService.log(
           AuditHelper.createAdminAudit(
                   context,
@@ -568,14 +572,10 @@ public class ApiKeyController {
               .adminId(currentAdmin.getAdminId())
               .errorMessage("API key not found: " + keyId)
               .build());
-      return ResponseEntity.notFound().build();
+      throw new org.ezkey.exception.ResourceNotFoundException("API key", keyId);
     }
 
     ApiKey existing = existingOpt.get();
-    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-    if (!accessControlService.canAccessIntegration(auth, existing.getIntegration().getId())) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-    }
 
     // Check rate limiting for admin operations
     String adminId = currentAdmin.getUsername();
@@ -665,28 +665,46 @@ public class ApiKeyController {
                     schema = @Schema(implementation = ApiKeyResponseDto.class))),
         @ApiResponse(responseCode = "401", description = "Unauthorized - admin token required"),
         @ApiResponse(
-            responseCode = "403",
-            description = "Forbidden - no access to the API key's integration tenant"),
-        @ApiResponse(responseCode = "404", description = "API key not found")
+            responseCode = "404",
+            description =
+                "API key not found, or not visible to this admin (other tenant; hide-existence)")
       })
   public ResponseEntity<ApiKeyResponseDto> getApiKey(
       @Parameter(description = "API key ID", example = "42") @PathVariable("keyId") Integer keyId) {
 
     logger.debug("Retrieving API key: {}", keyId);
 
+    // Hide existence: a missing key and a foreign-tenant key share one 404
     Optional<ApiKey> apiKeyOpt = apiKeyService.getApiKey(keyId);
+    if (!isVisibleToCurrentAdmin(apiKeyOpt, keyId)) {
+      throw new org.ezkey.exception.ResourceNotFoundException("API key", keyId);
+    }
+
+    return ResponseEntity.ok(mapToResponseDto(apiKeyOpt.get()));
+  }
+
+  /**
+   * Object check for a loaded API key: present, and its integration is accessible to the current
+   * admin. Callers answer {@code false} by throwing {@code ResourceNotFoundException} (HTTP 404
+   * Problem {@code admin/resource-not-found}) so that a missing key and a foreign-tenant key cannot
+   * be told apart (hide existence). The reason is logged server-side only.
+   *
+   * @param apiKeyOpt the key loaded by ID ({@code ApiKeyService.getApiKey} is tenant-blind)
+   * @param keyId the requested key ID, for the log line
+   * @return true if the key exists and is visible to the current admin
+   */
+  private boolean isVisibleToCurrentAdmin(Optional<ApiKey> apiKeyOpt, Integer keyId) {
     if (apiKeyOpt.isEmpty()) {
       logger.warn("API key not found: {}", keyId);
-      return ResponseEntity.notFound().build();
+      return false;
     }
-
-    ApiKey apiKey = apiKeyOpt.get();
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-    if (!accessControlService.canAccessIntegration(auth, apiKey.getIntegration().getId())) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    if (!accessControlService.canAccessIntegration(
+        auth, apiKeyOpt.get().getIntegration().getId())) {
+      logger.warn("API key {} not visible to the requesting admin (answered as not found)", keyId);
+      return false;
     }
-
-    return ResponseEntity.ok(mapToResponseDto(apiKey));
+    return true;
   }
 
   /**
@@ -718,9 +736,9 @@ public class ApiKeyController {
         @ApiResponse(responseCode = "204", description = "API key revoked successfully"),
         @ApiResponse(responseCode = "401", description = "Unauthorized - admin token required"),
         @ApiResponse(
-            responseCode = "403",
-            description = "Forbidden - no access to the API key's integration tenant"),
-        @ApiResponse(responseCode = "404", description = "API key not found"),
+            responseCode = "404",
+            description =
+                "API key not found, or not visible to this admin (other tenant; hide-existence)"),
         @ApiResponse(
             responseCode = "429",
             description = "Too many revoke requests - rate limit exceeded")
@@ -745,9 +763,10 @@ public class ApiKeyController {
             ? currentAdmin.getTenant().getTenantId()
             : null;
 
+    // Hide existence: a missing key and a foreign-tenant key share one outcome, HTTP status and
+    // audit row included (a Tenant Admin can read their own tenant's audit log).
     Optional<ApiKey> existingOpt = apiKeyService.getApiKey(keyId);
-    if (existingOpt.isEmpty()) {
-      logger.warn("API key not found for revocation: {}", keyId);
+    if (!isVisibleToCurrentAdmin(existingOpt, keyId)) {
       auditLogService.log(
           AuditHelper.createAdminAudit(
                   context,
@@ -758,14 +777,10 @@ public class ApiKeyController {
               .adminId(currentAdmin.getAdminId())
               .errorMessage("API key not found: " + keyId)
               .build());
-      return ResponseEntity.notFound().build();
+      throw new org.ezkey.exception.ResourceNotFoundException("API key", keyId);
     }
 
     ApiKey existing = existingOpt.get();
-    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-    if (!accessControlService.canAccessIntegration(auth, existing.getIntegration().getId())) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-    }
 
     // Check rate limiting for admin operations
     String adminId = currentAdmin.getUsername();
@@ -803,7 +818,7 @@ public class ApiKeyController {
               .adminId(currentAdmin.getAdminId())
               .errorMessage("API key not found: " + keyId)
               .build());
-      return ResponseEntity.notFound().build();
+      throw new org.ezkey.exception.ResourceNotFoundException("API key", keyId);
     }
   }
 

@@ -44,10 +44,18 @@ way as a missing `canAccess*` (enrollment QR) or a missing `GLOBAL_ADMIN` gate
   404 with `authorization/access-denied` (that re-leaks). Do not prefer 403 for that
   class of endpoint going forward. Enrollment QR already follows HTTP 404
   (`canAccessEnrollment`). **Known debt (do not mass-change in a drive-by):** JSON
-  GET/PATCH/revoke still often return empty 403 on `canAccess*` false; API-key get
-  after load is 403 when foreign vs 404 when missing; admin GET foreign is 403,
-  onboarding/PATCH foreign is 400. Future execution slices may peel those to 404;
-  do not document a deliberate JSON-403 vs mutate-404 split as the product story.
+  GET/PATCH/revoke on integrations, enrollments and auth attempts still often return
+  empty 403 on `canAccess*` false (for missing and foreign alike, so no oracle, but
+  not the target status). Future execution slices may peel those to 404; do not
+  document a deliberate JSON-403 vs mutate-404 split as the product story.
+  **Peeled 2026-11 (SQL-ISO-002/004/006):** every `/admins/{id}` route a Tenant Admin
+  can reach, API-key get/update/revoke, and auth-attempt create (enrollment or
+  integration) answer 404 for missing and foreign alike, always as the Problem
+  `admin/resource-not-found` (throw `ResourceNotFoundException`; no empty 404).
+- **Same outcome means same audit row too:** a Tenant Admin reads their own tenant's
+  audit log. When missing and foreign share an HTTP answer, the failure audit row
+  (constant, `errorMessage`) must be the same as well, or the audit log becomes the
+  oracle. Keep the real reason in the server log.
 - **Object-check dialects:** three live styles; all can be tenant-correct. Do **not**
   add a fourth (an unscoped load like the old QR). `@PreAuthorize` spelling
   (`ADMIN` vs `GLOBAL_ADMIN` vs `ROLE_GLOBAL_ADMIN`) is noise, not a dialect.
@@ -63,7 +71,8 @@ way as a missing `canAccess*` (enrollment QR) or a missing `GLOBAL_ADMIN` gate
     `AdminPrincipal` and encodes tenant rules (admin provisioning /
     `getAdminOnboarding`). The controller must not skip that call. Do not invent
     `canAccessAdmin` solely for vocabulary. Foreign-admin deny should match
-    hide-existence 404 (today GET 403 / onboarding 400 is known debt).
+    hide-existence 404: `AdminProvisioningService.loadAdminVisibleTo` is the single
+    load-and-check for admin rows; use it instead of a new inline tenant compare.
 
 Do not drop an object check because the annotation looks precise. **Settled
 2026-08-20:** keep issuing `ROLE_ADMIN`. Do not remodel assignment or drop the

@@ -917,29 +917,49 @@ public class AdminProvisioningService {
    * @param adminId the administrator ID to retrieve
    * @param requesterPrincipal the principal of the requesting administrator
    * @return the administrator entity
-   * @throws ResourceNotFoundException if admin not found
-   * @throws IllegalArgumentException if requester does not have permission to access this admin
+   * @throws ResourceNotFoundException if the admin does not exist or is outside the requester's
+   *     tenant (same outcome on purpose: hide existence)
    */
   @Transactional(readOnly = true)
   public EzkeyAdmin getAdminById(Integer adminId, AdminPrincipal requesterPrincipal) {
+    EzkeyAdmin admin = loadAdminVisibleTo(adminId, requesterPrincipal);
+    loadAdminResponseAssociations(admin);
+    return admin;
+  }
+
+  /**
+   * Loads an administrator by ID and applies the tenant object check.
+   *
+   * <p>GlobalAdmin sees any admin. TenantAdmin sees only admins of their own tenant. A missing row
+   * and a row outside the requester's tenant (another tenant, or a Global Admin) throw the same
+   * {@link ResourceNotFoundException}, so the caller cannot tell them apart (hide existence).
+   *
+   * @param adminId the administrator ID to load
+   * @param requesterPrincipal the principal of the requesting administrator
+   * @return the administrator entity
+   * @throws ResourceNotFoundException if the admin does not exist or is not visible to the
+   *     requester
+   */
+  private EzkeyAdmin loadAdminVisibleTo(Integer adminId, AdminPrincipal requesterPrincipal) {
     EzkeyAdmin admin =
         adminRepository
             .findById(adminId)
             .orElseThrow(() -> new ResourceNotFoundException("Administrator", adminId));
 
     if (requesterPrincipal.isGlobalAdmin()) {
-      loadAdminResponseAssociations(admin);
       return admin;
     }
-    if (requesterPrincipal.isTenantAdmin()) {
-      Integer requesterTenantId = requesterPrincipal.tenantId();
-      Integer adminTenantId = admin.getTenant() != null ? admin.getTenant().getTenantId() : null;
-      if (requesterTenantId == null || !requesterTenantId.equals(adminTenantId)) {
-        throw new IllegalArgumentException(
-            "Tenant administrators can only access admins in their tenant");
-      }
+    Integer requesterTenantId = requesterPrincipal.tenantId();
+    Integer adminTenantId = admin.getTenant() != null ? admin.getTenant().getTenantId() : null;
+    if (!requesterPrincipal.isTenantAdmin()
+        || requesterTenantId == null
+        || !requesterTenantId.equals(adminTenantId)) {
+      logger.warn(
+          "Admin {} denied access to admin {} outside their tenant (answered as not found)",
+          requesterPrincipal.adminId(),
+          adminId);
+      throw new ResourceNotFoundException("Administrator", adminId);
     }
-    loadAdminResponseAssociations(admin);
     return admin;
   }
 
@@ -976,9 +996,8 @@ public class AdminProvisioningService {
    * @param adminId the administrator ID
    * @param requesterPrincipal the principal of the requesting administrator
    * @return OnboardingCredentialsResult with enrollment credentials and recovery codes
-   * @throws ResourceNotFoundException if admin not found
-   * @throws IllegalArgumentException if requester doesn't have permission to access these
-   *     credentials
+   * @throws ResourceNotFoundException if the admin does not exist or is outside the requester's
+   *     tenant (same outcome on purpose: hide existence)
    */
   @Transactional(readOnly = true)
   public OnboardingCredentialsResult getAdminOnboarding(
@@ -988,33 +1007,8 @@ public class AdminProvisioningService {
         adminId,
         requesterPrincipal.adminId());
 
-    // Get admin
-    EzkeyAdmin admin =
-        adminRepository
-            .findById(adminId)
-            .orElseThrow(() -> new ResourceNotFoundException("Admin", adminId));
-
-    // Validate authorization
-    if (requesterPrincipal.isGlobalAdmin()) {
-      // GlobalAdmin can access any admin's credentials
-      logger.debug("GlobalAdmin retrieving onboarding credentials for admin: {}", adminId);
-    } else if (requesterPrincipal.isTenantAdmin()) {
-      // TenantAdmin can only access credentials for admins in their tenant
-      Integer requesterTenantId = requesterPrincipal.tenantId();
-      Integer adminTenantId = admin.getTenant() != null ? admin.getTenant().getTenantId() : null;
-
-      if (!requesterTenantId.equals(adminTenantId)) {
-        throw new IllegalArgumentException(
-            "Tenant administrators can only access onboarding credentials for admins in their"
-                + " tenant");
-      }
-      logger.debug(
-          "TenantAdmin retrieving onboarding credentials for admin: {} in tenant: {}",
-          adminId,
-          requesterTenantId);
-    } else {
-      throw new IllegalArgumentException("Only administrators can retrieve onboarding credentials");
-    }
+    // Load + tenant object check: missing and out-of-tenant share one not-found outcome
+    EzkeyAdmin admin = loadAdminVisibleTo(adminId, requesterPrincipal);
 
     // Get enrollment
     if (admin.getEnrollment() == null) {
@@ -1242,8 +1236,9 @@ public class AdminProvisioningService {
    * @param adminId the administrator whose recovery codes should be regenerated
    * @param requesterPrincipal the principal performing the operation
    * @return result containing the target admin, new plain-text codes, and previous code count
-   * @throws ResourceNotFoundException if the target administrator does not exist
-   * @throws AccessDeniedException if the caller is outside the allowed scope
+   * @throws ResourceNotFoundException if the target administrator does not exist or is outside the
+   *     caller's tenant (same outcome on purpose: hide existence)
+   * @throws AccessDeniedException if the caller is not an administrator
    * @throws IllegalStateException if the target administrator is inactive
    */
   @Transactional
@@ -1273,25 +1268,10 @@ public class AdminProvisioningService {
 
   private EzkeyAdmin loadAdminAuthorizedForRecoveryCodeManagement(
       Integer adminId, AdminPrincipal requesterPrincipal) {
-    EzkeyAdmin admin =
-        adminRepository
-            .findById(adminId)
-            .orElseThrow(() -> new ResourceNotFoundException("Administrator", adminId));
-
-    if (requesterPrincipal.isGlobalAdmin()) {
-      logger.debug("GlobalAdmin managing recovery codes for admin {}", adminId);
-      return admin;
+    if (!requesterPrincipal.isGlobalAdmin() && !requesterPrincipal.isTenantAdmin()) {
+      throw new AccessDeniedException("Only administrators can manage recovery codes");
     }
-    if (requesterPrincipal.isTenantAdmin()) {
-      Integer requesterTenantId = requesterPrincipal.tenantId();
-      Integer adminTenantId = admin.getTenant() != null ? admin.getTenant().getTenantId() : null;
-      if (requesterTenantId == null || !requesterTenantId.equals(adminTenantId)) {
-        throw new AccessDeniedException(
-            "Tenant administrators can only manage recovery codes for admins in their tenant");
-      }
-      return admin;
-    }
-    throw new AccessDeniedException("Only administrators can manage recovery codes");
+    return loadAdminVisibleTo(adminId, requesterPrincipal);
   }
 
   private void validateRecoveryCodeManagementEligibility(EzkeyAdmin admin) {

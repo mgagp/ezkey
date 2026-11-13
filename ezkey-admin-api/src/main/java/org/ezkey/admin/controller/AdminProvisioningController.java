@@ -516,8 +516,12 @@ public class AdminProvisioningController {
               + "TenantAdmin can only access admins in their tenant.")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "Administrator retrieved successfully"),
-    @ApiResponse(responseCode = "403", description = "Forbidden - not authorized"),
-    @ApiResponse(responseCode = "404", description = "Administrator not found")
+    @ApiResponse(responseCode = "403", description = "Forbidden - caller is not an administrator"),
+    @ApiResponse(
+        responseCode = "404",
+        description =
+            "Administrator not found, or not visible to this admin (other tenant or Global Admin;"
+                + " hide-existence)")
   })
   public ResponseEntity<AdminResponseDto> getAdminById(
       @Parameter(description = "Administrator ID", example = "1") @PathVariable("id") Integer id,
@@ -527,14 +531,10 @@ public class AdminProvisioningController {
       return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 
-    try {
-      EzkeyAdmin admin = provisioningService.getAdminById(id, principal);
-      return ResponseEntity.ok(toAdminResponseDto(admin));
-    } catch (ResourceNotFoundException e) {
-      return ResponseEntity.notFound().build();
-    } catch (IllegalArgumentException e) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-    }
+    // Missing and out-of-tenant both throw ResourceNotFoundException -> 404 Problem
+    // (admin/resource-not-found) from the global handler. Do not map a deny to 403 here.
+    EzkeyAdmin admin = provisioningService.getAdminById(id, principal);
+    return ResponseEntity.ok(toAdminResponseDto(admin));
   }
 
   /**
@@ -753,7 +753,8 @@ public class AdminProvisioningController {
 
       return ResponseEntity.ok(response);
     } catch (ResourceNotFoundException e) {
-      return ResponseEntity.notFound().build();
+      // Same 404 Problem (admin/resource-not-found) as every other get-by-id deny
+      throw e;
     } catch (IllegalArgumentException e) {
       return badRequest(
           httpRequest,
@@ -1259,7 +1260,8 @@ public class AdminProvisioningController {
       return ResponseEntity.ok().headers(headers).body(qrCodeImage);
 
     } catch (ResourceNotFoundException e) {
-      return ResponseEntity.notFound().build();
+      // Same 404 Problem (admin/resource-not-found) as every other get-by-id deny
+      throw e;
     } catch (IllegalArgumentException e) {
       return badRequest(
           httpRequest,

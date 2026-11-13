@@ -41,7 +41,7 @@ docs {
   **Permissions:**
   - **GlobalAdmin**: Can generate QR codes for any admin
   - **TenantAdmin**: Can only generate QR codes for admins in their tenant
-  - **TenantAdmin for different tenant**: Returns 403 Forbidden
+  - **TenantAdmin for different tenant (or a Global Admin target)**: Returns 404 Not Found (hide-existence: same answer as an unknown id)
   
   **Path Parameters:**
   - `id` (required): Administrator ID to generate QR code for
@@ -63,8 +63,8 @@ docs {
   - 200: QR code generated successfully
   - 400: Bad request (e.g., enrollment missing proof token)
   - 401: Unauthorized - admin token required
-  - 403: Forbidden - not authorized to access this admin's credentials
-  - 404: Administrator or enrollment not found
+  - 403: Forbidden - caller is not an administrator
+  - 404: Administrator or enrollment not found, or administrator outside the caller's tenant (hide-existence: same answer as an unknown id)
   - 409: Enrollment is not `CREATED`; a device has bound it and the QR is no longer available
   - 500: Internal server error
   

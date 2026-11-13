@@ -2130,6 +2130,16 @@
               }
             }
           },
+          "404": {
+            "description": "Enrollment or integration does not exist or is not visible to this admin (hide-existence: same answer in both cases)",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
           "409": {
             "description": "Live attempt already exists (auth-attempt-pending-exists) or creation is suspended (auth-attempt-creation-cooldown). Retry-After is set.",
             "content": {
@@ -4143,18 +4153,8 @@
               }
             }
           },
-          "403": {
-            "description": "Forbidden - no access to the API key's integration tenant",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiKeyResponseDto"
-                }
-              }
-            }
-          },
           "404": {
-            "description": "API key not found",
+            "description": "API key not found, or not visible to this admin (other tenant; hide-existence)",
             "content": {
               "*/*": {
                 "schema": {
@@ -4203,11 +4203,8 @@
           "401": {
             "description": "Unauthorized - admin token required"
           },
-          "403": {
-            "description": "Forbidden - no access to the API key's integration tenant"
-          },
           "404": {
-            "description": "API key not found"
+            "description": "API key not found, or not visible to this admin (other tenant; hide-existence)"
           },
           "429": {
             "description": "Too many revoke requests - rate limit exceeded"
@@ -4265,18 +4262,8 @@
               }
             }
           },
-          "403": {
-            "description": "Access denied",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiKeyResponseDto"
-                }
-              }
-            }
-          },
           "404": {
-            "description": "API key not found",
+            "description": "API key not found, or not visible to this admin (other tenant; hide-existence)",
             "content": {
               "*/*": {
                 "schema": {
@@ -4344,7 +4331,7 @@
             }
           },
           "403": {
-            "description": "Forbidden - not authorized",
+            "description": "Forbidden - caller is not an administrator",
             "content": {
               "*/*": {
                 "schema": {
@@ -4354,7 +4341,7 @@
             }
           },
           "404": {
-            "description": "Administrator not found",
+            "description": "Administrator not found, or not visible to this admin (other tenant or Global Admin; hide-existence)",
             "content": {
               "*/*": {
                 "schema": {
@@ -11200,42 +11187,42 @@
   },
   "x-tagGroups": [
     {
-      "name": "Getting started",
       "tags": [
         "Public",
         "Admin Authentication"
-      ]
+      ],
+      "name": "Getting started"
     },
     {
-      "name": "Tenant and integration setup",
       "tags": [
         "Tenants",
         "Integrations",
         "Enrollments",
         "API Keys"
-      ]
+      ],
+      "name": "Tenant and integration setup"
     },
     {
-      "name": "MFA operations",
       "tags": [
         "Auth Attempts",
         "Admin Enrollment Management"
-      ]
+      ],
+      "name": "MFA operations"
     },
     {
-      "name": "Administration",
       "tags": [
         "Administrator Provisioning"
-      ]
+      ],
+      "name": "Administration"
     },
     {
-      "name": "Platform operations",
       "tags": [
         "Audit Logs",
         "Encryption Keys",
         "Alerts",
         "Dashboard"
-      ]
+      ],
+      "name": "Platform operations"
     }
   ]
 }

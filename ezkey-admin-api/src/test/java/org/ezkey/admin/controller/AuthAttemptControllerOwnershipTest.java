@@ -10,9 +10,12 @@
 
 package org.ezkey.admin.controller;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.OffsetDateTime;
@@ -27,6 +30,8 @@ import org.ezkey.authattempt.dto.AuthAttemptCreateResponseDto;
 import org.ezkey.authattempt.mapper.AuthAttemptAdminApiMapper;
 import org.ezkey.authattempt.service.AuthAttemptService;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.exception.auth.AuthAttemptCreateValidationException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -109,6 +114,77 @@ class AuthAttemptControllerOwnershipTest {
     ResponseEntity<?> response = controller.create(request, null);
 
     assert response.getStatusCode() == HttpStatus.CREATED;
+  }
+
+  @Test
+  @DisplayName("userIdentifier lookup on an inaccessible integration is 404 and never runs the SQL")
+  void userIdentifierLookupOnInaccessibleIntegrationIsNotFoundWithoutSql() {
+    Integer foreignIntegrationId = 77;
+    setupAdminAuthentication();
+    when(accessControlService.canAccessIntegration(any(), eq(foreignIntegrationId)))
+        .thenReturn(false);
+
+    // Path 2 (userIdentifier only) and Path 3 (enrollmentId + userIdentifier)
+    AuthAttemptCreateRequestDto path2 =
+        new AuthAttemptCreateRequestDto(null, "bob", foreignIntegrationId, false, null, null);
+    AuthAttemptCreateRequestDto path3 =
+        new AuthAttemptCreateRequestDto(100, "bob", foreignIntegrationId, false, null, null);
+
+    assertThrows(ResourceNotFoundException.class, () -> controller.create(path2, null));
+    assertThrows(ResourceNotFoundException.class, () -> controller.create(path3, null));
+
+    // SQL-ISO-004: hit vs miss of the foreign integration must never be computed
+    verify(enrollmentRepository, never())
+        .findByIntegrationIdAndUserIdentifierAndStatusAndActive(any(), any(), any(), any());
+    verify(authAttemptService, never()).create(any());
+  }
+
+  @Test
+  @DisplayName("enrollmentId that is missing or in another tenant is 404, not 403")
+  void inaccessibleEnrollmentIsNotFound() {
+    setupAdminAuthentication();
+    when(accessControlService.canAccessEnrollment(any(), eq(500))).thenReturn(false);
+
+    AuthAttemptCreateRequestDto request =
+        new AuthAttemptCreateRequestDto(500, null, null, false, null, null);
+
+    assertThrows(ResourceNotFoundException.class, () -> controller.create(request, null));
+    verify(authAttemptService, never()).create(any());
+  }
+
+  @Test
+  @DisplayName("userIdentifier lookup on an integration that does not exist is 404 for any admin")
+  void userIdentifierLookupOnMissingIntegrationIsNotFound() {
+    Integer missingIntegrationId = 4040;
+    setupAdminAuthentication();
+    // Global Admin: canAccessIntegration answers true without an existence check
+    when(accessControlService.canAccessIntegration(any(), eq(missingIntegrationId)))
+        .thenReturn(true);
+    when(integrationRepository.existsById(missingIntegrationId)).thenReturn(false);
+
+    AuthAttemptCreateRequestDto request =
+        new AuthAttemptCreateRequestDto(null, "bob", missingIntegrationId, false, null, null);
+
+    assertThrows(ResourceNotFoundException.class, () -> controller.create(request, null));
+    verify(enrollmentRepository, never())
+        .findByIntegrationIdAndUserIdentifierAndStatusAndActive(any(), any(), any(), any());
+  }
+
+  @Test
+  @DisplayName("userIdentifier miss on an accessible integration stays a 400 validation error")
+  void userIdentifierMissOnAccessibleIntegrationStaysValidationError() {
+    Integer ownIntegrationId = 12;
+    setupAdminAuthentication();
+    when(accessControlService.canAccessIntegration(any(), eq(ownIntegrationId))).thenReturn(true);
+    when(enrollmentRepository.findByIntegrationIdAndUserIdentifierAndStatusAndActive(
+            eq(ownIntegrationId), eq("nobody"), any(), any()))
+        .thenReturn(List.of());
+
+    AuthAttemptCreateRequestDto request =
+        new AuthAttemptCreateRequestDto(null, "nobody", ownIntegrationId, false, null, null);
+
+    assertThrows(
+        AuthAttemptCreateValidationException.class, () -> controller.create(request, null));
   }
 
   private void setupAdminAuthentication() {

@@ -125,16 +125,16 @@ dynamic evidence.
 | ID | Title | Severity | Confidence | Quick win |
 | --- | --- | --- | --- | --- |
 | SQL-ISO-001 | Integration API unscoped `enrollmentRepository.findById` + distinct Problem details (missing vs other-integration) | P2 | Confirmed | **fix authorized** 2026-09-15 — [`HANDOFF-SQL-ISO-001-integration-api-enrollment-oracle.md`](../product-docs/global/backlog/handoffs/HANDOFF-SQL-ISO-001-integration-api-enrollment-oracle.md) |
-| SQL-ISO-002 | Admin `getAdminById` unscoped `findById` then 404 vs 403 (Global Admin existence) | P2 | Confirmed | **fix authorized** 2026-09-15 — [`HANDOFF-SQL-ISO-002-admin-get-by-id-existence-oracle.md`](../product-docs/global/backlog/handoffs/HANDOFF-SQL-ISO-002-admin-get-by-id-existence-oracle.md) |
+| SQL-ISO-002 | Admin `getAdminById` unscoped `findById` then 404 vs 403 (Global Admin existence) | P2 | Confirmed | **closed** 2026-11-13 — every `/admins/{id}` route answers 404 for missing and out-of-tenant alike (`AdminProvisioningService.loadAdminVisibleTo`) |
 | SQL-ISO-003 | `existsByUsername` / `existsByEmail` instance-global; Tenant Admin peer-create identity oracle | P2 | Confirmed | **fix authorized** 2026-09-15 — [`HANDOFF-SQL-ISO-003-tenant-admin-username-email-oracle.md`](../product-docs/global/backlog/handoffs/HANDOFF-SQL-ISO-003-tenant-admin-username-email-oracle.md) |
-| SQL-ISO-004 | Admin auth-attempt create Path 2/3 looks up `userIdentifier` by **request** `integrationId` before ACS | P2 | Confirmed (static) | **fix authorized** 2026-09-15 — [`HANDOFF-SQL-ISO-004-admin-auth-attempt-useridentifier-oracle.md`](../product-docs/global/backlog/handoffs/HANDOFF-SQL-ISO-004-admin-auth-attempt-useridentifier-oracle.md) |
+| SQL-ISO-004 | Admin auth-attempt create Path 2/3 looks up `userIdentifier` by **request** `integrationId` before ACS | P2 | Confirmed (static) | **closed** 2026-11-13 — `canAccessIntegration` runs before the `userIdentifier` lookup; missing and foreign integration share 404 |
 | SQL-ISO-005 | Core `findById` / `findAll` / `revokeKey` remain unscoped; isolation is caller discipline | P2 | Confirmed residual | **closed** 2026-11-13 — contract in `ezkey-core/AGENTS.md` § Tenant scope of service loaders, pointer in `ezkey-admin-api/AGENTS.md`, Javadoc on the loaders |
 
 ### Category 2 — noted, not in this HITL lot
 
 | ID | Title | Why noted only |
 | --- | --- | --- |
-| SQL-ISO-006 | API-key GET 404 (missing) vs 403 (foreign) after `getApiKey(id)` | Same dialect class as CTRL-ROLE-003 / SEC-023 read; revoke itself is closed (SEC-022). Fold into 003 peels. |
+| SQL-ISO-006 | API-key GET 404 (missing) vs 403 (foreign) after `getApiKey(id)` | **Closed 2026-11-13** with SQL-ISO-002: get, update and revoke answer 404 for missing and foreign alike, same audit row. |
 | SQL-ISO-007 | `existsByDevicePublicKeyHash` is instance-global | Product anti-hijack (one device key, one verified enrollment). Client error is generic. Not an HTTP oracle of another tenant's key. |
 | SQL-ISO-008 | Native UPDATE/lock SQL without `tenant_id` | Schedulers and re-encryption are instance jobs (Global Admin / internal). Not a Tenant Admin query path. |
 | — | CTRL-ROLE-001 QR | Closed; Auth bind remains token-gated. |
@@ -269,8 +269,7 @@ than treated as generic 403/404 noise.
 Do not return 403 for foreign-or-missing. Tests: TA GET GA id and TA GET unused id share 404;
 TA GET own peer remains 200. Out of GO: dropping global unique usernames; changing list SQL.
 
-**HITL 2026-09-15:** operator **GO** (`fix`). Implementation not started. Handoff:
-[`HANDOFF-SQL-ISO-002-admin-get-by-id-existence-oracle.md`](../product-docs/global/backlog/handoffs/HANDOFF-SQL-ISO-002-admin-get-by-id-existence-oracle.md).
+**HITL 2026-09-15:** operator **GO** (`fix`). **Closed 2026-11-13** (see §11, closure). Scope at HITL:
 Authorized: Tenant Admin missing / other-tenant / GA share 404; PATCH foreign follows;
 onboarding 400 is a related peel, not required in this slice.
 
@@ -331,8 +330,7 @@ on a foreign integration → ACS 403. That pair is a cross-tenant
 missing → 404). Only then run the userIdentifier SQL. Align empty and unauthorized to the same
 client outcome. Out of GO: changing userIdentifier uniqueness rules.
 
-**HITL 2026-09-15:** operator **GO** (`fix`). Implementation not started. Handoff:
-[`HANDOFF-SQL-ISO-004-admin-auth-attempt-useridentifier-oracle.md`](../product-docs/global/backlog/handoffs/HANDOFF-SQL-ISO-004-admin-auth-attempt-useridentifier-oracle.md).
+**HITL 2026-09-15:** operator **GO** (`fix`). **Closed 2026-11-13** (see §11, closure). Scope at HITL:
 Authorized: ACS-first on request `integrationId`; Tenant Admin missing/foreign share 404;
 own-integration empty may stay 400. No live probe in pass-1; implementing session adds it.
 
@@ -446,3 +444,37 @@ foreign and missing ids; Admin create Path 1 answers 403 for both.
 SQL-ISO-003 is **back to the operator** before any code. Agent recommendation: `suppress`.
 Usernames and emails are instance-global because login is; a generic 400 still differs from
 201, so the oracle survives the fix while the operator loses a useful message.
+
+### Closure 2026-11-13 — Admin API (SQL-ISO-002, SQL-ISO-004, SQL-ISO-006)
+
+Replayed on a clean-start stack built from the fix:
+
+| Route (Tenant Admin A) | Global Admin / other tenant | Missing |
+| --- | --- | --- |
+| `GET`, `PATCH /admins/{id}` | 404 `admin/resource-not-found` | same |
+| `GET /admins/{id}/onboarding`, `/onboarding/qrcode` | 404 `admin/resource-not-found` | same |
+| `POST /admins/{id}/recovery-codes/regenerate`, `/issue-initial` | 404 `admin/resource-not-found` | same |
+| `GET`, `PATCH`, `DELETE /api-keys/{id}` | 404 `admin/resource-not-found` | same |
+| `POST /auth-attempts` with `userIdentifier` + Tenant B `integrationId` | 404, for a hit and for a miss | 404 |
+| `POST /auth-attempts` with a Tenant B `enrollmentId` | 404 `admin/resource-not-found` (was 403) | same |
+
+Found while fixing, not in pass-1:
+
+- The recovery-code POSTs had the same split (403 vs 404). Fixed with the rest.
+- **The audit log was a second channel.** A Tenant Admin reads their own tenant's audit log, and
+  the failure rows differed between missing and foreign (different `errorMessage`, or a row in one
+  case and none in the other). Both cases now write the same row. Rule recorded in
+  `ezkey-admin-api/AGENTS.md`.
+- `deactivate`, `activate` and `activation-code/regenerate` are Global Admin only and already
+  answer 403 for any id: no oracle.
+
+**Posture 2026-11-13 (operator):** Ezkey is alpha with no production integrator, so contracts are
+made uniform now rather than preserved. Applied here: every deny in this PR is the same 404
+Problem (no empty 404, no 403 for "exists elsewhere"), Admin create answers 404 for a foreign or
+missing enrollment as well, and a Global Admin gets 404 (not a "no enrollment" 400) for an
+integration that does not exist.
+
+Left as is: `GET` / `PATCH /enrollments/{id}`, `GET /integrations/{id}` and its three bulk POSTs,
+create enrollment / API key on a foreign integration, and auth-attempt get / wait / cancel still
+answer 403 for missing and foreign alike. No oracle; 404 is the target status (CTRL-ROLE-003
+peel).

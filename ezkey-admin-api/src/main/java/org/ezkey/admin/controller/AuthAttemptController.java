@@ -334,6 +334,12 @@ public class AuthAttemptController {
         @ApiResponse(responseCode = "201", description = "Auth attempt created successfully"),
         @ApiResponse(responseCode = "400", description = "Invalid data"),
         @ApiResponse(
+            responseCode = "404",
+            description =
+                "Enrollment or integration does not exist or is not visible to this admin"
+                    + " (hide-existence: same answer in both cases)",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+        @ApiResponse(
             responseCode = "409",
             description =
                 "Live attempt already exists (auth-attempt-pending-exists) or creation is"
@@ -353,6 +359,28 @@ public class AuthAttemptController {
     AdminPrincipal principal =
         auth != null ? AdminProvisioningService.extractAdminPrincipal(auth) : null;
     Integer adminIdForAudit = principal != null ? principal.adminId() : null;
+
+    // userIdentifier lookups run on the request integrationId. Check the object first, so the
+    // lookup result (hit vs miss) of a foreign integration never reaches the caller (SQL-ISO-004).
+    boolean userIdentifierLookup =
+        request.userIdentifier() != null && !request.userIdentifier().isBlank();
+    if (userIdentifierLookup
+        && request.integrationId() != null
+        && (!accessControlService.canAccessIntegration(auth, request.integrationId())
+            || !integrationRepository.existsById(request.integrationId()))) {
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.AUTH_ATTEMPT_CREATED,
+                  AdminAuditConstants.AUTH_ATTEMPT_CREATION_FAILED)
+              .eventStatus(EventStatus.FAILURE)
+              .adminId(adminIdForAudit)
+              .errorMessage("Integration not found or not accessible: " + request.integrationId())
+              .build());
+      // Hide existence: missing and foreign integrations share one 404. A Global Admin gets the
+      // same 404 for an integration that does not exist (not a misleading "no enrollment" 400).
+      throw new ResourceNotFoundException("Integration", request.integrationId());
+    }
 
     // Resolve effective enrollment ID from enrollmentId and/or userIdentifier
     Integer effectiveEnrollmentId;
@@ -391,7 +419,8 @@ public class AuthAttemptController {
                     "Access denied: admin does not have access to enrollment "
                         + effectiveEnrollmentId)
                 .build());
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        // Hide existence: a missing enrollment and a foreign-tenant one share one 404
+        throw new ResourceNotFoundException("Enrollment", effectiveEnrollmentId);
       }
     }
 
