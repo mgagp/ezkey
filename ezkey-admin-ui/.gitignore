@@ -16,6 +16,9 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# This package is npm (package-lock.json). A Yarn lockfile is not an input.
+yarn.lock
+
 node_modules
 dist
 dist-ssr
