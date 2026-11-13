@@ -1025,7 +1025,8 @@ for pair in \
   "ezkey.rate-limit.enabled=EZKEY_RATE_LIMIT_ENABLED" \
   "ezkey.rate-limit.respond.requests=EZKEY_RATE_LIMIT_RESPOND_REQUESTS" \
   "ezkey.rate-limit.respond.window-minutes=EZKEY_RATE_LIMIT_RESPOND_WINDOW_MINUTES" \
-  "ezkey.rate-limit.respond.fail-ip-requests=EZKEY_RATE_LIMIT_RESPOND_FAIL_IP_REQUESTS"
+  "ezkey.rate-limit.respond.fail-ip-requests=EZKEY_RATE_LIMIT_RESPOND_FAIL_IP_REQUESTS" \
+  "ezkey.rate-limit.pending.fail-ip-requests=EZKEY_RATE_LIMIT_PENDING_FAIL_IP_REQUESTS"
 do
   pk="${pair%%=*}"
   yk="${pair#*=}"

@@ -73,7 +73,7 @@
       "name": "ezkey.rate-limit.pending.key-strategy",
       "values": [
         { "value": "client-ip", "description": "Rate-limit by remote IP." },
-        { "value": "enrollment-id", "description": "Rate-limit by enrollment ID (device-scoped polling)." }
+        { "value": "enrollment-id", "description": "Per-enrollment budget after proof token and device signature. Unproven calls use the IP ceiling." }
       ]
     },
     {

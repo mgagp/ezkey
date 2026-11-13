@@ -139,10 +139,14 @@ grep "429" /var/log/ezkey/access.log | awk '{print $1}' | sort | uniq -c | sort 
 # Production rate limiting configuration
 ezkey.rate-limit.enabled=true
 
-# Auth Pending - User-initiated polling (permissive for normal usage)
+# Auth Pending - per enrollment after proof token + device signature (#1124).
+# The body enrollmentId is not a bucket key. Unproven calls use the IP ceiling;
+# a proven poll refunds that token (#918).
 ezkey.rate-limit.pending.requests=10
 ezkey.rate-limit.pending.window-minutes=1
 ezkey.rate-limit.pending.key-strategy=enrollment-id
+ezkey.rate-limit.pending.fail-ip-requests=60
+ezkey.rate-limit.pending.fail-ip-window-minutes=1
 
 # Auth Verify - User responses (restrictive for security)
 ezkey.rate-limit.verify.requests=5

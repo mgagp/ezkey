@@ -86,9 +86,12 @@ caught, logged, and re-thrown — the audit log is the primary observability mec
   occurs; see `AuthAttemptPendingService` Javadoc and `docs/ENDPOINT.md`.
 - **Respond endpoint**: Invalid device signature or missing device key → generic **409**
   `auth-attempt-state-conflict` with **no** status transition (#912); wrong challenge after a valid
-  device signature still marks **INVALID** (conditional on `READ`). Rate limiting on
-  `POST /api/v1/auth-attempts/respond` is per `authAttemptId` (from request body), default 1 request
-  per 5 minutes.
+  device signature still marks **INVALID** (conditional on `READ`). The per-`authAttemptId` budget
+  (default 1 / 5 min) is consumed only after a valid device signature. The IP ceiling counts
+  unproven calls and is refunded once ownership is proven (#918).
+- **Pending endpoint rate limit**: with `enrollment-id`, the per-enrollment budget is consumed only
+  after a valid proof token and device signature, using the enrollment located by that proof token.
+  The filter does not key on the body `enrollmentId` (#1124). Unproven calls use the IP ceiling.
 - **Device UX for auth attempts:** Approve and Deny only (`POST /respond`). There is **no**
   device-initiated cancel. Closing or ignoring the prompt leaves `PENDING`/`READ` until TTL; the
   **Admin API** `AuthAttemptExpiryScheduler` persists `EXPIRED` (see `docs/ENDPOINT.md` cancel /

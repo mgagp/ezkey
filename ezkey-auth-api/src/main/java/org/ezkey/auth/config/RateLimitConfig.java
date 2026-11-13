@@ -85,7 +85,8 @@ public class RateLimitConfig {
   }
 
   /**
-   * Shared respond budgets: fail-IP (filter) + per-id after ownership (service) (#912 C1).
+   * Shared respond budgets: fail-IP (filter, refunded after ownership) and per-id after ownership
+   * (#912 C1, #918).
    *
    * @param properties rate-limit properties
    * @return respond rate-limit service
@@ -96,28 +97,40 @@ public class RateLimitConfig {
   }
 
   /**
+   * Shared pending budgets: fail-IP (filter, refunded after ownership) and per-enrollment after
+   * proof (#1124).
+   *
+   * @param properties rate-limit properties
+   * @return pending rate-limit service
+   */
+  @Bean
+  public AuthPendingRateLimitService authPendingRateLimitService(RateLimitProperties properties) {
+    return new AuthPendingRateLimitService(properties);
+  }
+
+  /**
    * Creates the rate limiting filter bean.
    *
    * @param properties the rate limiting configuration properties
    * @param trustedProxyProperties trusted proxy CIDRs
-   * @param objectMapper Jackson ObjectMapper for parsing respond/pending bodies
    * @param meterRegistry Micrometer registry for backstop counters
    * @param authRespondRateLimitService respond fail-IP + post-ownership budgets
+   * @param authPendingRateLimitService pending fail-IP + post-ownership budgets
    * @return configured RateLimitFilter instance
    */
   @Bean
   public RateLimitFilter rateLimitFilter(
       RateLimitProperties properties,
       TrustedProxyProperties trustedProxyProperties,
-      ObjectMapper objectMapper,
       MeterRegistry meterRegistry,
-      AuthRespondRateLimitService authRespondRateLimitService) {
+      AuthRespondRateLimitService authRespondRateLimitService,
+      AuthPendingRateLimitService authPendingRateLimitService) {
     return new RateLimitFilter(
         properties,
         trustedProxyProperties,
-        objectMapper,
         meterRegistry,
-        authRespondRateLimitService);
+        authRespondRateLimitService,
+        authPendingRateLimitService);
   }
 
   /**

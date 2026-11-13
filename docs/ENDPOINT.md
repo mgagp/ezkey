@@ -224,6 +224,7 @@ Invalid or unknown proof tokens return RFC 9457 Problem Details **400**
 - **Why POST?**: The crypto signature is transmitted in the body, which is not possible with GET.
 - **Security Enhancement**: This endpoint now uses enrollmentProofToken in the request body instead of enrollmentId in the URL path to prevent enumeration attacks.
 - **Device proof token and 204 responses**: A successful cryptographic signature is still required on every request. When there is **no** pending attempt (**204 No Content**), the server does **not** store the `deviceProofToken`; the mobile client may send the **same** signed `deviceProofToken` on subsequent polls until a pending request exists and is claimed (**200 OK**). At that point the token is recorded and must not be reused for another claimed attempt. Volume abuse is mitigated by **rate limiting** (and infrastructure controls), not by requiring a fresh random on every empty poll.
+- **Rate limiting** (`enrollment-id`, Docker): the filter applies an **IP ceiling** to every pending POST (default 60 / 1 min) and does **not** read `enrollmentId` from the body. The per-enrollment budget (default 10 / 1 min) is consumed only after a valid enrollment proof token **and** device signature, keyed by the enrollment that proof token locates (#1124). A proven poll, including **204**, refunds the IP token so a shared carrier address is not charged for legitimate pulls (#918). Dummy bodies cannot 429 the device's enrollment. **429** is an empty body plus `Retry-After`.
 
 **Request**
 ```http
@@ -269,7 +270,7 @@ Reason and interaction model:
 **POST /api/v1/auth-attempts/respond**
 
 - **Description**: The mobile device submits the user's response (approved, denied, signature, etc.) for the received authentication request.
-- **Rate limiting**: When rate limiting is enabled (`ezkey.rate-limit.enabled=true`), the filter applies an **IP ceiling on every respond request** (default 30 / 1 min — not failures-only). The strict per-`authAttemptId` budget (default 1 / 5 min) is consumed **only after** a valid device signature (#912 C1), so a third-party invalid respond cannot starve the owner. When exceeded, the API returns **429 Too Many Requests** with a positive `Retry-After` (seconds from Bucket4j refill; same refill-based `Retry-After` applies to pending / verify / bind keyed denials).
+- **Rate limiting**: When rate limiting is enabled (`ezkey.rate-limit.enabled=true`), the filter applies an **IP ceiling** (default 30 / 1 min) on the way in and **refunds that token after a valid device signature** (#918). Unproven calls, including a **409** before proof of possession, keep the debit, so a carrier NAT is not charged for successful approves. The strict per-`authAttemptId` budget (default 1 / 5 min) is consumed **only after** that signature (#912 C1) and lives in a separate cache from the IP ceiling, so rotating addresses cannot evict it. IPv6 ceilings aggregate to a /64. The attempt id is not taken from an unproven body. When exceeded, the API returns **429 Too Many Requests** with a positive `Retry-After` (seconds from Bucket4j refill; same refill-based `Retry-After` applies to pending / verify / bind keyed denials).
 - **Ownership before state change (#912 / #844):** Invalid device signature or missing device public key → generic **409** `auth-attempt-state-conflict`, attempt stays in its prior status (typically `READ`), and an audit event `AUTH_ATTEMPT_RESPOND_SIGNATURE_REJECTED` is recorded (attempt id, enrollment id, sanitized IP/UA — **never** the signature). Wrong challenge on **accept** after a valid device signature still marks the attempt `INVALID` (conditional on status still `READ`).
 - **Deny vs challenge:** When `authAttemptAccepted` is `false`, challenge response is not required after a valid device signature — the attempt is stored as `REJECTED`.
 
@@ -288,7 +289,7 @@ Content-Type: application/json
 
 **Response**
 - **200 OK** + validation result — always integration-signed (`authAttemptProofTokenResultSignedByIntegration`); verify with the integration public key. The server **never** returns an unsigned 200 on this path (#844). If the per-enrollment integration private key is missing/blank, the API returns **503** `integration-signing-unavailable` (transaction rolls back) instead of a null signature — see the status table under § Error responses above.
-- **429 Too Many Requests** when rate limit is exceeded (same `authAttemptId` or same client IP when body cannot be parsed); **empty body** plus a `Retry-After` header (seconds).
+- **429 Too Many Requests** when the post-ownership per-`authAttemptId` budget or the unproven IP ceiling is exceeded; **empty body** plus a `Retry-After` header (seconds).
 ```json
 {
   "authAttemptId": 123,

@@ -5,8 +5,8 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Test: RateLimitFilterPendingTest
- * Description: Unit tests for rate limiting on POST /api/v1/auth-attempts/pending with
- * enrollment-id strategy (enrollmentId extracted from request body).
+ * Description: Unit tests for rate limiting on POST /api/v1/auth-attempts/pending.
+ * The filter applies an IP ceiling and does not key on the body enrollmentId.
  */
 
 package org.ezkey.auth.config;
@@ -20,6 +20,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.OptionalLong;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -32,13 +33,13 @@ import tools.jackson.databind.ObjectMapper;
 
 /**
  * Unit tests for {@link RateLimitFilter} applied to the pending endpoint with enrollment-id
- * strategy: key derived from body enrollmentId, fallback to client IP when body is missing or
- * invalid.
+ * strategy: the filter applies an IP ceiling only. The body enrollmentId is not a bucket key
+ * (#1124).
  *
  * @since 2025
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("RateLimitFilter pending endpoint tests (enrollment-id from body)")
+@DisplayName("RateLimitFilter pending endpoint tests (IP ceiling, not body enrollmentId)")
 class RateLimitFilterPendingTest {
 
   private static final String PENDING_PATH = "/api/v1/auth-attempts/pending";
@@ -62,9 +63,7 @@ class RateLimitFilterPendingTest {
     pendingConfig.setKeyStrategy("enrollment-id");
     properties.setPending(pendingConfig);
     // Respond not under test - use default
-    filter =
-        new RateLimitFilter(
-            properties, new org.ezkey.auth.config.TrustedProxyProperties(), objectMapper);
+    filter = new RateLimitFilter(properties, new TrustedProxyProperties());
   }
 
   @Test
@@ -85,29 +84,73 @@ class RateLimitFilterPendingTest {
   }
 
   @Test
-  @DisplayName("Same enrollment ID is rate limited - second request returns 429")
-  void sameEnrollmentIdRateLimited() throws Exception {
+  @DisplayName("#1124: 11 fake pending calls do not 429 the device or debit the enrollment budget")
+  void fakePendingCallsDoNotExhaustEnrollmentBudget() throws Exception {
     RateLimitProperties.EndpointConfig pendingConfig = new RateLimitProperties.EndpointConfig();
-    pendingConfig.setRequests(1);
-    pendingConfig.setWindowMinutes(5);
+    pendingConfig.setRequests(10);
+    pendingConfig.setWindowMinutes(1);
     pendingConfig.setKeyStrategy("enrollment-id");
+    pendingConfig.setFailIpRequests(1000);
+    pendingConfig.setFailIpWindowMinutes(1);
     properties.setPending(pendingConfig);
+    AuthPendingRateLimitService pendingLimits = new AuthPendingRateLimitService(properties);
     filter =
-        new RateLimitFilter(
-            properties, new org.ezkey.auth.config.TrustedProxyProperties(), objectMapper);
+        new RateLimitFilter(properties, new TrustedProxyProperties(), null, null, pendingLimits);
 
-    MockHttpServletRequest request1 = pendingRequest(42);
-    MockHttpServletRequest request2 = pendingRequest(42);
-    MockHttpServletResponse response1 = new MockHttpServletResponse();
-    MockHttpServletResponse response2 = new MockHttpServletResponse();
+    for (int i = 0; i < 11; i++) {
+      MockHttpServletRequest fake = pendingRequest(42);
+      fake.setRemoteAddr("203.0.113.8");
+      MockHttpServletResponse fakeResponse = new MockHttpServletResponse();
+      filter.doFilter(fake, fakeResponse, filterChain);
+      assertThat(fakeResponse.getStatus())
+          .as("fake pending %s must not be rejected from the victim enrollment budget", i)
+          .isEqualTo(200);
+    }
 
-    filter.doFilter(request1, response1, filterChain);
-    filter.doFilter(request2, response2, filterChain);
+    MockHttpServletRequest device = pendingRequest(42);
+    device.setRemoteAddr("198.51.100.9");
+    MockHttpServletResponse deviceResponse = new MockHttpServletResponse();
+    filter.doFilter(device, deviceResponse, filterChain);
 
-    assertThat(response1.getStatus()).isEqualTo(200);
-    assertThat(response2.getStatus()).isEqualTo(429);
-    assertThat(response2.getHeader("Retry-After")).isNotNull();
-    verify(filterChain).doFilter(any(HttpServletRequest.class), any(HttpServletResponse.class));
+    assertThat(deviceResponse.getStatus()).isEqualTo(200);
+    assertThat(pendingLimits.tryConsumeAfterOwnership(42))
+        .as("proven device still has a full enrollment budget after the fakes")
+        .isEmpty();
+  }
+
+  @Test
+  @DisplayName("Pending fail-IP ceiling still 429s a repeated unproven caller")
+  void unprovenPendingFromSameIpHitsFailIpCeiling() throws Exception {
+    RateLimitProperties.EndpointConfig pendingConfig = new RateLimitProperties.EndpointConfig();
+    pendingConfig.setRequests(10);
+    pendingConfig.setWindowMinutes(1);
+    pendingConfig.setKeyStrategy("enrollment-id");
+    pendingConfig.setFailIpRequests(1);
+    pendingConfig.setFailIpWindowMinutes(5);
+    properties.setPending(pendingConfig);
+    AuthPendingRateLimitService pendingLimits = new AuthPendingRateLimitService(properties);
+    filter =
+        new RateLimitFilter(properties, new TrustedProxyProperties(), null, null, pendingLimits);
+
+    MockHttpServletRequest first = pendingRequest(42);
+    first.setRemoteAddr("203.0.113.8");
+    MockHttpServletResponse firstResponse = new MockHttpServletResponse();
+    filter.doFilter(first, firstResponse, filterChain);
+    assertThat(firstResponse.getStatus()).isEqualTo(200);
+
+    MockHttpServletRequest second = pendingRequest(42);
+    second.setRemoteAddr("203.0.113.8");
+    MockHttpServletResponse secondResponse = new MockHttpServletResponse();
+    filter.doFilter(second, secondResponse, filterChain);
+    assertThat(secondResponse.getStatus()).isEqualTo(429);
+    assertThat(Long.parseLong(secondResponse.getHeader("Retry-After"))).isBetween(1L, 5L * 60L);
+
+    MockHttpServletRequest device = pendingRequest(42);
+    device.setRemoteAddr("198.51.100.9");
+    MockHttpServletResponse deviceResponse = new MockHttpServletResponse();
+    filter.doFilter(device, deviceResponse, filterChain);
+    assertThat(deviceResponse.getStatus()).isEqualTo(200);
+    assertThat(pendingLimits.tryConsumeAfterOwnership(42)).isEqualTo(OptionalLong.empty());
   }
 
   @Test
@@ -118,9 +161,7 @@ class RateLimitFilterPendingTest {
     pendingConfig.setWindowMinutes(5);
     pendingConfig.setKeyStrategy("enrollment-id");
     properties.setPending(pendingConfig);
-    filter =
-        new RateLimitFilter(
-            properties, new org.ezkey.auth.config.TrustedProxyProperties(), objectMapper);
+    filter = new RateLimitFilter(properties, new TrustedProxyProperties());
 
     MockHttpServletRequest request1 = new MockHttpServletRequest("POST", PENDING_PATH);
     request1.setContentType("application/json");
@@ -153,7 +194,7 @@ class RateLimitFilterPendingTest {
     pendingConfig.setWindowMinutes(5);
     pendingConfig.setKeyStrategy("enrollment-id");
     properties.setPending(pendingConfig);
-    filter = new RateLimitFilter(properties, trusted, objectMapper);
+    filter = new RateLimitFilter(properties, trusted);
 
     MockHttpServletRequest request1 = new MockHttpServletRequest("POST", PENDING_PATH);
     request1.setContentType("application/json");
@@ -183,9 +224,7 @@ class RateLimitFilterPendingTest {
     pendingConfig.setWindowMinutes(5);
     pendingConfig.setKeyStrategy("enrollment-id");
     properties.setPending(pendingConfig);
-    filter =
-        new RateLimitFilter(
-            properties, new org.ezkey.auth.config.TrustedProxyProperties(), objectMapper);
+    filter = new RateLimitFilter(properties, new TrustedProxyProperties());
 
     MockHttpServletRequest request1 = new MockHttpServletRequest("POST", PENDING_PATH);
     request1.setContentType("application/json");
