@@ -41,6 +41,7 @@
     "breadcrumb": "Alerts",
     "cardDetails": "Details",
     "cardPayload": "Payload",
+    "cardWhatHappened": "What happened",
     "cardResolution": "Resolution",
     "labelId": "Id",
     "labelType": "Type",
@@ -92,7 +93,7 @@
       }
     },
     "partitionCreation": {
-      "summary": "Months {{from}} to {{to}} · Not created {{failedTargets}} · Error {{error}}",
+      "summary": "Months: {{from}} to {{to}} · Not created: {{failedTargets}} · Error: {{error}}",
       "guidance": "Ezkey could not create, ahead of time, the monthly tables that store authentication attempts and the audit log ({{from}} to {{to}}). Ezkey retries at Admin API startup and every day, and closes this alert by itself after the next successful run. If it stays open, check the Admin API logs and the database permission on create_monthly_partition. Act before the first month with no table begins: from then on, new sign-ins will fail and audit events for that period will not be recorded."
     }
   },

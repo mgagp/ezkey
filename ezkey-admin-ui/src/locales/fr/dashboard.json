@@ -85,7 +85,7 @@
     "scope": "Périmètre",
     "error": "Erreur",
     "partitionScope": "Périmètre : {{from}} à {{to}} (mois courant + {{monthsAhead}})",
-    "partitionFailed": "Périmètre : {{from}} à {{to}} (mois courant + {{monthsAhead}}) · {{failed}} sur {{targets}} non créées",
+    "partitionFailed": "Périmètre : {{from}} à {{to}} (mois courant + {{monthsAhead}}) · {{failed}} tables sur {{targets}} non créées",
     "viewAlert": "Voir l'alerte →",
     "neverRun": "Jamais exécuté",
     "quietInactive": "Inactif",

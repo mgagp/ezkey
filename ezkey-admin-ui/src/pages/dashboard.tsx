@@ -27,7 +27,10 @@ import { getAuditEventTypeLabel } from '@/lib/audit-event-type';
 import { formatCountdown, formatDate, formatRelativeTime } from '@/lib/utils';
 import { useAuth } from '@/context/use-auth';
 import { useGetOverview } from '@/generated/admin-api/dashboard/dashboard';
-import type { DashboardOverviewDto } from '@/generated/admin-api/model';
+import type {
+  DashboardOverviewDto,
+  DashboardScheduledJobRowDto,
+} from '@/generated/admin-api/model';
 import { DashboardStatBadgeLink } from '@/components/feature/dashboard-stat-badge-link';
 import {
   buildAuthAttemptAuditTrailUrl,
@@ -58,38 +61,7 @@ type DashboardIntegrationStatsWithRetired = NonNullable<DashboardOverviewDto['in
   retired?: number;
 };
 
-type PartitionHorizon = {
-  from?: string;
-  to?: string;
-  monthsAhead?: number;
-  failedTargets?: number | null;
-  targets?: number | null;
-};
-
-type DashboardScheduledJobRow = {
-  jobKey?: string;
-  lastExecutionAt?: string;
-  lastStatus?: 'SUCCESS' | 'FAILED' | 'NEVER_RUN';
-  lastRunScope?: string;
-  lastErrorSummary?: string;
-  partitionHorizon?: PartitionHorizon | null;
-};
-
-type DashboardIntegrityConfigSummary = {
-  chainLookbackMinutes?: number;
-  nightlyWindowHours?: number;
-  chainCheckpointsEnabled?: boolean;
-  nightlyValidationEnabled?: boolean;
-};
-
-type DashboardOverviewWithBatchHealth = DashboardOverviewDto & {
-  openAlertCount?: number;
-  integrityJobs?: DashboardScheduledJobRow[];
-  operationalJobs?: DashboardScheduledJobRow[];
-  integrityConfigSummary?: DashboardIntegrityConfigSummary;
-};
-
-type ScheduledJobStatus = NonNullable<DashboardScheduledJobRow['lastStatus']>;
+type ScheduledJobStatus = NonNullable<DashboardScheduledJobRowDto['lastStatus']>;
 
 function jobStatusBadgeVariant(
   status: ScheduledJobStatus | undefined,
@@ -99,7 +71,9 @@ function jobStatusBadgeVariant(
   return 'muted';
 }
 
-function monitoringJobsExpectedIdle(config: DashboardIntegrityConfigSummary | undefined): boolean {
+function monitoringJobsExpectedIdle(
+  config: DashboardOverviewDto['integrityConfigSummary'],
+): boolean {
   return (
     config != null &&
     config.chainCheckpointsEnabled === false &&
@@ -124,9 +98,11 @@ function jobDeepLink(jobKey: string | undefined): string | null {
 function BatchJobRow({
   row,
   t,
+  partitionAlertId,
 }: {
-  row: DashboardScheduledJobRow;
+  row: DashboardScheduledJobRowDto;
   t: ReturnType<typeof useTranslation>['t'];
+  partitionAlertId?: number;
 }) {
   const status = row.lastStatus ?? 'NEVER_RUN';
   const deepLink = jobDeepLink(row.jobKey);
@@ -194,7 +170,7 @@ function BatchJobRow({
         {partitionFailed ? (
           <p>
             <Link
-              to="/alerts"
+              to={partitionAlertId != null ? `/alerts/${partitionAlertId}` : '/alerts'}
               data-testid="dashboard-partition-view-alert"
               className="inline-flex items-center gap-1 text-xs font-bold text-accent hover:underline"
             >
@@ -231,16 +207,18 @@ function BatchHealthCard({
   exitTo,
   exitLabel,
   testId,
+  partitionAlertId,
 }: {
   title: string;
   icon: typeof ShieldCheck;
-  jobs: DashboardScheduledJobRow[];
+  jobs: DashboardScheduledJobRowDto[];
   isLoading: boolean;
   configSummary?: ReactNode;
   jobsExpectedIdle?: boolean;
   exitTo: string;
   exitLabel: string;
   testId: string;
+  partitionAlertId?: number;
 }) {
   const { t } = useTranslation('dashboard');
   const quietReason = isLoading ? null : resolveBatchHealthQuietReason(jobs, jobsExpectedIdle);
@@ -302,7 +280,12 @@ function BatchHealthCard({
             ) : (
               <div>
                 {jobs.map((row) => (
-                  <BatchJobRow key={row.jobKey ?? `${testId}-job`} row={row} t={t} />
+                  <BatchJobRow
+                    key={row.jobKey ?? `${testId}-job`}
+                    row={row}
+                    t={t}
+                    partitionAlertId={partitionAlertId}
+                  />
                 ))}
               </div>
             )}
@@ -393,7 +376,7 @@ export default function DashboardPage() {
     dataUpdatedAt: overviewUpdatedAt,
     refetch: overviewRefetch,
     isFetching: overviewFetching,
-  } = useGetOverview<DashboardOverviewWithBatchHealth>({
+  } = useGetOverview<DashboardOverviewDto>({
     query: {
       staleTime: REFRESH_INTERVAL_OVERVIEW_MS,
     },
@@ -472,6 +455,9 @@ export default function DashboardPage() {
   const openAlertCount = overview?.openAlertCount ?? 0;
   const integrityJobs = overview?.integrityJobs ?? [];
   const operationalJobs = overview?.operationalJobs ?? [];
+  const partitionAlertId = overview?.alerts?.find(
+    (alert) => alert.alertType === 'PARTITION_CREATION_FAILED',
+  )?.alertId;
   const integrityConfig = overview?.integrityConfigSummary;
   const jobsExpectedIdle = monitoringJobsExpectedIdle(integrityConfig);
 
@@ -580,6 +566,7 @@ export default function DashboardPage() {
               testId="dashboard-batch-health-operational"
               exitTo="/encryption-keys"
               exitLabel={t('dashboard:batchHealth.links.encryptionKeys')}
+              partitionAlertId={partitionAlertId}
             />
           </div>
         )}

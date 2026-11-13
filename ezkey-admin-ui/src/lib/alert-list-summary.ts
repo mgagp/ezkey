@@ -1,3 +1,5 @@
+import type { AlertResponseDtoAlertType } from '@/generated/admin-api/model';
+
 export type AlertListSummaryTemplateKey =
   | 'list.summary.gapPending'
   | 'list.summary.heartbeatStale'
@@ -133,7 +135,7 @@ function asPartitionPayload(value: unknown): PartitionCreationPayload | null {
  * Derives a type-specific one-line summary from alert payload JSON for the list view.
  */
 export function resolveAlertListSummary(
-  alertType: string | undefined,
+  alertType: AlertResponseDtoAlertType | undefined,
   payload: string | undefined,
 ): AlertListSummary {
   const parsed = parsePayload(payload);

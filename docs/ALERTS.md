@@ -55,9 +55,9 @@ Producers include **automated lifecycle checks** (`AuditChainScheduler`) and **c
 Operator copy for this alert (#1352):
 
 - C1: the detail page replaces the raw payload with the months, the not-created count, the exception class, and a short guidance paragraph. Reason: an operator should not have to read JSON (#1352). The guidance names only `ezkey_auth_attempt` and `ezkey_audit_log`, and says Ezkey retries at Admin API startup and every day. From the first month with no table, new sign-ins fail (`AuthAttemptService` does not catch the insert) and audit events for that period are not recorded (`AuditLogService` catches the insert and the entry is lost).
-- C2: the dashboard row shows “Scope: {from} to {to} (current month + {monthsAhead}) · {failed} of {targets} not created” and “View alert →”. Reason: the stored scope string and `PSQLException` are not an operator surface. The counts come from `partitionHorizon`, not from the alert payload (the payload has no target total).
-- C3: the list summary is “{from} to {to} · {failedTargets} monthly table(s) not created”. Reason: “partition target” is an implementation word.
-- C4: the closure reason is “Monthly tables created (next run succeeded)”. Reason: the next fully successful run is what resolves the alert. A resolved alert with no admin id shows “Automatic”.
+- C2: the dashboard row shows “Scope: {from} to {to} (current month + {monthsAhead}) · {failed} of {targets} not created” and “View alert →”. Reason: the stored scope string and `PSQLException` are not an operator surface. The counts come from `partitionHorizon`, not from the alert payload (the payload has no target total) (#1352).
+- C3: the list summary is “{from} to {to} · {failedTargets} monthly table(s) not created”. Reason: “partition target” is an implementation word (#1352).
+- C4: the closure reason is “Monthly tables created (next run succeeded)”. Reason: the next fully successful run is what resolves the alert. A resolved alert with no admin id shows “Automatic” (#1352).
 
 `AUDIT_CHAIN_GAP_PENDING` payload (JSON string): `anchorCheckpointId`, `gapStart`, `estimatedGapEnd`, `estimatedGapMinutes`, `message`.
 

@@ -6681,7 +6681,8 @@
                 "AUDIT_CHAIN_GAP_PENDING",
                 "AUDIT_CHAIN_HEARTBEAT_STALE",
                 "AUDIT_INTEGRITY_RUPTURE",
-                "AUTH_ATTEMPT_REJECTED"
+                "AUTH_ATTEMPT_REJECTED",
+                "PARTITION_CREATION_FAILED"
               ]
             }
           },
@@ -10018,7 +10019,8 @@
               "AUDIT_CHAIN_GAP_PENDING",
               "AUDIT_CHAIN_HEARTBEAT_STALE",
               "AUDIT_INTEGRITY_RUPTURE",
-              "AUTH_ATTEMPT_REJECTED"
+              "AUTH_ATTEMPT_REJECTED",
+              "PARTITION_CREATION_FAILED"
             ]
           },
           "severity": {
@@ -10263,6 +10265,40 @@
           }
         }
       },
+      "DashboardPartitionHorizonDto": {
+        "type": "object",
+        "description": "Structured horizon for the PARTITION_CREATION dashboard row",
+        "properties": {
+          "from": {
+            "type": "string",
+            "description": "First month in the horizon (yyyy-MM)",
+            "example": "2026-11"
+          },
+          "to": {
+            "type": "string",
+            "description": "Last month in the horizon (yyyy-MM)",
+            "example": "2027-02"
+          },
+          "monthsAhead": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Future months beyond the current one",
+            "example": 3
+          },
+          "failedTargets": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Partitions not created; null when the run succeeded",
+            "example": 8
+          },
+          "targets": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Partitions the run attempted; null when the run succeeded",
+            "example": 8
+          }
+        }
+      },
       "DashboardRecentActivityItemDto": {
         "type": "object",
         "description": "Recent audit log entry for dashboard overview",
@@ -10310,7 +10346,8 @@
             "enum": [
               "AUDIT_CHAIN_CHECKPOINT",
               "NIGHTLY_INTEGRITY_VALIDATION",
-              "REENCRYPTION"
+              "REENCRYPTION",
+              "PARTITION_CREATION"
             ],
             "example": "AUDIT_CHAIN_CHECKPOINT"
           },
@@ -10335,6 +10372,10 @@
           "lastErrorSummary": {
             "type": "string",
             "description": "Safe operator-facing error summary when lastStatus is FAILED"
+          },
+          "partitionHorizon": {
+            "$ref": "#/components/schemas/DashboardPartitionHorizonDto",
+            "description": "Structured months for PARTITION_CREATION. Null for other jobs. The dashboard uses this instead of lastRunScope and lastErrorSummary."
           }
         }
       },
@@ -11039,7 +11080,8 @@
               "AUDIT_CHAIN_GAP_PENDING",
               "AUDIT_CHAIN_HEARTBEAT_STALE",
               "AUDIT_INTEGRITY_RUPTURE",
-              "AUTH_ATTEMPT_REJECTED"
+              "AUTH_ATTEMPT_REJECTED",
+              "PARTITION_CREATION_FAILED"
             ]
           },
           "severity": {
@@ -11090,7 +11132,8 @@
               "GAP_DECLARED",
               "HEARTBEAT_RESTORED",
               "MANUAL",
-              "INTEGRITY_RUPTURE_CONCILIATED"
+              "INTEGRITY_RUPTURE_CONCILIATED",
+              "PARTITION_HORIZON_RESTORED"
             ]
           }
         }

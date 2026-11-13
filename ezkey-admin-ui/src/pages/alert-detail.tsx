@@ -532,9 +532,7 @@ export default function AlertDetailPage() {
   const parsedPayload = useMemo(() => parsePayload(alert?.payload), [alert?.payload]);
   const isGapAlert = alert?.alertType === 'AUDIT_CHAIN_GAP_PENDING';
   const isIntegrityRuptureAlert = alert?.alertType === 'AUDIT_INTEGRITY_RUPTURE';
-  // Generated AlertResponseDtoAlertType omits this value until the OpenAPI spec is refreshed.
-  const isPartitionAlert =
-    (alert?.alertType as string | undefined) === 'PARTITION_CREATION_FAILED';
+  const isPartitionAlert = alert?.alertType === 'PARTITION_CREATION_FAILED';
   const partitionPayload = isPartitionCreationPayload(parsedPayload) ? parsedPayload : null;
 
   const rupturePayload = useMemo(() => {
@@ -673,7 +671,11 @@ export default function AlertDetailPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>{t('alerts:detail.cardPayload')}</CardTitle>
+              <CardTitle>
+                {isPartitionAlert
+                  ? t('alerts:detail.cardWhatHappened')
+                  : t('alerts:detail.cardPayload')}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {!alert.payload && (
