@@ -760,6 +760,17 @@ Content-Type: application/json
 
 **Failure:** **403** when the flag is off, capability is invalid, already minted, or not eligible.
 
+**While the token purpose is `EVALUATOR_TEMP`:** the session may explore the tenant console
+(dashboard, lists, lab CRUD). It may read and update its own administrator profile, and it may
+read its own onboarding credentials and QR, only when the id segment is the canonical decimal
+form of its own id (no sign, no hex, no leading zeros, no trailing slash). A non-canonical
+spelling such as `0x63`, `+99`, or `099` is **403** even for profile and onboarding. Every other
+`/api/v1/admins/{id}/…` route is **403**, including recovery-code regeneration, initial
+recovery-code issuance, activation-code reissue, and deactivate/activate — for the caller's own
+id and for a peer. Those five mutations are also refused in the provisioning service. A
+`SESSION` token is not subject to this filter. See
+[#1123](https://github.com/mgagp/ezkey/issues/1123).
+
 ---
 
 #### POST /recover (Emergency Access)
@@ -1413,6 +1424,8 @@ invalidates any previous unused recovery codes.
 **Permissions:**
 - **GlobalAdmin**: Can regenerate recovery codes for any administrator
 - **TenantAdmin**: Can regenerate recovery codes for administrators in their tenant
+- **`EVALUATOR_TEMP`**: Denied (403) for every administrator id, including the caller's own
+  (#1123). A normal `SESSION` token is unchanged.
 
 **Request:**
 ```http

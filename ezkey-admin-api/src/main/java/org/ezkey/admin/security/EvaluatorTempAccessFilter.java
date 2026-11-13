@@ -28,23 +28,43 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * Fail-closed deny-list for {@code EVALUATOR_TEMP} authentications.
  *
  * <p>Mode C is navigable {@code TENANT_ADMIN} ACL pass-through plus a deny-list seed — not Path B
- * allowlist growth into “finish enrollment only.” Never GLOBAL; QR/onboarding self-only; no
- * passwordless {@code SESSION} mint while TEMP. Dashboard and lab list/CRUD stay open unless
- * explicitly denied.
+ * allowlist growth into “finish enrollment only.” Never GLOBAL; own profile and onboarding
+ * (including QR) self-only; no passwordless {@code SESSION} mint while TEMP. Dashboard and lab
+ * list/CRUD stay open unless explicitly denied.
+ *
+ * <p>Admin-by-id routes are the exception: anything other than the caller's own profile and
+ * onboarding is denied, including recovery codes, activation-code reissue, and deactivate/activate.
+ * That subtree is deny-by-default so a new admin credential route is closed until someone adds it
+ * to the self-only set. The id segment must be the canonical decimal form of the caller's own id.
+ * Any other spelling is denied, including hex, a leading sign, leading zeros, and a trailing slash,
+ * because Spring parses {@code @PathVariable Integer} with {@code NumberUtils.parseNumber} while
+ * this filter sees the raw URI. The rest of the API stays deny-list, because a full allowlist would
+ * empty the navigable console.
  */
 @Component
 public class EvaluatorTempAccessFilter extends OncePerRequestFilter {
 
-  private static final Pattern ADMIN_ONBOARDING =
-      Pattern.compile("^/api/v1/admins/(\\d+)(/onboarding(/qrcode)?)?$");
+  /**
+   * Admin-by-id path. Group 1 is the raw id segment. Group 2 is the suffix after the id, or null
+   * when the path is the profile with no trailing slash.
+   */
+  private static final Pattern ADMIN_BY_ID = Pattern.compile("^/api/v1/admins/([^/]+)(?:/(.*))?$");
 
+  /** Canonical decimal id: {@code 0} or a digit string with no sign and no leading zero. */
+  private static final Pattern CANONICAL_DECIMAL = Pattern.compile("0|[1-9][0-9]*");
+
+  /**
+   * Any enrollment QR-delivery path. The id segment is not restricted to digits: a hex or signed
+   * spelling still resolves to an enrollment id in the controller, so a miss would fail open.
+   */
   private static final Pattern QR_DELIVERY =
-      Pattern.compile("^/api/v1/enrollments/(qr-delivery/.*|\\d+/qr-delivery)$");
+      Pattern.compile("^/api/v1/enrollments/(?:qr-delivery(?:/.*)?|[^/]+/qr-delivery(?:/.*)?)$");
 
   /**
    * Deny-list seed (Patrick craft steer): GLOBAL/cross-tenant; mint SESSION without bind; integrity
-   * raise/async write; cross-admin QR/onboarding (self-only rule below); dangerous export/bootstrap
-   * admin; destructive durable outside lab soft. Dashboard/lists/lab CRUD stay open unless listed.
+   * raise/async write; dangerous export/bootstrap admin; destructive durable outside lab soft. Peer
+   * admin credentials live under {@link #ADMIN_BY_ID} (deny-by-default there). Dashboard, lists,
+   * and lab CRUD stay open unless listed.
    */
   private static final String[] DENIED_PREFIXES = {
     "/api/v1/tenants",
@@ -109,12 +129,55 @@ public class EvaluatorTempAccessFilter extends OncePerRequestFilter {
       return true;
     }
 
-    Matcher matcher = ADMIN_ONBOARDING.matcher(path);
-    if (matcher.matches()) {
-      Integer targetAdminId = Integer.valueOf(matcher.group(1));
-      return principal.adminId() == null || !principal.adminId().equals(targetAdminId);
-    }
+    return isDeniedAdminResource(path, principal);
+  }
 
-    return false;
+  /**
+   * Deny-by-default for admin-by-id routes.
+   *
+   * <p>Own profile (GET/PATCH) and own onboarding, including the QR, stay reachable so the
+   * evaluator can finish binding their device. Recovery-code regeneration and initial issuance,
+   * activation-code reissue, deactivate/activate, and any future suffix are denied for every id,
+   * including the caller's own: those responses are long-lived credentials or session revocation,
+   * not bind material.
+   *
+   * @param path request path
+   * @param principal temporary evaluator principal
+   * @return true when the path must be rejected
+   */
+  private boolean isDeniedAdminResource(String path, AdminPrincipal principal) {
+    Matcher matcher = ADMIN_BY_ID.matcher(path);
+    if (!matcher.matches()) {
+      return false;
+    }
+    if (!isCanonicalSelfAdminId(matcher.group(1), principal.adminId())) {
+      return true;
+    }
+    return !isSelfOnlyAdminSuffix(matcher.group(2));
+  }
+
+  private static boolean isSelfOnlyAdminSuffix(String suffix) {
+    return suffix == null || "onboarding".equals(suffix) || "onboarding/qrcode".equals(suffix);
+  }
+
+  /**
+   * True only when the raw segment is the canonical decimal spelling of {@code adminId}.
+   *
+   * <p>{@code 099}, {@code +99}, and {@code 0x63} are rejected even when they parse to the same
+   * number. A value that does not fit in an {@link Integer} is rejected.
+   *
+   * @param segment raw path segment
+   * @param adminId caller admin id, or null when the principal has none
+   * @return true when the segment is the canonical form of the caller's own id
+   */
+  private static boolean isCanonicalSelfAdminId(String segment, Integer adminId) {
+    if (adminId == null || segment == null || !CANONICAL_DECIMAL.matcher(segment).matches()) {
+      return false;
+    }
+    try {
+      return Integer.valueOf(segment).equals(adminId);
+    } catch (NumberFormatException _) {
+      return false;
+    }
   }
 }
