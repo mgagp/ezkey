@@ -1,6 +1,8 @@
 # syntax=docker/dockerfile:1
+# External bases use tag@sha256 of the multi-arch index (not a single-platform
+# manifest) so Dependabot can keep bumping the tag and the digest together.
 # Stage 1: Build the React/Vite SPA
-FROM node:24-alpine AS builder
+FROM node:24-alpine@sha256:116b800c3754b440ee0aa3ed2f20f5bf3d99a554bfd9adeea09ea8017f6e85f5 AS builder
 
 WORKDIR /app
 
@@ -30,7 +32,7 @@ RUN npm run generate:api && \
     if [ "$BUILD_MODE" = "production" ]; then npm run build; else npm run build:test; fi
 
 # Stage 2: Serve the built SPA with Caddy (non-root, Apache 2.0 licensed)
-FROM caddy:2-alpine AS runtime
+FROM caddy:2-alpine@sha256:003a97808e781aa9f7e75cc2f43d34d461099031faf5e20faefb9f61126836f0 AS runtime
 
 # Copy built assets and Caddyfile
 # Use numeric UID 1000 — avoids "no matching entries in passwd" on some Alpine Caddy variants

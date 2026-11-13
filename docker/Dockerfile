@@ -1,8 +1,10 @@
 # ============================================
 # Multi-stage Dockerfile for EZ Key Services
 # ============================================
+# External bases use tag@sha256 of the multi-arch index (not a single-platform
+# manifest) so Dependabot can keep bumping the tag and the digest together.
 # Stage 1: Build all modules with Maven
-FROM maven:3.9-eclipse-temurin-25 AS build
+FROM maven:3.9-eclipse-temurin-25@sha256:93b8a14ea2f412782e4e842651273b4d903e35cc496284f178fbbe2d67d00976 AS build
 WORKDIR /build
 
 # Copy all POMs first (for dependency caching)
@@ -95,7 +97,7 @@ RUN --mount=type=cache,target=/root/.m2,id=maven-cache,sharing=shared \
 # ============================================
 # Stage 2: Runtime image for migration service
 # ============================================
-FROM eclipse-temurin:25-jre-alpine AS migration
+FROM eclipse-temurin:25-jre-alpine@sha256:e1898fd6a11fc965a994d8ace186fd3585aeb636cf8f05f47a723fcfee0b0918 AS migration
 RUN addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring
 ARG OCI_IMAGE_REVISION=unknown
 LABEL org.opencontainers.image.revision=${OCI_IMAGE_REVISION}
@@ -107,7 +109,7 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # ============================================
 # Stage 3: Runtime image for admin-api service
 # ============================================
-FROM eclipse-temurin:25-jre-alpine AS admin-api
+FROM eclipse-temurin:25-jre-alpine@sha256:e1898fd6a11fc965a994d8ace186fd3585aeb636cf8f05f47a723fcfee0b0918 AS admin-api
 # Create non-root user and pre-create all required directories with correct ownership at build time
 RUN apk add --no-cache curl && \
     addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring && \
@@ -130,7 +132,7 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # ============================================
 # Stage 4: Runtime image for auth-api service
 # ============================================
-FROM eclipse-temurin:25-jre-alpine AS auth-api
+FROM eclipse-temurin:25-jre-alpine@sha256:e1898fd6a11fc965a994d8ace186fd3585aeb636cf8f05f47a723fcfee0b0918 AS auth-api
 # Create non-root user and pre-create all required directories with correct ownership at build time
 RUN apk add --no-cache curl && \
     addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring && \
@@ -153,7 +155,7 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # ============================================
 # Stage 5: Runtime image for integration-api service
 # ============================================
-FROM eclipse-temurin:25-jre-alpine AS integration-api
+FROM eclipse-temurin:25-jre-alpine@sha256:e1898fd6a11fc965a994d8ace186fd3585aeb636cf8f05f47a723fcfee0b0918 AS integration-api
 # Create non-root user and pre-create all required directories with correct ownership at build time
 RUN apk add --no-cache curl && \
     addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring && \
@@ -176,7 +178,7 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # ============================================
 # Stage 6: Runtime image for crypto-api service
 # ============================================
-FROM eclipse-temurin:25-jre-alpine AS crypto-api
+FROM eclipse-temurin:25-jre-alpine@sha256:e1898fd6a11fc965a994d8ace186fd3585aeb636cf8f05f47a723fcfee0b0918 AS crypto-api
 # Create non-root user and pre-create all required directories with correct ownership at build time
 RUN apk add --no-cache curl && \
     addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring && \
@@ -199,7 +201,7 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # ============================================
 # Stage 6: Runtime image for demo-device service
 # ============================================
-FROM eclipse-temurin:25-jre-alpine AS demo-device
+FROM eclipse-temurin:25-jre-alpine@sha256:e1898fd6a11fc965a994d8ace186fd3585aeb636cf8f05f47a723fcfee0b0918 AS demo-device
 # Create non-root user and pre-create data directory with correct ownership at build time
 RUN apk add --no-cache curl && \
     addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring && \
@@ -218,7 +220,7 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # ============================================
 # Stage 7: Runtime image for demo-app-acme service
 # ============================================
-FROM eclipse-temurin:25-jre-alpine AS demo-app-acme
+FROM eclipse-temurin:25-jre-alpine@sha256:e1898fd6a11fc965a994d8ace186fd3585aeb636cf8f05f47a723fcfee0b0918 AS demo-app-acme
 # Create non-root user and pre-create all required directories with correct ownership at build time
 RUN apk add --no-cache curl && \
     addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring && \
