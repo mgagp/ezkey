@@ -21,7 +21,8 @@
 - Cross-check for non-Jackson JSON libraries (Gson, `org.json`, Jakarta JSON-P) — none found as
   call sites for deprecated APIs.
 - Authority: Jackson databind **3.1.5** sources (`tools.jackson.databind.JsonNode`,
-  `JsonNodeCreator`) matching parent POM `jackson-bom.version`.
+  `JsonNodeCreator`) matching the parent POM `jackson-bom.version` at the time of this assessment.
+  That property was removed on 2026-11-13; Jackson now follows the Spring Boot BOM.
 
 ## Stack versions (evidence)
 

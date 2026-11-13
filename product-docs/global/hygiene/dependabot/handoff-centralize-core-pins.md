@@ -95,7 +95,8 @@ property usually makes grouping unnecessary).
 
 - Lane hygiene; no `I-*` / `TB-*` unless the operator asks after seeing the diff.
 - Out of scope: version bumps of Tink / ShedLock / ipaddress, Docker Compose images, mobile /
-  Gradle, SEC-019 Boot overrides, Google Java Format.
+  Gradle, SEC-019 Boot overrides (logback and Jackson pins removed 2026-11-13; the caffeine
+  compatibility pin stays), Google Java Format.
 - Tink is crypto-adjacent: if the lift is **property-only** (same version), no extra
   characterization tests. If a bump sneaks in, stop and treat it as T4 / crypto HITL.
 

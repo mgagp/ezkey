@@ -395,9 +395,9 @@ uses the `not_used` row.
 - At most **5** overrides per manifest and **10** in the repo. Above either cap, Marc decides.
   Pins that are not security pins (ahead of Boot, or a compatibility pin) sit **outside the cap**.
 - **2026-11-13 (Marc):** #1348 removed the 6 obsolete Admin UI overrides. That manifest has
-  **0** active overrides. SEC-019 (logback, Jackson 3, Jackson 2) is removed in another PR once
-  the build is green. `caffeine.version` stays: it is a compatibility pin, outside the cap. The
-  registry marks the SEC-019 rows planned for removal. That PR number is not assigned yet.
+  **0** active overrides. SEC-019 (logback, Jackson 3, Jackson 2) was removed on 2026-11-13
+  (#1349): Boot 4.1.2 covers the original CVEs, and no active GHSA or OSV advisory applies to
+  the Boot-managed versions. `caffeine.version` stays: it is a compatibility pin, outside the cap.
 - A CI warning when a row has no expiry, is past expiry, or crosses a cap is a follow-up.
   This change does not add that check.
 - The repo has no osv-scanner config yet. The `not_used` row is the rule for the exception
@@ -465,8 +465,9 @@ there; direct XLSX URL 404 as of 2026-10-14);
   An override is a dated exception (patch or minor, expiry at most 90 days) listed under
   **Active overrides** in the Dependabot hygiene README. Matrix and timeline:
   § *Transitive dependency overrides*. #1348 removed the 6 obsolete Admin UI overrides
-  (0 active overrides on that manifest). SEC-019 is removed in another PR once the build
-  is green. Caffeine stays, outside the cap.
+  (0 active overrides on that manifest). SEC-019 (logback, Jackson 3, Jackson 2) was removed
+  on 2026-11-13 (#1349): Boot 4.1.2 covers the original CVEs, and no active GHSA or OSV
+  advisory applies to the Boot-managed versions. Caffeine stays, outside the cap.
 - **2026-11-13, proposed, not adopted:** extend Monday 10:15 from CodeQL to Scorecard SARIF
   and Dependabot alerts, one grouped issue per rule (one Scorecard check, or one GHSA).
   Monday 10:15 stays CodeQL, one fix PR per alert.
