@@ -91,7 +91,7 @@ class EvaluatorTempSessionServiceTest {
     when(properties.getTemporarySessionTtlHours()).thenReturn(8);
 
     Enrollment enrollment = enrollment(10, EnrollmentStatus.CREATED, "proof-token");
-    Tenant tenant = tenant(3, true);
+    Tenant tenant = tenant(3, true, true);
     EzkeyAdmin admin = tenantAdmin(20, tenant, enrollment);
 
     String proofHash = SensitiveDataHasher.sha256Hex("proof-token");
@@ -119,7 +119,7 @@ class EvaluatorTempSessionServiceTest {
     when(properties.isEnabled()).thenReturn(true);
 
     Enrollment enrollment = enrollment(10, EnrollmentStatus.CREATED, "proof-token");
-    Tenant tenant = tenant(3, true);
+    Tenant tenant = tenant(3, true, true);
     EzkeyAdmin admin = tenantAdmin(20, tenant, enrollment);
     String proofHash = SensitiveDataHasher.sha256Hex("proof-token");
     when(enrollmentRepository.findByEnrollmentIdAndEnrollmentProofTokenHash(10, proofHash))
@@ -142,7 +142,7 @@ class EvaluatorTempSessionServiceTest {
     when(properties.getTemporarySessionTtlHours()).thenReturn(8);
 
     Enrollment enrollment = enrollment(10, EnrollmentStatus.CREATED, "proof-token");
-    Tenant tenant = tenant(3, true);
+    Tenant tenant = tenant(3, true, true);
     EzkeyAdmin admin = tenantAdmin(20, tenant, enrollment);
     String proofHash = SensitiveDataHasher.sha256Hex("proof-token");
     when(enrollmentRepository.findByEnrollmentIdAndEnrollmentProofTokenHash(10, proofHash))
@@ -157,6 +157,26 @@ class EvaluatorTempSessionServiceTest {
     assertThatThrownBy(() -> service.mint(10, "proof-token"))
         .isInstanceOf(AuthenticationException.class)
         .hasMessageContaining("already issued");
+  }
+
+  @Test
+  @DisplayName("mint refuses when the tenant was not created by evaluator self-registration")
+  void mint_refuses_whenTenantNotSelfRegistered() {
+    when(properties.isEnabled()).thenReturn(true);
+
+    Enrollment enrollment = enrollment(10, EnrollmentStatus.CREATED, "proof-token");
+    Tenant tenant = tenant(3, true, false);
+    EzkeyAdmin admin = tenantAdmin(20, tenant, enrollment);
+    String proofHash = SensitiveDataHasher.sha256Hex("proof-token");
+    when(enrollmentRepository.findByEnrollmentIdAndEnrollmentProofTokenHash(10, proofHash))
+        .thenReturn(Optional.of(enrollment));
+    when(adminRepository.findByEnrollmentId(10)).thenReturn(Optional.of(admin));
+
+    assertThatThrownBy(() -> service.mint(10, "proof-token"))
+        .isInstanceOf(AuthenticationException.class)
+        .hasMessageContaining("evaluator signup");
+    verify(tokenRepository, never()).saveAndFlush(any());
+    verify(tenantService, never()).deactivateTenantAsSystem(any());
   }
 
   @Test
@@ -178,7 +198,7 @@ class EvaluatorTempSessionServiceTest {
   @Test
   @DisplayName("supersedeOnVerifiedBind revokes EVALUATOR_TEMP (never promotes cookie)")
   void supersede_revokesEvaluatorTempTokens() {
-    Tenant tenant = tenant(5, true);
+    Tenant tenant = tenant(5, true, false);
     Enrollment enrollment = enrollment(10, EnrollmentStatus.VERIFIED, "proof");
     EzkeyAdmin admin = tenantAdmin(20, tenant, enrollment);
     when(adminRepository.findByEnrollmentId(10)).thenReturn(Optional.of(admin));
@@ -195,7 +215,7 @@ class EvaluatorTempSessionServiceTest {
   @DisplayName(
       "expiry YES path: other VERIFIED admin → ADMIN_DEACTIVATED only, no deactivateTenant")
   void expiry_otherVerifiedAdmin_deactivatesIdentityOnly() {
-    Tenant tenant = tenant(5, true);
+    Tenant tenant = tenant(5, true, true);
     Enrollment tempEnrollment = enrollment(1, EnrollmentStatus.CREATED, "a");
     EzkeyAdmin tempAdmin = tenantAdmin(100, tenant, tempEnrollment);
 
@@ -226,7 +246,7 @@ class EvaluatorTempSessionServiceTest {
   @Test
   @DisplayName("expiry: PENDING peer is not bound — soft-deactivates tenant (Bound=MFA VERIFIED)")
   void expiry_pendingPeer_notBound_softDeactivatesTenant() {
-    Tenant tenant = tenant(5, true);
+    Tenant tenant = tenant(5, true, true);
     Enrollment tempEnrollment = enrollment(1, EnrollmentStatus.CREATED, "a");
     EzkeyAdmin tempAdmin = tenantAdmin(100, tenant, tempEnrollment);
 
@@ -252,7 +272,7 @@ class EvaluatorTempSessionServiceTest {
   @Test
   @DisplayName("expiry: TEMP identity already VERIFIED → revoke only, no identity/tenant teardown")
   void expiry_tempIdentityVerified_isDelayedSupersede() {
-    Tenant tenant = tenant(5, true);
+    Tenant tenant = tenant(5, true, true);
     Enrollment verifiedEnrollment = enrollment(1, EnrollmentStatus.VERIFIED, "a");
     verifiedEnrollment.setActive(true);
     EzkeyAdmin tempAdmin = tenantAdmin(100, tenant, verifiedEnrollment);
@@ -276,9 +296,10 @@ class EvaluatorTempSessionServiceTest {
   }
 
   @Test
-  @DisplayName("expiry NO path: soft deactivateTenant + ADMIN_DEACTIVATED + TENANT_DEACTIVATED")
-  void expiry_noOtherVerifiedAdmin_softDeactivatesTenant() {
-    Tenant tenant = tenant(5, true);
+  @DisplayName(
+      "expiry: self-registered evaluator tenant with no other VERIFIED admin is still cleaned up")
+  void expiry_selfRegistered_noOtherVerifiedAdmin_softDeactivatesTenant() {
+    Tenant tenant = tenant(5, true, true);
     Enrollment tempEnrollment = enrollment(1, EnrollmentStatus.CREATED, "a");
     EzkeyAdmin tempAdmin = tenantAdmin(100, tenant, tempEnrollment);
 
@@ -303,6 +324,34 @@ class EvaluatorTempSessionServiceTest {
         .containsExactlyInAnyOrder(EventType.ADMIN_DEACTIVATED, EventType.TENANT_DEACTIVATED);
   }
 
+  @Test
+  @DisplayName(
+      "expiry: non-self-registered tenant whose only admin is temporary and unbound is never"
+          + " deactivated")
+  void expiry_nonSelfRegistered_onlyUnboundTempAdmin_neverDeactivatesTenant() {
+    Tenant tenant = tenant(7, true, false);
+    Enrollment tempEnrollment = enrollment(1, EnrollmentStatus.CREATED, "a");
+    EzkeyAdmin tempAdmin = tenantAdmin(100, tenant, tempEnrollment);
+    AdminToken expired = expiredTempToken(tempAdmin, tenant);
+
+    when(tokenRepository.findActiveExpiredByPurposeWithRelations(
+            eq(AdminTokenPurpose.EVALUATOR_TEMP), any(OffsetDateTime.class)))
+        .thenReturn(List.of(expired));
+
+    int processed = service.processExpiredTempSessions();
+
+    assertThat(processed).isEqualTo(1);
+    assertThat(expired.getActive()).isFalse();
+    verify(tokenRepository).save(expired);
+    verify(tokenRepository)
+        .deactivateTokensForAdminByPurpose(100, AdminTokenPurpose.EVALUATOR_TEMP);
+    verify(tenantService, never()).deactivateTenantAsSystem(any());
+    verify(adminRepository, never()).save(any());
+    verify(auditLogService, never()).log(any());
+    assertThat(tempAdmin.getActive()).isTrue();
+    assertThat(tempAdmin.getLifecycleStatus()).isEqualTo(AdminLifecycleStatus.ACTIVE);
+  }
+
   private static AdminToken expiredTempToken(EzkeyAdmin tempAdmin, Tenant tenant) {
     AdminToken expired = new AdminToken();
     expired.setActive(true);
@@ -322,12 +371,13 @@ class EvaluatorTempSessionServiceTest {
     return e;
   }
 
-  private static Tenant tenant(int id, boolean active) {
+  private static Tenant tenant(int id, boolean active, boolean selfRegistered) {
     Tenant t = new Tenant();
     t.setTenantId(id);
     t.setTenantName("Lab");
     t.setActive(active);
     t.setIsSystemTenant(false);
+    t.setSelfRegistered(selfRegistered);
     return t;
   }
 

@@ -88,6 +88,10 @@ boundary forces a documented supersession.
       actor + reason); `ADMIN_DEACTIVATED` for the TEMP identity. **Zero auto-reactivation.**
     - Manual GLOBAL reactivation (Marc community) is intentional; key resurrection via lifecycle
       is OK.
+    - **Scope amendment (#923):** the identity and soft-tenant cleanup above applies only when
+      `tenant.selfRegistered` is true. Mint is refused otherwise. Any other tenant: revoke the
+      expired TEMP token only — do not deactivate the admin or the tenant. Wider policy (skip
+      cleanup when integrations are active, warn before deactivation) stays open on #923.
 11. **Bind VERIFIED → supersede** — revoke `EVALUATOR_TEMP` **immediately**; force a **fresh**
     post-bind `SESSION` login. **Do not** promote / reuse the same cookie into `SESSION`.
 12. **Tenant-scoped** — QR / onboarding self-only; **never GLOBAL**.
