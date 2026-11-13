@@ -237,7 +237,9 @@ public class AuthAttemptController {
     String userAgent = AuditHelper.extractUserAgent(httpRequest);
 
     AuthAttemptPendingResponse response =
-        authAttemptService.pending(authAttemptMapper.toAuthAttemptPendingRequest(request));
+        authAttemptService.pending(
+            authAttemptMapper.toAuthAttemptPendingRequest(request),
+            new ClientContext(clientIp, userAgent));
 
     Integer pendingTenantId = resolveTenantIdForAudit(response.getAuthAttemptId());
     Integer pendingAuthAttemptId = response.getAuthAttemptId();

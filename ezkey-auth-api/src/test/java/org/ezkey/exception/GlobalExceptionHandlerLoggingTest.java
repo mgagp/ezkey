@@ -23,6 +23,7 @@ import org.ezkey.audit.integrity.AuditChainHeartbeatEvaluation;
 import org.ezkey.audit.integrity.AuditChainHeartbeatGuardService;
 import org.ezkey.audit.integrity.AuditChainHeartbeatPhase;
 import org.ezkey.exception.audit.AuditChainHeartbeatDegradedException;
+import org.ezkey.exception.auth.AuthPendingRateLimitExceededException;
 import org.ezkey.exception.auth.AuthRespondRateLimitExceededException;
 import org.ezkey.exception.auth.EnrollmentBindingFailedException;
 import org.junit.jupiter.api.AfterEach;
@@ -164,6 +165,18 @@ class GlobalExceptionHandlerLoggingTest {
                   ServletWebRequest request = new ServletWebRequest(httpRequest);
                   handler.handleAuthRespondRateLimitExceeded(
                       new AuthRespondRateLimitExceededException(60L), request);
+                }),
+        Arguments.of(
+            "pending rate-limit path",
+            "Pending rate limit",
+            "/api/v1/auth-attempts/pending__injected",
+            (SiteInvoker)
+                (handler, guard) -> {
+                  MockHttpServletRequest httpRequest = new MockHttpServletRequest();
+                  httpRequest.setRequestURI("/api/v1/auth-attempts/pending\r\ninjected");
+                  ServletWebRequest request = new ServletWebRequest(httpRequest);
+                  handler.handleAuthPendingRateLimitExceeded(
+                      new AuthPendingRateLimitExceededException(60L), request);
                 }),
         Arguments.of(
             "NoPendingAuthAttempt getDescription",

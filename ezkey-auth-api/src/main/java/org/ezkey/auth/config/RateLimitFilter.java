@@ -34,8 +34,6 @@ import org.ezkey.auth.controller.EnrollmentController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 
 /**
  * HTTP filter for applying rate limiting to specific auth-api endpoints.
@@ -57,10 +55,11 @@ import tools.jackson.databind.ObjectMapper;
  * <p><b>Rate Limiting Strategy:</b>
  *
  * <ul>
- *   <li>Pending: By enrollment ID from request body or client IP (configurable via
- *       enrollment-id/client-ip)
- *   <li>Respond: With {@code auth-attempt-id} strategy, filter applies the fail-IP ceiling only;
- *       per-{@code authAttemptId} budget is consumed after a valid device signature (#912 C1)
+ *   <li>Pending: With {@code enrollment-id}, an IP ceiling only. The per-enrollment budget is
+ *       consumed after proof token and device signature, from the validated enrollment (#1124)
+ *   <li>Respond: With {@code auth-attempt-id}, filter applies the fail-IP ceiling only; per-{@code
+ *       authAttemptId} budget is consumed after a valid device signature, and that proven call
+ *       refunds the IP token (#912 C1, #918)
  *   <li>Verify: By client IP only
  *   <li>Bind: By client IP only
  * </ul>
@@ -92,29 +91,24 @@ public class RateLimitFilter implements Filter {
 
   private final TrustedProxyProperties trustedProxyProperties;
 
-  private final ObjectMapper objectMapper;
-
   private final MeterRegistry meterRegistry;
 
   private final AuthRespondRateLimitService authRespondRateLimitService;
 
+  private final AuthPendingRateLimitService authPendingRateLimitService;
+
   private final Cache<String, Bucket> bucketCache;
 
   /**
-   * Constructs the rate limiting filter with configuration properties and ObjectMapper for parsing
-   * respond request body.
+   * Constructs the rate limiting filter.
    *
    * @param properties the rate limiting configuration properties
    * @param trustedProxyProperties the trusted proxy CIDR list (for client IP resolution); may be
    *     null
-   * @param objectMapper the Jackson ObjectMapper for extracting authAttemptId/enrollmentId from
-   *     request bodies
    */
   public RateLimitFilter(
-      RateLimitProperties properties,
-      TrustedProxyProperties trustedProxyProperties,
-      ObjectMapper objectMapper) {
-    this(properties, trustedProxyProperties, objectMapper, null, null);
+      RateLimitProperties properties, TrustedProxyProperties trustedProxyProperties) {
+    this(properties, trustedProxyProperties, null, null, null);
   }
 
   /**
@@ -123,41 +117,40 @@ public class RateLimitFilter implements Filter {
    * @param properties the rate limiting configuration properties
    * @param trustedProxyProperties the trusted proxy CIDR list (for client IP resolution); may be
    *     null
-   * @param objectMapper the Jackson ObjectMapper for extracting ids from request bodies
    * @param meterRegistry optional Micrometer registry; null skips backstop counters
    */
   public RateLimitFilter(
       RateLimitProperties properties,
       TrustedProxyProperties trustedProxyProperties,
-      ObjectMapper objectMapper,
       MeterRegistry meterRegistry) {
-    this(properties, trustedProxyProperties, objectMapper, meterRegistry, null);
+    this(properties, trustedProxyProperties, meterRegistry, null, null);
   }
 
   /**
-   * Constructs the filter with respond rate-limit service (fail-IP + post-ownership id budgets).
+   * Constructs the filter with post-ownership respond and pending budgets.
    *
    * @param properties the rate limiting configuration properties
    * @param trustedProxyProperties the trusted proxy CIDR list (for client IP resolution); may be
    *     null
-   * @param objectMapper the Jackson ObjectMapper for extracting ids from request bodies
    * @param meterRegistry optional Micrometer registry; null skips backstop counters
-   * @param authRespondRateLimitService respond budgets; null falls back to legacy per-id filter
-   *     debit (tests without the bean)
+   * @param authRespondRateLimitService respond budgets; null keeps respond on the client-IP bucket
+   * @param authPendingRateLimitService pending budgets; null keeps {@code enrollment-id} pending on
+   *     the client-IP bucket and still does not read the body
    */
   public RateLimitFilter(
       RateLimitProperties properties,
       TrustedProxyProperties trustedProxyProperties,
-      ObjectMapper objectMapper,
       MeterRegistry meterRegistry,
-      AuthRespondRateLimitService authRespondRateLimitService) {
+      AuthRespondRateLimitService authRespondRateLimitService,
+      AuthPendingRateLimitService authPendingRateLimitService) {
     this.properties = properties;
     this.trustedProxyProperties = trustedProxyProperties;
-    this.objectMapper = objectMapper;
     this.meterRegistry = meterRegistry;
     this.authRespondRateLimitService = authRespondRateLimitService;
+    this.authPendingRateLimitService = authPendingRateLimitService;
 
-    // Cache buckets for 1 hour with maximum 1000 entries
+    // Client-IP buckets for verify, bind, and pending/respond when those services are absent.
+    // Target-id budgets live in the services so an IP flood cannot evict them (#918).
     this.bucketCache =
         Caffeine.newBuilder().maximumSize(1000).expireAfterAccess(Duration.ofHours(1)).build();
   }
@@ -172,18 +165,9 @@ public class RateLimitFilter implements Filter {
     String requestUri = req.getRequestURI();
     String requestMethod = req.getMethod();
 
-    // For respond and pending endpoints, wrap request so body can be read for authAttemptId /
-    // enrollmentId and re-read by controller
-    if ("POST".equals(requestMethod)
-        && requestUri != null
-        && (requestUri.contains(AuthAttemptController.FULL_PATH_RESPOND)
-            || requestUri.contains(AuthAttemptController.FULL_PATH_PENDING))) {
-      req = new CachedBodyHttpServletRequestWrapper(req);
-    }
-
     // Apply rate limiting only to targeted endpoints
     if (shouldApplyRateLimit(requestUri, requestMethod)) {
-      RateLimitResult result = checkRateLimit(requestUri, requestMethod, req);
+      RateLimitResult result = checkRateLimit(requestUri, req);
 
       if (!result.isAllowed()) {
         res.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
@@ -240,30 +224,27 @@ public class RateLimitFilter implements Filter {
    * Checks rate limit for the given request and returns the result.
    *
    * @param requestUri the request URI
-   * @param requestMethod the HTTP method
    * @param request the HTTP request
    * @return rate limit check result
    */
-  private RateLimitResult checkRateLimit(
-      String requestUri, String requestMethod, HttpServletRequest request) {
-    // Respond + auth-attempt-id: filter only applies fail-IP ceiling (#912 C1).
+  private RateLimitResult checkRateLimit(String requestUri, HttpServletRequest request) {
+    // Respond + auth-attempt-id: fail-IP only. The id budget is post-signature (#912 C1).
     if (requestUri.contains(AuthAttemptController.FULL_PATH_RESPOND)
         && "auth-attempt-id".equals(properties.getRespond().getKeyStrategy())
         && authRespondRateLimitService != null) {
-      List<String> cidrs =
-          trustedProxyProperties != null ? trustedProxyProperties.getCidrs() : null;
-      boolean trustCf =
-          trustedProxyProperties != null && trustedProxyProperties.isTrustCloudflareConnectingIp();
-      String clientIp = ClientIpResolver.resolve(request, cidrs, trustCf);
-      AuthRespondRateLimitService.RateLimitDecision decision =
-          authRespondRateLimitService.tryConsumeFailIp(clientIp);
-      if (!decision.allowed()) {
-        return new RateLimitResult(false, decision.retryAfterSeconds());
-      }
-      return new RateLimitResult(true, 0);
+      return consumeIpCeiling(
+          authRespondRateLimitService.tryConsumeFailIp(resolveClientIp(request)));
     }
 
-    String clientId = extractClientId(requestUri, request);
+    // Pending + enrollment-id: fail-IP only. The enrollment budget is post-proof (#1124).
+    if (requestUri.contains(AuthAttemptController.FULL_PATH_PENDING)
+        && "enrollment-id".equals(properties.getPending().getKeyStrategy())
+        && authPendingRateLimitService != null) {
+      return consumeIpCeiling(
+          authPendingRateLimitService.tryConsumeFailIp(resolveClientIp(request)));
+    }
+
+    String clientId = resolveClientIp(request);
     String bucketKey = requestUri + ":" + clientId;
 
     Bucket bucket = bucketCache.get(bucketKey, this::createBucket);
@@ -275,6 +256,13 @@ public class RateLimitFilter implements Filter {
     RateLimitResult backstop = checkBackstop(requestUri);
     if (!backstop.isAllowed()) {
       return backstop;
+    }
+    return new RateLimitResult(true, 0);
+  }
+
+  private static RateLimitResult consumeIpCeiling(RateLimitTokens.Decision decision) {
+    if (!decision.allowed()) {
+      return new RateLimitResult(false, decision.retryAfterSeconds());
     }
     return new RateLimitResult(true, 0);
   }
@@ -344,114 +332,19 @@ public class RateLimitFilter implements Filter {
   }
 
   /**
-   * Extracts client identifier for rate limiting based on endpoint and configuration.
+   * Resolves the client IP used when a budget is keyed by address rather than a proven id.
    *
-   * @param requestUri the request URI
+   * <p>Pending and respond per-id keys are never derived here. Those budgets live in the
+   * post-ownership services.
+   *
    * @param request the HTTP request
-   * @return client identifier string
+   * @return client IP string
    */
-  private String extractClientId(String requestUri, HttpServletRequest request) {
-    // For pending endpoint, use enrollment ID from body if configured
-    if (requestUri.contains(AuthAttemptController.FULL_PATH_PENDING)) {
-      if ("enrollment-id".equals(properties.getPending().getKeyStrategy())) {
-        Integer enrollmentId = extractEnrollmentIdFromBody(request);
-        if (enrollmentId != null) {
-          return "pending:" + enrollmentId;
-        }
-        // Fallback to client IP if body missing, invalid, or enrollmentId null
-      }
-    }
-
-    // For respond endpoint, use authAttemptId from body if configured
-    if (requestUri.contains(AuthAttemptController.FULL_PATH_RESPOND)) {
-      if ("auth-attempt-id".equals(properties.getRespond().getKeyStrategy())) {
-        Integer authAttemptId = extractAuthAttemptIdFromBody(request);
-        if (authAttemptId != null) {
-          return "respond:" + authAttemptId;
-        }
-        // Fallback to client IP if body missing, invalid, or authAttemptId null
-      }
-    }
-
-    // Default: use client IP (with trusted-proxy list when configured)
+  private String resolveClientIp(HttpServletRequest request) {
     List<String> cidrs = trustedProxyProperties != null ? trustedProxyProperties.getCidrs() : null;
     boolean trustCf =
         trustedProxyProperties != null && trustedProxyProperties.isTrustCloudflareConnectingIp();
     return ClientIpResolver.resolve(request, cidrs, trustCf);
-  }
-
-  /**
-   * Extracts enrollmentId from the request body when it is a CachedBodyHttpServletRequestWrapper.
-   * Returns null if the request is not wrapped, the body is not valid JSON, or enrollmentId is
-   * missing or not a number.
-   *
-   * @param request the HTTP request (must be wrapped for pending path)
-   * @return the enrollmentId, or null if not available
-   */
-  private Integer extractEnrollmentIdFromBody(HttpServletRequest request) {
-    if (!(request instanceof CachedBodyHttpServletRequestWrapper)) {
-      return null;
-    }
-    try {
-      byte[] body = ((CachedBodyHttpServletRequestWrapper) request).getContentAsByteArray();
-      if (body == null || body.length == 0) {
-        return null;
-      }
-      JsonNode root = objectMapper.readTree(body);
-      if (root == null || !root.has("enrollmentId")) {
-        return null;
-      }
-      JsonNode idNode = root.get("enrollmentId");
-      if (idNode == null || idNode.isNull()) {
-        return null;
-      }
-      if (idNode.isNumber()) {
-        return idNode.intValue();
-      }
-      if (idNode.isString()) {
-        return Integer.parseInt(idNode.asString());
-      }
-      return null;
-    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
-      return null;
-    }
-  }
-
-  /**
-   * Extracts authAttemptId from the request body when it is a CachedBodyHttpServletRequestWrapper.
-   * Returns null if the request is not wrapped, the body is not valid JSON, or authAttemptId is
-   * missing or not a number.
-   *
-   * @param request the HTTP request (must be wrapped for respond path)
-   * @return the authAttemptId, or null if not available
-   */
-  private Integer extractAuthAttemptIdFromBody(HttpServletRequest request) {
-    if (!(request instanceof CachedBodyHttpServletRequestWrapper)) {
-      return null;
-    }
-    try {
-      byte[] body = ((CachedBodyHttpServletRequestWrapper) request).getContentAsByteArray();
-      if (body == null || body.length == 0) {
-        return null;
-      }
-      JsonNode root = objectMapper.readTree(body);
-      if (root == null || !root.has("authAttemptId")) {
-        return null;
-      }
-      JsonNode idNode = root.get("authAttemptId");
-      if (idNode == null || idNode.isNull()) {
-        return null;
-      }
-      if (idNode.isNumber()) {
-        return idNode.intValue();
-      }
-      if (idNode.isString()) {
-        return Integer.parseInt(idNode.asString());
-      }
-      return null;
-    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
-      return null;
-    }
   }
 
   /**

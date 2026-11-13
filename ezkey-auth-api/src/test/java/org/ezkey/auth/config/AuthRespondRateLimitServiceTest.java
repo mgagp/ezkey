@@ -56,4 +56,97 @@ class AuthRespondRateLimitServiceTest {
     assertThat(service.tryConsumeAfterOwnership(1)).isEmpty();
     assertThat(service.tryConsumeAfterOwnership(2)).isEmpty();
   }
+
+  @Test
+  @DisplayName("#918: proven respond refunds the IP token so successes do not fill the ceiling")
+  void refundAfterOwnership_doesNotCountProvenSuccessesAgainstIpBudget() {
+    RateLimitProperties properties = properties();
+    properties.getRespond().setFailIpRequests(1);
+    AuthRespondRateLimitService limited = new AuthRespondRateLimitService(properties);
+
+    assertThat(limited.tryConsumeFailIp("203.0.113.10").allowed()).isTrue();
+    limited.refundFailIpAfterOwnership("203.0.113.10");
+    assertThat(limited.tryConsumeFailIp("203.0.113.10").allowed())
+        .as("a proven call returns the token, so the next respond is not 429")
+        .isTrue();
+
+    assertThat(limited.tryConsumeFailIp("203.0.113.10").allowed())
+        .as("an unproven call keeps the token")
+        .isFalse();
+  }
+
+  @Test
+  @DisplayName("#918: many proven successes stay inside a one-token IP ceiling")
+  void repeatedProvenSuccesses_doNotExhaustIpCeiling() {
+    RateLimitProperties properties = properties();
+    properties.getRespond().setFailIpRequests(1);
+    AuthRespondRateLimitService limited = new AuthRespondRateLimitService(properties);
+
+    for (int i = 0; i < 30; i++) {
+      assertThat(limited.tryConsumeFailIp("198.51.100.4").allowed()).isTrue();
+      limited.refundFailIpAfterOwnership("198.51.100.4");
+    }
+    assertThat(limited.tryConsumeFailIp("198.51.100.4").allowed()).isTrue();
+  }
+
+  @Test
+  @DisplayName("#918: IPv6 addresses in one /64 share a bucket; a different /64 does not")
+  void ipv6Prefix64_sharesFailIpBucket() {
+    RateLimitProperties properties = properties();
+    properties.getRespond().setFailIpRequests(1);
+    AuthRespondRateLimitService limited = new AuthRespondRateLimitService(properties);
+
+    assertThat(limited.tryConsumeFailIp("2001:db8:1:2::1").allowed()).isTrue();
+    assertThat(limited.tryConsumeFailIp("2001:DB8:1:2::abcd").allowed())
+        .as("privacy-extension rotation inside the /64 must not reset the ceiling")
+        .isFalse();
+    assertThat(limited.tryConsumeFailIp("2001:db8:1:3::1").allowed())
+        .as("a different /64 is a different subscriber prefix")
+        .isTrue();
+    assertThat(limited.tryConsumeFailIp("::ffff:203.0.113.9").allowed()).isTrue();
+    assertThat(limited.tryConsumeFailIp("203.0.113.9").allowed())
+        .as("IPv4-mapped IPv6 and the dotted address are one key")
+        .isFalse();
+  }
+
+  @Test
+  @DisplayName("#918: filling the IP cache does not evict an exhausted IP or an id budget")
+  void ipRotation_doesNotResetExhaustedIpOrIdBudget() {
+    RateLimitProperties properties = properties();
+    properties.getRespond().setFailIpRequests(1);
+    properties.getRespond().setRequests(1);
+    AuthRespondRateLimitService limited = new AuthRespondRateLimitService(properties, 2, 1);
+
+    assertThat(limited.tryConsumeFailIp("203.0.113.1").allowed()).isTrue();
+    assertThat(limited.tryConsumeFailIp("203.0.113.1").allowed()).isFalse();
+    assertThat(limited.tryConsumeAfterOwnership(99)).isEmpty();
+    assertThat(limited.tryConsumeAfterOwnership(99)).isPresent();
+
+    assertThat(limited.tryConsumeFailIp("203.0.113.2").allowed()).isTrue();
+    assertThat(limited.tryConsumeFailIp("203.0.113.3").allowed())
+        .as("the first key past capacity shares the overflow bucket")
+        .isTrue();
+    assertThat(limited.tryConsumeFailIp("203.0.113.4").allowed())
+        .as("a further rotated address must not receive a fresh full budget")
+        .isFalse();
+
+    assertThat(limited.tryConsumeFailIp("203.0.113.1").allowed())
+        .as("admitting new prefixes must not resurrect the exhausted address")
+        .isFalse();
+    assertThat(limited.tryConsumeAfterOwnership(99))
+        .as("an IP flood must not evict the post-ownership id bucket")
+        .isPresent();
+  }
+
+  private static RateLimitProperties properties() {
+    RateLimitProperties properties = new RateLimitProperties();
+    RateLimitProperties.EndpointConfig respond = new RateLimitProperties.EndpointConfig();
+    respond.setRequests(1);
+    respond.setWindowMinutes(5);
+    respond.setKeyStrategy("auth-attempt-id");
+    respond.setFailIpRequests(30);
+    respond.setFailIpWindowMinutes(1);
+    properties.setRespond(respond);
+    return properties;
+  }
 }

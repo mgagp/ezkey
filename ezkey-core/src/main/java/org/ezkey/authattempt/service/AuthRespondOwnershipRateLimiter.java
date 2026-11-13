@@ -30,4 +30,14 @@ public interface AuthRespondOwnershipRateLimiter {
    * @return empty when allowed; otherwise retry-after seconds (at least 1)
    */
   OptionalLong tryConsumeAfterOwnership(Integer authAttemptId);
+
+  /**
+   * Returns the IP-ceiling token the filter consumed, once device ownership is proven.
+   *
+   * <p>Proven respond calls must not accumulate on a shared carrier NAT (#918). The default does
+   * nothing when rate limiting is off.
+   *
+   * @param clientIp resolved client IP; ignored when null or blank
+   */
+  default void refundFailIpAfterOwnership(String clientIp) {}
 }

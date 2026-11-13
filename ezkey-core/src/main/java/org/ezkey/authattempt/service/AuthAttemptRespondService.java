@@ -175,6 +175,9 @@ public class AuthAttemptRespondService {
       // Step 3: Validate device signature (ownership) before typed expiry (#895 Christophe)
       validateDeviceSignature(request, authAttempt, enrollment, clientContext);
 
+      // Step 3a: proven call does not keep the IP-ceiling token (#918)
+      refundFailIpAfterOwnership(clientContext);
+
       // Step 3b: per-authAttemptId budget only after ownership (#912 C1)
       consumeOwnershipRateLimit(authAttempt.getAuthAttemptId());
 
@@ -278,6 +281,24 @@ public class AuthAttemptRespondService {
     if (isWallClockExpired(authAttempt)) {
       throw new AuthAttemptExpiredException("Authentication attempt expired");
     }
+  }
+
+  /**
+   * Returns the filter's IP-ceiling token after device ownership is proven (#918).
+   *
+   * @param clientContext optional client IP; null skips the refund
+   */
+  private void refundFailIpAfterOwnership(ClientContext clientContext) {
+    if (clientContext == null
+        || clientContext.clientIp() == null
+        || clientContext.clientIp().isBlank()) {
+      return;
+    }
+    AuthRespondOwnershipRateLimiter limiter = ownershipRateLimiter.getIfAvailable();
+    if (limiter == null) {
+      return;
+    }
+    limiter.refundFailIpAfterOwnership(clientContext.clientIp());
   }
 
   /**

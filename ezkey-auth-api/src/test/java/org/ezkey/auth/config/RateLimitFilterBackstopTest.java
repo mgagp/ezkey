@@ -27,7 +27,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-import tools.jackson.databind.ObjectMapper;
 
 /**
  * Filter-chain coverage of the process-wide backstop: rotating client IPs still hit one unkeyed
@@ -65,9 +64,7 @@ class RateLimitFilterBackstopTest {
     properties.getBackstop().getBind().setRequests(2);
     properties.getBackstop().getBind().setWindowMinutes(5);
     meterRegistry = new SimpleMeterRegistry();
-    filter =
-        new RateLimitFilter(
-            properties, new TrustedProxyProperties(), new ObjectMapper(), meterRegistry);
+    filter = new RateLimitFilter(properties, new TrustedProxyProperties(), meterRegistry);
   }
 
   @Test
@@ -120,9 +117,7 @@ class RateLimitFilterBackstopTest {
   @DisplayName("Disabled backstop lets rotating IPs through when keyed budgets allow")
   void disabledBackstop_allowsRotatingIps() throws Exception {
     properties.getBackstop().setEnabled(false);
-    filter =
-        new RateLimitFilter(
-            properties, new TrustedProxyProperties(), new ObjectMapper(), meterRegistry);
+    filter = new RateLimitFilter(properties, new TrustedProxyProperties(), meterRegistry);
 
     for (int i = 1; i <= 4; i++) {
       assertThat(postFromIp(VERIFY_PATH, "198.51.100." + i).getStatus()).isEqualTo(200);

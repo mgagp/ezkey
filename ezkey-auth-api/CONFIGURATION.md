@@ -20,6 +20,8 @@ serves them to enrolled mobile devices, and processes responses. It runs **no sc
 | `ezkey.rate-limit.enabled` | — | `false` | requis [docker] |
 | `ezkey.rate-limit.pending.requests` | — | `10` | optionnel |
 | `ezkey.rate-limit.pending.window-minutes` | — | `1` | optionnel |
+| `ezkey.rate-limit.pending.fail-ip-requests` | — | `60` | optionnel |
+| `ezkey.rate-limit.pending.fail-ip-window-minutes` | — | `1` | optionnel |
 | `ezkey.rate-limit.respond.requests` | — | `1` | optionnel |
 | `ezkey.rate-limit.respond.window-minutes` | — | `5` | optionnel |
 | `ezkey.rate-limit.respond.fail-ip-requests` | — | `30` | optionnel |
@@ -56,13 +58,15 @@ inventory: [rate-limit-baseline-policy.md](../product-docs/global/rate-limit-bas
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
 | `ezkey.rate-limit.enabled` | `boolean` | `false` | requis [docker] | Global on/off. Docker profile sets `true`. |
-| `ezkey.rate-limit.pending.requests` | `int` | `10` | optionnel | Max pending-check requests per window. |
-| `ezkey.rate-limit.pending.window-minutes` | `int` | `1` | optionnel | Window for `pending` endpoint (minutes). |
-| `ezkey.rate-limit.pending.key-strategy` | `String` | `client-ip` | optionnel | Rate-limit key strategy. Docker: `enrollment-id`. |
+| `ezkey.rate-limit.pending.requests` | `int` | `10` | optionnel | Per-enrollment pending budget **after** proof token and device signature (#1124). |
+| `ezkey.rate-limit.pending.window-minutes` | `int` | `1` | optionnel | Window for the post-ownership pending budget (minutes). |
+| `ezkey.rate-limit.pending.key-strategy` | `String` | `client-ip` | optionnel | Docker: `enrollment-id`. The body id is not a filter key. |
+| `ezkey.rate-limit.pending.fail-ip-requests` | `int` | `60` | optionnel | IP ceiling for **unproven** pending calls. Proven polls refund the token (#1124, #918). |
+| `ezkey.rate-limit.pending.fail-ip-window-minutes` | `int` | `1` | optionnel | Window for the pending IP ceiling (minutes). |
 | `ezkey.rate-limit.respond.requests` | `int` | `1` | optionnel | Max respond requests **per auth-attempt after ownership** per window (#912 C1). |
 | `ezkey.rate-limit.respond.window-minutes` | `int` | `5` | optionnel | Window for the post-ownership per-id budget (minutes). |
 | `ezkey.rate-limit.respond.key-strategy` | `String` | `auth-attempt-id` | optionnel | Default `auth-attempt-id`. Filter uses fail-IP; id budget is post-signature. |
-| `ezkey.rate-limit.respond.fail-ip-requests` | `int` | `30` | optionnel | Filter IP ceiling for **all** respond requests (#912 C1). |
+| `ezkey.rate-limit.respond.fail-ip-requests` | `int` | `30` | optionnel | IP ceiling for **unproven** respond calls. Proven responds refund the token (#918). |
 | `ezkey.rate-limit.respond.fail-ip-window-minutes` | `int` | `1` | optionnel | Window for the respond fail-IP ceiling (minutes). |
 | `ezkey.rate-limit.verify.requests` | `int` | `10` | optionnel | Max enrollment-verify requests per window. |
 | `ezkey.rate-limit.verify.window-minutes` | `int` | `1` | optionnel | Window for `verify` endpoint (minutes). |
@@ -82,9 +86,9 @@ inventory: [rate-limit-baseline-policy.md](../product-docs/global/rate-limit-bas
 
 | Value | Description |
 |---|---|
-| `client-ip` | Rate-limit by remote IP (or forwarded IP when behind trusted proxy). |
-| `enrollment-id` | Rate-limit by enrollment ID from the request (device-scoped polling). |
-| `auth-attempt-id` | Rate-limit by auth attempt ID (per-attempt — only for `respond`). |
+| `client-ip` | Rate-limit by remote IP (or forwarded IP when behind a trusted proxy). IPv6 keys on the pending and respond ceilings use a /64. |
+| `enrollment-id` | Pending only. Per-enrollment budget after a valid proof token and device signature. The key is the enrollment located by the proof token, not the body `enrollmentId`. Unproven calls use the fail-IP ceiling. |
+| `auth-attempt-id` | Respond only. Per-attempt budget after a valid device signature. Unproven calls use the fail-IP ceiling. |
 
 **`docker` profile defaults:**
 
@@ -93,9 +97,13 @@ ezkey.rate-limit.enabled=true
 ezkey.rate-limit.pending.requests=10
 ezkey.rate-limit.pending.window-minutes=1
 ezkey.rate-limit.pending.key-strategy=enrollment-id
+ezkey.rate-limit.pending.fail-ip-requests=60
+ezkey.rate-limit.pending.fail-ip-window-minutes=1
 ezkey.rate-limit.respond.requests=1
 ezkey.rate-limit.respond.window-minutes=5
 ezkey.rate-limit.respond.key-strategy=auth-attempt-id
+ezkey.rate-limit.respond.fail-ip-requests=30
+ezkey.rate-limit.respond.fail-ip-window-minutes=1
 ezkey.rate-limit.verify.requests=5
 ezkey.rate-limit.verify.window-minutes=5
 ezkey.rate-limit.verify.key-strategy=client-ip

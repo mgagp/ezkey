@@ -60,15 +60,15 @@ Global flag: `ezkey.rate-limit.enabled` (default `false`; **`true` in docker pro
 
 | Endpoint | Method | Family | Key strategy | Default (enabled) | Docker profile (typical) | Sensitivity |
 |----------|--------|--------|--------------|-------------------|--------------------------|-------------|
-| `/api/v1/auth-attempts/pending` | POST | D | `enrollment-id` (docker) / `client-ip` (code default) | 10 / 1 min | 10 / 1 min, `enrollment-id` | high |
-| `/api/v1/auth-attempts/respond` | POST | D | `auth-attempt-id` | **1 / 5 min** | 1 / 5 min | **critical** — do not loosen |
+| `/api/v1/auth-attempts/pending` | POST | D | `enrollment-id` after proof (docker) / `client-ip` (code default). Unproven calls: IP ceiling 60 / 1 min | 10 / 1 min post-proof | 10 / 1 min post-proof, IP ceiling 60 / 1 min | high — body id is not a key (#1124) |
+| `/api/v1/auth-attempts/respond` | POST | D | `auth-attempt-id` after signature. Unproven calls: IP ceiling 30 / 1 min, separate cache, IPv6 /64 | **1 / 5 min** post-signature | 1 / 5 min post-signature | **critical** — do not loosen (#912, #918) |
 | `/api/v1/enrollments/verify` | POST | D | `client-ip` | 10 / 1 min | 5 / 5 min | high |
 | `/api/v1/enrollments/bind` | POST | D | `client-ip` | 10 / 1 min | 3 / 5 min | high |
 | `/api/v1/enrollments/instance-info` | POST | D | `client-ip` (shares bind) | same as bind | same as bind | high |
 | Backstop `verify` | POST | D | **none** (per-instance) | 100 / 1 min | 50 / 5 min | high — IP-rotation residual |
 | Backstop `bind` (+ instance-info) | POST | D | **none** (per-instance) | 60 / 1 min | 30 / 5 min | high — IP-rotation residual |
 
-**Unrate-limited Auth API:** `GET /api/v1/public/instance-info` (public metadata). `pending` / `respond` stay target-id keyed and have no process-wide backstop.
+**Unrate-limited Auth API:** `GET /api/v1/public/instance-info` (public metadata). `pending` / `respond` target-id budgets are charged only after ownership and have no process-wide backstop. Those id caches are separate from the IP ceilings so an address flood cannot evict them (#918). Proven calls refund the IP token.
 
 Reference: [`ezkey-auth-api/CONFIGURATION.md`](../../ezkey-auth-api/CONFIGURATION.md), [`RateLimitFilter.java`](../../ezkey-auth-api/src/main/java/org/ezkey/auth/config/RateLimitFilter.java).
 
