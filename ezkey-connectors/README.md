@@ -26,6 +26,10 @@ Mailpit overlay and sends through Gmail with an app password (#1206 step 6). Cop
 `docker/connector-smtp.local.env`, and set `EZKEY_QR_AUTH_BASE_URL` to a public HTTPS URL of the Auth API, since the
 email names that server and the phone must reach it.
 
+On the community host the connector sends through Amazon SES with its own Lightsail overlay
+([`experimental-hybrid/lightsail/docker-compose.connector-smtp.yml`](../experimental-hybrid/lightsail/docker-compose.connector-smtp.yml));
+runbook in [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md) § *Email delivery connector* (#1206 step 7).
+
 ```bash
 # from the repository root
 mvn -pl ezkey-connectors/ezkey-connector-mock,ezkey-connectors/ezkey-connector-smtp -am verify

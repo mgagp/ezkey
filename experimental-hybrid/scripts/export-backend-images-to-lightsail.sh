@@ -15,6 +15,10 @@
 # With EZKEY_ENABLE_JAVA_MELODY=true: builds ezkey-javamelody-collector:<JAVAMELODY_VERSION> locally
 # from docker/javamelody, includes it in save/scp/load, and remote compose uses --no-build (overlay is
 # image-only + pull_policy: never — never build on the VM; remote buildx is often too old).
+# With EZKEY_ENABLE_CONNECTOR_SMTP=true: builds ezkey-connector-smtp:latest locally, ships it like the
+# collector, syncs docker-compose.connector-smtp.yml, checks connector-smtp.env (600) and the delivery
+# token on the VM, and applies the overlay on --remote-up (#1206 step 7). EZKEY_DISABLE_CONNECTOR_SMTP=true
+# removes the connector on purpose. A running connector without either flag stops the rolling up.
 # With --remote-up, after load (and after --sync-operator-files if set), validates bind-mount sources
 # on the VM then runs docker compose up -d --no-build so migration + backends + Caddy pick up the
 # loaded images (no volume wipe, no remote build). Do not combine --clean-start with
@@ -175,6 +179,41 @@ if [[ -n "$JM_ENABLE" && -n "$JM_DISABLE" ]]; then
   exit 1
 fi
 
+# SMTP delivery connector (#1206 step 7): same enable / disable / guard contract as JavaMelody.
+CS_ENABLE=""
+CS_DISABLE=""
+if [[ "${EZKEY_ENABLE_CONNECTOR_SMTP:-}" == "1" || "${EZKEY_ENABLE_CONNECTOR_SMTP:-}" == "true" ]]; then
+  CS_ENABLE="1"
+fi
+if [[ "${EZKEY_DISABLE_CONNECTOR_SMTP:-}" == "1" || "${EZKEY_DISABLE_CONNECTOR_SMTP:-}" == "true" ]]; then
+  CS_DISABLE="1"
+fi
+if [[ -n "$CS_ENABLE" && -n "$CS_DISABLE" ]]; then
+  echo "error: set only one of EZKEY_ENABLE_CONNECTOR_SMTP or EZKEY_DISABLE_CONNECTOR_SMTP" >&2
+  exit 1
+fi
+if [[ -n "$CS_ENABLE" && -n "$DO_CLEAN_START" ]]; then
+  echo "error: EZKEY_ENABLE_CONNECTOR_SMTP is not supported with --clean-start (clean-start.sh does not apply" >&2
+  echo "  the connector overlay). Commission the host first, then enable the connector with --remote-up." >&2
+  exit 1
+fi
+CONNECTOR_SMTP_OVERLAY="${LIGHTSAIL_LOCAL_DIR}/docker-compose.connector-smtp.yml"
+CONNECTOR_SMTP_IMAGE="ezkey-connector-smtp:latest"
+if [[ -n "$CS_ENABLE" ]]; then
+  if [[ ! -f "${CONNECTOR_SMTP_OVERLAY}" ]]; then
+    echo "error: SMTP connector overlay missing: ${CONNECTOR_SMTP_OVERLAY}" >&2
+    exit 1
+  fi
+  if grep -Eq '^\s*build:' "${CONNECTOR_SMTP_OVERLAY}"; then
+    echo "error: ${CONNECTOR_SMTP_OVERLAY} must not declare build: (Lightsail is image-only; ship via export)" >&2
+    exit 1
+  fi
+  if ! grep -Eq '^\s*pull_policy:[[:space:]]*never' "${CONNECTOR_SMTP_OVERLAY}"; then
+    echo "error: ${CONNECTOR_SMTP_OVERLAY} must set pull_policy: never on connector-smtp" >&2
+    exit 1
+  fi
+fi
+
 JAVAMELODY_OVERLAY="${LIGHTSAIL_LOCAL_DIR}/docker-compose.javamelody.yml"
 JAVAMELODY_COLLECTOR_IMAGE=""
 JAVAMELODY_VERSION=""
@@ -206,6 +245,10 @@ if [[ -n "$JM_ENABLE" ]]; then
   resolve_javamelody_collector_image "${JAVAMELODY_OVERLAY}"
   IMAGES+=("${JAVAMELODY_COLLECTOR_IMAGE}")
   TARS+=("ezkey-javamelody-collector-${JAVAMELODY_VERSION}.tar")
+fi
+if [[ -n "$CS_ENABLE" ]]; then
+  IMAGES+=("${CONNECTOR_SMTP_IMAGE}")
+  TARS+=(ezkey-connector-smtp.tar)
 fi
 
 run() {
@@ -251,6 +294,29 @@ build_javamelody_collector_image() {
   fi
 }
 
+# Build the SMTP connector locally from the repository root (its Dockerfile copies the parent POMs).
+build_connector_smtp_image() {
+  local img="$1"
+  local dockerfile="${REPO_ROOT}/ezkey-connectors/ezkey-connector-smtp/Dockerfile"
+  if [[ ! -f "${dockerfile}" ]]; then
+    echo "error: SMTP connector Dockerfile missing: ${dockerfile}" >&2
+    exit 1
+  fi
+  # Same revision label as the API images (#814), so the upgrade checklist can verify it.
+  local revision="${OCI_IMAGE_REVISION:-$(git -C "${REPO_ROOT}" rev-parse HEAD 2>/dev/null || echo unknown)}"
+  echo "→ docker build SMTP connector ${img} (revision ${revision})"
+  run docker build -f "${dockerfile}" --label "org.opencontainers.image.revision=${revision}" \
+    -t "${img}" "${REPO_ROOT}"
+  if [[ -n "$DRY_RUN" ]]; then
+    echo "  (no remote build: overlay is image-only + pull_policy: never; compose up uses --no-build)"
+    return 0
+  fi
+  if ! docker image inspect "${img}" >/dev/null 2>&1; then
+    echo "error: SMTP connector image missing after build: ${img}" >&2
+    exit 1
+  fi
+}
+
 # Sync the host-side files that the Lightsail docker-compose.yml bind-mounts through ../../ paths.
 # These are NOT the three operator files (docker-compose.yml, Caddyfile, clean-start.sh); they are
 # the PostgreSQL role-init script, the DML grants applied by the db-grants service, the master
@@ -282,9 +348,9 @@ sync_operator_files() {
   echo "  target=${LIGHTSAIL_TARGET:-custom} Caddyfile source=${remote_caddy_basename} → remote ${remote_caddy_basename}"
   lightsail_assert_caddyfile_sync_matches_compose "${compose_local}" "${remote_caddy_basename}"
   run ssh "${SSH_HOST}" "mkdir -p ${LIGHTSAIL_REMOTE_DIR}"
-  for f in docker-compose.yml clean-start.sh docker-compose.javamelody.yml; do
+  for f in docker-compose.yml clean-start.sh docker-compose.javamelody.yml docker-compose.connector-smtp.yml connector-smtp.env.example; do
     src="${LIGHTSAIL_LOCAL_DIR}/${f}"
-    if [[ "$f" == "docker-compose.javamelody.yml" && ! -f "$src" ]]; then
+    if [[ "$f" != "docker-compose.yml" && "$f" != "clean-start.sh" && ! -f "$src" ]]; then
       continue
     fi
     if [[ ! -f "$src" ]]; then
@@ -375,6 +441,9 @@ fi
 if [[ -n "$JM_ENABLE" ]]; then
   echo "  (JavaMelody collector: ${JAVAMELODY_COLLECTOR_IMAGE} — ship pre-built; no remote build)"
 fi
+if [[ -n "$CS_ENABLE" ]]; then
+  echo "  (SMTP connector: ${CONNECTOR_SMTP_IMAGE} — ship pre-built; no remote build)"
+fi
 echo "  images: ${IMAGES[*]}"
 echo "=========================================="
 echo ""
@@ -389,6 +458,9 @@ mkdir -p "$EXPORT_DIR"
 if [[ -n "$JM_ENABLE" ]]; then
   build_javamelody_collector_image "${JAVAMELODY_COLLECTOR_IMAGE}" "${JAVAMELODY_VERSION}"
 fi
+if [[ -n "$CS_ENABLE" ]]; then
+  build_connector_smtp_image "${CONNECTOR_SMTP_IMAGE}"
+fi
 
 for i in "${!IMAGES[@]}"; do
   img="${IMAGES[$i]}"
@@ -401,6 +473,9 @@ for i in "${!IMAGES[@]}"; do
       if [[ "$img" == "ezkey-demo-app-acme:latest" ]]; then
         echo "  Build first, e.g. from repo root:" >&2
         echo "    docker build -f docker/Dockerfile --target demo-app-acme -t ezkey-demo-app-acme:latest ." >&2
+      elif [[ "$img" == "${CONNECTOR_SMTP_IMAGE}" ]]; then
+        echo "  Build first (or re-run with EZKEY_ENABLE_CONNECTOR_SMTP=true so this script builds it):" >&2
+        echo "    docker build -f ezkey-connectors/ezkey-connector-smtp/Dockerfile -t ${img} ." >&2
       elif [[ "$img" == ezkey-javamelody-collector:* ]]; then
         echo "  Build first (or re-run with EZKEY_ENABLE_JAVA_MELODY=true so this script builds it):" >&2
         echo "    docker build -f docker/javamelody/Dockerfile --build-arg JAVAMELODY_VERSION=${JAVAMELODY_VERSION:-2.9.0} -t ${img} docker/javamelody" >&2
@@ -522,6 +597,33 @@ if [[ -n "$REMOTE_UP" && -z "$DO_CLEAN_START" ]]; then
       echo "  --remove-orphans). Re-run with EZKEY_ENABLE_JAVA_MELODY=true to keep it," >&2
       echo "  or EZKEY_DISABLE_JAVA_MELODY=true to remove it intentionally" >&2
       echo "  (that path alone passes --remove-orphans)." >&2
+      exit 1
+    fi
+  fi
+  # SMTP connector (#1206 step 7): the same three-way contract, so a rolling up never recreates
+  # admin-api without the connector settings while the connector keeps running.
+  if [[ -n "$CS_ENABLE" ]]; then
+    remote_compose_cmd="${remote_compose_cmd} -f docker-compose.connector-smtp.yml"
+    echo "  (EZKEY_ENABLE_CONNECTOR_SMTP set — applying docker-compose.connector-smtp.yml; --no-build)"
+    # Fail closed before any restart: secrets file present and private, delivery token set.
+    # Counts only; values never leave the VM.
+    run ssh "${SSH_HOST}" "set -euo pipefail; cd ${LIGHTSAIL_REMOTE_DIR}; if [[ ! -f connector-smtp.env ]]; then echo 'error: connector-smtp.env missing on the VM (copy connector-smtp.env.example, fill it, chmod 600)' >&2; exit 1; fi; mode=\$(stat -c %a connector-smtp.env); if [[ \"\${mode}\" != '600' ]]; then echo \"error: connector-smtp.env mode is \${mode}, expected 600\" >&2; exit 1; fi; for k in EZKEY_CONNECTOR_SMTP_USERNAME EZKEY_CONNECTOR_SMTP_PASSWORD; do if [[ \$(grep -cE \"^\${k}=.+\" connector-smtp.env) -ne 1 ]]; then echo \"error: connector-smtp.env needs exactly one non-empty \${k}\" >&2; exit 1; fi; done; if [[ \$(grep -cE '^EZKEY_CONNECTOR_DELIVERY_TOKEN=.{32,}' .env) -ne 1 ]]; then echo 'error: .env needs one EZKEY_CONNECTOR_DELIVERY_TOKEN of at least 32 characters' >&2; exit 1; fi; echo 'connector preflight OK'"
+  elif [[ -n "$CS_DISABLE" ]]; then
+    remove_orphans="--remove-orphans"
+    echo "  (EZKEY_DISABLE_CONNECTOR_SMTP set — no connector overlay + --remove-orphans; connector will be removed)"
+  else
+    connector_present=""
+    if [[ -z "$DRY_RUN" ]]; then
+      if ssh "${SSH_HOST}" "docker inspect ezkey-exp-connector-smtp >/dev/null 2>&1"; then
+        connector_present="1"
+      fi
+    fi
+    if [[ -n "$connector_present" ]]; then
+      echo "error: the SMTP connector is running on ${SSH_HOST}." >&2
+      echo "  A rolling up without its overlay would recreate admin-api without the connector settings" >&2
+      echo "  (email delivery silently off) and leave the connector container behind." >&2
+      echo "  Re-run with EZKEY_ENABLE_CONNECTOR_SMTP=true to keep it, or EZKEY_DISABLE_CONNECTOR_SMTP=true" >&2
+      echo "  to remove it on purpose." >&2
       exit 1
     fi
   fi

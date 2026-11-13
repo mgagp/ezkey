@@ -772,6 +772,69 @@ assert_ok "export remote-up dry-run uses --no-build without JM" \
   bash "${EXPORT}" --target community --dry-run --apis-only --sync-operator-files --remote-up
 assert_stdout_contains "remote-up always --no-build" 'up\ -d\ --no-build'
 
+# --- SMTP delivery connector (#1206 step 7): same enable / disable / guard contract as JM ---
+CS_OVERLAY="${ROOT}/experimental-hybrid/lightsail/docker-compose.connector-smtp.yml"
+(
+  grep -Eq '^\s*pull_policy:[[:space:]]*never' "${CS_OVERLAY}"
+  if grep -Eq '^\s*build:' "${CS_OVERLAY}"; then
+    echo "FAIL: Lightsail connector overlay must not declare build:" >&2
+    exit 1
+  fi
+  # No published port: the connector stays on the private Docker network.
+  if grep -Eq '^\s*ports:' "${CS_OVERLAY}"; then
+    echo "FAIL: Lightsail connector overlay must not publish ports" >&2
+    exit 1
+  fi
+  # Secrets in their own file, never in .env (admin-api loads all of .env).
+  grep -Fq './connector-smtp.env' "${CS_OVERLAY}"
+  echo "PASS: Lightsail connector overlay is image-only, unpublished, secrets in connector-smtp.env"
+) && pass=$((pass + 1)) || fail=$((fail + 1))
+
+: >"${FAKE_SSH_LOG}"
+: >"${FAKE_DOCKER_LOG}"
+assert_ok "export connector enable dry-run ships connector image" \
+  env EZKEY_ENABLE_CONNECTOR_SMTP=true \
+    bash "${EXPORT}" --target community --dry-run --apis-only --sync-operator-files --remote-up
+assert_stdout_contains "connector dry-run lists image" "ezkey-connector-smtp:latest"
+assert_stdout_contains "connector dry-run docker save" "docker save ezkey-connector-smtp:latest"
+assert_stdout_contains "connector dry-run scp tar" "ezkey-connector-smtp.tar"
+assert_stdout_contains "connector dry-run syncs overlay" "docker-compose.connector-smtp.yml"
+assert_stdout_contains "connector dry-run preflight on VM" "connector\ preflight\ OK"
+assert_stdout_contains "connector dry-run applies overlay" '-f\ docker-compose.connector-smtp.yml\ up\ -d\ --no-build'
+if [[ ! -s "${FAKE_SSH_LOG}" && ! -s "${FAKE_DOCKER_LOG}" ]]; then
+  echo "PASS: connector dry-run never called fake ssh/docker"
+  pass=$((pass + 1))
+else
+  echo "FAIL: connector dry-run should not invoke ssh/docker" >&2
+  fail=$((fail + 1))
+fi
+
+assert_ok "export without connector does not ship it" \
+  bash "${EXPORT}" --target community --dry-run --apis-only --sync-operator-files --remote-up
+if grep -qF 'ezkey-connector-smtp:latest' "${OUT}" || grep -qF 'f\ docker-compose.connector-smtp.yml' "${OUT}"; then
+  echo "FAIL: connector must not be shipped or applied unless EZKEY_ENABLE_CONNECTOR_SMTP is set" >&2
+  fail=$((fail + 1))
+else
+  echo "PASS: export without the connector flag omits image and overlay"
+  pass=$((pass + 1))
+fi
+
+assert_ok "export connector disable dry-run removes orphans" \
+  env EZKEY_DISABLE_CONNECTOR_SMTP=true \
+    bash "${EXPORT}" --target community --dry-run --apis-only --remote-up
+assert_stdout_contains "connector disable passes --remove-orphans" 'up\ -d\ --no-build\ --remove-orphans'
+
+assert_fail "export connector enable+disable conflict fails" \
+  env EZKEY_ENABLE_CONNECTOR_SMTP=true EZKEY_DISABLE_CONNECTOR_SMTP=true \
+    bash "${EXPORT}" --target community --dry-run --apis-only
+assert_stderr_contains "connector enable/disable conflict" \
+  "set only one of EZKEY_ENABLE_CONNECTOR_SMTP or EZKEY_DISABLE_CONNECTOR_SMTP"
+
+assert_fail "export connector enable with --clean-start refused" \
+  env EZKEY_ENABLE_CONNECTOR_SMTP=true EZKEY_CONFIRM_WIPE=ezkey-online \
+    bash "${EXPORT}" --target community --dry-run --apis-only --clean-start
+assert_stderr_contains "connector clean-start refusal" "not supported with --clean-start"
+
 echo
 echo "Results: ${pass} passed, ${fail} failed"
 if [[ "${fail}" -ne 0 ]]; then

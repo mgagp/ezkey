@@ -1,0 +1,77 @@
+# Community Lightsail — opt-in SMTP delivery connector overlay (#1206 step 7).
+#
+# Sends the enrollment QR by email through Amazon SES (ca-central-1). Without this overlay the
+# instance stays on integrated delivery (QR on screen), which is complete on its own (ADR-0018).
+#
+# Posture:
+#   - Private network only: no published port. Admin API calls it over plain HTTP on ezkey-exp-net.
+#   - Provider secrets live in connector-smtp.env (chmod 600, never committed), NOT in .env:
+#     admin-api loads every key of .env, and it must never see the SMTP password.
+#   - Image-only: never build on the VM. Ship with
+#       EZKEY_ENABLE_CONNECTOR_SMTP=true ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh ...
+#   - Caps under the SES sandbox quota (200 per 24 h, 1 per second): 50 per UTC day for the
+#     instance in Admin API, and the same ceiling in the connector as a second stop (Marc, 2026-11-12).
+#
+# Enable (on the VM, from experimental-hybrid/lightsail/; image already loaded):
+#   docker compose -f docker-compose.yml -f docker-compose.javamelody.yml \
+#     -f docker-compose.connector-smtp.yml up -d --no-build
+# Rollback (connector only): the same command without this file, plus --remove-orphans,
+#   or EZKEY_DISABLE_CONNECTOR_SMTP=true with the export script.
+#
+# Memory: 256m. With #749 limits and the JavaMelody collector the ceilings reach ~3904m on the
+# ~4 GiB host; check docker stats and free -m after enabling (docs/lightsail/community-host.md).
+# Runbook: docs/lightsail/community-host.md § Email delivery connector (Amazon SES).
+
+services:
+  connector-smtp:
+    image: ezkey-connector-smtp:latest
+    pull_policy: never
+    container_name: ezkey-exp-connector-smtp
+    # Logging options duplicated (YAML anchors do not cross compose files).
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+    mem_limit: 256m
+    memswap_limit: 256m
+    env_file:
+      # EZKEY_CONNECTOR_SMTP_USERNAME / EZKEY_CONNECTOR_SMTP_PASSWORD (SES SMTP credentials).
+      - path: ./connector-smtp.env
+        required: true
+    environment:
+      TZ: ${TZ:-UTC}
+      JAVA_TOOL_OPTIONS: >-
+        -XX:MaxRAMPercentage=60
+        -XX:+UseSerialGC
+        -XX:+ExitOnOutOfMemoryError
+      # One token, shared with admin-api below; set in .env (no default: refuse to start).
+      EZKEY_CONNECTOR_SMTP_TOKEN: ${EZKEY_CONNECTOR_DELIVERY_TOKEN:?EZKEY_CONNECTOR_DELIVERY_TOKEN must be set in Lightsail .env}
+      EZKEY_CONNECTOR_SMTP_HOST: ${EZKEY_CONNECTOR_SMTP_HOST:-email-smtp.ca-central-1.amazonaws.com}
+      EZKEY_CONNECTOR_SMTP_SMTP_PORT: "587"
+      EZKEY_CONNECTOR_SMTP_SECURITY: starttls
+      EZKEY_CONNECTOR_SMTP_FROM_ADDRESS: ${EZKEY_CONNECTOR_SMTP_FROM_ADDRESS:-no-reply@mail.ezkey.org}
+      EZKEY_CONNECTOR_SMTP_FROM_NAME: ${EZKEY_CONNECTOR_SMTP_FROM_NAME:-Ezkey Community}
+      EZKEY_CONNECTOR_SMTP_DAILY_CAP: ${EZKEY_CONNECTOR_SMTP_DAILY_CAP:-50}
+    networks:
+      - ezkey-exp-net
+    restart: unless-stopped
+    healthcheck:
+      # The contract's health never contacts the provider. The token stays inside the container.
+      test:
+        - CMD-SHELL
+        - 'wget -q --header "Authorization: Bearer $$EZKEY_CONNECTOR_SMTP_TOKEN" -O /dev/null http://127.0.0.1:8091/v1/health'
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+
+  # No depends_on on the connector: an optional service must not hold back the Admin API.
+  # Admin API reads the connector's health itself and hides the send when it is down (fail-open,
+  # observable: capability available=false).
+  admin-api:
+    environment:
+      EZKEY_ADMIN_CONNECTOR_DELIVERY_URL: http://connector-smtp:8091
+      EZKEY_ADMIN_CONNECTOR_DELIVERY_TOKEN: ${EZKEY_CONNECTOR_DELIVERY_TOKEN:?EZKEY_CONNECTOR_DELIVERY_TOKEN must be set in Lightsail .env}
+      EZKEY_ADMIN_CONNECTOR_DELIVERY_PLAIN_HTTP_PRIVATE_NETWORK: "true"
+      EZKEY_ADMIN_CONNECTOR_DELIVERY_INSTANCE_DAILY_CAP: ${EZKEY_ADMIN_CONNECTOR_DELIVERY_INSTANCE_DAILY_CAP:-50}

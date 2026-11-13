@@ -609,6 +609,114 @@ exists is refused by the export guard.
 
 ---
 
+## Email delivery connector (Amazon SES) — #1206 step 7
+
+Optional. Without it the instance stays on **integrated delivery** (the QR on screen), which is
+complete on its own ([ADR-0018](../../product-docs/global/architecture-decisions.md#adr-0018--connector-spi-for-external-services)).
+With it, a Tenant Admin can send an enrollment QR to the person's `contactEmail`. Decisions and the
+trial record: [`TB-2026-11-06`](../../product-docs/global/backlog/TB-2026-11-06-connector-delivery-contract-v0.md)
+§ *What step 7 added*. Configuration notes for adopters: [#1246](https://github.com/mgagp/ezkey/issues/1246).
+
+| Piece | Value |
+|---|---|
+| Provider | Amazon SES, region `ca-central-1`, **sandbox** (verified recipients only; 200 per 24 h; 1 per second) |
+| SMTP endpoint | `email-smtp.ca-central-1.amazonaws.com:587`, STARTTLS |
+| Sender | `no-reply@mail.ezkey.org`, display name `Ezkey Community` (one sender per connector) |
+| Caps | 50 per UTC day for the instance (Admin API), 50 in the connector as a second stop; tenant cap unchanged (50) |
+| Self-registered tenants | Never send (`409 self-registered-tenant`, capability hidden) — V28 |
+| Files on the VM | `docker-compose.connector-smtp.yml` (synced), `connector-smtp.env` (secrets, mode 600, never synced), `EZKEY_CONNECTOR_DELIVERY_TOKEN` in `.env` |
+| Memory | 256m ceiling (~111 MiB measured idle). With #749 limits and JavaMelody the ceilings reach ~3904m |
+
+### Sending domain (done 2026-11-12, recorded for a rebuild)
+
+1. SES identity `mail.ezkey.org` with Easy DKIM, RSA 2048. Status `SUCCESS`.
+2. Cloudflare DNS for `ezkey.org`: three CNAMEs, **DNS only** (grey cloud — a proxied CNAME breaks DKIM):
+
+   ```text
+   7flexrmpbzcifadujxiwo54c3qv6aw6y._domainkey.mail  →  7flexrmpbzcifadujxiwo54c3qv6aw6y.dkim.amazonses.com
+   z3c7zlsiogskbk653rca6k5kobp2rph7._domainkey.mail  →  z3c7zlsiogskbk653rca6k5kobp2rph7.dkim.amazonses.com
+   oghw3uxl3bpadux4l2ehdumx54ojsclk._domainkey.mail  →  oghw3uxl3bpadux4l2ehdumx54ojsclk.dkim.amazonses.com
+   ```
+
+3. DMARC: none for the subdomain. It inherits `p=reject` from `ezkey.org` (no `sp=`), and passes through DKIM alignment.
+   MAIL FROM stays the SES default (`amazonses.com`), so SPF passes but does not align; that is expected.
+4. Nothing else in DNS for `mail.ezkey.org`: no MX, no SPF record. `security@ezkey.org` (Cloudflare Email Routing) is untouched.
+5. Workstation profile `ezkey-ses-admin` (inline policy `EzkeySesIdentityAdmin`): manages identities only and cannot send.
+
+### SMTP credentials (IAM)
+
+1. SES console, region **Canada (Central)** → **SMTP settings** → block **IAM SMTP credentials** → create.
+   Do **not** use the *Mail Manager SMTP* block (Ingress endpoint, Secret or Password): it bills processing
+   and is not needed. The SMTP password is derived per region; a password from another region fails.
+2. IAM user `ezkey-community-smtp`. Replace the console's `AmazonSesSendingAccess` with the inline policy
+   `EzkeySesSmtpSendOnly`:
+
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [{
+       "Sid": "SendOnlyAsEzkeyCommunity",
+       "Effect": "Allow",
+       "Action": "ses:SendRawEmail",
+       "Resource": "arn:aws:ses:ca-central-1:*:identity/*",
+       "Condition": { "StringEquals": { "ses:FromAddress": "no-reply@mail.ezkey.org" } }
+     }]
+   }
+   ```
+
+   The sender condition is the lock: a leaked password cannot send as any other identity of the
+   account. `identity/*` stays because, in the sandbox, SES also checks the verified recipient identity.
+3. Keep the CSV in the password manager only. **Rotation is manual:** create a second credential,
+   swap `connector-smtp.env`, recreate the connector, then delete the old access key.
+
+Proven locally on 2026-11-12 (stack from `main`, connector pointed at SES): `200 accepted`, Gmail inbox,
+DKIM `PASS` (`mail.ezkey.org`), DMARC `PASS`.
+
+### Enable on the VM (part of an announced upgrade; human go)
+
+1. **Token** (once): add to `.env` a random value of at least 32 characters, generated on the VM without
+   echoing it, for example `printf 'EZKEY_CONNECTOR_DELIVERY_TOKEN=%s\n' "$(openssl rand -hex 32)" >> .env`.
+   The same value reaches admin-api and the connector through the overlay.
+2. **Secrets:** `cp connector-smtp.env.example connector-smtp.env && chmod 600 connector-smtp.env`,
+   then fill the two lines from the CSV with an editor on the VM. Never merge them into `.env`:
+   admin-api loads every key of `.env`.
+3. **Image:** ship with the export script (never build on the VM):
+
+   ```bash
+   EZKEY_ENABLE_JAVA_MELODY=true EZKEY_ENABLE_CONNECTOR_SMTP=true \
+     ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --target community --apis-only --dry-run
+   ```
+
+   Without `--remote-up` it only loads the image. On `--remote-up` it first checks on the VM that
+   `connector-smtp.env` exists with mode 600 and both keys, and that the token is set (counts only).
+   A running connector without `EZKEY_ENABLE_CONNECTOR_SMTP` or `EZKEY_DISABLE_CONNECTOR_SMTP` stops the
+   rolling up, like the JavaMelody guard.
+4. **Manual path** (checklist below): add the overlay to `$C`, then `$C config -q`,
+   `$C up -d --no-build connector-smtp`, wait for healthy, then recreate admin-api alone.
+
+### Verify
+
+1. `$C ps connector-smtp`: healthy, no published port (`docker port ezkey-exp-connector-smtp` prints nothing).
+2. `docker stats --no-stream` and `free -m`: memory headroom on the host after the connector starts.
+3. As a Tenant Admin of a non-self-registered tenant: the enrollment screen offers *Send by email*;
+   send to a **verified** recipient; expect `accepted` and the email in the inbox.
+4. As the admin of a self-registered tenant: no send button; the API answers `409 self-registered-tenant`.
+5. `docker logs ezkey-exp-connector-smtp`: one `Delivery <id>: accepted` line, no address, no secret.
+6. SES console → Account dashboard: the send counter moved.
+
+### Rollback
+
+Connector only, data untouched: `$C` without the overlay, plus `--remove-orphans`, or
+`EZKEY_DISABLE_CONNECTOR_SMTP=true` with the export script. Admin API goes back to integrated delivery
+(capability `available: false`). Revoke the IAM access key if the credential may have leaked.
+
+### Leaving the sandbox (not now)
+
+Needs an AWS production-access request with a use case and bounce/complaint handling. Revisit the caps
+against the new quota at that time. Until then, every recipient must be a verified SES identity.
+
+---
+
 ## Non-destructive upgrade (checklist)
 
 Controlled in-place upgrade for the **already commissioned** community instance (images and scripts change; the data volume does not). Derived from the 2026-10-25 cutover to `92717a40` ([#961](https://github.com/mgagp/ezkey/issues/961), [ADR-0016](../../product-docs/global/architecture-decisions.md#adr-0016-keyset-blob-single-source-of-truth)). Design companion: [`community-upgrade-impact.md`](../../product-docs/global/decisions/2026-10-21-keyset-storage-strategy/community-upgrade-impact.md).
@@ -622,6 +730,12 @@ C="docker compose -f docker-compose.yml -f docker-compose.javamelody.yml"
 ```
 
 Use `$C` for F, H, and any recreate (including the separate postgres window). A plain `docker compose` without the overlay drops `JAVAMELODY_*` on recreate.
+
+**Once the email connector is enabled** ([§ Email delivery connector](#email-delivery-connector-amazon-ses--1206-step-7)), add its overlay too, or a recreated admin-api silently loses email delivery:
+
+```bash
+C="docker compose -f docker-compose.yml -f docker-compose.javamelody.yml -f docker-compose.connector-smtp.yml"
+```
 
 ### Principle
 

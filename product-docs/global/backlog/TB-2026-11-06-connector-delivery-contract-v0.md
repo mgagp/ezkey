@@ -273,6 +273,17 @@ Decisions taken one at a time with Marc:
   marked), a `self-registered-tenant` refusal on send, and a capability that reads unavailable for an
   admin scoped to such a tenant. A permission flag was not chosen: no governance to design without a
   signal.
+- **SMTP credentials:** IAM SMTP credentials (user `ezkey-community-smtp`), not SES Mail Manager, which
+  bills processing. Inline policy: `ses:SendRawEmail` only, `ca-central-1` only, sender fixed to
+  `no-reply@mail.ezkey.org`. Rotation is manual for now.
+- **Proven before packaging (7a closeout):** a real send from a local stack on `main`, connector pointed
+  at SES: `200 accepted`, Gmail inbox, DKIM and DMARC `PASS`.
+- **Caps:** 50 per UTC day for the instance, a quarter of the sandbox quota, with the same ceiling in the
+  connector as a second stop. The tenant cap stays at 50. Revisit when leaving the sandbox.
+- **Packaging (7c):** an image-only Lightsail overlay with no published port. Secrets sit in
+  `connector-smtp.env`, apart from `.env`, which admin-api loads whole. Admin API does not depend on the
+  connector's health to start. The export script ships the image and refuses a rolling up that would
+  silently drop the connector. Runbook: `docs/lightsail/community-host.md` § *Email delivery connector*.
 
 ## Configuration guidance
 
