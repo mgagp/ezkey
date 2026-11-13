@@ -2130,18 +2130,8 @@
               }
             }
           },
-          "403": {
-            "description": "Forbidden - no access to the enrollment (missing or other tenant)",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          },
           "404": {
-            "description": "userIdentifier lookup on an integration that does not exist or is not visible to this admin (hide-existence)",
+            "description": "Enrollment or integration does not exist or is not visible to this admin (hide-existence: same answer in both cases)",
             "content": {
               "*/*": {
                 "schema": {
