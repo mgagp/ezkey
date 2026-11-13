@@ -59,4 +59,4 @@ docker run --rm \
   -v "$RESULTS_DIR:/work/test-results/browser" \
   -v "$REPORT_DIR:/work/playwright-report" \
   "$IMAGE_NAME" \
-  ./scripts/run-ui-tests.sh --skip-webserver "${INNER_ARGS[@]}"
+  ./scripts/run-ui-tests.sh --skip-webserver ${INNER_ARGS[@]+"${INNER_ARGS[@]}"}

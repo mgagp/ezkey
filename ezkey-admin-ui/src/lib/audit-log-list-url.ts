@@ -5,14 +5,12 @@
  * through from the current URL so a filter change does not drop them.
  *
  * Do not add `source` here. `source` is owned by `contextSource` state on the audit-logs
- * page. Copying it from the current URL fights explicit exits (integrity investigation
- * banner, date-range clear, entity-context clear).
+ * page. Copying it from the current URL fights explicit exits (entity-context clear,
+ * date-range clear).
+ *
+ * Integrity deep-links live on `/integrity` (Global Admin) — not on the everyday trail.
  */
-export const AUDIT_LOG_URL_ONLY_PARAMS = [
-  'integrity',
-  'highlightAuditLogIds',
-  'focusCheckpointId',
-] as const;
+export const AUDIT_LOG_URL_ONLY_PARAMS = [] as const;
 
 /**
  * Copies URL-only audit-log params from `from` onto `to`.

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>org.ezkey</groupId>
+		<artifactId>ezkey-parent</artifactId>
+		<version>${revision}${changelist}</version>
+		<relativePath>../pom.xml</relativePath>
+	</parent>
+
+	<artifactId>ezkey-connectors</artifactId>
+	<packaging>pom</packaging>
+	<name>Ezkey delivery connectors</name>
+	<description>Delivery connectors (#1206): separate processes that speak only the delivery contract over HTTP.</description>
+
+	<!--
+	  One reactor for the monorepo (Marc, 2026-11-08, #1278): connectors share the root versions,
+	  quality gates and THIRD-PARTY.txt. Their boundary is the HTTP contract
+	  (contracts/delivery-v1.openapi.yaml), never core code: the enforcer rule below fails the
+	  build if a connector depends on any org.ezkey module, so a connector stays extractable and
+	  writable by a third party.
+	-->
+	<modules>
+		<module>ezkey-connector-mock</module>
+		<module>ezkey-connector-smtp</module>
+	</modules>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-enforcer-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>connectors-contract-only</id>
+						<phase>validate</phase>
+						<goals>
+							<goal>enforce</goal>
+						</goals>
+						<configuration>
+							<rules>
+								<bannedDependencies>
+									<excludes>
+										<exclude>org.ezkey</exclude>
+									</excludes>
+									<message>A connector speaks the delivery contract over HTTP only; it must not depend on Ezkey modules (#1278, ADR-0018).</message>
+								</bannedDependencies>
+							</rules>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+</project>

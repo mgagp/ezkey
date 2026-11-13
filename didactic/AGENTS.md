@@ -19,7 +19,7 @@ Bruno folders under [`bruno/`](../bruno/) are the **parity reference** for reque
 - **Clean-start article generation:** render Markdown with **`--full-transcript`** (same as `--publish-secrets`) so the document shows **complete** protocol material (tokens, PKCS#8 material, signatures)—appropriate only for **local disposable** labs.
 - When sharing traces **outside** this machine, run **`protocol_lab redact`** or re-render **without** `--full-transcript`.
 
-## Scenario implemented by [`templates/article-full.md`](templates/article-full.md)
+## Scenario implemented by [`templates/access-login/article-full.md`](templates/access-login/article-full.md)
 
 **In scope:** an operator with **Admin Bearer** credentials creates **integration-scoped enrollments** and **authentication attempts** via **Admin API**; a **simulated device** completes **bind, verify, pending, respond** on **Auth API**. That is the **end-user enrollment + MFA protocol** for an integration, exercised from an **administrator** posture.
 
@@ -55,7 +55,7 @@ Avoid opaque strings such as `First didactic protocol article instance` when the
 
 ## Article template — editorial contract (reader-facing)
 
-These rules apply to [`templates/article-full.md`](templates/article-full.md) and any rendered instance:
+These rules apply to [`templates/access-login/article-full.md`](templates/access-login/article-full.md), [`templates/contextual-approval/article-full.md`](templates/contextual-approval/article-full.md), and any rendered instance:
 
 1. **Stand-alone publication:** generated Markdown must **not** depend on Ezkey-internal documentation URLs or filenames. Canonical rules live **in prose** beside the payloads and in the verbatim helper inputs/outputs reproduced in artifacts. Maintainers may optionally cross-link private specs when authoring **outside** the exported article.
 2. **Value-add is cryptographic narrative:** raw request/response dumps alone are insufficient. Each major section should state **who acts**, **what canonical string is signed**, **which key**, and **why verification matters**, using wording **self-contained with the transcripts**—not “see annex X”.
@@ -63,7 +63,7 @@ These rules apply to [`templates/article-full.md`](templates/article-full.md) an
 4. **TTL / timing:** introduce **auth-attempt time budget** only where it matters—immediately **before** the MFA chapter (create auth attempt → pending → respond), not in the opening scope, unless you add an outline that already orients the reader.
 5. **Outline early:** the full template includes a **step table** after scope so readers see the whole choreography before deep dives.
 6. **Render for local lab articles:** use **`python -m protocol_lab render ... --full-transcript`** so signatures and keys are **not redacted** in the Markdown (clean-start disposable output only).
-7. **Templates are the shipped reader voice:** do not stash “author leftovers” in [`templates/article-full.md`](templates/article-full.md) or [`templates/article-thin.md`](templates/article-thin.md)—see **Author-only content (not for exported prose)** below. Post-render tinkering stays **outside** Ezkey automation unless an operator edits a Markdown copy by hand after export.
+7. **Templates are the shipped reader voice:** do not stash “author leftovers” in [`templates/access-login/article-full.md`](templates/access-login/article-full.md), [`templates/contextual-approval/article-full.md`](templates/contextual-approval/article-full.md), or [`templates/shared/trace-index.md`](templates/shared/trace-index.md)—see **Author-only content (not for exported prose)** below. Post-render tinkering stays **outside** Ezkey automation unless an operator edits a Markdown copy by hand after export.
 
 ### Author-only content (not for exported prose)
 
@@ -78,7 +78,7 @@ Avoid in templates (and purge if drift appears):
 
 ## Delegated “article instance” workflow (operator → agent)
 
-Use this when asking an agent to produce one **filled** Markdown instance from [`templates/article-full.md`](templates/article-full.md) (or thin) plus a reproducible **`run.yaml`** slice.
+Use this when asking an agent to produce one **filled** Markdown instance from [`templates/access-login/article-full.md`](templates/access-login/article-full.md) (or another cataloged template) plus a reproducible **`run.yaml`** slice.
 
 ### What the agent can do autonomously (once stack + inputs are valid)
 
@@ -87,7 +87,7 @@ From repo root / `didactic/`:
 1. Create or adjust a scenario folder under [`scenarios/`](scenarios/) (e.g. `scenarios/<slug>/`).
 2. Copy [`scenarios/cleanstart-example/run.example.yaml`](scenarios/cleanstart-example/run.example.yaml) or `.reject` variant → `run.yaml` (gitignored pattern; see [`README.md`](README.md)).
 3. Run `python -m protocol_lab run --config … --artifacts-dir …` (non–dry-run) and fail fast with HTTP errors surfaced.
-4. Run `python -m protocol_lab render ... --full-transcript` → e.g. `artifacts/article.<slug>.generated.md`.
+4. Run `python -m protocol_lab render ... --full-transcript` or `./render-example.sh ...` → e.g. `artifacts/article.<slug>.generated.md`.
 5. Optionally `redact` for shareable `steps.redacted.jsonl`.
 6. Report `summary.json` **auth-attempt TTL** and any notes (empty respond signature paths, etc.).
 
@@ -117,7 +117,7 @@ Environment override (optional): set **`EZKEY_ADMIN_LOGIN_USERNAME=tuteur`** whe
 1. **Slug** for the instance (kebab-case), e.g. `cleanstart-demo-accept-2026-05-09`.
 2. **`integration_id`** (integer).
 3. **Branch / variant**: accept | reject | (optional) challenge path.
-4. **Template**: `article-full.md` | `article-thin.md`.
+4. **Template slug**: `access-login-full` | `contextual-approval-full` | `trace-index`.
 5. **URLs** only if non-default (`base_urls.*`); else assume clean-start localhost ports from [`README.md`](README.md).
 6. **Token delivery**: env var on the machine running the agent, or explicit “use existing `run.yaml`” if already present.
 7. **Full transcript for lab (default expectation):** use **`--full-transcript`** on `render` for clean-start disposable articles; skip only when producing share-safe excerpts.

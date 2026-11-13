@@ -11,17 +11,10 @@
  */
 
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Button,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import {ActivityIndicator, Alert, Button, Text, TouchableOpacity, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {useTranslation} from 'react-i18next';
+import {formatDateTime} from '../../utils/formatDateTime';
 import {
   useDeleteEnrollment,
   useEnrollments,
@@ -31,6 +24,12 @@ import {RootStackParamList} from '../../navigation/types';
 import {userFacingAuthApiError} from '../../services/api/authApiProblem';
 import {useEnrollmentStore} from '../../state/enrollmentStore';
 import {claimPendingAttempt} from '../../services/pendingAuth/claimPendingAttempt';
+import {useAccessibilityAnnouncement} from '../../hooks/useAccessibilityAnnouncement';
+import {createThemedStyles} from '../../theme';
+import {
+  buildEnrollmentIdentityDisplay,
+  identityDisplayCopy,
+} from '../../utils/enrollmentDisplay';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EnrollmentDetail'>;
 
@@ -41,7 +40,8 @@ type Props = NativeStackScreenProps<RootStackParamList, 'EnrollmentDetail'>;
  * @since 2025
  */
 export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => {
-  const {t} = useTranslation();
+  const styles = useStyles();
+  const {t, i18n} = useTranslation();
   const {enrollmentId} = route.params;
   const {data, isLoading} = useEnrollments();
   const deleteEnrollment = useDeleteEnrollment();
@@ -53,6 +53,21 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
   const targetId = enrollmentId ?? selectedId;
   const [isCheckingPending, setIsCheckingPending] = useState(false);
   const [inlineFeedback, setInlineFeedback] = useState<string | undefined>();
+  const recentResultStatusLabel = recentAuthResult
+    ? recentAuthResult.status === 'approved'
+      ? t('enrollmentDetail.recentActionApproved')
+      : recentAuthResult.status === 'rejected'
+        ? t('enrollmentDetail.recentActionRejected')
+        : t('enrollmentDetail.recentActionFailed')
+    : undefined;
+
+  useAccessibilityAnnouncement(
+    recentAuthResult?.status === 'failed' && recentAuthResult.message
+      ? `${recentResultStatusLabel}. ${recentAuthResult.message}`
+      : recentResultStatusLabel,
+    recentAuthResult?.completedAt,
+  );
+  useAccessibilityAnnouncement(inlineFeedback);
 
   const enrollment = useMemo(() => {
     if (!targetId || !data) {
@@ -68,12 +83,24 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
     return data.broken.find(item => item.id === targetId);
   }, [data, targetId]);
 
+  const identitySource = enrollment ?? brokenEnrollment?.metadata;
+  const identity = useMemo(
+    () =>
+      identitySource
+        ? buildEnrollmentIdentityDisplay(
+            identitySource,
+            t('enrollmentDetail.installationFallback'),
+            identityDisplayCopy(t),
+          )
+        : undefined,
+    [identitySource, t],
+  );
+
   useEffect(() => {
-    const title = enrollment?.integrationName ?? brokenEnrollment?.metadata.integrationName;
-    if (title) {
-      navigation.setOptions({title});
+    if (identity?.navTitle) {
+      navigation.setOptions({title: identity.navTitle});
     }
-  }, [enrollment, brokenEnrollment, navigation]);
+  }, [identity, navigation]);
 
   const extractErrorMessage = useCallback(
     (error: unknown) => {
@@ -180,15 +207,21 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
     return (
       <View style={styles.container} testID="ezkey.e2e.enrollmentDetail.unusable">
         <View style={styles.identityZone}>
-          <Text style={styles.installationLine}>
-            {metadata.installation?.name ?? t('enrollmentDetail.installationFallback')}
-          </Text>
-          {metadata.tenantName ? (
-            <Text style={styles.tenantLine}>{metadata.tenantName}</Text>
+          <Text style={styles.integrationName}>{identity?.heroTitle ?? metadata.integrationName}</Text>
+          {identity?.purposeLabel ? (
+            <Text style={styles.deviceLine}>{identity.purposeLabel}</Text>
           ) : null}
-          <Text style={styles.integrationName}>{metadata.integrationName}</Text>
-          {metadata.enrollmentName ? (
-            <Text style={styles.deviceLine}>{metadata.enrollmentName}</Text>
+          {identity?.roleLabel ? (
+            <Text style={styles.deviceLine}>{identity.roleLabel}</Text>
+          ) : null}
+          {identity?.tenantLabel ? (
+            <Text style={styles.tenantLine}>{identity.tenantLabel}</Text>
+          ) : null}
+          {identity?.tenantDescription ? (
+            <Text style={styles.tenantDescriptionLine}>{identity.tenantDescription}</Text>
+          ) : null}
+          {identity?.installationContext ? (
+            <Text style={styles.installationLine}>{identity.installationContext}</Text>
           ) : null}
         </View>
 
@@ -221,28 +254,16 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
     );
   }
 
-  const createdStr = new Date(enrollment.createdAt).toLocaleString(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  });
-  const lastStr = new Date(enrollment.lastActivityAt).toLocaleString(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  });
-  const installation = enrollment.installation;
-  const hasCustomServer = !!installation?.authUrl;
+  const lastStr = formatDateTime(enrollment.lastActivityAt, i18n.language);
+  const resolvedIdentity =
+    identity ??
+    buildEnrollmentIdentityDisplay(
+      enrollment,
+      t('enrollmentDetail.installationFallback'),
+      identityDisplayCopy(t),
+    );
   const recentResultTimeStr = recentAuthResult
-    ? new Date(recentAuthResult.completedAt).toLocaleString(undefined, {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-      })
-    : undefined;
-  const recentResultStatusLabel = recentAuthResult
-    ? recentAuthResult.status === 'approved'
-      ? t('enrollmentDetail.recentActionApproved')
-      : recentAuthResult.status === 'rejected'
-        ? t('enrollmentDetail.recentActionRejected')
-        : t('enrollmentDetail.recentActionFailed')
+    ? formatDateTime(recentAuthResult.completedAt, i18n.language)
     : undefined;
   const recentResultBadgeStyle = recentAuthResult
     ? recentAuthResult.status === 'approved'
@@ -255,32 +276,36 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
   return (
     <View style={styles.container} testID="ezkey.e2e.enrollmentDetail.screen">
       <View style={styles.identityZone}>
-        <Text style={styles.installationLine}>
-          {installation?.name ?? t('enrollmentDetail.installationFallback')}
+        <Text style={styles.integrationName} testID="ezkey.e2e.enrollmentDetail.hero">
+          {resolvedIdentity.heroTitle}
         </Text>
-        {enrollment.tenantName ? (
-          <Text style={styles.tenantLine}>{enrollment.tenantName}</Text>
+        {resolvedIdentity.purposeLabel ? (
+          <Text style={styles.deviceLine}>{resolvedIdentity.purposeLabel}</Text>
         ) : null}
-        <Text style={styles.integrationName}>{enrollment.integrationName}</Text>
-        {enrollment.enrollmentName ? (
-          <Text style={styles.deviceLine}>{enrollment.enrollmentName}</Text>
+        {resolvedIdentity.roleLabel ? (
+          <Text style={styles.deviceLine}>{resolvedIdentity.roleLabel}</Text>
         ) : null}
-        {installation?.description ? (
-          <Text style={styles.descriptionLine}>{installation.description}</Text>
+        {resolvedIdentity.tenantLabel ? (
+          <Text style={styles.tenantLine}>{resolvedIdentity.tenantLabel}</Text>
+        ) : null}
+        {resolvedIdentity.tenantDescription ? (
+          <Text style={styles.tenantDescriptionLine}>{resolvedIdentity.tenantDescription}</Text>
+        ) : null}
+        {resolvedIdentity.installationContext ? (
+          <Text style={styles.installationLine}>{resolvedIdentity.installationContext}</Text>
         ) : null}
       </View>
 
       <View style={styles.metaZone}>
-        <Text style={styles.metaLine}>{t('enrollmentDetail.createdAt', {value: createdStr})}</Text>
         <Text style={styles.metaLine}>
           {t('enrollmentDetail.lastVerificationAt', {value: lastStr})}
         </Text>
       </View>
 
-      {hasCustomServer ? (
-        <View style={styles.serverZone}>
+      {resolvedIdentity.showHostHint && resolvedIdentity.host ? (
+        <View style={styles.serverZone} testID="ezkey.e2e.enrollmentDetail.hostHint">
           <Text style={styles.serverLabel}>{t('enrollmentDetail.server')}</Text>
-          <Text style={styles.serverValue}>{installation?.authUrl}</Text>
+          <Text style={styles.serverValue}>{resolvedIdentity.host}</Text>
         </View>
       ) : null}
 
@@ -294,7 +319,9 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
         testID="ezkey.e2e.enrollmentDetail.checkPending"
         style={[styles.primaryButton, isCheckingPending ? styles.disabledButton : undefined]}
         onPress={handleCheckPending}
-        disabled={isCheckingPending}>
+        disabled={isCheckingPending}
+        accessibilityRole="button"
+        accessibilityState={{disabled: isCheckingPending, busy: isCheckingPending}}>
         <Text style={styles.primaryLabel}>
           {isCheckingPending ? t('enrollmentDetail.checkingPending') : t('enrollmentDetail.checkPending')}
         </Text>
@@ -303,14 +330,12 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
       {recentAuthResult ? (
         <View style={styles.recentActionCard}>
           <Text style={styles.recentActionEyebrow}>{t('enrollmentDetail.recentActionLabel')}</Text>
-          <Text style={styles.recentActionTitleLine}>
-            {recentAuthResult.title}
-            <Text style={[styles.recentActionBadge, recentResultBadgeStyle]}>
-              {' '}
-              {recentResultStatusLabel}
-            </Text>
+          <Text
+            style={[styles.recentActionTitleLine, recentResultBadgeStyle]}
+            testID="ezkey.e2e.enrollmentDetail.recentActionStatus">
+            {recentResultStatusLabel}
           </Text>
-          {recentAuthResult.message ? (
+          {recentAuthResult.status === 'failed' && recentAuthResult.message ? (
             <Text style={styles.recentActionMessage}>{recentAuthResult.message}</Text>
           ) : null}
           {recentResultTimeStr ? (
@@ -324,46 +349,45 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(colors => ({
   container: {
     flex: 1,
     padding: 20,
     gap: 16,
-    backgroundColor: '#0b0d11',
+    backgroundColor: colors.background,
   },
   identityZone: {
-    backgroundColor: '#151923',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(54, 115, 223, 0.15)',
+    borderColor: colors.border,
   },
   installationLine: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#dfe6f7',
+    color: colors.textBody,
   },
   integrationName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#f4f7ff',
-    marginTop: 10,
+    color: colors.textPrimary,
   },
   tenantLine: {
     fontSize: 14,
-    color: '#9aa3b6',
+    color: colors.textMuted,
     marginTop: 6,
+  },
+  tenantDescriptionLine: {
+    fontSize: 13,
+    color: colors.textSubtle,
+    marginTop: 4,
+    lineHeight: 18,
   },
   deviceLine: {
     fontSize: 13,
-    color: '#c2c8d5',
-    marginTop: 2,
-  },
-  descriptionLine: {
-    fontSize: 13,
-    color: '#9aa3b6',
-    marginTop: 10,
-    lineHeight: 18,
+    color: colors.textSecondary,
+    marginTop: 6,
   },
   metaZone: {
     paddingHorizontal: 4,
@@ -371,43 +395,43 @@ const styles = StyleSheet.create({
   },
   metaLine: {
     fontSize: 12,
-    color: '#9aa3b6',
+    color: colors.textMuted,
     lineHeight: 18,
   },
   serverZone: {
-    backgroundColor: '#0f1628',
+    backgroundColor: colors.surfaceMuted,
     borderRadius: 8,
     padding: 12,
     borderWidth: 1,
-    borderColor: 'rgba(54, 115, 223, 0.2)',
+    borderColor: colors.borderStrong,
   },
   serverLabel: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#5a7aa8',
+    color: colors.primaryMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 4,
   },
   serverValue: {
     fontSize: 12,
-    color: '#5a9cf7',
+    color: colors.primaryLight,
   },
   feedbackBanner: {
-    backgroundColor: 'rgba(54, 115, 223, 0.12)',
+    backgroundColor: colors.primaryTint,
     borderLeftWidth: 4,
-    borderLeftColor: '#5a9cf7',
+    borderLeftColor: colors.primaryLight,
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
   },
   feedbackText: {
     fontSize: 14,
-    color: '#d6e6ff',
+    color: colors.textAccent,
     lineHeight: 20,
   },
   primaryButton: {
-    backgroundColor: '#3076df',
+    backgroundColor: colors.primary,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
@@ -419,14 +443,14 @@ const styles = StyleSheet.create({
   primaryLabel: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#ffffff',
+    color: colors.textOnPrimary,
   },
   recentActionCard: {
-    backgroundColor: '#151923',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(54, 115, 223, 0.18)',
+    borderColor: colors.borderCard,
     gap: 8,
   },
   recentActionEyebrow: {
@@ -434,39 +458,35 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.4,
-    color: '#9aa3b6',
+    color: colors.textMuted,
   },
   recentActionTitleLine: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#f4f7ff',
-  },
-  recentActionBadge: {
-    fontSize: 16,
-    fontWeight: '700',
+    color: colors.textPrimary,
   },
   recentActionBadgeApproved: {
-    color: '#61d095',
+    color: colors.success,
   },
   recentActionBadgeRejected: {
-    color: '#ff8d8d',
+    color: colors.errorSoft,
   },
   recentActionBadgeFailed: {
-    color: '#f5c26b',
+    color: colors.caution,
   },
   recentActionMessage: {
     fontSize: 14,
     lineHeight: 20,
-    color: '#dfe6f7',
+    color: colors.textBody,
   },
   recentActionMeta: {
     fontSize: 13,
-    color: '#9aa3b6',
+    color: colors.textMuted,
   },
   unusableBanner: {
-    backgroundColor: 'rgba(245, 194, 107, 0.08)',
+    backgroundColor: colors.cautionBg,
     borderLeftWidth: 4,
-    borderLeftColor: '#f5c26b',
+    borderLeftColor: colors.caution,
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
@@ -475,15 +495,15 @@ const styles = StyleSheet.create({
   unusableTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#f5c26b',
+    color: colors.caution,
   },
   unusableBody: {
     fontSize: 14,
-    color: '#dfe6f7',
+    color: colors.textBody,
     lineHeight: 20,
   },
   removeButton: {
-    backgroundColor: '#c24b4b',
+    backgroundColor: colors.danger,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
@@ -492,7 +512,7 @@ const styles = StyleSheet.create({
   removeLabel: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#ffffff',
+    color: colors.textOnDanger,
   },
   missingContainer: {
     flex: 1,
@@ -500,17 +520,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 24,
     gap: 16,
-    backgroundColor: '#0b0d11',
+    backgroundColor: colors.background,
   },
   missingText: {
     fontSize: 16,
-    color: '#f4f7ff',
+    color: colors.textPrimary,
     textAlign: 'center',
   },
   loadingContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0b0d11',
+    backgroundColor: colors.background,
   },
-});
+}));

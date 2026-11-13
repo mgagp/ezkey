@@ -126,6 +126,10 @@ export type GetInstanceInfoQueryResult = NonNullable<Awaited<ReturnType<typeof g
 export type GetInstanceInfoQueryError = ErrorType<unknown>
 
 
+/**
+ * Returns read-only instance metadata for mobile clients and operators. Same payload as the Admin API public instance-info. authApiPublicBaseUrl matches the authUrl embedded in enrollment QR codes when ezkey.qr.auth-base-url is set.
+ * @summary Get public instance info
+ */
 export function useGetInstanceInfo<TData = Awaited<ReturnType<typeof getInstanceInfo>>, TError = ErrorType<unknown>>(
   options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInstanceInfo>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
@@ -136,6 +140,10 @@ export function useGetInstanceInfo<TData = Awaited<ReturnType<typeof getInstance
       >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * Returns read-only instance metadata for mobile clients and operators. Same payload as the Admin API public instance-info. authApiPublicBaseUrl matches the authUrl embedded in enrollment QR codes when ezkey.qr.auth-base-url is set.
+ * @summary Get public instance info
+ */
 export function useGetInstanceInfo<TData = Awaited<ReturnType<typeof getInstanceInfo>>, TError = ErrorType<unknown>>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInstanceInfo>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
@@ -146,14 +154,18 @@ export function useGetInstanceInfo<TData = Awaited<ReturnType<typeof getInstance
       >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * Returns read-only instance metadata for mobile clients and operators. Same payload as the Admin API public instance-info. authApiPublicBaseUrl matches the authUrl embedded in enrollment QR codes when ezkey.qr.auth-base-url is set.
+ * @summary Get public instance info
+ */
 export function useGetInstanceInfo<TData = Awaited<ReturnType<typeof getInstanceInfo>>, TError = ErrorType<unknown>>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInstanceInfo>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
+ * Returns read-only instance metadata for mobile clients and operators. Same payload as the Admin API public instance-info. authApiPublicBaseUrl matches the authUrl embedded in enrollment QR codes when ezkey.qr.auth-base-url is set.
  * @summary Get public instance info
  */
-
 export function useGetInstanceInfo<TData = Awaited<ReturnType<typeof getInstanceInfo>>, TError = ErrorType<unknown>>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInstanceInfo>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient

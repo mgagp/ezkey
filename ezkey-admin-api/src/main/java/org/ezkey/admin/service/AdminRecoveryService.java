@@ -15,7 +15,9 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.ezkey.admin.config.AdminMfaProperties;
 import org.ezkey.admin.config.AdminRecoveryProperties;
+import org.ezkey.admin.config.InitialGlobalAdminProperties;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.exception.AuthenticationException;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
@@ -78,21 +80,39 @@ public class AdminRecoveryService {
   private final SignatureService signatureService;
   private final BCryptPasswordEncoder passwordEncoder;
   private final AdminRecoveryProperties recoveryProperties;
+  private final AdminMfaProperties mfaProperties;
+  private final InitialGlobalAdminProperties initialGlobalAdminProperties;
   private final SecureRandom secureRandom;
 
+  /**
+   * Creates the recovery service.
+   *
+   * @param adminRepository admin persistence
+   * @param tokenRepository recovery/session token persistence
+   * @param enrollmentRepository enrollment persistence
+   * @param signatureService proof token / challenge generation
+   * @param passwordEncoder BCrypt matcher for recovery codes
+   * @param recoveryProperties recovery code count and token duration
+   * @param mfaProperties bootstrap invitation TTL used when refreshing expiresAt on reset
+   * @param initialGlobalAdminProperties identifies the bootstrap global-admin username
+   */
   public AdminRecoveryService(
       EzkeyAdminRepository adminRepository,
       AdminTokenRepository tokenRepository,
       EnrollmentRepository enrollmentRepository,
       SignatureService signatureService,
       BCryptPasswordEncoder passwordEncoder,
-      AdminRecoveryProperties recoveryProperties) {
+      AdminRecoveryProperties recoveryProperties,
+      AdminMfaProperties mfaProperties,
+      InitialGlobalAdminProperties initialGlobalAdminProperties) {
     this.adminRepository = adminRepository;
     this.tokenRepository = tokenRepository;
     this.enrollmentRepository = enrollmentRepository;
     this.signatureService = signatureService;
     this.passwordEncoder = passwordEncoder;
     this.recoveryProperties = recoveryProperties;
+    this.mfaProperties = mfaProperties;
+    this.initialGlobalAdminProperties = initialGlobalAdminProperties;
     this.secureRandom = new SecureRandom();
   }
 
@@ -128,8 +148,9 @@ public class AdminRecoveryService {
    * Generate a single recovery code in format XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX.
    *
    * <p>Uses SecureRandom for cryptographic security. Format uses digits only (0-9) for unambiguous
-   * entry. 32 digits provide 106 bits of entropy - paranoia-level security resistant to brute force
-   * and quantum attacks.
+   * entry. 32 digits provide 106 bits of entropy: a high-entropy, single-use break-glass secret
+   * that resists brute force. This is classical hardening, not a post-quantum claim (see
+   * docs/SECURITY_POSTURE.md).
    *
    * <p>Security: 10^32 combinations = ~3 × 10^18 years at 1M attempts/sec
    *
@@ -278,10 +299,9 @@ public class AdminRecoveryService {
     AdminToken token =
         tokenRepository
             .findByBearerTokenHashAndActiveTrue(tokenHash)
-            .orElseThrow(
-                () ->
-                    new org.ezkey.admin.exception.AuthenticationException(
-                        "Invalid or expired recovery token"));
+            .orElseThrow(() ->
+                new org.ezkey.admin.exception.AuthenticationException(
+                    "Invalid or expired recovery token"));
 
     // 3. Check expiration
     if (token.getExpiresAt().isBefore(OffsetDateTime.now())) {
@@ -316,14 +336,13 @@ public class AdminRecoveryService {
     }
     tokenRepository
         .findByBearerTokenHashAndActiveTrue(tokenHash)
-        .ifPresent(
-            token -> {
-              token.setActive(false);
-              tokenRepository.save(token);
-              logger.info(
-                  "✅ Recovery token deactivated after enrollment reset for admin: {}",
-                  token.getAdmin() != null ? token.getAdmin().getUsername() : "unknown");
-            });
+        .ifPresent(token -> {
+          token.setActive(false);
+          tokenRepository.save(token);
+          logger.info(
+              "✅ Recovery token deactivated after enrollment reset for admin: {}",
+              token.getAdmin() != null ? token.getAdmin().getUsername() : "unknown");
+        });
   }
 
   /**
@@ -354,7 +373,8 @@ public class AdminRecoveryService {
    * credentials (proof token and challenge) so the administrator can bind a new replacement device.
    *
    * <p><b>Security:</b> This operation invalidates the old device immediately, preventing a lost or
-   * stolen device from being used for authentication.
+   * stolen device from being used for authentication. Existing ordinary Admin API sessions are also
+   * revoked so a pre-reset bearer token cannot survive emergency recovery.
    *
    * @param enrollmentId the enrollment ID to reset
    * @param admin the administrator who owns the enrollment (from recovery token)
@@ -381,9 +401,9 @@ public class AdminRecoveryService {
           "You don't have permission to reset this enrollment");
     }
 
-    // 3. Reset enrollment (unbind device)
-    enrollment.setDevicePublicKey(null); // Unbind old device
-    enrollment.setStatus(EnrollmentStatus.CREATED); // Back to initial state
+    // 3. Reset enrollment (unbind device). EXPIRED (scheduler) and VERIFIED both become CREATED.
+    enrollment.setDevicePublicKey(null);
+    enrollment.setStatus(EnrollmentStatus.CREATED);
 
     // 4. Generate new credentials
     String newProofToken = signatureService.generateProofToken();
@@ -392,8 +412,22 @@ public class AdminRecoveryService {
     enrollment.setEnrollmentProofToken(newProofToken);
     enrollment.setEnrollmentChallenge(newChallenge);
 
-    // 5. Save enrollment
+    // 5. Refresh bootstrap invitation TTL only for the configured initial global admin.
+    // Ordinary enrollments use ezkey.enrollment.pending-expiration-days; do not apply the
+    // bootstrap hours property to them. Without this refresh, recover → reset after the
+    // scheduler marks EXPIRED leaves a past expiresAt and bind stays refused.
+    String bootstrapUsername = initialGlobalAdminProperties.getUsername();
+    if (bootstrapUsername != null
+        && bootstrapUsername.equals(admin.getUsername())
+        && enrollment.getExpiresAt() != null) {
+      int ttlHours = mfaProperties.getBootstrap().getEnrollmentExpirationHours();
+      enrollment.setExpiresAt(OffsetDateTime.now().plusHours(ttlHours));
+    }
+
+    // 6. Save enrollment
     enrollmentRepository.save(enrollment);
+
+    revokeSessionTokensAfterRecoveryReset(admin, enrollmentId);
 
     logger.warn(
         "✅ Enrollment reset successful (enrollmentId: {}, device unbound; new proof token and"
@@ -401,6 +435,28 @@ public class AdminRecoveryService {
         enrollmentId);
 
     return enrollment;
+  }
+
+  private void revokeSessionTokensAfterRecoveryReset(EzkeyAdmin admin, Integer enrollmentId) {
+    if (admin == null || admin.getAdminId() == null) {
+      return;
+    }
+
+    int sessionTokens =
+        tokenRepository.deactivateTokensForAdminByPurpose(
+            admin.getAdminId(), AdminTokenPurpose.SESSION);
+    int tempTokens =
+        tokenRepository.deactivateTokensForAdminByPurpose(
+            admin.getAdminId(), AdminTokenPurpose.EVALUATOR_TEMP);
+    int revokedTokens = sessionTokens + tempTokens;
+    if (revokedTokens > 0) {
+      logger.info(
+          "Invalidated {} active Admin API session token(s) for admin {} after recovery reset of"
+              + " enrollment {}",
+          revokedTokens,
+          admin.getAdminId(),
+          enrollmentId);
+    }
   }
 
   /** Result object containing plain and hashed recovery codes. */

@@ -1,32 +1,33 @@
 #!/bin/bash
-# Maven wrapper that injects branch-specific buildQualifier to prevent artifact collisions
-# between different git branches when building locally.
+# Maven wrapper that injects a branch-specific revision qualifier to prevent artifact
+# collisions between different git branches when building locally.
+#
+# Product version formula is CI-friendly ${revision}${changelist} only (ADR-0017 / #1211).
+# Off main/master this script always keeps -SNAPSHOT (e.g. 0.2.0-<branch>-SNAPSHOT).
+# Empty changelist off main is refused — never emit a release-looking local coordinate.
 #
 # Usage: ./scripts/mvn-branch.sh [maven-args...]
 # Example: ./scripts/mvn-branch.sh clean install
 
-set -e
+set -euo pipefail
 
-# Get current git branch name
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=lib/product-version.sh
+source "${ROOT}/scripts/lib/product-version.sh"
+
+IFS=$'\t' read -r BASE_REVISION POM_CHANGELIST < <(ezkey_read_pom_ci_versions "${ROOT}/pom.xml")
+BASE_REVISION="${BASE_REVISION//$'\r'/}"
+POM_CHANGELIST="${POM_CHANGELIST//$'\r'/}"
+
 BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+SHORT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 
-# Determine buildQualifier
-if [ -z "$BRANCH" ] || [ "$BRANCH" = "HEAD" ]; then
-  # Fallback to git SHA if branch name not available (detached HEAD)
-  SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-  BUILD_QUALIFIER="-${SHA}"
-else
-  # Sanitize branch name: replace invalid characters with hyphens
-  # Maven version format allows: [A-Za-z0-9_.-]
-  SANITIZED=$(echo "$BRANCH" | sed 's/[^A-Za-z0-9_.-]/-/g' | sed 's/--*/-/g' | sed 's/^-\|-$//g')
+IFS=$'\t' read -r RESOLVED_REVISION RESOLVED_CHANGELIST MODE < <(
+  ezkey_resolve_mvn_branch_versions "${BASE_REVISION}" "${POM_CHANGELIST}" "${BRANCH:-HEAD}" "${SHORT_SHA}"
+)
 
-  # Skip qualifier for main/master branches (standard behavior)
-  if [ "$SANITIZED" = "main" ] || [ "$SANITIZED" = "master" ]; then
-    BUILD_QUALIFIER=""
-  else
-    BUILD_QUALIFIER="-${SANITIZED}"
-  fi
+if [[ "${MODE}" == "passthrough" ]]; then
+  exec mvn "$@"
 fi
 
-# Execute Maven with buildQualifier injected
-exec mvn "-DbuildQualifier=${BUILD_QUALIFIER}" "$@"
+exec mvn "-Drevision=${RESOLVED_REVISION}" "-Dchangelist=${RESOLVED_CHANGELIST}" "$@"

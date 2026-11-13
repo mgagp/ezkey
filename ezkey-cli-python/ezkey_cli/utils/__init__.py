@@ -21,6 +21,23 @@ from .pagination_utils import (
     is_paginated_response,
     SORTABLE_FIELDS,
 )
+from .tls import (
+    InsecureTlsNotAllowedError,
+    resolve_ssl_verify,
+    ssl_verify_from_config,
+)
+from .secure_file import (
+    ApiKeyCredentialFormatError,
+    SecureFileExistsError,
+    SecureFileParentError,
+    SecureFileSymlinkError,
+    absolute_path_no_follow,
+    ensure_owner_only_dir,
+    format_api_key_env,
+    prepare_secret_file,
+    validate_api_key_credentials,
+    write_secret_file,
+)
 
 __all__ = [
     "HttpClient",
@@ -35,4 +52,17 @@ __all__ = [
     "extract_page_content",
     "is_paginated_response",
     "SORTABLE_FIELDS",
+    "InsecureTlsNotAllowedError",
+    "resolve_ssl_verify",
+    "ssl_verify_from_config",
+    "ApiKeyCredentialFormatError",
+    "SecureFileExistsError",
+    "SecureFileParentError",
+    "SecureFileSymlinkError",
+    "absolute_path_no_follow",
+    "ensure_owner_only_dir",
+    "format_api_key_env",
+    "prepare_secret_file",
+    "validate_api_key_credentials",
+    "write_secret_file",
 ]

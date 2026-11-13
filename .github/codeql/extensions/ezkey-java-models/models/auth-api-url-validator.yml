@@ -1,0 +1,10 @@
+extensions:
+  - addsTo:
+      pack: codeql/java-all
+      extensible: barrierModel
+    data:
+      # Return value of AuthApiUrlValidator.validate(String,Set) is allowlist-checked
+      # (host must be in the provided set). Used as a request-forgery barrier for java/ssrf
+      # (CodeQL kind request-forgery). Do NOT model validate(String) — no allowlist.
+      # Ref: code-scanning alert #9, docs/SECURITY_POSTURE.md § Code scanning policy.
+      - ["org.ezkey.demo.device.service", "AuthApiUrlValidator", true, "validate", "(String,Set)", "", "ReturnValue", "request-forgery", "manual"]

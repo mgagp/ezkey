@@ -15,6 +15,7 @@ import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.time.OffsetDateTime;
 import java.util.Base64;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.ezkey.admin.config.AdminTokenRotationProperties;
@@ -33,6 +34,7 @@ import org.ezkey.authattempt.domain.AuthAttemptWaitResponse;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.authattempt.service.AuthAttemptService;
+import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.integration.domain.AdminTokenPurpose;
 import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
@@ -79,7 +81,7 @@ public class AdminAuthService {
   private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
   /** Generic client-facing message for all pre-authentication login failures (SEC-006). */
-  private static final String GENERIC_LOGIN_FAILURE_MESSAGE = "Invalid username or password";
+  private static final String GENERIC_LOGIN_FAILURE_MESSAGE = "Invalid username";
 
   private final EzkeyAdminRepository adminRepository;
   private final AdminTokenRepository tokenRepository;
@@ -235,8 +237,8 @@ public class AdminAuthService {
       }
 
       logger.info(
-          "📋 Passwordless with challenge: returning auth attempt info (challenge: {})",
-          challengeCode);
+          "📋 Passwordless with challenge: returning auth attempt info (ID: {})",
+          attemptResponse.getAuthAttemptId());
 
       String message =
           "Challenge verification required. Enter code "
@@ -355,38 +357,14 @@ public class AdminAuthService {
         authAttemptId,
         challengeCode != null);
 
-    // 1. Fetch auth attempt
-    AuthAttempt authAttempt =
-        authAttemptRepository
-            .findById(authAttemptId)
-            .orElseThrow(
-                () -> {
-                  logger.warn("❌ Auth attempt not found for id: {}", authAttemptId);
-                  return new AdminAuthenticationException("Authentication failed");
-                });
+    // 1. Fetch auth attempt and verify waiter secret capability
+    AuthAttempt authAttempt = requireAuthAttemptWithWaiterSecret(authAttemptId, waiterSecret);
 
     // 2. Pre-check CAS: attempt must not already have issued a session
     if (authAttempt.getSessionIssuedAt() != null) {
       logger.warn("❌ Auth attempt {} already consumed for session issuance", authAttemptId);
       throw new AdminAuthenticationException("Authentication failed");
     }
-
-    // 3. SECURITY: Verify one-time waiter secret capability
-    if (authAttempt.getWaiterSecretHash() == null
-        || waiterSecret == null
-        || waiterSecret.isBlank()) {
-      logger.warn("❌ Missing waiter secret for authAttemptId: {}", authAttemptId);
-      throw new AdminAuthenticationException("Authentication failed");
-    }
-    String incomingHash = SensitiveDataHasher.sha256Hex(waiterSecret.trim());
-    if (incomingHash == null
-        || !MessageDigest.isEqual(
-            incomingHash.getBytes(StandardCharsets.UTF_8),
-            authAttempt.getWaiterSecretHash().getBytes(StandardCharsets.UTF_8))) {
-      logger.warn("❌ Invalid waiter secret for authAttemptId: {}", authAttemptId);
-      throw new AdminAuthenticationException("Authentication failed");
-    }
-    logger.debug("✅ Waiter secret verified for authAttemptId: {}", authAttemptId);
 
     // 4. SECURITY: Enforce challenge requirement from persisted auth attempt state.
     // If an attempt has a stored challenge, clients must provide a matching challengeCode.
@@ -423,6 +401,22 @@ public class AdminAuthService {
             .orElseThrow(
                 () -> new IllegalArgumentException("Admin not found for this auth attempt"));
 
+    // Resolve tenant display fields before waitForResponse (NOT_SUPPORTED suspends the persistence
+    // context). Use the scalar query — do not EntityGraph-load Tenant here (system-tenant shared
+    // collection hazard on administrator MFA enrollments). Prefer List<Object[]> over
+    // Optional<Object[]> to avoid Spring Data native multi-column nesting.
+    Integer scopedTenantId = null;
+    String scopedTenantName = null;
+    if (admin.getAdminType() != EzkeyAdmin.AdminType.GLOBAL_ADMIN) {
+      List<Object[]> tenantRows =
+          adminRepository.findTenantInfoByAdminEnrollmentId(authAttempt.getEnrollmentId());
+      Object[] row = tenantRows.isEmpty() ? null : normalizeTenantInfoRow(tenantRows.get(0));
+      if (row != null && row.length > 0) {
+        scopedTenantId = row[0] instanceof Number n ? n.intValue() : null;
+        scopedTenantName = row.length > 1 && row[1] != null ? row[1].toString() : null;
+      }
+    }
+
     // 6. Wait for device response (timeout aligned with persisted expiresAt, capped at 300s)
     AuthAttemptWaitRequest waitReq =
         AdminAuthAttemptWaitRequestFactory.forLoadedAttempt(authAttempt);
@@ -449,7 +443,8 @@ public class AdminAuthService {
           admin.getUsername(),
           waitResp.getWaitDuration());
 
-      return buildSuccessResponse(admin, result.token(), result.plainToken());
+      return buildSuccessResponse(
+          admin, result.token(), result.plainToken(), scopedTenantId, scopedTenantName);
     } else if ("REJECTED".equals(status)) {
       logger.warn("❌ Passwordless auth rejected by device for admin: {}", admin.getUsername());
       throw new AdminAuthenticationRejectedException("Device rejected the authentication request");
@@ -517,10 +512,24 @@ public class AdminAuthService {
   /**
    * Generate a new bearer token and persist only its SHA-256 hash to database.
    *
+   * <p>Always deactivates active {@link AdminTokenPurpose#EVALUATOR_TEMP} tokens for this admin
+   * before minting SESSION — rotation-on-login may be disabled, but temporary evaluator console
+   * access must still end when an opaque SESSION is created.
+   *
    * @param admin the administrator for whom to generate the token
    * @return the persisted token entity and the plain token to return to the client
    */
   private TokenIssueResult generateAndPersistToken(EzkeyAdmin admin) {
+    int tempRevoked =
+        tokenRepository.deactivateTokensForAdminByPurpose(
+            admin.getAdminId(), AdminTokenPurpose.EVALUATOR_TEMP);
+    if (tempRevoked > 0) {
+      logger.info(
+          "Superseded {} EVALUATOR_TEMP token(s) on SESSION mint for admin: {}",
+          tempRevoked,
+          admin.getUsername());
+    }
+
     String plainToken = generateBearerToken();
     String hash = SensitiveDataHasher.sha256Hex(plainToken);
     if (hash == null) {
@@ -585,16 +594,129 @@ public class AdminAuthService {
    */
   private AdminLoginResponseDto buildSuccessResponse(
       EzkeyAdmin admin, AdminToken token, String plainToken) {
+    return buildSuccessResponse(admin, token, plainToken, null, null);
+  }
+
+  /**
+   * Build success response DTO with optional pre-resolved tenant scope.
+   *
+   * <p>When {@code scopedTenantId}/{@code scopedTenantName} are provided (resolved before a {@code
+   * NOT_SUPPORTED} wait), they are preferred so login does not touch a lazy {@code Tenant} proxy
+   * after the persistence context was suspended.
+   *
+   * @param admin the authenticated administrator
+   * @param token the generated token entity
+   * @param plainToken the plain bearer token to return to the client (not stored in DB)
+   * @param scopedTenantId pre-resolved tenant id, or null
+   * @param scopedTenantName pre-resolved tenant display name, or null
+   * @return success response DTO
+   */
+  private AdminLoginResponseDto buildSuccessResponse(
+      EzkeyAdmin admin,
+      AdminToken token,
+      String plainToken,
+      Integer scopedTenantId,
+      String scopedTenantName) {
     logger.info("Authentication successful for: {}", admin.getUsername());
 
-    Integer tenantId = admin.getTenant() != null ? admin.getTenant().getTenantId() : null;
+    Integer tenantId = null;
+    String tenantName = null;
+    if (admin.getAdminType() != EzkeyAdmin.AdminType.GLOBAL_ADMIN) {
+      if (scopedTenantId != null || scopedTenantName != null) {
+        tenantId = scopedTenantId;
+        tenantName = scopedTenantName;
+      } else if (admin.getTenant() != null) {
+        // Paths that already initialized tenant (e.g. authenticatePasswordless tenant-active check)
+        tenantId = admin.getTenant().getTenantId();
+        tenantName = admin.getTenant().getTenantName();
+      }
+    }
     return new AdminLoginResponseDto(
         plainToken,
         admin.getAdminType().name(),
         admin.getUsername(),
         token.getExpiresAt(),
         admin.getAdminId(),
-        tenantId);
+        tenantId,
+        tenantName);
+  }
+
+  /**
+   * Unwraps Spring Data native multi-column nesting when present ({@code row[0]} is itself an
+   * {@code Object[]}).
+   *
+   * @param row raw repository row
+   * @return flat {@code [tenantId, tenantName, tenantDescription]} or null
+   */
+  private static Object[] normalizeTenantInfoRow(Object[] row) {
+    if (row == null || row.length == 0) {
+      return null;
+    }
+    if (row.length == 1 && row[0] instanceof Object[] nested) {
+      return nested;
+    }
+    return row;
+  }
+
+  /**
+   * Cancels a pending passwordless login attempt using the waiter secret issued at login.
+   *
+   * <p>Marks the attempt {@code EXPIRED} so any in-flight {@code passwordless-wait} unblocks and an
+   * immediate retry is not blocked by a dangling PENDING attempt (#831). Uses a conditional {@code
+   * UPDATE … WHERE status IN (PENDING, READ)} so a concurrent approve/deny wins cleanly (#833 m1).
+   * Idempotent when the attempt is already in a final state.
+   *
+   * @param authAttemptId the authentication attempt ID from the login response
+   * @param waiterSecret the one-time waiter secret capability received at login
+   * @throws AdminAuthenticationException if the attempt is missing or the waiter secret is invalid
+   */
+  public void cancelPasswordlessAuth(Integer authAttemptId, String waiterSecret) {
+    requireAuthAttemptWithWaiterSecret(authAttemptId, waiterSecret);
+    try {
+      authAttemptService.cancel(authAttemptId);
+      logger.info(
+          "Passwordless auth attempt {} cancelled via waiter-secret cancel (#831)", authAttemptId);
+    } catch (AuthAttemptStateConflictException ex) {
+      // Approve/deny won the race, or the attempt was already final — both are success for cancel.
+      logger.info(
+          "Passwordless auth attempt {} already final; cancel treated as success", authAttemptId);
+    }
+  }
+
+  /**
+   * Loads an auth attempt and verifies the waiter secret capability (constant-time compare).
+   *
+   * @param authAttemptId authentication attempt id
+   * @param waiterSecret plaintext waiter secret from the login client
+   * @return the auth attempt entity
+   * @throws AdminAuthenticationException if not found or secret invalid
+   */
+  private AuthAttempt requireAuthAttemptWithWaiterSecret(
+      Integer authAttemptId, String waiterSecret) {
+    AuthAttempt authAttempt =
+        authAttemptRepository
+            .findById(authAttemptId)
+            .orElseThrow(() -> {
+              logger.warn("❌ Auth attempt not found for id: {}", authAttemptId);
+              return new AdminAuthenticationException("Authentication failed");
+            });
+
+    if (authAttempt.getWaiterSecretHash() == null
+        || waiterSecret == null
+        || waiterSecret.isBlank()) {
+      logger.warn("❌ Missing waiter secret for authAttemptId: {}", authAttemptId);
+      throw new AdminAuthenticationException("Authentication failed");
+    }
+    String incomingHash = SensitiveDataHasher.sha256Hex(waiterSecret.trim());
+    if (incomingHash == null
+        || !MessageDigest.isEqual(
+            incomingHash.getBytes(StandardCharsets.UTF_8),
+            authAttempt.getWaiterSecretHash().getBytes(StandardCharsets.UTF_8))) {
+      logger.warn("❌ Invalid waiter secret for authAttemptId: {}", authAttemptId);
+      throw new AdminAuthenticationException("Authentication failed");
+    }
+    logger.debug("✅ Waiter secret verified for authAttemptId: {}", authAttemptId);
+    return authAttempt;
   }
 
   /**
@@ -611,56 +733,14 @@ public class AdminAuthService {
     }
     return authAttemptRepository
         .findById(authAttemptId)
-        .flatMap(
-            attempt ->
-                adminRepository
-                    .findByEnrollmentId(attempt.getEnrollmentId())
-                    .map(
-                        admin ->
-                            new AdminAuthAuditContext(
-                                admin.getUsername(),
-                                admin.getAdminId(),
-                                admin.getTenant() != null
-                                    ? admin.getTenant().getTenantId()
-                                    : null)));
-  }
-
-  /**
-   * Validate bearer token.
-   *
-   * <p>This method validates a bearer token and returns the associated administrator information if
-   * the token is valid and not expired.
-   *
-   * @param bearerToken the bearer token to validate
-   * @return EzkeyAdmin if token is valid, null otherwise
-   */
-  @Transactional(readOnly = true)
-  public EzkeyAdmin validateToken(String bearerToken) {
-    try {
-      String hash = SensitiveDataHasher.sha256Hex(bearerToken);
-      if (hash == null) {
-        return null;
-      }
-      AdminToken token = tokenRepository.findByBearerTokenHashAndActiveTrue(hash).orElse(null);
-
-      if (token == null) {
-        return null;
-      }
-
-      // Check if token is expired
-      if (token.getExpiresAt().isBefore(OffsetDateTime.now())) {
-        return null;
-      }
-
-      // Update last used timestamp
-      token.setLastUsedAt(OffsetDateTime.now());
-      tokenRepository.save(token);
-
-      return token.getAdmin();
-
-    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
-      return null;
-    }
+        .flatMap(attempt ->
+            adminRepository
+                .findByEnrollmentId(attempt.getEnrollmentId())
+                .map(admin ->
+                    new AdminAuthAuditContext(
+                        admin.getUsername(),
+                        admin.getAdminId(),
+                        admin.getTenant() != null ? admin.getTenant().getTenantId() : null)));
   }
 
   /**

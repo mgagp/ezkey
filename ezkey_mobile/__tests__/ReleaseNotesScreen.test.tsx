@@ -17,8 +17,10 @@ describe('ReleaseNotesScreen', () => {
     expect(textContent).toContain('ezkey.org');
     expect(textContent).toContain('Requirements');
     expect(textContent).toContain('Android 12');
-    expect(textContent).toContain('Coming next');
-    expect(textContent).toContain('Certificate pinning');
+    expect(textContent).toContain('keys used on this phone');
+    expect(textContent).not.toContain('Coming next');
+    expect(textContent).not.toContain('Certificate pinning');
+    expect(textContent).not.toContain('analytics');
     expect(textContent).not.toContain('experimental');
     expect(textContent).not.toContain('info@ezkey.org');
     expect(textContent).not.toContain('activation code');

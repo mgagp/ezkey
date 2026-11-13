@@ -295,7 +295,7 @@ class AuthAttemptControllerTest {
     // Arrange
     when(authAttemptMapper.toAuthAttemptRespondRequest(any(AuthAttemptRespondRequestDto.class)))
         .thenReturn(respondRequest);
-    when(authAttemptService.respond(any(AuthAttemptRespondRequest.class)))
+    when(authAttemptService.respond(any(AuthAttemptRespondRequest.class), any()))
         .thenReturn(respondResponse);
     when(authAttemptMapper.toAuthAttemptRespondResponseDto(respondResponse))
         .thenReturn(respondResponseDto);
@@ -310,7 +310,7 @@ class AuthAttemptControllerTest {
     // Verify service interactions
     verify(authAttemptMapper, times(1))
         .toAuthAttemptRespondRequest(any(AuthAttemptRespondRequestDto.class));
-    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class));
+    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class), any());
     verify(authAttemptMapper, times(1)).toAuthAttemptRespondResponseDto(respondResponse);
   }
 
@@ -321,7 +321,7 @@ class AuthAttemptControllerTest {
   void respond_WhenServiceThrowsLegacyIllegalArgument_ShouldReturn400() throws Exception {
     when(authAttemptMapper.toAuthAttemptRespondRequest(any(AuthAttemptRespondRequestDto.class)))
         .thenReturn(respondRequest);
-    when(authAttemptService.respond(any(AuthAttemptRespondRequest.class)))
+    when(authAttemptService.respond(any(AuthAttemptRespondRequest.class), any()))
         .thenThrow(new IllegalArgumentException("legacy validation"));
 
     String json = objectMapper.writeValueAsString(respondRequestDto);
@@ -333,7 +333,7 @@ class AuthAttemptControllerTest {
         .andExpect(jsonPath("$.type").value(AuthApiProblemCatalog.TYPE_VALIDATION_FAILED))
         .andExpect(jsonPath("$.title").value(AuthApiProblemCatalog.TITLE_BAD_REQUEST));
 
-    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class));
+    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class), any());
   }
 
   @Test
@@ -344,7 +344,7 @@ class AuthAttemptControllerTest {
     // Arrange
     when(authAttemptMapper.toAuthAttemptRespondRequest(any(AuthAttemptRespondRequestDto.class)))
         .thenReturn(respondRequest);
-    when(authAttemptService.respond(any(AuthAttemptRespondRequest.class)))
+    when(authAttemptService.respond(any(AuthAttemptRespondRequest.class), any()))
         .thenThrow(new AuthAttemptRequestFailedException("Invalid signature or response data"));
 
     String json = objectMapper.writeValueAsString(respondRequestDto);
@@ -359,7 +359,7 @@ class AuthAttemptControllerTest {
         .andExpect(jsonPath("$.detail").value(AuthApiProblemCatalog.DETAIL_AUTH_ATTEMPT_FAILED));
 
     // Verify service interactions
-    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class));
+    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class), any());
   }
 
   @Test
@@ -368,7 +368,7 @@ class AuthAttemptControllerTest {
     // Arrange
     when(authAttemptMapper.toAuthAttemptRespondRequest(any(AuthAttemptRespondRequestDto.class)))
         .thenReturn(respondRequest);
-    when(authAttemptService.respond(any(AuthAttemptRespondRequest.class)))
+    when(authAttemptService.respond(any(AuthAttemptRespondRequest.class), any()))
         .thenThrow(new AuthAttemptStateConflictException("Auth attempt already responded"));
 
     String json = objectMapper.writeValueAsString(respondRequestDto);
@@ -384,7 +384,102 @@ class AuthAttemptControllerTest {
             jsonPath("$.detail").value(AuthApiProblemCatalog.DETAIL_AUTH_ATTEMPT_STATE_CONFLICT));
 
     // Verify service interactions
-    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class));
+    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class), any());
+  }
+
+  @Test
+  @DisplayName("POST /api/v1/auth-attempts/respond - expired → 409 auth-attempt-expired (#895)")
+  void respond_WhenExpired_ShouldReturn409AuthAttemptExpired() throws Exception {
+    when(authAttemptMapper.toAuthAttemptRespondRequest(any(AuthAttemptRespondRequestDto.class)))
+        .thenReturn(respondRequest);
+    when(authAttemptService.respond(any(AuthAttemptRespondRequest.class), any()))
+        .thenThrow(
+            new org.ezkey.exception.auth.AuthAttemptExpiredException(
+                "Authentication attempt expired"));
+
+    String json = objectMapper.writeValueAsString(respondRequestDto);
+
+    mockMvc
+        .perform(post(BASE_URL + "/respond").contentType(MediaType.APPLICATION_JSON).content(json))
+        .andExpect(status().isConflict())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.type").value(AuthApiProblemCatalog.TYPE_AUTH_ATTEMPT_EXPIRED))
+        .andExpect(jsonPath("$.title").value(AuthApiProblemCatalog.TITLE_CONFLICT))
+        .andExpect(jsonPath("$.detail").value(AuthApiProblemCatalog.DETAIL_AUTH_ATTEMPT_EXPIRED));
+
+    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class), any());
+  }
+
+  @Test
+  @DisplayName("POST /api/v1/auth-attempts/respond - PENDING → unified 409 (#844 Marc m1)")
+  void respond_WhenPending_ShouldReturn409StateConflict() throws Exception {
+    when(authAttemptMapper.toAuthAttemptRespondRequest(any(AuthAttemptRespondRequestDto.class)))
+        .thenReturn(respondRequest);
+    when(authAttemptService.respond(any(AuthAttemptRespondRequest.class), any()))
+        .thenThrow(new AuthAttemptStateConflictException("Auth attempt still PENDING"));
+
+    String json = objectMapper.writeValueAsString(respondRequestDto);
+
+    mockMvc
+        .perform(post(BASE_URL + "/respond").contentType(MediaType.APPLICATION_JSON).content(json))
+        .andExpect(status().isConflict())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.type").value(AuthApiProblemCatalog.TYPE_AUTH_ATTEMPT_STATE_CONFLICT))
+        .andExpect(jsonPath("$.title").value(AuthApiProblemCatalog.TITLE_CONFLICT))
+        .andExpect(
+            jsonPath("$.detail").value(AuthApiProblemCatalog.DETAIL_AUTH_ATTEMPT_STATE_CONFLICT));
+
+    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class), any());
+  }
+
+  @Test
+  @DisplayName("POST /api/v1/auth-attempts/respond - missing signing key → 503 (#844)")
+  void respond_WhenIntegrationSigningUnavailable_ShouldReturn503() throws Exception {
+    when(authAttemptMapper.toAuthAttemptRespondRequest(any(AuthAttemptRespondRequestDto.class)))
+        .thenReturn(respondRequest);
+    when(authAttemptService.respond(any(AuthAttemptRespondRequest.class), any()))
+        .thenThrow(
+            new org.ezkey.exception.auth.IntegrationSigningUnavailableException(
+                "Integration private key missing"));
+
+    String json = objectMapper.writeValueAsString(respondRequestDto);
+
+    mockMvc
+        .perform(post(BASE_URL + "/respond").contentType(MediaType.APPLICATION_JSON).content(json))
+        .andExpect(status().isServiceUnavailable())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(
+            jsonPath("$.type").value(AuthApiProblemCatalog.TYPE_INTEGRATION_SIGNING_UNAVAILABLE))
+        .andExpect(jsonPath("$.title").value(AuthApiProblemCatalog.TITLE_SERVICE_UNAVAILABLE))
+        .andExpect(
+            jsonPath("$.detail")
+                .value(AuthApiProblemCatalog.DETAIL_INTEGRATION_SIGNING_UNAVAILABLE));
+
+    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class), any());
+  }
+
+  @Test
+  @DisplayName("POST /api/v1/auth-attempts/respond - not found → unified 409 (#844 Marc m1)")
+  void respond_WhenNotFound_ShouldReturn409StateConflict() throws Exception {
+    when(authAttemptMapper.toAuthAttemptRespondRequest(any(AuthAttemptRespondRequestDto.class)))
+        .thenReturn(respondRequest);
+    when(authAttemptService.respond(any(AuthAttemptRespondRequest.class), any()))
+        .thenThrow(
+            new AuthAttemptStateConflictException(
+                "Cannot respond to authentication attempt: not found"));
+
+    String json = objectMapper.writeValueAsString(respondRequestDto);
+
+    mockMvc
+        .perform(post(BASE_URL + "/respond").contentType(MediaType.APPLICATION_JSON).content(json))
+        .andExpect(status().isConflict())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.type").value(AuthApiProblemCatalog.TYPE_AUTH_ATTEMPT_STATE_CONFLICT))
+        .andExpect(jsonPath("$.title").value(AuthApiProblemCatalog.TITLE_CONFLICT))
+        .andExpect(
+            jsonPath("$.detail").value(AuthApiProblemCatalog.DETAIL_AUTH_ATTEMPT_STATE_CONFLICT));
+
+    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class), any());
   }
 
   @Test
@@ -404,6 +499,6 @@ class AuthAttemptControllerTest {
         .andExpect(jsonPath("$.status").value(400))
         .andExpect(jsonPath("$.path").value("/api/v1/auth-attempts/respond"));
 
-    verify(authAttemptService, never()).respond(any(AuthAttemptRespondRequest.class));
+    verify(authAttemptService, never()).respond(any(AuthAttemptRespondRequest.class), any());
   }
 }

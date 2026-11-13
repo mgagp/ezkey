@@ -12,15 +12,7 @@
  */
 
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import {ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useNavigation} from '@react-navigation/native';
 import {StackNavigationProp} from '@react-navigation/stack';
@@ -38,7 +30,13 @@ import {
   type InstallationGroup,
 } from '../../utils/tenantGrouping';
 import {resolveServerEnrollmentId} from '../../utils/localEnrollmentIdentity';
-import {borderRadius, colors, spacing, typography} from '../../config/theme';
+import {
+  buildHomeCardLabels,
+  identityDisplayCopy,
+  shouldShowHomeTenantSection,
+} from '../../utils/enrollmentDisplay';
+import {borderRadius, spacing, typography} from '../../config/theme';
+import {createThemedStyles, useTheme} from '../../theme';
 import {
   checkFlexiblePlayUpdate,
   getDismissedPlayUpdateVersionCode,
@@ -72,6 +70,8 @@ type HomeNavigation = StackNavigationProp<RootStackParamList, 'Home'>;
  * @since 2025
  */
 export const HomeScreen: React.FC = () => {
+  const {colors} = useTheme();
+  const styles = useStyles();
   const {t} = useTranslation();
   const navigation = useNavigation<HomeNavigation>();
   const insets = useSafeAreaInsets();
@@ -90,6 +90,11 @@ export const HomeScreen: React.FC = () => {
   const brokenIds = useMemo(
     () => new Set((brokenEnrollments ?? []).map(item => item.id)),
     [brokenEnrollments],
+  );
+
+  const expandedInstallationIds = useMemo(
+    () => new Set(expandedInstallations),
+    [expandedInstallations],
   );
 
   const installationGroups = useMemo(() => {
@@ -197,9 +202,16 @@ export const HomeScreen: React.FC = () => {
 
   const handleRemoveBroken = useCallback(
     (enrollment: EnrollmentMetadataRecord) => {
+      const card = buildHomeCardLabels(
+        enrollment,
+        t('enrollmentWizard.integrationFallback'),
+        identityDisplayCopy(t),
+      );
       Alert.alert(
         t('home.brokenRemoveConfirmTitle'),
-        t('home.brokenRemoveConfirmMessage', {name: enrollment.integrationName}),
+        t('home.brokenRemoveConfirmMessage', {
+          name: card.subtitle ?? card.title,
+        }),
         [
           {text: t('home.brokenRemoveCancel'), style: 'cancel'},
           {
@@ -241,7 +253,7 @@ export const HomeScreen: React.FC = () => {
               <InstallationSection
                 key={group.installation.id}
                 group={group}
-                expanded={expandedInstallations.includes(group.installation.id)}
+                expanded={expandedInstallationIds.has(group.installation.id)}
                 onToggle={toggleInstallation}
                 onSelectEnrollment={handleSelect}
                 brokenIds={brokenIds}
@@ -272,6 +284,7 @@ export const HomeScreen: React.FC = () => {
  * @since 2025
  */
 const EmptyState: React.FC = () => {
+  const styles = useStyles();
   const {t} = useTranslation();
 
   return (
@@ -297,6 +310,7 @@ const EmptyState: React.FC = () => {
  * @since 2026
  */
 const UnusableLocalDataNotice: React.FC = () => {
+  const styles = useStyles();
   const {t} = useTranslation();
 
   return (
@@ -327,12 +341,14 @@ const TenantSectionHeader: React.FC<TenantSectionHeaderProps> = ({
   tenantName,
   tenantDescription,
 }) => {
+  const styles = useStyles();
   const {t} = useTranslation();
 
   return (
     <View
       style={styles.tenantHeader}
       accessibilityLabel={t('home.tenantSection', {tenantName})}>
+      <Text style={styles.tenantEyebrow}>{t('home.tenantSectionEyebrow')}</Text>
       <Text style={styles.tenantName}>{tenantName}</Text>
       {tenantDescription ? (
         <Text style={styles.tenantDescription}>{tenantDescription}</Text>
@@ -359,6 +375,7 @@ const InstallationSection: React.FC<InstallationSectionProps> = ({
   brokenIds,
   onRemoveBroken,
 }) => {
+  const styles = useStyles();
   const {t} = useTranslation();
 
   return (
@@ -368,6 +385,7 @@ const InstallationSection: React.FC<InstallationSectionProps> = ({
         style={styles.installationHeader}
         onPress={() => onToggle(group.installation.id)}
         accessibilityRole="button"
+        accessibilityState={{expanded}}
         accessibilityLabel={t('home.installationLabel', {name: group.installation.name})}
         accessibilityHint={
           expanded ? t('home.collapseInstallation') : t('home.expandInstallation')
@@ -381,16 +399,27 @@ const InstallationSection: React.FC<InstallationSectionProps> = ({
             <Text style={styles.installationHost}>{group.installation.host}</Text>
           ) : null}
         </View>
-        <Text style={styles.installationToggle}>{expanded ? '−' : '+'}</Text>
+        <Text
+          style={styles.installationToggle}
+          importantForAccessibility="no"
+          accessibilityElementsHidden>
+          {expanded ? '−' : '+'}
+        </Text>
       </TouchableOpacity>
       {expanded ? (
         <View style={styles.installationBody}>
           {group.tenantGroups.map(tenantGroup => (
             <View key={`${group.installation.id}:${tenantGroup.tenantId ?? tenantGroup.tenantName}`}>
-              <TenantSectionHeader
-                tenantName={tenantGroup.tenantName}
-                tenantDescription={tenantGroup.tenantDescription}
-              />
+              {shouldShowHomeTenantSection(
+                tenantGroup.tenantName,
+                group.installation.name,
+                tenantGroup.enrollments,
+              ) ? (
+                <TenantSectionHeader
+                  tenantName={tenantGroup.tenantName}
+                  tenantDescription={tenantGroup.tenantDescription}
+                />
+              ) : null}
               {tenantGroup.enrollments.map(enrollment => (
                 <EnrollmentListItem
                   key={enrollment.id}
@@ -442,7 +471,16 @@ const EnrollmentListItem: React.FC<EnrollmentListItemProps> = ({
   broken,
   onRemove,
 }) => {
+  const styles = useStyles();
   const {t} = useTranslation();
+  const card = buildHomeCardLabels(
+    enrollment,
+    t('enrollmentWizard.integrationFallback'),
+    identityDisplayCopy(t),
+  );
+  const accessibilityName = card.subtitle
+    ? `${card.title}, ${card.subtitle}${card.roleLabel ? `, ${card.roleLabel}` : ''}`
+    : card.title;
 
   return (
     <TouchableOpacity
@@ -451,18 +489,15 @@ const EnrollmentListItem: React.FC<EnrollmentListItemProps> = ({
       onPress={() => onPress(enrollment)}
       accessibilityRole="button"
       accessibilityLabel={
-        broken
-          ? t('home.brokenRowAccessibility', {name: enrollment.integrationName})
-          : enrollment.integrationName
+        broken ? t('home.brokenRowAccessibility', {name: accessibilityName}) : accessibilityName
       }
       accessibilityHint={t('home.openEnrollmentDetails')}>
       <View style={styles.cardHeader}>
-        <Text style={styles.cardTitle}>{enrollment.integrationName}</Text>
+        <Text style={styles.cardTitle}>{card.title}</Text>
         {broken ? <Text style={styles.brokenBadge}>{t('home.brokenBadge')}</Text> : null}
       </View>
-      {enrollment.enrollmentName ? (
-        <Text style={styles.cardSubtitle}>{enrollment.enrollmentName}</Text>
-      ) : null}
+      {card.subtitle ? <Text style={styles.cardSubtitle}>{card.subtitle}</Text> : null}
+      {card.roleLabel ? <Text style={styles.cardSubtitle}>{card.roleLabel}</Text> : null}
       {broken ? (
         <>
           <Text style={styles.brokenSubtitle}>{t('home.brokenRowSubtitle')}</Text>
@@ -472,12 +507,12 @@ const EnrollmentListItem: React.FC<EnrollmentListItemProps> = ({
             onPress={() => onRemove(enrollment)}
             accessibilityRole="button"
             accessibilityLabel={t('home.brokenRowRemoveAccessibility', {
-              name: enrollment.integrationName,
+              name: accessibilityName,
             })}>
             <Text style={styles.brokenRemoveLabel}>{t('home.brokenRowRemove')}</Text>
           </TouchableOpacity>
         </>
-      ) : enrollment.integrationDescription ? (
+      ) : enrollment.integrationDescription && !enrollment.isSystemIntegration ? (
         <Text numberOfLines={2} style={styles.cardDescription}>
           {enrollment.integrationDescription}
         </Text>
@@ -486,7 +521,7 @@ const EnrollmentListItem: React.FC<EnrollmentListItemProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(colors => ({
   container: {
     flex: 1,
     paddingHorizontal: spacing.lg,
@@ -550,6 +585,14 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     paddingHorizontal: spacing.xs,
   },
+  tenantEyebrow: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.bold,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: colors.textMuted,
+    marginBottom: 2,
+  },
   tenantName: {
     fontSize: typography.fontSize.md,
     fontWeight: typography.fontWeight.bold,
@@ -564,7 +607,7 @@ const styles = StyleSheet.create({
   tenantDivider: {
     height: 1,
     marginTop: spacing.sm + 2,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: colors.divider,
   },
   card: {
     backgroundColor: colors.surfaceElevated,
@@ -591,9 +634,9 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   unusableNotice: {
-    backgroundColor: 'rgba(245, 194, 107, 0.08)',
+    backgroundColor: colors.cautionBg,
     borderWidth: 1,
-    borderColor: 'rgba(245, 194, 107, 0.35)',
+    borderColor: colors.cautionBorder,
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
     gap: spacing.xs,
@@ -610,7 +653,7 @@ const styles = StyleSheet.create({
   },
   cardBroken: {
     borderWidth: 1,
-    borderColor: 'rgba(245, 194, 107, 0.45)',
+    borderColor: colors.cautionBorderStrong,
   },
   brokenBadge: {
     alignSelf: 'flex-start',
@@ -618,9 +661,9 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.semibold,
     color: colors.warning,
-    backgroundColor: 'rgba(245, 194, 107, 0.12)',
+    backgroundColor: colors.cautionBgStrong,
     borderWidth: 1,
-    borderColor: 'rgba(245, 194, 107, 0.35)',
+    borderColor: colors.cautionBorder,
     borderRadius: borderRadius.xl,
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
@@ -637,12 +680,12 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: spacing.lg,
     borderRadius: borderRadius.sm,
-    backgroundColor: colors.error,
+    backgroundColor: colors.danger,
   },
   brokenRemoveLabel: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textOnPrimary,
+    color: colors.textOnDanger,
   },
   emptyState: {
     flex: 1,
@@ -705,7 +748,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 4,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -716,4 +759,4 @@ const styles = StyleSheet.create({
     color: colors.textOnPrimary,
     lineHeight: 32,
   },
-});
+}));

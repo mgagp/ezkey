@@ -38,7 +38,7 @@ Include audit immutability at the DB boundary (no UPDATE/DELETE on `ezkey_audit_
 - Column-level grants
 - Changing Java business logic
 - Grafana/monitoring dedicated read-only role
-- Production in-place upgrade of existing non-greenfield DBs (EXP1/clean-start volume recreate)
+- Production in-place upgrade of existing non-greenfield DBs (community/clean-start volume recreate)
 
 ## Critical flows
 

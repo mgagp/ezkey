@@ -133,21 +133,21 @@ function show_status() {
     fi
 
     # Check Crypto API
-    if curl -sf http://localhost:9090/actuator/health > /dev/null 2>&1; then
+    if curl -sf http://localhost:9091/actuator/health/liveness > /dev/null 2>&1; then
         echo "  ✅ Crypto API: Healthy"
     else
         echo "  ❌ Crypto API: Unhealthy"
     fi
 
     # Check Demo Device (always started by clean-start / docker compose)
-    if curl -sf http://localhost:8083/actuator/health > /dev/null 2>&1; then
+    if curl -sf http://localhost:8084/actuator/health > /dev/null 2>&1; then
         echo "  ✅ Demo Device: Healthy"
     else
         echo "  ❌ Demo Device: Unhealthy"
     fi
 
-    # Check Demo App ACME (optional companion; started with the default compose stack)
-    if curl -sf http://localhost:8082/actuator/health > /dev/null 2>&1; then
+    # Check Demo App ACME (optional companion; management port inside the container)
+    if ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" exec -T demo-app-acme curl -sf http://localhost:8086/actuator/health > /dev/null 2>&1; then
         echo "  ✅ Demo App ACME: Healthy"
     else
         echo "  ⚠️  Demo App ACME: Not available"

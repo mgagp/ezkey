@@ -14,23 +14,35 @@ package org.ezkey.integration.api.exception;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.time.OffsetDateTime;
+import java.util.Set;
 import org.ezkey.audit.integrity.AuditChainHeartbeatEvaluation;
 import org.ezkey.audit.integrity.AuditChainHeartbeatGuardService;
 import org.ezkey.exception.EnrollmentInactiveException;
+import org.ezkey.exception.RateLimitExceededException;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.exception.TenantInactiveException;
 import org.ezkey.exception.audit.AuditChainHeartbeatDegradedException;
 import org.ezkey.exception.auth.AuthAttemptCreateValidationException;
+import org.ezkey.exception.auth.AuthAttemptCreationCooldownException;
+import org.ezkey.exception.auth.AuthAttemptExpiredException;
+import org.ezkey.exception.auth.AuthAttemptPendingExistsException;
+import org.ezkey.exception.auth.AuthAttemptRequestInvalidException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.exception.auth.AuthAttemptWaitValidationException;
+import org.ezkey.integration.api.controller.IntegrationApiAuthAttemptController;
 import org.ezkey.integration.exception.ApiKeyLimitExceededException;
 import org.ezkey.integration.exception.IntegrationLifecycleStateException;
+import org.ezkey.util.LogSanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.NoHandlerFoundException;
@@ -65,6 +77,13 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
  * }
  * }</pre>
  *
+ * <p><b>Scope (#895 Patrick M4):</b> Limited to {@link IntegrationApiAuthAttemptController}. The
+ * Integration API module exposes a single REST controller; the unified invalid-request 400 handlers
+ * ({@code MethodArgumentNotValid}, {@code AuthAttemptRequestInvalid}, {@code
+ * HttpMessageNotReadable}) therefore cannot leak onto unrelated controllers. If a second
+ * Integration controller is added later, either broaden {@code assignableTypes} deliberately or
+ * extract a dedicated advice for that surface.
+ *
  * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *
  * <p><b>License:</b> MIT
@@ -72,7 +91,7 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
  * @author Ezkey contributors
  * @since 2025
  */
-@RestControllerAdvice
+@RestControllerAdvice(assignableTypes = IntegrationApiAuthAttemptController.class)
 public class GlobalExceptionHandler {
 
   private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
@@ -107,7 +126,7 @@ public class GlobalExceptionHandler {
       EnrollmentInactiveException ex, HttpServletRequest request) {
     logger.warn(
         "Integration API auth attempt blocked: enrollment inactive. Path: {}",
-        request.getRequestURI());
+        LogSanitizer.sanitizeForLog(request.getRequestURI()));
     return buildProblemDetail(
         ex.getMessage(),
         HttpStatus.FORBIDDEN,
@@ -210,6 +229,17 @@ public class GlobalExceptionHandler {
         request);
   }
 
+  @ExceptionHandler(AuthAttemptExpiredException.class)
+  public ResponseEntity<ProblemDetail> handleAuthAttemptExpiredException(
+      AuthAttemptExpiredException ex, HttpServletRequest request) {
+    return buildProblemDetail(
+        "This authentication request has expired.",
+        HttpStatus.CONFLICT,
+        "https://ezkey.io/problems/domain/auth-attempt-expired",
+        "Auth Attempt Expired",
+        request);
+  }
+
   @ExceptionHandler(AuthAttemptWaitValidationException.class)
   public ResponseEntity<ProblemDetail> handleAuthAttemptWaitValidationException(
       AuthAttemptWaitValidationException ex, HttpServletRequest request) {
@@ -222,12 +252,69 @@ public class GlobalExceptionHandler {
   }
 
   /**
+   * Bean Validation failures on request bodies (e.g. {@code ttlSeconds < 15}). Same ProblemDetail
+   * as {@link #handleAuthAttemptRequestInvalid} and {@link #handleHttpMessageNotReadable} (#895).
+   */
+  @ExceptionHandler(MethodArgumentNotValidException.class)
+  public ResponseEntity<ProblemDetail> handleMethodArgumentNotValid(
+      MethodArgumentNotValidException ex, HttpServletRequest request) {
+    logger.debug(
+        "Validation failed on {}: {}",
+        LogSanitizer.sanitizeForLog(request.getRequestURI()),
+        LogSanitizer.sanitizeForLog(ex.getMessage()));
+    return invalidRequestProblem(request);
+  }
+
+  /**
+   * Explicit create-field gate (TTL floor before enrollment lookup). Must return the exact same 400
+   * body as {@link #handleMethodArgumentNotValid} (#895 Christophe nit).
+   */
+  @ExceptionHandler(AuthAttemptRequestInvalidException.class)
+  public ResponseEntity<ProblemDetail> handleAuthAttemptRequestInvalid(
+      AuthAttemptRequestInvalidException ex, HttpServletRequest request) {
+    logger.debug(
+        "Request invalid on {}: {}",
+        LogSanitizer.sanitizeForLog(request.getRequestURI()),
+        LogSanitizer.sanitizeForLog(ex.getMessage()));
+    return invalidRequestProblem(request);
+  }
+
+  /**
+   * JSON parse / type coercion failures (e.g. non-integer {@code ttlSeconds}). Same generic 400 as
+   * Bean Validation (#895).
+   */
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  public ResponseEntity<ProblemDetail> handleHttpMessageNotReadable(
+      HttpMessageNotReadableException ex, HttpServletRequest request) {
+    logger.debug(
+        "Unreadable body on {}: {}",
+        LogSanitizer.sanitizeForLog(request.getRequestURI()),
+        LogSanitizer.sanitizeForLog(ex.getMessage()));
+    return invalidRequestProblem(request);
+  }
+
+  /**
+   * Shared non-enumerating invalid-request ProblemDetail for create validation paths.
+   *
+   * @param request HTTP servlet request for path extraction
+   * @return HTTP 400 with stable catalog type/title/detail
+   */
+  private ResponseEntity<ProblemDetail> invalidRequestProblem(HttpServletRequest request) {
+    return buildProblemDetail(
+        IntegrationApiProblemCatalog.DETAIL_REQUEST_INVALID,
+        HttpStatus.BAD_REQUEST,
+        IntegrationApiProblemCatalog.TYPE_REQUEST_INVALID,
+        IntegrationApiProblemCatalog.TITLE_REQUEST_INVALID,
+        request);
+  }
+
+  /**
    * Unknown routes / missing resources (e.g. scanners). Log at DEBUG only — not ERROR with stack.
    */
   @ExceptionHandler(NoResourceFoundException.class)
   public ResponseEntity<ProblemDetail> handleNoResourceFoundException(
       NoResourceFoundException ex, HttpServletRequest request) {
-    logger.debug("No resource: {}", request.getRequestURI());
+    logger.debug("No resource: {}", LogSanitizer.sanitizeForLog(request.getRequestURI()));
     return buildProblemDetail(
         "The requested resource could not be found.",
         HttpStatus.NOT_FOUND,
@@ -239,13 +326,104 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(NoHandlerFoundException.class)
   public ResponseEntity<ProblemDetail> handleNoHandlerFoundException(
       NoHandlerFoundException ex, HttpServletRequest request) {
-    logger.debug("No handler: {} {}", ex.getHttpMethod(), ex.getRequestURL());
+    logger.debug(
+        "No handler: {} {}",
+        LogSanitizer.sanitizeForLog(ex.getHttpMethod()),
+        LogSanitizer.sanitizeForLog(ex.getRequestURL()));
     return buildProblemDetail(
         "The requested resource could not be found.",
         HttpStatus.NOT_FOUND,
         "https://ezkey.io/problems/resource/not-found",
         "Resource Not Found",
         request);
+  }
+
+  /**
+   * Unsupported verb on a mapped path. Must be handled before {@link #handleGenericException} so
+   * scanners cannot flood ERROR logs or inflate 5xx metrics. Integration API-key filter may still
+   * return 401 first on unauthenticated traffic.
+   */
+  @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+  public ResponseEntity<ProblemDetail> handleHttpRequestMethodNotSupported(
+      HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
+    logger.debug(
+        "Method not allowed: {} {}",
+        LogSanitizer.sanitizeForLog(ex.getMethod()),
+        LogSanitizer.sanitizeForLog(request.getRequestURI()));
+    ProblemDetail problem =
+        ProblemDetail.forStatusAndDetail(
+            HttpStatus.METHOD_NOT_ALLOWED, IntegrationApiProblemCatalog.DETAIL_METHOD_NOT_ALLOWED);
+    problem.setType(URI.create(IntegrationApiProblemCatalog.TYPE_METHOD_NOT_ALLOWED));
+    problem.setTitle(IntegrationApiProblemCatalog.TITLE_METHOD_NOT_ALLOWED);
+    problem.setProperty("path", request.getRequestURI());
+    ResponseEntity.BodyBuilder builder = ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED);
+    Set<HttpMethod> allowed = ex.getSupportedHttpMethods();
+    if (allowed != null && !allowed.isEmpty()) {
+      builder.allow(allowed.toArray(HttpMethod[]::new));
+    }
+    return builder.body(problem);
+  }
+
+  /**
+   * Live attempt already exists under the integration REFUSE policy.
+   *
+   * @param ex refusal carrying the remaining attempt lifetime
+   * @param request HTTP servlet request for path extraction
+   * @return HTTP 409 with Retry-After
+   */
+  @ExceptionHandler(AuthAttemptPendingExistsException.class)
+  public ResponseEntity<ProblemDetail> handleAuthAttemptPendingExists(
+      AuthAttemptPendingExistsException ex, HttpServletRequest request) {
+    return conflictWithRetryAfter(
+        AuthAttemptPendingExistsException.TYPE,
+        AuthAttemptPendingExistsException.TITLE,
+        AuthAttemptPendingExistsException.DETAIL,
+        ex.getRetryAfterSeconds(),
+        request);
+  }
+
+  /**
+   * Enrollment crossed the platform creation cooldown.
+   *
+   * @param ex suspension carrying the remaining cooldown
+   * @param request HTTP servlet request for path extraction
+   * @return HTTP 409 with Retry-After
+   */
+  @ExceptionHandler(AuthAttemptCreationCooldownException.class)
+  public ResponseEntity<ProblemDetail> handleAuthAttemptCreationCooldown(
+      AuthAttemptCreationCooldownException ex, HttpServletRequest request) {
+    return conflictWithRetryAfter(
+        AuthAttemptCreationCooldownException.TYPE,
+        AuthAttemptCreationCooldownException.TITLE,
+        AuthAttemptCreationCooldownException.DETAIL,
+        ex.getRetryAfterSeconds(),
+        request);
+  }
+
+  /**
+   * Per-API-key bucket exhausted. Limit and window come from configuration (#1070).
+   *
+   * @param ex rate-limit signal
+   * @param request HTTP servlet request for path extraction
+   * @return HTTP 429 with Retry-After equal to the configured window
+   */
+  @ExceptionHandler(RateLimitExceededException.class)
+  public ResponseEntity<ProblemDetail> handleRateLimitExceeded(
+      RateLimitExceededException ex, HttpServletRequest request) {
+    long retryAfterSeconds = Math.max(1L, ex.getWindowSizeMinutes() * 60L);
+    logger.warn(
+        "Integration API 429 rate limit (path={}, operation={})",
+        LogSanitizer.sanitizeForLog(request.getRequestURI()),
+        LogSanitizer.sanitizeForLog(ex.getOperation()));
+    ProblemDetail problem =
+        ProblemDetail.forStatusAndDetail(
+            HttpStatus.TOO_MANY_REQUESTS, IntegrationApiProblemCatalog.DETAIL_RATE_LIMIT_EXCEEDED);
+    problem.setType(URI.create(IntegrationApiProblemCatalog.TYPE_RATE_LIMIT_EXCEEDED));
+    problem.setTitle(IntegrationApiProblemCatalog.TITLE_TOO_MANY_REQUESTS);
+    problem.setProperty("path", request.getRequestURI());
+    return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+        .header(HttpHeaders.RETRY_AFTER, Long.toString(retryAfterSeconds))
+        .body(problem);
   }
 
   /**
@@ -263,7 +441,7 @@ public class GlobalExceptionHandler {
         "Integration API 503 heartbeat-degraded (path={}, phase={}, anchorCheckpointId={}, "
             + "latestWindowEnd={}, stalePhaseStartsAt={}, failClosedNotBefore={}, "
             + "problemType=https://ezkey.io/problems/system/audit-chain-heartbeat-degraded)",
-        request.getRequestURI(),
+        LogSanitizer.sanitizeForLog(request.getRequestURI()),
         ev.phase(),
         ev.anchorCheckpointId(),
         ev.latestWindowEnd(),
@@ -292,7 +470,10 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ProblemDetail> handleGenericException(
       Exception ex, HttpServletRequest request) {
-    logger.error("Unhandled exception in Integration API: {}", ex.getMessage(), ex);
+    logger.error(
+        "Unhandled exception in Integration API: {}",
+        LogSanitizer.sanitizeForLog(ex.getMessage()),
+        ex);
     return buildProblemDetail(
         "An unexpected error occurred.",
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -302,15 +483,30 @@ public class GlobalExceptionHandler {
   }
 
   /**
-   * Builds an RFC 9457 ProblemDetail response.
+   * Builds an HTTP 409 ProblemDetail with a Retry-After header.
    *
-   * @param detail specific error message
-   * @param status HTTP status
-   * @param typeUri problem type URI
-   * @param title human-readable error title
+   * @param type problem type URI
+   * @param title short title
+   * @param detail stable detail text
+   * @param retryAfterSeconds seconds the client should wait
    * @param request HTTP servlet request for path extraction
-   * @return ResponseEntity with RFC 9457 ProblemDetail
+   * @return ResponseEntity with HTTP 409 and Retry-After
    */
+  private ResponseEntity<ProblemDetail> conflictWithRetryAfter(
+      String type,
+      String title,
+      String detail,
+      long retryAfterSeconds,
+      HttpServletRequest request) {
+    ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, detail);
+    problem.setType(URI.create(type));
+    problem.setTitle(title);
+    problem.setProperty("path", request.getRequestURI());
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .header(HttpHeaders.RETRY_AFTER, Long.toString(Math.max(1L, retryAfterSeconds)))
+        .body(problem);
+  }
+
   private ResponseEntity<ProblemDetail> buildProblemDetail(
       String detail, HttpStatus status, String typeUri, String title, HttpServletRequest request) {
     ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);

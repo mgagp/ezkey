@@ -23,6 +23,7 @@ import org.ezkey.audit.util.ClientIpResolver;
 import org.ezkey.integration.api.config.TrustedProxyProperties;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.service.ApiKeyService;
+import org.ezkey.util.LogSanitizer;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -111,12 +112,17 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
           String password = parts[1];
 
           if (username.startsWith(INTEGRATION_KEY_PREFIX)) {
-            String clientIp = ClientIpResolver.resolve(request, trustedProxyProperties.getCidrs());
+            String clientIp =
+                ClientIpResolver.resolve(
+                    request,
+                    trustedProxyProperties.getCidrs(),
+                    trustedProxyProperties.isTrustCloudflareConnectingIp());
+            String clientIpForLog = LogSanitizer.sanitizeForLog(clientIp);
 
             logger.debug(
-                "API key authentication attempt - Integration Key: {}..., Client IP: {}",
-                username.substring(0, Math.min(15, username.length())),
-                clientIp);
+                "API key authentication attempt - Integration Key: {}, Client IP: {}",
+                ApiKeyService.maskIntegrationKeyForLog(username),
+                clientIpForLog);
 
             Optional<Integration> integrationOpt =
                 apiKeyService.validateApiKey(username, password, clientIp);
@@ -128,12 +134,12 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
               logger.info(
                   "✅ API key authentication successful - Integration ID: {}, IP: {}",
                   integration.getId(),
-                  clientIp);
+                  clientIpForLog);
             } else {
               logger.warn(
-                  "❌ API key authentication failed - Integration Key: {}..., IP: {}",
-                  username.substring(0, Math.min(15, username.length())),
-                  clientIp);
+                  "❌ API key authentication failed - Integration Key: {}, IP: {}",
+                  ApiKeyService.maskIntegrationKeyForLog(username),
+                  clientIpForLog);
             }
           }
         }

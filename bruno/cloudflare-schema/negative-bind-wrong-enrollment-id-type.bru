@@ -1,5 +1,5 @@
 meta {
-  name: negative bind wrong enrollmentId type
+  name: negative bind wrong proof token type
   type: http
   seq: 1
 }
@@ -12,8 +12,7 @@ post {
 
 body:json {
   {
-      "enrollmentId": "not-an-integer",
-      "enrollmentProofToken": "schema-validation-probe"
+      "enrollmentProofToken": 1
   }
 }
 
@@ -29,13 +28,15 @@ settings {
 }
 
 docs {
-  Deliberately invalid Auth bind body: `enrollmentId` is a string, but the OpenAPI schema
-  requires `integer` (`int32`). The mobile app cannot produce this request.
+  Deliberately invalid Auth bind body: `enrollmentProofToken` is a number, but the OpenAPI schema
+  requires a string. Bind no longer accepts `enrollmentId` (ADR-0019). The mobile app cannot
+  produce this request.
 
-  **Use with environment `exp1`.** On EXP1 Cloudflare schema validation **Block**, expect HTTP
+  **Use with environment `community`.** On Cloudflare schema validation **Block**, expect HTTP
   **403** Error **1020** (API Shield / WAF). Bruno sends `Accept` JSON, so the body is Cloudflare's
   RFC 9457 JSON (`cloudflare_error: true`, `error_code: 1020`, `ray_id`, `type` under
   `developers.cloudflare.com`), not an Ezkey `https://ezkey.io/problems/…` ProblemDetail.
+  Community mitigation default is **None** (request reaches origin).
 
   A Spring ProblemDetail (`type` under `https://ezkey.io/problems/`, often HTTP 400) means the
   request **reached origin** — not schema-Block evidence. Against **local**, Jackson/Bean

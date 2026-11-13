@@ -61,6 +61,29 @@ type EnrollmentDraft = {
   integrationDescription?: string;
   enrollmentName?: string;
   deviceLabel?: string;
+  isSystemIntegration?: boolean;
+  adminType?: 'GLOBAL_ADMIN' | 'TENANT_ADMIN';
+};
+
+type BindIdentityFields = {
+  isSystemIntegration?: boolean | null;
+  adminType?: string | null;
+};
+
+const readBindIdentityFields = (
+  response: BindEnrollmentResponse,
+): {
+  isSystemIntegration?: boolean;
+  adminType?: 'GLOBAL_ADMIN' | 'TENANT_ADMIN';
+} => {
+  const identity = response as BindEnrollmentResponse & BindIdentityFields;
+  return {
+    isSystemIntegration: identity.isSystemIntegration === true,
+    adminType:
+      identity.adminType === 'GLOBAL_ADMIN' || identity.adminType === 'TENANT_ADMIN'
+        ? identity.adminType
+        : undefined,
+  };
 };
 
 type EnrollmentSeedSource = 'camera' | 'controlled-bypass';
@@ -75,13 +98,12 @@ const normalizeSeedPayload = (value: string): string => {
   }
   normalized = normalized.replace(/\\"/g, '"');
 
-  // Pipe-delimited format: enrollmentId|proofToken|authUrl
-  // Used by Maestro runtime flow to avoid JSON quoting issues in PowerShell.
+  // Pipe-delimited paste: proofToken|authUrl. Avoids JSON quoting in a controlled bypass.
   if (!normalized.startsWith('{') && normalized.includes('|')) {
     const parts = normalized.split('|');
-    if (parts.length === 3) {
-      const [enrollmentId, enrollmentProofToken, authUrl] = parts.map(p => p.trim());
-      normalized = JSON.stringify({enrollmentId, enrollmentProofToken, authUrl});
+    if (parts.length === 2) {
+      const [enrollmentProofToken, authUrl] = parts.map(p => p.trim());
+      normalized = JSON.stringify({enrollmentProofToken, authUrl});
     }
   }
 
@@ -149,7 +171,6 @@ export function useEnrollmentWizard(popToTop: () => void): EnrollmentWizardState
   const [bindError, setBindError] = useState<string | undefined>();
   const [cameraError, setCameraError] = useState<string | undefined>();
   const [bindForm, setBindForm] = useState({
-    enrollmentId: '',
     enrollmentProofToken: '',
   });
   const [enrollmentChallenge, setEnrollmentChallenge] = useState('');
@@ -185,11 +206,13 @@ export function useEnrollmentWizard(popToTop: () => void): EnrollmentWizardState
   const buildDraft = useCallback(
     (
       response: BindEnrollmentResponse,
-      request: {enrollmentId: string; enrollmentProofToken: string},
+      request: {enrollmentProofToken: string},
       trustZoneAuthUrl: string | undefined,
     ): EnrollmentDraft | undefined => {
-      const rawId = response.enrollmentId ?? request.enrollmentId;
-      const serverEnrollmentId = String(rawId);
+      if (response.enrollmentId == null) {
+        return undefined;
+      }
+      const serverEnrollmentId = String(response.enrollmentId);
       const installationId =
         normalizeInstallationId(trustZoneAuthUrl) ??
         resolveEnrollmentAuthUrl(trustZoneAuthUrl);
@@ -211,21 +234,21 @@ export function useEnrollmentWizard(popToTop: () => void): EnrollmentWizardState
         integrationDescription: response.integrationDescription,
         enrollmentName: response.enrollmentName,
         deviceLabel: response.enrollmentName,
+        ...readBindIdentityFields(response),
       };
     },
     [t],
   );
 
   const performBinding = useCallback(
-    async (override?: {enrollmentId: string; enrollmentProofToken: string; authUrl?: string}) => {
+    async (override?: {enrollmentProofToken: string; authUrl?: string}) => {
       if (isBinding) {
         return;
       }
-      const enrollmentId = (override?.enrollmentId ?? bindForm.enrollmentId).trim();
       const enrollmentProofToken = (
         override?.enrollmentProofToken ?? bindForm.enrollmentProofToken
       ).trim();
-      if (!enrollmentId || !enrollmentProofToken) {
+      if (!enrollmentProofToken) {
         setScannerVisible(false);
         setBindError(t('enrollmentWizard.missingIdOrToken'));
         return;
@@ -244,15 +267,8 @@ export function useEnrollmentWizard(popToTop: () => void): EnrollmentWizardState
       setEnrollmentChallenge('');
       setChallengeError(undefined);
       try {
-        setBindForm(previous => ({
-          ...previous,
-          enrollmentId,
-          enrollmentProofToken,
-        }));
-        const response = await enrollmentsApi.bind(
-          {enrollmentId, enrollmentProofToken},
-          urlForBind,
-        );
+        setBindForm({enrollmentProofToken});
+        const response = await enrollmentsApi.bind({enrollmentProofToken}, urlForBind);
         const algoErr = integrationKeyAlgorithmBindError(response.integrationKeyAlgorithm);
         if (algoErr) {
           setBindError(algoErr);
@@ -272,7 +288,7 @@ export function useEnrollmentWizard(popToTop: () => void): EnrollmentWizardState
         }
         const nextDraft = buildDraft(
           response,
-          {enrollmentId, enrollmentProofToken},
+          {enrollmentProofToken},
           urlForBind ?? env.configuredApiBaseUrl,
         );
         if (!nextDraft) {
@@ -382,6 +398,8 @@ export function useEnrollmentWizard(popToTop: () => void): EnrollmentWizardState
         integrationPublicKey: draft.integrationPublicKey,
         enrollmentName: draft.enrollmentName,
         deviceLabel: draft.deviceLabel,
+        isSystemIntegration: draft.isSystemIntegration,
+        adminType: draft.adminType,
         approvalPolicy: DEFAULT_ENROLLMENT_APPROVAL_POLICY,
         installation,
       };
@@ -498,7 +516,6 @@ export function useEnrollmentWizard(popToTop: () => void): EnrollmentWizardState
         setSeedSource(source);
         setAuthUrl(parsed.authUrl);
         setBindForm(() => ({
-          enrollmentId: parsed.enrollmentId,
           enrollmentProofToken: parsed.enrollmentProofToken,
         }));
         setBindError(undefined);

@@ -2,7 +2,7 @@
 
 > **Status:** archived — not a living document.
 >
-> **Superseded by:** [`../methodology/decisions/2026-05-24-controllers-registry-downscope.md`](../methodology/decisions/2026-05-24-controllers-registry-downscope.md)
+> **Superseded by:** [`backlog/ideas/I-2026-0009-global-controllers-registry.md`](backlog/ideas/I-2026-0009-global-controllers-registry.md) § Drop rationale (2026-05-24)
 >
 > **Reason:** At current Ezkey scale (~17 API controllers), a permanently synchronized registry
 > duplicated OpenAPI and targeted code discovery without enough payoff. Cross-cutting **semantic**

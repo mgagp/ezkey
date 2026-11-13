@@ -16,7 +16,28 @@ Single entrypoint for the full validation baseline (Spotless, Checkstyle, clean,
 
 Diagnostics only: `./scripts/build.sh --diagnose-only`
 
-Docker-only alternative (no host JDK/Maven): `./scripts/build-docker.sh`. See [`docs/DEVELOPMENT.md`](../docs/DEVELOPMENT.md).
+On a fresh clone with an empty `~/.m2`, use this script rather than a bare `mvn checkstyle:check`.
+The plugin depends on unpublished `org.ezkey:checkstyle-config`; `build.sh` installs that module first.
+See [`docs/DEVELOPMENT.md`](../docs/DEVELOPMENT.md) § *First clone on a new workstation*.
+
+Docker-only alternative (no host JDK/Maven): `./scripts/build-docker.sh`. Same DEVELOPMENT.md section.
+
+## Product version sync (ADR-0017 / #1211)
+
+Parent POM `${revision}${changelist}` is the product SemVer source of truth. Align npm / Python /
+Android `versionName` / iOS `MARKETING_VERSION` / Jenkins SDK pins, then gate divergence in CI.
+Android `versionCode` and iOS `CURRENT_PROJECT_VERSION` stay store-local. .NET stays out until a
+client exists (#1219; empty shell removed in #1232):
+
+```bash
+./scripts/sync-version.sh
+./scripts/check-version-alignment.sh
+./scripts/check-version-alignment.test.sh
+```
+
+Mapping rules (Android strips `-SNAPSHOT`; Python maps it to `.dev0`): see
+[`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md)
+§ Alignment mechanisms.
 
 ## Git fast-forward helper
 
@@ -44,6 +65,47 @@ build gate. See root [`AGENTS.md`](../AGENTS.md) § Java doctor-curated.
 
 Config: [`config/java-doctor/`](../config/java-doctor/). Outputs: `logs/java-doctor/` (gitignored).
 
+## PAM doctor-curated (punctual hygiene)
+
+Keyword: **`pam-doctor-curated`**. Report-only shortlist for `ezkey-pam/src` (clang-format Google
+preset, clang-tidy, narrow cppcheck). Not a CI gate. Linux reference; macOS install track excluded.
+See root [`AGENTS.md`](../AGENTS.md) § PAM doctor-curated.
+
+```bash
+./scripts/pam-doctor-curated.sh
+```
+
+Config: [`config/pam-doctor/`](../config/pam-doctor/) plus `ezkey-pam/.clang-format` and
+`ezkey-pam/.clang-tidy`. Outputs: `logs/pam-doctor/` (gitignored).
+
+Runtime axis, same lane, not a CI gate: rebuild the existing `make test` harnesses with
+ASan and UBSan, then Valgrind. `--skip-valgrind` skips Memcheck.
+
+```bash
+./scripts/pam-doctor-sanitizers.sh
+```
+
+Outputs: `logs/pam-doctor/sanitizers/` (gitignored).
+
+## End-of-life check (major-upgrades register)
+
+Monthly non-blocking check of
+[`product-docs/global/hygiene/major-upgrades/registry.yaml`](../product-docs/global/hygiene/major-upgrades/registry.yaml)
+against [endoflife.date](https://endoflife.date). Driven by
+[`.github/workflows/endoflife-check.yml`](../.github/workflows/endoflife-check.yml).
+
+```bash
+pip install pyyaml   # once, if needed
+python3 scripts/endoflife-check.py
+python3 scripts/endoflife-check.py --json
+# GITHUB_TOKEN + GITHUB_REPOSITORY required for issue sync:
+python3 scripts/endoflife-check.py --update-issue
+```
+
+Exit **0** when the check completes (findings open/update a standing `hygiene` issue — not a CI
+failure). See [`product-docs/global/hygiene/README.md`](../product-docs/global/hygiene/README.md)
+§ *Cadence & automation*.
+
 ## Security pentest curated (runtime hygiene)
 
 Keyword: **`security-pentest-curated`**. Local-first bounded runtime campaign runner for
@@ -55,11 +117,23 @@ Nuclei prefers a local binary, then Docker (`NUCLEI_IMAGE` in `config/security-p
 ./scripts/security-pentest-curated-preflight.sh
 ./scripts/security-pentest-curated.sh --dry-run
 ./scripts/security-pentest-curated.sh
+# Deeper, more intrusive pass (pass-05+): all Schemathesis checks/phases, ZAP active scan,
+# X-Forwarded-For rate-limit probe. Attack one API at a time with --only.
+./scripts/security-pentest-curated.sh --deep --zap-active --probe-forwarded-ip
+./scripts/security-pentest-curated.sh --deep --only admin
 ```
+
+Profiles and flags: `--profile default|deep` (`--deep`), `--only admin|auth|integration`
+(repeatable), `--zap-active` (drops `-S`), `--probe-forwarded-ip`. Deep knobs live in
+`config/security-pentest/targets.env` (`SCHEMATHESIS_DEEP_*`, `SCHEMATHESIS_HEADERS` for a
+bearer-authenticated tier, `FORWARDED_IP_PROBE_*`). Docker-run tools reach host ports through
+`host.docker.internal` (`host-gateway`), and ZAP / Nuclei runs are wrapped in `timeout`.
 
 Configuration: [`config/security-pentest/`](../config/security-pentest/)
 
-Output (gitignored): `logs/security-pentest/`
+Output (gitignored): `logs/security-pentest/` — `security-pentest.curated.{md,json,html}` plus
+`raw/`. Schemathesis findings are one row per operation x check (Server error P1; auth ignored /
+negative data accepted with a 2xx P2; contract drift P3).
 
 Current health probe behavior:
 
@@ -82,11 +156,97 @@ scrape noise, and proposes a small HITL lot. Not a CI gate. See root [`AGENTS.md
 Config: [`config/javamelody/`](../config/javamelody/). Outputs: `logs/javamelody/` (gitignored).
 Campaign notes: [`product-docs/global/hygiene/javamelody/`](../product-docs/global/hygiene/javamelody/).
 
+## Quality gate (full-suite + stack health)
+
+Keyword: **`quality-gate`**. On-demand cloud-agent orchestrator for tip health between merge
+batches. Runs clean-start HA + JavaMelody, unit/functional/elective/Playwright, operational churn,
+then [`stack-health-check.sh`](stack-health-check.sh). Not a CI gate. See root
+[`AGENTS.md`](../AGENTS.md) § Quality gate. Requires **Bash >= 4** (associative arrays);
+on macOS use Homebrew bash (`brew install bash`) via `#!/usr/bin/env bash` or `bash` from
+PATH — not `/bin/bash` (system 3.2). `#747` retry scans admin-api logs with
+`docker logs --since` (phase start − 5 s backoff; no `tail` cap; `grep -F` without `-q`
+under `pipefail`; HA `5e` proves SIGPIPE with `seq` after the signature); `now_ms`
+validates GNU `date +%s%3N` digits before falling back to `python3` / `node` / whole
+seconds (BSD `date` on macOS). `#915` lot 1: portable `sed '$d'` for phase rewrite,
+Surefire summary excludes `Time elapsed` class lines, compose bound uses
+`timeout`/`gtimeout` or warns unbound. `#915` defect 3: `--no-clean-start` does not
+`docker compose down -v` (reuses stack) and skips `unit-tests` for stack-up RAM.
+`#915` defect 6: Playwright regenerates the Orval client (`generate:api`) first so a
+stale gitignored client cannot false-RED the suite.
+CI job `quality-gate` runs the HA helper tests.
+
+```bash
+./scripts/quality-gate.sh
+./scripts/quality-gate.sh --churn-minutes 5
+./scripts/quality-gate-ha.test.sh   # fake-docker HA helpers (incl. #747 detect / now_ms)
+./scripts/stack-health-check.sh
+```
+
+Config: [`config/quality-gate/`](../config/quality-gate/). Outputs: `logs/quality-gate/` (gitignored).
+Campaign notes: [`product-docs/global/hygiene/quality-gate/`](../product-docs/global/hygiene/quality-gate/).
+
 ## Cloudflare (ezkey.org static site)
 
 - [`cloudflare/deploy-ezkey-org-preview.sh`](cloudflare/deploy-ezkey-org-preview.sh) — deploy [`sites/ezkey-org/`](../sites/ezkey-org/) to Cloudflare Pages as a **preview** (requires `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`). See [`docs/cloudflare/ezkey-org-site.md`](../docs/cloudflare/ezkey-org-site.md).
 - [`cloudflare/deploy-ezkey-org-production.sh`](cloudflare/deploy-ezkey-org-production.sh) — deploy the same folder to the Pages **production** branch (serves the custom domain, e.g. `ezkey.org`, when configured in Cloudflare). Same environment variables.
-- [`cloudflare/upload-auth-api-schema-exp1.sh`](cloudflare/upload-auth-api-schema-exp1.sh) / [`cloudflare/upload-integration-api-schema-exp1.sh`](cloudflare/upload-integration-api-schema-exp1.sh) — API Shield schema list/upload/delete (`CLOUDFLARE_API_SHIELD_TOKEN`, not the Pages token).
+- [`cloudflare/upload-auth-api-schema.sh`](cloudflare/upload-auth-api-schema.sh) / [`cloudflare/upload-integration-api-schema.sh`](cloudflare/upload-integration-api-schema.sh) — API Shield schema list/upload/delete for community (`CLOUDFLARE_API_SHIELD_TOKEN`, not the Pages token). Thin aliases: `upload-*-schema-community.sh`.
+
+## Lightsail (community / ezkey.online host)
+
+AWS CLI helpers under [`lightsail/`](lightsail/) to create and bootstrap a **NEW** all-in-one Lightsail VM for the community host (`ezkey-online` / `*.ezkey.online`). **VM lifecycle only** (create / ports / bootstrap / status / delete). Dry-run by default for create / delete / ports. Does **not** change DNS or certificates. Self-contained tree — may later extract to a private ops repo after e2e validation (see runbook). Runbook: [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md).
+
+```bash
+export AWS_PROFILE=ezkey-lightsail
+./scripts/lightsail/create-instance.sh --target community
+./scripts/lightsail/open-ports.sh
+./scripts/lightsail/bootstrap-host.sh --target community --dry-run
+./scripts/lightsail/os-patch-check.sh --target community --dry-run
+./scripts/lightsail/status.sh --help
+./scripts/lightsail/delete-instance.sh --help
+```
+
+[`lightsail/os-patch-check.sh`](lightsail/os-patch-check.sh) — **read-only** Host OS signal over SSH
+(`--target community` required; #812): system-release, `dnf check-release-update`, Critical/Important
+updateinfo, `needs-restarting -r`, kernel, `docker ps`. Never updates packages or reboots. Canon:
+[`product-docs/global/hygiene/host-os/README.md`](../product-docs/global/hygiene/host-os/README.md)
+
+[`lightsail/tls-pq-probe.sh`](lightsail/tls-pq-probe.sh) — **read-only** hybrid post-quantum TLS
+key-exchange probe (#1174): X25519MLKEM768 vs X25519 negative control per hostname, at the edge
+(default) or on the host (`--origin --target community`, plus Caddy version/digest). Results:
+[`docs/lightsail/community/DEPLOYED.md`](../docs/lightsail/community/DEPLOYED.md) § Transport TLS.
+(#909). Rootbeer-local agents only (cloud agents have no SSH route).
+
+App layer remains [`experimental-hybrid/lightsail/`](../experimental-hybrid/lightsail/); image push reuses [`experimental-hybrid/scripts/export-backend-images-to-lightsail.sh`](../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) with **`--target community`** — no silent SSH host default (#812). Community `--sync-operator-files` installs `Caddyfile.ezkey-online` under that same remote basename (compose bind mount — #863). Do not put community-only secrets or ezkey.online-only DNS checklists into the public compose tree.
+
+## Ops — ezkey.online hostname allowlist (CI)
+
+[`ops/check-ezkey-online-hosts.sh`](ops/check-ezkey-online-hosts.sh) — greps tracked files for
+`*.ezkey.online` and fails on any label outside `{auth-api, admin-api, integration-api,
+demo-acme, admin-ui}`. Bare zone `ezkey.online` is allowed only when it is **not** written as
+an `http(s)` URL to the apex (that form fails). Not-served names (`n`, `auth`, `www`, …) may
+appear only in [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md) §
+*Product hostnames*. Wired into the `lightsail` job in
+[`.github/workflows/ci.yml`](../.github/workflows/ci.yml). Unit tests:
+[`ops/check-ezkey-online-hosts.test.sh`](ops/check-ezkey-online-hosts.test.sh).
+
+```bash
+./scripts/ops/check-ezkey-online-hosts.sh
+./scripts/ops/check-ezkey-online-hosts.test.sh
+```
+
+## Ops — Docker log hygiene (host-local)
+
+[`ops/docker-log-hygiene.sh`](ops/docker-log-hygiene.sh) — check json-file rotation / sizes (default), optional `--scan` (pattern **counts** only; stdout+stderr; `--since`; streamed), `--project`, `--purge` dry-run / `--purge --apply --yes` (project container IDs only; rotated-file search often needs **sudo**). No remote/SSH. Canon: [`docs/OPERATIONAL.md`](../docs/OPERATIONAL.md) § Log rotation and hygiene.
+
+```bash
+bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail
+bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail --scan
+bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail --purge
+bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail --purge --apply --yes
+```
+
+`--purge --apply` requires `--project` (or `COMPOSE_PROJECT_NAME`); host-wide apply is refused.
+Pre-upgrade scan: sync `scripts/ops/` with `--target community --sync-operator-files` **without** `--remote-up` (or `scp` the script), run `--scan`, then `--target community --remote-up`.
 
 ## Initial Problem
 
@@ -205,14 +365,15 @@ Ezkey now uses a centralized approach for managing OpenAPI specifications. All s
 - `--help` : Display help
 
 Auth API and Integration API canonical output is host-neutral: `update-specs.sh --auth-only`
-and `--integration-only` strip top-level `servers` after fetch. Do not put EXP1 or localhost
-hosts back into Java `@Server` annotations. To build the EXP1 Cloudflare upload artifacts:
+and `--integration-only` strip top-level `servers` after fetch. Do not put community or localhost
+hosts back into Java `@Server` annotations. To build Cloudflare upload artifacts:
 
 ```bash
+# Community (ezkey.online) — default
 ./scripts/package-auth-api-cloudflare-schema.sh
-./scripts/cloudflare/upload-auth-api-schema-exp1.sh --list
+./scripts/cloudflare/upload-auth-api-schema.sh --list
 ./scripts/package-integration-api-cloudflare-schema.sh
-./scripts/cloudflare/upload-integration-api-schema-exp1.sh --list
+./scripts/cloudflare/upload-integration-api-schema.sh --list
 ```
 
 See [`docs/cloudflare/auth-api-schema-validation.md`](../docs/cloudflare/auth-api-schema-validation.md)
@@ -221,10 +382,12 @@ and [`docs/cloudflare/integration-api-schema-validation.md`](../docs/cloudflare/
 ## Additional Scripts
 
 - `format-specs.sh` - Format existing JSON specifications for better readability
-- `package-auth-api-cloudflare-schema.sh` - EXP1-localized Auth API schema for Cloudflare upload
-- `cloudflare/upload-auth-api-schema-exp1.sh` - list or upload that artifact (`CLOUDFLARE_API_SHIELD_TOKEN`)
-- `package-integration-api-cloudflare-schema.sh` - EXP1-localized Integration API schema for Cloudflare upload
-- `cloudflare/upload-integration-api-schema-exp1.sh` - list or upload that artifact (same shield token; does not delete Auth)
+- `package-auth-api-cloudflare-schema.sh` - Auth API Cloudflare schema (community default; `--server` to override)
+- `cloudflare/upload-auth-api-schema.sh` - list or upload community Auth artifact (`CLOUDFLARE_API_SHIELD_TOKEN`)
+- `cloudflare/upload-auth-api-schema-community.sh` - thin alias of `upload-auth-api-schema.sh`
+- `package-integration-api-cloudflare-schema.sh` - Integration API Cloudflare schema (community default; `--server`)
+- `cloudflare/upload-integration-api-schema.sh` - list or upload community Integration artifact (same shield token; does not delete Auth)
+- `cloudflare/upload-integration-api-schema-community.sh` - thin alias of `upload-integration-api-schema.sh`
 
 ## Recommended Workflow
 
@@ -442,3 +605,7 @@ bash -n scripts/update-openapi-specs.sh
 - Regular validation of spec files
 - Monitor for API changes
 - Update documentation when needed
+
+## Connector scenarios
+
+`ci-connector-scenarios.sh` replays the delivery connector scenarios and the log canary on a real stack, with no human. It wipes the volumes of the Compose project in use. See [`ezkey-connectors/README.md`](../ezkey-connectors/README.md).

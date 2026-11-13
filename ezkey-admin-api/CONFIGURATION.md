@@ -23,6 +23,7 @@ tenant and integration management, enrollment lifecycle, and audit log chain. It
 | `ezkey.admin.initial.last-name` | `EZKEY_ADMIN_INITIAL_LAST_NAME` | `Docker` | requis |
 | `ezkey.admin.mfa.mode` | — | `dev` | requis [docker] |
 | `ezkey.admin.mfa.bootstrap.credentials-output-mode` | `EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE` | `FULL` | optionnel |
+| `ezkey.admin.mfa.bootstrap.enrollment-expiration-hours` | `EZKEY_ADMIN_MFA_BOOTSTRAP_ENROLLMENT_EXPIRATION_HOURS` | `24` | requis (≥1) |
 | `ezkey.admin.token.rotation-on-login` | — | `true` | optionnel |
 | `ezkey.admin.token.expiration-hours` | — | `2` | optionnel |
 | `ezkey.admin.token.cleanup.enabled` | — | `true` | optionnel |
@@ -38,6 +39,7 @@ tenant and integration management, enrollment lifecycle, and audit log chain. It
 | `ezkey.admin.auth.browser-session-cookie-enabled` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_ENABLED` | `false` | optionnel |
 | `ezkey.admin.auth.browser-session-cookie-name` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_NAME` | `EZKEY_ADMIN_SESSION` | optionnel |
 | `ezkey.admin.auth.browser-session-cookie-secure` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_SECURE` | `true` | optionnel |
+| `server.servlet.session.cookie.name` | — | `EZKEY_ADMIN_API_SESSION` | recommandé |
 | `ezkey.auth-attempt.expiry-scheduler.enabled` | — | `true` | optionnel |
 | `ezkey.auth-attempt.expiry-scheduler.fixed-delay-ms` | — | `60000` | optionnel |
 
@@ -83,14 +85,15 @@ Integration Zero and Enrollment Zero at first startup ("Eat Your Own Dog Food").
 | `ezkey.admin.mfa.mode` | `String` | `dev` | requis [docker] | `dev` = MFA optional; `prod` = MFA required for all admins. Always `prod` in docker profile. |
 | `ezkey.admin.mfa.bootstrap.enabled` | `boolean` | `true` | optionnel | Create Integration Zero and Enrollment Zero at startup if absent. |
 | `ezkey.admin.mfa.bootstrap.auto-enrollment` | `boolean` | `true` | optionnel | Automatically create Enrollment Zero for the Global Admin. Convenient in dev; consider `false` in production. |
-| `ezkey.admin.mfa.bootstrap.credentials-output-mode` | `BootstrapCredentialsOutputMode` | `FULL` | optionnel | `FULL` = enrollment token, challenge, ASCII QR, recovery codes, CLI hints, JSON export. `RECOVERY_PRIMARY` = recovery codes + instructions only; no enrollment secrets in logs, no JSON export. |
+| `ezkey.admin.mfa.bootstrap.credentials-output-mode` | `BootstrapCredentialsOutputMode` | `FULL` | optionnel | `FULL` = proof token, challenge, ASCII QR in logs (by design) + JSON export including recovery codes. `RECOVERY_PRIMARY` = no enrollment secrets in logs; recovery codes only in `bootstrap-credentials.json` (`0600`). |
+| `ezkey.admin.mfa.bootstrap.enrollment-expiration-hours` | `int` | `24` | requis (≥1) | Pending bind/verify TTL for the **bootstrap** global-admin enrollment only (create and recover→reset for that admin). Minimum **1** (Bean Validation). Ordinary enrollments use `ezkey.enrollment.pending-expiration-days`; reset does **not** apply this bootstrap TTL to them. |
 
 **Enum values for `credentials-output-mode`:**
 
 | Value | Description |
 |---|---|
-| `FULL` | Maximum output for dev/demo and Docker clean-start automation. |
-| `RECOVERY_PRIMARY` | Production-oriented: only recovery codes and operator instructions. |
+| `FULL` | Dev/demo and Docker clean-start: bind material in logs; recovery codes in the credentials file (`0600`). |
+| `RECOVERY_PRIMARY` | Production-oriented: no enrollment secrets in logs; recovery codes in the credentials file only. |
 
 ---
 
@@ -141,21 +144,41 @@ a blocking mechanism that locks out IPs after repeated failures.
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
 | `ezkey.admin.rate-limit.enabled` | `boolean` | `true` | optionnel | Global on/off for admin login rate limiting. |
-| `ezkey.admin.rate-limit.login.requests` | `int` | `5` | optionnel | Maximum login requests per window. |
-| `ezkey.admin.rate-limit.login.window-minutes` | `int` | `5` | optionnel | Rate-limit window in minutes. Docker uses `1`. |
+| `ezkey.admin.rate-limit.login.requests` | `int` | `15` | optionnel | Maximum login requests per window (#831). |
+| `ezkey.admin.rate-limit.login.window-minutes` | `int` | `1` | optionnel | Rate-limit window in minutes. |
 | `ezkey.admin.rate-limit.login.key-strategy` | `String` | `client-ip` | optionnel | Key strategy. Only `client-ip` is implemented. |
 | `ezkey.admin.rate-limit.login.block-after-failures` | `int` | `10` | optionnel | Consecutive failures before IP block. `0` disables blocking. |
 | `ezkey.admin.rate-limit.login.block-duration-minutes` | `int` | `30` | optionnel | Duration in minutes for an IP block. |
+| `ezkey.admin.rate-limit.passwordless-wait.requests` | `int` | `10` | optionnel | Wait/cancel budget per `ip+authAttemptId` (#831 / #833 C2; separate login cache). |
+| `ezkey.admin.rate-limit.passwordless-wait.window-minutes` | `int` | `1` | optionnel | Window for the per-attempt (ip+id) wait/cancel bucket. |
+| `ezkey.admin.rate-limit.passwordless-wait.ip-requests` | `int` | `20` | optionnel | Per-IP aggregate wait/cancel budget (rotating-id DoS brake). |
+| `ezkey.admin.rate-limit.passwordless-wait.ip-window-minutes` | `int` | `1` | optionnel | Window for the per-IP wait/cancel aggregate. |
+| `ezkey.admin.rate-limit.backstop.enabled` | `boolean` | `true` | optionnel | Unkeyed per-process caps on login and wait/cancel. Follows ADR-0010 (not distributed). |
+| `ezkey.admin.rate-limit.backstop.login.requests` | `int` | `50` | optionnel | Process-wide login budget. |
+| `ezkey.admin.rate-limit.backstop.login.window-minutes` | `int` | `1` | optionnel | Window for the login backstop. |
+| `ezkey.admin.rate-limit.backstop.passwordless-wait.requests` | `int` | `100` | optionnel | Process-wide wait/cancel budget. |
+| `ezkey.admin.rate-limit.backstop.passwordless-wait.window-minutes` | `int` | `1` | optionnel | Window for the wait/cancel backstop. |
+
+N Admin replicas imply N times the backstop headroom; edge rate limiting remains the public-host control.
 
 **`docker` profile values:**
 
 ```properties
 ezkey.admin.rate-limit.enabled=true
-ezkey.admin.rate-limit.login.requests=5
+ezkey.admin.rate-limit.login.requests=15
 ezkey.admin.rate-limit.login.window-minutes=1
 ezkey.admin.rate-limit.login.key-strategy=client-ip
 ezkey.admin.rate-limit.login.block-after-failures=10
 ezkey.admin.rate-limit.login.block-duration-minutes=30
+ezkey.admin.rate-limit.passwordless-wait.requests=10
+ezkey.admin.rate-limit.passwordless-wait.window-minutes=1
+ezkey.admin.rate-limit.passwordless-wait.ip-requests=20
+ezkey.admin.rate-limit.passwordless-wait.ip-window-minutes=1
+ezkey.admin.rate-limit.backstop.enabled=true
+ezkey.admin.rate-limit.backstop.login.requests=50
+ezkey.admin.rate-limit.backstop.login.window-minutes=1
+ezkey.admin.rate-limit.backstop.passwordless-wait.requests=100
+ezkey.admin.rate-limit.backstop.passwordless-wait.window-minutes=1
 ```
 
 **`docker-test` profile:** rate limiting disabled (`ezkey.admin.rate-limit.enabled=false`).
@@ -209,15 +232,19 @@ M2M create/wait limits live on [ezkey-integration-api](../ezkey-integration-api/
 ### 9. Bootstrap Credentials Export (`ezkey.admin.bootstrap.export.*`)
 
 **Description:** exports enrollment credentials (enrollmentId, proof token, challenge, username)
-to a JSON file for Docker automation (clean-start). Recovery codes are **never exported**
-(logs only). Disable in production.
+and plaintext **recovery codes** to a JSON file written with owner-only mode (`0600`). This is the
+supported channel for bootstrap recovery codes (they are never written to logs). Prefer Docker/demo
+profiles; lock down the host path elsewhere.
 
 **Defined in:** `BootstrapExportProperties`
 
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
-| `ezkey.admin.bootstrap.export.enabled` | `boolean` | `false` | optionnel | Enable/disable file export. Enabled by default in `docker` and `docker-test` profiles. |
-| `ezkey.admin.bootstrap.export.path` | `String` | `/var/lib/ezkey/bootstrap/bootstrap-credentials.json` | optionnel | Absolute path for the JSON export file. Directory must exist and be writable. |
+| `ezkey.admin.bootstrap.export.enabled` | `boolean` | `false` | optionnel | Enable/disable full file export. Enabled by default in `docker` and `docker-test` profiles. Plaintext recovery codes are still persisted when present even if this flag is false. |
+| `ezkey.admin.bootstrap.export.path` | `String` | `${user.home}/.ezkey/bootstrap/bootstrap-credentials.json` | optionnel | Absolute path for the JSON export file. Parent directory is created if missing. **Non-Docker / native `mvn spring-boot:run`:** user-home default (never `/var/lib/ezkey`). **Docker profiles:** `/var/lib/ezkey/bootstrap/bootstrap-credentials.json` (volume). Admin API only — do not mount this path on Auth API. |
+| `ezkey.admin.bootstrap.export.allow-non-posix-permissions` | `boolean` | `false` | optionnel | Java default `false`. **Absent** from default, Docker, and prod overlays (never set there). When `false`: refuse the write if POSIX owner-only (`0600`) is unavailable (fail-closed when recovery codes must be persisted). When `true` (**`windows` profile only**): write anyway; log one WARN at **startup** and one WARN at **write** time (path + exception type only; never secrets). Other failures stay fail-closed. |
+| `ezkey.admin.bootstrap.bind-secret-redact.delay-ms` | `long` | `60000` | optionnel | Fixed delay (ms) between Admin API ShedLock passes that strip proof token/challenge once the bootstrap enrollment is BOUND/VERIFIED. |
+| `ezkey.admin.bootstrap.bind-secret-redact.initial-delay-ms` | `long` | `15000` | optionnel | Initial delay (ms) before the first scheduled redact pass. |
 
 ---
 
@@ -231,8 +258,9 @@ direct TCP connection originates from an IP in this list.
 
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
-| `ezkey.trusted-proxies.required` | `boolean` | `false` | optionnel [prod] | When `true`, fail startup if `cidrs` is empty or invalid (SEC-011). Set via **`EZKEY_TRUSTED_PROXIES_REQUIRED=true`** on EXP1 / `--with-proxy` (not on direct-port clean-start). |
+| `ezkey.trusted-proxies.required` | `boolean` | `false` | optionnel [prod] | When `true`, fail startup if `cidrs` is empty or invalid (SEC-011). Set via **`EZKEY_TRUSTED_PROXIES_REQUIRED=true`** on Docker / Lightsail / `--with-proxy` (not on direct-port clean-start). |
 | `ezkey.trusted-proxies.cidrs` | `List<String>` | *(empty)* | optionnel | CIDR ranges of trusted reverse proxies (e.g. `10.0.0.0/8`, `172.16.0.0/12`). In Docker, set comma-separated **`EZKEY_TRUSTED_PROXIES_CIDRS`**. |
+| `ezkey.trusted-proxies.trust-cloudflare-connecting-ip` | `boolean` | `false` | optionnel | When `true` and `remoteAddr` is trusted, prefer `CF-Connecting-IP` before walking X-Forwarded-For. Keep **OFF** unless the immediate hop is a declared Cloudflare edge (#1140). Env: **`EZKEY_TRUSTED_PROXIES_TRUST_CLOUDFLARE_CONNECTING_IP`**. |
 
 **YAML example:**
 
@@ -250,7 +278,7 @@ ezkey:
 ### 11. Admin CORS — browser cross-origin (`ezkey.admin.cors.*`)
 
 **Description:** when the Admin UI is served from a **different origin** than the Admin API (for
-example static hosting on Cloudflare Pages calling `https://exp1-admin-api.ezkey.org`), browsers
+example static hosting on Cloudflare Pages calling `https://admin-api.ezkey.online`), browsers
 enforce CORS. If `allowed-origins` is **empty**, the API does **not** emit CORS response headers
 (unchanged behavior for same-origin setups such as the Admin UI behind Caddy in Docker).
 
@@ -274,7 +302,15 @@ enforce CORS. If `allowed-origins` is **empty**, the API does **not** emit CORS 
 
 **Prefix:** `ezkey.admin.auth.*`
 
-**Description:** optional mode for **browser** sessions when the Admin UI and Admin API are on different **HTTPS** origins (e.g. `https://exp1-admin-ui.ezkey.org` → `https://exp1-admin-api.ezkey.org`). When enabled, successful login and passwordless-wait responses set an **HttpOnly** cookie on the API host with the same opaque value as today’s bearer token; the JSON body **omits** `token` so JavaScript cannot read the secret. The authentication filter accepts **either** `Authorization: Bearer` (priority if present) **or** the session cookie. **Postman and scripts** can keep using Bearer only.
+**Servlet session cookie (separate):** `server.servlet.session.cookie.name=EZKEY_ADMIN_API_SESSION` in
+`config/application.properties` — Spring’s container session cookie for localhost isolation (#799).
+Not the Mode B product cookie `EZKEY_ADMIN_SESSION` below. API modules keep this key under external
+`config/`; demos keep theirs in the JAR. **#816:** Admin API is `SessionCreationPolicy.STATELESS`
+with `NullRequestCache`, so this cookie is not emitted (401 included). Defense-in-depth attributes:
+`http-only=true`, `same-site=strict`, `secure=${EZKEY_SERVLET_SESSION_COOKIE_SECURE:false}` (set
+`true` under HTTPS).
+
+**Description:** optional mode for **browser** sessions when the Admin UI and Admin API are on different **HTTPS** origins (e.g. `https://admin-ui.ezkey.online` → `https://admin-api.ezkey.online`). When enabled, successful login and passwordless-wait responses set an **HttpOnly** cookie on the API host with the same opaque value as today’s bearer token; the JSON body **omits** `token` so JavaScript cannot read the secret. The authentication filter accepts **either** `Authorization: Bearer` (priority if present) **or** the session cookie. **Postman and scripts** can keep using Bearer only.
 
 **Defined in:** `AdminBrowserSessionCookieProperties`, `AdminBrowserSessionCookieConfig`, `AdminSessionCookieService`
 
@@ -318,6 +354,28 @@ only; ignore/close relies on this scheduler. See `docs/ENDPOINT.md` and
 
 ---
 
+### Delivery connector (`ezkey.admin.connector.delivery.*`)
+
+**Description:** the optional delivery connector ([ADR-0018](../product-docs/global/architecture-decisions.md#adr-0018--connector-spi-for-external-services)). With no URL, Ezkey stays on integrated delivery. Provider credentials stay in the connector. Sending also requires `ezkey.qr.auth-base-url`, since the email names the expected server.
+
+**Defined in:** `DeliveryConnectorProperties`
+
+| Property | Default | Obligation | Description |
+|---|---|---|---|
+| `url` | *(empty)* | optionnel | Connector base URL. Blank: no connector |
+| `token` | *(empty)* | requis with `url` | Bearer token, one per connector. A URL without a token is ignored |
+| `plain-http-private-network` | `false` | optionnel | Declares a private network, which allows `http://`. Otherwise an `http://` URL is ignored, because the job carries the QR |
+| `connect-timeout` | `3s` | optionnel | Connect timeout for every call |
+| `read-timeout` | `20s` | optionnel | Read timeout for a send. Keep it longer than the connector's provider timeout |
+| `health-timeout` | `2s` | optionnel | Timeout for a health read |
+| `health-cache-ttl` | `10s` | optionnel | How long a health read stays cached |
+| `tenant-daily-cap` | `50` | optionnel | Sends per tenant per UTC day. Counts `accepted` and `unknown` |
+| `instance-daily-cap` | `200` | optionnel | Sends for the instance per UTC day. Counts `accepted` and `unknown` |
+
+The `docker-test` profile, used by a default clean start, sets both caps to `1000000`, in line with its disabled rate limits.
+
+---
+
 ## Shared Properties (ezkey-core)
 
 The following ezkey-core prefixes are also active in Admin API. See
@@ -337,16 +395,30 @@ The following ezkey-core prefixes are also active in Admin API. See
 
 ## Profile Matrix
 
-| Property | default | docker | docker-test |
-|---|---|---|---|
-| `ezkey.admin.mfa.mode` | `dev` | `prod` | `prod` |
-| `ezkey.admin.mfa.bootstrap.auto-enrollment` | `true` | `true` | `true` |
-| `ezkey.admin.mfa.bootstrap.credentials-output-mode` | `FULL` | `${EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE:full}` | `${EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE:full}` |
-| `ezkey.admin.rate-limit.enabled` | `true` | `true` | `false` |
-| `ezkey.admin-operations.rate-limit.enabled` | `true` | `true` | `false` |
-| `ezkey.admin.bootstrap.export.enabled` | `false` | `true` | `true` |
-| `ezkey.admin.token.expiration-hours` | `2` | `2` | `2` |
-| `ezkey.audit.chain.window-minutes` | `5` | `5` | `5` |
+| Property | default | docker | docker-test | docker-base² |
+|---|---|---|---|---|
+| `ezkey.admin.mfa.mode` | `dev` | `prod` | `prod` | *(inherits)* |
+| `ezkey.admin.mfa.bootstrap.auto-enrollment` | `true` | `true` | `true` | *(inherits)* |
+| `ezkey.admin.mfa.bootstrap.credentials-output-mode` | `FULL` | `${EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE:full}` | `${EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE:full}` | *(inherits)* |
+| `ezkey.admin.mfa.bootstrap.enrollment-expiration-hours` | `24` | `${EZKEY_ADMIN_MFA_BOOTSTRAP_ENROLLMENT_EXPIRATION_HOURS:24}` | `${EZKEY_ADMIN_MFA_BOOTSTRAP_ENROLLMENT_EXPIRATION_HOURS:24}` | *(inherits)* |
+| `ezkey.admin.rate-limit.enabled` | `true` | `true` | `false` | *(inherits)* |
+| `ezkey.admin-operations.rate-limit.enabled` | `true` | `true` | `false` | *(inherits)* |
+| `ezkey.admin.bootstrap.export.enabled` | `false` | `true` | `true` | *(inherits)* |
+| `ezkey.admin.bootstrap.export.path` | `${user.home}/.ezkey/bootstrap/…` | `/var/lib/ezkey/bootstrap/…` | `/var/lib/ezkey/bootstrap/…` | *(inherits)* |
+| `ezkey.admin.bootstrap.export.allow-non-posix-permissions`³ | *(absent → `false`)* | *(absent → `false`)* | *(absent → `false`)* | *(inherits)* |
+| `ezkey.admin.token.expiration-hours` | `2` | `2` | `2` | *(inherits)* |
+| `ezkey.audit.chain.window-minutes` | `5` | `5` | `5` | *(inherits)* |
+| `ezkey.audit.chain.enabled` | `true` | `true` | `true` | `false` |
+| `ezkey.audit.chain.heartbeat.enabled` | `true` | `true` | `true` | `false` |
+| `ezkey.encryption.rotation.enabled` | `true` | `true` | `true` | `false` |
+
+² Spring profile `docker-base` is the mechanism for product runtime **base**
+(`EZKEY_RUNTIME_PROFILE=base` / clean-start `--runtime=base`). Default runtime is **integrity**
+(this profile not loaded). See [`docker/README.md`](../docker/README.md) § Runtime profiles.
+
+³ Profile `windows` sets `allow-non-posix-permissions=true` and the same `${user.home}/.ezkey/bootstrap/…`
+path (NTFS has no POSIX `0600`). Default/Docker/prod overlays **omit** the key (Java default `false`).
+When `true`, Admin API emits a startup WARN in addition to the write-time WARN.
 
 ---
 
@@ -354,16 +426,23 @@ The following ezkey-core prefixes are also active in Admin API. See
 
 | Spring property | Docker env var | docker-compose default |
 |---|---|---|
+| `ezkey.admin.connector.delivery.url` | `EZKEY_ADMIN_CONNECTOR_DELIVERY_URL` | *(empty: no connector)* |
+| `ezkey.admin.connector.delivery.token` | `EZKEY_ADMIN_CONNECTOR_DELIVERY_TOKEN` | *(empty)* |
+| `ezkey.admin.connector.delivery.plain-http-private-network` | `EZKEY_ADMIN_CONNECTOR_DELIVERY_PLAIN_HTTP_PRIVATE_NETWORK` | `false` |
 | `ezkey.admin.initial.username` | `EZKEY_ADMIN_INITIAL_USERNAME` | `admin.docker` |
 | `ezkey.admin.initial.email` | `EZKEY_ADMIN_INITIAL_EMAIL` | `admin@ezkey.local` |
 | `ezkey.admin.initial.first-name` | `EZKEY_ADMIN_INITIAL_FIRST_NAME` | `Admin` |
 | `ezkey.admin.initial.last-name` | `EZKEY_ADMIN_INITIAL_LAST_NAME` | `Docker` |
 | `ezkey.admin.mfa.bootstrap.credentials-output-mode` | `EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE` | `full` |
+| `ezkey.admin.mfa.bootstrap.enrollment-expiration-hours` | `EZKEY_ADMIN_MFA_BOOTSTRAP_ENROLLMENT_EXPIRATION_HOURS` | `24` |
+| `ezkey.organization.name` | `EZKEY_ORGANIZATION_NAME` | `Ezkey System` |
+| `ezkey.organization.description` | `EZKEY_ORGANIZATION_DESCRIPTION` | `Ezkey MFA instance for your organization` |
 | `ezkey.organization.about-url` | `EZKEY_ORGANIZATION_ABOUT_URL` | *(empty)* |
 | `ezkey.qr.auth-base-url` | `EZKEY_QR_AUTH_BASE_URL` | *(empty)* |
 | `ezkey.audit.integrity.instance-id` | `EZKEY_INSTANCE_ID` | `admin-api` |
 | `ezkey.trusted-proxies.cidrs` | `EZKEY_TRUSTED_PROXIES_CIDRS` | *(see compose; comma-separated CIDRs)* |
 | `ezkey.trusted-proxies.required` | `EZKEY_TRUSTED_PROXIES_REQUIRED` | `false` (direct ports); `true` on Lightsail / `--with-proxy` |
+| `ezkey.trusted-proxies.trust-cloudflare-connecting-ip` | `EZKEY_TRUSTED_PROXIES_TRUST_CLOUDFLARE_CONNECTING_IP` | `false` |
 | `ezkey.admin.cors.allowed-origins` | `EZKEY_ADMIN_CORS_ALLOWED_ORIGINS` | *(unset)* |
 | `ezkey.admin.cors.allow-credentials` | `EZKEY_ADMIN_CORS_ALLOW_CREDENTIALS` | *(unset)* |
 | `ezkey.admin.auth.browser-session-cookie-enabled` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_ENABLED` | *(unset)* |
@@ -377,8 +456,9 @@ The following ezkey-core prefixes are also active in Admin API. See
 
 ### 12. Evaluator self-registration (`ezkey.evaluator.self-registration.*`)
 
-**Description:** anonymous EXP1 preview signup — empty tenant + pending Tenant Admin + activation
-code. Disabled by default; enable only on experimental preview installations.
+**Description:** anonymous evaluator signup on experimental / community preview installations —
+empty tenant + pending Tenant Admin + activation code. Disabled by default; enable only on
+installations that intentionally expose public signup.
 
 **Defined in:** `EvaluatorSelfRegistrationProperties`
 
@@ -387,15 +467,29 @@ code. Disabled by default; enable only on experimental preview installations.
 | `ezkey.evaluator.self-registration.enabled` | `boolean` | `false` | optionnel | When `false`, `POST /api/v1/public/evaluator-signup` returns HTTP 404. |
 | `ezkey.evaluator.self-registration.daily-cap` | `int` | `5` | optionnel | Max successful signups per UTC day (global). |
 | `ezkey.evaluator.self-registration.per-ip-window-hours` | `int` | `24` | optionnel | Per-IP success window. |
-| `ezkey.evaluator.self-registration.per-ip-max-success` | `int` | `1` | optionnel | Max successful signups per IP within the window. |
-| `ezkey.evaluator.self-registration.admin-ui-url` | `String` | `https://exp1-admin-ui.ezkey.org` | optionnel | Returned to clients after signup. |
-| `ezkey.evaluator.self-registration.guided-tour-url` | `String` | `https://ezkey.org/exp1-guided-tour.html` | optionnel | Returned to clients after signup. |
+| `ezkey.evaluator.self-registration.per-ip-max-success` | `int` | `3` | optionnel | Max successful signups per IP within the window (lab UX: operator retries without waiting 24h). Instance still capped by `daily-cap`. |
+| `ezkey.evaluator.self-registration.admin-ui-url` | `String` | *(empty)* | requis when `enabled=true` | Returned to clients after signup. No product default hostname. |
+| `ezkey.evaluator.self-registration.guided-tour-url` | `String` | *(empty)* | requis when `enabled=true` | Returned to clients after signup. No product default hostname. |
+| `ezkey.evaluator.self-registration.temporary-session-ttl-hours` | `int` | `8` | optionnel | Absolute TTL for temporary evaluator console (`EVALUATOR_TEMP`) sessions when `enabled=true`. |
 
-**EXP1 operator notes:**
+**Fail-closed:** when `enabled=true`, Admin API startup aborts if `admin-ui-url` or
+`guided-tour-url` is blank (`EvaluatorSelfRegistrationStartupValidator`).
 
-- Set `ezkey.evaluator.self-registration.enabled=true` on the preview Admin API only.
-- Add `https://ezkey.org` (and Cloudflare Pages preview origins if needed) to `ezkey.admin.cors.allowed-origins`.
-- Signup page: `https://ezkey.org/exp1-signup.html` (calls the Admin API cross-origin).
+**Temporary evaluator console:** same self-registration flag only — no second temporary-console
+toggle. When ON, after activation the Admin UI offers « Explorer la console — accès temporaire
+(~8 h) » (mint `EVALUATOR_TEMP`) beside classic device enroll. See
+[`product-docs/global/vision/V-2026-09-26-temporary-evaluator-console-access.md`](../product-docs/global/vision/V-2026-09-26-temporary-evaluator-console-access.md).
+Local QA overlay: [`docker/docker-compose.evaluator-self-reg.yml`](../docker/docker-compose.evaluator-self-reg.yml).
+
+**Operator notes:**
+
+- Set URLs via env (`EZKEY_EVALUATOR_SELF_REGISTRATION_ADMIN_UI_URL`,
+  `EZKEY_EVALUATOR_SELF_REGISTRATION_GUIDED_TOUR_URL`) or overlay — never rely on a code default
+  hostname.
+- Optional TTL override: `EZKEY_EVALUATOR_SELF_REGISTRATION_TEMPORARY_SESSION_TTL_HOURS`.
+- Community overlay example: [`experimental-hybrid/lightsail/.env.ezkey-online.example`](../experimental-hybrid/lightsail/.env.ezkey-online.example).
+- Lightsail lab example values: [`experimental-hybrid/lightsail/.env.example`](../experimental-hybrid/lightsail/.env.example) (commented block when enabling).
+- Add marketing / Pages origins to `ezkey.admin.cors.allowed-origins` for cross-origin signup POSTs.
 
 ---
 
@@ -412,9 +506,30 @@ code. Disabled by default; enable only on experimental preview installations.
 
 ---
 
+## Management port (Actuator)
+
+| Property | Default (IDE) | Docker | Obligation | Description |
+|---|---|---|---|---|
+| `management.server.port` | `9081` | `9081` | recommandé | Dedicated management port; Actuator is not on `9080`. |
+| `management.server.address` | `127.0.0.1` | `0.0.0.0` | recommandé [IDE] | Loopback for IDE/`windows`. Docker profile sets `0.0.0.0` so HAProxy/peers reach the port (#905); local compose publishes `127.0.0.1:9081:9081` on the host. |
+| `management.endpoints.web.exposure.include` | `health,info` | `health,info` | recommandé | Product SemVer via `/actuator/info` (`build.version`); `windows` / `docker-dev` also expose `metrics`. Do not expose `env` / `heapdump` / `threaddump`. |
+
+See [`docs/LOCAL_STACK_PORTS.md`](../docs/LOCAL_STACK_PORTS.md). Decision: [ADR-0015](../product-docs/global/architecture-decisions.md#adr-0015-management-port-separation-actuator-javamelody).
+
+---
+
 ## JavaMelody (opt-in Docker diagnostics)
 
 JavaMelody is **disabled by default** (`javamelody.enabled=false`). Enable it only via
-`./ezkey-tests/clean-start.sh --with-java-melody` (combinable with `--ha`). Reports are on the
-management port at `/actuator/monitoring`; the collector UI is `http://localhost:8088`. Crypto API
-is out of scope. Operator details: [`docker/README.md`](../docker/README.md) § JavaMelody collector.
+`./ezkey-tests/clean-start.sh --with-java-melody` (combinable with `--ha`), or on the community /
+Lightsail host via `experimental-hybrid/lightsail/docker-compose.javamelody.yml`
+(`EZKEY_ENABLE_JAVA_MELODY=true` / `./clean-start.sh --with-java-melody`). Reports are on the
+**management port** at `/actuator/monitoring` only (never on the business port). Startup refuses
+`javamelody.enabled=true` without `management-endpoint-monitoring-enabled=true`, refuses JM without
+`management.server.port`, and refuses equal business/management ports. Community base compose binds
+management to `127.0.0.1`; the JM overlay reopens `0.0.0.0` so the collector can scrape. Local
+collector UI: `http://127.0.0.1:8088`. Community access is SSH tunnel only
+(`Host ezkey-online-metrics`) — see [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md)
+§ Observability and [`docs/SECURITY_POSTURE.md`](../docs/SECURITY_POSTURE.md) § Observability (#846).
+Crypto API is out of scope. Operator details: [`docker/README.md`](../docker/README.md) § JavaMelody
+collector. Decision: [ADR-0015](../product-docs/global/architecture-decisions.md#adr-0015-management-port-separation-actuator-javamelody).

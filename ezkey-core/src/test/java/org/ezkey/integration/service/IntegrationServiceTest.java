@@ -20,6 +20,7 @@ import org.ezkey.integration.SystemTenantTestConstants;
 import org.ezkey.integration.domain.IntegrationCreateRequest;
 import org.ezkey.integration.domain.IntegrationCreateResponse;
 import org.ezkey.integration.domain.IntegrationLifecycleStatus;
+import org.ezkey.integration.domain.PendingAttemptPolicy;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
 import org.ezkey.integration.domain.entity.Integration;
@@ -29,6 +30,7 @@ import org.ezkey.integration.domain.repository.TenantRepository;
 import org.ezkey.integration.exception.IntegrationCreateValidationException;
 import org.ezkey.integration.exception.IntegrationHasEnrollmentsException;
 import org.ezkey.integration.exception.IntegrationLifecycleStateException;
+import org.ezkey.integration.exception.SystemIntegrationLifecycleException;
 import org.ezkey.integration.mapper.IntegrationServiceMapper;
 import org.ezkey.service.EntityEligibilityService;
 import org.junit.jupiter.api.DisplayName;
@@ -322,6 +324,35 @@ class IntegrationServiceTest {
 
     assertThatThrownBy(() -> service.retire(404)).isInstanceOf(ResourceNotFoundException.class);
 
+    verify(repository, never()).save(any());
+  }
+
+  @Test
+  void updatePendingAttemptPolicy_systemIntegration_refusesAndKeepsReplace() {
+    Integration integration = new Integration();
+    integration.setId(1);
+    integration.setIsSystemIntegration(true);
+    assertThat(integration.getPendingAttemptPolicy()).isEqualTo(PendingAttemptPolicy.REPLACE);
+    when(repository.findById(1)).thenReturn(Optional.of(integration));
+
+    assertThatThrownBy(() -> service.updatePendingAttemptPolicy(1, PendingAttemptPolicy.REFUSE))
+        .isInstanceOf(SystemIntegrationLifecycleException.class);
+
+    assertThat(integration.getPendingAttemptPolicy()).isEqualTo(PendingAttemptPolicy.REPLACE);
+    verify(repository, never()).save(any());
+  }
+
+  @Test
+  void updatePendingAttemptPolicy_systemIntegration_sameReplaceIsNoOp() {
+    Integration integration = new Integration();
+    integration.setId(1);
+    integration.setIsSystemIntegration(true);
+    when(repository.findById(1)).thenReturn(Optional.of(integration));
+
+    Integration result = service.updatePendingAttemptPolicy(1, PendingAttemptPolicy.REPLACE);
+
+    assertThat(result).isSameAs(integration);
+    assertThat(result.getPendingAttemptPolicy()).isEqualTo(PendingAttemptPolicy.REPLACE);
     verify(repository, never()).save(any());
   }
 

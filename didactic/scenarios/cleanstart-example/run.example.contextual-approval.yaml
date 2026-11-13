@@ -1,0 +1,28 @@
+---
+# Approval-context variant — same protocol, but with richer business wording in pending copy.
+scenario_label: protocol-lab-cleanstart-contextual-approval-accept
+
+base_urls:
+  admin: "http://localhost:9080"
+  auth: "http://localhost:8080"
+  crypto: "http://localhost:9090"
+
+integration_id: 1
+
+admin_bearer_token: ""
+
+enrollment:
+  name: "Alice Chen"
+  auth_attempt_challenge_required: false
+
+scenario:
+  auth_challenge_requested: false
+  respond_accepted: true
+  auth_context_title: "Payment Authorization"
+  auth_context_message: "Authorize payment batch INV-2026-0042 for Europa station suppliers."
+
+wait:
+  timeout_seconds: 120
+  poll_seconds: 2
+
+device_private_key_storage_tier: "STANDARD"

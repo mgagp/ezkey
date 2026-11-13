@@ -47,7 +47,7 @@ on-demand detection, dashboard batch health, and an open-alert count banner.
 | Batch staleness alert | Out of R1 (widget visibility only) |
 | `I-2026-0028` P3 Alerts list polish | **Next** — draft TB ready |
 | Audit chain checkpoints matrix row | Wave C after alerts |
-| EXP1 extended soak (Wave D) | Calendar time before September gate |
+| community host extended soak (Wave D) | Calendar time before September gate |
 | Elective `ezkey-tests` dashboard contract tests | Optional |
 
 ## Next execution

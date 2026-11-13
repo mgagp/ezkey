@@ -25,8 +25,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import org.ezkey.admin.dto.response.IntegrityBootstrapResponseDto;
 import org.ezkey.admin.security.AdminPrincipal;
+import org.ezkey.admin.service.IntegrityBootstrapService;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
@@ -49,11 +52,14 @@ import org.ezkey.audit.dto.IntegrityRuptureReconciliationRequest;
 import org.ezkey.audit.dto.IntegrityRuptureReconciliationResult;
 import org.ezkey.audit.dto.RetroactiveIntegrityValidationRunRequest;
 import org.ezkey.audit.dto.RetroactiveIntegrityValidationRunResponse;
+import org.ezkey.audit.exception.IntegrityAsyncJobBusyException;
 import org.ezkey.audit.integrity.AuditChainCheckpointService;
 import org.ezkey.audit.integrity.AuditChainIncidentService;
 import org.ezkey.audit.integrity.AuditChainVerificationService;
 import org.ezkey.audit.integrity.AuditIntegrityService;
 import org.ezkey.audit.integrity.AuditLifecycleService;
+import org.ezkey.audit.integrity.IntegrityHeavyCryptoGate;
+import org.ezkey.audit.integrity.IntegrityWindowCapProperties;
 import org.ezkey.audit.integrity.RetroactiveIntegrityValidationOptions;
 import org.ezkey.audit.integrity.RetroactiveIntegrityValidationService;
 import org.ezkey.audit.mapper.AuditChainCheckpointMapper;
@@ -139,6 +145,9 @@ public class AuditLogController {
   private final AuditLifecycleService auditLifecycleService;
   private final RetroactiveIntegrityValidationService retroactiveIntegrityValidationService;
   private final AuditChainIncidentService auditChainIncidentService;
+  private final IntegrityBootstrapService integrityBootstrapService;
+  private final IntegrityHeavyCryptoGate heavyCryptoGate;
+  private final IntegrityWindowCapProperties windowCapProperties;
   private final EzkeyAdminRepository adminRepository;
   private final EnrollmentRepository enrollmentRepository;
   private final IntegrationRepository integrationRepository;
@@ -158,6 +167,10 @@ public class AuditLogController {
    * @param retroactiveIntegrityValidationService retroactive detect orchestration (nightly +
    *     operator POST)
    * @param auditChainIncidentService heartbeat operational incident listing and declaration
+   * @param integrityBootstrapService thin Integrity atelier bootstrap (runtime profile + flags)
+   * @param heavyCryptoGate process-local single-flight gate shared with nightly / async VERIFY
+   * @param windowCapProperties days-based caps (sync report GETs + sync operator POST; async VERIFY
+   *     / RUN_VALIDATION use the async cap elsewhere)
    * @param adminRepository repository for actor/target admin label enrichment
    * @param enrollmentRepository repository for enrollment label enrichment
    * @param integrationRepository repository for integration label enrichment
@@ -173,6 +186,9 @@ public class AuditLogController {
       AuditLifecycleService auditLifecycleService,
       RetroactiveIntegrityValidationService retroactiveIntegrityValidationService,
       AuditChainIncidentService auditChainIncidentService,
+      IntegrityBootstrapService integrityBootstrapService,
+      IntegrityHeavyCryptoGate heavyCryptoGate,
+      IntegrityWindowCapProperties windowCapProperties,
       EzkeyAdminRepository adminRepository,
       EnrollmentRepository enrollmentRepository,
       IntegrationRepository integrationRepository,
@@ -186,6 +202,9 @@ public class AuditLogController {
     this.auditLifecycleService = auditLifecycleService;
     this.retroactiveIntegrityValidationService = retroactiveIntegrityValidationService;
     this.auditChainIncidentService = auditChainIncidentService;
+    this.integrityBootstrapService = integrityBootstrapService;
+    this.heavyCryptoGate = heavyCryptoGate;
+    this.windowCapProperties = windowCapProperties;
     this.adminRepository = adminRepository;
     this.enrollmentRepository = enrollmentRepository;
     this.integrationRepository = integrationRepository;
@@ -495,13 +514,24 @@ public class AuditLogController {
       summary = "Verify audit log integrity",
       description =
           "Recomputes HMAC-SHA256 signatures for audit log entries in the specified date "
-              + "range and reports any tampered or unsigned entries. Global Admin only.")
+              + "range and reports any tampered or unsigned entries. Runs under the Integrity "
+              + "heavy-crypto gate (HTTP 409 when busy) with the sync window cap "
+              + "(ezkey.audit.integrity.max-sync-window-days, default 8 — "
+              + "calendar days, DST-tolerant Instant span = days×24h+1h; longer windows use async"
+              + " VERIFY under max-window-days). Global Admin only.")
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "200", description = "Integrity check completed"),
         @ApiResponse(
             responseCode = "400",
-            description = "Date range required -- provide from and to as ISO-8601"),
+            description =
+                "Date range required/inverted, or exceeds max-sync-window-days"
+                    + " (type integrity-window-over-cap)"),
+        @ApiResponse(
+            responseCode = "409",
+            description =
+                "Integrity heavy crypto path busy (same contract as async job busy;"
+                    + " Retry-After present)"),
         @ApiResponse(responseCode = "401", description = "Not authenticated"),
         @ApiResponse(responseCode = "403", description = "Not a Global Admin")
       })
@@ -515,12 +545,9 @@ public class AuditLogController {
           @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
           OffsetDateTime to) {
 
-    if (from == null || to == null) {
-      throw new IllegalArgumentException(
-          "Date range is required for verification. Provide from (inclusive) and to (exclusive) as"
-              + " ISO-8601.");
-    }
-    AuditIntegrityService.IntegrityReport report = auditIntegrityService.verifyRange(from, to);
+    windowCapProperties.validateSyncWindow(from, to);
+    AuditIntegrityService.IntegrityReport report =
+        withHeavyCryptoGate(() -> auditIntegrityService.verifyRange(from, to));
     return ResponseEntity.ok(report);
   }
 
@@ -587,7 +614,10 @@ public class AuditLogController {
               + "chain linkage. Detects entry insertion, deletion, reordering, checkpoint "
               + "tampering, and undeclared temporal gaps (missing checkpoints between consecutive "
               + "windows or uncovered leading/trailing periods in the requested range). "
-              + "Global Admin only.\n\n"
+              + "Runs under the Integrity heavy-crypto gate (HTTP 409 when busy) with the sync "
+              + "window cap (ezkey.audit.integrity.max-sync-window-days, default 8 — "
+              + "calendar days, DST-tolerant Instant span = days×24h+1h; longer windows use async"
+              + " VERIFY under max-window-days). Global Admin only.\n\n"
               + "**Range handling:** The requested from/to may extend before the first checkpoint "
               + "or after the last in the database. Such periods are not reported as undeclared "
               + "gaps (they are before/after \"EZKey time\"). Only real gaps within the system's "
@@ -600,7 +630,14 @@ public class AuditLogController {
         @ApiResponse(responseCode = "200", description = "Chain verification completed"),
         @ApiResponse(
             responseCode = "400",
-            description = "Date range required -- provide from and to as ISO-8601"),
+            description =
+                "Date range required/inverted, or exceeds max-sync-window-days"
+                    + " (type integrity-window-over-cap)"),
+        @ApiResponse(
+            responseCode = "409",
+            description =
+                "Integrity heavy crypto path busy (same contract as async job busy;"
+                    + " Retry-After present)"),
         @ApiResponse(responseCode = "401", description = "Not authenticated"),
         @ApiResponse(responseCode = "403", description = "Not a Global Admin")
       })
@@ -614,14 +651,35 @@ public class AuditLogController {
           @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
           OffsetDateTime to) {
 
-    if (from == null || to == null) {
-      throw new IllegalArgumentException(
-          "Date range is required for verification. Provide from (inclusive) and to (exclusive) as"
-              + " ISO-8601.");
-    }
+    windowCapProperties.validateSyncWindow(from, to);
     AuditChainVerificationService.ChainVerificationReport report =
-        auditChainVerificationService.verifyChain(from, to);
+        withHeavyCryptoGate(() -> auditChainVerificationService.verifyChain(from, to));
     return ResponseEntity.ok(report);
+  }
+
+  /**
+   * Runs synchronous Integrity report work under the process-local heavy crypto gate.
+   *
+   * <p>Uses non-blocking {@link IntegrityHeavyCryptoGate#tryEnter} with {@code REPORT_GET} so a
+   * gated wait cannot exceed reverse-proxy / Tomcat request timeouts. Release is guaranteed in
+   * {@code finally} on exception.
+   *
+   * @param <T> report type
+   * @param action verify work
+   * @return action result
+   * @throws IntegrityAsyncJobBusyException when the gate is already held (HTTP 409)
+   */
+  private <T> T withHeavyCryptoGate(Supplier<T> action) {
+    if (!heavyCryptoGate.tryEnter(IntegrityHeavyCryptoGate.Holder.REPORT_GET)) {
+      // Report the holder that already owns the gate (NIGHTLY / OPERATOR_JOB / REPORT_GET),
+      // not the REPORT_GET we failed to acquire — same contract as async job start.
+      throw IntegrityAsyncJobBusyException.forHeavyCryptoBusy(heavyCryptoGate.holder());
+    }
+    try {
+      return action.get();
+    } finally {
+      heavyCryptoGate.exit(IntegrityHeavyCryptoGate.Holder.REPORT_GET);
+    }
   }
 
   /**
@@ -640,9 +698,13 @@ public class AuditLogController {
       summary = "Run retroactive integrity validation",
       description =
           "Detective-layer validation over a date range: same semantics as the nightly batch."
-              + " May raise or touch AUDIT_INTEGRITY_RUPTURE when violations remain"
-              + " alert-eligible. Global Admin only. Use GET integrity-check / chain-integrity"
-              + " for read-only forensic verify.")
+              + " Runs under the Integrity heavy-crypto gate (HTTP 409 when busy)."
+              + " Synchronous path: window capped by ezkey.audit.integrity.max-sync-window-days"
+              + " (default 8 — Instant span = days×24h+1h; over-cap → integrity-window-over-cap"
+              + " with capKind=SYNC + fixed asyncAlternative)."
+              + " Longer windows: async RUN_VALIDATION under max-window-days (default 92)."
+              + " May raise or touch AUDIT_INTEGRITY_RUPTURE when"
+              + " violations remain alert-eligible. Global Admin only.")
   @ApiResponses(
       value = {
         @ApiResponse(
@@ -650,7 +712,15 @@ public class AuditLogController {
             description = "Validation completed (including skipped when HMAC inactive)"),
         @ApiResponse(
             responseCode = "400",
-            description = "Invalid bounds or window exceeds configured maximum",
+            description =
+                "Invalid bounds, or window exceeds max-sync-window-days"
+                    + " (type integrity-window-over-cap)",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+        @ApiResponse(
+            responseCode = "409",
+            description =
+                "Heavy-crypto gate busy (Retry-After) or nightly integrity validation inactive"
+                    + " (ezkey.audit.integrity.nightly.enabled=false)",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
         @ApiResponse(responseCode = "401", description = "Not authenticated"),
         @ApiResponse(responseCode = "403", description = "Not a Global Admin")
@@ -658,13 +728,15 @@ public class AuditLogController {
   public ResponseEntity<RetroactiveIntegrityValidationRunResponse>
       runRetroactiveIntegrityValidation(
           @Valid @RequestBody RetroactiveIntegrityValidationRunRequest request) {
-    retroactiveIntegrityValidationService.validateOperatorWindow(request.from(), request.to());
+    windowCapProperties.validateSyncWindow(request.from(), request.to());
     boolean raiseAlert = request.raiseAlert() == null || request.raiseAlert();
     var result =
-        retroactiveIntegrityValidationService.runValidation(
-            request.from(),
-            request.to(),
-            RetroactiveIntegrityValidationOptions.operator(raiseAlert, extractRequesterAdminId()));
+        withHeavyCryptoGate(() ->
+            retroactiveIntegrityValidationService.runValidation(
+                request.from(),
+                request.to(),
+                RetroactiveIntegrityValidationOptions.operator(
+                    raiseAlert, extractRequesterAdminId())));
     return ResponseEntity.ok(RetroactiveIntegrityValidationRunResponse.from(result));
   }
 
@@ -691,8 +763,13 @@ public class AuditLogController {
       description =
           "Marks all chain checkpoints in the specified period as ARCHIVE_SEAL prior to dropping "
               + "the corresponding DB partition. Runs a mandatory pre-flight integrity check -- "
-              + "rejected if any violation is detected. Returns the seal HMAC to include in the "
-              + "Git archive manifest. Global Admin only.\n\n"
+              + "rejected if any violation is detected. Pre-flight verify is a synchronous HTTP "
+              + "path: it runs under the Integrity heavy-crypto gate (`busyHolder=SEAL_ARCHIVE`) "
+              + "and `ezkey.audit.integrity.max-sync-window-days` (default 8 — Cloudflare 100 s "
+              + "timeout floor; #781). Longer windows must use async Integrity jobs under "
+              + "`max-window-days`. Lifecycle scheduler auto-seal does not call verifyChain. "
+              + "Returns the seal HMAC to include in the Git archive manifest. Global "
+              + "Admin only.\n\n"
               + "**Period identification -- two alternative modes:**\n"
               + "- **Timestamp mode**: provide `periodStart` (inclusive) and `periodEnd` "
               + "(exclusive) as ISO-8601 timestamps.\n"
@@ -707,12 +784,15 @@ public class AuditLogController {
         @ApiResponse(
             responseCode = "400",
             description =
-                "Invalid request: conflicting modes, missing required fields, or no checkpoints "
-                    + "found for the given ID range",
+                "Invalid request: conflicting modes, missing required fields, no checkpoints "
+                    + "found for the given ID range, or period exceeds max-sync-window-days "
+                    + "(type integrity-window-over-cap, capKind=SYNC)",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
         @ApiResponse(
             responseCode = "409",
-            description = "Chain integrity violation detected -- resolve before sealing",
+            description =
+                "Chain integrity violation, lifecycle conflict, or heavy-crypto gate busy "
+                    + "(Retry-After; type integrity-async-job-busy)",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
         @ApiResponse(
             responseCode = "401",
@@ -726,6 +806,39 @@ public class AuditLogController {
   public ResponseEntity<ArchiveSealResult> sealArchive(
       @Valid @RequestBody ArchiveSealRequest request) {
     return ResponseEntity.ok(auditLifecycleService.sealArchive(request));
+  }
+
+  /**
+   * Returns the thin Integrity atelier bootstrap for Admin UI honesty chrome.
+   *
+   * <p>Exposes product {@code runtimeProfile} (Spring {@code docker-base} → {@code base}) and live
+   * monitoring enable flags. Dual source: profile name is not derived from flags; flags are not
+   * derived from the profile name. Global Admin only.
+   *
+   * @return Integrity bootstrap payload
+   */
+  @PreAuthorize("hasRole('GLOBAL_ADMIN')")
+  @GetMapping("/integrity/bootstrap")
+  @Operation(
+      summary = "Integrity atelier bootstrap",
+      description =
+          "Thin Global Admin payload for Integrity honesty chrome: product runtimeProfile"
+              + " (base|integrity from Spring docker-base) plus chainCheckpointsEnabled and"
+              + " nightlyValidationEnabled config flags. Not a job matrix or second journal.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "200", description = "Integrity bootstrap returned"),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Not authenticated",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Not a Global Admin",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+      })
+  public ResponseEntity<IntegrityBootstrapResponseDto> getIntegrityBootstrap() {
+    return ResponseEntity.ok(integrityBootstrapService.build());
   }
 
   /**

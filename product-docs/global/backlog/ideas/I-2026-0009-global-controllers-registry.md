@@ -18,7 +18,9 @@ A **living** controllers registry duplicated OpenAPI and cheap targeted discover
 (~17 API controllers) without enough analysis payoff. The registry table was never populated —
 signal that sync cost exceeded value.
 
-**Downscope decision:** [`../../../methodology/decisions/2026-05-24-controllers-registry-downscope.md`](../../../methodology/decisions/2026-05-24-controllers-registry-downscope.md)
+**Downscope decision:** recorded in this idea's drop rationale (the former
+`methodology/decisions/2026-05-24-controllers-registry-downscope.md` was removed in the 2026-08
+methodology ablation; substance stays here).
 
 Cross-cutting examination (audience, tier, sensitivity, rate-limit posture) is **absorbed** into
 policy outputs when analyses run:
@@ -36,6 +38,6 @@ Author a canonical high-level index of REST controllers for cross-cutting analys
 
 ## Links
 
-- Decision: [`../../../methodology/decisions/2026-05-24-controllers-registry-downscope.md`](../../../methodology/decisions/2026-05-24-controllers-registry-downscope.md)
+- Decision: this document § Drop rationale (2026-05-24)
 - Archived artifact: [`../../api-controllers-registry.md`](../../api-controllers-registry.md)
 - Successor work: `I-2026-0008`, `I-2026-0015`

@@ -12,6 +12,7 @@ package org.ezkey.security;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.ezkey.config.TinkProperties;
 import org.junit.jupiter.api.DisplayName;
@@ -24,6 +25,23 @@ import org.springframework.beans.factory.ObjectProvider;
  * @since 2026
  */
 class TinkKeyManagerRequiredEncryptionTest {
+
+  @Test
+  @DisplayName(
+      "C-M1: required defaults to true; init fails on unreadable master key without setRequired")
+  void initialize_defaultRequired_unreadableMasterKey_throws() {
+    assertTrue(new TinkProperties().isRequired(), "ezkey.encryption.required must default true");
+
+    TinkProperties properties = new TinkProperties();
+    properties.setEnabled(true);
+    // Do not call setRequired — default true (#961 C-M1).
+    properties.setMasterKeyFile("/nonexistent/ezkey/master.key");
+    properties.setKeysetFile("/nonexistent/ezkey/keyset.json.encrypted");
+
+    TinkKeyManager manager = new TinkKeyManager(properties, emptyRepositoryProvider());
+
+    assertThrows(IllegalStateException.class, manager::initialize);
+  }
 
   @Test
   @DisplayName("initialize fails when required=true and master key file is missing")

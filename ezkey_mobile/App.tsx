@@ -6,30 +6,41 @@
  */
 
 import React from 'react';
-import {Platform, StatusBar, StyleSheet} from 'react-native';
+import {StatusBar} from 'react-native';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {AppProviders} from './app/providers';
-import {colors} from './app/config/theme';
+import {createThemedStyles, ThemeProvider, useTheme} from './app/theme';
 
-const App: React.FC = () => (
-  <GestureHandlerRootView style={styles.root}>
-    <SafeAreaProvider>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor={colors.background}
-        translucent={Platform.OS === 'android'}
-      />
-      <AppProviders />
-    </SafeAreaProvider>
-  </GestureHandlerRootView>
-);
-
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(colors => ({
   root: {
     flex: 1,
     backgroundColor: colors.background,
   },
-});
+}));
+
+const ThemedRoot: React.FC = () => {
+  const {scheme} = useTheme();
+  const styles = useStyles();
+  return (
+    <GestureHandlerRootView style={styles.root}>
+      <SafeAreaProvider>
+        {/*
+          RN 0.87 removed Android-only StatusBar backgroundColor/translucent props
+          (and the underlying native setters). Keep barStyle; root View supplies
+          colors.background for the status-bar region under edge-to-edge.
+        */}
+        <StatusBar barStyle={scheme === 'light' ? 'dark-content' : 'light-content'} />
+        <AppProviders />
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
+  );
+};
+
+const App: React.FC = () => (
+  <ThemeProvider>
+    <ThemedRoot />
+  </ThemeProvider>
+);
 
 export default App;

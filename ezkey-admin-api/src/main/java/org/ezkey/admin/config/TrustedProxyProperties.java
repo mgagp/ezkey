@@ -21,8 +21,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * Configuration properties for trusted proxy CIDR list.
  *
  * <p>When the application is behind a reverse proxy, client IP extraction for rate limiting and
- * audit uses headers (X-Forwarded-For, X-Real-IP, CF-Connecting-IP). These headers are only trusted
- * when the direct connection comes from an IP in this list.
+ * audit uses headers only when the direct connection comes from an IP in this list. Resolution
+ * walks {@code X-Forwarded-For} right-to-left (skipping trusted hops). {@code X-Real-IP} is never
+ * used. {@code CF-Connecting-IP} is used only when {@link #trustCloudflareConnectingIp} is true.
  *
  * <p><b>Configuration Prefix:</b> ezkey.trusted-proxies
  *
@@ -34,6 +35,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     cidrs:
  *       - 10.0.0.0/8
  *       - 172.16.0.0/12
+ *     trust-cloudflare-connecting-ip: false
  * </pre>
  *
  * @author Ezkey contributors
@@ -50,6 +52,13 @@ public class TrustedProxyProperties {
 
   private List<String> cidrs = new ArrayList<>();
 
+  /**
+   * When {@code true} and {@code remoteAddr} is a trusted proxy, prefer a valid {@code
+   * CF-Connecting-IP} before walking X-Forwarded-For. Default {@code false}: only enable when the
+   * immediate hop is a declared Cloudflare edge (or an edge that rewrites that header).
+   */
+  private boolean trustCloudflareConnectingIp = false;
+
   public boolean isRequired() {
     return required;
   }
@@ -64,5 +73,13 @@ public class TrustedProxyProperties {
 
   public void setCidrs(List<String> cidrs) {
     this.cidrs = cidrs == null ? new ArrayList<>() : new ArrayList<>(cidrs);
+  }
+
+  public boolean isTrustCloudflareConnectingIp() {
+    return trustCloudflareConnectingIp;
+  }
+
+  public void setTrustCloudflareConnectingIp(boolean trustCloudflareConnectingIp) {
+    this.trustCloudflareConnectingIp = trustCloudflareConnectingIp;
   }
 }

@@ -20,4 +20,15 @@ package org.ezkey.signature;
  * @param base64PublicKey the Base64-encoded EC P-256 public key (X.509 format)
  * @since 2025
  */
-public record ECP256KeyPair(String base64PrivateKey, String base64PublicKey) {}
+public record ECP256KeyPair(String base64PrivateKey, String base64PublicKey) {
+
+  /**
+   * Returns a string representation with the private key masked.
+   *
+   * @return string representation safe for logs
+   */
+  @Override
+  public String toString() {
+    return "ECP256KeyPair{base64PrivateKey=[PROTECTED], base64PublicKey='" + base64PublicKey + "'}";
+  }
+}

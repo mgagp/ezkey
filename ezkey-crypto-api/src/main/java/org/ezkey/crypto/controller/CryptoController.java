@@ -241,7 +241,8 @@ public class CryptoController {
       description =
           "Builds the canonical EZKey payload for auth-attempt (pending, respond, respond-result)"
               + " or enrollment (enrollment-bind, enrollment-verify-device,"
-              + " enrollment-verify-result) flows. Applies NFC normalization to the text fields"
+              + " enrollment-verify-result, enrollment-instance-info) flows. Applies NFC"
+              + " normalization to the text fields"
               + " defined by the protocol so the result can be used as a validation oracle in Dart"
               + " tests and Postman workflows.")
   @ApiResponses(
@@ -261,6 +262,7 @@ public class CryptoController {
           case "enrollment-bind" -> buildEnrollmentBindPayload(request);
           case "enrollment-verify-device" -> buildEnrollmentVerifyDevicePayload(request);
           case "enrollment-verify-result" -> buildEnrollmentVerifyResultPayload(request);
+          case "enrollment-instance-info" -> buildEnrollmentInstanceInfoPayload(request);
           default ->
               throw new IllegalArgumentException("Unsupported payload type: " + request.getType());
         };
@@ -572,7 +574,9 @@ public class CryptoController {
         request.getEnrollmentName(),
         request.getTenantId(),
         request.getTenantName(),
-        request.getTenantDescription());
+        request.getTenantDescription(),
+        request.getIsSystemIntegration(),
+        request.getAdminType());
   }
 
   private static String buildEnrollmentVerifyDevicePayload(PayloadHelperRequestDto request) {
@@ -615,5 +619,19 @@ public class CryptoController {
     }
     return EnrollmentSignaturePayload.buildVerifyResultPayload(
         request.getProofToken(), request.getEnrollmentId(), outcome, request.getMessage());
+  }
+
+  private static String buildEnrollmentInstanceInfoPayload(PayloadHelperRequestDto request) {
+    if (request.getEnrollmentId() == null) {
+      throw new IllegalArgumentException(
+          "enrollmentId is required for enrollment-instance-info payloads");
+    }
+    return EnrollmentSignaturePayload.buildInstanceInfoPayload(
+        request.getProofToken(),
+        request.getEnrollmentId(),
+        request.getAuthApiPublicBaseUrl(),
+        request.getInstanceName(),
+        request.getInstanceDescription(),
+        request.getAboutUrl());
   }
 }

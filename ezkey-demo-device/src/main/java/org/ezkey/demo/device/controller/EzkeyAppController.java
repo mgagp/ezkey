@@ -4,8 +4,12 @@ import jakarta.servlet.http.HttpSession;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import org.ezkey.demo.device.config.DemoDeviceProperties;
 import org.ezkey.demo.device.service.AuthApiService;
+import org.ezkey.demo.device.service.AuthApiUrlValidator;
 import org.ezkey.demo.device.service.AuthAttemptPayloadUtil;
+import org.ezkey.demo.device.service.ClaimExpiresAtResolver;
 import org.ezkey.demo.device.service.ClaimedPendingAuth;
 import org.ezkey.demo.device.service.DeviceCryptoService;
 import org.ezkey.demo.device.service.DeviceCryptoService.ECP256DeviceKeyPair;
@@ -16,6 +20,8 @@ import org.ezkey.demo.device.service.EnrollmentStoreService.Record;
 import org.ezkey.demo.device.service.EnrollmentVerifyPayloadUtil;
 import org.ezkey.demo.device.service.InvalidAuthApiUrlException;
 import org.ezkey.demo.device.service.PendingAuthClaimSession;
+import org.ezkey.demo.device.service.PendingAuthPull;
+import org.ezkey.demo.device.util.LogSanitizer;
 import org.ezkey.demo.device.view.EnrollmentTenantGrouper;
 import org.ezkey.demodevice.generated.dto.AuthAttemptPendingRequestDto;
 import org.ezkey.demodevice.generated.dto.AuthAttemptPendingResponseDto;
@@ -35,6 +41,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Simulated Ezkey mobile app controller.
@@ -50,7 +58,9 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
  *
  * <p>Pending auth is read-once on Auth API. After a successful claim, this controller keeps the
  * claim in the HTTP session so a second GET (double navigation, re-check, refresh) can re-show
- * Approve/Deny without calling pending again.
+ * Approve/Deny without calling pending again. The session claim carries {@code expiresAt} (Demo
+ * Device bound; pending wire omits attempt expiry per #834) and is dropped at {@code min(expiresAt,
+ * claimedAt + 10 min)} so a stale request cannot hide a newer pending (#895 PR-C).
  *
  * <p>The controller manages the mobile device's cryptographic state and communicates with the Ezkey
  * Auth API to complete the enrollment and authentication flows.
@@ -71,6 +81,11 @@ public class EzkeyAppController {
 
   private static final Logger logger = LoggerFactory.getLogger(EzkeyAppController.class);
 
+  private static final ObjectMapper PROBLEM_DETAIL_MAPPER = new ObjectMapper();
+
+  /** Max chars of ProblemDetail {@code type} written to logs (log-injection bound). */
+  private static final int PROBLEM_TYPE_LOG_MAX_LENGTH = 120;
+
   private final AuthApiService authApiService;
 
   private final DeviceCryptoService cryptoService;
@@ -80,15 +95,49 @@ public class EzkeyAppController {
   /** Auth API base URL configured for this demo-device (for QR payload vs runtime comparison). */
   private final String configuredAuthApiBase;
 
+  /** Effective Auth API host allowlist for QR {@code authUrl} and bind overrides. */
+  private final Set<String> allowedAuthApiHosts;
+
+  /** Lab settings including claimed-pending session expiry bound (#895 PR-C). */
+  private final DemoDeviceProperties demoDeviceProperties;
+
+  /**
+   * Suffix of ProblemDetail {@code type} for a late respond after attempt expiry (PR-A contract).
+   */
+  static final String AUTH_ATTEMPT_EXPIRED_TYPE_SUFFIX = "auth-attempt-expired";
+
+  /** Neutral copy when the attempt expired — any initiator (Admin UI, PAM/SSH, SDK, …). */
+  static final String MSG_AUTH_EXPIRED =
+      "This authentication request has expired. Restart the login from the application.";
+
+  /** Neutral copy when the attempt is no longer active (superseded, decided, …). */
+  static final String MSG_AUTH_NO_LONGER_ACTIVE =
+      "This authentication request is no longer active. Restart the login from the application.";
+
+  /**
+   * Creates the controller.
+   *
+   * @param authApiService Auth API WebClient facade
+   * @param cryptoService device key and signature helper
+   * @param storeService local enrollment JSON store
+   * @param configuredAuthApiBase {@code ezkey.auth.api.url}
+   * @param demoDeviceProperties demo-device allowlist and lab settings
+   */
   public EzkeyAppController(
       AuthApiService authApiService,
       DeviceCryptoService cryptoService,
       EnrollmentStoreService storeService,
-      @Value("${ezkey.auth.api.url:http://localhost:8080}") String configuredAuthApiBase) {
+      @Value("${ezkey.auth.api.url:http://localhost:8080}") String configuredAuthApiBase,
+      DemoDeviceProperties demoDeviceProperties) {
     this.authApiService = authApiService;
     this.cryptoService = cryptoService;
     this.storeService = storeService;
     this.configuredAuthApiBase = configuredAuthApiBase;
+    this.demoDeviceProperties =
+        demoDeviceProperties != null ? demoDeviceProperties : new DemoDeviceProperties();
+    this.allowedAuthApiHosts =
+        AuthApiUrlValidator.effectiveAllowlist(
+            configuredAuthApiBase, this.demoDeviceProperties.getAllowedAuthApiHosts());
   }
 
   @GetMapping
@@ -109,36 +158,32 @@ public class EzkeyAppController {
 
   @PostMapping("/enrollment/bind")
   public String bindEnrollment(
-      @RequestParam("enrollmentId") Integer enrollmentId,
       @RequestParam("enrollmentProofToken") String enrollmentProofToken,
       @RequestParam(value = "authApiBaseUrl", required = false) String authApiBaseUrl,
       Model model) {
     model.addAttribute("pageTitle", "Enrollment - Bind");
-    model.addAttribute("enrollmentId", enrollmentId);
     BindResolution bindResolution;
     try {
       bindResolution =
-          EnrollmentAuthApiUrlResolver.resolveForBind(authApiBaseUrl, configuredAuthApiBase);
+          EnrollmentAuthApiUrlResolver.resolveForBind(
+              authApiBaseUrl, configuredAuthApiBase, allowedAuthApiHosts);
     } catch (InvalidAuthApiUrlException e) {
       model.addAttribute("pageTitle", "New Enrollment");
       model.addAttribute("configuredAuthApiBase", configuredAuthApiBase);
-      model.addAttribute("enrollmentId", enrollmentId);
       model.addAttribute("enrollmentProofToken", enrollmentProofToken);
-      model.addAttribute("authApiBaseUrl", authApiBaseUrl);
+      // Do not redisplay a rejected override URL (constant error only; no echo of attacker input)
       model.addAttribute("error", e.getMessage());
       return "phone/ezkey/new_enrollment";
     }
     logger.info(
-        "Bind enrollment {} using Auth API {} (QR override submitted: {})",
-        enrollmentId,
-        bindResolution.apiBaseUrl(),
+        "Bind using Auth API {} (QR override submitted: {})",
+        LogSanitizer.sanitizeForLog(bindResolution.apiBaseUrl()),
         authApiBaseUrl != null && !authApiBaseUrl.isBlank());
     try {
       EnrollmentBindResponseDto bindResponse =
-          authApiService
-              .bind(enrollmentId, enrollmentProofToken, bindResolution.apiBaseUrl())
-              .block();
-      if (bindResponse != null) {
+          authApiService.bind(enrollmentProofToken, bindResolution.apiBaseUrl()).block();
+      if (bindResponse != null && bindResponse.getEnrollmentId() != null) {
+        Integer enrollmentId = bindResponse.getEnrollmentId();
         // Generate device keys
         ECP256DeviceKeyPair keyPair = cryptoService.generateDeviceKeyPair();
         String devicePublicKeyB64 = keyPair.base64PublicKey();
@@ -206,16 +251,16 @@ public class EzkeyAppController {
         model.addAttribute("error", "Bind failed: No response from server");
       }
     } catch (WebClientResponseException e) {
+      // Log status (+ ProblemDetail type when parseable) only — never the raw error body (#754 S4)
       logger.warn(
-          "Bind API error for enrollment {}: status={}, body={}",
-          enrollmentId,
-          e.getStatusCode(),
-          e.getResponseBodyAsString());
+          "Bind API error: status={}, problemType={}",
+          e.getStatusCode().value(),
+          problemTypeFromError(e));
       String userMessage =
           toBindErrorMessage(e.getStatusCode().value(), e.getResponseBodyAsString());
       model.addAttribute("error", userMessage);
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
-      logger.error("Bind failed for enrollment {}", enrollmentId, e);
+      logger.error("Bind failed", e);
       model.addAttribute("error", "Bind failed: " + e.getMessage());
     }
     return "phone/ezkey/bind_enrollment";
@@ -229,6 +274,70 @@ public class EzkeyAppController {
       return b;
     }
     return null;
+  }
+
+  /**
+   * Best-effort ProblemDetail {@code type} from an Auth API error response; never returns the body.
+   *
+   * <p>The value is CR/LF-sanitized and truncated before logging to prevent log injection.
+   *
+   * @param error WebClient error with optional problem+json body
+   * @return sanitized problem type URI string, or {@code null} when absent / unparseable
+   */
+  static String problemTypeFromError(WebClientResponseException error) {
+    if (error == null) {
+      return null;
+    }
+    String body = error.getResponseBodyAsString();
+    if (body == null || body.isBlank()) {
+      return null;
+    }
+    try {
+      JsonNode typeNode = PROBLEM_DETAIL_MAPPER.readTree(body).get("type");
+      if (typeNode != null && typeNode.isValueNode() && !typeNode.isNull()) {
+        String type = typeNode.asString();
+        if (type == null || type.isBlank()) {
+          return null;
+        }
+        return sanitizeProblemTypeForLog(type);
+      }
+    } catch (Exception ignored) { // CHECKSTYLE IGNORE IllegalCatch
+      // Body may not be JSON ProblemDetail — status alone is enough for the log line
+    }
+    return null;
+  }
+
+  /**
+   * Whether a ProblemDetail {@code type} identifies auth-attempt expiry (PR-A).
+   *
+   * <p>Tolerant of a missing or older contract: returns {@code false} when {@code type} is null or
+   * does not end with {@link #AUTH_ATTEMPT_EXPIRED_TYPE_SUFFIX}.
+   *
+   * @param problemType sanitized type URI (may be {@code null})
+   * @return {@code true} only when the typed expired contract is present
+   */
+  static boolean isAuthAttemptExpiredProblem(String problemType) {
+    if (problemType == null || problemType.isBlank()) {
+      return false;
+    }
+    return problemType.endsWith(AUTH_ATTEMPT_EXPIRED_TYPE_SUFFIX);
+  }
+
+  /**
+   * Neutralizes CR/LF and bounds length for a ProblemDetail {@code type} log fragment.
+   *
+   * @param type raw type URI from the server
+   * @return sanitized, truncated value safe for a single log line
+   */
+  static String sanitizeProblemTypeForLog(String type) {
+    String cleaned = LogSanitizer.sanitizeForLog(type);
+    if (cleaned == null) {
+      return null;
+    }
+    if (cleaned.length() > PROBLEM_TYPE_LOG_MAX_LENGTH) {
+      return cleaned.substring(0, PROBLEM_TYPE_LOG_MAX_LENGTH);
+    }
+    return cleaned;
   }
 
   /** Maps bind API error status and optional body to a clear, actionable message for the user. */
@@ -306,7 +415,8 @@ public class EzkeyAppController {
       logger.info("Verify request submitted for enrollment {}", enrollmentId);
 
       String authApiBase =
-          EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(rec, configuredAuthApiBase);
+          EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(
+              rec, configuredAuthApiBase, allowedAuthApiHosts);
       EnrollmentVerifyResponseDto verifyResponse =
           authApiService.verify(requestDto, authApiBase).block();
       if (verifyResponse != null) {
@@ -417,17 +527,21 @@ public class EzkeyAppController {
               .deviceProofToken(deviceProofToken)
               .deviceProofTokenSigned(deviceProofTokenSigned);
 
-      logger.info(
-          "Checking for pending auth attempts for enrollment {}: {}", enrollmentId, pendingRequest);
+      // Log only identifiers — never proof tokens, signatures, or full DTO toString (#753)
+      logger.info("Checking for pending auth attempts for enrollment {}", enrollmentId);
 
       String authApiBase =
-          EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(rec, configuredAuthApiBase);
+          EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(
+              rec, configuredAuthApiBase, allowedAuthApiHosts);
 
-      AuthAttemptPendingResponseDto pendingResponse =
-          authApiService.pending(pendingRequest, authApiBase).block();
-      if (pendingResponse != null) {
+      PendingAuthPull pendingPull = authApiService.pending(pendingRequest, authApiBase).block();
+      if (pendingPull != null && pendingPull.response() != null) {
+        AuthAttemptPendingResponseDto pendingResponse = pendingPull.response();
         // There's a pending authentication attempt
-        logger.info("Found pending auth attempt: {}", pendingResponse);
+        logger.info(
+            "Found pending auth attempt {} for enrollment {}",
+            pendingResponse.getAuthAttemptId(),
+            enrollmentId);
 
         // Build canonical payload (proofToken|challengeRequired|contextTitle|contextMessage, NFC)
         String pendingPayload =
@@ -446,14 +560,23 @@ public class EzkeyAppController {
           model.addAttribute("error", "Invalid integration signature");
           return "phone/ezkey/auth";
         }
+        // Prefer server expiresAt when pending JSON includes it; else local TTL fallback (#895).
+        Instant claimedAt = Instant.now();
+        Instant claimExpiresAt =
+            ClaimExpiresAtResolver.resolve(
+                pendingPull.expiresAt(),
+                claimedAt,
+                demoDeviceProperties.getClaimedPendingAttemptTtl());
         ClaimedPendingAuth claim =
-            ClaimedPendingAuth.of(
+            new ClaimedPendingAuth(
                 enrollmentId,
                 pendingResponse.getAuthAttemptId(),
                 pendingResponse.getAuthAttemptProofToken(),
                 Boolean.TRUE.equals(pendingResponse.getAuthAttemptChallengeRequired()),
                 pendingResponse.getContextTitle(),
-                pendingResponse.getContextMessage());
+                pendingResponse.getContextMessage(),
+                claimedAt,
+                claimExpiresAt);
         PendingAuthClaimSession.store(session, claim);
         applyClaimedPendingToModel(model, claim);
 
@@ -469,9 +592,7 @@ public class EzkeyAppController {
 
       // Check if it's an expired authentication attempt
       if (e.getMessage() != null && e.getMessage().contains("No pending authentication request")) {
-        model.addAttribute(
-            "message",
-            "The authentication request has expired. Start a new login from the Admin UI.");
+        model.addAttribute("message", MSG_AUTH_EXPIRED);
       } else {
         model.addAttribute("error", "Authentication check failed: " + e.getMessage());
       }
@@ -522,14 +643,20 @@ public class EzkeyAppController {
               .authAttemptAccepted(approved)
               .authAttemptProofTokenSignedByDevice(responseSignature);
 
-      // Add challenge response if provided
+      // Add challenge response if provided — never log the challenge value (#753)
       if (challengeResponse != null && !challengeResponse.trim().isEmpty()) {
         try {
           Integer challengeResponseInt = Integer.parseInt(challengeResponse.trim());
           respondRequest.authAttemptChallengeResponse(challengeResponseInt);
-          logger.info("Including challenge response: {}", challengeResponseInt);
+          logger.info(
+              "Challenge response included for auth attempt {} enrollment {}",
+              authAttemptId,
+              enrollmentId);
         } catch (NumberFormatException e) {
-          logger.warn("Invalid challenge response format: {}", challengeResponse);
+          logger.warn(
+              "Invalid challenge response format for auth attempt {} enrollment {}",
+              authAttemptId,
+              enrollmentId);
           model.addAttribute("success", false);
           model.addAttribute("denied", false);
           model.addAttribute("failed", true);
@@ -538,19 +665,19 @@ public class EzkeyAppController {
           return "phone/ezkey/auth_result";
         }
       }
-      logger.info(
-          "Responding to auth attempt {} for enrollment {}: {}",
-          authAttemptId,
-          enrollmentId,
-          respondRequest);
+      logger.info("Responding to auth attempt {} for enrollment {}", authAttemptId, enrollmentId);
 
       String authApiBase =
-          EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(rec, configuredAuthApiBase);
+          EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(
+              rec, configuredAuthApiBase, allowedAuthApiHosts);
 
       AuthAttemptRespondResponseDto respondResponse =
           authApiService.respond(respondRequest, authApiBase).block();
       if (respondResponse != null) {
-        logger.info("Auth response submitted successfully: {}", respondResponse);
+        logger.info(
+            "Auth response submitted successfully for auth attempt {} enrollment {}",
+            respondResponse.getAuthAttemptId(),
+            enrollmentId);
 
         String resultPayload =
             AuthAttemptPayloadUtil.buildRespondResultPayload(
@@ -622,15 +749,63 @@ public class EzkeyAppController {
         model.addAttribute("failed", true);
         model.addAttribute("message", "Failed to submit authentication response");
       }
+    } catch (WebClientResponseException e) {
+      // Never log the raw problem body (#754); map typed expiry when PR-A is present.
+      String problemType = problemTypeFromError(e);
+      logger.error(
+          "Auth response failed for enrollment {} authAttempt {} status={} type={}",
+          enrollmentId,
+          authAttemptId,
+          e.getStatusCode().value(),
+          problemType != null ? problemType : "-");
+      applyRespondConflictToModel(model, e.getStatusCode().value(), problemType);
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error(
           "Auth response failed for enrollment {} authAttempt {}", enrollmentId, authAttemptId, e);
-      model.addAttribute("success", false);
-      model.addAttribute("denied", false);
-      model.addAttribute("failed", true);
-      model.addAttribute("message", "Authentication response failed: " + e.getMessage());
+      Throwable cause = e.getCause();
+      if (cause instanceof WebClientResponseException wcre) {
+        String problemType = problemTypeFromError(wcre);
+        applyRespondConflictToModel(model, wcre.getStatusCode().value(), problemType);
+      } else {
+        model.addAttribute("success", false);
+        model.addAttribute("denied", false);
+        model.addAttribute("failed", true);
+        model.addAttribute("expired", false);
+        model.addAttribute("message", "Authentication response failed: " + e.getMessage());
+      }
     }
     return "phone/ezkey/auth_result";
+  }
+
+  /**
+   * Maps respond HTTP conflicts to the auth result UI.
+   *
+   * <p>When status is 409 and the ProblemDetail type ends with {@code auth-attempt-expired} (PR-A),
+   * shows a clear expired state. Other 409s (including older {@code auth-attempt-state-conflict} or
+   * a missing type) show a neutral “no longer active” message — tolerant of a server without PR-A.
+   *
+   * @param model Thymeleaf model
+   * @param statusCode HTTP status from Auth API
+   * @param problemType sanitized ProblemDetail type, or {@code null}
+   */
+  static void applyRespondConflictToModel(Model model, int statusCode, String problemType) {
+    model.addAttribute("success", false);
+    model.addAttribute("denied", false);
+    if (statusCode == 409 && isAuthAttemptExpiredProblem(problemType)) {
+      model.addAttribute("failed", false);
+      model.addAttribute("expired", true);
+      model.addAttribute("message", MSG_AUTH_EXPIRED);
+      return;
+    }
+    if (statusCode == 409) {
+      model.addAttribute("failed", true);
+      model.addAttribute("expired", false);
+      model.addAttribute("message", MSG_AUTH_NO_LONGER_ACTIVE);
+      return;
+    }
+    model.addAttribute("failed", true);
+    model.addAttribute("expired", false);
+    model.addAttribute("message", "Authentication response failed: server returned " + statusCode);
   }
 
   /**

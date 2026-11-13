@@ -18,6 +18,8 @@ enrollment:
 scenario:
   auth_challenge_requested: false
   respond_accepted: false
+  auth_context_title: "Sign-in Request"
+  auth_context_message: "Approve access to Orbit Console for Bob Okonkwo."
 
 wait:
   timeout_seconds: 120

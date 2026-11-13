@@ -13,6 +13,7 @@ package org.ezkey.admin.config;
 import org.ezkey.admin.security.AdminCookieCsrfFilter;
 import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.security.AdminTokenAuthenticationFilter;
+import org.ezkey.admin.security.EvaluatorTempAccessFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -20,16 +21,20 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.savedrequest.NullRequestCache;
 
 /**
  * Spring Security configuration for admin API.
  *
  * <p>Admin API authenticates human operators (Bearer token or browser session cookie). API-key
  * machine-to-machine traffic belongs on Integration API. HTTP Basic is disabled; credentials of
- * that form do not authenticate here.
+ * that form do not authenticate here. Servlet sessions are {@link SessionCreationPolicy#STATELESS}
+ * with a {@link NullRequestCache} so anonymous 401s never emit a servlet session cookie (#816).
+ * Mode B {@code EZKEY_ADMIN_SESSION} is set explicitly by {@code AdminSessionCookieService}.
  *
  * <p><b>CORS:</b> When {@code ezkey.admin.cors.allowed-origins} is non-empty, Spring Security
  * applies {@link org.springframework.web.cors.CorsConfigurationSource} for browser clients on a
@@ -59,6 +64,7 @@ public class SecurityConfig {
   private final AdminTokenAuthenticationFilter adminTokenAuthenticationFilter;
   private final AdminRateLimitFilter adminRateLimitFilter;
   private final AdminCookieCsrfFilter adminCookieCsrfFilter;
+  private final EvaluatorTempAccessFilter evaluatorTempAccessFilter;
 
   /**
    * Creates the Admin API security configuration.
@@ -66,14 +72,17 @@ public class SecurityConfig {
    * @param adminTokenAuthenticationFilter Bearer / session token filter
    * @param adminRateLimitFilter login and admin-ops rate limit filter
    * @param adminCookieCsrfFilter CSRF check for cookie-authenticated unsafe methods
+   * @param evaluatorTempAccessFilter Mode C EVALUATOR_TEMP deny-list
    */
   public SecurityConfig(
       AdminTokenAuthenticationFilter adminTokenAuthenticationFilter,
       AdminRateLimitFilter adminRateLimitFilter,
-      AdminCookieCsrfFilter adminCookieCsrfFilter) {
+      AdminCookieCsrfFilter adminCookieCsrfFilter,
+      EvaluatorTempAccessFilter evaluatorTempAccessFilter) {
     this.adminTokenAuthenticationFilter = adminTokenAuthenticationFilter;
     this.adminRateLimitFilter = adminRateLimitFilter;
     this.adminCookieCsrfFilter = adminCookieCsrfFilter;
+    this.evaluatorTempAccessFilter = evaluatorTempAccessFilter;
   }
 
   /**
@@ -87,45 +96,47 @@ public class SecurityConfig {
   public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
     http.csrf(csrf -> csrf.disable())
         .cors(Customizer.withDefaults())
-        .authorizeHttpRequests(
-            authz ->
-                authz
-                    // Allow public access to authentication bootstrap endpoints
-                    .requestMatchers(
-                        "/api/v1/admin/auth/activate",
-                        "/api/v1/admin/auth/login",
-                        "/api/v1/admin/auth/passwordless-wait",
-                        "/api/v1/admin/auth/recover")
-                    .permitAll()
-                    // Current session metadata requires an authenticated browser or bearer session
-                    .requestMatchers("/api/v1/admin/auth/me")
-                    .authenticated()
-                    // Logout accepts the token from Authorization or cookie and handles missing
-                    // credentials itself.
-                    .requestMatchers("/api/v1/admin/auth/logout")
-                    .permitAll()
-                    // Allow public access to MFA endpoints (temp token in body)
-                    .requestMatchers("/api/v1/admin/mfa/**")
-                    .permitAll()
-                    // Allow public access to enrollment reset (recovery token in header)
-                    .requestMatchers("/api/v1/admin/enrollments/**")
-                    .permitAll()
-                    // Allow public access to health check endpoints
-                    .requestMatchers("/actuator/**")
-                    .permitAll()
-                    // Allow public access to API documentation
-                    .requestMatchers("/swagger-ui/**", "/api-docs/**")
-                    .permitAll()
-                    // Public instance metadata (login shell, operators)
-                    .requestMatchers("/api/v1/public/**")
-                    .permitAll()
-                    // Require authentication for all other endpoints
-                    .anyRequest()
-                    .authenticated())
-        .exceptionHandling(
-            exceptions ->
-                exceptions.authenticationEntryPoint(
-                    new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+        .sessionManagement(
+            session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .requestCache(cache -> cache.requestCache(new NullRequestCache()))
+        .authorizeHttpRequests(authz ->
+            authz
+                // Allow public access to authentication bootstrap endpoints
+                .requestMatchers(
+                    "/api/v1/admin/auth/activate",
+                    "/api/v1/admin/auth/evaluator-temp",
+                    "/api/v1/admin/auth/login",
+                    "/api/v1/admin/auth/passwordless-wait",
+                    "/api/v1/admin/auth/passwordless-cancel",
+                    "/api/v1/admin/auth/recover")
+                .permitAll()
+                // Current session metadata requires an authenticated browser or bearer session
+                .requestMatchers("/api/v1/admin/auth/me")
+                .authenticated()
+                // Logout accepts the token from Authorization or cookie and handles missing
+                // credentials itself.
+                .requestMatchers("/api/v1/admin/auth/logout")
+                .permitAll()
+                // Allow public access to MFA endpoints (temp token in body)
+                .requestMatchers("/api/v1/admin/mfa/**")
+                .permitAll()
+                // Allow public access to enrollment reset (recovery token in header)
+                .requestMatchers("/api/v1/admin/enrollments/**")
+                .permitAll()
+                // Allow public access to health check endpoints
+                .requestMatchers("/actuator/**")
+                .permitAll()
+                // Allow public access to API documentation
+                .requestMatchers("/swagger-ui/**", "/api-docs/**")
+                .permitAll()
+                // Public instance metadata (login shell, operators)
+                .requestMatchers("/api/v1/public/**")
+                .permitAll()
+                // Require authentication for all other endpoints
+                .anyRequest()
+                .authenticated())
+        .exceptionHandling(exceptions ->
+            exceptions.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
         .httpBasic(httpBasic -> httpBasic.disable())
         .formLogin(formLogin -> formLogin.disable());
 
@@ -135,6 +146,8 @@ public class SecurityConfig {
         adminTokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
     http.addFilterAfter(adminCookieCsrfFilter, AdminTokenAuthenticationFilter.class);
+
+    http.addFilterAfter(evaluatorTempAccessFilter, AdminCookieCsrfFilter.class);
 
     return http.build();
   }

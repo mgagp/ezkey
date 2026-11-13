@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation, Trans } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
+import { useEncryptionLifecycleConfig } from '@/lib/encryption-lifecycle-config';
 import {
   Key,
   RefreshCw,
@@ -50,8 +51,6 @@ import {
 import type {
   EncryptionKeyResponse,
   KeyRotationResponse,
-  PagedModelEncryptionKeyResponse,
-  PagedModelReencryptionBatchResponse,
   ReencryptionBatchResponse,
   ReencryptionTriggerResponse,
   ReencryptionKeyResponse,
@@ -251,6 +250,7 @@ function KeyDetailDialog({
   keyId,
   onClose,
   onReencrypt,
+  reencryptionEnabled,
   onPrev,
   onNext,
   hasPrev,
@@ -261,6 +261,7 @@ function KeyDetailDialog({
   keyId: number | null;
   onClose: () => void;
   onReencrypt: (key: EncryptionKeyResponse) => void;
+  reencryptionEnabled: boolean;
   onPrev: () => void;
   onNext: () => void;
   hasPrev: boolean;
@@ -362,14 +363,25 @@ function KeyDetailDialog({
           </dl>
           <div className="flex justify-end gap-2 pt-4">
             {shouldShowReencryptButton(keyData) && (
-              <Button
-                variant="secondary"
-                className="gap-1.5"
-                onClick={() => { onClose(); onReencrypt(keyData); }}
+              <Tooltip
+                content={
+                  reencryptionEnabled
+                    ? t('list.reencryptButtonTooltip')
+                    : t('list.reencryptInactiveTooltip')
+                }
               >
-                <RotateCcw className="size-3.5" />
-                {t('list.reencryptButton')}
-              </Button>
+                <span className="inline-flex">
+                  <Button
+                    variant="secondary"
+                    className="gap-1.5"
+                    disabled={!reencryptionEnabled}
+                    onClick={() => { onClose(); onReencrypt(keyData); }}
+                  >
+                    <RotateCcw className="size-3.5" />
+                    {t('list.reencryptButton')}
+                  </Button>
+                </span>
+              </Tooltip>
             )}
             <Button onClick={onClose}>{t('keyDetail.close')}</Button>
           </div>
@@ -588,7 +600,7 @@ function RotateKeyDialog({ open, onClose }: { open: boolean; onClose: () => void
 
 // ── Re-encryption Batches Section ─────────────────────────────────────────────
 
-function ReencryptionBatchesSection() {
+function ReencryptionBatchesSection({ reencryptionEnabled }: { reencryptionEnabled: boolean }) {
   const { t } = useTranslation('encryption-keys');
   const { effectiveTimeZoneId } = useDisplayTimezone();
   const queryClient = useQueryClient();
@@ -651,7 +663,7 @@ function ReencryptionBatchesSection() {
       createdAfter: apiDateParams.createdAfter,
       createdBefore: apiDateParams.createdBefore,
     },
-    fetchPage: (params) => listBatches(params) as Promise<PagedModelReencryptionBatchResponse>,
+    fetchPage: (params) => listBatches(params),
     defaultSort: 'createdAt,DESC',
     defaultSize: 20,
     enabled: expanded,
@@ -839,17 +851,25 @@ function ReencryptionBatchesSection() {
       key: 'actions',
       render: (r) =>
         r.status === 'FAILED' || r.status === 'PENDING' || r.status === 'PAUSED' ? (
-          <Tooltip content={t('batchesSection.helpResume')}>
-            <Button
-              size="sm"
-              variant="secondary"
-              className="gap-1 py-0.5 px-2"
-              onClick={(e) => { e.stopPropagation(); resumeMutation.mutate({ batchId: r.batchId! }); }}
-              disabled={resumeMutation.isPending}
-            >
-              <Play className="size-3" />
-              {t('batchesSection.resume')}
-            </Button>
+          <Tooltip
+            content={
+              reencryptionEnabled
+                ? t('batchesSection.helpResume')
+                : t('list.reencryptInactiveTooltip')
+            }
+          >
+            <span className="inline-flex">
+              <Button
+                size="sm"
+                variant="secondary"
+                className="gap-1 py-0.5 px-2"
+                onClick={(e) => { e.stopPropagation(); resumeMutation.mutate({ batchId: r.batchId! }); }}
+                disabled={!reencryptionEnabled || resumeMutation.isPending}
+              >
+                <Play className="size-3" />
+                {t('batchesSection.resume')}
+              </Button>
+            </span>
           </Tooltip>
         ) : null,
     },
@@ -922,30 +942,56 @@ function ReencryptionBatchesSection() {
                   emptyOptionLabel={t('batchesSection.dateRangeFull')}
                 />
               </div>
-              <div className="flex flex-wrap gap-2 shrink-0">
-                <Tooltip content={t('batchesSection.helpCreateBatches')}>
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    className="gap-1.5"
-                    onClick={() => createBatchesMutation.mutate()}
-                    disabled={createBatchesMutation.isPending}
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                {!reencryptionEnabled && (
+                  <span
+                    className="text-xs text-fg-muted"
+                    data-testid="encryption-reencrypt-inactive-hint"
                   >
-                    <ListPlus className="size-3.5" />
-                    {createBatchesMutation.isPending ? t('batchesSection.creating') : t('batchesSection.createBatches')}
-                  </Button>
+                    {t('batchesSection.lifecycleInactiveHint')}
+                  </span>
+                )}
+                <Tooltip
+                  content={
+                    reencryptionEnabled
+                      ? t('batchesSection.helpCreateBatches')
+                      : t('list.reencryptInactiveTooltip')
+                  }
+                >
+                  <span className="inline-flex">
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      className="gap-1.5"
+                      onClick={() => createBatchesMutation.mutate()}
+                      disabled={!reencryptionEnabled || createBatchesMutation.isPending}
+                      data-testid="encryption-create-batches"
+                    >
+                      <ListPlus className="size-3.5" />
+                      {createBatchesMutation.isPending ? t('batchesSection.creating') : t('batchesSection.createBatches')}
+                    </Button>
+                  </span>
                 </Tooltip>
-                <Tooltip content={t('batchesSection.helpTriggerFull')}>
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    className="gap-1.5"
-                    onClick={() => triggerMutation.mutate()}
-                    disabled={triggerMutation.isPending}
-                  >
-                    <RefreshCw className="size-3.5" />
-                    {triggerMutation.isPending ? t('batchesSection.triggering') : t('batchesSection.triggerFull')}
-                  </Button>
+                <Tooltip
+                  content={
+                    reencryptionEnabled
+                      ? t('batchesSection.helpTriggerFull')
+                      : t('list.reencryptInactiveTooltip')
+                  }
+                >
+                  <span className="inline-flex">
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      className="gap-1.5"
+                      onClick={() => triggerMutation.mutate()}
+                      disabled={!reencryptionEnabled || triggerMutation.isPending}
+                      data-testid="encryption-trigger-full"
+                    >
+                      <RefreshCw className="size-3.5" />
+                      {triggerMutation.isPending ? t('batchesSection.triggering') : t('batchesSection.triggerFull')}
+                    </Button>
+                  </span>
                 </Tooltip>
               </div>
             </div>
@@ -1044,6 +1090,9 @@ type KeyStatusFilter = 'all' | 'PRIMARY' | 'ENABLED' | 'DISABLED' | 'PENDING';
 export default function EncryptionKeysPage() {
   const { t } = useTranslation('encryption-keys');
   const queryClient = useQueryClient();
+  const { data: lifecycleConfig } = useEncryptionLifecycleConfig();
+  const rotationEnabled = lifecycleConfig?.rotationEnabled === true;
+  const reencryptionEnabled = lifecycleConfig?.reencryptionEnabled === true;
   const [selectedKeyIndex, setSelectedKeyIndex] = useState<number | null>(null);
   const [rotateOpen, setRotateOpen] = useState(false);
   const [reencryptTarget, setReencryptTarget] = useState<EncryptionKeyResponse | null>(null);
@@ -1057,8 +1106,7 @@ export default function EncryptionKeysPage() {
     baseParams: {
       keyStatus: keyStatusFilter === 'all' ? undefined : keyStatusFilter,
     },
-    fetchPage: (params) =>
-      listKeys(params) as Promise<PagedModelEncryptionKeyResponse>,
+    fetchPage: (params) => listKeys(params),
     defaultSort: 'introducedAt,DESC',
     defaultSize: 20,
   });
@@ -1150,16 +1198,25 @@ export default function EncryptionKeysPage() {
       key: 'actions',
       render: (r) =>
         shouldShowReencryptButton(r) ? (
-          <Tooltip content={t('list.reencryptButtonTooltip')}>
-            <Button
-              size="sm"
-              variant="secondary"
-              className="gap-1 py-0.5 px-2"
-              onClick={(e) => { e.stopPropagation(); setReencryptTarget(r); }}
-            >
-              <RotateCcw className="size-3" />
-              {t('list.reencryptButton')}
-            </Button>
+          <Tooltip
+            content={
+              reencryptionEnabled
+                ? t('list.reencryptButtonTooltip')
+                : t('list.reencryptInactiveTooltip')
+            }
+          >
+            <span className="inline-flex">
+              <Button
+                size="sm"
+                variant="secondary"
+                className="gap-1 py-0.5 px-2"
+                disabled={!reencryptionEnabled}
+                onClick={(e) => { e.stopPropagation(); setReencryptTarget(r); }}
+              >
+                <RotateCcw className="size-3" />
+                {t('list.reencryptButton')}
+              </Button>
+            </span>
           </Tooltip>
         ) : null,
     },
@@ -1210,10 +1267,42 @@ export default function EncryptionKeysPage() {
             <RefreshCw className="size-3.5" />
             {t('list.refresh')}
           </Button>
-          <Button size="sm" onClick={() => setRotateOpen(true)} className="gap-1.5 ml-auto">
-            <Key className="size-3.5" />
-            {t('list.rotateKey')}
-          </Button>
+          <div className="ml-auto flex items-center gap-2">
+            {!rotationEnabled && (
+              <span
+                className="text-xs text-fg-muted"
+                data-testid="encryption-rotate-inactive-hint"
+              >
+                {t('list.rotateInactiveHint')}
+              </span>
+            )}
+            {rotationEnabled ? (
+              <Button
+                size="sm"
+                onClick={() => setRotateOpen(true)}
+                className="gap-1.5"
+                data-testid="encryption-rotate-key"
+              >
+                <Key className="size-3.5" />
+                {t('list.rotateKey')}
+              </Button>
+            ) : (
+              <Tooltip content={t('list.rotateInactiveTooltip')}>
+                <span className="inline-flex">
+                  <Button
+                    size="sm"
+                    onClick={() => setRotateOpen(true)}
+                    className="gap-1.5"
+                    disabled
+                    data-testid="encryption-rotate-key"
+                  >
+                    <Key className="size-3.5" />
+                    {t('list.rotateKey')}
+                  </Button>
+                </span>
+              </Tooltip>
+            )}
+          </div>
         </div>
 
         {/* Keys table */}
@@ -1235,13 +1324,14 @@ export default function EncryptionKeysPage() {
         </div>
 
         {/* Re-encryption batches */}
-        <ReencryptionBatchesSection />
+        <ReencryptionBatchesSection reencryptionEnabled={reencryptionEnabled} />
       </div>
 
       <KeyDetailDialog
         keyId={selectedKeyId}
         onClose={() => setSelectedKeyIndex(null)}
         onReencrypt={(key) => setReencryptTarget(key)}
+        reencryptionEnabled={reencryptionEnabled}
         onPrev={goPrevKey}
         onNext={goNextKey}
         hasPrev={keyHasPrev}

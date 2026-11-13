@@ -5,6 +5,8 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Activity,
   AlertTriangle,
+  ChevronDown,
+  ChevronUp,
   ClipboardList,
   Clock,
   FileText,
@@ -33,6 +35,8 @@ import {
   buildEnrollmentsDrilldownUrl,
   buildIntegrationsDrilldownUrl,
 } from '@/lib/dashboard-drilldown-links';
+import { resolveBatchHealthQuietReason } from '@/lib/dashboard-batch-health-quiet';
+import { isEvaluatorTempSession } from '@/lib/auth';
 import { api } from '@/lib/api-client';
 
 /** Minimal row shape for dashboard follow-up widget (lifecycle incidents API). */
@@ -86,11 +90,19 @@ function jobStatusBadgeVariant(
   return 'muted';
 }
 
+function monitoringJobsExpectedIdle(config: DashboardIntegrityConfigSummary | undefined): boolean {
+  return (
+    config != null &&
+    config.chainCheckpointsEnabled === false &&
+    config.nightlyValidationEnabled === false
+  );
+}
+
 function jobDeepLink(jobKey: string | undefined): string | null {
   switch (jobKey) {
     case 'AUDIT_CHAIN_CHECKPOINT':
     case 'NIGHTLY_INTEGRITY_VALIDATION':
-      return '/audit-logs?integrity=1#integrity-lifecycle-panel';
+      return '/integrity';
     case 'REENCRYPTION':
       return '/encryption-keys';
     default:
@@ -160,6 +172,104 @@ function BatchJobRow({
   return <div data-testid={`dashboard-batch-job-${row.jobKey}`}>{content}</div>;
 }
 
+function BatchHealthCard({
+  title,
+  icon: Icon,
+  jobs,
+  isLoading,
+  configSummary,
+  jobsExpectedIdle = false,
+  exitTo,
+  exitLabel,
+  testId,
+}: {
+  title: string;
+  icon: typeof ShieldCheck;
+  jobs: DashboardScheduledJobRow[];
+  isLoading: boolean;
+  configSummary?: ReactNode;
+  jobsExpectedIdle?: boolean;
+  exitTo: string;
+  exitLabel: string;
+  testId: string;
+}) {
+  const { t } = useTranslation('dashboard');
+  const quietReason = isLoading ? null : resolveBatchHealthQuietReason(jobs, jobsExpectedIdle);
+  const canCollapse = quietReason != null;
+  const [operatorExpanded, setOperatorExpanded] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!canCollapse) {
+      setOperatorExpanded(null);
+    }
+  }, [canCollapse]);
+
+  const expanded = !canCollapse || operatorExpanded === true;
+  const quietBadgeVariant = quietReason === 'success' ? 'success' : 'muted';
+  const quietBadgeLabel =
+    quietReason === 'never-run' ? t('batchHealth.quietInactive') : t('batchHealth.status.SUCCESS');
+
+  return (
+    <Card data-testid={testId}>
+      <CardHeader>
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="flex items-center gap-2">
+            <Icon className="size-4 text-fg-muted shrink-0" />
+            {title}
+          </CardTitle>
+          <div className="flex items-center gap-2 shrink-0">
+            {canCollapse ? (
+              <>
+                <Badge variant={quietBadgeVariant} data-testid={`${testId}-quiet-badge`}>
+                  {quietBadgeLabel}
+                </Badge>
+                <button
+                  type="button"
+                  className="p-1 hover:bg-fg/5 transition-colors"
+                  aria-expanded={expanded}
+                  aria-label={expanded ? t('batchHealth.collapse') : t('batchHealth.expand')}
+                  data-testid={`${testId}-toggle`}
+                  onClick={() => setOperatorExpanded(expanded ? false : true)}
+                >
+                  {expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+                </button>
+              </>
+            ) : (
+              <Clock className="size-4 text-fg-muted shrink-0" />
+            )}
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {expanded ? (
+          <>
+            {configSummary}
+            {isLoading ? (
+              <div className="py-4 flex justify-center">
+                <span className="size-5 border-2 border-fg/30 border-t-fg rounded-full animate-spin" />
+              </div>
+            ) : jobs.length === 0 ? (
+              <p className="text-sm text-fg-muted italic">{t('batchHealth.neverRun')}</p>
+            ) : (
+              <div>
+                {jobs.map((row) => (
+                  <BatchJobRow key={row.jobKey ?? `${testId}-job`} row={row} t={t} />
+                ))}
+              </div>
+            )}
+          </>
+        ) : null}
+        <Link
+          to={exitTo}
+          className="inline-block text-sm font-bold text-accent hover:underline"
+        >
+          {exitLabel}
+        </Link>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ── Shared ────────────────────────────────────────────────────────────────────
 
 function StatNum({ value, isLoading }: { value: number | undefined; isLoading: boolean }) {
@@ -193,7 +303,14 @@ function StatCard({ title, icon: Icon, isLoading, children }: StatCardProps) {
 const quickActions = [
   { labelKey: 'newIntegration', descKey: 'newIntegrationDesc', to: '/integrations', icon: Puzzle },
   { labelKey: 'newEnrollment', descKey: 'newEnrollmentDesc', to: '/enrollments', icon: Users },
-  { labelKey: 'newAdmin', descKey: 'newAdminDesc', to: '/admins', icon: ShieldCheck },
+  {
+    labelKey: 'newAdmin',
+    descKey: 'newAdminDesc',
+    to: '/admins',
+    icon: ShieldCheck,
+    /** Hidden under EVALUATOR_TEMP — create-tenant-admin is deny-listed. */
+    hideForEvaluatorTemp: true,
+  },
   { labelKey: 'newApiKey', descKey: 'newApiKeyDesc', to: '/api-keys', icon: Key },
 ];
 
@@ -216,6 +333,10 @@ export default function DashboardPage() {
   const { t } = useTranslation(['dashboard', 'layout', 'audit-logs', 'alerts']);
   const { session } = useAuth();
   const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
+  const isTempSession = isEvaluatorTempSession(session);
+  const visibleQuickActions = quickActions.filter(
+    (action) => !(action.hideForEvaluatorTemp && isTempSession),
+  );
 
   const {
     data: overview,
@@ -303,6 +424,7 @@ export default function DashboardPage() {
   const integrityJobs = overview?.integrityJobs ?? [];
   const operationalJobs = overview?.operationalJobs ?? [];
   const integrityConfig = overview?.integrityConfigSummary;
+  const jobsExpectedIdle = monitoringJobsExpectedIdle(integrityConfig);
 
   const updatedLabel = getUpdatedLabelKeyAndParams(overviewUpdatedAt ?? 0);
   const updatedText =
@@ -376,18 +498,17 @@ export default function DashboardPage() {
         {/* Batch health widgets (Global Admin only) */}
         {isGlobalAdmin && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between gap-2">
-                  <CardTitle className="flex items-center gap-2">
-                    <ShieldCheck className="size-4 text-fg-muted shrink-0" />
-                    {t('dashboard:batchHealth.integrityTitle')}
-                  </CardTitle>
-                  <Clock className="size-4 text-fg-muted shrink-0" />
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {integrityConfig ? (
+            <BatchHealthCard
+              title={t('dashboard:batchHealth.integrityTitle')}
+              icon={ShieldCheck}
+              jobs={integrityJobs}
+              isLoading={overviewLoading}
+              jobsExpectedIdle={jobsExpectedIdle}
+              testId="dashboard-batch-health-integrity"
+              exitTo="/integrity"
+              exitLabel={t('dashboard:batchHealth.links.integrityPanel')}
+              configSummary={
+                integrityConfig ? (
                   <p className="text-xs text-fg-muted font-medium">
                     {t('dashboard:batchHealth.configSummary', {
                       lookback: integrityConfig.chainCheckpointsEnabled
@@ -398,61 +519,19 @@ export default function DashboardPage() {
                         : t('dashboard:batchHealth.configDisabled'),
                     })}
                   </p>
-                ) : null}
-                {overviewLoading ? (
-                  <div className="py-4 flex justify-center">
-                    <span className="size-5 border-2 border-fg/30 border-t-fg rounded-full animate-spin" />
-                  </div>
-                ) : integrityJobs.length === 0 ? (
-                  <p className="text-sm text-fg-muted italic">{t('dashboard:batchHealth.neverRun')}</p>
-                ) : (
-                  <div>
-                    {integrityJobs.map((row) => (
-                      <BatchJobRow key={row.jobKey ?? 'integrity-job'} row={row} t={t} />
-                    ))}
-                  </div>
-                )}
-                <Link
-                  to="/audit-logs?integrity=1#integrity-lifecycle-panel"
-                  className="inline-block text-sm font-bold text-accent hover:underline"
-                >
-                  {t('dashboard:batchHealth.links.integrityPanel')}
-                </Link>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between gap-2">
-                  <CardTitle className="flex items-center gap-2">
-                    <Key className="size-4 text-fg-muted shrink-0" />
-                    {t('dashboard:batchHealth.operationalTitle')}
-                  </CardTitle>
-                  <Clock className="size-4 text-fg-muted shrink-0" />
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {overviewLoading ? (
-                  <div className="py-4 flex justify-center">
-                    <span className="size-5 border-2 border-fg/30 border-t-fg rounded-full animate-spin" />
-                  </div>
-                ) : operationalJobs.length === 0 ? (
-                  <p className="text-sm text-fg-muted italic">{t('dashboard:batchHealth.neverRun')}</p>
-                ) : (
-                  <div>
-                    {operationalJobs.map((row) => (
-                      <BatchJobRow key={row.jobKey ?? 'operational-job'} row={row} t={t} />
-                    ))}
-                  </div>
-                )}
-                <Link
-                  to="/encryption-keys"
-                  className="inline-block text-sm font-bold text-accent hover:underline"
-                >
-                  {t('dashboard:batchHealth.links.encryptionKeys')}
-                </Link>
-              </CardContent>
-            </Card>
+                ) : null
+              }
+            />
+            <BatchHealthCard
+              title={t('dashboard:batchHealth.operationalTitle')}
+              icon={Key}
+              jobs={operationalJobs}
+              isLoading={overviewLoading}
+              jobsExpectedIdle={jobsExpectedIdle}
+              testId="dashboard-batch-health-operational"
+              exitTo="/encryption-keys"
+              exitLabel={t('dashboard:batchHealth.links.encryptionKeys')}
+            />
           </div>
         )}
 
@@ -486,7 +565,7 @@ export default function DashboardPage() {
                 ))}
               </ul>
               <Link
-                to="/audit-logs?integrity=1#integrity-lifecycle-panel"
+                to="/integrity"
                 className="inline-flex items-center gap-1.5 text-sm font-bold text-accent hover:underline"
               >
                 {t('dashboard:followUp.openIntegrity')}
@@ -762,11 +841,12 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {quickActions.map(({ labelKey, descKey, to, icon: Icon }) => (
+                {visibleQuickActions.map(({ labelKey, descKey, to, icon: Icon }) => (
                   <Link
                     key={to}
                     to={to}
                     className="flex items-start gap-3 p-2.5 border-2 border-fg/20 hover:border-fg hover:shadow-brutal bg-bg transition-all duration-100 group"
+                    data-testid={`dashboard-quick-action-${labelKey}`}
                   >
                     <Icon className="size-4 text-fg-muted mt-0.5 shrink-0 group-hover:text-accent transition-colors" />
                     <div>

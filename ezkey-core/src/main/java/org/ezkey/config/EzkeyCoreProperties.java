@@ -69,10 +69,30 @@ public class EzkeyCoreProperties {
     @Max(value = 6, message = "Challenge digits cannot exceed 6")
     private int challengeDigits = 2;
 
-    /** Time-to-live for authentication attempts in seconds. Default: 120 seconds (2 minutes) */
+    /**
+     * Default time-to-live for authentication attempts in seconds when Integration create omits
+     * {@code ttlSeconds}. Bean Validation allows 30–600; applied create TTL is always {@code
+     * min(request|default, 120)}. A configured value above 120 is clamped to 120 at startup with a
+     * WARN (#895 Patrick M2). Default: 120.
+     */
     @Min(value = 30, message = "TTL must be at least 30 seconds")
     @Max(value = 600, message = "TTL cannot exceed 600 seconds (10 minutes)")
     private int ttlSeconds = 120;
+
+    /**
+     * Rejected or expired attempts inside the window that suspend further creates. Default: 3. Zero
+     * or negative disables the cooldown.
+     */
+    @Min(value = 0, message = "Cooldown threshold cannot be negative")
+    private int cooldownThreshold = 3;
+
+    /** Counting window for the cooldown, in seconds. Default: 600 (10 minutes). */
+    @Min(value = 0, message = "Cooldown window cannot be negative")
+    private int cooldownWindowSeconds = 600;
+
+    /** How long a crossing suspends creates, in seconds. Default: 300 (5 minutes). */
+    @Min(value = 0, message = "Cooldown duration cannot be negative")
+    private int cooldownDurationSeconds = 300;
 
     // Getters and setters
     public int getChallengeDigits() {
@@ -89,6 +109,30 @@ public class EzkeyCoreProperties {
 
     public void setTtlSeconds(int ttlSeconds) {
       this.ttlSeconds = ttlSeconds;
+    }
+
+    public int getCooldownThreshold() {
+      return cooldownThreshold;
+    }
+
+    public void setCooldownThreshold(int cooldownThreshold) {
+      this.cooldownThreshold = cooldownThreshold;
+    }
+
+    public int getCooldownWindowSeconds() {
+      return cooldownWindowSeconds;
+    }
+
+    public void setCooldownWindowSeconds(int cooldownWindowSeconds) {
+      this.cooldownWindowSeconds = cooldownWindowSeconds;
+    }
+
+    public int getCooldownDurationSeconds() {
+      return cooldownDurationSeconds;
+    }
+
+    public void setCooldownDurationSeconds(int cooldownDurationSeconds) {
+      this.cooldownDurationSeconds = cooldownDurationSeconds;
     }
   }
 

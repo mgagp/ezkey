@@ -22,6 +22,9 @@ import { useToast } from '@/context/use-toast';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { getIntegrationName } from '@/hooks/use-integrations';
 import { useDemoModeSession } from '@/context/use-demo-mode-session';
+import { PendingAttemptPolicyEditor } from '@/components/feature/pending-attempt-policy-editor';
+import { policySaveErrorMessage } from '@/components/feature/pending-attempt-policy-save';
+import type { PendingAttemptPolicyValue } from '@/components/feature/pending-attempt-policy-field';
 import { api } from '@/lib/api-client';
 import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { isDemoMode } from '@/lib/demo-mode';
@@ -35,7 +38,12 @@ import {
   getById1,
 } from '@/generated/admin-api/integrations/integrations';
 import { search1 } from '@/generated/admin-api/enrollments/enrollments';
-import type { EnrollmentResponseDto, IntegrationResponseDto, PagedModelEnrollmentResponseDto } from '@/generated/admin-api/model';
+import type { EnrollmentResponseDto, IntegrationResponseDto } from '@/generated/admin-api/model';
+
+function readPendingAttemptPolicy(integration: object): PendingAttemptPolicyValue {
+  const value = (integration as { pendingAttemptPolicy?: unknown }).pendingAttemptPolicy;
+  return value === 'REFUSE' ? 'REFUSE' : 'REPLACE';
+}
 
 // ── Info row helper ──────────────────────────────────────────────────────────
 
@@ -198,7 +206,7 @@ export default function IntegrationDetailPage() {
     queryKey: ['enrollments', 'for-integration', integrationId],
     baseParams: { integrationId: isNaN(integrationId) ? undefined : integrationId },
     defaultSize: 10,
-    fetchPage: (params) => search1(params) as Promise<PagedModelEnrollmentResponseDto>,
+    fetchPage: (params) => search1(params),
   });
 
   const enrollmentColumns: ColumnDef<EnrollmentResponseDto>[] = useMemo(() => {
@@ -393,6 +401,35 @@ export default function IntegrationDetailPage() {
                   <InfoRow label={t('detail.infoCreated')}>
                     <span className="text-fg-muted">{formatDate(integration.createdAt ?? '')}</span>
                   </InfoRow>
+                  <div className="py-2">
+                    <PendingAttemptPolicyEditor
+                      key={integration.id}
+                      id="integration-pending-attempt-policy"
+                      serverValue={readPendingAttemptPolicy(integration)}
+                      disabled={
+                        integration.lifecycleStatus !== 'ACTIVE' || isSystemIntegration
+                      }
+                      hint={
+                        isSystemIntegration ? t('pendingAttemptPolicy.systemLocked') : undefined
+                      }
+                      onSave={(next) =>
+                        api.post(`/api/v1/integrations/${integrationId}/pending-attempt-policy`, {
+                          pendingAttemptPolicy: next,
+                        })
+                      }
+                      onSaved={() => {
+                        void queryClient.invalidateQueries({ queryKey: ['integration', integrationId] });
+                        void queryClient.invalidateQueries({ queryKey: ['integrations'] });
+                        toast(t('pendingAttemptPolicy.saved'));
+                      }}
+                      onSaveError={(error) =>
+                        toast(
+                          policySaveErrorMessage(error, t, t('pendingAttemptPolicy.saveFailed')),
+                          'error',
+                        )
+                      }
+                    />
+                  </div>
                 </dl>
               </CardContent>
             </Card>

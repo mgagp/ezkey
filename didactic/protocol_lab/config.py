@@ -76,6 +76,24 @@ class ScenarioConfig:
     return bool(sc.get("auth_challenge_requested", False))
 
   @property
+  def auth_context_title(self) -> str | None:
+    sc = self.raw.get("scenario") or {}
+    value = sc.get("auth_context_title")
+    if value is None:
+      return None
+    text = str(value).strip()
+    return text or None
+
+  @property
+  def auth_context_message(self) -> str | None:
+    sc = self.raw.get("scenario") or {}
+    value = sc.get("auth_context_message")
+    if value is None:
+      return None
+    text = str(value).strip()
+    return text or None
+
+  @property
   def device_storage_tier(self) -> str:
     return str(self.raw.get("device_private_key_storage_tier", "STANDARD"))
 

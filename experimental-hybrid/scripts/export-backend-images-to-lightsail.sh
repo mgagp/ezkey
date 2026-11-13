@@ -1,51 +1,45 @@
 #!/usr/bin/env bash
 #
 # Export Ezkey backend images (docker save), copy to Lightsail (scp), docker load on the VM.
-# LIGHTSAIL_SSH_HOST defaults to ezkey (experimental hybrid). Override if your SSH Host name differs.
 #
-# Prerequisites: built images; ssh/scp to LIGHTSAIL_SSH_HOST.
+# SSH host: no silent default (#812). Pass --target community or set LIGHTSAIL_SSH_HOST.
+#   --target community  →  ezkey-online  (sync uses compose bind basename, e.g. Caddyfile.ezkey-online)
+#
+# Prerequisites: built images (skipped in --dry-run); ssh/scp to the resolved host.
 #
 # With --clean-start, syncs lightsail operator files to the VM then runs clean-start.sh (destructive).
-# With --sync-operator-files, copies docker-compose.yml, Caddyfile, and clean-start.sh to the VM only
-# (no clean-start) so Caddy and Compose stay aligned with the repo; preserves existing volumes/DB.
-# With --remote-up, after load (and after --sync-operator-files if set), runs docker compose up -d on
-# the VM so migration + backends + Caddy pick up the loaded images (no volume wipe).
-# Do not combine --clean-start with --sync-operator-files or --remote-up (incompatible; see script check).
-# Override remote path with LIGHTSAIL_REMOTE_DIR if needed.
+# With --sync-operator-files, copies docker-compose.yml, docker-compose.javamelody.yml (when present),
+# the target-aware Caddyfile (remote name = compose ./…:/etc/caddy/Caddyfile bind — #863), and
+# clean-start.sh to the VM only (no clean-start) so Caddy and Compose stay aligned with the repo;
+# preserves volumes/DB. Also syncs docker/javamelody/ for the collector bind-mounts (applications.properties).
+# With EZKEY_ENABLE_JAVA_MELODY=true: builds ezkey-javamelody-collector:<JAVAMELODY_VERSION> locally
+# from docker/javamelody, includes it in save/scp/load, and remote compose uses --no-build (overlay is
+# image-only + pull_policy: never — never build on the VM; remote buildx is often too old).
+# With EZKEY_ENABLE_CONNECTOR_SMTP=true: builds ezkey-connector-smtp:latest locally, ships it like the
+# collector, syncs docker-compose.connector-smtp.yml, checks connector-smtp.env (600) and the delivery
+# token on the VM, and applies the overlay on --remote-up (#1206 step 7). EZKEY_DISABLE_CONNECTOR_SMTP=true
+# removes the connector on purpose. A running connector without either flag stops the rolling up.
+# With --remote-up, after load (and after --sync-operator-files if set), validates bind-mount sources
+# on the VM then runs docker compose up -d --no-build so migration + backends + Caddy pick up the
+# loaded images (no volume wipe, no remote build). Do not combine --clean-start with
+# --sync-operator-files or --remote-up. Override remote path with LIGHTSAIL_REMOTE_DIR if needed.
 #
 # Usage (from repository root):
-#   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh
-#   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --apis-only
-#   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --include-demo-acme
-#   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --sync-operator-files --remote-up
-#   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --clean-start
-#
-# Options:
-#   --apis-only            Export only admin-api, auth-api, integration-api (no migration image).
-#   --include-demo-acme    Also export ezkey-demo-app-acme (after the API images; requires a local
-#                          build, see below).
-#   --sync-operator-files  After load, scp lightsail docker-compose.yml, Caddyfile, clean-start.sh
-#                          to LIGHTSAIL_REMOTE_DIR (no DB wipe; use with --remote-up for a full rolling refresh).
-#   --remote-up            After load (and optional sync), ssh to the VM and run
-#                          docker compose up -d in LIGHTSAIL_REMOTE_DIR (picks up new images; Postgres
-#                          data and named volumes are retained; migration re-runs from the new image).
-#   --clean-start          After load, sync lightsail files and run clean-start.sh
-#                          (DESTRUCTIVE: wipes volumes). Incompatible with --sync-operator-files and
-#                          --remote-up.
-#   --remove-remote-tars   After successful load, rm the tar files from the remote home directory.
-#   --dry-run              Print commands only.
-#
-# Build prerequisite for --include-demo-acme (from repository root):
-#   docker build -f docker/Dockerfile --target demo-app-acme -t ezkey-demo-app-acme:latest .
+#   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --target community --dry-run
+#   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --target community --apis-only
+#   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --target community --sync-operator-files --remote-up
+#   LIGHTSAIL_SSH_HOST=ezkey-online ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --dry-run
 #
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+# shellcheck source=../../scripts/lightsail/common.sh
+source "${REPO_ROOT}/scripts/lightsail/common.sh"
+
 COMPOSE_FILE="${REPO_ROOT}/docker/docker-compose.yml"
 EXPORT_DIR="${EXPORT_DIR:-${REPO_ROOT}/docker/export}"
 
-SSH_HOST="${LIGHTSAIL_SSH_HOST:-ezkey}"
 LIGHTSAIL_REMOTE_DIR="${LIGHTSAIL_REMOTE_DIR:-~/ezkey/experimental-hybrid/lightsail}"
 LIGHTSAIL_LOCAL_DIR="${REPO_ROOT}/experimental-hybrid/lightsail"
 # Remote repository root that hosts the files the Lightsail compose bind-mounts with ../../ paths
@@ -60,23 +54,48 @@ REMOVE_REMOTE_TARS=""
 DRY_RUN=""
 SYNC_OPERATOR_FILES=""
 REMOTE_UP=""
+DECLARED_TARGET=""
 
 usage() {
-  cat <<'EOF'
+  cat <<EOF
 Export Ezkey backend images → Lightsail: docker save, scp, remote docker load.
 
 Usage (from repository root):
-  ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh [options]
+  ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --target community [options]
+  LIGHTSAIL_SSH_HOST=ezkey-online ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh [options]
+
+SSH target (required — no silent default; #812):
+  --target community   SSH Host ${LIGHTSAIL_SSH_HOST_COMMUNITY}; sync Caddyfile basename from compose
+  or set LIGHTSAIL_SSH_HOST explicitly (known aliases infer target for Caddyfile sync)
 
 Options:
   --apis-only            Export only admin-api, auth-api, integration-api (no migration image).
   --include-demo-acme    Also export ezkey-demo-app-acme (after API tars; build image first).
-  --sync-operator-files  After load, scp docker-compose.yml, Caddyfile, clean-start.sh (no volume wipe).
-  --remote-up            After load/sync, on the VM: docker compose up -d (rolling apply; DB preserved).
-  --clean-start          After load, sync and run clean-start.sh (DESTRUCTIVE). Not with --sync-operator-files
-                         or --remote-up.
+                         With --remote-up, requires --sync-operator-files (new image + old compose
+                         healthcheck on 8082 breaks Caddy depends_on). Remote compose must contain
+                         8086/actuator/health before up.
+  --sync-operator-files  After load, scp docker-compose.yml, docker-compose.javamelody.yml (if present),
+                         target-aware Caddyfile (remote name = compose bind basename, #863),
+                         clean-start.sh + host mounts including scripts/ops/ and docker/javamelody/.
+                         No volume wipe. --dry-run reports sync/compose Caddyfile alignment.
+  --remote-up            After load/sync, on the VM: bind-mount preflight then docker compose up -d
+                         (rolling apply; DB preserved). Fails before up if a bind source is missing
+                         or the wrong type (file vs directory) — #863.
+                         With --sync-operator-files: sha256-verify the mounted Caddyfile + force-recreate
+                         caddy (bind mount; plain up -d does not reload Caddy).
+                         JavaMelody: EZKEY_ENABLE_JAVA_MELODY=true builds/ships the collector image
+                         (ezkey-javamelody-collector:<version> from docker/javamelody) and applies the
+                         overlay with --no-build (never build on the VM). EZKEY_DISABLE_JAVA_MELODY=true
+                         intentionally removes it (--remove-orphans). Default rolling up does NOT pass
+                         --remove-orphans (intentional — Edgar). If the collector is already running and
+                         neither flag is set, the script refuses so APIs are not recreated without the
+                         JM overlay while the collector stays (see community-host.md).
+                         Remote compose always uses --no-build (images must already be loaded).
+  --clean-start          After load, sync and run clean-start.sh (DESTRUCTIVE). Community requires
+                         EZKEY_CONFIRM_WIPE=ezkey-online (first commissioning only). Not with
+                         --sync-operator-files or --remote-up.
   --remove-remote-tars   After successful load, remove tar files on the remote home directory.
-  --dry-run              Print commands only.
+  --dry-run              Print commands only (skips local docker image checks).
   -h, --help             Show this help.
 
 Build demo image when using --include-demo-acme (from repository root):
@@ -86,6 +105,12 @@ EOF
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --target)
+      [[ $# -ge 2 ]] || lightsail_die "--target requires community"
+      DECLARED_TARGET="$2"
+      shift 2
+      continue
+      ;;
     --apis-only) INCLUDE_MIGRATION="" ;;
     --include-demo-acme) INCLUDE_DEMO_ACME="1" ;;
     --sync-operator-files) SYNC_OPERATOR_FILES="1" ;;
@@ -103,11 +128,28 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
+lightsail_resolve_ssh_target "${DECLARED_TARGET}"
+SSH_HOST="${LIGHTSAIL_SSH_HOST}"
+
 if [[ -n "$DO_CLEAN_START" ]] && { [[ -n "$SYNC_OPERATOR_FILES" ]] || [[ -n "$REMOTE_UP" ]]; }; then
   echo "error: --clean-start cannot be combined with --sync-operator-files or --remote-up." >&2
   echo "  For a no-wipe upgrade (Caddy, Compose, images, migration), use --sync-operator-files and/or --remote-up only." >&2
   echo "  For a disposable full reset, use --clean-start alone." >&2
   exit 1
+fi
+
+# New Acme image + old compose (healthcheck still on 8082) breaks Caddy depends_on.
+# Refuse --include-demo-acme --remote-up without syncing operator files in the same pass.
+if [[ -n "$INCLUDE_DEMO_ACME" && -n "$REMOTE_UP" && -z "$SYNC_OPERATOR_FILES" ]]; then
+  echo "error: --include-demo-acme with --remote-up requires --sync-operator-files." >&2
+  echo "  Dangerous pair: new Acme image (management port 8086) + old compose healthcheck on 8082" >&2
+  echo "  → Acme unhealthy → Caddy depends_on blocks public APIs. Ship image and compose together." >&2
+  exit 1
+fi
+
+# Community --clean-start wipes Postgres; require explicit confirmation (first commissioning only).
+if [[ -n "$DO_CLEAN_START" ]]; then
+  lightsail_require_community_wipe_confirm
 fi
 
 IMAGES=()
@@ -123,6 +165,92 @@ if [[ -n "$INCLUDE_DEMO_ACME" ]]; then
   TARS+=(ezkey-demo-app-acme.tar)
 fi
 
+# JavaMelody collector: ship a pre-built image when enabling JM (never build on the VM).
+JM_ENABLE=""
+JM_DISABLE=""
+if [[ "${EZKEY_ENABLE_JAVA_MELODY:-}" == "1" || "${EZKEY_ENABLE_JAVA_MELODY:-}" == "true" ]]; then
+  JM_ENABLE="1"
+fi
+if [[ "${EZKEY_DISABLE_JAVA_MELODY:-}" == "1" || "${EZKEY_DISABLE_JAVA_MELODY:-}" == "true" ]]; then
+  JM_DISABLE="1"
+fi
+if [[ -n "$JM_ENABLE" && -n "$JM_DISABLE" ]]; then
+  echo "error: set only one of EZKEY_ENABLE_JAVA_MELODY or EZKEY_DISABLE_JAVA_MELODY" >&2
+  exit 1
+fi
+
+# SMTP delivery connector (#1206 step 7): same enable / disable / guard contract as JavaMelody.
+CS_ENABLE=""
+CS_DISABLE=""
+if [[ "${EZKEY_ENABLE_CONNECTOR_SMTP:-}" == "1" || "${EZKEY_ENABLE_CONNECTOR_SMTP:-}" == "true" ]]; then
+  CS_ENABLE="1"
+fi
+if [[ "${EZKEY_DISABLE_CONNECTOR_SMTP:-}" == "1" || "${EZKEY_DISABLE_CONNECTOR_SMTP:-}" == "true" ]]; then
+  CS_DISABLE="1"
+fi
+if [[ -n "$CS_ENABLE" && -n "$CS_DISABLE" ]]; then
+  echo "error: set only one of EZKEY_ENABLE_CONNECTOR_SMTP or EZKEY_DISABLE_CONNECTOR_SMTP" >&2
+  exit 1
+fi
+if [[ -n "$CS_ENABLE" && -n "$DO_CLEAN_START" ]]; then
+  echo "error: EZKEY_ENABLE_CONNECTOR_SMTP is not supported with --clean-start (clean-start.sh does not apply" >&2
+  echo "  the connector overlay). Commission the host first, then enable the connector with --remote-up." >&2
+  exit 1
+fi
+CONNECTOR_SMTP_OVERLAY="${LIGHTSAIL_LOCAL_DIR}/docker-compose.connector-smtp.yml"
+CONNECTOR_SMTP_IMAGE="ezkey-connector-smtp:latest"
+if [[ -n "$CS_ENABLE" ]]; then
+  if [[ ! -f "${CONNECTOR_SMTP_OVERLAY}" ]]; then
+    echo "error: SMTP connector overlay missing: ${CONNECTOR_SMTP_OVERLAY}" >&2
+    exit 1
+  fi
+  if grep -Eq '^\s*build:' "${CONNECTOR_SMTP_OVERLAY}"; then
+    echo "error: ${CONNECTOR_SMTP_OVERLAY} must not declare build: (Lightsail is image-only; ship via export)" >&2
+    exit 1
+  fi
+  if ! grep -Eq '^\s*pull_policy:[[:space:]]*never' "${CONNECTOR_SMTP_OVERLAY}"; then
+    echo "error: ${CONNECTOR_SMTP_OVERLAY} must set pull_policy: never on connector-smtp" >&2
+    exit 1
+  fi
+fi
+
+JAVAMELODY_OVERLAY="${LIGHTSAIL_LOCAL_DIR}/docker-compose.javamelody.yml"
+JAVAMELODY_COLLECTOR_IMAGE=""
+JAVAMELODY_VERSION=""
+resolve_javamelody_collector_image() {
+  local overlay="$1"
+  local img_line version
+  if [[ ! -f "${overlay}" ]]; then
+    echo "error: JavaMelody overlay missing: ${overlay}" >&2
+    exit 1
+  fi
+  img_line="$(grep -E '^\s*image:\s*ezkey-javamelody-collector:[^[:space:]]+' "${overlay}" | head -n1 || true)"
+  if [[ -z "${img_line}" ]]; then
+    echo "error: could not parse ezkey-javamelody-collector image from ${overlay}" >&2
+    exit 1
+  fi
+  version="${img_line##*:}"
+  version="${version//[[:space:]]/}"
+  version="${version//\"/}"
+  version="${version//\'/}"
+  if [[ -z "${version}" ]]; then
+    echo "error: empty JAVAMELODY_VERSION parsed from ${overlay}" >&2
+    exit 1
+  fi
+  JAVAMELODY_VERSION="${version}"
+  JAVAMELODY_COLLECTOR_IMAGE="ezkey-javamelody-collector:${JAVAMELODY_VERSION}"
+}
+
+if [[ -n "$JM_ENABLE" ]]; then
+  resolve_javamelody_collector_image "${JAVAMELODY_OVERLAY}"
+  IMAGES+=("${JAVAMELODY_COLLECTOR_IMAGE}")
+  TARS+=("ezkey-javamelody-collector-${JAVAMELODY_VERSION}.tar")
+fi
+if [[ -n "$CS_ENABLE" ]]; then
+  IMAGES+=("${CONNECTOR_SMTP_IMAGE}")
+  TARS+=(ezkey-connector-smtp.tar)
+fi
+
 run() {
   if [[ -n "$DRY_RUN" ]]; then
     printf '[dry-run]'
@@ -133,27 +261,190 @@ run() {
   "$@"
 }
 
+# Build the collector locally from docker/javamelody (Lightsail overlay is image-only).
+build_javamelody_collector_image() {
+  local img="$1"
+  local version="$2"
+  local ctx="${REPO_ROOT}/docker/javamelody"
+  local dockerfile="${ctx}/Dockerfile"
+  if [[ ! -f "${dockerfile}" ]]; then
+    echo "error: JavaMelody Dockerfile missing: ${dockerfile}" >&2
+    exit 1
+  fi
+  echo "→ docker build JavaMelody collector ${img} (JAVAMELODY_VERSION=${version})"
+  if [[ -n "$DRY_RUN" ]]; then
+    printf '[dry-run]'
+    printf ' %q' docker build \
+      -f "${dockerfile}" \
+      --build-arg "JAVAMELODY_VERSION=${version}" \
+      -t "${img}" \
+      "${ctx}"
+    echo
+    echo "  (no remote build: overlay is image-only + pull_policy: never; compose up uses --no-build)"
+    return 0
+  fi
+  docker build \
+    -f "${dockerfile}" \
+    --build-arg "JAVAMELODY_VERSION=${version}" \
+    -t "${img}" \
+    "${ctx}"
+  if ! docker image inspect "${img}" >/dev/null 2>&1; then
+    echo "error: JavaMelody collector image missing after build: ${img}" >&2
+    exit 1
+  fi
+}
+
+# Build the SMTP connector locally from the repository root (its Dockerfile copies the parent POMs).
+build_connector_smtp_image() {
+  local img="$1"
+  local dockerfile="${REPO_ROOT}/ezkey-connectors/ezkey-connector-smtp/Dockerfile"
+  if [[ ! -f "${dockerfile}" ]]; then
+    echo "error: SMTP connector Dockerfile missing: ${dockerfile}" >&2
+    exit 1
+  fi
+  # Same revision label as the API images (#814), so the upgrade checklist can verify it.
+  local revision="${OCI_IMAGE_REVISION:-$(git -C "${REPO_ROOT}" rev-parse HEAD 2>/dev/null || echo unknown)}"
+  echo "→ docker build SMTP connector ${img} (revision ${revision})"
+  run docker build -f "${dockerfile}" --label "org.opencontainers.image.revision=${revision}" \
+    -t "${img}" "${REPO_ROOT}"
+  if [[ -n "$DRY_RUN" ]]; then
+    echo "  (no remote build: overlay is image-only + pull_policy: never; compose up uses --no-build)"
+    return 0
+  fi
+  if ! docker image inspect "${img}" >/dev/null 2>&1; then
+    echo "error: SMTP connector image missing after build: ${img}" >&2
+    exit 1
+  fi
+}
+
 # Sync the host-side files that the Lightsail docker-compose.yml bind-mounts through ../../ paths.
 # These are NOT the three operator files (docker-compose.yml, Caddyfile, clean-start.sh); they are
-# the PostgreSQL role-init script, the DML grants applied by the db-grants service, and the master
-# key generator used by clean-start. Without them, a fresh postgres init has no application roles
-# and Flyway fails with "password authentication failed for user ezkey_migrate". See the
-# postgresql-application-role-split work (TB-2026-07-16).
+# the PostgreSQL role-init script, the DML grants applied by the db-grants service, the master
+# key generator used by clean-start, and host ops scripts (log hygiene). Without the DB pieces, a
+# fresh postgres init has no application roles and Flyway fails with "password authentication
+# failed for user ezkey_migrate". See the postgresql-application-role-split work (TB-2026-07-16).
 sync_host_mounts() {
   echo ""
-  echo "→ sync host-mounted files (postgres init, db grants, keygen) → ${SSH_HOST}:${REMOTE_REPO_ROOT}"
-  run ssh "${SSH_HOST}" "mkdir -p ${REMOTE_REPO_ROOT}/docker/postgres/init ${REMOTE_REPO_ROOT}/scripts/db"
+  echo "→ sync host-mounted files (postgres init, db grants, keygen, scripts/ops, javamelody) → ${SSH_HOST}:${REMOTE_REPO_ROOT}"
+  run ssh "${SSH_HOST}" "mkdir -p ${REMOTE_REPO_ROOT}/docker/postgres/init ${REMOTE_REPO_ROOT}/scripts/db ${REMOTE_REPO_ROOT}/scripts/ops ${REMOTE_REPO_ROOT}/docker/javamelody"
   run scp "${REPO_ROOT}/docker/postgres/init/"*.sh "${SSH_HOST}:${REMOTE_REPO_ROOT}/docker/postgres/init/"
   run scp "${REPO_ROOT}/docker/generate-encryption-keys.sh" "${SSH_HOST}:${REMOTE_REPO_ROOT}/docker/"
   run scp "${REPO_ROOT}/scripts/db/"* "${SSH_HOST}:${REMOTE_REPO_ROOT}/scripts/db/"
+  run scp "${REPO_ROOT}/scripts/ops/"* "${SSH_HOST}:${REMOTE_REPO_ROOT}/scripts/ops/"
+  # Collector image build context + applications.properties for the Lightsail overlay (#846).
+  run scp "${REPO_ROOT}/docker/javamelody/"* "${SSH_HOST}:${REMOTE_REPO_ROOT}/docker/javamelody/"
+}
+
+# Sync docker-compose.yml, optional javamelody overlay, target-aware Caddyfile (remote basename =
+# compose ./…:/etc/caddy/Caddyfile bind — #863), and clean-start.sh. Community (#812).
+sync_operator_files() {
+  local label="$1"
+  local caddy_src remote_caddy_basename compose_local
+  compose_local="${LIGHTSAIL_LOCAL_DIR}/docker-compose.yml"
+  caddy_src="$(lightsail_caddyfile_source_for_sync "${LIGHTSAIL_LOCAL_DIR}" "${compose_local}")"
+  remote_caddy_basename="$(basename "${caddy_src}")"
+  echo ""
+  echo "→ ${label} → ${SSH_HOST}:${LIGHTSAIL_REMOTE_DIR}"
+  echo "  target=${LIGHTSAIL_TARGET:-custom} Caddyfile source=${remote_caddy_basename} → remote ${remote_caddy_basename}"
+  lightsail_assert_caddyfile_sync_matches_compose "${compose_local}" "${remote_caddy_basename}"
+  run ssh "${SSH_HOST}" "mkdir -p ${LIGHTSAIL_REMOTE_DIR}"
+  for f in docker-compose.yml clean-start.sh docker-compose.javamelody.yml docker-compose.connector-smtp.yml connector-smtp.env.example; do
+    src="${LIGHTSAIL_LOCAL_DIR}/${f}"
+    if [[ "$f" != "docker-compose.yml" && "$f" != "clean-start.sh" && ! -f "$src" ]]; then
+      continue
+    fi
+    if [[ ! -f "$src" ]]; then
+      echo "error: missing ${src}" >&2
+      exit 1
+    fi
+    run scp "$src" "${SSH_HOST}:${LIGHTSAIL_REMOTE_DIR}/${f}"
+  done
+  if [[ ! -f "${caddy_src}" ]]; then
+    echo "error: missing ${caddy_src}" >&2
+    exit 1
+  fi
+  # Pre-scp: the compose-mounted basename must not be a directory (#863). Docker creates an
+  # empty root-owned dir when the bind source was missing; scp into it would nest the file
+  # silently or fail with Permission denied. Never auto-rmdir — Marc's go + manual sudo.
+  echo "→ refuse sync if remote ${remote_caddy_basename} is a directory (no auto-rmdir; #863)"
+  run ssh "${SSH_HOST}" "set -euo pipefail; cd ${LIGHTSAIL_REMOTE_DIR}; if [[ -d ${remote_caddy_basename} ]]; then echo \"error: remote ${LIGHTSAIL_REMOTE_DIR}/${remote_caddy_basename} is a directory (Docker empty-dir artifact when the bind-mount file was missing — #863)\" >&2; echo \"  Do not scp into it (the file would land inside the directory).\" >&2; echo \"  Manual remediation (requires Marc's go):\" >&2; echo \"    ssh ${SSH_HOST} 'sudo rmdir ${LIGHTSAIL_REMOTE_DIR}/${remote_caddy_basename}'\" >&2; echo \"  Then re-run --sync-operator-files.\" >&2; exit 1; fi"
+  # Remote name must match the compose bind mount host path (#863). Do not rename to Caddyfile.
+  run scp "${caddy_src}" "${SSH_HOST}:${LIGHTSAIL_REMOTE_DIR}/${remote_caddy_basename}"
+  # Legacy remote Caddyfile (pre-#863 sync name) may still exist as a regular file — leave it;
+  # compose mounts ${remote_caddy_basename}. Cleanup is manual with Marc's go if desired.
+  run ssh "${SSH_HOST}" "set -euo pipefail; cd ${LIGHTSAIL_REMOTE_DIR}; if [[ -f Caddyfile && '${remote_caddy_basename}' != 'Caddyfile' ]]; then echo 'note: legacy remote Caddyfile file left in place (compose mounts ${remote_caddy_basename})'; fi"
+  sync_host_mounts
+}
+
+# Resolve a compose bind source path relative to the remote lightsail dir / repo root.
+# Prints an absolute-looking remote path suitable for test -e / test -f / test -d on the VM.
+lightsail_remote_path_for_bind_source() {
+  local src="$1"
+  case "${src}" in
+    ./*)
+      echo "${LIGHTSAIL_REMOTE_DIR}/${src#./}"
+      ;;
+    ../*)
+      # Compose lives under experimental-hybrid/lightsail; ../.. is repo root on the VM layout.
+      echo "${REMOTE_REPO_ROOT}/${src#../../}"
+      ;;
+    /*)
+      echo "${src}"
+      ;;
+    *)
+      echo "${LIGHTSAIL_REMOTE_DIR}/${src}"
+      ;;
+  esac
+}
+
+# Before remote compose up: every bind-mount source must exist and be the expected type (#863).
+# Uses the local compose file (already synced, or about to be used) — same contract as
+# `docker compose config` bind sources without requiring docker on the workstation for dry-run.
+# On a real run, checks run on the VM via ssh. Dry-run prints planned checks and still fails
+# locally if the Caddyfile sync name would not match the compose bind.
+verify_remote_bind_mounts() {
+  local compose_local="${LIGHTSAIL_LOCAL_DIR}/docker-compose.yml"
+  local kind src remote_path checks="" line
+  echo ""
+  echo "→ bind-mount preflight on ${SSH_HOST} (fail before compose up if missing/wrong type)"
+  # Re-check Caddyfile name alignment even when --sync-operator-files was omitted.
+  local caddy_bind
+  caddy_bind="$(lightsail_caddyfile_remote_basename_from_compose "${compose_local}")"
+  lightsail_assert_caddyfile_sync_matches_compose "${compose_local}" "${caddy_bind}"
+  while IFS=$'\t' read -r kind src; do
+    [[ -n "${src}" ]] || continue
+    remote_path="$(lightsail_remote_path_for_bind_source "${src}")"
+    echo "  expect ${kind}: ${src} → ${remote_path}"
+    if [[ "${kind}" == "file" ]]; then
+      checks+="if [[ ! -e ${remote_path} ]]; then echo \"error: bind source missing: ${remote_path} (compose ${src})\" >&2; exit 1; fi; "
+      checks+="if [[ -d ${remote_path} ]]; then echo \"error: bind source is a directory but compose expects a file: ${remote_path} (compose ${src}) — often Docker created an empty dir when the path was missing (#863)\" >&2; exit 1; fi; "
+      checks+="if [[ ! -f ${remote_path} ]]; then echo \"error: bind source is not a regular file: ${remote_path} (compose ${src})\" >&2; exit 1; fi; "
+    else
+      checks+="if [[ ! -e ${remote_path} ]]; then echo \"error: bind source missing: ${remote_path} (compose ${src})\" >&2; exit 1; fi; "
+      checks+="if [[ ! -d ${remote_path} ]]; then echo \"error: bind source is not a directory: ${remote_path} (compose ${src})\" >&2; exit 1; fi; "
+    fi
+  done < <(lightsail_list_compose_bind_mounts "${compose_local}")
+  if [[ -z "${checks}" ]]; then
+    echo "error: no bind mounts parsed from ${compose_local}" >&2
+    exit 1
+  fi
+  run ssh "${SSH_HOST}" "set -euo pipefail; ${checks} echo 'bind-mount preflight OK'"
 }
 
 echo "=========================================="
 echo "  Export backend images → Lightsail"
 echo "  SSH: ${SSH_HOST}"
+echo "  target: ${LIGHTSAIL_TARGET:-custom (explicit host)}"
 if [[ -n "$INCLUDE_DEMO_ACME" ]]; then
   echo "  (including demo-app-acme)"
 fi
+if [[ -n "$JM_ENABLE" ]]; then
+  echo "  (JavaMelody collector: ${JAVAMELODY_COLLECTOR_IMAGE} — ship pre-built; no remote build)"
+fi
+if [[ -n "$CS_ENABLE" ]]; then
+  echo "  (SMTP connector: ${CONNECTOR_SMTP_IMAGE} — ship pre-built; no remote build)"
+fi
+echo "  images: ${IMAGES[*]}"
 echo "=========================================="
 echo ""
 
@@ -164,21 +455,36 @@ fi
 
 mkdir -p "$EXPORT_DIR"
 
+if [[ -n "$JM_ENABLE" ]]; then
+  build_javamelody_collector_image "${JAVAMELODY_COLLECTOR_IMAGE}" "${JAVAMELODY_VERSION}"
+fi
+if [[ -n "$CS_ENABLE" ]]; then
+  build_connector_smtp_image "${CONNECTOR_SMTP_IMAGE}"
+fi
+
 for i in "${!IMAGES[@]}"; do
   img="${IMAGES[$i]}"
   tar_name="${TARS[$i]}"
   out="${EXPORT_DIR}/${tar_name}"
   echo "→ docker save ${img} → ${out}"
-  if ! docker image inspect "$img" >/dev/null 2>&1; then
-    echo "error: image not found locally: ${img}" >&2
-    if [[ "$img" == "ezkey-demo-app-acme:latest" ]]; then
-      echo "  Build first, e.g. from repo root:" >&2
-      echo "    docker build -f docker/Dockerfile --target demo-app-acme -t ezkey-demo-app-acme:latest ." >&2
-    else
-      echo "  Build first, e.g. from repo root:" >&2
-      echo "    docker compose -f docker/docker-compose.yml build migration admin-api auth-api integration-api" >&2
+  if [[ -z "$DRY_RUN" ]]; then
+    if ! docker image inspect "$img" >/dev/null 2>&1; then
+      echo "error: image not found locally: ${img}" >&2
+      if [[ "$img" == "ezkey-demo-app-acme:latest" ]]; then
+        echo "  Build first, e.g. from repo root:" >&2
+        echo "    docker build -f docker/Dockerfile --target demo-app-acme -t ezkey-demo-app-acme:latest ." >&2
+      elif [[ "$img" == "${CONNECTOR_SMTP_IMAGE}" ]]; then
+        echo "  Build first (or re-run with EZKEY_ENABLE_CONNECTOR_SMTP=true so this script builds it):" >&2
+        echo "    docker build -f ezkey-connectors/ezkey-connector-smtp/Dockerfile -t ${img} ." >&2
+      elif [[ "$img" == ezkey-javamelody-collector:* ]]; then
+        echo "  Build first (or re-run with EZKEY_ENABLE_JAVA_MELODY=true so this script builds it):" >&2
+        echo "    docker build -f docker/javamelody/Dockerfile --build-arg JAVAMELODY_VERSION=${JAVAMELODY_VERSION:-2.9.0} -t ${img} docker/javamelody" >&2
+      else
+        echo "  Build first, e.g. from repo root:" >&2
+        echo "    docker compose -f docker/docker-compose.yml build migration admin-api auth-api integration-api" >&2
+      fi
+      exit 1
     fi
-    exit 1
   fi
   run docker save -o "$out" "$img"
 done
@@ -205,45 +511,143 @@ if [[ -n "$REMOVE_REMOTE_TARS" ]]; then
   run ssh "${SSH_HOST}" "rm -f${remote_paths}"
 fi
 
+CADDY_SRC_FOR_VERIFY=""
 if [[ -n "$SYNC_OPERATOR_FILES" && -z "$DO_CLEAN_START" ]]; then
-  echo ""
-  echo "→ sync operator files (no clean-start) → ${SSH_HOST}:${LIGHTSAIL_REMOTE_DIR}"
-  run ssh "${SSH_HOST}" "mkdir -p ${LIGHTSAIL_REMOTE_DIR}"
-  for f in docker-compose.yml Caddyfile clean-start.sh; do
-    src="${LIGHTSAIL_LOCAL_DIR}/${f}"
-    if [[ ! -f "$src" ]]; then
-      echo "error: missing ${src}" >&2
-      exit 1
-    fi
-    run scp "$src" "${SSH_HOST}:${LIGHTSAIL_REMOTE_DIR}/${f}"
-  done
-  sync_host_mounts
+  sync_operator_files "sync operator files (no clean-start)"
+  CADDY_SRC_FOR_VERIFY="$(lightsail_caddyfile_source_for_sync "${LIGHTSAIL_LOCAL_DIR}")"
 fi
 
 if [[ -n "$REMOTE_UP" && -z "$DO_CLEAN_START" ]]; then
   echo ""
   echo "→ remote rolling stack (docker compose up -d) on ${SSH_HOST}"
-  # Recreate containers so :latest and updated Compose/Caddy take effect; Postgres keeps postgres-data.
-  run ssh "${SSH_HOST}" "set -euo pipefail; cd ${LIGHTSAIL_REMOTE_DIR} && docker compose up -d --remove-orphans"
+  # Recreate containers so :latest and updated Compose take effect; Postgres keeps postgres-data.
+  # Caddyfile is a bind mount — up -d alone does not reload caddy when only the file changed.
+  #
+  # Bind-mount preflight (#863): fail before any restart if a host path is missing or the wrong
+  # type (Docker would otherwise create an empty directory for a missing file bind).
+  verify_remote_bind_mounts
+
+  # Acme image↔compose: remote healthcheck must target 8086 before up (Edgar S1).
+  if [[ -n "$INCLUDE_DEMO_ACME" ]]; then
+    acme_health_needle="8086/actuator/health"
+    local_compose="${LIGHTSAIL_LOCAL_DIR}/docker-compose.yml"
+    if [[ -n "$DRY_RUN" ]]; then
+      if [[ ! -f "$local_compose" ]] || ! grep -Fq "$acme_health_needle" "$local_compose"; then
+        echo "error: local ${local_compose} must contain ${acme_health_needle} before Acme remote-up" >&2
+        exit 1
+      fi
+      echo "[dry-run] would verify remote docker-compose.yml contains ${acme_health_needle}"
+    else
+      if ! ssh "${SSH_HOST}" \
+        "grep -Fq '${acme_health_needle}' ${LIGHTSAIL_REMOTE_DIR}/docker-compose.yml"; then
+        echo "error: remote docker-compose.yml on ${SSH_HOST} lacks ${acme_health_needle}." >&2
+        echo "  Sync operator files (new compose) before loading a new Acme image — old 8082" >&2
+        echo "  healthcheck + new classpath management port 8086 leaves Acme unhealthy and" >&2
+        echo "  blocks Caddy." >&2
+        exit 1
+      fi
+    fi
+  fi
+  #
+  # JavaMelody (#846 / Edgar): default rolling up does NOT pass --remove-orphans.
+  # Guard so a plain base-only up cannot leave APIs without JM env while the collector
+  # container still runs (or accidentally tear it down if --remove-orphans is restored):
+  #   EZKEY_ENABLE_JAVA_MELODY=true  → apply overlay (keep / start collector; image already loaded)
+  #   EZKEY_DISABLE_JAVA_MELODY=true → intentional remove (base + --remove-orphans)
+  #   neither, but collector present → refuse (must choose enable or disable)
+  # Always --no-build: VM must use images from docker load (remote buildx often < Compose need).
+  remote_compose_cmd='docker compose -f docker-compose.yml'
+  remove_orphans=""
+  if [[ -n "$JM_ENABLE" ]]; then
+    remote_compose_cmd='docker compose -f docker-compose.yml -f docker-compose.javamelody.yml'
+    echo "  (EZKEY_ENABLE_JAVA_MELODY set — applying docker-compose.javamelody.yml; --no-build)"
+    echo "  (collector image ${JAVAMELODY_COLLECTOR_IMAGE} loaded locally → scp → docker load; no remote build)"
+    # Fail closed: collector scrapes management from another container; overlay must reopen 0.0.0.0.
+    jm_overlay_local="${JAVAMELODY_OVERLAY}"
+    if [[ -f "$jm_overlay_local" ]] \
+      && ! grep -Eq 'MANAGEMENT_SERVER_ADDRESS:[[:space:]]*"?0\.0\.0\.0"?' "$jm_overlay_local"; then
+      echo "error: ${jm_overlay_local} enables JavaMelody but MANAGEMENT_SERVER_ADDRESS is not 0.0.0.0" >&2
+      echo "  (base community compose binds management to 127.0.0.1; without the overlay reopen the collector stays empty)" >&2
+      exit 1
+    fi
+    # Fail closed: Lightsail overlay must stay image-only (no build:) + pull_policy never.
+    if grep -Eq '^\s*build:' "$jm_overlay_local"; then
+      echo "error: ${jm_overlay_local} must not declare build: (Lightsail is image-only; ship via export)" >&2
+      exit 1
+    fi
+    if ! grep -Eq '^\s*pull_policy:[[:space:]]*never' "$jm_overlay_local"; then
+      echo "error: ${jm_overlay_local} must set pull_policy: never on javamelody-collector" >&2
+      exit 1
+    fi
+  elif [[ -n "$JM_DISABLE" ]]; then
+    remove_orphans="--remove-orphans"
+    echo "  (EZKEY_DISABLE_JAVA_MELODY set — base compose + --remove-orphans; collector will be removed)"
+  else
+    # Detect a live collector so a plain rolling up cannot orphan-remove it silently.
+    collector_present=""
+    if [[ -z "$DRY_RUN" ]]; then
+      if ssh "${SSH_HOST}" "docker inspect ezkey-exp-javamelody-collector >/dev/null 2>&1"; then
+        collector_present="1"
+      fi
+    fi
+    if [[ -n "$collector_present" ]]; then
+      echo "error: JavaMelody collector is running on ${SSH_HOST}." >&2
+      echo "  A rolling up without the overlay would recreate APIs without JAVAMELODY_*" >&2
+      echo "  while leaving the collector container (default up does not pass" >&2
+      echo "  --remove-orphans). Re-run with EZKEY_ENABLE_JAVA_MELODY=true to keep it," >&2
+      echo "  or EZKEY_DISABLE_JAVA_MELODY=true to remove it intentionally" >&2
+      echo "  (that path alone passes --remove-orphans)." >&2
+      exit 1
+    fi
+  fi
+  # SMTP connector (#1206 step 7): the same three-way contract, so a rolling up never recreates
+  # admin-api without the connector settings while the connector keeps running.
+  if [[ -n "$CS_ENABLE" ]]; then
+    remote_compose_cmd="${remote_compose_cmd} -f docker-compose.connector-smtp.yml"
+    echo "  (EZKEY_ENABLE_CONNECTOR_SMTP set — applying docker-compose.connector-smtp.yml; --no-build)"
+    # Fail closed before any restart: secrets file present and private, delivery token set.
+    # Counts only; values never leave the VM.
+    run ssh "${SSH_HOST}" "set -euo pipefail; cd ${LIGHTSAIL_REMOTE_DIR}; if [[ ! -f connector-smtp.env ]]; then echo 'error: connector-smtp.env missing on the VM (copy connector-smtp.env.example, fill it, chmod 600)' >&2; exit 1; fi; mode=\$(stat -c %a connector-smtp.env); if [[ \"\${mode}\" != '600' ]]; then echo \"error: connector-smtp.env mode is \${mode}, expected 600\" >&2; exit 1; fi; for k in EZKEY_CONNECTOR_SMTP_USERNAME EZKEY_CONNECTOR_SMTP_PASSWORD; do if [[ \$(grep -cE \"^\${k}=.+\" connector-smtp.env) -ne 1 ]]; then echo \"error: connector-smtp.env needs exactly one non-empty \${k}\" >&2; exit 1; fi; done; if [[ \$(grep -cE '^EZKEY_CONNECTOR_DELIVERY_TOKEN=.{32,}' .env) -ne 1 ]]; then echo 'error: .env needs one EZKEY_CONNECTOR_DELIVERY_TOKEN of at least 32 characters' >&2; exit 1; fi; echo 'connector preflight OK'"
+  elif [[ -n "$CS_DISABLE" ]]; then
+    remove_orphans="--remove-orphans"
+    echo "  (EZKEY_DISABLE_CONNECTOR_SMTP set — no connector overlay + --remove-orphans; connector will be removed)"
+  else
+    connector_present=""
+    if [[ -z "$DRY_RUN" ]]; then
+      if ssh "${SSH_HOST}" "docker inspect ezkey-exp-connector-smtp >/dev/null 2>&1"; then
+        connector_present="1"
+      fi
+    fi
+    if [[ -n "$connector_present" ]]; then
+      echo "error: the SMTP connector is running on ${SSH_HOST}." >&2
+      echo "  A rolling up without its overlay would recreate admin-api without the connector settings" >&2
+      echo "  (email delivery silently off) and leave the connector container behind." >&2
+      echo "  Re-run with EZKEY_ENABLE_CONNECTOR_SMTP=true to keep it, or EZKEY_DISABLE_CONNECTOR_SMTP=true" >&2
+      echo "  to remove it on purpose." >&2
+      exit 1
+    fi
+  fi
+  run ssh "${SSH_HOST}" "set -euo pipefail; cd ${LIGHTSAIL_REMOTE_DIR} && ${remote_compose_cmd} up -d --no-build ${remove_orphans}"
+  if [[ -n "$CADDY_SRC_FOR_VERIFY" ]]; then
+    local_sha="$(sha256sum "${CADDY_SRC_FOR_VERIFY}" | awk '{print $1}')"
+    remote_caddy_basename="$(basename "${CADDY_SRC_FOR_VERIFY}")"
+    echo ""
+    echo "→ verify remote ${remote_caddy_basename} sha256=${local_sha} and force-recreate caddy (bind-mount)"
+    run ssh "${SSH_HOST}" "set -euo pipefail; cd ${LIGHTSAIL_REMOTE_DIR}; if [[ -d ${remote_caddy_basename} ]]; then echo \"error: ${remote_caddy_basename} is a directory (Docker empty-dir artifact); expected a file (#863)\" >&2; exit 1; fi; remote_sha=\$(sha256sum ${remote_caddy_basename} | awk '{print \$1}'); if [[ \"\${remote_sha}\" != '${local_sha}' ]]; then echo \"error: remote ${remote_caddy_basename} sha256=\${remote_sha} != local ${local_sha}\" >&2; exit 1; fi; ${remote_compose_cmd} up -d --no-build --no-deps --force-recreate caddy"
+  fi
 fi
 
 if [[ -n "$DO_CLEAN_START" ]]; then
-  echo ""
-  echo "→ sync lightsail operator files → ${SSH_HOST}:${LIGHTSAIL_REMOTE_DIR}"
   # Let the remote login shell expand ~ (do not wrap the path in single quotes on the remote).
-  run ssh "${SSH_HOST}" "mkdir -p ${LIGHTSAIL_REMOTE_DIR}"
-  for f in docker-compose.yml Caddyfile clean-start.sh; do
-    src="${LIGHTSAIL_LOCAL_DIR}/${f}"
-    if [[ ! -f "$src" ]]; then
-      echo "error: missing ${src}" >&2
-      exit 1
-    fi
-    run scp "$src" "${SSH_HOST}:${LIGHTSAIL_REMOTE_DIR}/${f}"
-  done
-  sync_host_mounts
+  sync_operator_files "sync lightsail operator files (before clean-start)"
   echo ""
   echo "→ remote clean-start (destructive: docker compose down -v, keygen, up)"
-  run ssh "${SSH_HOST}" "set -euo pipefail; cd ${LIGHTSAIL_REMOTE_DIR} && bash clean-start.sh"
+  clean_start_cmd='bash clean-start.sh'
+  if [[ -n "$JM_ENABLE" ]]; then
+    clean_start_cmd='EZKEY_ENABLE_JAVA_MELODY=true bash clean-start.sh --with-java-melody'
+    echo "  (EZKEY_ENABLE_JAVA_MELODY set — clean-start will apply JM overlay with --no-build)"
+  fi
+  run ssh "${SSH_HOST}" "set -euo pipefail; cd ${LIGHTSAIL_REMOTE_DIR} && ${clean_start_cmd}"
 fi
 
 echo ""
@@ -253,6 +657,8 @@ if [[ -n "$DO_CLEAN_START" ]]; then
 elif [[ -n "$REMOTE_UP" ]]; then
   echo "Rolling steps finished: operator files are synced (if --sync-operator-files) and the stack was restarted. Postgres and named app volumes are unchanged; the migration service applies Flyway from the new image on up."
 else
-  echo "Tip: for a one-pass, no-wipe upgrade (Caddy, Compose, images, migration), use --sync-operator-files and --remote-up, or: experimental-hybrid/scripts/full-exp-environment-upgrade.sh rolling"
+  echo "Tip: pre-upgrade log scan — --sync-operator-files (no --remote-up), then on the VM:"
+  echo "     bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail --scan"
+  echo "     then re-run with --remote-up (or full-exp-environment-upgrade.sh rolling --target …)."
   echo "     See also experimental-hybrid/BACKEND_ROLLING_UPDATE.md"
 fi

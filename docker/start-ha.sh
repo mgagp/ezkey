@@ -34,6 +34,11 @@ if [[ ",${SPRING_PROFILES_ACTIVE:-}," == *",docker-test,"* ]] && [[ ",${SPRING_P
     export SPRING_PROFILES_ACTIVE="docker,${SPRING_PROFILES_ACTIVE}"
 fi
 
+# Product runtime profile (integrity default / base opt-in). See docker/runtime-profile.sh.
+# shellcheck source=runtime-profile.sh
+source "${SCRIPT_DIR}/runtime-profile.sh"
+resolve_ezkey_runtime_profile || exit 1
+
 echo "=========================================="
 echo "  EZ Key Docker HA - Starting Stack"
 echo "=========================================="
@@ -76,6 +81,19 @@ if [[ "${EZKEY_ENABLE_JAVA_MELODY:-}" == "1" || "${EZKEY_ENABLE_JAVA_MELODY:-}" 
     else
         echo "⚠️  Warning: EZKEY_ENABLE_JAVA_MELODY is set but override file not found: ${JAVAMELODY_OVERRIDE_FILE}"
     fi
+fi
+
+# Optional space-delimited extra compose files (e.g. quality-gate memory overlay).
+if [[ -n "${EZKEY_COMPOSE_EXTRA_FILES:-}" ]]; then
+    read -r -a _ezkey_extra_files <<< "${EZKEY_COMPOSE_EXTRA_FILES}"
+    for _extra in "${_ezkey_extra_files[@]}"; do
+        if [ -f "${_extra}" ]; then
+            COMPOSE_ARGS="${COMPOSE_ARGS} -f ${_extra}"
+            echo "🔧 Extra compose overlay: $(basename "${_extra}")"
+        else
+            echo "⚠️  Warning: EZKEY_COMPOSE_EXTRA_FILES entry not found: ${_extra}"
+        fi
+    done
 fi
 
 # Enable BuildKit for Maven cache mount support
@@ -243,7 +261,7 @@ echo "  ✅ Integration API instances are healthy"
 echo "  - Waiting for Crypto API..."
 timeout=120
 elapsed=0
-while ! curl -sf http://localhost:9090/actuator/health > /dev/null 2>&1; do
+while ! curl -sf http://localhost:9091/actuator/health/liveness > /dev/null 2>&1; do
     if [ $elapsed -ge $timeout ]; then
         echo "❌ Error: Crypto API did not become healthy within ${timeout} seconds"
         ${DOCKER_COMPOSE} ${COMPOSE_ARGS} logs crypto-api
@@ -257,7 +275,7 @@ echo "  ✅ Crypto API is healthy"
 echo "  - Waiting for Demo Device..."
 timeout=120
 elapsed=0
-while ! curl -sf http://localhost:8083/actuator/health > /dev/null 2>&1; do
+while ! curl -sf http://localhost:8084/actuator/health > /dev/null 2>&1; do
     if [ $elapsed -ge $timeout ]; then
         echo "❌ Error: Demo Device did not become healthy within ${timeout} seconds"
         ${DOCKER_COMPOSE} ${COMPOSE_ARGS} logs demo-device

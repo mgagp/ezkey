@@ -85,11 +85,19 @@ export const getPendingUrl = () => {
  */
 export const pending = async (authAttemptPendingRequestDto: AuthAttemptPendingRequestDto, options?: Parameters<typeof customInstance>[1]): Promise<pendingResponse> => {
 
-    const getHeaders = (h?: HeadersInit | Headers): Record<string, string> => {
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
     if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Array.isArray(h)) return Object.fromEntries(h);
-    return h;
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
   };
 return customInstance<pendingResponse>(getPendingUrl(),
   {
@@ -104,11 +112,13 @@ return customInstance<pendingResponse>(getPendingUrl(),
 
 
 
-export const getPendingMutationOptions = <TError = ErrorType<ProblemDetail | void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pending>>, TError,{data: BodyType<AuthAttemptPendingRequestDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
-): UseMutationOptions<Awaited<ReturnType<typeof pending>>, TError,{data: BodyType<AuthAttemptPendingRequestDto>}, TContext> => {
+export const getPendingMutationKey = () => ['pending'] as const;
 
-const mutationKey = ['pending'];
+export const getPendingMutationOptions = <TError = ErrorType<ProblemDetail | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pending>>, TError,PendingMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof pending>>, TError,PendingMutationVariables, TContext> => {
+
+const mutationKey = getPendingMutationKey();
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -118,7 +128,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof pending>>, {data: BodyType<AuthAttemptPendingRequestDto>}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof pending>>, PendingMutationVariables> = (props) => {
           const {data} = props ?? {};
 
           return  pending(data,requestOptions)
@@ -134,16 +144,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type PendingMutationResult = NonNullable<Awaited<ReturnType<typeof pending>>>
     export type PendingMutationBody = BodyType<AuthAttemptPendingRequestDto>
     export type PendingMutationError = ErrorType<ProblemDetail | void>
+    export type PendingMutationVariables = {data: BodyType<AuthAttemptPendingRequestDto>}
 
     /**
+ * Retrieve pending authentication attempts using secure enrollment proof token. This endpoint prevents enumeration attacks by requiring cryptographic proof of enrollment ownership.
  * @summary Get pending authentication attempt
  */
 export const usePending = <TError = ErrorType<ProblemDetail | void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pending>>, TError,{data: BodyType<AuthAttemptPendingRequestDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pending>>, TError,PendingMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof pending>>,
         TError,
-        {data: BodyType<AuthAttemptPendingRequestDto>},
+        PendingMutationVariables,
         TContext
       > => {
       return useMutation(getPendingMutationOptions(options), queryClient);
@@ -163,15 +175,25 @@ export type respondResponse409 = {
   status: 409
 }
 
+export type respondResponse429 = {
+  data: void
+  status: 429
+}
+
 export type respondResponse500 = {
   data: ProblemDetail
   status: 500
 }
 
+export type respondResponse503 = {
+  data: ProblemDetail
+  status: 503
+}
+
 export type respondResponseSuccess = (respondResponse200) & {
   headers: Headers;
 };
-export type respondResponseError = (respondResponse400 | respondResponse409 | respondResponse500) & {
+export type respondResponseError = (respondResponse400 | respondResponse409 | respondResponse429 | respondResponse500 | respondResponse503) & {
   headers: Headers;
 };
 
@@ -186,16 +208,24 @@ export const getRespondUrl = () => {
 }
 
 /**
- * Submits mobile device's response to an authentication request. The authAttemptId is provided in the request body for uniform API design. HTTP 200 may include a business-level FAILED result in the JSON body (integration-signed) when validation fails in the respond service; uncaught IllegalArgumentException uses 400.
+ * Submits mobile device's response to an authentication request. The authAttemptId is provided in the request body for uniform API design. HTTP 200 bodies (APPROVED/DENIED/FAILED) are always integration-signed; the server never emits an unsigned 200 (#844). Not-found, PENDING, and terminal / cancelled / superseded map to 409 auth-attempt-state-conflict (#844 Marc m1). Wall-clock expiry after expiresAt maps to 409 auth-attempt-expired (#895). Missing per-enrollment integration signing key → runtime 503 integration-signing-unavailable (transaction rolls back; no JVM startup gate).
  * @summary Submit authentication response
  */
 export const respond = async (authAttemptRespondRequestDto: AuthAttemptRespondRequestDto, options?: Parameters<typeof customInstance>[1]): Promise<respondResponse> => {
 
-    const getHeaders = (h?: HeadersInit | Headers): Record<string, string> => {
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
     if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Array.isArray(h)) return Object.fromEntries(h);
-    return h;
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
   };
 return customInstance<respondResponse>(getRespondUrl(),
   {
@@ -210,11 +240,13 @@ return customInstance<respondResponse>(getRespondUrl(),
 
 
 
-export const getRespondMutationOptions = <TError = ErrorType<ProblemDetail>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof respond>>, TError,{data: BodyType<AuthAttemptRespondRequestDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
-): UseMutationOptions<Awaited<ReturnType<typeof respond>>, TError,{data: BodyType<AuthAttemptRespondRequestDto>}, TContext> => {
+export const getRespondMutationKey = () => ['respond'] as const;
 
-const mutationKey = ['respond'];
+export const getRespondMutationOptions = <TError = ErrorType<ProblemDetail | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof respond>>, TError,RespondMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof respond>>, TError,RespondMutationVariables, TContext> => {
+
+const mutationKey = getRespondMutationKey();
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -224,7 +256,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof respond>>, {data: BodyType<AuthAttemptRespondRequestDto>}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof respond>>, RespondMutationVariables> = (props) => {
           const {data} = props ?? {};
 
           return  respond(data,requestOptions)
@@ -239,17 +271,19 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type RespondMutationResult = NonNullable<Awaited<ReturnType<typeof respond>>>
     export type RespondMutationBody = BodyType<AuthAttemptRespondRequestDto>
-    export type RespondMutationError = ErrorType<ProblemDetail>
+    export type RespondMutationError = ErrorType<ProblemDetail | void>
+    export type RespondMutationVariables = {data: BodyType<AuthAttemptRespondRequestDto>}
 
     /**
+ * Submits mobile device's response to an authentication request. The authAttemptId is provided in the request body for uniform API design. HTTP 200 bodies (APPROVED/DENIED/FAILED) are always integration-signed; the server never emits an unsigned 200 (#844). Not-found, PENDING, and terminal / cancelled / superseded map to 409 auth-attempt-state-conflict (#844 Marc m1). Wall-clock expiry after expiresAt maps to 409 auth-attempt-expired (#895). Missing per-enrollment integration signing key → runtime 503 integration-signing-unavailable (transaction rolls back; no JVM startup gate).
  * @summary Submit authentication response
  */
-export const useRespond = <TError = ErrorType<ProblemDetail>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof respond>>, TError,{data: BodyType<AuthAttemptRespondRequestDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
+export const useRespond = <TError = ErrorType<ProblemDetail | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof respond>>, TError,RespondMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof respond>>,
         TError,
-        {data: BodyType<AuthAttemptRespondRequestDto>},
+        RespondMutationVariables,
         TContext
       > => {
       return useMutation(getRespondMutationOptions(options), queryClient);

@@ -67,15 +67,14 @@ class BootstrapHelper:
         r"Enrollment Proof Token:\s*([^\r\n]+)", re.MULTILINE
     )
     ENROLLMENT_CHALLENGE_PATTERN = re.compile(r"Enrollment Challenge Code:\s*(\d+)")
-    # Recovery codes format: "1. CODE-CODE-CODE-CODE-CODE-CODE-CODE-CODE" or "1. CODE"
-    RECOVERY_CODE_PATTERN = re.compile(r"\s+\d+\.\s*([A-Z0-9\-]+)")
 
     def extract_credentials(self) -> BootstrapCredentials:
         """
-        Extract bootstrap credentials from Docker container logs.
+        Extract bootstrap credentials.
 
-        Reads logs from the Admin API container, parses the bootstrap credentials section,
-        and returns the extracted information.
+        Prefers ``bootstrap-credentials.json`` on the Docker ``bootstrap-artifacts`` volume
+        (includes recovery codes at mode 0600). Falls back to Admin API logs for bind material
+        only; recovery codes are never taken from logs.
 
         Returns:
             BootstrapCredentials with extracted information
@@ -83,30 +82,43 @@ class BootstrapHelper:
         Raises:
             RuntimeError: If credentials cannot be extracted
         """
-        logger.info("Extracting bootstrap credentials from Docker container logs...")
+        logger.info("Extracting bootstrap credentials (volume file preferred)...")
 
         try:
-            # Read logs from Docker container
+            from_volume = self._load_credentials_from_docker_volume()
+            if (
+                from_volume
+                and from_volume.enrollment_proof_token
+                and from_volume.enrollment_challenge_code
+            ):
+                self._save_credentials_to_file(from_volume)
+                logger.info(
+                    "✅ Bootstrap credentials loaded from volume (enrollmentId=%d, recoveryCodes=%d)",
+                    from_volume.enrollment_id,
+                    len(from_volume.recovery_codes),
+                )
+                return from_volume
+
             logs = self._read_docker_logs()
-
-            # Parse credentials from logs
             credentials = self._parse_credentials(logs)
-
-            # Save to file for future use
+            if from_volume and from_volume.recovery_codes and not credentials.recovery_codes:
+                credentials = BootstrapCredentials(
+                    enrollment_id=credentials.enrollment_id,
+                    enrollment_proof_token=credentials.enrollment_proof_token,
+                    enrollment_challenge_code=credentials.enrollment_challenge_code,
+                    recovery_codes=from_volume.recovery_codes,
+                )
             self._save_credentials_to_file(credentials)
-
-            logger.info("✅ Bootstrap credentials extracted successfully")
-            logger.debug("  Enrollment ID: %d", credentials.enrollment_id)
-            logger.debug(
-                "  Enrollment Proof Token: %s...",
-                credentials.enrollment_proof_token[: min(20, len(credentials.enrollment_proof_token))],
+            logger.info(
+                "✅ Bootstrap credentials extracted (enrollmentId=%d, recoveryCodes=%d)",
+                credentials.enrollment_id,
+                len(credentials.recovery_codes),
             )
-
             return credentials
 
         except Exception as e:
             raise RuntimeError(
-                f"Failed to extract bootstrap credentials from Docker logs: {e}"
+                f"Failed to extract bootstrap credentials: {e}"
             ) from e
 
     def load_or_extract_credentials(self) -> BootstrapCredentials:
@@ -318,21 +330,8 @@ class BootstrapHelper:
             raise RuntimeError("Enrollment Challenge Code not found in logs")
         enrollment_challenge_code = int(challenge_match.group(1))
 
-        # Extract recovery codes
-        recovery_codes = []
-        recovery_start = credentials_section.find("RECOVERY CODES")
-        if recovery_start != -1:
-            # Look for recovery codes section (may span multiple lines)
-            recovery_section = credentials_section[
-                recovery_start : min(recovery_start + 2000, len(credentials_section))
-            ]
-            logger.debug("Recovery codes section preview: %s", recovery_section[:500])
-            recovery_matches = self.RECOVERY_CODE_PATTERN.findall(recovery_section)
-            recovery_codes = recovery_matches
-            logger.debug("Found %d recovery codes in logs: %s", len(recovery_codes), recovery_codes[:3] if recovery_codes else "none")
-
-        if not recovery_codes:
-            logger.warning("No recovery codes found in logs (may be normal if already bound)")
+        # Recovery codes are never logged; expect them from the volume file only.
+        recovery_codes: List[str] = []
 
         return BootstrapCredentials(
             enrollment_id=enrollment_id,
@@ -340,6 +339,46 @@ class BootstrapHelper:
             enrollment_challenge_code=enrollment_challenge_code,
             recovery_codes=recovery_codes,
         )
+
+    def _load_credentials_from_docker_volume(self) -> Optional[BootstrapCredentials]:
+        """Load bootstrap-credentials.json from the shared Docker volume (counts only in logs)."""
+        try:
+            result = subprocess.run(
+                [
+                    "docker",
+                    "run",
+                    "--rm",
+                    "-v",
+                    "ezkey_bootstrap-artifacts:/data",
+                    "alpine",
+                    "cat",
+                    "/data/bootstrap-credentials.json",
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=30,
+            )
+            if result.returncode != 0 or not result.stdout.strip():
+                return None
+            data = json.loads(result.stdout)
+            codes = data.get("recoveryCodes") or []
+            logger.info(
+                "Volume credentials file: enrollmentId=%s recoveryCodes=%d",
+                data.get("enrollmentId"),
+                len(codes),
+            )
+            return BootstrapCredentials(
+                enrollment_id=int(data["enrollmentId"]),
+                enrollment_proof_token=data.get("enrollmentProofToken") or "",
+                enrollment_challenge_code=int(data["enrollmentChallengeCode"])
+                if data.get("enrollmentChallengeCode") is not None
+                else 0,
+                recovery_codes=list(codes),
+            )
+        except Exception as e:  # noqa: BLE001 — best-effort volume probe
+            logger.debug("Volume credentials unavailable: %s", e)
+            return None
 
     def _save_credentials_to_file(self, credentials: BootstrapCredentials) -> None:
         """Save credentials to JSON file."""

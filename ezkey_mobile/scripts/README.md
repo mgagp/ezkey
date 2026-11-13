@@ -55,7 +55,40 @@ If needed, force a specific enrollment id:
 
 ## `build-install-debug-clean.sh` (canonical Android debug install)
 
-Preferred debug install path for devices (JDK probe + clean + install). See `AGENTS.md` § Android debug build.
+Preferred debug install path for devices (JDK probe + path preflight + clean + install).
+See `AGENTS.md` § Android debug build.
+
+From `ezkey_mobile/`:
+
+```bash
+adb devices -l
+./scripts/build-install-debug-clean.sh
+# or: yarn android:install:debug:clean
+```
+
+Options:
+
+| Option | Meaning |
+|--------|---------|
+| `--skip-clean` | Install existing `app-debug.apk` only |
+| `--no-uninstall` | Keep app data; reinstall over same signature |
+| `--build-only` | `assembleDebug` only — **no adb device required** (`yarn android:assemble:debug:clean`) |
+| `--metro-port PORT` | Metro TCP port (default `8081`; also `EZKEY_METRO_PORT` / `RCT_METRO_PORT`) |
+| `--with-metro-reverse` | Re-apply `adb reverse tcp:PORT` every run (auto-on when `ezkey.useMetroInDebug=true`) |
+
+**Recommended device flow (avoid a second full clean Gradle):** build once, then install:
+
+```bash
+./scripts/build-install-debug-clean.sh --build-only
+adb devices -l
+./scripts/build-install-debug-clean.sh --skip-clean --with-metro-reverse
+# or: yarn android:assemble:debug:clean && yarn android:install:debug:clean --skip-clean --with-metro-reverse
+```
+
+Wireless ADB drops `adb reverse` on reconnect — the script re-applies it before and after
+install when Metro reverse is enabled. It also warns when a packager already listening on
+that port appears to belong to a different worktree (stale Metro). Path extraction/normalization
+self-test: `./scripts/metro-adb-selftest.sh` (also in CI `js-validate`).
 
 ## `build-install-release-clean.sh` + `assert-release-production-clean-env.sh`
 
@@ -64,6 +97,81 @@ Release install path. Before Gradle, sources `assert-release-production-clean-en
 pending-auth debug panel. App code also hard-gates F2a on native debug build type.
 
 Contract: [`docs/MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md`](../docs/MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md).
+
+After a successful `assembleRelease`, the script also runs
+[`check-16kb-alignment.sh`](check-16kb-alignment.sh) on the release APK.
+
+## `play-upload-internal.sh` (Play internal track upload)
+
+Uploads an **already-built** signed AAB to the Google Play **internal** track via the
+Android Publisher API v3 (edits → bundles.upload → tracks.update → commit). Does **not**
+wire the Gradle Play Publisher plugin into the app build. Reads `versionCode` from the AAB
+protobuf manifest (`aapt.pb.XmlNode`); optional `BUNDLETOOL_JAR` fallback.
+
+```bash
+pip install -r scripts/requirements-play-upload.txt
+export EZKEY_PLAY_SERVICE_ACCOUNT_JSON="/c/Users/marcg/.gradle/ezkey-play-publisher.json"
+# Optional on Windows if python3 is the Store stub:
+# export EZKEY_PYTHON="/c/Users/marcg/AppData/Local/Programs/Python/Python312/python.exe"
+./scripts/bundle-release.sh
+./scripts/play-upload-internal.sh [--dry-run] [--status draft|completed] \
+  [--release-name NAME] [--allow-same-version-name] path/to/app-release.aab
+./scripts/play-upload-internal.sh --self-test
+```
+
+Default `--status` is `draft`. Default Play release name is `'<versionCode> (<versionName>)'`
+from the AAB manifest. Hard-refuses any track other than `internal`. Refuses if the AAB
+`versionCode` is ≤ the highest on any track. The same `versionName` warns and continues
+(`--allow-same-version-name` is accepted and no longer required). Never prints the service-account JSON.
+Docs: [`docs/MOBILE_PLAY_PUBLISHING.md`](../docs/MOBILE_PLAY_PUBLISHING.md).
+
+## `bundle-release.sh` + `check-16kb-alignment.sh` (16 KB page-size gate)
+
+`yarn android:bundle:release` → `scripts/bundle-release.sh` → Gradle `bundleRelease` →
+`scripts/check-16kb-alignment.sh` on `app-release.aab`.
+
+The check extracts `arm64-v8a` / `x86_64` `.so` files and fails the build if:
+
+- any `PT_LOAD` `p_align` &lt; `0x4000`, or
+- any `GNU_RELRO` end (`VirtAddr + MemSiz`) is not 16 KB aligned (except documented residuals —
+  RN 0.87.1 Maven prebuilts Decision A / #659, plus Fresco/CameraX/ML Kit AAR prebuilts), or
+- for APK inputs, `zipalign -c -P 16 -v 4` fails.
+
+Standalone: `./scripts/check-16kb-alignment.sh path/to/app-release.apk|aab`.
+
+Requires `llvm-readelf` / `readelf` on PATH, or the NDK copy (`llvm-readelf` on Linux,
+`llvm-readelf.exe` under `prebuilt/windows-x86_64/bin` on Windows Git Bash). APK checks
+also need `zipalign` from build-tools 35+ (`zipalign.exe` on Windows; the script probes
+`ANDROID_HOME` / `ANDROID_SDK_ROOT`, then `%LOCALAPPDATA%\Android\Sdk`).
+
+Policy: [`docs/MOBILE_ANDROID_PLATFORM_SUPPORT.md`](../docs/MOBILE_ANDROID_PLATFORM_SUPPORT.md)
+§ *16 KB page-size gate*. Do **not** set `useLegacyPackaging=true` as a workaround.
+
+## `check-third-party-licenses-ci.sh` (license allowlist + snapshot freshness)
+
+`yarn license:ci` → allowlist (`yarn license:check`) then freshness
+(`check-third-party-licenses-freshness.mjs`). CI wires this into
+`.github/workflows/ezkey-mobile-unit-tests.yml` (`js-validate`).
+
+Regenerate the in-app list after dependency changes (or after merging/rebasing onto a
+base that changed `package.json` / `yarn.lock` — CI tests the **merge commit**):
+
+```bash
+yarn install --immutable
+yarn license:android   # only when native Android deps changed (Gradle, or an RN bump)
+yarn license:app-data
+```
+
+`license:app-data` (`generate-third-party-licenses.mjs`) bundles the app with Metro for Android
+and iOS (about a minute) to list the JS packages actually shipped, then merges the native
+exports under `licenses/`, the iOS entries from `ios/Podfile.lock`, and the C/C++ libraries
+compiled into React Native (texts in `licenses/texts/`). Runs on any OS; no `pod install` needed. `license:android` (`export-android-licenses.sh`) runs the
+AboutLibraries Gradle export with JDK 17.
+
+Freshness ignores `generatedAt` only. On failure it prints a concise package-level
+diff (added / removed / version or license changes). See
+[`docs/MOBILE_PLAY_PUBLISHING.md`](../docs/MOBILE_PLAY_PUBLISHING.md) § *In-app third-party
+licenses snapshot*.
 
 ## `run-mobile-churn-no-recovery.ps1`
 
@@ -139,37 +247,17 @@ Notes:
 - Phase 3 fails fast if the campaign enrollment tile is not visible on the phone home screen.
 - Demo Device is used for token bootstrap only; churn execution remains on real phone.
 
-**Agents and maintainers:** use this for a clean debug build on a connected device. It resolves JDK 17/21 (`resolve-android-jdk.sh`), checks `adb` first, uninstalls `org.ezkey.mobile`, runs `gradlew clean installDebug`, and launches the app.
-
-From `ezkey_mobile/`:
-
-```bash
-adb devices -l
-./scripts/build-install-debug-clean.sh
-```
-
-Options:
-
-- `--skip-clean` — install existing `app-debug.apk` only (device reconnected after a long build).
-- `--no-uninstall` — keep data; reinstall over same signature.
-
-Yarn alias: `yarn android:install:debug:clean`.
-
-Before build/install, the script now runs a companion preflight:
-
-- `scripts/preflight-android-path-length.sh` - estimates Windows native object
-  path lengths for known React Native codegen offenders and warns early when
-  MAX_PATH risk is high.
-
 ### Windows path-length caveat (native CMake)
 
 Some React Native native modules can exceed Windows object-path limits during
 `installDebug` (errors such as `Filename longer than 260 characters` or
 `CMAKE_OBJECT_PATH_MAX`).
 
-The script now detects this case and prints a targeted remediation message.
-Preferred fix: run from a shorter workspace root on the same drive (for example
-`C:\\w\\ezkey-worktree2`) and rerun the script.
+`preflight-android-path-length.sh` warns when the Windows path to `ezkey_mobile/`
+is longer than **40** characters (override: `EZKEY_ANDROID_PATH_ROOT_MAX`). Short
+roots such as `C:\w\p\ezkey_mobile` stay quiet. Longer clones under `C:\Users\...`
+are the risky case. The install script also greps the Gradle log for MAX_PATH
+failures and prints remediation.
 
 ## `preflight-android-path-length.sh`
 
@@ -193,7 +281,28 @@ Yarn alias: `yarn android:preflight:path`.
 
 ## `resolve-android-jdk.sh`
 
-Sets `JAVA_HOME` to JDK 17/21 (never JDK 25 from PATH). Probes Android Studio JBR (including `Android Studio1`), `C:\Tools\jdk17`, Microsoft JDK 17, and macOS `java_home`. Override with `EZKEY_ANDROID_JAVA_HOME`.
+Sets `JAVA_HOME` for Android Gradle (never JDK 25 from PATH). **Project standard is JDK 17** (same as CI `actions/setup-java`).
+
+Order: `EZKEY_ANDROID_JAVA_HOME` → macOS `java_home -v 17` → versionless / globbed JDK 17 installs (`C:\Tools\jdk17`, `Program Files\Microsoft\jdk-17*`, Temurin, Linux `/usr/lib/jvm/…`) → Android Studio JBR (17 preferred, else 21). Never picks 21 when a 17 install exists. If it must fall back to JDK 21, it prints a clear stderr warning (how to set `EZKEY_ANDROID_JAVA_HOME`); it does not fail. Do not reintroduce `android/gradle/gradle-daemon-jvm.properties` or Foojay toolchain auto-download — migrating the project to JDK 21 is a separate decision.
+
+## `assert-no-gradle-daemon-jvm.sh`
+
+CI/local guard: fails if `android/gradle/gradle-daemon-jvm.properties` reappears (Android Studio `updateDaemonJvm` / Foojay JDK 21 pin) or if `org.gradle.java.installations.auto-download=true`. Prints removal instructions. `--self-test` proves the negative path (fixture with the forbidden file must fail).
+
+## `run-with-git-bash.mjs`
+
+Yarn entrypoint for `.sh` scripts. On Windows, launches
+`C:\Program Files\Git\bin\bash.exe` (override `EZKEY_GIT_BASH`); never the WSL
+shim at `System32\bash.exe` (that yields exit 127 for these scripts). On
+macOS/Linux, uses `bash` from PATH.
+
+On Windows it prints one stderr line so you can verify the launcher:
+
+```text
+[git-bash] using C:\Program Files\Git\bin\bash.exe
+```
+
+On macOS/Linux the line is printed only when `EZKEY_DEBUG_BASH=1` (or `true`).
 
 ## `dependency-monitor.mjs`
 
@@ -265,7 +374,8 @@ This script is intended as a practical investigation aid, not as a formal crypto
 
 Punctual curated pass — keyword **`mobile-doctor-curated`**.
 
-Runs **react-doctor** + **Semgrep** (Ezkey mobile pack) + **Detekt**, then curates into P1/P2/P3.
+Runs **react-doctor** + **Semgrep** (Ezkey mobile pack, JS/TS + Kotlin + Swift) + **Detekt**, plus
+the iOS lane on macOS (**SwiftLint** curated set + **Periphery**), then curates into P1/P2/P3.
 
 From `ezkey_mobile/`:
 
@@ -274,7 +384,8 @@ yarn doctor:curated
 ./scripts/mobile-doctor-curated.sh
 ```
 
-Optional flags: `--skip-react-doctor`, `--skip-semgrep`, `--skip-detekt`, `--curate-only`.
+Optional flags: `--skip-react-doctor`, `--skip-semgrep`, `--skip-detekt`, `--skip-swiftlint`,
+`--skip-periphery`, `--curate-only`. Periphery reads the index store left by `yarn ios:test`.
 
 Outputs (gitignored under `logs/`):
 

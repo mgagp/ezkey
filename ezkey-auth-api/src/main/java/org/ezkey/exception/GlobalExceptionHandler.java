@@ -9,11 +9,14 @@ package org.ezkey.exception;
 
 import java.net.URI;
 import java.time.OffsetDateTime;
+import java.util.Set;
 import org.ezkey.audit.integrity.AuditChainHeartbeatEvaluation;
 import org.ezkey.audit.integrity.AuditChainHeartbeatGuardService;
 import org.ezkey.exception.audit.AuditChainHeartbeatDegradedException;
+import org.ezkey.exception.auth.AuthAttemptExpiredException;
 import org.ezkey.exception.auth.AuthAttemptRequestFailedException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
+import org.ezkey.exception.auth.AuthRespondRateLimitExceededException;
 import org.ezkey.exception.auth.EnrollmentAlreadyBoundException;
 import org.ezkey.exception.auth.EnrollmentBindingFailedException;
 import org.ezkey.exception.auth.EnrollmentInstanceInfoFailedException;
@@ -22,14 +25,18 @@ import org.ezkey.exception.auth.EnrollmentInvitationExpiredException;
 import org.ezkey.exception.auth.EnrollmentNotAvailableAfterLockException;
 import org.ezkey.exception.auth.EnrollmentVerifyFailedException;
 import org.ezkey.exception.auth.EnrollmentVerifyStateConflictException;
+import org.ezkey.exception.auth.IntegrationSigningUnavailableException;
+import org.ezkey.util.LogSanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -65,14 +72,15 @@ public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
   @ExceptionHandler(NoPendingAuthAttemptException.class)
   public ResponseEntity<Void> handleNoPendingAuthAttempt(
       NoPendingAuthAttemptException ex, WebRequest request) {
-    LOG.debug("No pending auth attempt: {}", request.getDescription(false));
+    LOG.debug(
+        "No pending auth attempt: {}", LogSanitizer.sanitizeForLog(request.getDescription(false)));
     return ResponseEntity.noContent().build();
   }
 
   @ExceptionHandler(EnrollmentBindingFailedException.class)
   public ResponseEntity<ProblemDetail> handleEnrollmentBindingFailed(
       EnrollmentBindingFailedException ex, WebRequest request) {
-    LOG.warn("Enrollment bind rejected: {}", ex.getMessage());
+    LOG.warn("Enrollment bind rejected: {}", LogSanitizer.sanitizeForLog(ex.getMessage()));
     return problemResponse(
         HttpStatus.BAD_REQUEST,
         AuthApiProblemCatalog.TYPE_ENROLLMENT_BINDING_FAILED,
@@ -84,7 +92,7 @@ public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
   @ExceptionHandler(EnrollmentInvitationExpiredException.class)
   public ResponseEntity<ProblemDetail> handleEnrollmentInvitationExpired(
       EnrollmentInvitationExpiredException ex, WebRequest request) {
-    LOG.warn("Enrollment invitation expired: {}", ex.getMessage());
+    LOG.warn("Enrollment invitation expired: {}", LogSanitizer.sanitizeForLog(ex.getMessage()));
     return problemResponse(
         HttpStatus.BAD_REQUEST,
         AuthApiProblemCatalog.TYPE_ENROLLMENT_INVITATION_EXPIRED,
@@ -96,7 +104,8 @@ public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
   @ExceptionHandler(EnrollmentNotAvailableAfterLockException.class)
   public ResponseEntity<ProblemDetail> handleEnrollmentNotAvailableAfterLock(
       EnrollmentNotAvailableAfterLockException ex, WebRequest request) {
-    LOG.warn("Enrollment not available after lock: {}", ex.getMessage());
+    LOG.warn(
+        "Enrollment not available after lock: {}", LogSanitizer.sanitizeForLog(ex.getMessage()));
     return problemResponse(
         HttpStatus.BAD_REQUEST,
         AuthApiProblemCatalog.TYPE_ENROLLMENT_NOT_AVAILABLE,
@@ -108,7 +117,7 @@ public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
   @ExceptionHandler(EnrollmentIntegrationNotFoundException.class)
   public ResponseEntity<ProblemDetail> handleEnrollmentIntegrationNotFound(
       EnrollmentIntegrationNotFoundException ex, WebRequest request) {
-    LOG.error("Enrollment integration missing: {}", ex.getMessage());
+    LOG.error("Enrollment integration missing: {}", LogSanitizer.sanitizeForLog(ex.getMessage()));
     return problemResponse(
         HttpStatus.NOT_FOUND,
         AuthApiProblemCatalog.TYPE_ENROLLMENT_INTEGRATION_NOT_FOUND,
@@ -120,7 +129,7 @@ public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
   @ExceptionHandler(EnrollmentAlreadyBoundException.class)
   public ResponseEntity<ProblemDetail> handleEnrollmentAlreadyBound(
       EnrollmentAlreadyBoundException ex, WebRequest request) {
-    LOG.warn("Enrollment already bound: {}", ex.getMessage());
+    LOG.warn("Enrollment already bound: {}", LogSanitizer.sanitizeForLog(ex.getMessage()));
     return problemResponse(
         HttpStatus.CONFLICT,
         AuthApiProblemCatalog.TYPE_ENROLLMENT_ALREADY_BOUND,
@@ -132,7 +141,7 @@ public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
   @ExceptionHandler(EnrollmentVerifyFailedException.class)
   public ResponseEntity<ProblemDetail> handleEnrollmentVerifyFailed(
       EnrollmentVerifyFailedException ex, WebRequest request) {
-    LOG.warn("Enrollment verify failed: {}", ex.getMessage());
+    LOG.warn("Enrollment verify failed: {}", LogSanitizer.sanitizeForLog(ex.getMessage()));
     return problemResponse(
         HttpStatus.BAD_REQUEST,
         AuthApiProblemCatalog.TYPE_ENROLLMENT_VERIFY_FAILED,
@@ -144,7 +153,7 @@ public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
   @ExceptionHandler(EnrollmentInstanceInfoFailedException.class)
   public ResponseEntity<ProblemDetail> handleEnrollmentInstanceInfoFailed(
       EnrollmentInstanceInfoFailedException ex, WebRequest request) {
-    LOG.warn("Enrollment instance-info rejected: {}", ex.getMessage());
+    LOG.warn("Enrollment instance-info rejected: {}", LogSanitizer.sanitizeForLog(ex.getMessage()));
     return problemResponse(
         HttpStatus.BAD_REQUEST,
         AuthApiProblemCatalog.TYPE_ENROLLMENT_INSTANCE_INFO_FAILED,
@@ -156,7 +165,7 @@ public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
   @ExceptionHandler(EnrollmentVerifyStateConflictException.class)
   public ResponseEntity<ProblemDetail> handleEnrollmentVerifyStateConflict(
       EnrollmentVerifyStateConflictException ex, WebRequest request) {
-    LOG.warn("Enrollment verify conflict: {}", ex.getMessage());
+    LOG.warn("Enrollment verify conflict: {}", LogSanitizer.sanitizeForLog(ex.getMessage()));
     return problemResponse(
         HttpStatus.CONFLICT,
         AuthApiProblemCatalog.TYPE_ENROLLMENT_STATE_CONFLICT,
@@ -168,7 +177,7 @@ public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
   @ExceptionHandler(AuthAttemptRequestFailedException.class)
   public ResponseEntity<ProblemDetail> handleAuthAttemptRequestFailed(
       AuthAttemptRequestFailedException ex, WebRequest request) {
-    LOG.warn("Auth attempt request failed: {}", ex.getMessage());
+    LOG.warn("Auth attempt request failed: {}", LogSanitizer.sanitizeForLog(ex.getMessage()));
     return problemResponse(
         HttpStatus.BAD_REQUEST,
         AuthApiProblemCatalog.TYPE_AUTH_ATTEMPT_BINDING_FAILED,
@@ -177,15 +186,69 @@ public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
         pathFrom(request));
   }
 
+  /**
+   * Unified 409 for respond not-found / PENDING / terminal (#844 Marc m1). Exception message is
+   * logged for server diagnosis; client receives a stable catalog detail only. Wall-clock expiry
+   * uses {@link #handleAuthAttemptExpired} (#895).
+   */
   @ExceptionHandler(AuthAttemptStateConflictException.class)
   public ResponseEntity<ProblemDetail> handleAuthAttemptStateConflict(
       AuthAttemptStateConflictException ex, WebRequest request) {
-    LOG.warn("Auth attempt state conflict: {}", ex.getMessage());
+    LOG.warn("Auth attempt state conflict: {}", LogSanitizer.sanitizeForLog(ex.getMessage()));
     return problemResponse(
         HttpStatus.CONFLICT,
         AuthApiProblemCatalog.TYPE_AUTH_ATTEMPT_STATE_CONFLICT,
         AuthApiProblemCatalog.TITLE_CONFLICT,
         AuthApiProblemCatalog.DETAIL_AUTH_ATTEMPT_STATE_CONFLICT,
+        pathFrom(request));
+  }
+
+  /**
+   * Empty-body 429 when the post-ownership per-id respond budget is exhausted (#912 C1). Same
+   * surface as the servlet filter rate-limit response.
+   */
+  @ExceptionHandler(AuthRespondRateLimitExceededException.class)
+  public ResponseEntity<Void> handleAuthRespondRateLimitExceeded(
+      AuthRespondRateLimitExceededException ex, WebRequest request) {
+    LOG.warn(
+        "Respond rate limit after ownership: path={} retryAfter={}",
+        LogSanitizer.sanitizeForLog(pathFrom(request)),
+        ex.getRetryAfterSeconds());
+    return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+        .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getRetryAfterSeconds()))
+        .build();
+  }
+
+  /**
+   * 409 when respond arrives at or after {@code expiresAt} (#895). Typed separately from state
+   * conflict so clients can show an expired message.
+   */
+  @ExceptionHandler(AuthAttemptExpiredException.class)
+  public ResponseEntity<ProblemDetail> handleAuthAttemptExpired(
+      AuthAttemptExpiredException ex, WebRequest request) {
+    LOG.warn("Auth attempt expired: {}", LogSanitizer.sanitizeForLog(ex.getMessage()));
+    return problemResponse(
+        HttpStatus.CONFLICT,
+        AuthApiProblemCatalog.TYPE_AUTH_ATTEMPT_EXPIRED,
+        AuthApiProblemCatalog.TITLE_CONFLICT,
+        AuthApiProblemCatalog.DETAIL_AUTH_ATTEMPT_EXPIRED,
+        pathFrom(request));
+  }
+
+  /**
+   * Per-enrollment integration private key missing or blank when a signed respond body is required
+   * (#844). Runtime HTTP 503 — never an unsigned 200. There is no JVM startup check for these keys
+   * (they are stored per enrollment); the respond transaction rolls back on this exception.
+   */
+  @ExceptionHandler(IntegrationSigningUnavailableException.class)
+  public ResponseEntity<ProblemDetail> handleIntegrationSigningUnavailable(
+      IntegrationSigningUnavailableException ex, WebRequest request) {
+    LOG.error("Integration signing unavailable: {}", LogSanitizer.sanitizeForLog(ex.getMessage()));
+    return problemResponse(
+        HttpStatus.SERVICE_UNAVAILABLE,
+        AuthApiProblemCatalog.TYPE_INTEGRATION_SIGNING_UNAVAILABLE,
+        AuthApiProblemCatalog.TITLE_SERVICE_UNAVAILABLE,
+        AuthApiProblemCatalog.DETAIL_INTEGRATION_SIGNING_UNAVAILABLE,
         pathFrom(request));
   }
 
@@ -205,7 +268,7 @@ public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
   @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
   public ResponseEntity<ProblemDetail> handleNoResourceFoundException(
       org.springframework.web.servlet.resource.NoResourceFoundException ex, WebRequest request) {
-    LOG.debug("No resource: {}", pathFrom(request));
+    LOG.debug("No resource: {}", LogSanitizer.sanitizeForLog(pathFrom(request)));
     return problemResponse(
         HttpStatus.NOT_FOUND,
         AuthApiProblemCatalog.TYPE_RESOURCE_NOT_FOUND,
@@ -221,7 +284,10 @@ public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
   @ExceptionHandler(NoHandlerFoundException.class)
   public ResponseEntity<ProblemDetail> handleNoHandlerFoundException(
       NoHandlerFoundException ex, WebRequest request) {
-    LOG.debug("No handler: {} {}", ex.getHttpMethod(), ex.getRequestURL());
+    LOG.debug(
+        "No handler: {} {}",
+        LogSanitizer.sanitizeForLog(ex.getHttpMethod()),
+        LogSanitizer.sanitizeForLog(ex.getRequestURL()));
     return problemResponse(
         HttpStatus.NOT_FOUND,
         AuthApiProblemCatalog.TYPE_RESOURCE_NOT_FOUND,
@@ -230,10 +296,38 @@ public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
         pathFrom(request));
   }
 
+  /**
+   * Unsupported verb on a mapped path. Must be handled before {@link #handleGenericException} so
+   * scanners cannot flood ERROR logs or inflate 5xx metrics.
+   */
+  @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+  public ResponseEntity<ProblemDetail> handleHttpRequestMethodNotSupported(
+      HttpRequestMethodNotSupportedException ex, WebRequest request) {
+    LOG.debug(
+        "Method not allowed: {} {}",
+        LogSanitizer.sanitizeForLog(ex.getMethod()),
+        LogSanitizer.sanitizeForLog(pathFrom(request)));
+    ResponseEntity<ProblemDetail> response =
+        problemResponse(
+            HttpStatus.METHOD_NOT_ALLOWED,
+            AuthApiProblemCatalog.TYPE_METHOD_NOT_ALLOWED,
+            AuthApiProblemCatalog.TITLE_METHOD_NOT_ALLOWED,
+            AuthApiProblemCatalog.DETAIL_METHOD_NOT_ALLOWED,
+            pathFrom(request));
+    Set<HttpMethod> allowed = ex.getSupportedHttpMethods();
+    if (allowed == null || allowed.isEmpty()) {
+      return response;
+    }
+    return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
+        .headers(response.getHeaders())
+        .allow(allowed.toArray(HttpMethod[]::new))
+        .body(response.getBody());
+  }
+
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<ProblemDetail> handleMethodArgumentNotValid(
       MethodArgumentNotValidException ex, WebRequest request) {
-    LOG.warn("Validation failed: {}", ex.getMessage());
+    LOG.warn("Validation failed: {}", LogSanitizer.sanitizeForLog(ex.getMessage()));
     return problemResponse(
         HttpStatus.BAD_REQUEST,
         AuthApiProblemCatalog.TYPE_VALIDATION_FAILED,
@@ -245,7 +339,7 @@ public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
   @ExceptionHandler(HttpMessageNotReadableException.class)
   public ResponseEntity<ProblemDetail> handleHttpMessageNotReadable(
       HttpMessageNotReadableException ex, WebRequest request) {
-    LOG.warn("Unreadable message: {}", ex.getMessage());
+    LOG.warn("Unreadable message: {}", LogSanitizer.sanitizeForLog(ex.getMessage()));
     return problemResponse(
         HttpStatus.BAD_REQUEST,
         AuthApiProblemCatalog.TYPE_INVALID_REQUEST_BODY,
@@ -261,7 +355,7 @@ public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
   @ExceptionHandler(IllegalArgumentException.class)
   public ResponseEntity<ProblemDetail> handleLegacyIllegalArgument(
       IllegalArgumentException ex, WebRequest request) {
-    LOG.warn("Illegal argument (legacy): {}", ex.getMessage());
+    LOG.warn("Illegal argument (legacy): {}", LogSanitizer.sanitizeForLog(ex.getMessage()));
     return problemResponse(
         HttpStatus.BAD_REQUEST,
         AuthApiProblemCatalog.TYPE_VALIDATION_FAILED,
@@ -277,7 +371,7 @@ public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
   @ExceptionHandler(IllegalStateException.class)
   public ResponseEntity<ProblemDetail> handleLegacyIllegalState(
       IllegalStateException ex, WebRequest request) {
-    LOG.warn("Illegal state (legacy): {}", ex.getMessage());
+    LOG.warn("Illegal state (legacy): {}", LogSanitizer.sanitizeForLog(ex.getMessage()));
     return problemResponse(
         HttpStatus.CONFLICT,
         AuthApiProblemCatalog.TYPE_AUTH_ATTEMPT_STATE_CONFLICT,
@@ -295,7 +389,7 @@ public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
         "Auth API 503 heartbeat-degraded (path={}, phase={}, anchorCheckpointId={},"
             + " latestWindowEnd={}, stalePhaseStartsAt={}, failClosedNotBefore={},"
             + " problemType=https://ezkey.io/problems/system/audit-chain-heartbeat-degraded)",
-        path,
+        LogSanitizer.sanitizeForLog(path),
         ev.phase(),
         ev.anchorCheckpointId(),
         ev.latestWindowEnd(),

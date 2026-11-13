@@ -5,7 +5,7 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Configuration: EvaluatorSelfRegistrationProperties
- * Description: Installation-scoped settings for anonymous EXP1 evaluator self-registration.
+ * Description: Installation-scoped settings for anonymous evaluator self-registration.
  */
 
 package org.ezkey.admin.config;
@@ -16,6 +16,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * Configuration for anonymous evaluator self-registration on experimental preview instances.
  *
  * <p>When {@code enabled} is {@code false}, the public signup endpoint responds with HTTP 404.
+ *
+ * <p>URL fields intentionally have <b>no product default hostname</b>. When {@code enabled=true},
+ * startup fails unless {@code admin-ui-url} and {@code guided-tour-url} are set via environment or
+ * overlay (fail-closed). See {@link EvaluatorSelfRegistrationStartupValidator}.
  *
  * <p><b>Configuration prefix:</b> {@code ezkey.evaluator.self-registration}
  */
@@ -28,11 +32,19 @@ public class EvaluatorSelfRegistrationProperties {
 
   private int perIpWindowHours = 24;
 
-  private int perIpMaxSuccess = 1;
+  private int perIpMaxSuccess = 3;
 
-  private String adminUiUrl = "https://exp1-admin-ui.ezkey.org";
+  /** Admin UI origin returned after signup; empty until set for a live surface. */
+  private String adminUiUrl = "";
 
-  private String guidedTourUrl = "https://ezkey.org/exp1-guided-tour.html";
+  /** Guided tour URL returned after signup; empty until set for a live surface. */
+  private String guidedTourUrl = "";
+
+  /**
+   * Absolute TTL in hours for {@code EVALUATOR_TEMP} temporary console sessions (Mode C). Only
+   * meaningful when {@link #enabled} is {@code true}. Default 8 hours.
+   */
+  private int temporarySessionTtlHours = 8;
 
   public boolean isEnabled() {
     return enabled;
@@ -80,5 +92,13 @@ public class EvaluatorSelfRegistrationProperties {
 
   public void setGuidedTourUrl(String guidedTourUrl) {
     this.guidedTourUrl = guidedTourUrl;
+  }
+
+  public int getTemporarySessionTtlHours() {
+    return temporarySessionTtlHours;
+  }
+
+  public void setTemporarySessionTtlHours(int temporarySessionTtlHours) {
+    this.temporarySessionTtlHours = temporarySessionTtlHours;
   }
 }

@@ -1,7 +1,7 @@
 import { lazy } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { RouteErrorBoundary } from '@/components/route-error-boundary';
-import { ProtectedRoute, RootLayout, SuspensePage } from '@/route-shells';
+import { GlobalAdminRoute, ProtectedRoute, RootLayout, SuspensePage } from '@/route-shells';
 
 const LoginPage = lazy(() => import('@/pages/login'));
 const DashboardPage = lazy(() => import('@/pages/dashboard'));
@@ -14,6 +14,7 @@ const EnrollmentDetailPage = lazy(() => import('@/pages/enrollment-detail'));
 const AdminsPage = lazy(() => import('@/pages/admins'));
 const AuthAttemptsPage = lazy(() => import('@/pages/auth-attempts'));
 const AuditLogsPage = lazy(() => import('@/pages/audit-logs'));
+const IntegrityPage = lazy(() => import('@/pages/integrity'));
 const AlertsPage = lazy(() => import('@/pages/alerts'));
 const AlertDetailPage = lazy(() => import('@/pages/alert-detail'));
 const ApiKeysPage = lazy(() => import('@/pages/api-keys'));
@@ -52,21 +53,21 @@ export const router = createBrowserRouter([
   {
     path: '/tenants',
     element: (
-      <ProtectedRoute>
+      <GlobalAdminRoute>
         <SuspensePage>
           <TenantsPage />
         </SuspensePage>
-      </ProtectedRoute>
+      </GlobalAdminRoute>
     ),
   },
   {
     path: '/tenants/:id',
     element: (
-      <ProtectedRoute>
+      <GlobalAdminRoute>
         <SuspensePage>
           <TenantDetailPage />
         </SuspensePage>
-      </ProtectedRoute>
+      </GlobalAdminRoute>
     ),
   },
   {
@@ -130,23 +131,33 @@ export const router = createBrowserRouter([
     ),
   },
   {
+    path: '/integrity',
+    element: (
+      <GlobalAdminRoute>
+        <SuspensePage>
+          <IntegrityPage />
+        </SuspensePage>
+      </GlobalAdminRoute>
+    ),
+  },
+  {
     path: '/alerts',
     element: (
-      <ProtectedRoute>
+      <GlobalAdminRoute>
         <SuspensePage>
           <AlertsPage />
         </SuspensePage>
-      </ProtectedRoute>
+      </GlobalAdminRoute>
     ),
   },
   {
     path: '/alerts/:alertId',
     element: (
-      <ProtectedRoute>
+      <GlobalAdminRoute>
         <SuspensePage>
           <AlertDetailPage />
         </SuspensePage>
-      </ProtectedRoute>
+      </GlobalAdminRoute>
     ),
   },
   {
@@ -182,11 +193,11 @@ export const router = createBrowserRouter([
   {
     path: '/encryption-keys',
     element: (
-      <ProtectedRoute>
+      <GlobalAdminRoute>
         <SuspensePage>
           <EncryptionKeysPage />
         </SuspensePage>
-      </ProtectedRoute>
+      </GlobalAdminRoute>
     ),
   },
 

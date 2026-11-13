@@ -126,7 +126,7 @@ public void setUp() {
 
 ### GlobalAdmin Cache Files
 
-- **`.ezkey-test/bootstrap-credentials.json`**: Extracted from Docker logs; reused across runs
+- **`.ezkey-test/bootstrap-credentials.json`**: Loaded from the `bootstrap-artifacts` volume file (preferred) or parsed from Admin API logs (bind material only); reused across runs. Recovery codes come from the volume file, not logs.
   - Contains: enrollmentId, enrollmentProofToken, enrollmentChallengeCode, recoveryCodes
   - Created by: `BootstrapCredentialsExtractor.extractCredentials()`
   - Reused: For all bootstrap and token creation operations
@@ -174,7 +174,7 @@ Forces a fresh bootstrap (useful after a Docker reset, or to validate bootstrap 
 
 ### BootstrapCredentialsExtractionTest
 
-Extracts bootstrap credentials from Docker logs (useful when diagnosing extraction issues).
+Extracts bootstrap credentials from the Docker volume file (preferred) or Admin API logs (useful when diagnosing extraction issues).
 
 **Use cases:**
 - Diagnose credential extraction problems

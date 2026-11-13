@@ -1,0 +1,753 @@
+# Aggregate CI for Admin UI, Java backend, mobile, and the Python CLI.
+#
+# Path-filtered jobs avoid wasted runners; a final always-running `ci-gate` job
+# is the single check intended to become required on `main` (no "Expected —
+# waiting" on unrelated PRs). A change to this file runs every job; a change to
+# a reusable workflow runs only the job that calls it.
+# workflow_dispatch always runs every suite (never an empty green gate).
+#
+# Proportionality (2026-11-02): heavy jobs (Android 16 KB release build, iOS
+# simulator XCTest, HA load-balancer smoke, PAM) run on pull requests, where they
+# gate the change, but not again on the push to main right after the merge. The
+# nightly schedule runs every suite on main instead, and does nothing when main
+# had no commit in the last 24 h.
+#
+# Playwright Admin UI browser tests need a live Docker stack — not a PR gate.
+name: CI
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+  schedule:
+    # Nightly full run on main (UTC 07:23, ~03:23 Montreal). No-op without new commits.
+    - cron: "23 7 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  changes:
+    name: changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      admin-ui: ${{ steps.resolve.outputs.admin-ui }}
+      backend: ${{ steps.resolve.outputs.backend }}
+      mobile: ${{ steps.resolve.outputs.mobile }}
+      mobile-ios: ${{ steps.resolve.outputs.mobile-ios }}
+      cli-python: ${{ steps.resolve.outputs.cli-python }}
+      ezkey-pam: ${{ steps.resolve.outputs.ezkey-pam }}
+      lightsail: ${{ steps.resolve.outputs.lightsail }}
+      dart-sdk: ${{ steps.resolve.outputs.dart-sdk }}
+      ezkey-jenkins: ${{ steps.resolve.outputs.ezkey-jenkins }}
+      connectors: ${{ steps.resolve.outputs.connectors }}
+      quality-gate: ${{ steps.resolve.outputs.quality-gate }}
+      workflows: ${{ steps.resolve.outputs.workflows }}
+      heavy: ${{ steps.resolve.outputs.heavy }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Detect changed paths
+        id: filter
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        with:
+          filters: |
+            # Only this file: a reusable workflow is listed under its own job's filter.
+            workflows:
+              - '.github/workflows/ci.yml'
+            admin-ui:
+              - 'ezkey-admin-ui/**'
+              - 'specs/**'
+            backend:
+              - 'pom.xml'
+              - 'checkstyle-config/**'
+              - 'ezkey-core/**'
+              - 'ezkey-core-security/**'
+              - 'ezkey-migration/**'
+              - 'ezkey-admin-api/**'
+              - 'ezkey-auth-api/**'
+              - 'ezkey-integration-api/**'
+              - 'ezkey-crypto-api/**'
+              - 'ezkey-sdk/java/**'
+              - 'ezkey-demo-app-acme/**'
+              - 'ezkey-demo-device/**'
+              - 'ezkey-tests/**'
+              - 'ezkey-connectors/**'
+              - 'sites/ezkey-org/js/**'
+              - 'sites/ezkey-org/community-signup.html'
+              - 'sites/ezkey-org/fr/community-signup.html'
+              - 'docker/demo-app-acme-entrypoint.sh'
+              - 'docker/bootstrap-init/**'
+              - 'scripts/build.sh'
+              - 'scripts/update-specs.sh'
+              - 'scripts/sync-ezkey-org-api-specs.sh'
+              - 'scripts/check-ezkey-org-api-specs.sh'
+              - 'sites/ezkey-org/api-specs/**'
+              - 'docker/Dockerfile'
+              - 'docker/**'
+              - 'scripts/ci-ha-lb-smoke.sh'
+              - 'scripts/ci-ha-lb-smoke.test.sh'
+              - 'scripts/lib/ci-ha-lb-smoke-lib.sh'
+              - 'scripts/db/verify-grants.sh'
+              - 'scripts/db/verify-grants.test.sh'
+              - 'scripts/issue-response-reminder.sh'
+              - 'scripts/issue-response-reminder.test.sh'
+              - 'specs/**'
+              - '.mvn/**'
+              - 'THIRD-PARTY.txt'
+              - 'src/license/**'
+            quality-gate:
+              - 'scripts/quality-gate.sh'
+              - 'scripts/quality-gate-*.sh'
+              - 'scripts/quality-gate-*.mjs'
+              - 'scripts/lib/quality-gate-*.mjs'
+              - 'scripts/lib/quality-gate-*.sh'
+              - 'config/quality-gate/**'
+            mobile:
+              - 'ezkey_mobile/**'
+              - '.github/workflows/ezkey-mobile-unit-tests.yml'
+            # iOS native surface only (macOS runner); JS-only changes do not need it.
+            mobile-ios:
+              - 'ezkey_mobile/ios/**'
+              - 'ezkey_mobile/package.json'
+              - 'ezkey_mobile/yarn.lock'
+              - 'ezkey_mobile/Gemfile'
+              - 'ezkey_mobile/Gemfile.lock'
+              - 'ezkey_mobile/scripts/ios-*.sh'
+              - '.github/workflows/ezkey-mobile-ios.yml'
+            cli-python:
+              - 'ezkey-cli-python/**'
+            ezkey-pam:
+              - 'ezkey-pam/**'
+            lightsail:
+              - 'scripts/lightsail/**'
+              - 'scripts/cloudflare/deploy-admin-ui-production.sh'
+              - 'scripts/cloudflare/deploy-admin-ui-preview.sh'
+              - 'scripts/ops/verify-javamelody-non-exposure.sh'
+              - 'scripts/ops/verify-javamelody-non-exposure.test.sh'
+              - 'scripts/ops/check-local-mgmt-port-publish.sh'
+              - 'scripts/ops/check-local-mgmt-port-publish.test.sh'
+              - 'scripts/ops/check-ezkey-online-hosts.sh'
+              - 'scripts/ops/check-ezkey-online-hosts.test.sh'
+              - 'experimental-hybrid/scripts/export-backend-images-to-lightsail.sh'
+              - 'experimental-hybrid/scripts/full-exp-environment-upgrade.sh'
+              - 'experimental-hybrid/lightsail/docker-compose.yml'
+              - 'experimental-hybrid/lightsail/docker-compose.connector-smtp.yml'
+              - 'docker/docker-compose.yml'
+              - 'docker/docker-compose.docker-dev.yml'
+              - 'docs/lightsail/**'
+              - 'docs/LOCAL_STACK_PORTS.md'
+            dart-sdk:
+              - 'ezkey_dart/**'
+            ezkey-jenkins:
+              - 'ezkey-jenkins/**'
+            connectors:
+              - 'ezkey-connectors/**'
+              - 'ezkey-admin-api/src/main/java/org/ezkey/admin/connector/**'
+              - 'ezkey-admin-api/src/main/java/org/ezkey/admin/controller/EnrollmentQrDeliveryController.java'
+              - 'ezkey-admin-api/src/main/java/org/ezkey/admin/config/AdminOpenInViewConfig.java'
+              - 'ezkey-tests/src/test/java/org/ezkey/tests/connector/**'
+              - 'docker/docker-compose.connector-mock.yml'
+              - 'docker/docker-compose.connector-smtp.yml'
+              - 'scripts/ci-connector-scenarios.sh'
+
+      # Manual and nightly runs must exercise every suite; path filters alone would
+      # skip all and leave ci-gate green with nothing checked.
+      - name: Resolve path outputs
+        id: resolve
+        run: |
+          set -euo pipefail
+          event="${{ github.event_name }}"
+          # Heavy jobs are skipped only on the post-merge push (the PR already ran them).
+          if [[ "$event" == "push" ]]; then
+            echo "heavy=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "heavy=true" >> "$GITHUB_OUTPUT"
+          fi
+          if [[ "$event" == "schedule" ]] &&
+            (( $(date +%s) - $(git log -1 --format=%ct) > 86400 )); then
+            for suite in admin-ui backend mobile mobile-ios cli-python ezkey-pam lightsail \
+              dart-sdk ezkey-jenkins connectors quality-gate workflows; do
+              echo "$suite=false" >> "$GITHUB_OUTPUT"
+            done
+            echo "Nightly: no commit on main in the last 24 h, nothing to run"
+          elif [[ "$event" == "workflow_dispatch" || "$event" == "schedule" ]]; then
+            echo "admin-ui=true" >> "$GITHUB_OUTPUT"
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+            echo "mobile=true" >> "$GITHUB_OUTPUT"
+            echo "mobile-ios=true" >> "$GITHUB_OUTPUT"
+            echo "cli-python=true" >> "$GITHUB_OUTPUT"
+            echo "ezkey-pam=true" >> "$GITHUB_OUTPUT"
+            echo "lightsail=true" >> "$GITHUB_OUTPUT"
+            echo "dart-sdk=true" >> "$GITHUB_OUTPUT"
+            echo "ezkey-jenkins=true" >> "$GITHUB_OUTPUT"
+            echo "connectors=true" >> "$GITHUB_OUTPUT"
+            echo "quality-gate=true" >> "$GITHUB_OUTPUT"
+            echo "workflows=true" >> "$GITHUB_OUTPUT"
+            echo "Forced all suites ($event)"
+          else
+            echo "admin-ui=${{ steps.filter.outputs.admin-ui }}" >> "$GITHUB_OUTPUT"
+            echo "backend=${{ steps.filter.outputs.backend }}" >> "$GITHUB_OUTPUT"
+            echo "mobile=${{ steps.filter.outputs.mobile }}" >> "$GITHUB_OUTPUT"
+            echo "mobile-ios=${{ steps.filter.outputs.mobile-ios }}" >> "$GITHUB_OUTPUT"
+            echo "cli-python=${{ steps.filter.outputs.cli-python }}" >> "$GITHUB_OUTPUT"
+            echo "ezkey-pam=${{ steps.filter.outputs.ezkey-pam }}" >> "$GITHUB_OUTPUT"
+            echo "lightsail=${{ steps.filter.outputs.lightsail }}" >> "$GITHUB_OUTPUT"
+            echo "dart-sdk=${{ steps.filter.outputs.dart-sdk }}" >> "$GITHUB_OUTPUT"
+            echo "ezkey-jenkins=${{ steps.filter.outputs.ezkey-jenkins }}" >> "$GITHUB_OUTPUT"
+            echo "connectors=${{ steps.filter.outputs.connectors }}" >> "$GITHUB_OUTPUT"
+            echo "quality-gate=${{ steps.filter.outputs.quality-gate }}" >> "$GITHUB_OUTPUT"
+            echo "workflows=${{ steps.filter.outputs.workflows }}" >> "$GITHUB_OUTPUT"
+          fi
+
+  admin-ui:
+    name: admin-ui
+    needs: changes
+    if: needs.changes.outputs.admin-ui == 'true' || needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: ezkey-admin-ui
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Assert Admin UI OpenAPI copy matches specs/
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          CANON=specs/admin-api/openapi-spec.json
+          COPY=ezkey-admin-ui/openapi-spec.json
+          if ! cmp -s "$CANON" "$COPY"; then
+            echo "::error::OpenAPI copies diverge: $COPY differs from $CANON. Refresh with ./scripts/update-specs.sh --admin-only against a live stack (CI does not regenerate the spec from the running API)."
+            exit 1
+          fi
+          echo "OK: $COPY matches $CANON"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7 — Node from root .nvmrc (24 LTS)
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+          cache-dependency-path: ezkey-admin-ui/package-lock.json
+
+      - name: Confirm Node 24 (from .nvmrc)
+        run: |
+          node -v
+          node -e "const maj=Number(process.versions.node.split('.')[0]); if(maj!==24){console.error('Need Node 24 from root .nvmrc, got',process.versions.node); process.exit(1)}"
+
+      - name: Install dependencies
+        run: npm ci
+
+      # src/generated/ is gitignored; Orval reads committed openapi-spec.json (offline).
+      - name: Generate Orval API client
+        run: npm run generate:api
+
+      - name: Typecheck
+        run: npx tsc -b
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests (Vitest)
+        run: npm test
+
+      - name: Production build
+        run: npx vite build
+
+      - name: Assert no demo strings in production build
+        run: bash scripts/assert-no-demo-in-build.sh dist
+
+  backend:
+    name: backend
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # #833: OpenAPI consumers must not use git symlinks (Windows core.symlinks=false).
+      - name: Fail if git symlinks (mode 120000) are present
+        run: |
+          set -euo pipefail
+          if git ls-files -s | awk '$1 == "120000" { found=1; print } END { exit found ? 1 : 0 }'; then
+            echo "OK: no git symlinks (mode 120000)"
+          else
+            echo "::error::git symlinks (mode 120000) are forbidden. Point generators at specs/ or use a physical copy (#833)."
+            exit 1
+          fi
+
+      # #977: ezkey.org ReDoc portal copies must match canonical specs/.
+      - name: Assert ezkey.org API portal OpenAPI copies match specs/
+        run: bash scripts/check-ezkey-org-api-specs.sh
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Confirm JDK 25
+        run: |
+          java -version
+          test "$(java -XshowSettings:properties -version 2>&1 | sed -n 's/.*java.specification.version = //p')" = "25"
+
+      # Mirror scripts/build.sh for CI: checkstyle-config first, spotless:check (not apply),
+      # then Checkstyle, full-reactor install (so ezkey-tests compiles), unit tests excluding
+      # ezkey-tests (needs the Docker stack).
+      - name: Install checkstyle-config
+        run: mvn -B -ntp -pl checkstyle-config install -DskipTests
+
+      - name: Spotless check
+        run: mvn -B -ntp spotless:check
+
+      - name: Checkstyle
+        run: mvn -B -ntp checkstyle:check
+
+      - name: Build full reactor (skip tests)
+        run: mvn -B -ntp clean install -DskipTests
+
+      - name: Unit tests (H2; exclude ezkey-tests)
+        run: mvn -B -ntp test -pl '!ezkey-tests'
+
+      - name: Bootstrap-init idempotency (null-token / disabled → exit 0)
+        run: bash docker/bootstrap-init/bootstrap-init-idempotent-test.sh
+
+      # HA LB smoke unit tests stay on backend; quality-gate HA/secrets live in the
+      # dedicated quality-gate job (Patrick #904 — not buried in Maven).
+      - name: HA LB smoke probe retry unit tests (#905 Patrick M2)
+        run: bash scripts/ci-ha-lb-smoke.test.sh
+
+      # #1121: role passwords stay off docker exec argv; catalog mode fails closed.
+      - name: verify-grants credential and catalog locks (#1121)
+        run: bash scripts/db/verify-grants.test.sh
+
+      # 14-day first-response reminder: who is waiting, day 7 / day 12, no write on dry-run.
+      - name: Issue response reminder selection (#1275)
+        run: bash scripts/issue-response-reminder.test.sh
+
+      # Lot B (code-scanning 2026-10-13): signup URL allowlist + ACME DOM XSS text rendering.
+      - name: Community-signup URL allowlist + ACME biz-status XSS tests
+        run: |
+          node --test sites/ezkey-org/js/community-signup-urls.test.mjs
+          node --test ezkey-demo-app-acme/src/test/js/biz-status.test.mjs
+
+      - name: Servlet session cookie name guard (#799)
+        run: node --test scripts/lib/session-cookie-names.test.mjs
+
+      - name: Upload Surefire reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: backend-surefire-reports
+          path: |
+            **/target/surefire-reports/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # Product SemVer alignment (ADR-0017 / #1211 step 2). Always runs so npm / SDK /
+  # Android / Jenkins SDK pins cannot drift from the parent POM revision.
+  version-alignment:
+    name: version-alignment
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Assert versioned artifacts match parent POM
+        run: bash scripts/check-version-alignment.sh
+
+      - name: Version-alignment helper unit tests
+        run: bash scripts/check-version-alignment.test.sh
+
+  # Drift gate for committed root THIRD-PARTY.txt. Generation is profile-only
+  # (`mvn -Plicenses generate-resources`); never part of the default build.
+  licenses-drift:
+    name: licenses-drift
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: maven
+
+      # generate-resources walks the multi-module reactor; child modules need
+      # reactor jars installed. The licenses profile itself skips Checkstyle.
+      - name: Install reactor (warm jars for generate-resources)
+        run: mvn -B -ntp -Pno-checkstyle -DskipTests install
+
+      - name: Regenerate THIRD-PARTY.txt and fail on drift
+        run: |
+          set -euo pipefail
+          mvn -B -ntp -Plicenses -DskipTests generate-resources
+          if ! git diff --exit-code THIRD-PARTY.txt; then
+            echo "::error::THIRD-PARTY.txt drifted. Regenerate with: mvn -Plicenses generate-resources"
+            exit 1
+          fi
+
+  # Live HA stack smoke: catch management bind regressions that unit tests miss (#905).
+  ha-smoke:
+    name: ha-smoke
+    needs: changes
+    if: >-
+      (needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true')
+      && needs.changes.outputs.heavy == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: HA load-balancer smoke (#905)
+        run: bash scripts/ci-ha-lb-smoke.sh
+
+  mobile:
+    name: mobile
+    needs: changes
+    if: needs.changes.outputs.mobile == 'true' || needs.changes.outputs.workflows == 'true'
+    # Reusable workflow: JS validate + Android JVM tests + 16 KB alignment gate.
+    uses: ./.github/workflows/ezkey-mobile-unit-tests.yml
+    with:
+      run-heavy: ${{ needs.changes.outputs.heavy == 'true' }}
+
+  mobile-ios:
+    name: mobile-ios
+    needs: changes
+    if: >-
+      (needs.changes.outputs.mobile-ios == 'true' || needs.changes.outputs.workflows == 'true')
+      && needs.changes.outputs.heavy == 'true'
+    # Reusable workflow (macos-26): Swift lint + simulator build + XCTest.
+    uses: ./.github/workflows/ezkey-mobile-ios.yml
+
+  cli-python:
+    name: cli-python
+    needs: changes
+    if: needs.changes.outputs.cli-python == 'true' || needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        # Floor + latest line released ≥ 3 months (see major-upgrades Python policy).
+        python-version: ["3.12", "3.14"]
+    defaults:
+      run:
+        working-directory: ezkey-cli-python
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: |
+            ezkey-cli-python/setup.py
+            ezkey-cli-python/requirements.txt
+            ezkey-cli-python/requirements-test.txt
+
+      - name: Install package and test deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install .
+          pip install -r requirements-test.txt
+
+      - name: Unit tests
+        run: pytest tests/unit
+
+      - name: Smoke entry point
+        run: ezkey --help
+
+  # PAM module: host compile + harnesses + Rocky Docker builder/runtime +
+  # M1 conf-security (B1 / 0000 / non-root / URL absent) without the full Ezkey
+  # stack. Full observability (success/reject + Demo Device) stays local.
+  ezkey-pam:
+    name: ezkey-pam
+    needs: changes
+    if: >-
+      (needs.changes.outputs.ezkey-pam == 'true' || needs.changes.outputs.workflows == 'true')
+      && needs.changes.outputs.heavy == 'true'
+    runs-on: ubuntu-24.04
+    # Stub suites (Docker image + conf-security/timeouts/f9-retry) routinely need >30m on GHA.
+    timeout-minutes: 50
+    defaults:
+      run:
+        working-directory: ezkey-pam
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install PAM build dependencies
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential libpam0g-dev libcurl4-openssl-dev libcjson-dev \
+            openssh-client
+
+      - name: make test (check-source + compile + harnesses + #941 prompt guards)
+        run: make test
+
+      - name: Docker builder (Rocky pam_ezkey.so)
+        run: docker build --target builder -t ezkey-pam-builder:ci .
+
+      # E1 (#956 / #941): stub suites must run in CI — make test alone does not
+      # catch pam_info-on-default-path or a neutered display_ok call site.
+      # ci-m1-conf-security.sh builds the runtime image and runs:
+      #   test-conf-security.sh · test-timeouts.sh · test-f9-retry.sh ·
+      #   test-signal-probes.sh (#1011 B3 / #1016 P12)
+      - name: Stub suites in CI (conf-security + timeouts + f9 + signal-probes)
+        run: ./scripts/ci-m1-conf-security.sh
+
+  lightsail:
+    name: lightsail
+    needs: changes
+    if: needs.changes.outputs.lightsail == 'true' || needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Lightsail target-aware + delete guards (fake aws)
+        run: ./scripts/lightsail/target-aware.test.sh
+
+      - name: JavaMelody non-exposure business-port acceptance (fake curl)
+        run: ./scripts/ops/verify-javamelody-non-exposure.test.sh
+
+      - name: Local management port publish (127.0.0.1) fake check
+        run: ./scripts/ops/check-local-mgmt-port-publish.sh
+
+      - name: Local management port publish unit tests (B1 regression)
+        run: ./scripts/ops/check-local-mgmt-port-publish.test.sh
+
+      - name: ezkey.online product hostname allowlist
+        run: ./scripts/ops/check-ezkey-online-hosts.sh
+
+      - name: ezkey.online hostname allowlist unit tests
+        run: ./scripts/ops/check-ezkey-online-hosts.test.sh
+
+  # Experimental Dart SDK: offline gate only (format, analyze, unit tests) in the
+  # pinned official Dart image. The live-stack suite (ezkey_dart/scripts/e2e.sh) stays local.
+  dart-sdk:
+    name: dart-sdk
+    needs: changes
+    if: needs.changes.outputs.dart-sdk == 'true' || needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      EZKEY_DART_IMAGE: dart:3.13.6@sha256:bf07cd831c34d7cef047bcd50803fa38e3af59664a276440893ca9db77014ca0
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Format, analyze, unit tests (Docker)
+        run: ./ezkey_dart/scripts/test.sh
+
+  # Experimental Jenkins lab plugins (#972): Docker Temurin 21 + mvn test.
+  ezkey-jenkins:
+    name: ezkey-jenkins
+    needs: changes
+    if: needs.changes.outputs.ezkey-jenkins == 'true' || needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: ezkey-lab-auth mvn test (Docker maven:3.9-eclipse-temurin-21)
+        run: ./ezkey-jenkins/scripts/ci-plugin-test.sh
+
+  # Connector program (#1206): thin and path-filtered. The Docker scenarios and the log canary;
+  # the connectors' unit tests run in the backend job, since they are reactor modules (#1278).
+  # Heavy: runs on pull requests and nightly, not on the post-merge push.
+  connectors:
+    name: connectors
+    needs: changes
+    if: >-
+      (needs.changes.outputs.connectors == 'true' || needs.changes.outputs.workflows == 'true')
+      && needs.changes.outputs.heavy == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Delivery scenarios and log canary
+        run: ./scripts/ci-connector-scenarios.sh
+
+  # Quality-gate helpers (HA fake-docker + secret allowlist) — no Docker stack / Maven.
+  # Patrick #904: dedicated job so pipefail / #747 detect regressions are not buried in backend.
+  quality-gate:
+    name: quality-gate
+    needs: changes
+    if: needs.changes.outputs.quality-gate == 'true' || needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7 — Node from root .nvmrc (24 LTS)
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Quality-gate HA helper tests
+        run: bash scripts/quality-gate-ha.test.sh
+
+      - name: Quality-gate secrets unit tests
+        run: node --test scripts/lib/quality-gate-secrets.test.mjs
+
+  # macOS build and harnesses only (#1199): Docker stub suites stay on Linux, and no module is
+  # installed. Same triggers as ezkey-pam.
+  ezkey-pam-macos:
+    name: ezkey-pam (macOS)
+    needs: changes
+    if: >-
+      (needs.changes.outputs.ezkey-pam == 'true' || needs.changes.outputs.workflows == 'true')
+      && needs.changes.outputs.heavy == 'true'
+    runs-on: macos-26
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ezkey-pam
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # macos-26 has no timeout command; Homebrew's coreutils provides one under that name.
+      - name: Install coreutils
+        run: brew install coreutils
+
+      - name: make test (check-source + compile + harnesses + hardening)
+        run: make test
+
+  # Single required-check candidate. Skipped path jobs count as success for the gate;
+  # failure or cancellation of any needed job fails the gate.
+  ci-gate:
+    name: ci-gate
+    needs: [changes, admin-ui, backend, version-alignment, licenses-drift, ha-smoke, mobile, mobile-ios, cli-python, ezkey-pam, ezkey-pam-macos, lightsail, dart-sdk, ezkey-jenkins, connectors, quality-gate]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Evaluate aggregate gate
+        run: |
+          set -euo pipefail
+          echo "changes=${{ needs.changes.result }}"
+          echo "admin-ui=${{ needs.admin-ui.result }}"
+          echo "backend=${{ needs.backend.result }}"
+          echo "version-alignment=${{ needs.version-alignment.result }}"
+          echo "licenses-drift=${{ needs.licenses-drift.result }}"
+          echo "ha-smoke=${{ needs.ha-smoke.result }}"
+          echo "mobile=${{ needs.mobile.result }}"
+          echo "mobile-ios=${{ needs.mobile-ios.result }}"
+          echo "cli-python=${{ needs.cli-python.result }}"
+          echo "ezkey-pam=${{ needs.ezkey-pam.result }}"
+          echo "ezkey-pam-macos=${{ needs.ezkey-pam-macos.result }}"
+          echo "lightsail=${{ needs.lightsail.result }}"
+          echo "dart-sdk=${{ needs.dart-sdk.result }}"
+          echo "ezkey-jenkins=${{ needs.ezkey-jenkins.result }}"
+          echo "connectors=${{ needs.connectors.result }}"
+          echo "quality-gate=${{ needs.quality-gate.result }}"
+
+          if [[ "${{ needs.changes.result }}" != "success" ]]; then
+            echo "::error::changes job did not succeed (${{ needs.changes.result }})"
+            exit 1
+          fi
+
+          for pair in \
+            "admin-ui:${{ needs.admin-ui.result }}" \
+            "backend:${{ needs.backend.result }}" \
+            "version-alignment:${{ needs.version-alignment.result }}" \
+            "licenses-drift:${{ needs.licenses-drift.result }}" \
+            "ha-smoke:${{ needs.ha-smoke.result }}" \
+            "mobile:${{ needs.mobile.result }}" \
+            "mobile-ios:${{ needs.mobile-ios.result }}" \
+            "cli-python:${{ needs.cli-python.result }}" \
+            "ezkey-pam:${{ needs.ezkey-pam.result }}" \
+            "ezkey-pam-macos:${{ needs.ezkey-pam-macos.result }}" \
+            "lightsail:${{ needs.lightsail.result }}" \
+            "dart-sdk:${{ needs.dart-sdk.result }}" \
+            "ezkey-jenkins:${{ needs.ezkey-jenkins.result }}" \
+            "connectors:${{ needs.connectors.result }}" \
+            "quality-gate:${{ needs.quality-gate.result }}"; do
+            name="${pair%%:*}"
+            result="${pair#*:}"
+            case "$result" in
+              success|skipped)
+                echo "OK: $name=$result"
+                ;;
+              *)
+                echo "::error::Gate failed because $name ended with $result"
+                exit 1
+                ;;
+            esac
+          done
+
+          echo "ci-gate passed"

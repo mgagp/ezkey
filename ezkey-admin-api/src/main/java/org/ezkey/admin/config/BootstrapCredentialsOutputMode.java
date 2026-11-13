@@ -13,11 +13,13 @@ package org.ezkey.admin.config;
 /**
  * Controls how initial global-admin bootstrap credentials are surfaced at startup.
  *
- * <p><b>full</b> — Enrollment proof token, challenge, ASCII QR, recovery codes, and CLI hints (for
- * dev/demo and Docker automation via {@code bootstrap-credentials.json}).
+ * <p><b>full</b> — Enrollment proof token, challenge, and ASCII QR appear in startup logs (by
+ * design for the initial enrollment wizard). Recovery codes are never logged; they are written to
+ * {@code bootstrap-credentials.json} ({@code 0600}) when export runs.
  *
- * <p><b>recovery_primary</b> — Recovery codes and operator instructions only; omits enrollment
- * secrets and ASCII QR from logs and skips bootstrap JSON file export (production-oriented).
+ * <p><b>recovery_primary</b> — Omits enrollment proof token, challenge, and ASCII QR from logs.
+ * Recovery codes are written to {@code bootstrap-credentials.json} ({@code 0600}) only (no
+ * enrollment secrets in the file). Operators enroll via the recovery funnel.
  *
  * @since 2026
  */
@@ -26,8 +28,8 @@ public enum BootstrapCredentialsOutputMode {
   FULL,
 
   /**
-   * Recovery-first bootstrap: plaintext recovery codes and guidance; no enrollment proof token,
-   * challenge, or ASCII QR in logs; no {@code bootstrap-credentials.json} export.
+   * Recovery-first bootstrap: no enrollment proof token, challenge, or ASCII QR in logs; recovery
+   * codes go to the credentials file only.
    */
   RECOVERY_PRIMARY
 }

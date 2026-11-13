@@ -2,17 +2,21 @@
 
 Use this when you **already run** the experimental Lightsail stack ([`README.md`](README.md), [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md)) and only need to deploy a **new image** for **one** API, **migration**, or the **ACME demo app** **without** wiping volumes or running a full `clean-start.sh`.
 
-**Full stack in one go (Caddy, Compose, migration, all backends, optional demo):** from the repo root run **`./experimental-hybrid/scripts/full-exp-environment-upgrade.sh rolling`** (add **`--include-demo-acme`** for the demo). That builds the images, loads them on the VM, syncs `docker-compose.yml` / `Caddyfile` / `clean-start.sh`, and runs **`docker compose up -d`** remotely — **Postgres data and other named volumes are kept**; the **`migration`** service runs Flyway from the new image. Alternatively call [`export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) with **`--sync-operator-files`**, **`--remote-up`**, and the image flags you need.
+**Commissioned community host (kept DB, curated live Caddyfile / `.env`):** do **not** treat `full-exp-environment-upgrade.sh … rolling` or blind `--sync-operator-files --remote-up` as the default. Follow the **[Non-destructive upgrade (checklist)](../docs/lightsail/community-host.md#non-destructive-upgrade-checklist)** instead (`--sync-operator-files` overwrite of a live Caddyfile was observed on another environment; confirm before using rolling on community).
+
+**Full stack in one go (lab / disposable, or only if overwriting the Caddyfile and operator files is acceptable):** from the repo root run **`./experimental-hybrid/scripts/full-exp-environment-upgrade.sh --target community rolling`** (add **`--include-demo-acme`** for the demo). That builds the images, loads them on the VM, syncs `docker-compose.yml` / **target-aware** `Caddyfile` / `clean-start.sh`, and runs **`docker compose up -d --no-build`** remotely — **Postgres data and other named volumes are kept**; the **`migration`** service runs Flyway from the new image. With **`EZKEY_ENABLE_JAVA_MELODY=true`**, export also builds/ships **`ezkey-javamelody-collector:<version>`** (Lightsail overlay is image-only — never build the collector on the VM). With **`EZKEY_ENABLE_CONNECTOR_SMTP=true`**, export does the same for **`ezkey-connector-smtp:latest`** and applies its overlay; once the connector runs, every rolling up needs that flag or **`EZKEY_DISABLE_CONNECTOR_SMTP=true`** (#1206 step 7, [`community-host.md`](../docs/lightsail/community-host.md) § Email delivery connector). Alternatively call [`export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) with **`--target …`**, **`--sync-operator-files`**, **`--remote-up`**, and the image flags you need. No silent SSH host default (#812).
+
+**OCI revision on rolling builds (#814):** the upgrade script exports `OCI_IMAGE_REVISION` (default: full `git rev-parse HEAD`) so compose/`docker/Dockerfile` stamp `org.opencontainers.image.revision` on migration and backend images. On the VM after load: `docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' ezkey-auth-api:latest`. If the worktree is dirty, the script warns that the label is still HEAD (not the dirty contents). Dockerfile keeps `ARG OCI_IMAGE_REVISION` after `RUN apk` so revision changes do not bust the apk cache layer. This is image-label traceability only — not the broader #740 surface (`git.properties` / `/actuator/info`).
 
 ### ACME M2M cutover (Admin API hatch removed)
 
 After this branch is on the tree you deploy, apply Compose **and** recreate ACME together:
 
 ```text
-./experimental-hybrid/scripts/full-exp-environment-upgrade.sh rolling --include-demo-acme
+./experimental-hybrid/scripts/full-exp-environment-upgrade.sh --target community rolling --include-demo-acme
 ```
 
-A partial recreate that updates Admin API without syncing Compose and recreating `demo-app-acme` leaves EXP1 pointing ACME at Admin API. After sync:
+A partial recreate that updates Admin API without syncing Compose and recreating `demo-app-acme` leaves the stack pointing ACME at Admin API. After sync:
 
 - Confirm `demo-app-acme` env is `EZKEY_ADMIN_API_URL=http://integration-api:7080` (name is historical).
 - Remove `EZKEY_ADMIN_AUTH_API_KEY_AUTH_ATTEMPTS_ENABLED` from the live `.env` if present.
@@ -43,10 +47,10 @@ Other backends — same pattern; only the `--target` and tar filename change (se
 
 ## 2. Copy to the VM
 
-Default SSH host for this environment is **`ezkey`** (see [`README.md`](README.md#default-lightsail-ssh-host-ezkey)). Otherwise set `LIGHTSAIL_SSH_HOST` for the export script.
+Declare SSH with **`--target community`** (Host `ezkey-online`), or set `LIGHTSAIL_SSH_HOST` — see [`README.md`](README.md#declared-lightsail-ssh-target-no-silent-default) (#812).
 
 ```bash
-scp docker/export/ezkey-auth-api.tar ezkey:~/
+scp docker/export/ezkey-auth-api.tar ezkey-online:~/
 ```
 
 ## 3. Load and recreate (on the VM)
@@ -86,7 +90,7 @@ docker compose exec auth-api curl -sf http://localhost:8085/actuator/health
 
 Use the **service** name in `docker compose … <service>` (first column).
 
-**`demo-app-acme`:** after `docker load`, use `docker compose up -d --no-deps --force-recreate demo-app-acme`. Recreate **Caddy** only if you changed [`lightsail/Caddyfile`](lightsail/Caddyfile) or origin TLS PEMs, e.g. `docker compose up -d --no-deps --force-recreate caddy` — not required for a demo image-only update.
+**`demo-app-acme`:** after `docker load`, use `docker compose up -d --no-deps --force-recreate demo-app-acme`. Recreate **Caddy** only if you changed [`lightsail/Caddyfile.ezkey-online`](lightsail/Caddyfile.ezkey-online) or origin TLS PEMs, e.g. `docker compose up -d --no-deps --force-recreate caddy` — not required for a demo image-only update.
 
 ## Multiple backends in one pass
 

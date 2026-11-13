@@ -55,6 +55,8 @@ import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.EnrollmentInactiveException;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.exception.auth.AuthAttemptCreateValidationException;
+import org.ezkey.exception.auth.AuthAttemptCreationCooldownException;
+import org.ezkey.exception.auth.AuthAttemptPendingExistsException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.exception.auth.AuthAttemptWaitValidationException;
 import org.ezkey.integration.domain.entity.Integration;
@@ -67,6 +69,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -330,6 +333,12 @@ public class AuthAttemptController {
       value = {
         @ApiResponse(responseCode = "201", description = "Auth attempt created successfully"),
         @ApiResponse(responseCode = "400", description = "Invalid data"),
+        @ApiResponse(
+            responseCode = "409",
+            description =
+                "Live attempt already exists (auth-attempt-pending-exists) or creation is"
+                    + " suspended (auth-attempt-creation-cooldown). Retry-After is set.",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
   @PreAuthorize("hasRole('ADMIN')")
@@ -436,6 +445,22 @@ public class AuthAttemptController {
               .build());
       throw e;
     } catch (EnrollmentInactiveException e) {
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.AUTH_ATTEMPT_CREATED,
+                  AdminAuditConstants.AUTH_ATTEMPT_CREATION_FAILED,
+                  auditTenantId)
+              .eventStatus(EventStatus.FAILURE)
+              .adminId(adminIdForAudit)
+              .enrollmentId(auditEntityFkResolver.enrollmentIdForAuditOrNull(effectiveEnrollmentId))
+              .integrationId(
+                  auditEntityFkResolver.integrationIdForAuditOrNull(
+                      resolveIntegrationIdFromEnrollment(effectiveEnrollmentId)))
+              .errorMessage(e.getMessage())
+              .build());
+      throw e;
+    } catch (AuthAttemptPendingExistsException | AuthAttemptCreationCooldownException e) {
       auditLogService.log(
           AuditHelper.createAdminAudit(
                   context,
@@ -913,15 +938,12 @@ public class AuthAttemptController {
             : integrationRepository.findAllByIdWithTenant(integrationIds).stream()
                 .collect(Collectors.toMap(Integration::getId, Function.identity()));
 
-    return page.map(
-        attempt -> {
-          Enrollment enrollment =
-              attempt.getEnrollmentId() != null
-                  ? enrollmentsById.get(attempt.getEnrollmentId())
-                  : null;
-          Integration integration = resolveIntegrationForEnrollment(enrollment, integrationsById);
-          return authAttemptMapper.toDtoWithLabels(attempt, enrollment, integration);
-        });
+    return page.map(attempt -> {
+      Enrollment enrollment =
+          attempt.getEnrollmentId() != null ? enrollmentsById.get(attempt.getEnrollmentId()) : null;
+      Integration integration = resolveIntegrationForEnrollment(enrollment, integrationsById);
+      return authAttemptMapper.toDtoWithLabels(attempt, enrollment, integration);
+    });
   }
 
   /**

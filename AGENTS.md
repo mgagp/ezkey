@@ -18,20 +18,43 @@ Root [`PRD.md`](PRD.md) is a **stub** that points at `product-intent.md` (canon 
 
 | Need | Read |
 |------|------|
+| Fresh clone / first host Java build (empty `~/.m2`, Windows or macOS/Linux) | [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) § *First clone on a new workstation*; entrypoint `./scripts/build.sh` (`--diagnose-only` if JDK/Maven look wrong). Do not start with bare `mvn checkstyle:check`. |
+| Node.js / Yarn for Admin UI, mobile, SDK | Root [`.nvmrc`](.nvmrc) is the single source of truth (**24** LTS). Mobile CI uses `node-version-file: '.nvmrc'`. **nvm-windows** does not read `.nvmrc` automatically — run `nvm install 24` then `nvm use 24`, then `corepack enable` for Yarn 4. Details: [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) prerequisites. |
+| What runs on PRs / required check | [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) § Continuous Integration; workflow `.github/workflows/ci.yml`; required check **`ci-gate`**. Evaluator inventory / phased plan: [`docs/engineering/ci-cd-best-practices-plan.md`](docs/engineering/ci-cd-best-practices-plan.md). |
 | Product intent, thesis, audience | [`product-docs/global/product-intent.md`](product-docs/global/product-intent.md) |
-| Priority / what to implement next | [`product-docs/global/operational-readiness-prioritization-2026-09.md`](product-docs/global/operational-readiness-prioritization-2026-09.md), [`product-docs/global/backlog/index.md`](product-docs/global/backlog/index.md) |
+| Priority / what to implement next | [`product-docs/global/vision/V-2026-09-26-public-alpha-posture-closeout.md`](product-docs/global/vision/V-2026-09-26-public-alpha-posture-closeout.md), [`product-docs/global/backlog/index.md`](product-docs/global/backlog/index.md) (historical Waves A–C + freeze D: [`product-docs/global/operational-readiness-prioritization-2026-09.md`](product-docs/global/operational-readiness-prioritization-2026-09.md)) |
 | Protocol crypto (Auth API ↔ mobile / Demo Device) | [`docs/CRYPTO.md`](docs/CRYPTO.md), [`docs/ENROLLMENT_SIGNATURE_PAYLOAD.md`](docs/ENROLLMENT_SIGNATURE_PAYLOAD.md), [`docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`](docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md); relevant **section** of [`docs/ENDPOINT.md`](docs/ENDPOINT.md) only |
+| Challenge-code direction / MFA fatigue / number matching | [`docs/SECURITY_POSTURE.md`](docs/SECURITY_POSTURE.md) § Challenge-code direction (Decision #960); inverted mode parked: [`I-2026-10-21-inverted-challenge-code-mode`](product-docs/global/backlog/ideas/I-2026-10-21-inverted-challenge-code-mode.md) |
 | At-rest encryption / Tink keyset storage | [`docs/SECURITY_POSTURE.md`](docs/SECURITY_POSTURE.md), [`ezkey-core/CONFIGURATION.md`](ezkey-core/CONFIGURATION.md) § Encryption at Rest, [`product-docs/global/architecture-decisions.md`](product-docs/global/architecture-decisions.md) ADR-0008 + ADR-0011 |
+| Logging / log-injection hardening | Caller-controlled value → `org.ezkey.util.LogSanitizer.sanitizeForLog`; secrets never logged at any level; prove on runtime output (log-capture test). Mandate and SLAs: [`docs/SECURITY_POSTURE.md`](docs/SECURITY_POSTURE.md) § Code scanning policy. Production wrap backlog: [#801](https://github.com/mgagp/ezkey/issues/801). |
 | Normative posture | [`product-docs/global/normative-posture.md`](product-docs/global/normative-posture.md) — operational discipline; mapping vocabulary lives only there. Honest claims: [`docs/SECURITY_POSTURE.md`](docs/SECURITY_POSTURE.md) |
+| Enrollment bind session (scan and challenge form one sequence; delivery modes; abandoned bind) | [`ezkey_mobile/docs/MOBILE_APP_STATE_MACHINE.md`](ezkey_mobile/docs/MOBILE_APP_STATE_MACHINE.md) § *Product intent: one bind session* |
 | Lifecycle / eligibility / multi-entity operator design | Skim [`product-docs/global/lifecycle-model.md`](product-docs/global/lifecycle-model.md), then [`docs/LIFECYCLE_GOVERNANCE.md`](docs/LIFECYCLE_GOVERNANCE.md) when designing |
 | Admin UI conventions | [`ezkey-admin-ui/AGENTS.md`](ezkey-admin-ui/AGENTS.md) |
 | Mobile-primary work | [`ezkey_mobile/AGENTS.md`](ezkey_mobile/AGENTS.md), [`ezkey_mobile/docs/README.md`](ezkey_mobile/docs/README.md) |
+| Experimental PAM (host sshd lab) | `ezkey-pam` is **experimental** (personal lab; loaded in host root sshd/login, not containerised) — see [`ezkey-pam/README.md`](ezkey-pam/README.md) (line 3). Hardening backlog: [`I-2026-10-13-pam-tmp-log-hardening`](product-docs/global/backlog/ideas/I-2026-10-13-pam-tmp-log-hardening.md). |
+| Dismissing or accepting a dependency vulnerability (`tolerable_risk`, risk acceptance, security evaluation) | Check upstream first: [`product-docs/global/hygiene/dependabot/README.md`](product-docs/global/hygiene/dependabot/README.md) § *Check upstream before dismissing a vulnerability* |
+| Answering reports on time (14-day promise, `security@ezkey.org`, issue reminder) | [`product-docs/global/hygiene/report-intake/README.md`](product-docs/global/hygiene/report-intake/README.md) |
 | Mandate-driven hygiene assessment (HITL + handoff) | Keyword **`assessment-curated`** → [`product-docs/global/hygiene/assessment-curated/README.md`](product-docs/global/hygiene/assessment-curated/README.md) |
 | Legacy document hygiene (canonicality / discoverability / archive-vs-delete) | Keyword **`document-hygiene-curated`** → [`product-docs/global/hygiene/document-hygiene/README.md`](product-docs/global/hygiene/document-hygiene/README.md) |
 | New idea / method | [`product-docs/methodology/README.md`](product-docs/methodology/README.md) — the whole method fits in that one document since the 2026-08 ablation |
-| Plan review / cold-agent hardening | [`product-docs/templates/cold-agent-plan-review.prompt.md`](product-docs/templates/cold-agent-plan-review.prompt.md) — 2-stage review pattern in [`product-docs/methodology/README.md`](product-docs/methodology/README.md) |
+| Plan review / cold-agent hardening (aliases: `critical-review`, adversarial review, revue critique, plan hardening Stage 2) | Canon [`product-docs/global/hygiene/critical-review/README.md`](product-docs/global/hygiene/critical-review/README.md); prompt [`product-docs/templates/critical-review.prompt.md`](product-docs/templates/critical-review.prompt.md); skill [`.cursor/skills/critical-review/SKILL.md`](.cursor/skills/critical-review/SKILL.md); execution-hardening angle [`product-docs/templates/cold-agent-plan-review.prompt.md`](product-docs/templates/cold-agent-plan-review.prompt.md); pattern [`product-docs/methodology/README.md`](product-docs/methodology/README.md) § two-stage |
+| Adopter posture / 3-second test | [`product-docs/global/operator-alignment-guide.md`](product-docs/global/operator-alignment-guide.md) — Ezkey is never the adopter's core business; every human surface must stay simple, fluid, operationally clear |
+| Startup or HA behaviour, locks with transactions, removing an exposed field, test helpers, a CI failure that looks random | [`product-docs/global/hygiene/stabilization-lessons/README.md`](product-docs/global/hygiene/stabilization-lessons/README.md) — rules, evidence and checks from the #1180 / #1259 stabilization |
+| Fail-open vs fail-closed | [`product-docs/global/design-principles.md`](product-docs/global/design-principles.md) §17 — name whether failure continues (observable) or stops at critical boundaries |
 | API contract change | Controller + **section** of `docs/ENDPOINT.md` + OpenAPI refresh workflow (see OpenAPI rules) |
 | Strategic positioning / public copy | [`docs/PROJECT_POSITIONING.md`](docs/PROJECT_POSITIONING.md) only when that layer is in scope |
+| Public alpha label / deploy “what is live” | [`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md); community ledger [`docs/lightsail/community/DEPLOYED.md`](docs/lightsail/community/DEPLOYED.md) |
+| Working conventions (merge-ready, test hosts, ngrok, decision trace) | This file § *Working conventions*; team role one-liners: [`product-docs/global/team-roles.md`](product-docs/global/team-roles.md) |
+
+## Working conventions
+
+- **Repo is the memory.** Any decision that changes behavior, a contract, a constraint, or how we work lands in the owning doc in the same PR (one line + reason + issue #). Chat-only or mandate-only counts as unrecorded. A missing trace is a review nit, not a merge blocker.
+- **Merge-ready:** all checks green (including CodeQL), zero *new* unresolved code-scanning alerts introduced by the PR; the existing stock follows [`docs/SECURITY_POSTURE.md`](docs/SECURITY_POSTURE.md) § Code scanning policy; zero unresolved review threads, complete PR description, related docs updated. Merge only on the owner's explicit go — never on CI green alone.
+- **Code via PRs.** Local test hosts build and test only; they do not author product code changes.
+- **Local test hosts:** **Rootbeer** (Windows) runs a single Docker clean-start stack with fixed ports by design (see [`docs/LOCAL_STACK_PORTS.md`](docs/LOCAL_STACK_PORTS.md)). **Marc's Mac** checkout is `~/w/ezkey-main`. Isolation for parallel work comes from cloud agents or the Mac, not a second Rootbeer stack.
+- **ngrok:** one session at a time. Switch by stopping on one host and starting on the other with the static domain.
+- **Roles:** named reviewers and operators are defined in [`product-docs/global/team-roles.md`](product-docs/global/team-roles.md).
 
 ## Terminology guardrail (phase vs milestone)
 
@@ -41,11 +64,13 @@ Root [`PRD.md`](PRD.md) is a **stub** that points at `product-intent.md` (canon 
 
 ## Where are we? (release priority compass)
 
-When the question is **what to implement next** or **current release priority** (September 2026
-operable-release target), read first:
+When the question is **what to implement next** or **current release priority**, read first:
 
-- [`product-docs/global/operational-readiness-prioritization-2026-09.md`](product-docs/global/operational-readiness-prioritization-2026-09.md)
-- [`product-docs/global/backlog/index.md`](product-docs/global/backlog/index.md) § Current prioritization ancho
+- [`product-docs/global/vision/V-2026-09-26-public-alpha-posture-closeout.md`](product-docs/global/vision/V-2026-09-26-public-alpha-posture-closeout.md)
+  — live public alpha posture closeout (lab · discreet · alpha ≠ prod · no SLA; no P0 backlog)
+- [`product-docs/global/backlog/index.md`](product-docs/global/backlog/index.md) § Current prioritization anchor
+- Historical Waves A–C + freeze D only:
+  [`product-docs/global/operational-readiness-prioritization-2026-09.md`](product-docs/global/operational-readiness-prioritization-2026-09.md)
 
 ## Fresh-session workflow bootstrap (product-docs method)
 
@@ -57,9 +82,17 @@ ephemeral scaffold vs. retained plan, closed uncertainty stays closed) — into 
 There is no separate lane taxonomy or skill sequence to load first: prefer **Plan mode** for
 research and comparing alternatives, then position the idea as a `V-*`, `I-*`, or `TB-*` in
 `product-docs/global/` only when the methodology README's artifact-choice table calls for it.
-For high-risk slices (security boundaries, session management, DB migrations, or autonomous cold-agent
-handoffs), harden the plan via the **two-stage plan hardening pattern**
-([`product-docs/templates/cold-agent-plan-review.prompt.md`](product-docs/templates/cold-agent-plan-review.prompt.md)).
+
+**Critical-review gate:** P0/P1 visions and G1 briefs get a **`critical-review`** before the gate
+(fresh cloud agent, **forced different model family** from the author, read-only) — the main lever
+for AI-factory review quality and continuous improvement of autonomy. Canon:
+[`product-docs/global/hygiene/critical-review/README.md`](product-docs/global/hygiene/critical-review/README.md);
+skill [`.cursor/skills/critical-review/SKILL.md`](.cursor/skills/critical-review/SKILL.md).
+
+For autonomous cold-execution plans and other high-risk slices, Stage 2 also uses the
+execution-hardening angle
+([`product-docs/templates/cold-agent-plan-review.prompt.md`](product-docs/templates/cold-agent-plan-review.prompt.md))
+via the same keyword.
 
 The always-applied rule
 [`.cursor/rules/product-docs-workflow-bootstrap.mdc`](.cursor/rules/product-docs-workflow-bootstrap.mdc)
@@ -110,9 +143,10 @@ After implementing or changing Java (or other Spotless-covered) code, use the sa
 from the repository root in **Bash**:
 
 1. `mvn spotless:apply`
-2. `mvn checkstyle:check`
-3. `mvn clean`
-4. `mvn install -DskipTests`
+2. `mvn -pl checkstyle-config install -DskipTests` (fresh `~/.m2`)
+3. `mvn checkstyle:check`
+4. `mvn clean`
+5. `mvn install -DskipTests`
 
 This is the default autonomous validation path because Checkstyle depends on the reactor-built
 `checkstyle-config` module. Only after that baseline succeeds should you run targeted follow-up
@@ -130,7 +164,19 @@ reactor-built `checkstyle-config` dependency is part of that contract.
 **Docker-only alternative:** `./scripts/build-docker.sh` runs Spotless apply in a bind-mounted
 container plus the `build-validation` Docker target (see `docs/DEVELOPMENT.md`).
 
-**Local Maven version properties:** The parent POM defines `revision`, `changelist`, and an empty default `buildQualifier`. To override from the CLI for all reactor builds (for example a per–git-worktree suffix such as `-wt1` so local `install` artifacts do not clash), copy `.mvn/maven.config.example` to `.mvn/maven.config` and edit the last line. That file is gitignored and is not committed; CI and clones without the file use POM defaults only.
+**Local Maven version properties:** The parent POM defines CI-friendly `revision` and `changelist` (product SemVer, ADR-0017). To override from the CLI for all reactor builds (for example a per–git-worktree suffix such as `-Drevision=0.2.0-wt1` so local `install` artifacts do not clash), copy `.mvn/maven.config.example` to `.mvn/maven.config` and edit the revision line. That file is gitignored and is not committed; CI and clones without the file use POM defaults only. Cross-ecosystem sync: `./scripts/sync-version.sh` / `./scripts/check-version-alignment.sh`.
+
+---
+
+## GitHub Actions CI (PR / main)
+
+- Aggregate workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml). Path-filtered jobs for
+  Admin UI, Java backend, and mobile; final job **`ci-gate`** always runs and is the single check
+  intended to become **required** on `main`.
+- Agents must wait for **`ci-gate`** green on their PRs before treating CI as done. Details and
+  local equivalents: [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) § Continuous Integration.
+- Hygiene passes (`doctor-curated`, `java-doctor-curated`, …) remain **not** CI gates.
+- There is **no** tag-triggered release / Maven Central publish workflow yet.
 
 ---
 
@@ -212,6 +258,10 @@ Generated output should be reviewed for obvious scope drift and reported in the 
 ## Project values (analysis and design)
 
 - **Simplicity and pragmatism**: 80–20 rule — target ~80% of the value with ~20% of the complexity. Prefer the simplest solution that meets the need.
+- **Adopter posture.** Ezkey is never the adopter's core business: every human surface (Admin UI, demos, tester pages, mobile copy) must let a person decide in ~3 seconds — simple, fluid, operationally clear. See `product-docs/global/operator-alignment-guide.md`.
+- **New mode → re-challenge what exists.** A new entry mode or use case triggers a keep/adapt/hide pass on existing UI content and an inventory of pre-existing conditions on the touched path (timeouts, errors, rate limits, logging) — including when the request comes from the maintainer.
+- **Interfaces in interaction.** Before judging a gap real or a product decision sound, look at the whole Ezkey interaction, not one screen: which surfaces take part (integrating app and its login dialog, mobile app, Admin UI, APIs), who initiates, where that person is looking at that moment, and what each surface already shows. Put information where the person's attention already is; do not duplicate on another surface what one already owns without a trust reason — a second copy adds accidental complexity and can drift.
+- **Vision locks travel.** Every brief carries a lock-trace table (vision lock → brief section or explicit deferral); an unmapped lock blocks G1.
 - **Admin UI**: Sober, pragmatic interface that makes the operator's and their team's life easier. Avoid clutter and unnecessary decoration.
 - **Admin roles**: **Global Admin** = IT-style; manages core/instance-level concerns (e.g. encryption keys). **Tenant Admin** = business-oriented; manages end users, integrations, API keys. Design and copy must reflect this split.
 - **Comparables and best practices**: For any analysis or design, consider comparable projects and admin UIs; adopt widely recognised best practices from those comparables.
@@ -314,59 +364,143 @@ When the operator asks for a **`java-doctor-curated`** improvement pass:
   `I-2026-07-11-java-doctor-curated-hygiene`, `TB-2026-07-11-java-doctor-curated-mvp`,
   `product-docs/global/hygiene/java-doctor/README.md`.
 
+## PAM doctor-curated keyword
+
+- For the Linux PAM module (`ezkey-pam/src`), the shared keyword is **`pam-doctor-curated`**.
+- Purpose: a **punctual curated pass** in the same family as `java-doctor-curated` — clang-format
+  (Google preset) drift + clang-tidy (analyzer / bugprone / CERT) + cppcheck
+  (warning / performance / portability) → P1/P2/P3 shortlist. **Not** a CI gate and **not** a
+  zero-warning campaign. The macOS install track is out of this pass.
+- Skill: [`.cursor/skills/pam-doctor-curated/SKILL.md`](.cursor/skills/pam-doctor-curated/SKILL.md).
+- Default command from repo root (Git Bash on Windows):
+
+```bash
+./scripts/pam-doctor-curated.sh
+```
+
+  Optional: `--offline` to re-curate an existing `logs/pam-doctor/raw/` without the container.
+  The scan runs in Docker (`ubuntu:24.04`) so the Linux PAM, curl, and cJSON headers are present.
+- Outputs under `logs/pam-doctor/` (gitignored):
+  - `pam-doctor.curated.md` — deduped shortlist grouped by rule
+  - `pam-doctor.curated.json` — machine-readable summary
+  - `raw/` — clang-format TSV, cppcheck text, clang-tidy text, tool versions
+- Config: `ezkey-pam/.clang-format`, `ezkey-pam/.clang-tidy`, `config/pam-doctor/`.
+- Campaign notes: `product-docs/global/hygiene/pam-doctor/`. Do **not** invent `I-*` / `TB-*` /
+  GitHub issues per finding. On demand (experimental module); not part of the Java → mobile →
+  React biweekly rotation.
+- Runtime axis (existing `make test` harnesses, not a CI gate): `./scripts/pam-doctor-sanitizers.sh`
+  runs AddressSanitizer and UndefinedBehaviorSanitizer, then Valgrind Memcheck, in Docker
+  (`ubuntu:24.04`, same image default as the static pass). `--skip-valgrind` skips Memcheck.
+  A finding that needs a source or behavior change waits for one-at-a-time HITL. Do not edit
+  `ezkey-pam/src` from a sanitizer log alone. Fuzzing stays out of this command.
+
+### HITL contract (mandatory for cold agents)
+
+When the operator asks for a **`pam-doctor-curated`** improvement pass:
+
+1. Run the script; read `logs/pam-doctor/pam-doctor.curated.md`.
+2. Propose a **small prioritized lot** (usually 3–6 rule groups), not a zero-warning campaign.
+3. **Before any code change — one finding at a time.** Wait for fix / suppress / skip on that
+   item before presenting the next. A format-only apply (`clang-format -i` on `ezkey-pam/src`)
+   still waits for an explicit go.
+4. Fuzzy signal: skip. Harmless over-defense: leave it and suppress with a reason. Do not add
+   tests for a leave.
+5. Record the pass from `product-docs/global/hygiene/pam-doctor/TEMPLATE.md`.
+6. Accepted fixes: name the existing `make test` harness and extend it only when the decision
+   is not already pinned. Auth decision, cancel, conf secrets, TLS verify, and the signal
+   handler need a counter-read before a refactor.
+
 ## Dependabot curated keyword
 
-- For weekly Dependabot dependency-update triage, the shared keyword is **`dependabot-curated`**.
-- Purpose: a **punctual curated pass** that classifies open Dependabot PRs into risk-tiered lots
-  (T1 patch → T4 major/disruptor), decides them via HITL **or** (when the operator grants it)
-  **autonomous validation mode**, applies bumps, then runs a **session closeout** validation
-  ladder with evidence. **Not** silent auto-merge and **not** a full `I-*` / `TB-*` program for
-  routine bumps. Sibling hygiene lanes: `doctor-curated` and `java-doctor-curated` above.
-- Skill: [`.cursor/skills/dependabot-curated/SKILL.md`](.cursor/skills/dependabot-curated/SKILL.md).
-- Campaign decision notes: `product-docs/global/hygiene/dependabot/` (template + dated pass
-  instances). Index: `product-docs/global/hygiene/README.md`.
+- For near-continuous Dependabot dependency-update triage, the shared keyword is
+  **`dependabot-curated`**.
+- Purpose: **maximum agent autonomy for minimum risk** — classify open Dependabot PRs into
+  risk-tiered lots (T1 patch → T4 major/disruptor; Orval **O0–O3**), decide them via weekday-light
+  autonomy or Monday HITL / opt-in autonomous validation, merge existing Dependabot PRs, and close
+  with proportional tests + a short daily log or Monday campaign note. **Not** silent auto-merge
+  and **not** a full `I-*` / `TB-*` program for routine bumps. Sibling hygiene lanes:
+  `doctor-curated` and `java-doctor-curated` above.
+- Skill: [`.cursor/skills/dependabot-curated/SKILL.md`](.cursor/skills/dependabot-curated/SKILL.md)
+  (canonical **Orval risk grid**, cadence, concurrency).
+- Standing policy: [`product-docs/global/hygiene/dependabot/README.md`](product-docs/global/hygiene/dependabot/README.md).
+- **Cadence:** Dependabot daily (Maven + npm) with cooldown; weekday **light** pass (T1–T3 + Orval
+  O0/O1; silent when empty); **Monday full** at **09:14 ET** (BOM + Mobile RN pulses with
+  `yarn deps:monitor --strict` + Admin UI advisory pulse + holds + campaign note). Cadence index:
+  [`product-docs/global/hygiene/README.md`](product-docs/global/hygiene/README.md)
+  § *Cadence & automation*.
+  **One owning pass per day** — back off if concurrent merges (~30 min) or another in-flight pass.
+- **Cursor Cloud `GH_TOKEN`:** the harness read-only `gh` note is the default `cursor`/`ghs_`
+  identity. If env `GH_TOKEN` is set, probe `gh auth status` (never print the secret) and use that
+  PAT to squash-merge Dependabot PRs and to comment/close superseded PRs after a hygiene PR lands.
+  Do **not** invent a hygiene branch solely because `gh` was labeled read-only. Kickoff line and
+  identity table: skill § *Cloud GitHub identities*; rule
+  [`.cursor/rules/cloud-gh-token.mdc`](.cursor/rules/cloud-gh-token.mdc).
+- Campaign notes: `product-docs/global/hygiene/dependabot/` (`TEMPLATE.md`, `daily-log.md`, dated
+  pass instances). Index: `product-docs/global/hygiene/README.md`.
 - **Primary axis:** SemVer risk + known disruptors. **Secondary axis:** ecosystem / surface
   (Maven, Admin UI, mobile, SDK, Actions). Defer disruptive bumps with a PR comment and, when
   investigation cost must persist, a single `I-*` (e.g. TypeScript 7 → later release train).
   Long-lived parks use GitHub label **`deferred:later-train`** (see dependabot hygiene README) so
-  weekly passes skip HITL on those PRs.
-- Config that reduces future atomization: [`.github/dependabot.yml`](.github/dependabot.yml)
-  groups. Do not invent methodology backlog for the weekly Dependabot habit itself.
+  routine passes skip HITL on those PRs.
+- Config: [`.github/dependabot.yml`](.github/dependabot.yml) (daily Maven/npm, cooldown, groups).
+  Do not invent methodology backlog for the Dependabot habit itself.
+
+### Major upgrades (registry first)
+
+- **Major upgrade** = an endoflife.date line change OR a semver major (JDK, Node, PostgreSQL,
+  HAProxy, Caddy, base images, Spring Boot line, React Native line, Gradle/AGP/Kotlin, TS, Vite).
+  Registry: `product-docs/global/hygiene/major-upgrades/registry.yaml` (platforms, not libraries —
+  crypto/auth library majors on npm/Maven stay under `dependabot-curated` T4 + security owner;
+  exception: libs whose majors Dependabot ignores under the Gradle ecosystem, #712 — e.g.
+  Conscrypt, AndroidX Biometric — stay in the register).
+- **Light path** — line change that is a semver minor (often opened by Dependabot): update the
+  registry entry (`current`, `sources`, `eol`, `last_review`) in the same PR and put the test plan
+  (family floor from the lane README) in the PR body. If Dependabot did **not** open it (e.g.
+  Kotlin pin, Rocky `ARG`), open a normal PR that updates the registry the same way.
+- **Light path + `security: true`** — short **opinion-only** issue linked to the **existing** PR
+  (collect Christophe's written opinion); test plan stays in the PR body. Do **not** require an
+  issue-with-test-plan before the PR when Dependabot (or a light-path PR) already exists.
+- **Dedicated issue with test plan before the PR** — reserved for semver majors, PostgreSQL data
+  migrations, and the React Native line (labels per `github-issue-labels`). Security owner's
+  written opinion goes in that issue when `security: true`; link it in `notes`.
+- Never autonomous (T4); Marc decides. Do not remove the Dependabot major-ignore rules.
+- `accept-risk` on a `security: true` entry requires `accept_until` (max 6 months).
 
 ### HITL contract (default for cold agents)
 
 When the operator asks for a **`dependabot-curated`** pass:
 
-1. List open Dependabot PRs (`gh pr list --author "app/dependabot" --state open`).
-2. Peel off any PR labeled `deferred:*` (skip weekly lots). Run the **Java BOM pulse** (skill
-   `dependabot-curated` § *Java BOM pulse*): compare `spring-boot.version` to the latest
-   same-minor Boot release; if newer and no Dependabot PR, propose a hygiene-branch lot. After a
-   Boot bump, review SEC-019 overrides. Check `google-java-format.version` only as a tooling pin.
-3. Classify remaining PRs T1–T4; propose **3–6 lots** (overview only).
-4. **Default — interactive HITL:** iterate **one lot at a time** (members, tier, blast radius, CI
-   status) → wait for Go / No-Go / hold / defer on **that** lot before merging or presenting the
-   next. Do not replace this with a bulk options matrix.
-5. **Autonomous validation mode** (opt-in): when the operator explicitly delegates validation /
-   waives per-lot Go (e.g. “full ladder yourself”, “autonomous”), proceed on T1–T3 without waiting;
-   still pause on T4 / hard escalators unless also waived. **Still merge the existing Dependabot
-   PRs in each lot** so GitHub closes them — autonomy does not mean re-applying bumps on a second
-   branch. Run the full closeout ladder yourself and present evidence. Hygiene-branch re-apply is
-   only for explicit single-PR review or unmergeable Dependabot branches + companion fixes; then
-   close superseded PRs after land. Details: skill `dependabot-curated` § *Autonomous validation
-   mode*.
+1. Determine **pass type** (weekday light vs Monday full); run **concurrency** check (skill §
+   *Concurrency*). List open Dependabot PRs (`gh pr list --author "app/dependabot" --state open`).
+   Probe Cursor Cloud `GH_TOKEN` (`gh auth status`; never print the secret) before choosing
+   hygiene-branch vs merging the existing Dependabot PRs.
+2. Peel off any PR labeled `deferred:*`. **Monday full only:** run the **Java BOM pulse**, the
+   **Mobile RN pulse**, and the **Admin UI advisory pulse** (skill §§), plus the **Dismissed-alert
+   check**. Weekday light skips those pulses; empty actionable queue → silent exit.
+3. Classify remaining PRs T1–T4; Orval via **Orval risk grid** (Admin UI and mobile separately).
+   Propose **3–6 lots** (overview only).
+4. **Weekday light:** default autonomy on T1–T3 + Orval O0/O1; pause on T4 / O2–O3 / crypto majors.
+   **Monday full — interactive HITL** unless autonomy waived: iterate **one lot at a time** → wait
+   for Go / No-Go / hold / defer. Do not replace this with a bulk options matrix.
+5. **Autonomous validation mode** (opt-in on Monday; default scope on weekday light): proceed on
+   allowed tiers without waiting; **still merge the existing Dependabot PRs** in each lot. Run the
+   proportional closeout ladder and present evidence. Hygiene-branch re-apply only for explicit
+   single-PR review or unmergeable Dependabot branches + companion fixes. Details: skill §
+   *Autonomous validation mode*.
 6. On Go / autonomous proceed: merge each green Dependabot PR in the lot individually. On defer:
-   comment; apply `deferred:later-train` when the PR should stay out of weekly lots; optional one
+   comment; apply `deferred:later-train` when the PR should stay out of routine lots; optional one
    `I-*` if the investigation should not be lost.
-7. Session closeout proportional to highest accepted tier (always `./scripts/build.sh`; stack /
-   functional / Playwright per skill ladder; T1-only shortcut allowed when recorded).
-8. Write a dated campaign note under `product-docs/global/hygiene/dependabot/` (copy `TEMPLATE.md`).
+7. Session closeout proportional to pass type and highest accepted tier (always `./scripts/build.sh`
+   when Java/Maven touched; stack / functional / Playwright per skill ladder).
+8. **Monday full:** write a dated campaign note (copy `TEMPLATE.md`). **Weekday with activity:**
+   append a short section to `daily-log.md`.
 
 ## Mobile doctor-curated keyword
 
 - For Ezkey Mobile (`ezkey_mobile/`) static-analysis hygiene, the shared keyword is
   **`mobile-doctor-curated`**.
-- Purpose: punctual curated pass — react-doctor + Semgrep (Ezkey mobile pack) + Detekt → P1/P2/P3
-  shortlist. **Not** a CI gate and **not** a zero-warning campaign.
+- Purpose: punctual curated pass — react-doctor + Semgrep (Ezkey mobile pack) + Detekt, plus an
+  iOS lane on macOS (SwiftLint curated set + Periphery) → P1/P2/P3 shortlist. **Not** a CI gate and **not** a zero-warning campaign.
 - Default command from `ezkey_mobile/` (Git Bash on Windows):
 
 ```bash
@@ -436,6 +570,13 @@ yarn doctor:curated
   Integration API silence under operational churn is **coverage**, not health. Do **not** invent
   `I-*` / `TB-*` per finding.
 
+## Quality gate keyword
+
+- On-demand full-suite + stack-health gate: **`quality-gate`**. Canon:
+  [`product-docs/global/hygiene/quality-gate/README.md`](product-docs/global/hygiene/quality-gate/README.md)
+  (`./scripts/quality-gate.sh`; exit **0** GO · **1** NO-GO · **2** bad args ·
+  **3** GO with reservations · **4** INCONCLUSIVE (HA invalid / skipped phase); #747/#748).
+
 ## Assessment curated keyword
 
 - For **mandate-driven white-box hygiene** (focused investigation → assessment register →
@@ -443,7 +584,7 @@ yarn doctor:curated
 - Purpose: punctual deep look when OSS doctor/pentest shortlists are the wrong entry signal (e.g.
   mobile crypto/protocol, Java transactional boundaries). **Not** a methodology program lane and
   **not** a substitute for `doctor-curated` / `dependabot-curated` / `security-pentest-curated` /
-  `javamelody-curated`.
+  `javamelody-curated` / `quality-gate`.
 - Method canon: [`product-docs/global/hygiene/assessment-curated/README.md`](product-docs/global/hygiene/assessment-curated/README.md)
 - Cursor skill: [`.cursor/skills/assessment-curated/SKILL.md`](.cursor/skills/assessment-curated/SKILL.md)
 - Copilot mirror: `.github/copilot-instructions.md` § Assessment curated
@@ -516,8 +657,21 @@ program slice whether an issue helps — retroactive issues are valid.
 When opening a GitHub issue (operator request, program slice visibility, or retroactive board
 anchor):
 
-1. Apply **all five label groups** via `gh issue create --label ...` (lane, type, component, priority, status) — see [`.cursor/rules/github-issue-labels.mdc`](.cursor/rules/github-issue-labels.mdc).
-2. Verify with `gh issue view <N> --json labels` before reporting the issue URL.
+**Review existing labels first.** Before creating an issue, list the repo labels
+(`gh label list`, or `GET /repos/{owner}/{repo}/labels`) and apply every label that fits.
+Create a new label only when none of the existing ones fit, and justify that new label in the
+issue body.
+
+**Tool-agnostic:** the five label groups (lane, type, component, priority, status) are mandatory
+**regardless of creation tool** — `gh`, GitHub MCP/API, Cursor app, or web UI. Prefer attaching
+labels in the same create call when the tool supports it. After create, **re-read the issue and
+add any missing labels** before reporting the URL; MCP/Cursor/web creates often omit labels even
+when intended. See [`.cursor/rules/github-issue-labels.mdc`](.cursor/rules/github-issue-labels.mdc).
+
+1. Apply **all five label groups** (lane, type, component, priority, status) at create time when
+   the client allows it (e.g. `gh issue create --label ...`, API `labels`, issue-form defaults).
+2. Verify with `gh issue view <N> --json labels` (or MCP/API equivalent) and patch gaps before
+   reporting the issue URL.
 3. Record `#NNN` (and label list) in `I-*` / `TB-*` metadata.
 
 An unlabeled issue is **incomplete** — same severity as missing TB traceability.

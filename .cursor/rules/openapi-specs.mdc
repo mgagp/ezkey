@@ -6,7 +6,7 @@ alwaysApply: true
 
 # OpenAPI Specifications — Generated Artifacts
 
-**OpenAPI spec files under `specs/` (and copies dispatched to Admin UI, mobile, SDK, etc.) are generated artifacts. Do not edit them by hand.**
+**OpenAPI spec files under `specs/` (and physical copies dispatched where needed) are generated artifacts. Do not edit them by hand. Do not introduce git symlinks for specs (#833).**
 
 ## Correct workflow (human and agent)
 

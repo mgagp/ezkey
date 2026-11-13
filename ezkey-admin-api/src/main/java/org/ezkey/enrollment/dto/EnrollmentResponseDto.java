@@ -48,16 +48,11 @@ import io.swagger.v3.oas.annotations.media.Schema;
  *       challenge
  * </ul>
  *
- * <p><b>Cryptographic Material (Public Keys Only):</b>
- *
- * <ul>
- *   <li><b>integrationPublicKey:</b> Public key for integration communication
- *   <li><b>devicePublicKey:</b> Public key for the device
- * </ul>
- *
- * <p><b>Security Note:</b> This DTO excludes sensitive cryptographic keys and provides only the
- * information necessary for administrative operations. All private keys are deliberately excluded
- * for security purposes.
+ * <p><b>Security Note:</b> This DTO carries only the crypto material an operator needs (#1180). The
+ * enrollment proof token is returned only while the enrollment is {@code CREATED} (QR / manual bind
+ * channel) and the challenge only while {@code CREATED} or {@code BOUND} (verify follows bind);
+ * integration and device public keys, and all private keys, are never returned. The Auth API
+ * verifies device signatures from the stored entity, not from this DTO.
  *
  * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *
@@ -68,11 +63,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * @param enrollmentName Human-readable name for the enrollment (e.g., "John's iPhone")
  * @param enrollmentStatus Enrollment lifecycle status (CREATED, BOUND, VERIFIED, INVALID)
  * @param enrollmentActive Flag indicating if the enrollment is currently active
- * @param enrollmentChallenge Challenge value for enrollment verification
- * @param enrollmentProofToken Unique code for enrollment verification (e.g., "EZK-ABC123-DEF456")
+ * @param enrollmentChallenge Challenge value for enrollment verification; null unless CREATED or
+ *     BOUND
+ * @param enrollmentProofToken Bind secret for the QR / manual channel; null unless CREATED
  * @param authAttemptChallengeRequired Flag indicating if authentication attempts require challenge
- * @param integrationPublicKey Public key for integration communication
- * @param devicePublicKey Public key for the device
  * @param verifiedAt When enrollment was verified (device completed binding)
  * @param expiresAt Optional expiration for pending enrollment (null = no expiration)
  * @param createdByAdminId Admin who created this enrollment (null when via API key)
@@ -117,16 +111,21 @@ public record EnrollmentResponseDto(
         String enrollmentStatus,
     @Schema(description = "Flag indicating if the enrollment is currently active", example = "true")
         Boolean enrollmentActive,
-    @Schema(description = "Challenge value for enrollment verification", example = "123456")
+    @Schema(
+            description =
+                "Challenge value for enrollment verification; returned only while the enrollment"
+                    + " is CREATED or BOUND, null otherwise",
+            example = "123456")
         Integer enrollmentChallenge,
-    @Schema(description = "Unique code for enrollment verification", example = "EZK-ABC123-DEF456")
+    @Schema(
+            description =
+                "Enrollment bind secret for the QR / manual channel; returned only while the"
+                    + " enrollment is CREATED, null otherwise")
         String enrollmentProofToken,
     @Schema(
             description = "Flag indicating if authentication attempts require challenge",
             example = "false")
         Boolean authAttemptChallengeRequired,
-    @Schema(description = "Public key for integration communication") String integrationPublicKey,
-    @Schema(description = "Public key for the device") String devicePublicKey,
     @Schema(
             description =
                 "Client-reported device private key storage tier at verify (NONE, STANDARD,"

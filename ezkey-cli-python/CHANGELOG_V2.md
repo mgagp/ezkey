@@ -1,5 +1,10 @@
 # Ezkey CLI Version 2.0 - Changelog
 
+## Status
+
+- **2026-10-26 (#767):** Raise `textual` floor to `>=8.2.8` in `setup.py` / `requirements.txt` (aligned companion to Dependabot); TUI import + `run_test` pilot OK on Python 3.12 — no App/Screen/CSS adapters required for current CLI surfaces.
+- **2026-10-26 (#1043):** `ezkey admin api-key create --out-file` writes ikey/skey to a mode-600 `.env` outside the repo without printing the secret; pre-opens the file before POST; rejects symlinks; hardens `--save-key` config save to 0600 / `~/.ezkey` 0700.
+
 ## Release Date: October 2025
 
 ## Overview
@@ -69,7 +74,7 @@ Complete CRUD operations for machine-to-machine authentication.
 ezkey admin api-key create \
   --integration-id 123 \
   --description "Production Server" \
-  --expires-at "2025-12-31T23:59:59Z" \
+  --expires-at "<EXPIRY_ISO8601>" \
   --ip-whitelist "192.168.1.0/24" \
   --save-key
 

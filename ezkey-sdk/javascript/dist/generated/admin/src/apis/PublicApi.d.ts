@@ -29,12 +29,12 @@ export declare class PublicApi extends runtime.BaseAPI {
      */
     evaluatorSignup(requestParameters?: EvaluatorSignupRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EvaluatorSelfRegistrationResponseDto>;
     /**
-     * Returns read-only instance metadata for the Admin UI (login shell) and operators. authApiPublicBaseUrl matches the authUrl embedded in enrollment QR codes when ezkey.qr.auth-base-url is set.
+     * Returns read-only instance metadata for the Admin UI (login shell) and operators. authApiPublicBaseUrl matches the authUrl embedded in enrollment QR codes when ezkey.qr.auth-base-url is set. evaluatorSelfRegistrationEnabled mirrors ezkey.evaluator.self-registration.enabled (temporary console explore gate).
      * Get public instance info
      */
     getInstanceInfoRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PublicInstanceInfoResponseDto>>;
     /**
-     * Returns read-only instance metadata for the Admin UI (login shell) and operators. authApiPublicBaseUrl matches the authUrl embedded in enrollment QR codes when ezkey.qr.auth-base-url is set.
+     * Returns read-only instance metadata for the Admin UI (login shell) and operators. authApiPublicBaseUrl matches the authUrl embedded in enrollment QR codes when ezkey.qr.auth-base-url is set. evaluatorSelfRegistrationEnabled mirrors ezkey.evaluator.self-registration.enabled (temporary console explore gate).
      * Get public instance info
      */
     getInstanceInfo(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PublicInstanceInfoResponseDto>;

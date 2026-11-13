@@ -42,7 +42,11 @@
       "authFailed": "Authentication failed. Please try again.",
       "connectionLost": "Connection lost. Please check your network and try again.",
       "loginFailed": "Login failed. Check your username.",
-      "serverUnreachable": "Could not reach the server. Is the Admin API running?"
+      "serverUnreachable": "Could not reach the server. Is the Admin API running?",
+      "cooldownTitle": "Sign-in paused",
+      "cooldown": "Sign-in is paused after several refused requests or wrong codes. Try again in a few minutes.",
+      "cooldownMinutes_one": "Sign-in is paused for {{count}} more minute after several refused requests or wrong codes. Try again then.",
+      "cooldownMinutes_other": "Sign-in is paused for {{count}} more minutes after several refused requests or wrong codes. Try again then."
     }
   },
   "footer": "Powered by {{brand}} — Self-hosted · Full visibility",
@@ -117,6 +121,11 @@
     "copied": "Copied",
     "thenPasswordless": "After binding your device, return here and use “Login with EZKey” as usual.",
     "backToLogin": "Back to login",
+    "forkIntro": "Choose how to continue. You can explore the console for a few hours without a device, or enroll a device now.",
+    "exploreTemporary": "Explore the console — temporary access (~8 h)",
+    "enrollDevice": "Enroll a device",
+    "exploreFailed": "Could not start a temporary console session. Try again or enroll a device.",
+    "backToFork": "Back to choices",
     "validation": {
       "codeRequired": "Enter an activation code",
       "codeFormat": "Use an activation code in the format ezkey_activation_..."

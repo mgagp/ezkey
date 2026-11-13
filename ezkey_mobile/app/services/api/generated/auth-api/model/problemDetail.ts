@@ -23,6 +23,7 @@ export interface ProblemDetail {
   title?: string;
   status?: number;
   detail?: string;
+  /** URI-reference of the occurrence. Ezkey uses the request path (relative), matching RFC 9457; it is not an absolute URI. */
   instance?: string;
   properties?: ProblemDetailProperties;
 }

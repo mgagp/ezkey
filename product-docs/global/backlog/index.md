@@ -6,28 +6,40 @@ This index provides a lightweight list of active ideas and their current state.
 
 ## Current prioritization anchor (read first)
 
-**“Where are we?” / “What should be next?”** for the September 2026 operable-release target:
+**“Where are we?” / “What should be next?”** — live posture closeout:
 
-→ [`../operational-readiness-prioritization-2026-09.md`](../operational-readiness-prioritization-2026-09.md)
+→ [`../vision/V-2026-09-26-public-alpha-posture-closeout.md`](../vision/V-2026-09-26-public-alpha-posture-closeout.md)
 
-**Summary (2026-08-25):** Wave B integrity cluster R1 **closed** (GitHub #269). Wave C operator UI
-residuals **closed** (alerts list polish, dashboard signal model, audit-chain checkpoints). Waves
-A–C are complete. Wave D was an **attention freeze**, not a backlog item: it preserved calendar
-time on EXP1 and is **closed** as a release-order gate. EXP1 is the live experimental host;
-operator watch is human and continuous — if a signal appears, open analysis. There is **no
-remaining P0** on the active backlog.
-Canon sync 2026-08-24 closed two delivered-but-stale items (`I-2026-06-23` / `TB-2026-06-23` SEC-001,
-`I-2026-07-17` reset 401). Canon sync 2026-08-25 closed three delivered TBs whose index lagged
-(`TB-2026-08-09` signed instance-info; `TB-2026-06-02` Auth Cloudflare schema; `TB-2026-08-23`
-Integration Cloudflare schema). Parents `I-2026-08-09` and `I-2026-06-02` stay `active` for
-UX follow-up and Admin Cloudflare. The 2026-08-02 sync closed `I-2026-07-10` and `TB-2026-07-06` Tier 0,
-and materialized a **parallel** mobile Play official-release track (state-of-play from the current
-limited-experimental Android release): vision
-[`V-2026-08-02-mobile-official-play-release-posture`](../vision/V-2026-08-02-mobile-official-play-release-posture.md)
-and four backlog ideas below — this track does not claim September operability scope; see
-[`operational-readiness-prioritization-2026-09.md`](../operational-readiness-prioritization-2026-09.md)
-§ Parallel tracks. Wave B closeout:
+**Summary (2026-09-26, amended 2026-10-08):** Public alpha posture closeout — laboratory · discreet ·
+alpha ≠ prod · no SLA; public runtime names **`base`** / **`integrity`** (not « eval profile »);
+GitHub open; Play Store — **mobile app** may proceed closed testing → **production**; **platform
+backends stay alpha/lab**; intention-first. Waves A–C and Wave D (attention freeze) are **closed**.
+There is **no remaining P0** on the active backlog. Evaluator self-registration stays **OFF by
+default**; community may enable it **explicitly**. Amendment detail:
+[`../vision/V-2026-09-26-public-alpha-posture-closeout.md`](../vision/V-2026-09-26-public-alpha-posture-closeout.md)
+§ Amendment 2026-10-08.
+
+Historical September operable-release compass (Waves A–C + freeze D narrative only):
+[`../operational-readiness-prioritization-2026-09.md`](../operational-readiness-prioritization-2026-09.md)
+— superseded as next-P0 gate by `V-2026-09-26-public-alpha-posture-closeout`.
+
+**Integration lab candidates (reference study, not a roadmap commitment):** [`../integration-lab-candidates-evaluation-2026-10-22.md`](../integration-lab-candidates-evaluation-2026-10-22.md) ([#988](https://github.com/mgagp/ezkey/issues/988)) — one lab at a time; not before Jenkins (#972) M3.
+
+**Earlier summary (2026-08-25 / 2026-09-22):** Wave B integrity cluster R1 **closed** (GitHub #269).
+Wave C operator UI residuals **closed**. Wave D was an **attention freeze**, not a backlog item.
+Public posture moved the former experimental lab → alpha + community on **ezkey.online** (site PR #609) — see
+[`V-2026-09-22-exp1-to-ezkey-online-alpha`](../vision/V-2026-09-22-exp1-to-ezkey-online-alpha.md).
+Canon sync 2026-08-24/25 closed delivered-but-stale index rows. Parallel mobile Play track
+([`V-2026-08-02-mobile-official-play-release-posture`](../vision/V-2026-08-02-mobile-official-play-release-posture.md))
+remains orthogonal to the closed September operability program. Wave B closeout:
 [`method-logs/ML-2026-07-03-wave-b-integrity-cluster-closeout.md`](method-logs/ML-2026-07-03-wave-b-integrity-cluster-closeout.md).
+
+## Lab / experimental (folder-local)
+
+| Folder | Issue | Note |
+|--------|-------|------|
+| [`ezkey-jenkins/`](../../../ezkey-jenkins/) | [#972](https://github.com/mgagp/ezkey/issues/972) | Jenkins auth plugin lab (Integration API ↔ Java SDK); experimental; independent compose — does not delay community-alpha |
+| `ezkey-connectors/` (contract from step 2, code from step 3) | [#1206](https://github.com/mgagp/ezkey/issues/1206) | Connector SPI for external services: email first, then SMS and directory; connectors are lab, core changes keep normal rigor. [`V-2026-11-04-connector-spi`](../vision/V-2026-11-04-connector-spi.md), [pack](../decisions/2026-11-04-connector-spi/README.md) |
 
 ## Active ideas
 
@@ -36,7 +48,7 @@ and four backlog ideas below — this track does not claim September operability
 | `I-2026-08-24-java-melody-collector` | JavaMelody collector (opt-in Docker, baseline + HA) | `active` | `P2` | `infra`, `admin-api`, `auth-api`, `integration-api`, `docs` | `2026-08-24` |
 | `I-2026-0001` | Per-enrollment local authentication policy for mobile respond | `incubating` | `P1` | `mobile`, `auth-api`, `admin-api`, `admin-ui` | `2026-07-26` |
 | `I-2026-0003` | High-availability Docker stack: parity review with `cleanstart.sh` | `incubating` | `P2` | `infra`, `admin-api`, `auth-api`, `integration-api` | `2026-05-19` |
-| `I-2026-08-29-admin-api-remove-m2m-hatch` | Remove the Admin API API-key M2M hatch | `done` | `P1` | `admin-api`, `integration-api`, `demo-acme`, `infra (EXP1)`, `docs`, `ezkey-tests` | `2026-08-29` |
+| `I-2026-08-29-admin-api-remove-m2m-hatch` | Remove the Admin API API-key M2M hatch | `done` | `P1` | `admin-api`, `integration-api`, `demo-acme`, `infra (community)`, `docs`, `ezkey-tests` | `2026-08-29` |
 | `I-2026-0004` | Admin API: configurable acceptance of API-key authentication | `promoted` | `P1` | `admin-api`, `sdk-java`, `docs` | `2026-08-29` |
 | `I-2026-0010` | Phone-to-phone enrollment transfer ceremony | `ready` | `P2` | `mobile`, `auth-api`, `admin-api`, `admin-ui` | `2026-05-24` |
 | `I-2026-0011` | Bootstrap clean-start: activation-code mode as default | `incubating` | `P1` | `admin-api`, `infra`, `bootstrap`, `docs` | `2026-05-19` |
@@ -49,11 +61,11 @@ and four backlog ideas below — this track does not claim September operability
 | `I-2026-0019` | Android real-device mobile functional tests | `active` | `P1` | `ezkey-mobile`, `ezkey-tests`, `auth-api`, `admin-api`, `docker` | `2026-06-26` |
 | `I-2026-0020` | Integration ecosystem shell catalog & publish workflow | `captured` | `P2` | `docs`, GitHub ecosystem, `product-docs (traceability)` | `2026-05-11` |
 | `I-2026-0022` | Admin API scheduled jobs catalog (living document) | `incubating` | `P2` | `admin-api`, `docs` | `2026-05-24` |
-| `I-2026-0023` | Email channel R1: optional operator-triggered delivery | `incubating` | `P2` | `admin-api`, `admin-ui`, `infra`, `docs` | `2026-07-25` |
-| `I-2026-0024` | SMS channel R1: HTTP adapter SPI + optional operator send | `incubating` | `P2` | `admin-api`, `admin-ui`, `infra`, `docs` | `2026-05-24` |
+| `I-2026-0023` | Email channel R1: optional operator-triggered delivery | `incubating` | `P2` | `admin-api`, `admin-ui`, `infra`, `docs` | `2026-11-04` |
+| `I-2026-0024` | SMS channel R1: HTTP adapter SPI + optional operator send | `incubating` | `P2` | `admin-api`, `admin-ui`, `infra`, `docs` | `2026-11-04` |
 | `I-2026-0025` | Auth API protocol capability versioning | `incubating` | `P2` | `auth-api`, `mobile`, `admin-api`, `docs` | `2026-05-24` |
 | `I-2026-0027` | iOS app implementation — fresh native rebuild | `ready` | `P1` | `mobile` | `2026-05-24` |
-| `I-2026-05-23-exp1-anonymous-evaluator-onboarding` | EXP1 anonymous evaluator onboarding | `active` | `P2` | `admin-api`, `admin-ui`, `ezkey-org`, `infra (EXP1)`, `docs` | `2026-05-23` |
+| `I-2026-05-23-exp1-anonymous-evaluator-onboarding` | EXP1 anonymous evaluator onboarding | `active` | `P2` | `admin-api`, `admin-ui`, `ezkey-org`, `infra (community)`, `docs` | `2026-05-23` |
 | `I-2026-05-31-mobile-android-stack-followups` | Mobile Android stack follow-ups (post-#177) | `incubating` | `P2` | `mobile`, `android`, `ezkey-tests` | `2026-05-31` |
 | `I-2026-06-02-openapi-spec-lifecycle-and-cloudflare-validation` | OpenAPI spec lifecycle and Cloudflare validation | `active` | `P1` | `auth-api`, `admin-api`, `integration-api`, `specs`, `scripts`, `postman`, `cloudflare`, `sdk`, `mobile` | `2026-08-25` |
 | `I-2026-06-03-admin-api-openapi-intra-tag-journey-order` | Admin API OpenAPI intra-tag journey order | `captured` | `P3` | `admin-api`, `docs`, `specs`, `sites/ezkey-org` | `2026-06-02` |
@@ -61,8 +73,9 @@ and four backlog ideas below — this track does not claim September operability
 | `I-2026-07-07-auth-attempt-challenge-protection` | Auth attempt challenge protection strategy (lifecycle minimization) | `ready` | `P1` | `core`, `auth-api` | `2026-07-07` |
 | `I-2026-07-05-distilled-admin-platform-starter` | Distilled admin platform starter (Spring Boot + operator UI) | `parked` | `P3` | `admin-api`, `admin-ui`, `docs`, ecosystem GitHub, `sdk-java` | `2026-07-05` |
 | `I-2026-07-05-enrollment-integration-key-cycling` | Enrollment integration key cycling via auth-exchange hooks | `incubating` | `P3` | `auth-api`, `core`, `mobile`, `docs`, `crypto` | `2026-07-05` |
+| `I-2026-09-15-post-quantum-protocol-evolution` | Post-quantum evolution of the Ezkey protocol (umbrella; medium-term watch, #1165) | `incubating` | `P3` | `auth-api`, `core`, `mobile`, `sdk`, `docs`, `crypto`, `security` | `2026-11-03` |
 | `I-2026-0032` | Proof token hash-only storage (tiered hardening) | `incubating` | `P1` | `core`, `auth-api`, `admin-api`, `docs`, `crypto` | `2026-08-02` |
-| `I-2026-07-10-admin-recovery-codes-exhausted-label-ux` | Admin recovery codes: exhausted-set vs initial-issuance label UX | `captured` | `P3` | `admin-ui`, `admin-api`, `docs` | `2026-07-09` |
+| `I-2026-07-10-admin-recovery-codes-exhausted-label-ux` | Admin recovery codes: exhausted-set vs initial-issuance label UX | `done` | `P3` | `admin-ui`, `admin-api`, `docs` | `2026-11-06` |
 | `I-2026-07-11-api-key-expires-at-edit` | API key PATCH: edit or clear `expiresAt` | `captured` | `P2` | `admin-api`, `admin-ui`, `core`, `docs` | `2026-07-11` |
 | `I-2026-07-11-java-doctor-curated-hygiene` | Java doctor-curated continuous hygiene (SpotBugs + Semgrep + narrow PMD) | `ready` | `P3` | `core`, `admin-api`, `auth-api`, `integration-api`, `docs`, `tooling` | `2026-07-11` |
 | `I-2026-07-11-mobile-doctor-curated-hygiene` | Mobile doctor-curated continuous hygiene (react-doctor + Semgrep + Detekt) | `ready` | `P3` | `mobile`, `android`, `docs`, `tooling` | `2026-08-25` |
@@ -82,11 +95,18 @@ and four backlog ideas below — this track does not claim September operability
 | `I-2026-08-02-mobile-installation-version-and-compat-discovery` | Mobile: installation product-version and compatibility discovery | `incubating` | `P3` | `mobile`, `auth-api`, `admin-api`, `core`, `docs`, `security` | `2026-08-02` |
 | `I-2026-08-09-mobile-signed-instance-info-integrity` | Mobile: signed Public Instance Info integrity | `active` | `P2` | `mobile`, `auth-api`, `core`, `docs`, `security` | `2026-08-25` |
 | `I-2026-08-23-auth-unsigned-public-instance-info-retirement` | Auth unsigned public instance-info retirement | `captured` | `P3` | `auth-api`, `docs`, `mobile`, `testing`, `security` | `2026-08-23` |
+| `I-2026-09-15-mobile-admin-enrollment-account-label` | Mobile admin enrollment account label (bind/pending) | `done` | `P1` | `auth-api`, `admin-api`, `mobile`, `docs` | `2026-09-15` |
+| `I-2026-10-13-pam-tmp-log-hardening` | PAM debug logs under `/tmp` (TOCTOU / symlink; CodeQL 123/124) | `done` | `P3` | `pam`, `security`, `docs` | `2026-10-13` |
+| `I-2026-10-21-inverted-challenge-code-mode` | Inverted challenge-code mode (mobile shows, integration enters) | `parked` | `P3` | `auth-api`, `mobile`, `integration-api`, `docs`, `security` | `2026-10-21` |
+| `I-2026-11-01-pam-macos-windows-exploration` | ezkey-pam host-grade level and Mac-native integration (#1112) | `active` | `P1` | `pam`, `docs`, `lab:experimental` | `2026-11-04` |
+| `I-2026-11-03-enrollment-invitation-links` | Enrollment invitation links (deep links next to the QR code) | `captured` | `P2` (proposed) | `admin-api`, `admin-ui`, `auth-api`, `mobile`, `sdk-dart`, `infra`, `docs`, `security` | `2026-11-03` |
+| `I-2026-11-03-assurance-ladder` | Assurance ladder: proportionate standards posture (exploration) | `captured` | `P3` | `docs`, `security`, `mobile`, `lab:experimental` | `2026-11-03` |
 
 ## Tracer bullets (draft / ready / in progress)
 
 | ID | Title | Status | Related idea |
 |----|-------|--------|--------------|
+| `TB-2026-11-06-connector-delivery-contract-v0` | Connector delivery contract v0 and directory sketch (`#1206` step 2) | `promoted` | `V-2026-11-04-connector-spi` |
 | `TB-2026-08-29-admin-api-remove-m2m-hatch` | Remove Admin API API-key M2M hatch | `done` | `I-2026-08-29-admin-api-remove-m2m-hatch` |
 | `TB-2026-08-28-admin-first-keyset-bootstrap` | Admin-first keyset bootstrap | `implemented` | `I-2026-07-17-keyset-blob-admin-first-bootstrap` |
 | `TB-2026-08-14-mobile-exit-experimental-messaging` | Exit experimental in-app messaging | `under-review` | `I-2026-08-02-mobile-exit-experimental-messaging` |
@@ -105,9 +125,10 @@ and four backlog ideas below — this track does not claim September operability
 
 | ID | Title | Closed date | Notes |
 |----|-------|-------------|-------|
+| `admin-ui-audit-integrity-hard-split-intention` | Audit trail vs Integrity hard split (cut 1) | `2026-09-18` | Compass (no `I-*`/`TB-*`). Docs PR `#562`; implementation PR `#563`. `/integrity` first-class GA page. Cut 2 phase A (density) **delivered** PR `#588`: [`admin-ui-integrity-cut2-phase-a.md`](../admin-ui-integrity-cut2-phase-a.md) + `WALK-2026-09-21-integrity-cut2-phase-a`. Cut 2 phase B+B′ **intention-locked**: [`admin-ui-integrity-cut2-phase-b.md`](../admin-ui-integrity-cut2-phase-b.md) + `WALK-2026-09-21-integrity-cut2-phase-b`. Cut 3 (last verdict, micro-dashboard, verify cap) **intention-locked** (OQ1–OQ3 APPROVED Marc 2026-10-12; OQ4 open for PR 1 design): [`admin-ui-integrity-cut3.md`](../admin-ui-integrity-cut3.md) + `WALK-2026-10-09-integrity-cut3` (#692/#743 #696 #741; D1 supersedes phase-A auto-verify-on-mount; `max-window-days` supersedes provisional 193 h). |
 | `TB-2026-08-09-mobile-signed-instance-info` | Signed enrolled instance-info | `2026-08-10` | PR `#445`. Auth `POST /enrollments/instance-info` + mobile Ed25519 verify. Parent `I-2026-08-09` stays `active` for honesty UI + branding-change confirmation. Canon status synced 2026-08-25 after index lag. |
-| `TB-2026-08-23-integration-api-cloudflare-schema` | Integration API Cloudflare schema (EXP1) | `2026-08-23` | PR `#479`. EXP1 Integration schema upload; Set action **Block** (maintainer-only). Parent `I-2026-06-02` stays `active` for Admin Cloudflare. Canon status synced 2026-08-25. |
-| `TB-2026-06-02-auth-api-cloudflare-schema-first-slice` | Auth API Cloudflare schema-first slice | `2026-08-23` | PR `#478`. Host-neutral Auth spec + EXP1 schema; Set action **Block** (maintainer-only). Parent `I-2026-06-02` stays `active`. Canon status synced 2026-08-25. |
+| `TB-2026-08-23-integration-api-cloudflare-schema` | Integration API Cloudflare schema (community) | `2026-08-23` | PR `#479`. Community Integration schema upload; Set action **Block** (maintainer-only). Parent `I-2026-06-02` stays `active` for Admin Cloudflare. Canon status synced 2026-08-25. |
+| `TB-2026-06-02-auth-api-cloudflare-schema-first-slice` | Auth API Cloudflare schema-first slice | `2026-08-23` | PR `#478`. Host-neutral Auth spec + community schema; Set action **Block** (maintainer-only). Parent `I-2026-06-02` stays `active`. Canon status synced 2026-08-25. |
 | `I-2026-07-17-admin-enrollment-reset-missing-authorization-header-500` | Admin enrollment reset: missing Authorization header returns 500 instead of 401 | `2026-07-19` | PR `#388`. `MissingRequestHeaderException` → RFC 9457 401. Delivered on `I-*` (no `TB-*`). Canon status synced 2026-08-24 after merge closeout gap. Pentest LGbal6. |
 | `I-2026-06-23-admin-auth-passwordless-wait-challenge-enforcement` | Enforce challenge presence on `passwordless-wait` | `2026-06-26` | PR `#255` / `#251` / TB `TB-2026-06-23`. SEC-001. Canon status synced 2026-08-24 after merge closeout gap. Residual S3 replay after ACCEPTED stays out of scope. |
 | `I-2026-07-10-nightly-integrity-boundary-false-positives` | Nightly integrity: boundary false positives (grid align + alert honesty) | `2026-07-11` | PR `#318` / `#315`. Delivered on `I-*` (no `TB-*`). Canon status synced 2026-08-02 after merge closeout gap. ADR-0009 + design-pack pitfall. |
@@ -141,12 +162,15 @@ and four backlog ideas below — this track does not claim September operability
 | `I-2026-0016` | Methodology hygiene follow-ups (Tier 2 from 2026-05-08 nomenclature pass) | `2026-05-24` | Closed Tier 2 items E–K: decision recording scopes, phase/component tags, superseded links, optional automation follow-up, corpus completeness audit checklist. Decision record `2026-05-24-artifact-tagging-canonization-conventions.md`. |
 | `I-2026-0008` | Rate-limit baseline analysis and generalization | `2026-05-24` | Policy deliverable [`rate-limit-baseline-policy.md`](../rate-limit-baseline-policy.md): four families (device / integration / admin ops / login); honest no-single-baseline outcome; CONFIGURATION cross-links; no code unification R1. Closes Blitz D1 with registry downscope. |
 | `I-2026-05-24-admin-ui-vite8-upgrade` | Admin UI Vite 8 upgrade | `2026-05-24` | Delivered via PR #154 / TB-2026-05-24: Vite 8, Vitest 4, Tailwind 4.2.2+, plugin-react v6; Rolldown demo DCE fix in `demo-mode.ts`. First Lane A toolchain chore with GitHub issue workflow. |
-| `I-2026-0026` | OpenAPI exposure and API portal posture | `2026-05-22` | Delivered through `TB-2026-0003`: public API portal on `ezkey.org`, `ReDoc CE` pinning, `Integration API` spec publication path, and first prod-like raw-doc hardening on `EXP1`. |
+| `I-2026-0026` | OpenAPI exposure and API portal posture | `2026-05-22` | Delivered through `TB-2026-0003`: public API portal on `ezkey.org`, `ReDoc CE` pinning, `Integration API` spec publication path, and first prod-like raw-doc hardening on the community host. |
 
 ## Parked
 
 | ID | Title | Reason | Next review |
 |----|-------|--------|-------------|
-| `I-2026-0009` | Global controllers registry | **Dropped** 2026-05-24 — living registry downscoped; see [`methodology/decisions/2026-05-24-controllers-registry-downscope.md`](../methodology/decisions/2026-05-24-controllers-registry-downscope.md) | n/a |
+| `I-2026-11-05-privacy-obligations-reminder` | Privacy obligations: what to pick up if Ezkey meets real use | **Parked** 2026-11-05 — proportionate reminder; reopen on a real adopter or personal data beyond lab use | On trigger |
+| `I-2026-0009` | Global controllers registry | **Dropped** 2026-05-24 — living registry downscoped; drop rationale in [`ideas/I-2026-0009-global-controllers-registry.md`](ideas/I-2026-0009-global-controllers-registry.md); archived stub [`api-controllers-registry.md`](../api-controllers-registry.md) | n/a |
 | `I-2026-0031` | SDK dogfood: first-party consumption and honest narrative | **Parked** 2026-06-30 — pre-analysis complete (layers A/B, no Admin UI → Integration SDK); deferred for September operable-release focus. Insight: [`grill-sessions/2026-06-30-sdk-dogfood-grill-me.md`](grill-sessions/2026-06-30-sdk-dogfood-grill-me.md). `I-2026-0004` unchanged. | post–Sept 2026 milestone or distribution trigger |
 | `I-2026-07-05-distilled-admin-platform-starter` | Distilled admin platform starter (`ezkey-app-starter`) | **Parked** 2026-07-05 — grill complete (D1–D10); external greenfield starter, not lite platform. Insight: [`grill-sessions/2026-07-05-distilled-admin-platform-starter-grill-me.md`](grill-sessions/2026-07-05-distilled-admin-platform-starter-grill-me.md). | post–Sept 2026 milestone or distribution trigger |
+| `V-2026-10-08-global-admin-announcements` | Global Admin announcements (Annonces), dashboard widget v1 | **Parked** 2026-10-08. Locks settled; CR2 amendments recorded; yields to Play closed testing (P1). Stopgap while parked: `EZKEY_ORGANIZATION_DESCRIPTION` (header instance description, redeploy). Mobile Play testers are out of reach by design (they are not tenant admins on the dashboard path). Vision: [`../vision/V-2026-10-08-global-admin-announcements.md`](../vision/V-2026-10-08-global-admin-announcements.md). | Re-entry: (a) more than 5 active Tenant Admins Marc cannot reach by email (anonymous evaluators included) · (b) a planned community reset or upgrade affecting them · (c) an adopter request |
+| `I-2026-10-21-inverted-challenge-code-mode` | Inverted challenge-code mode (mobile shows, integration enters) | **Parked** 2026-10-21 — default direction (integration shows / mobile enters + signed approve/deny) confirmed intentional (#960, Christophe); inverted mode weaker (push-delivered OTP) and additive-only if ever built. Idea: [`ideas/I-2026-10-21-inverted-challenge-code-mode.md`](ideas/I-2026-10-21-inverted-challenge-code-mode.md). | Real adopter need; not before the platform is stabilized and proven |

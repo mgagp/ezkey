@@ -22,6 +22,9 @@
 #   ./clean-start.sh              Full reset + keygen + up
 #   ./clean-start.sh --no-down    Only docker compose up -d (no volume wipe, no keygen)
 #   ./clean-start.sh --no-keygen  Down -v and up, but skip encryption key generation (advanced / unsafe)
+#   ./clean-start.sh --with-java-melody
+#       Also apply docker-compose.javamelody.yml (collector on 127.0.0.1:8088). Same as
+#       EZKEY_ENABLE_JAVA_MELODY=true. See docs/lightsail/community-host.md § Observability.
 #
 set -euo pipefail
 
@@ -30,18 +33,21 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 GEN_KEYS="${REPO_ROOT}/docker/generate-encryption-keys.sh"
 COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.yml"
+JAVAMELODY_OVERRIDE="${SCRIPT_DIR}/docker-compose.javamelody.yml"
 
 NO_DOWN=""
 NO_KEYGEN=""
+WITH_JAVA_MELODY=""
 
 usage() {
-    sed -n '1,25p' "$0" | tail -n +2
+    sed -n '1,30p' "$0" | tail -n +2
 }
 
 for arg in "$@"; do
     case "$arg" in
         --no-down) NO_DOWN="1" ;;
         --no-keygen) NO_KEYGEN="1" ;;
+        --with-java-melody) WITH_JAVA_MELODY="1" ;;
         -h|--help) usage; exit 0 ;;
         *)
             echo "Unknown option: $arg" >&2
@@ -50,6 +56,10 @@ for arg in "$@"; do
             ;;
     esac
 done
+
+if [[ "${EZKEY_ENABLE_JAVA_MELODY:-}" == "1" || "${EZKEY_ENABLE_JAVA_MELODY:-}" == "true" ]]; then
+    WITH_JAVA_MELODY="1"
+fi
 
 if [ ! -f "$COMPOSE_FILE" ]; then
     echo "❌ docker-compose.yml not found at ${COMPOSE_FILE}" >&2
@@ -73,6 +83,34 @@ if ! docker info >/dev/null 2>&1; then
     exit 1
 fi
 
+COMPOSE_ARGS=(-f "${COMPOSE_FILE}")
+JAVAMELODY_COLLECTOR_IMAGE=""
+if [ -n "$WITH_JAVA_MELODY" ]; then
+    if [ ! -f "$JAVAMELODY_OVERRIDE" ]; then
+        echo "❌ JavaMelody overlay requested but missing: ${JAVAMELODY_OVERRIDE}" >&2
+        exit 1
+    fi
+    COMPOSE_ARGS+=(-f "${JAVAMELODY_OVERRIDE}")
+    echo "JavaMelody overlay enabled (#846): ${JAVAMELODY_OVERRIDE}"
+    # Lightsail overlay is image-only (no build:); fail fast if the collector was not docker load'd.
+    img_line="$(grep -E '^\s*image:\s*ezkey-javamelody-collector:[^[:space:]]+' "${JAVAMELODY_OVERRIDE}" | head -n1 || true)"
+    if [ -z "${img_line}" ]; then
+        echo "❌ Could not parse ezkey-javamelody-collector image from ${JAVAMELODY_OVERRIDE}" >&2
+        exit 1
+    fi
+    jm_version="${img_line##*:}"
+    jm_version="${jm_version//[[:space:]]/}"
+    jm_version="${jm_version//\"/}"
+    JAVAMELODY_COLLECTOR_IMAGE="ezkey-javamelody-collector:${jm_version}"
+    if ! docker image inspect "${JAVAMELODY_COLLECTOR_IMAGE}" >/dev/null 2>&1; then
+        echo "❌ JavaMelody collector image missing: ${JAVAMELODY_COLLECTOR_IMAGE}" >&2
+        echo "   Lightsail never builds this image on the VM (overlay is image-only + pull_policy: never)." >&2
+        echo "   Ship it from the workstation first, e.g.:" >&2
+        echo "     EZKEY_ENABLE_JAVA_MELODY=true ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --target community ..." >&2
+        exit 1
+    fi
+fi
+
 cd "${SCRIPT_DIR}"
 
 echo "=========================================="
@@ -85,7 +123,12 @@ if [ -n "$NO_DOWN" ]; then
     echo "Step 1/3: Skipping docker compose down -v (--no-down)"
 else
     echo "Step 1/3: Stopping stack and removing volumes (destructive)..."
-    "${DOCKER_COMPOSE[@]}" -f "${COMPOSE_FILE}" down -v
+    # Include the JavaMelody override when present so the named volume is removed too.
+    DOWN_ARGS=(-f "${COMPOSE_FILE}")
+    if [ -f "$JAVAMELODY_OVERRIDE" ]; then
+        DOWN_ARGS+=(-f "${JAVAMELODY_OVERRIDE}")
+    fi
+    "${DOCKER_COMPOSE[@]}" "${DOWN_ARGS[@]}" down -v
     echo "  ✅ Volumes removed"
 fi
 echo ""
@@ -108,8 +151,10 @@ else
 fi
 echo ""
 
-echo "Step 3/3: Starting stack (docker compose up -d)..."
-"${DOCKER_COMPOSE[@]}" -f "${COMPOSE_FILE}" up -d
+# Always --no-build: community images are docker load'd from the workstation (remote buildx
+# is often too old for Compose; JM collector overlay has no build: section).
+echo "Step 3/3: Starting stack (docker compose up -d --no-build)..."
+"${DOCKER_COMPOSE[@]}" "${COMPOSE_ARGS[@]}" up -d --no-build
 echo "  ✅ Stack started"
 echo ""
 
@@ -117,7 +162,11 @@ echo "=========================================="
 echo "  ✅ Clean start complete"
 echo "=========================================="
 echo ""
-echo "Compose file: ${COMPOSE_FILE}"
+echo "Compose file(s): ${COMPOSE_ARGS[*]}"
 echo "Ensure lightsail/.env exists (copy from .env.example) and CORS / URLs are set as needed."
 echo "See experimental-hybrid/DEPLOYMENT_PLAYBOOK.md (Phase 3b encryption, Cloudflare, CORS)."
+if [ -n "$WITH_JAVA_MELODY" ]; then
+    echo "JavaMelody collector: http://127.0.0.1:8088 (SSH tunnel Host ezkey-online-metrics)."
+    echo "Rollback: docker compose -f docker-compose.yml up -d --remove-orphans"
+fi
 echo ""

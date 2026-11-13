@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueries, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Plus, Power, PowerOff, QrCode, RefreshCw, Search } from 'lucide-react';
+import { AlertTriangle, Plus, Power, PowerOff, RefreshCw, Search } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { AppShell } from '@/components/layout/app-shell';
@@ -11,7 +11,6 @@ import { type ColumnDef } from '@/components/data-table/data-table';
 import { PaginatedTable } from '@/components/data-table/paginated-table';
 import { EnrollmentListLifecycleDialog, type EnrollmentLifecycleAction } from '@/components/feature/enrollment-list-lifecycle-dialog';
 import { EnrollmentStatusBadge } from '@/components/feature/enrollment-status-badge';
-import { IntegratedDeliveryNotice } from '@/components/feature/integrated-delivery-notice';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
@@ -20,12 +19,13 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useDemoModeSession } from '@/context/use-demo-mode-session';
+import { useToast } from '@/context/use-toast';
 import { useAuth } from '@/context/use-auth';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useIntegrations } from '@/hooks/use-integrations';
-import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
+import { orvalPagedBody, usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { ENROLLMENT_BUCKET_PARAM, type EnrollmentDrilldownBucket } from '@/lib/dashboard-drilldown-links';
-import { ApiError, fetchBlobUrl } from '@/lib/api-client';
+import { ApiError } from '@/lib/api-client';
 import { enrollmentDemoPresets, isDemoMode } from '@/lib/demo-mode';
 import { buildListDetailNavState } from '@/lib/list-detail-navigation';
 import { isPhoneNumberInputValid, normalizePhoneNumberInput } from '@/lib/phone-number';
@@ -38,7 +38,6 @@ import type {
   EnrollmentCreateRequestDto,
   EnrollmentCreateResponseDto,
   EnrollmentResponseDto,
-  PagedModelEnrollmentResponseDto,
   Search1Params,
 } from '@/generated/admin-api/model';
 
@@ -65,10 +64,7 @@ function EnrollmentCreateDialog({
   const navigate = useNavigate();
   const { sessionDemoOn } = useDemoModeSession();
   const { list: integrations, isLoading: loadingIntegrations } = useIntegrations();
-  const [createdEnrollment, setCreatedEnrollment] = useState<EnrollmentCreateResponseDto | null>(null);
-  const [createdEnrollmentName, setCreatedEnrollmentName] = useState<string | null>(null);
-  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
-  const [qrLoading, setQrLoading] = useState(false);
+  const { toast } = useToast();
 
   const createSchema = useMemo(
     () =>
@@ -157,24 +153,22 @@ function EnrollmentCreateDialog({
       const res = await create1(data);
       return res as unknown as EnrollmentCreateResponseDto;
     },
+    // A creation lands on the enrollment's record, the one place that holds the QR, the challenge
+    // and the email send; the dialog does not repeat them.
     onSuccess: (enrollment, variables) => {
-      setCreatedEnrollment(enrollment);
-      setCreatedEnrollmentName(variables?.name ?? null);
       void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
       void queryClient.invalidateQueries({ queryKey: ['stats'] });
+      toast(t('create.successMessage', { name: variables.name }), 'success');
+      handleClose();
+      navigate(`/enrollments/${enrollment.enrollmentId}`);
     },
   });
 
-  const handleClose = () => {
-    if (qrCodeUrl) URL.revokeObjectURL(qrCodeUrl);
+  function handleClose() {
     reset(freshDefaults);
-    setCreatedEnrollment(null);
-    setCreatedEnrollmentName(null);
-    setQrCodeUrl(null);
-    setQrLoading(false);
     createMutation.reset();
     onClose();
-  };
+  }
 
   const onSubmit = (values: CreateFormValues) => {
     const payload: EnrollmentCreateRequestDto = {
@@ -191,100 +185,9 @@ function EnrollmentCreateDialog({
     createMutation.mutate(payload);
   };
 
-  // Revoke blob URL on unmount or when QR is hidden
-  useEffect(() => {
-    return () => {
-      if (qrCodeUrl) URL.revokeObjectURL(qrCodeUrl);
-    };
-  }, [qrCodeUrl]);
-
-  const handleToggleQr = async () => {
-    if (!createdEnrollment) return;
-    if (qrCodeUrl) {
-      URL.revokeObjectURL(qrCodeUrl);
-      setQrCodeUrl(null);
-      return;
-    }
-    setQrLoading(true);
-    try {
-      const url = await fetchBlobUrl(`/api/v1/enrollments/${createdEnrollment.enrollmentId}/qrcode`);
-      setQrCodeUrl(url);
-    } catch {
-      // QR load failed — silently ignore, user can retry
-    } finally {
-      setQrLoading(false);
-    }
-  };
-
-  const handleViewEnrollment = () => {
-    if (createdEnrollment) {
-      navigate(`/enrollments/${createdEnrollment.enrollmentId}`);
-      handleClose();
-    }
-  };
-
   return (
     <Dialog open={open} onClose={handleClose} title={t('create.title')} size="md" dismissible={false}>
-      {createdEnrollment ? (
-        /* ── Success state: QR on demand + challenge ───────── */
-        <div className="space-y-4">
-          <Alert variant="success">
-            {t('create.successMessage', { name: createdEnrollmentName ?? 'created' })}
-          </Alert>
-
-          <IntegratedDeliveryNotice summary={t('common:integratedDelivery.summary')}>
-            {t('create.previewNotice')}
-          </IntegratedDeliveryNotice>
-
-          <div className="space-y-3">
-            <p className="text-xs font-black uppercase tracking-widest text-fg-muted">
-              {t('create.qrHint')}
-            </p>
-            <Button
-              variant="secondary"
-              size="sm"
-              isLoading={qrLoading}
-              onClick={handleToggleQr}
-              className="gap-1.5"
-            >
-              <QrCode className="size-3.5" />
-              {qrCodeUrl ? t('create.hideQrCode') : t('create.showQrCode')}
-            </Button>
-            {qrCodeUrl && (
-              <div className="border-2 border-fg p-3 inline-block">
-                <img src={qrCodeUrl} alt="Enrollment QR Code" className="size-48" />
-              </div>
-            )}
-          </div>
-
-          {createdEnrollment.enrollmentChallenge != null && (
-            <div className="border-2 border-fg/30 p-3 bg-bg">
-              <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted mb-1">
-                {t('create.bindingChallengeCode')}
-              </p>
-              <p className="font-mono text-2xl font-black tracking-widest">
-                {createdEnrollment.enrollmentChallenge}
-              </p>
-            </div>
-          )}
-
-          {createdEnrollment.expiresAt != null && createdEnrollment.expiresAt !== '' && (
-            <div className="border-2 border-fg/30 p-3 bg-bg">
-              <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted mb-1">
-                {t('create.invitationExpiresAt')}
-              </p>
-              <p className="text-sm font-medium">{formatDate(createdEnrollment.expiresAt)}</p>
-            </div>
-          )}
-
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={handleViewEnrollment}>
-              {t('create.viewEnrollment')}
-            </Button>
-            <Button onClick={handleClose}>{t('create.done')}</Button>
-          </div>
-        </div>
-      ) : !loadingIntegrations && integrations.length === 0 ? (
+      {!loadingIntegrations && integrations.length === 0 ? (
         <Alert variant="warning">
           {t('create.noIntegration')}{' '}
           <Link to="/integrations" className="font-medium text-accent underline">{t('create.createIntegrationFirst')}</Link>.
@@ -531,75 +434,87 @@ export default function EnrollmentsPage() {
       {
         queryKey: ['enrollments', 'bucket', 'CREATED', integrationFilter],
         queryFn: () =>
-          search1({
-            status: 'CREATED',
-            page: 0,
-            size: 500,
-            sort: ['createdAt,DESC'],
-            integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
-          } as Search1Params) as Promise<PagedModelEnrollmentResponseDto>,
+          orvalPagedBody<EnrollmentResponseDto>(
+            search1({
+              status: 'CREATED',
+              page: 0,
+              size: 500,
+              sort: ['createdAt,DESC'],
+              integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
+            } as Search1Params),
+          ),
         enabled: enrollmentBucket === 'inProgress',
       },
       {
         queryKey: ['enrollments', 'bucket', 'BOUND', integrationFilter],
         queryFn: () =>
-          search1({
-            status: 'BOUND',
-            page: 0,
-            size: 500,
-            sort: ['createdAt,DESC'],
-            integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
-          } as Search1Params) as Promise<PagedModelEnrollmentResponseDto>,
+          orvalPagedBody<EnrollmentResponseDto>(
+            search1({
+              status: 'BOUND',
+              page: 0,
+              size: 500,
+              sort: ['createdAt,DESC'],
+              integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
+            } as Search1Params),
+          ),
         enabled: enrollmentBucket === 'inProgress',
       },
       {
         queryKey: ['enrollments', 'bucket', 'INVALID', integrationFilter],
         queryFn: () =>
-          search1({
-            status: 'INVALID',
-            active: true,
-            page: 0,
-            size: 500,
-            sort: ['createdAt,DESC'],
-            integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
-          } as Search1Params) as Promise<PagedModelEnrollmentResponseDto>,
+          orvalPagedBody<EnrollmentResponseDto>(
+            search1({
+              status: 'INVALID',
+              active: true,
+              page: 0,
+              size: 500,
+              sort: ['createdAt,DESC'],
+              integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
+            } as Search1Params),
+          ),
         enabled: enrollmentBucket === 'unavailable',
       },
       {
         queryKey: ['enrollments', 'bucket', 'REVOKED', integrationFilter],
         queryFn: () =>
-          search1({
-            status: 'REVOKED',
-            active: true,
-            page: 0,
-            size: 500,
-            sort: ['createdAt,DESC'],
-            integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
-          } as Search1Params) as Promise<PagedModelEnrollmentResponseDto>,
+          orvalPagedBody<EnrollmentResponseDto>(
+            search1({
+              status: 'REVOKED',
+              active: true,
+              page: 0,
+              size: 500,
+              sort: ['createdAt,DESC'],
+              integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
+            } as Search1Params),
+          ),
         enabled: enrollmentBucket === 'unavailable',
       },
       {
         queryKey: ['enrollments', 'bucket', 'invalid', integrationFilter],
         queryFn: () =>
-          search1({
-            status: 'INVALID',
-            page: 0,
-            size: 500,
-            sort: ['createdAt,DESC'],
-            integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
-          } as Search1Params) as Promise<PagedModelEnrollmentResponseDto>,
+          orvalPagedBody<EnrollmentResponseDto>(
+            search1({
+              status: 'INVALID',
+              page: 0,
+              size: 500,
+              sort: ['createdAt,DESC'],
+              integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
+            } as Search1Params),
+          ),
         enabled: enrollmentBucket === 'invalid',
       },
       {
         queryKey: ['enrollments', 'bucket', 'revoked', integrationFilter],
         queryFn: () =>
-          search1({
-            status: 'REVOKED',
-            page: 0,
-            size: 500,
-            sort: ['createdAt,DESC'],
-            integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
-          } as Search1Params) as Promise<PagedModelEnrollmentResponseDto>,
+          orvalPagedBody<EnrollmentResponseDto>(
+            search1({
+              status: 'REVOKED',
+              page: 0,
+              size: 500,
+              sort: ['createdAt,DESC'],
+              integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
+            } as Search1Params),
+          ),
         enabled: enrollmentBucket === 'revoked',
       },
     ],
@@ -670,7 +585,7 @@ export default function EnrollmentsPage() {
       integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
       active: activeFilter === '' ? undefined : activeFilter === 'true' ? true : activeFilter === 'false' ? false : undefined,
     },
-    fetchPage: (params) => search1(params as Search1Params) as Promise<PagedModelEnrollmentResponseDto>,
+    fetchPage: (params) => search1(params as Search1Params),
     enabled: !enrollmentBucket,
   });
 

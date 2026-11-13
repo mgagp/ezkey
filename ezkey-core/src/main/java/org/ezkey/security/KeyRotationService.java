@@ -25,6 +25,7 @@ import org.ezkey.config.TinkProperties;
 import org.ezkey.security.domain.entity.EncryptionKey;
 import org.ezkey.security.domain.entity.EncryptionKey.KeyStatus;
 import org.ezkey.security.domain.repository.EncryptionKeyRepository;
+import org.ezkey.security.exception.EncryptionLifecycleDisabledException;
 import org.ezkey.security.exception.PendingEncryptionKeyExistsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,9 +33,12 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.Order;
 import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Service for scheduled encryption key rotation and lifecycle management.
@@ -79,6 +83,7 @@ public class KeyRotationService {
   private final AuditLogService auditLogService;
   private final EncryptionKeyMigrationScopeService migrationScopeService;
   private final KeyUsageVerificationService keyUsageVerificationService;
+  private final TransactionTemplate startupSyncTransaction;
 
   public KeyRotationService(
       KeyManagementOperations keyManagementOperations,
@@ -86,13 +91,15 @@ public class KeyRotationService {
       TinkProperties properties,
       AuditLogService auditLogService,
       EncryptionKeyMigrationScopeService migrationScopeService,
-      KeyUsageVerificationService keyUsageVerificationService) {
+      KeyUsageVerificationService keyUsageVerificationService,
+      PlatformTransactionManager transactionManager) {
     this.keyManagementOperations = keyManagementOperations;
     this.keyRepository = keyRepository;
     this.properties = properties;
     this.auditLogService = auditLogService;
     this.migrationScopeService = migrationScopeService;
     this.keyUsageVerificationService = keyUsageVerificationService;
+    this.startupSyncTransaction = new TransactionTemplate(transactionManager);
   }
 
   /**
@@ -115,9 +122,15 @@ public class KeyRotationService {
    * necessary for the system to function correctly. Constructor wiring ensures the key management
    * dependency is initialized before this method runs.
    *
-   * <p><b>Transaction boundary:</b> {@code @Transactional} is on this public {@link
-   * ApplicationReadyEvent} entry so the empty-table sync runs in one Spring-managed transaction.
-   * {@code @PostConstruct} would run on the raw target and would not apply the annotation.
+   * <p><b>Transaction boundary:</b> the empty-table sync runs in one {@link TransactionTemplate}
+   * transaction, started from this {@link ApplicationReadyEvent} entry. {@code @PostConstruct}
+   * would run on the raw target and could not use a declarative boundary.
+   *
+   * <p><b>Concurrent writers (#1259):</b> two HA Admin API instances can both read an empty table.
+   * The loser gets a unique-key violation only after the winner commits, so its transaction rolls
+   * back cleanly here and the winner's rows are the result. Failure posture: <b>fail-closed</b>. If
+   * the violation leaves the table empty, or another data access error occurs, startup stops
+   * because enrollment writes need these rows.
    *
    * <p><b>Startup order:</b> {@code @Order} is {@link ApplicationReadyStartupOrder#KEYSET_SYNC} so
    * this runs before Admin API MFA bootstrap. Enrollment insert writes encryption-key foreign keys;
@@ -129,7 +142,6 @@ public class KeyRotationService {
    */
   @EventListener(ApplicationReadyEvent.class)
   @Order(ApplicationReadyStartupOrder.KEYSET_SYNC)
-  @Transactional
   public void initializeKeysetSync() {
     // Check if Tink encryption is enabled (not rotation, but encryption itself)
     if (!properties.isEnabled()) {
@@ -152,24 +164,13 @@ public class KeyRotationService {
     }
 
     try {
-      // Check if database is empty
-      long keyCount = keyRepository.count();
-      logger.debug("Checking keyset synchronization: database contains {} keys", keyCount);
-
-      if (keyCount == 0) {
-        logger.warn(
-            "⚠️  Keyset exists and is loaded, but encryption_key table is empty. "
-                + "This may occur after database migration or reset. "
-                + "Synchronizing keyset metadata to database...");
-
-        // Synchronize all keys from keyset to database
-        syncAllKeysFromKeyset("STARTUP_SYNC");
-
-        logger.info("✅ Keyset synchronized to database. Key rotation service is now operational.");
-      } else {
-        logger.debug("Keyset and database are in sync ({} keys found in database)", keyCount);
+      startupSyncTransaction.executeWithoutResult(_ -> syncKeysetWhenTableEmpty());
+    } catch (DataIntegrityViolationException e) {
+      if (keyRepository.count() == 0) {
+        throw e;
       }
-    } catch (DataAccessException | IllegalStateException e) {
+      logger.info("Keyset metadata was synchronized by another Admin API instance");
+    } catch (IllegalStateException e) {
       logger.error(
           "❌ Failed to synchronize keyset on startup. Key rotation may not work correctly. "
               + "Error: {}",
@@ -177,6 +178,25 @@ public class KeyRotationService {
           e);
       // Don't throw - allow application to start even if sync fails
       // Admin can manually trigger sync via API if needed
+    }
+  }
+
+  private void syncKeysetWhenTableEmpty() {
+    long keyCount = keyRepository.count();
+    logger.debug("Checking keyset synchronization: database contains {} keys", keyCount);
+
+    if (keyCount == 0) {
+      logger.warn(
+          "⚠️  Keyset exists and is loaded, but encryption_key table is empty. "
+              + "This may occur after database migration or reset. "
+              + "Synchronizing keyset metadata to database...");
+
+      // Synchronize all keys from keyset to database
+      syncAllKeysFromKeyset("STARTUP_SYNC");
+
+      logger.info("✅ Keyset synchronized to database. Key rotation service is now operational.");
+    } else {
+      logger.debug("Keyset and database are in sync ({} keys found in database)", keyCount);
     }
   }
 
@@ -193,6 +213,10 @@ public class KeyRotationService {
    * <p><b>HA Safety:</b> Uses distributed locking to ensure only one instance executes this job at
    * a time.
    *
+   * <p><b>Idle gate:</b> returns immediately when {@code ezkey.encryption.enabled=false}
+   * <em>or</em> {@code ezkey.encryption.rotation.enabled=false}. Base runtime keeps encryption on
+   * while rotation (and therefore promotion) stays idle.
+   *
    * <p><b>Transaction boundary:</b> this scheduled method is the Spring transaction entry. It calls
    * {@link #promotePendingToPrimary(EncryptionKey)} on {@code this}, so that method's annotation
    * would not apply (self-invocation).
@@ -203,6 +227,13 @@ public class KeyRotationService {
   public void checkAndPromotePendingKeys() {
     if (!properties.isEnabled()) {
       return; // Encryption disabled
+    }
+
+    // Promotion is part of the rotation lifecycle. When rotation is off (e.g. base runtime
+    // profile), keep encryption/Tink on but idle KEY_PROMOTION — do not require disabling
+    // ezkey.encryption.enabled.
+    if (!properties.getRotation().isEnabled()) {
+      return;
     }
 
     if (!keyManagementOperations.isInitialized()) {
@@ -502,6 +533,7 @@ public class KeyRotationService {
    *
    * @param createdBy identifier of who/what triggered the rotation (SYSTEM or admin username)
    * @return the new key ID (will be PRIMARY after sync window expires)
+   * @throws EncryptionLifecycleDisabledException if rotation is disabled
    * @throws PendingEncryptionKeyExistsException if a PENDING key already exists (default workflow)
    * @throws Exception if rotation fails
    */
@@ -516,6 +548,8 @@ public class KeyRotationService {
    * @param createdBy identifier of who/what triggered the rotation
    * @param immediatePromotion if true, promotes to PRIMARY immediately (skip sync window)
    * @return the new key ID
+   * @throws EncryptionLifecycleDisabledException if {@code ezkey.encryption.rotation.enabled} is
+   *     false
    * @throws PendingEncryptionKeyExistsException if {@code immediatePromotion} is false and a
    *     PENDING key already exists
    * @throws Exception if rotation fails
@@ -523,6 +557,10 @@ public class KeyRotationService {
   @Transactional
   public long introduceNewKey(String createdBy, boolean immediatePromotion)
       throws GeneralSecurityException, IOException {
+    if (!isRotationEnabled()) {
+      throw new EncryptionLifecycleDisabledException(
+          EncryptionLifecycleDisabledException.Operation.ROTATION);
+    }
     logger.info(
         "🔄 Introducing new encryption key (triggered by: {}, immediate: {})",
         createdBy,
@@ -597,6 +635,15 @@ public class KeyRotationService {
     }
 
     return newKeyId;
+  }
+
+  /**
+   * Whether scheduled and manual key rotation is enabled.
+   *
+   * @return {@code true} when {@code ezkey.encryption.rotation.enabled} is on
+   */
+  public boolean isRotationEnabled() {
+    return properties.getRotation().isEnabled();
   }
 
   /**
@@ -811,18 +858,16 @@ public class KeyRotationService {
     if (oldPrimaryKeyId != null && !oldPrimaryKeyId.equals(newPrimaryKeyId)) {
       keyRepository
           .findById(oldPrimaryKeyId)
-          .ifPresent(
-              oldKey -> {
-                if (oldKey.getKeyStatus() == KeyStatus.PRIMARY) {
-                  logger.debug(
-                      "Demoting old primary key {} to ENABLED",
-                      Long.toUnsignedString(oldPrimaryKeyId));
-                  oldKey.setKeyStatus(KeyStatus.ENABLED);
-                  oldKey.setPromotedPrimaryAt(null);
-                  migrationScopeService.applyDemotionBaseline(oldKey);
-                  keyRepository.save(oldKey);
-                }
-              });
+          .ifPresent(oldKey -> {
+            if (oldKey.getKeyStatus() == KeyStatus.PRIMARY) {
+              logger.debug(
+                  "Demoting old primary key {} to ENABLED", Long.toUnsignedString(oldPrimaryKeyId));
+              oldKey.setKeyStatus(KeyStatus.ENABLED);
+              oldKey.setPromotedPrimaryAt(null);
+              migrationScopeService.applyDemotionBaseline(oldKey);
+              keyRepository.save(oldKey);
+            }
+          });
     }
 
     // FOURTH: Sync all other keys in keyset (ensure they are ENABLED, not PRIMARY)

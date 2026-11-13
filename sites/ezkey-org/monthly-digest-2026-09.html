@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="Monthly digest: September 2026 in review — Ezkey">
+    <meta property="og:description" content="A distilled digest of Ezkey's September 2026 work: public alpha honesty, Integrity for Global Admins, and a community people can try — without production or SLA claims.">
+    <meta property="og:url" content="https://ezkey.org/monthly-digest-2026-09.html">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Ezkey">
+    <meta property="og:image" content="https://ezkey.org/logo.svg">
+    <meta property="og:locale" content="en_US">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Monthly digest: September 2026 in review — Ezkey">
+    <meta name="twitter:description" content="A distilled digest of Ezkey's September 2026 work: public alpha honesty, Integrity for Global Admins, and a community people can try — without production or SLA claims.">
+    <meta name="twitter:image" content="https://ezkey.org/logo.svg">
+    <link rel="canonical" href="https://ezkey.org/monthly-digest-2026-09.html">
+    <link rel="alternate" hreflang="en" href="https://ezkey.org/monthly-digest-2026-09.html">
+    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/monthly-digest-2026-09.html">
+    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/monthly-digest-2026-09.html">
+    <title>Monthly digest: September 2026 in review — Ezkey</title>
+    <meta name="description" content="A distilled digest of Ezkey's September 2026 work: public alpha honesty, Integrity for Global Admins, and a community people can try — without production or SLA claims.">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #1a1a2e; line-height: 1.65; }
+        .shell { max-width: 820px; margin: 0 auto; padding: 28px 20px 48px; }
+        .nav-top, footer { color: rgba(255,255,255,0.9); font-size: 0.92rem; }
+        .nav-top { margin-bottom: 20px; }
+        .nav-top a, footer a { color: rgba(255,255,255,0.95); text-decoration: underline; }
+        article { background: #fff; border-radius: 16px; box-shadow: 0 24px 60px rgba(0,0,0,0.18); padding: 40px 36px 48px; }
+        .doc-meta { color: #555; font-size: 0.85rem; margin-bottom: 16px; }
+        .hero-title { text-align: center; margin-bottom: 28px; padding-bottom: 24px; border-bottom: 2px solid #667eea; }
+        .hero-title .label { color: #667eea; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; margin-bottom: 8px; text-transform: uppercase; }
+        h1 { color: #111; font-size: 1.72rem; line-height: 1.25; margin-bottom: 12px; }
+        .tagline { color: #444; font-size: 1.05rem; font-weight: 600; }
+        h2 { color: #667eea; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin: 28px 0 10px; }
+        p { font-size: 0.98rem; margin-bottom: 12px; }
+        .lead { font-size: 1.02rem; color: #222; }
+        ul { margin: 0 0 12px 22px; }
+        li { font-size: 0.96rem; margin-bottom: 6px; }
+        .closing { margin-top: 24px; padding: 18px 20px; background: linear-gradient(135deg, rgba(102,126,234,0.08), rgba(118,75,162,0.08)); border-left: 4px solid #667eea; border-radius: 12px; }
+        .doc-link-sibling { font-size: 0.92rem; margin-top: 14px; }
+        footer { margin-top: 24px; text-align: center; }
+        @media (max-width: 600px) { article { padding: 28px 20px 36px; } }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <p class="nav-top"><a href="/monthly-digest.html">Monthly digests</a> &middot; <a href="/fr/monthly-digest-2026-09.html">Lire en francais</a></p>
+        <article>
+            <p class="doc-meta">Monthly digest &middot; September 2026</p>
+            <header class="hero-title">
+                <p class="label">September 2026 in review</p>
+                <h1>Public alpha honesty, integrity operators can trust</h1>
+                <p class="tagline">September opened Ezkey as a public alpha people can try, named the limits without spin, and gave Global Admins a first-class way to watch the integrity of the audit trail.</p>
+            </header>
+
+            <h2>In short</h2>
+            <p class="lead">Ezkey stopped sounding like an internal lab experiment and started speaking as a public alpha: source under MIT, a community instance on ezkey.online, and plain wording that this is laboratory work — no SLA, no production claim, and no Duo, Okta, or Keycloak equivalence. Much of the month’s energy went into making that honesty stick on the site and in operator tools. Global Admins gained a dedicated Integrity surface so sealed audit material can be inspected without hunting through side paths. Hygiene and dependency triage kept the stack current without becoming the story.</p>
+
+            <h2>Documentation &amp; methodology</h2>
+            <p>The team closed the old “operable release” framing and named what is actually live: a discreet public alpha, Android in closed testing only, and evaluator signup off by default. Product writing and ezkey.org dropped leftover lab hostnames in favor of alpha community language, with clear versioning and deploy traceability so readers can see what is running. A craft essay on steering work by intention landed alongside a lighter two-stage plan-hardening pattern for risky changes. Longer-horizon notes in flight map post-quantum protocol posture and how enrollments should behave when identities are reused.</p>
+
+            <h2>Code hygiene</h2>
+            <p>Weekly dependency triage continued across the Java stack, Admin UI, mobile, and the SDK. Mobile moved to a newer React Native line; codegen and tooling pins stayed aligned across surfaces. Curated static-analysis and Dependabot habits kept maintenance visible without turning the month into an upgrade log.</p>
+
+            <h2>Admin UI</h2>
+            <p>Integrity moved from a side concern to a Global Admin destination: clearer modes, progressive disclosure, and honest copy when an installation runs without full integrity monitoring. Longer sealing and investigation work can run without freezing the console. Tenant Admins see their tenant name in the header. Passwordless login failures no longer imply that a password was wrong. In flight: a temporary evaluator console so someone can explore the Admin UI for a bounded window without enrolling a device first — still gated and off by default.</p>
+
+            <h2>Mobile app</h2>
+            <p>React Native advanced; Settings copy was rewritten for end users; Home can group enrollments in a clearer identity grid. Closed-testing builds are labeled public alpha so Play testers are not sold a production story. Still open: what happens when an admin deletes and recreates an enrollment while the phone still holds the old local binding — documented as an alpha edge case, not yet a product fix.</p>
+
+            <h2>Backend &amp; API contracts</h2>
+            <p>Least-privilege database grants tightened further; schema auto-update stayed off on running APIs. Passwordless wait sessions were hardened against replay and session abuse. Inactive key rotation and integrity validation fail closed when continuing would quietly weaken the guarantee. Security probing deepened with rate-limit and method-handling fixes. OpenAPI specs were refreshed for the public edge, including Cloudflare Schema Validation packaging for the community host.</p>
+
+            <h2>The rest worth mentioning</h2>
+            <ul>
+                <li><strong>Community ops:</strong> Lightsail bootstrap path, Caddy routing, and Cloudflare schema packaging so ezkey.online can be stood up and kept honest as an alpha community host — not a production promise.</li>
+                <li><strong>Lab-only SSH MFA module:</strong> hygiene and an Amazon Linux builder for internal dogfood; explicitly off the public alpha path.</li>
+                <li><strong>White-box isolation review:</strong> a curated look at how service-layer SQL respects tenant boundaries — findings recorded for later remediations, not silently assumed fixed.</li>
+                <li><strong>SDK &amp; agent tooling:</strong> JavaScript client builds unblocked on current TypeScript; Cloud Agent environments gained a fuller local stack so review work starts closer to reality.</li>
+            </ul>
+
+            <div class="closing">
+                <p>August aimed at an operable September. What landed instead is clearer: a public alpha with honest bounds, Integrity operators can inspect, and a community people can try — without pretending the product is finished. Next attention belongs to finishing evaluator access that stays temporary and honest, closing obvious alpha rough edges on mobile, and keeping the public face aligned with what the stack actually does.</p>
+            </div>
+
+            <p class="doc-link-sibling"><strong>Francais:</strong> <a href="/fr/monthly-digest-2026-09.html">Version francaise de cette note</a></p>
+            <p class="doc-link-sibling"><strong>Back to index:</strong> <a href="/monthly-digest.html">Monthly digests</a></p>
+        </article>
+        <footer><p>Ezkey &middot; <a href="/">ezkey.org</a></p></footer>
+    </div>
+</body>
+</html>

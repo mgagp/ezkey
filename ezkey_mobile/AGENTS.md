@@ -10,8 +10,10 @@ React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollme
 
 - Start with `docs/README.md` for the current mobile documentation corpus.
 - Test layer contract (Jest vs JVM vs instrumented vs Maestro): [`docs/MOBILE_TEST_STRATEGY.md`](docs/MOBILE_TEST_STRATEGY.md).
-- Treat `docs/MOBILE_API_MAPPINGS.md`, `docs/MOBILE_FUNCTIONAL_FLOWS.md`, `docs/MOBILE_DATA_MODEL.md`, `docs/MOBILE_SCREENS_AND_WIREFLOWS.md`, `docs/MOBILE_STACK_AND_ARCHITECTURE.md`, and `docs/MOBILE_POSITIONING.md` as the primary conceptual set.
+- Treat `docs/MOBILE_API_MAPPINGS.md`, `docs/MOBILE_FUNCTIONAL_FLOWS.md`, `docs/MOBILE_APP_STATE_MACHINE.md`, `docs/MOBILE_DATA_MODEL.md`, `docs/MOBILE_SCREENS_AND_WIREFLOWS.md`, `docs/MOBILE_STACK_AND_ARCHITECTURE.md`, and `docs/MOBILE_POSITIONING.md` as the primary conceptual set.
+- **Settings / Paramètres informational copy (About, What's new, Coming soon, Security):** follow the end-user editorial compass [`../product-docs/components/mobile/settings-copy-end-user-compass.md`](../product-docs/components/mobile/settings-copy-end-user-compass.md). Primary audience is the non-technical end user; do not reintroduce protocol manifesto, passkey essays, nested Coming-next inside What's new, or privacy notes outside About. Source of truth for strings: `app/i18n/resources.ts` (EN + FR).
 - Wire protocol for third-party or alternative mobile clients is the repository-level companion [`docs/MOBILE_DEVELOPER_GUIDE.md`](../docs/MOBILE_DEVELOPER_GUIDE.md) — not the RN screen corpus.
+- Challenge-code direction / MFA fatigue / number matching → [`docs/SECURITY_POSTURE.md`](../docs/SECURITY_POSTURE.md) § Challenge-code direction (Decision #960); inverted mode parked: [`I-2026-10-21-inverted-challenge-code-mode`](../product-docs/global/backlog/ideas/I-2026-10-21-inverted-challenge-code-mode.md).
 - For release and publishing work, read `docs/MOBILE_RELEASE_SIGNING.md`, `docs/MOBILE_PLAY_PUBLISHING.md`, `docs/MOBILE_PLAY_RELEASE_READINESS_AUDIT.md`, and `docs/MOBILE_RELEASE_DECISION_MEMO.md` before proposing release conclusions.
 - Treat `package.json`, Android Gradle files, and manifests as the source of truth for the current workspace stack and release configuration.
 
@@ -22,8 +24,11 @@ React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollme
   Licenses). Release announcements are a top-of-home card plus Settings → What's new — not a
   floating bottom-left badge. About stays static identity (version, site, support).
   Do not reintroduce a Diagnostics screen in production chrome. Delete-one and clear-all live only
-  in Danger Zone. Card title fallback: `enrollmentName` → `deviceLabel` → `integrationName`. After
-  a successful delete-one, `navigation.goBack()` — exceptional cleanup, not a batch-delete loop.
+  in Danger Zone.   Home card title is Purpose (localized Administration for admin MFA, else
+  `integrationName`); subtitle is Account (`enrollmentName`); Role line for every
+  system-integration enrollment (FR Role: `Admin tenant`, not *locataire*). After a
+  successful delete-one, `navigation.goBack()` —
+  exceptional cleanup, not a batch-delete loop.
 - Nested `installation` on each stored enrollment is the local trust zone. Identity is the
   normalized `authUrl` (`installation.id`). Do not re-flatten `installation*` onto enrollment,
   and do not add a second persisted installation collection. Enrolled branding
@@ -37,7 +42,8 @@ React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollme
 - When discussing stack modernization, treat React, React Native, `react-native-vision-camera`, and camera-adjacent dependencies as a coupled compatibility slice rather than as independent bumps.
 - Do **not** add `react-native-worklets/plugin` to `babel.config.js` while the project is on **Babel 8**: the Worklets plugin still pulls Babel-7-era presets and fails the JS bundle (`Requires Babel "^7.0.0-0", but was loaded with "8.0.1"`). Revisit when Software Mansion ships Babel 8–compatible Worklets, or when a real frame-processor/`'worklet'` path needs that transform. The enrollment QR path (`useBarcodeScannerOutput` / ML Kit) does not require the plugin today.
 - For VisionCamera **5.1+**, resolve a concrete device with `useCameraDevice('back')` before mounting `<Camera />`. Passing the position string `device="back"` can throw while the device list is still empty (`This device does not have any "back" Cameras!`) and trip `AppErrorBoundary`.
-- Treat the current mobile product and security posture as **Android-first**. iOS is a later planned milestone, not a short-term parity target, so do not report missing iOS parity as a current defect unless documentation overclaims it.
+- Treat the current mobile product and security posture as **Android-first**: Android is the reference implementation. The **iOS rebuild is in progress** (issue #152, ADR-MOB-0005, `TB-2026-0004`): `ios/` is being regenerated as a clean React Native scaffold that reuses all shared TypeScript, with only the iOS native layer rewritten. Until the iOS milestone lands, missing iOS parity is expected work, not a defect, unless documentation overclaims it.
+- **Swift code standards (iOS native layer):** swift-format (Apple, Google Swift style defaults, `ios/.swift-format`) + SwiftLint (`ios/.swiftlint.yml`), both strict. Run `yarn ios:lint` (`--fix` via `bash scripts/ios-lint.sh --fix`) and `yarn ios:test` before committing Swift (CI job `mobile-ios` runs both on macOS); new files carry the repo-standard license header. Edit `project.pbxproj` only through the `xcodeproj` gem. Details: `docs/IOS_SETUP.md` § Swift code standards.
 - **Android platform support floor:** Android **12+** (`minSdk` **31**) in product policy and
   Gradle (`android/build.gradle`). Canon: `docs/MOBILE_ANDROID_PLATFORM_SUPPORT.md`.
   **Annual review** of that doc is due **2027-07** (habit title: Platform support floor — annual
@@ -57,12 +63,17 @@ React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollme
 
 ## Contract-First Rules
 
-- Orval is pinned at **8.25.0** (exact). Config uses verb-aware defaults only (`query: { version: 5 }` —
+- Orval is pinned at **8.47.0** (exact). Config uses verb-aware defaults only (`query: { version: 5 }` —
   no global `useQuery` / `useMutation`). Same Option B as Admin UI `TB-2026-05-28` checkpoints 8.10 / 8.11.
-  Treat later **8.26+** minors as a new validation ladder (regenerate + typecheck/test/lint).
+  Bump autonomy follows the **Orval risk grid** (O0–O3) in skill `dependabot-curated` § *Orval risk
+  grid* (pointer: [`../product-docs/global/hygiene/dependabot/README.md`](../product-docs/global/hygiene/dependabot/README.md));
+  evaluate mobile **separately** from Admin UI. Generated client is committed — PR diff is the
+  oracle. Phone smoke after O0/O1 is recommended, non-blocking for merge, tracked (e.g. `#627`) and
+  gates the next Play AAB.
   Do not enable `useDatesTransform` unless Admin UI does — it is opt-in date deserialization.
-  `orval-dom-shim.d.ts` declares Fetch `HeadersInit` because RN `tsc` has no DOM lib.
-- Never hand-edit `openapi-spec.json` in `ezkey_mobile/`.
+  Orval 8.33+ types `getHeaders` via `RequestInit['headers']` (RN types already cover this); the
+  former `orval-dom-shim.d.ts` (`HeadersInit`) is no longer required.
+- Orval reads `../specs/auth-api/openapi-spec.json` directly (no local `openapi-spec.json` symlink/copy — #833). Never hand-edit the canonical file under `specs/`.
 - Refresh specs only through the root script `scripts/update-specs.sh` (Git Bash) after a human has started a clean Docker stack.
 - After refreshing the spec, run `yarn generate:api`.
 - Treat `app/services/api/generated/auth-api/model/` as the source of truth for Auth API DTOs.
@@ -89,14 +100,25 @@ React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollme
   `ezkey.qr.auth-base-url`). Fall back to configured `EZKEY_API_BASE_URL` only when QR omits
   `authUrl`. Do **not** hard-code tunnel hostnames (e.g. ngrok) in committed env defaults.
 
+## Toolchain upgrade gate (React, Gradle, AGP, Kotlin)
+
+A warm `assembleRelease` or a debug install does **not** prove a Play AAB. When a change touches React, React Native, the Gradle wrapper, Android Gradle Plugin, or Kotlin, follow [`docs/MOBILE_DEPENDENCY_HYGIENE_CEREMONY.md`](docs/MOBILE_DEPENDENCY_HYGIENE_CEREMONY.md) § *Cold release gate*. Delete the included plugin build under `node_modules/@react-native/gradle-plugin` and produce both a release APK and `app-release.aab` from a cold `--no-daemon` run. Incident: 2026-09-22 phone install (`versionCode` 2 / `1.0.0`, RN 0.87.1) succeeded from cache; a later cold `bundleRelease` failed because the RN Gradle plugin (Kotlin 2.1.20) cannot read Gradle 9.4.1's Kotlin 2.3 metadata, and AGP 9.2.1 will not run on an older Gradle.
+
 ## Android debug build (agents — read first)
 
-**Do not improvise `JAVA_HOME` or bare `./gradlew` on Windows.** The maintainer PATH often exposes **JDK 25** (`C:\Tools\jdk-25…`), which breaks React Native 0.86 Android (`Unsupported class file major version 69`, `com.facebook.react.settings` plugin errors). Android Studio JBR is also **not** always at `C:\Program Files\Android\Android Studio\jbr` (this workstation uses `Android Studio1\jbr`).
+**Do not improvise `JAVA_HOME` or bare `./gradlew` on Windows.** The maintainer PATH often exposes **JDK 25** (`C:\Tools\jdk-25…`), which breaks React Native 0.87 Android (`Unsupported class file major version 69`, `com.facebook.react.settings` plugin errors). Android Studio JBR is also **not** always at `C:\Program Files\Android\Android Studio\jbr` (this workstation uses `Android Studio1\jbr`).
+
+**macOS (#1175):** `resolve-android-jdk.sh` finds a JDK 17 under `~/.sdkman/candidates/java/17.*`,
+`/Library/Java/JavaVirtualMachines/temurin-17*`, or the Android Studio JBR when it is 17 or 21 (Android
+Studio 2026.2 ships JDK 25, which is skipped). It also exports `ANDROID_HOME=~/Library/Android/sdk`
+when unset and puts `adb` on `PATH`, so no shell-profile edit is needed. Emulator: AVD
+`ezkey_pixel_9a` (Android 37, arm64), boot headless with
+`$ANDROID_HOME/emulator/emulator -avd ezkey_pixel_9a -no-window -no-audio`.
 
 ### Mandatory agent workflow
 
-1. **Git Bash** from `ezkey_mobile/` (not bare PowerShell for Gradle).
-2. **Device before Gradle**: `adb devices -l` — if empty, stop; do not start a multi-minute build (wireless adb often drops mid-build).
+1. **Git Bash** from `ezkey_mobile/` (not bare PowerShell for Gradle). Yarn scripts that invoke `.sh` go through `scripts/run-with-git-bash.mjs` so Windows does not pick WSL `System32\bash.exe`.
+2. **Device before Gradle** (install path): `adb devices -l` — if empty, stop; do not start a multi-minute build (wireless adb often drops mid-build). For assemble-only: `./scripts/build-install-debug-clean.sh --build-only` (or `yarn android:assemble:debug:clean`).
 3. **Canonical install** (JDK probe + clean + install + launch):
 
    ```bash
@@ -107,23 +129,36 @@ React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollme
 
    Or: `yarn android:install:debug:clean` (same script).
 
-4. **JDK resolution** is centralized in `scripts/resolve-android-jdk.sh` (Android Studio / Studio1 JBR, `C:\Tools\jdk17`, Microsoft JDK 17, macOS `java_home -v 17`). Override only with `EZKEY_ANDROID_JAVA_HOME` if needed.
+   **Preferred when iterating on device:** avoid a second full clean by assembling once, then installing:
+
+   ```bash
+   ./scripts/build-install-debug-clean.sh --build-only
+   ./scripts/build-install-debug-clean.sh --skip-clean --with-metro-reverse
+   ```
+
+4. **JDK resolution** is centralized in `scripts/resolve-android-jdk.sh`. **Project standard is JDK 17** (CI Temurin 17). Prefer `EZKEY_ANDROID_JAVA_HOME`, then `C:\Tools\jdk17` / globbed Microsoft·Temurin JDK 17 / macOS `java_home -v 17`; Studio JBR 21 is accepted locally only as fallback (stderr warning when used). Never silently prefer 21 when 17 exists. Do not reintroduce `gradle-daemon-jvm.properties` / Foojay auto-download (CI guard: `scripts/assert-no-gradle-daemon-jvm.sh`). Migrating the project to JDK 21 is a separate decision.
 5. After dependency changes: `corepack yarn install --immutable` then the script above.
 6. **Fast reinstall** when APK already built and device reconnected: `./scripts/build-install-debug-clean.sh --skip-clean`.
+7. **Metro on a physical device:** when `ezkey.useMetroInDebug=true` (or `--with-metro-reverse`), the install script re-applies `adb reverse` every run (wireless ADB drops it). Non-default port: `--metro-port` / `EZKEY_METRO_PORT` / `RCT_METRO_PORT`. The script warns if a packager on that port looks tied to another worktree (Windows paths normalized; self-test: `./scripts/metro-adb-selftest.sh`).
 
 ### Do not
 
 - Set `JAVA_HOME` to the repo JDK 25 or guess a single Android Studio path without probing.
 - Run `unset JAVA_HOME` and hope Gradle picks a good JDK (PATH may still be 25).
 - Use `yarn android:install:debug` alone unless `resolve-android-jdk.sh` is sourced in the same shell session.
+- Commit `android/gradle/gradle-daemon-jvm.properties` (delete it; keep `org.gradle.java.installations.auto-download=false`).
 
 ### Related scripts
 
 | Script | Use |
 |--------|-----|
-| `scripts/build-install-debug-clean.sh` | **Default** — clean debug build + install on device |
-| `scripts/build-install-release-clean.sh` | Clean **release** build + install (offline-capable; no Metro) |
+| `scripts/build-install-debug-clean.sh` | **Default** — clean debug build + install on device (`--build-only`, `--metro-port`, `--with-metro-reverse`) |
+| `scripts/build-install-release-clean.sh` | Clean **release** build + install (offline-capable; no Metro); runs 16 KB gate on APK |
+| `scripts/bundle-release.sh` | `yarn android:bundle:release` — `bundleRelease` + 16 KB gate on AAB |
+| `scripts/check-16kb-alignment.sh` | ELF PT_LOAD + GNU_RELRO (+ APK zipalign -P 16) gate; see docs § 16 KB |
 | `scripts/resolve-android-jdk.sh` | Source to export `JAVA_HOME` for any Gradle command |
+| `scripts/assert-no-gradle-daemon-jvm.sh` | CI/local guard: fail if daemon JVM pin file returns |
+| `scripts/run-with-git-bash.mjs` | Yarn entry: Git Bash on Windows, `bash` elsewhere |
 | `scripts/android-with-jdk17.sh` | `react-native run-android` with correct JDK |
 | `scripts/install-debug-after-uninstall.sh` | Uninstall + `installDebug` (signature mismatch) |
 | `scripts/run-android-instrumented-crypto-tests.sh` | MOB-006 — `EzkeyCryptoModule` Keystore `androidTest` (emulator OK; not StrongBox CI) |
@@ -188,8 +223,9 @@ StrongBox physical checklist (MOB-006): [`docs/MOBILE_STRONGBOX_MANUAL_CHECKLIST
 ## Mobile doctor-curated pass
 
 - Keyword for humans and agents: **`mobile-doctor-curated`**.
-- Purpose: a **punctual** React Native + Kotlin hygiene pass (react-doctor + Semgrep + Detekt →
-  curated P1/P2/P3 shortlist). **Not** a CI gate and **not** a zero-warning campaign.
+- Purpose: a **punctual** React Native + Kotlin + Swift hygiene pass (react-doctor + Semgrep +
+  Detekt, plus the iOS lane on macOS: SwiftLint curated set + Periphery → curated P1/P2/P3
+  shortlist). **Not** a CI gate and **not** a zero-warning campaign.
 - Default commands from `ezkey_mobile/`:
 
 ```bash
@@ -197,7 +233,9 @@ yarn doctor:curated
 ./scripts/mobile-doctor-curated.sh
 ```
 
-  Optional: `--skip-react-doctor`, `--skip-semgrep`, `--skip-detekt`, `--curate-only`.
+  Optional: `--skip-react-doctor`, `--skip-semgrep`, `--skip-detekt`, `--skip-swiftlint`,
+  `--skip-periphery`, `--curate-only`. iOS lane: `brew install swiftlint periphery`, and run
+  `yarn ios:test` first when Swift changed (Periphery reads its index store).
 - Outputs under `logs/mobile-doctor/` (gitignored via root `logs/`):
   - `mobile-doctor.curated.md` — human-readable shortlist + planning contract
   - `mobile-doctor.curated.json` — machine-readable summary

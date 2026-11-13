@@ -23,6 +23,10 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
  * auth API: authattempt, enrollment, integration, audit, and security (for encryption key
  * management services).
  *
+ * <p><b>Least privilege:</b> does <strong>not</strong> scan {@code org.ezkey.audit.asyncjob}
+ * (Admin-only Integrity async job entity). Auth must not map or grant on {@code
+ * ezkey_integrity_async_job}.
+ *
  * @since 2025
  */
 @Configuration

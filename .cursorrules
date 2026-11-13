@@ -62,7 +62,7 @@ import org.ezkey.integration.domain.entity.EzkeyIntegration;
 - Use MapStruct for object mapping
 - Use Spring Data JPA for persistence
 - Prefer constructor injection over field injection
-- Use `@Autowired` annotation for clarity
+- Do not introduce `@Autowired`; use constructor injection
 
 ### Testing Standards
 - Write unit tests for services

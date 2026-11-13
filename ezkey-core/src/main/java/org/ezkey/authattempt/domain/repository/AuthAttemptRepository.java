@@ -16,6 +16,8 @@ import java.util.List;
 import java.util.Optional;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
@@ -164,23 +166,46 @@ public interface AuthAttemptRepository
       @Param("now") java.time.OffsetDateTime now);
 
   /**
-   * Updates the status of an authorization attempt if it's currently pending.
+   * Atomically updates status only when the attempt is still in {@code currentStatus} and has not
+   * passed {@code expiresAt}.
    *
-   * <p>This method atomically updates the status from PENDING to the new status, preventing race
-   * conditions in concurrent scenarios.
+   * <p>Used by respond to transition {@code READ → ACCEPTED/REJECTED} without a read-modify-write
+   * gap against cancel (#833 m1) or wall-clock expiry (#895). The {@code expiresAt > :now} clause
+   * is fail-closed against TOCTOU between a Java pre-check and this UPDATE.
    *
    * @param authAttemptId the authorization attempt ID to update
+   * @param currentStatus required current status (typically READ)
    * @param newStatus the new status to set
-   * @return the number of rows affected (1 if updated, 0 if not pending)
+   * @param now server clock used for the expiry predicate
+   * @return the number of rows affected (1 if updated, 0 if status mismatched, expired, or missing)
    */
-  @Modifying
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query(
       "UPDATE AuthAttempt a SET a.authAttemptStatus = :newStatus WHERE a.authAttemptId ="
-          + " :authAttemptId AND a.authAttemptStatus = :currentStatus")
+          + " :authAttemptId AND a.authAttemptStatus = :currentStatus AND a.expiresAt > :now")
   int updateStatusIfCurrent(
       @Param("authAttemptId") Integer authAttemptId,
       @Param("currentStatus") AuthAttemptStatus currentStatus,
-      @Param("newStatus") AuthAttemptStatus newStatus);
+      @Param("newStatus") AuthAttemptStatus newStatus,
+      @Param("now") OffsetDateTime now);
+
+  /**
+   * Atomically marks an auth attempt {@code EXPIRED} only when it is still {@code PENDING} or
+   * {@code READ}. Wins the cancel/approve race without a read-modify-write gap (#833 m1).
+   *
+   * @param authAttemptId attempt primary key
+   * @param statuses typically PENDING and READ
+   * @param expired target status (EXPIRED)
+   * @return 1 if cancelled, 0 if already final or missing
+   */
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      "UPDATE AuthAttempt a SET a.authAttemptStatus = :expired WHERE a.authAttemptId = :id AND"
+          + " a.authAttemptStatus IN :statuses")
+  int expireIfPendingOrRead(
+      @Param("id") Integer authAttemptId,
+      @Param("statuses") List<AuthAttemptStatus> statuses,
+      @Param("expired") AuthAttemptStatus expired);
 
   /**
    * Finds all authorization attempts for a given enrollment ID.
@@ -227,16 +252,38 @@ public interface AuthAttemptRepository
    * enrollment, which would make the current attempt conceptually expired. This implements the
    * business rule that only the most recent authentication attempt for a person should be valid.
    *
+   * <p><b>#727:</b> When several attempts land within the same second, multiple rows can match.
+   * This default method always returns at most one row (latest {@code createdAt}, then highest
+   * {@code authAttemptId}) via {@link Pageable} size 1, so wait/respond never raise {@code
+   * NonUniqueResultException}.
+   *
    * @param enrollmentId the enrollment ID to check
    * @param createdAt the creation time of the current attempt
    * @return the newer authentication attempt if it exists, empty otherwise
    */
+  default Optional<AuthAttempt> findNewerAttemptByEnrollmentId(
+      Integer enrollmentId, OffsetDateTime createdAt) {
+    List<AuthAttempt> newer =
+        findNewerAttemptsByEnrollmentId(enrollmentId, createdAt, PageRequest.of(0, 1));
+    return newer.stream().findFirst();
+  }
+
+  /**
+   * Pageable lookup of newer attempts for an enrollment (newest first).
+   *
+   * @param enrollmentId the enrollment ID to check
+   * @param createdAt the creation time of the current attempt
+   * @param pageable page request (callers that need a single row use size 1)
+   * @return matching attempts ordered by {@code createdAt} descending, then {@code authAttemptId}
+   *     descending (stable tie-breaker when timestamps collide)
+   */
   @Query(
       "SELECT a FROM AuthAttempt a WHERE a.enrollmentId = :enrollmentId AND a.createdAt >"
-          + " :createdAt ORDER BY a.createdAt DESC")
-  Optional<AuthAttempt> findNewerAttemptByEnrollmentId(
+          + " :createdAt ORDER BY a.createdAt DESC, a.authAttemptId DESC")
+  List<AuthAttempt> findNewerAttemptsByEnrollmentId(
       @Param("enrollmentId") Integer enrollmentId,
-      @Param("createdAt") java.time.OffsetDateTime createdAt);
+      @Param("createdAt") OffsetDateTime createdAt,
+      Pageable pageable);
 
   /**
    * Finds all non-final authentication attempts for a given enrollment ID.
@@ -253,6 +300,25 @@ public interface AuthAttemptRepository
   List<AuthAttempt> findByEnrollmentIdAndStatusIn(
       @Param("enrollmentId") Integer enrollmentId,
       @Param("statuses") List<AuthAttemptStatus> statuses);
+
+  /**
+   * Creation times of attempts in the given statuses at or after {@code since}.
+   *
+   * <p>Used to derive the creation cooldown from existing rows. Ordered oldest first.
+   *
+   * @param enrollmentId enrollment whose attempts are counted
+   * @param statuses counted statuses: device-signed REJECTED and INVALID only
+   * @param since inclusive lower bound on {@code createdAt}
+   * @return matching creation timestamps
+   */
+  @Query(
+      "SELECT a.createdAt FROM AuthAttempt a WHERE a.enrollmentId = :enrollmentId AND"
+          + " a.authAttemptStatus IN :statuses AND a.createdAt >= :since ORDER BY a.createdAt"
+          + " ASC")
+  List<OffsetDateTime> findCreatedAtByEnrollmentIdAndStatusInSince(
+      @Param("enrollmentId") Integer enrollmentId,
+      @Param("statuses") List<AuthAttemptStatus> statuses,
+      @Param("since") OffsetDateTime since);
 
   /**
    * Finds non-terminal auth attempts whose {@code expiresAt} is strictly before {@code now}, for
@@ -282,21 +348,25 @@ public interface AuthAttemptRepository
       @Param("expired") AuthAttemptStatus expired);
 
   /**
-   * Updates multiple authentication attempts to EXPIRED status.
+   * Expires live authentication attempts.
    *
-   * <p>This method atomically updates multiple authentication attempts to EXPIRED status, used for
-   * supersession when a new attempt is created.
+   * <p>Used when a new attempt supersedes rows that are still {@code PENDING} or {@code READ}. The
+   * status predicate is part of the update, so a row that already carries {@code REJECTED}, {@code
+   * INVALID}, or another final status is left unchanged and is not treated as superseded.
    *
    * @param authAttemptIds list of authentication attempt IDs to update
+   * @param newStatus status to set, {@code EXPIRED} for supersession
+   * @param liveStatuses statuses this update may replace, {@code PENDING} and {@code READ}
    * @return the number of rows affected
    */
   @Modifying
   @Query(
       "UPDATE AuthAttempt a SET a.authAttemptStatus = :newStatus WHERE a.authAttemptId IN"
-          + " (:authAttemptIds)")
+          + " (:authAttemptIds) AND a.authAttemptStatus IN :liveStatuses")
   int updateStatusForMultipleAttempts(
       @Param("authAttemptIds") List<Integer> authAttemptIds,
-      @Param("newStatus") AuthAttemptStatus newStatus);
+      @Param("newStatus") AuthAttemptStatus newStatus,
+      @Param("liveStatuses") List<AuthAttemptStatus> liveStatuses);
 
   /**
    * Counts auth attempts whose auth attempt proof token was encrypted with the given key id.

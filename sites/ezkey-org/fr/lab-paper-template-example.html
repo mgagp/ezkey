@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <meta name="description" content="Exemple de gabarit pour la mise en page de lecture d’un Lab Paper Ezkey. Pas un compte rendu d’expérience réelle.">
+    <meta property="og:title" content="Exemple de gabarit Lab Paper — Ezkey">
+    <meta property="og:description" content="Exemple de gabarit pour la mise en page de lecture d’un Lab Paper Ezkey. Pas un compte rendu d’expérience réelle.">
+    <meta property="og:url" content="https://ezkey.org/fr/lab-paper-template-example.html">
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="Ezkey">
+    <meta property="og:image" content="https://ezkey.org/logo.svg">
+    <meta property="og:locale" content="fr_FR">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Exemple de gabarit Lab Paper — Ezkey">
+    <meta name="twitter:description" content="Exemple de gabarit pour la mise en page de lecture d’un Lab Paper Ezkey. Pas un compte rendu d’expérience réelle.">
+    <meta name="twitter:image" content="https://ezkey.org/logo.svg">
+    <link rel="canonical" href="https://ezkey.org/fr/lab-paper-template-example.html">
+    <link rel="alternate" hreflang="en" href="https://ezkey.org/lab-paper-template-example.html">
+    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/lab-paper-template-example.html">
+    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/lab-paper-template-example.html">
+    <title>Exemple de gabarit Lab Paper — Ezkey</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #1a1a2e;
+            line-height: 1.65;
+        }
+        .shell { max-width: 1100px; margin: 0 auto; padding: 28px 20px 48px; }
+        .nav-top { font-size: 0.95rem; margin-bottom: 16px; color: rgba(255,255,255,0.95); }
+        .nav-top a { color: rgba(255,255,255,0.95); text-decoration: underline; }
+        .site-nav {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px 18px;
+            margin-bottom: 18px;
+            font-size: 0.9rem;
+        }
+        .site-nav a {
+            color: rgba(255, 255, 255, 0.92);
+            text-decoration: none;
+            font-weight: 600;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+            padding-bottom: 2px;
+        }
+        .site-nav a:hover { color: white; border-bottom-color: white; }
+
+        .paper-layout {
+            display: grid;
+            grid-template-columns: 220px minmax(0, 1fr);
+            gap: 20px;
+            align-items: start;
+        }
+
+        .toc {
+            position: sticky;
+            top: 16px;
+            background: rgba(255,255,255,0.96);
+            border-radius: 4px;
+            padding: 16px 14px;
+            box-shadow: 0 12px 28px rgba(0,0,0,0.12);
+            font-size: 0.86rem;
+        }
+        .toc summary {
+            cursor: pointer;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            font-size: 0.72rem;
+            color: #555;
+            list-style: none;
+        }
+        .toc summary::-webkit-details-marker { display: none; }
+        .toc nav { margin-top: 12px; }
+        .toc ol {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .toc a {
+            color: #3d3f5c;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+        }
+        .toc a:hover { border-bottom-color: #667eea; color: #2b2d4a; }
+
+        article.paper {
+            background: #fffef9;
+            border-radius: 4px;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.18);
+            padding: 36px 40px 44px;
+            font-family: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+            text-align: left;
+        }
+
+        .example-banner {
+            display: inline-block;
+            margin-bottom: 14px;
+            padding: 4px 10px;
+            border: 1px solid #b45309;
+            color: #92400e;
+            background: #fff7ed;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .paper-meta {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 0.78rem;
+            color: #555;
+            margin-bottom: 10px;
+        }
+        .paper h1 {
+            font-size: 1.7rem;
+            line-height: 1.25;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+        .authors { font-size: 0.98rem; color: #333; margin-bottom: 4px; }
+        .affiliation { font-size: 0.92rem; color: #555; font-style: italic; margin-bottom: 18px; }
+
+        .key-findings {
+            border: 1px solid #d6d3c4;
+            background: #f7f4ea;
+            padding: 14px 16px;
+            margin: 0 0 18px;
+        }
+        .key-findings h2 {
+            font-size: 0.95rem;
+            margin: 0 0 8px;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+        .key-findings ul { margin: 0 0 0 1.1rem; }
+        .key-findings li { margin-bottom: 4px; font-size: 0.95rem; }
+
+        .abstract {
+            font-style: italic;
+            border-top: 1px solid #ddd6c4;
+            border-bottom: 1px solid #ddd6c4;
+            padding: 14px 0;
+            margin-bottom: 22px;
+        }
+        .abstract .label {
+            font-style: normal;
+            font-weight: 700;
+            font-size: 0.85rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 6px;
+            color: #444;
+        }
+
+        .paper h2 {
+            font-size: 1.15rem;
+            margin: 26px 0 10px;
+            scroll-margin-top: 16px;
+        }
+        .paper p { margin-bottom: 12px; font-size: 1rem; }
+        .paper a { color: #4a56c4; }
+
+        .table-scroll {
+            width: 100%;
+            overflow-x: auto;
+            margin: 12px 0 18px;
+            border: 1px solid #e5e0d2;
+        }
+        table {
+            border-collapse: collapse;
+            min-width: 640px;
+            width: 100%;
+            font-size: 0.92rem;
+        }
+        th, td {
+            border: 1px solid #e5e0d2;
+            padding: 8px 10px;
+            text-align: left;
+            vertical-align: top;
+        }
+        th { background: #f3efe3; font-weight: 700; }
+
+        .coauthor-note {
+            margin: 14px 0;
+            padding: 12px 14px;
+            border-left: 3px solid #667eea;
+            background: #f5f6fd;
+            font-size: 0.95rem;
+        }
+        .coauthor-note strong { display: block; margin-bottom: 6px; }
+
+        details.appendix {
+            margin-top: 16px;
+            border: 1px solid #e5e0d2;
+            padding: 10px 12px;
+            background: #fcfaf3;
+        }
+        details.appendix summary {
+            cursor: pointer;
+            font-weight: 700;
+        }
+        details.appendix p { margin-top: 10px; }
+
+        .transparency {
+            margin-top: 24px;
+            font-size: 0.9rem;
+            color: #444;
+        }
+
+        footer.doc-footer {
+            margin-top: 22px;
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.75);
+            text-align: center;
+        }
+        footer.doc-footer a { color: rgba(255,255,255,0.9); }
+
+        @media (max-width: 860px) {
+            .paper-layout { grid-template-columns: 1fr; }
+            .toc { position: static; }
+            .toc[open] nav { display: block; }
+            article.paper { padding: 28px 20px 36px; }
+        }
+        @media (min-width: 861px) {
+            .toc summary { pointer-events: none; }
+            .toc nav { display: block !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <p class="nav-top">
+            <a href="/lab-paper-template-example.html">English</a>
+            · <span style="font-weight:600;color:#fff;">Français</span>
+            · <a href="/fr/labo.html">Cahiers du labo</a>
+        </p>
+        <nav class="site-nav" aria-label="Navigation principale">
+            <a href="/fr/">Accueil</a>
+            <a href="/fr/source-and-evaluation.html#documentation">Documentation</a>
+            <a href="/fr/api-docs.html">Documentation API</a>
+            <a href="/fr/source-and-evaluation.html#run-locally">Exécuter en local</a>
+            <a href="/fr/trust.html">Confiance</a>
+            <a href="/fr/monthly-digest.html">Sommaires mensuels</a>
+            <a href="/fr/guides.html">Guides</a>
+            <a href="/fr/articles.html">Articles</a>
+            <a href="/fr/methodologie.html">M&eacute;thodologie</a>
+        </nav>
+
+        <div class="paper-layout">
+            <details class="toc" open>
+                <summary>Sommaire</summary>
+                <nav aria-label="Table des matières">
+                    <ol>
+                        <li><a href="#key-findings">Points clés</a></li>
+                        <li><a href="#abstract">Résumé</a></li>
+                        <li><a href="#why">1. Pourquoi on a essayé</a></li>
+                        <li><a href="#observed">4. Ce qu’on a observé</a></li>
+                        <li><a href="#wrong">5. Nos erreurs, et comment on a recadré</a></li>
+                        <li><a href="#stopped">7. Où on s’arrête</a></li>
+                        <li><a href="#references">Références</a></li>
+                    </ol>
+                </nav>
+            </details>
+
+            <article class="paper">
+                <span class="example-banner">Gabarit / exemple — pas un vrai cahier du labo</span>
+                <p class="paper-meta">EZK-LAB-0000-000 · statut : exemple · temps de lecture ~2 min</p>
+                <h1>Exemple de gabarit de cahier du labo</h1>
+                <p class="authors">Marc Gagnon ; &lt;Nom du bot&gt; (rôle)</p>
+                <p class="affiliation">Ezkey Lab</p>
+
+                <section class="key-findings" id="key-findings">
+                    <h2>Points clés</h2>
+                    <ul>
+                        <li>Cette page montre la mise en page seulement ; elle ne rapporte aucune expérience.</li>
+                        <li>Un cahier du labo a l’allure d’un papier et la voix d’un carnet de labo.</li>
+                        <li>Trois ou quatre points, une phrase chacun, avant tout le reste.</li>
+                    </ul>
+                </section>
+
+                <section class="abstract" id="abstract">
+                    <span class="label">Résumé</span>
+                    <p>
+                        Environ 100 mots : ce qu’on a tenté, ce qui s’est passé, ce qu’on en retient.
+                        Cet exemple montre la mise en page de lecture — points clés, résumé, encadré de périmètre,
+                        sommaire latéral (repliable sur petit écran), une courte citation et un tableau optionnel.
+                        Un vrai papier fait de 1 500 à 2 500 mots.
+                    </p>
+                </section>
+
+                <div class="coauthor-note">
+                    <strong>Périmètre</strong>
+                    Ce que c’est, et ce que ce n’est pas — une seule fois, ici. Ni audit, ni certification,
+                    ni garantie de sécurité. L’avertissement n’est pas répété dans le corps du texte.
+                </div>
+
+                <h2 id="why">1. Pourquoi on a essayé</h2>
+                <p>
+                    De la prose simple, au « nous ». Les sections 2, 3 et 6 (ce qu’on a mis en place,
+                    ce qui s’est passé, ce qu’on en retient) sont omises dans cet exemple.
+                </p>
+
+                <h2 id="observed">4. Ce qu’on a observé</h2>
+                <p>
+                    Les observations se racontent ; on ne les met pas en tableau par souci d’exhaustivité.
+                    L’incertitude se dit une fois, en prose : « de mémoire », « on ne l’a pas mesuré », « c’est un jugement ».
+                    Un tableau n’apparaît que s’il aide.
+                </p>
+                <p>Tableau&nbsp;1. Un tableau optionnel (défilement horizontal sur écran étroit).</p>
+                <div class="table-scroll" role="region" aria-label="Tableau d’exemple défilant" tabindex="0">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Cycle</th>
+                                <th>Ce qu’il a trouvé</th>
+                                <th>Nature</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td>Exemple : un défaut du produit lui-même</td>
+                                <td>Produit</td>
+                            </tr>
+                            <tr>
+                                <td>2</td>
+                                <td>Exemple : plus de preuve, aucun nouveau défaut</td>
+                                <td>Preuve</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="coauthor-note">
+                    <strong>« Une courte citation d’un co-auteur principal. »</strong>
+                    — &lt;Nom du bot&gt;, rôle. Une phrase ou deux, là où elle apporte une voix ; aucune n’est obligatoire.
+                </div>
+
+                <h2 id="wrong">5. Nos erreurs, et comment on a recadré</h2>
+                <p>
+                    Les erreurs et les recadrages ont leur propre section. C’est la matière même d’un labo qui itère.
+                </p>
+
+                <h2 id="stopped">7. Où on s’arrête</h2>
+                <p>
+                    Où en est l’expérience, ce qui reste ouvert, et ce qu’il faudrait pour aller plus loin.
+                </p>
+
+                <h2 id="references">Références</h2>
+                <ul>
+                    <li><a href="https://github.com/mgagp/ezkey/issues/999">Issue GitHub #999</a> — méthode de publication des cahiers du labo</li>
+                    <li><a href="/fr/labo.html">Cahiers du labo</a></li>
+                </ul>
+
+                <p class="transparency" id="transparency">
+                    Transparence : les co-auteurs autres que Marc sont des agents IA. Marc assume la responsabilité éditoriale.
+                    Rien dans les cahiers du labo ne constitue une garantie de sécurité.
+                </p>
+            </article>
+        </div>
+
+        <footer class="doc-footer">
+            <p><a href="/fr/labo.html">← Retour aux Cahiers du labo</a> · <a href="/fr/confidentialite.html">Politique de confidentialité</a></p>
+        </footer>
+    </div>
+</body>
+</html>

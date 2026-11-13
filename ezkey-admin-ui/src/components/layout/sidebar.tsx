@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/use-auth';
 import { useDemoModeSession } from '@/context/use-demo-mode-session';
 import { usePublicInstanceInfo } from '@/hooks/use-public-instance-info';
+import { getBuildShortSha } from '@/lib/build-identity';
 import { isDemoMode } from '@/lib/demo-mode';
 import { cn } from '@/lib/utils';
 import { Dialog } from '@/components/ui/dialog';
@@ -16,6 +17,7 @@ import {
   KeyRound,
   LayoutDashboard,
   Puzzle,
+  ShieldAlert,
   ShieldCheck,
   UserCog,
   Users,
@@ -28,6 +30,7 @@ type NavLabelKey =
   | 'enrollments'
   | 'authAttempts'
   | 'auditLogs'
+  | 'integrity'
   | 'alerts'
   | 'admins'
   | 'apiKeys'
@@ -48,6 +51,7 @@ const navItems: NavItem[] = [
   { labelKey: 'enrollments', path: '/enrollments', icon: Users },
   { labelKey: 'authAttempts', path: '/auth-attempts', icon: ShieldCheck },
   { labelKey: 'auditLogs', path: '/audit-logs', icon: FileText },
+  { labelKey: 'integrity', path: '/integrity', icon: ShieldAlert, roles: ['GLOBAL_ADMIN'] },
   { labelKey: 'alerts', path: '/alerts', icon: AlertTriangle, roles: ['GLOBAL_ADMIN'] },
   { labelKey: 'admins', path: '/admins', icon: UserCog },
   { labelKey: 'apiKeys', path: '/api-keys', icon: Key },
@@ -163,7 +167,9 @@ export function Sidebar() {
         >
           {t('sidebar.about')}
         </button>
-        <p className="text-[10px] text-sidebar-fg/25 font-mono tracking-wide">v0.1.0</p>
+        <p className="text-[10px] text-sidebar-fg/25 font-mono tracking-wide">
+          {t('sidebar.buildIdentity', { sha: getBuildShortSha() })}
+        </p>
       </div>
 
       <Dialog open={aboutOpen} onClose={() => setAboutOpen(false)} title={t('about.title')} size="md">

@@ -23,7 +23,6 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Service for initializing the initial global administrator with identifiable operator identity.
@@ -77,14 +76,11 @@ public class InitialGlobalAdminService {
    * <p><b>HA Safety:</b> Uses distributed locking to ensure only one instance performs bootstrap in
    * HA deployments.
    *
-   * <p><b>Transaction boundary:</b> {@code @Transactional} is on this public entry point so the
-   * work executed inside {@link LockingTaskExecutor} (including {@code this::} callbacks) runs in
-   * one Spring-managed transaction. {@code @Transactional} on the private task method would not
-   * apply (proxy bypass via self-invocation).
+   * <p><b>Transaction boundary:</b> {@link LockingTaskExecutor} runs the task in its own
+   * transaction, committed before the lock is released (#1259).
    */
   @EventListener(ApplicationReadyEvent.class)
   @Order(ApplicationReadyStartupOrder.INITIAL_GLOBAL_ADMIN)
-  @Transactional
   public void initializeGlobalAdmin() {
     logger.info("🔧 Initializing initial global administrator...");
 
@@ -102,7 +98,7 @@ public class InitialGlobalAdminService {
    * Perform the actual global admin initialization (called within distributed lock).
    *
    * <p>This method validates the configuration and ensures the initial global admin exists with SOC
-   * 2 compliant credentials. Runs in the transaction started by {@link #initializeGlobalAdmin()}.
+   * 2 compliant credentials. Runs in the transaction opened by {@link LockingTaskExecutor}.
    */
   private void doInitializeGlobalAdmin() {
     // Validate configuration
@@ -144,19 +140,10 @@ public class InitialGlobalAdminService {
       }
       if (updated) {
         adminRepository.save(admin);
-        logger.info(
-            "✅ Updated global admin: {} ({}) - {} {}",
-            configuredUsername,
-            configuredEmail,
-            configuredFirstName,
-            configuredLastName);
+        logger.info("✅ Updated global admin: {}", configuredUsername);
       } else {
         logger.info(
-            "✅ Global admin already exists with correct credentials: {} ({}) - {} {}",
-            configuredUsername,
-            configuredEmail,
-            configuredFirstName,
-            configuredLastName);
+            "✅ Global admin already exists with correct credentials: {}", configuredUsername);
       }
       return;
     }
@@ -175,43 +162,24 @@ public class InitialGlobalAdminService {
 
       // Update placeholder admin with configured credentials
       logger.info(
-          "🔄 Updating placeholder admin to configured global admin: {} ({}) - {} {}",
-          configuredUsername,
-          configuredEmail,
-          configuredFirstName,
-          configuredLastName);
+          "🔄 Updating placeholder admin to configured global admin: {}", configuredUsername);
       admin.setUsername(configuredUsername);
       admin.setEmail(configuredEmail);
       admin.setFirstName(configuredFirstName);
       admin.setLastName(configuredLastName);
       adminRepository.save(admin);
-      logger.info(
-          "✅ Global admin initialized: {} ({}) - {} {}",
-          configuredUsername,
-          configuredEmail,
-          configuredFirstName,
-          configuredLastName);
+      logger.info("✅ Global admin initialized: {}", configuredUsername);
       return;
     }
 
     // No admin exists - create new one
-    logger.info(
-        "🆕 Creating initial global admin: {} ({}) - {} {}",
-        configuredUsername,
-        configuredEmail,
-        configuredFirstName,
-        configuredLastName);
+    logger.info("🆕 Creating initial global admin: {}", configuredUsername);
     EzkeyAdmin globalAdmin = new EzkeyAdmin(configuredUsername, EzkeyAdmin.AdminType.GLOBAL_ADMIN);
     globalAdmin.setEmail(configuredEmail);
     globalAdmin.setFirstName(configuredFirstName);
     globalAdmin.setLastName(configuredLastName);
     adminRepository.save(globalAdmin);
-    logger.info(
-        "✅ Initial global admin created: {} ({}) - {} {}",
-        configuredUsername,
-        configuredEmail,
-        configuredFirstName,
-        configuredLastName);
+    logger.info("✅ Initial global admin created: {}", configuredUsername);
   }
 
   /**
@@ -258,11 +226,7 @@ public class InitialGlobalAdminService {
               + "Set ezkey.admin.initial.last-name to the administrator's last name.");
     }
 
-    logger.debug(
-        "✅ Initial global admin configuration validated: {} ({}) - {} {}",
-        username,
-        email,
-        firstName,
-        lastName);
+    // Username only — never log bootstrap admin email (issue #750).
+    logger.debug("✅ Initial global admin configuration validated: {}", username);
   }
 }

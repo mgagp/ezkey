@@ -6,7 +6,7 @@
 	<parent>
 		<groupId>org.ezkey</groupId>
 		<artifactId>ezkey-parent</artifactId>
-		<version>${revision}${buildQualifier}${changelist}</version>
+		<version>${revision}${changelist}</version>
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 
@@ -15,6 +15,11 @@
 	<description>Demo device simulator for mobile authentication</description>
 
 	<packaging>jar</packaging>
+
+	<properties>
+		<!-- Ship committed root THIRD-PARTY.txt under META-INF/licenses/ in the JAR. -->
+		<ezkey.skip.third-party.licenses.copy>false</ezkey.skip.third-party.licenses.copy>
+	</properties>
 
 	<dependencies>
 		<!-- Spring Boot Starters -->
@@ -92,8 +97,16 @@
 				<configuration combine.self="override"/>
 				<executions>
 					<execution>
+						<id>repackage</id>
 						<goals>
 							<goal>repackage</goal>
+						</goals>
+					</execution>
+					<!-- Product SemVer into META-INF/build-info.properties (actuator /info). -->
+					<execution>
+						<id>build-info</id>
+						<goals>
+							<goal>build-info</goal>
 						</goals>
 					</execution>
 				</executions>
@@ -103,14 +116,15 @@
 			<plugin>
 				<groupId>org.openapitools</groupId>
 				<artifactId>openapi-generator-maven-plugin</artifactId>
-				<version>7.25.0</version>
+				<version>7.27.0</version>
 				<executions>
 					<execution>
 						<goals>
 							<goal>generate</goal>
 						</goals>
 						<configuration>
-							<inputSpec>${project.basedir}/openapi-spec.json</inputSpec>
+							<!-- Canonical monorepo path (no local symlink/copy — #833). Docker COPY places the same path under /build. -->
+							<inputSpec>${project.basedir}/../specs/auth-api/openapi-spec.json</inputSpec>
 							<generatorName>java</generatorName>
 							<addCompileSourceRoot>false</addCompileSourceRoot>
 							<generateApis>false</generateApis>
@@ -171,7 +185,7 @@
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>build-helper-maven-plugin</artifactId>
-				<version>3.6.1</version>
+				<version>3.7.0</version>
 				<executions>
 					<execution>
 						<id>add-generated-source</id>

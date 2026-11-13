@@ -23,7 +23,9 @@ script:pre-request {
       enrollmentName: bru.getEnvVar("bind_enrollmentName") || null,
       tenantId: tid === "" || tid === undefined ? null : Number(tid),
       tenantName: bru.getEnvVar("bind_tenantName") || null,
-      tenantDescription: bru.getEnvVar("bind_tenantDescription") || null
+      tenantDescription: bru.getEnvVar("bind_tenantDescription") || null,
+      isSystemIntegration: bru.getEnvVar("bind_isSystemIntegration") === "true",
+      adminType: bru.getEnvVar("bind_adminType") || null
   };
   req.setBody(body);
 }

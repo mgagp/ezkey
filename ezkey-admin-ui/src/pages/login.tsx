@@ -16,6 +16,7 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { I18N_STORAGE_KEY } from '@/i18n';
 import { fetchApi, type FetchOptions } from '@/lib/api-client';
 import { getTranslatedApiError } from '@/lib/api-error-i18n';
+import { loginCooldownMessage } from '@/lib/login-cooldown-message';
 import { mapPasswordlessWaitError } from '@/lib/map-passwordless-wait-error';
 import { isBrowserSessionCookieBuild, type AuthSession } from '@/lib/auth';
 import { persistUsernamePref, readUsernamePref } from '@/lib/last-username-pref';
@@ -23,7 +24,11 @@ import { LoginActivationSection } from '@/components/feature/login-activation-se
 import { LoginRecoverySection } from '@/components/feature/login-recovery-section';
 import { getRecoverySession } from '@/lib/recovery-session';
 import { cn, formatChallengeCode, formatCountdown } from '@/lib/utils';
-import { login as loginApi, passwordlessWait } from '@/generated/admin-api/admin-authentication/admin-authentication';
+import {
+  login as loginApi,
+  passwordlessCancel,
+  passwordlessWait,
+} from '@/generated/admin-api/admin-authentication/admin-authentication';
 import type { AdminLoginResponseDto } from '@/generated/admin-api/model';
 
 type LoginState = 'idle' | 'submitting' | 'waiting' | 'rejected' | 'expired' | 'error';
@@ -56,6 +61,7 @@ export default function LoginPage() {
   const [loginState, setLoginState] = useState<LoginState>('idle');
   const [waitingData, setWaitingData] = useState<WaitingData | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [cooldownPaused, setCooldownPaused] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
 
   // Guards against race conditions — once a final state is set, ignore further callbacks.
@@ -135,7 +141,7 @@ export default function LoginPage() {
           },
           waitOptions,
         );
-        const data = response as unknown as AdminLoginResponseDto & { csrfToken?: string };
+        const data = response as unknown as AdminLoginResponseDto;
 
         // Ignore result if the countdown or cancel already set a final state
         if (finalStatusRef.current !== null) return;
@@ -160,6 +166,7 @@ export default function LoginPage() {
             expiresAt: typeof data.expiresAt === 'string' ? data.expiresAt : String(data.expiresAt),
             ...(data.adminId != null && { adminId: data.adminId }),
             ...(data.tenantId != null && { tenantId: data.tenantId }),
+            ...(data.tenantName != null && data.tenantName !== '' && { tenantName: data.tenantName }),
             ...(data.csrfToken != null && { csrfToken: data.csrfToken }),
           });
           navigate('/dashboard', { replace: true });
@@ -215,6 +222,7 @@ export default function LoginPage() {
   const onSubmit = async (formData: LoginForm) => {
     setLoginState('submitting');
     setErrorMessage(null);
+    setCooldownPaused(false);
     try {
       const loginRequestOptions: FetchOptions = { requireAuth: false };
       const result = await loginApi(
@@ -239,17 +247,34 @@ export default function LoginPage() {
         setErrorMessage(result.message ?? t('login:states.error.loginFailed'));
       }
     } catch (err) {
+      const cooldown = loginCooldownMessage(err, t);
+      setCooldownPaused(cooldown != null);
       setLoginState('error');
-      setErrorMessage(getTranslatedApiError(err, t, t('login:states.error.serverUnreachable')));
+      setErrorMessage(
+        cooldown ?? getTranslatedApiError(err, t, t('login:states.error.serverUnreachable')),
+      );
     }
   };
 
   const handleCancel = () => {
     finalStatusRef.current = 'CANCELLED';
     abortRef.current?.abort();
+    const pending = waitingData;
     setLoginState('idle');
     setWaitingData(null);
     setErrorMessage(null);
+    // Server-side cancel so the attempt is not left PENDING until TTL (#831).
+    if (pending?.authAttemptId != null && pending.waiterSecret) {
+      void passwordlessCancel(
+        {
+          authAttemptId: pending.authAttemptId,
+          waiterSecret: pending.waiterSecret,
+        },
+        { requireAuth: false },
+      ).catch(() => {
+        // Best-effort: network / 429 must not block returning to idle login.
+      });
+    }
   };
 
   const handleRetry = () => {
@@ -349,6 +374,9 @@ export default function LoginPage() {
             <LoginActivationSection
               onBackToPasswordless={() => setAuthFlow('passwordless')}
               authApiPublicBaseUrl={publicInstanceInfo?.authApiPublicBaseUrl ?? null}
+              temporaryExploreEnabled={
+                publicInstanceInfo?.evaluatorSelfRegistrationEnabled === true
+              }
             />
           )}
 
@@ -534,7 +562,14 @@ export default function LoginPage() {
           {/* ── Error ── */}
           {authFlow === 'passwordless' && loginState === 'error' && (
             <div data-testid="login-error-state" className="space-y-4">
-              <Alert variant="error" title={t('login:states.error.title')}>
+              <Alert
+                variant={cooldownPaused ? 'warning' : 'error'}
+                title={
+                  cooldownPaused
+                    ? t('login:states.error.cooldownTitle')
+                    : t('login:states.error.title')
+                }
+              >
                 {errorMessage ?? t('login:states.error.messageFallback')}
               </Alert>
               <Button variant="secondary" className="w-full" onClick={handleRetry}>

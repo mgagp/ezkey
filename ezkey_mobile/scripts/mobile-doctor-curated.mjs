@@ -2,13 +2,22 @@
 /**
  * mobile-doctor-curated — punctual hygiene pass for ezkey_mobile.
  *
- * Runs react-doctor + Semgrep (Ezkey pack) + Detekt, then curates into
- * P1/P2/P3 under logs/mobile-doctor/. Not a CI / validate:ci gate.
+ * Runs react-doctor + Semgrep (Ezkey pack: JS/TS, Kotlin, Swift) + Detekt, plus the iOS lane
+ * (macOS only: SwiftLint curated set + Periphery), then curates into P1/P2/P3 under
+ * logs/mobile-doctor/. Not a CI / validate:ci gate.
  *
  * Keyword: mobile-doctor-curated
  */
 
-import {copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import {dirname, join, relative, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {spawnSync} from 'node:child_process';
@@ -20,6 +29,23 @@ const RAW_DIR = join(OUTPUT_DIR, 'raw');
 const CONFIG_DIR = join(PROJECT_ROOT, 'config', 'mobile-doctor');
 const SUPPRESSIONS_PATH = join(CONFIG_DIR, 'suppressions.json');
 const KEYWORD = 'mobile-doctor-curated';
+const IOS_DIR = join(PROJECT_ROOT, 'ios');
+const SWIFT_SOURCE_DIRS = [join(IOS_DIR, 'EzkeyMobile'), join(IOS_DIR, 'EzkeyMobileTests')];
+const SWIFTLINT_CURATED_CONFIG = join(CONFIG_DIR, 'swiftlint-curated.yml');
+// Same default as scripts/ios-test.sh, so `yarn ios:test` leaves the index store Periphery reads.
+const DERIVED_DATA_PATH = process.env.DERIVED_DATA_PATH
+  ? resolve(PROJECT_ROOT, process.env.DERIVED_DATA_PATH)
+  : join(IOS_DIR, 'build', 'DerivedData');
+const INDEX_STORE_PATH = join(DERIVED_DATA_PATH, 'Index.noindex', 'DataStore');
+
+// SwiftLint curated-set rules that lean towards real defects; the others stay P3.
+const SWIFTLINT_P2_RULES = new Set([
+  'unused_parameter',
+  'unneeded_throws_rethrows',
+  'implicitly_unwrapped_optional',
+  'unhandled_throwing_task',
+  'async_without_await',
+]);
 
 const PRIORITY_LABELS = {
   P1: 'Review now',
@@ -32,6 +58,8 @@ const hasFlag = name => args.includes(name);
 const skipReactDoctor = hasFlag('--skip-react-doctor');
 const skipSemgrep = hasFlag('--skip-semgrep');
 const skipDetekt = hasFlag('--skip-detekt');
+const skipSwiftLint = hasFlag('--skip-swiftlint');
+const skipPeriphery = hasFlag('--skip-periphery');
 const curateOnly = hasFlag('--curate-only');
 
 main();
@@ -54,6 +82,16 @@ function main() {
       runNodeScript('detekt-scan.mjs', 'Detekt');
       copyIfExists(join(PROJECT_ROOT, '.monitor', 'detekt.sarif'), join(RAW_DIR, 'detekt.sarif'));
     }
+    if (process.platform !== 'darwin') {
+      console.log(`[${KEYWORD}] iOS lane skipped (SwiftLint, Periphery): macOS only.`);
+    } else {
+      if (!skipSwiftLint) {
+        runSwiftLint();
+      }
+      if (!skipPeriphery) {
+        runPeriphery();
+      }
+    }
   }
 
   const diagnostics = [];
@@ -66,6 +104,8 @@ function main() {
   if (!existsSync(join(RAW_DIR, 'detekt.sarif'))) {
     diagnostics.push(...loadDetektSarif(join(PROJECT_ROOT, '.monitor', 'detekt.sarif')));
   }
+  diagnostics.push(...loadSwiftLint(join(RAW_DIR, 'swiftlint.json')));
+  diagnostics.push(...loadPeriphery(join(RAW_DIR, 'periphery.json')));
 
   if (diagnostics.length === 0) {
     console.error(
@@ -188,6 +228,119 @@ function runReactDoctor() {
   );
 }
 
+function commandOnPath(command) {
+  return spawnSync('which', [command], {stdio: 'ignore'}).status === 0;
+}
+
+/** iOS lane: SwiftLint with the curated opt-in set only (the CI set is already at zero). */
+function runSwiftLint() {
+  if (!commandOnPath('swiftlint')) {
+    console.log(`[${KEYWORD}] SwiftLint skipped: not on PATH (brew install swiftlint).`);
+    return;
+  }
+  console.log(`[${KEYWORD}] Running SwiftLint (curated set)...`);
+  const result = spawnSync(
+    'swiftlint',
+    ['lint', '--config', SWIFTLINT_CURATED_CONFIG, '--quiet', '--reporter', 'json'],
+    {cwd: PROJECT_ROOT, encoding: 'utf8', maxBuffer: 20 * 1024 * 1024},
+  );
+  // SwiftLint exits 2 when it reports serious violations; the JSON report is what counts.
+  const findings = parseJsonArray(result.stdout);
+  if (!findings) {
+    console.error(
+      `[${KEYWORD}] SwiftLint produced no JSON report:`,
+      (result.stderr || '').slice(0, 2000),
+    );
+    process.exit(1);
+  }
+  writeFileSync(join(RAW_DIR, 'swiftlint.json'), `${JSON.stringify(findings, null, 2)}\n`, 'utf8');
+  console.log(`[${KEYWORD}] SwiftLint raw written (${findings.length} findings).`);
+}
+
+/**
+ * iOS lane: Periphery (unused code) on the index store left by `yarn ios:test`, so the pass does
+ * not rebuild the app. Members reachable from JavaScript (@objc / RCT_EXTERN_METHOD) are retained.
+ */
+function runPeriphery() {
+  if (!commandOnPath('periphery')) {
+    console.log(`[${KEYWORD}] Periphery skipped: not on PATH (brew install periphery).`);
+    return;
+  }
+  if (!existsSync(INDEX_STORE_PATH)) {
+    console.log(
+      `[${KEYWORD}] Periphery skipped: no index store at ${relative(PROJECT_ROOT, INDEX_STORE_PATH)}; run yarn ios:test first.`,
+    );
+    return;
+  }
+  // The DataStore directory's own mtime does not move on incremental indexing: use its newest file.
+  const indexTime = newestMtime(INDEX_STORE_PATH);
+  const newestSwift = Math.max(0, ...SWIFT_SOURCE_DIRS.flatMap(swiftMtimes));
+  if (newestSwift > indexTime) {
+    console.warn(
+      `[${KEYWORD}] WARNING: Swift sources are newer than the index store; run yarn ios:test for fresh Periphery results.`,
+    );
+  }
+  console.log(`[${KEYWORD}] Running Periphery...`);
+  const result = spawnSync(
+    'periphery',
+    [
+      'scan',
+      '--project',
+      'EzkeyMobile.xcworkspace',
+      '--schemes',
+      'EzkeyMobile',
+      '--skip-build',
+      '--index-store-path',
+      INDEX_STORE_PATH,
+      '--retain-objc-accessible',
+      '--report-include',
+      'EzkeyMobile/**',
+      '--report-include',
+      'EzkeyMobileTests/**',
+      '--format',
+      'json',
+      '--quiet',
+    ],
+    {cwd: IOS_DIR, encoding: 'utf8', maxBuffer: 20 * 1024 * 1024},
+  );
+  const findings = parseJsonArray(result.stdout);
+  if (result.status !== 0 || !findings) {
+    console.error(`[${KEYWORD}] Periphery failed:`, (result.stderr || '').slice(0, 2000));
+    process.exit(1);
+  }
+  writeFileSync(join(RAW_DIR, 'periphery.json'), `${JSON.stringify(findings, null, 2)}\n`, 'utf8');
+  console.log(`[${KEYWORD}] Periphery raw written (${findings.length} findings).`);
+}
+
+function newestMtime(dir) {
+  let newest = 0;
+  for (const name of readdirSync(dir, {recursive: true})) {
+    const time = statSync(join(dir, String(name))).mtimeMs;
+    if (time > newest) {
+      newest = time;
+    }
+  }
+  return newest;
+}
+
+function swiftMtimes(dir) {
+  if (!existsSync(dir)) {
+    return [];
+  }
+  return readdirSync(dir, {recursive: true})
+    .filter(name => String(name).endsWith('.swift'))
+    .map(name => statSync(join(dir, String(name))).mtimeMs);
+}
+
+function parseJsonArray(stdout) {
+  try {
+    const parsed = JSON.parse(String(stdout || '').trim() || 'null');
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 function runNodeScript(scriptName, label) {
   console.log(`[${KEYWORD}] Running ${label}...`);
   const result = spawnSync(process.execPath, [join(SCRIPT_DIR, scriptName)], {
@@ -292,6 +445,43 @@ function loadDetektSarif(filePath) {
   return findings;
 }
 
+function loadSwiftLint(filePath) {
+  if (!existsSync(filePath)) {
+    return [];
+  }
+  const report = tryReadJson(filePath);
+  return (Array.isArray(report) ? report : []).map(item => ({
+    tool: 'swiftlint',
+    rule: String(item.rule_id || 'swiftlint/unknown'),
+    category: 'Swift maintainability',
+    severity: String(item.severity || 'warning').toLowerCase(),
+    message: String(item.reason || 'SwiftLint finding'),
+    filePath: toProjectRelative(item.file || ''),
+    line: Number(item.line || 0),
+  }));
+}
+
+function loadPeriphery(filePath) {
+  if (!existsSync(filePath)) {
+    return [];
+  }
+  const report = tryReadJson(filePath);
+  return (Array.isArray(report) ? report : []).map(item => {
+    // location: /abs/path/File.swift:line:column
+    const match = /^(.*):(\d+):\d+$/.exec(String(item.location || ''));
+    const hints = Array.isArray(item.hints) ? item.hints : [];
+    return {
+      tool: 'periphery',
+      rule: String(hints[0] || 'unused'),
+      category: 'Unused code',
+      severity: 'warning',
+      message: `${item.kind || 'declaration'} '${item.name || '?'}' (${hints.join(', ') || 'unused'})`,
+      filePath: toProjectRelative(match ? match[1] : item.location || ''),
+      line: match ? Number(match[2]) : 0,
+    };
+  });
+}
+
 function tryReadJson(filePath) {
   try {
     return JSON.parse(readFileSync(filePath, 'utf8').replace(/^\uFEFF/, ''));
@@ -337,12 +527,18 @@ function loadSuppressions(path) {
     const list = Array.isArray(json.suppressions) ? json.suppressions : [];
     return list
       .map(entry => ({
-        tool: String(entry.tool || '').trim().toLowerCase(),
+        tool: String(entry.tool || '')
+          .trim()
+          .toLowerCase(),
         rule: String(entry.rule || entry.ruleId || '').trim(),
         reason: String(entry.reason || '').trim() || 'No reason provided',
         pathFragment: String(entry.pathFragment || entry.path || '')
           .trim()
           .replace(/\\/g, '/')
+          .toLowerCase(),
+        // Optional: narrows a suppression to one symbol (e.g. Periphery reports per declaration).
+        messageFragment: String(entry.messageFragment || '')
+          .trim()
           .toLowerCase(),
       }))
       .filter(entry => entry.rule);
@@ -369,6 +565,14 @@ function matchSuppression(diagnostic, suppressions) {
       continue;
     }
     if (suppression.pathFragment && !file.includes(suppression.pathFragment)) {
+      continue;
+    }
+    if (
+      suppression.messageFragment &&
+      !String(diagnostic.message || '')
+        .toLowerCase()
+        .includes(suppression.messageFragment)
+    ) {
       continue;
     }
     return suppression;
@@ -418,6 +622,18 @@ function priorityFor(diagnostic) {
       return 'P2';
     }
     return 'P3';
+  }
+
+  if (diagnostic.tool === 'periphery') {
+    if (diagnostic.rule.startsWith('redundant')) {
+      return 'P3';
+    }
+    // Unused code on the trust boundary (keys, signatures, error codes) is worth a look first.
+    return diagnostic.filePath.includes('/Crypto/') ? 'P1' : 'P2';
+  }
+
+  if (diagnostic.tool === 'swiftlint') {
+    return SWIFTLINT_P2_RULES.has(diagnostic.rule) ? 'P2' : 'P3';
   }
 
   // Detekt — design/maintainability leans P2/P3
@@ -563,7 +779,7 @@ function renderMarkdown({
     '',
     `Keyword: ${KEYWORD}`,
     `Generated: ${new Date().toISOString()}`,
-    'Analyzers: react-doctor + Semgrep (Ezkey mobile pack) + Detekt',
+    'Analyzers: react-doctor + Semgrep (Ezkey mobile pack) + Detekt + iOS lane (SwiftLint curated set, Periphery; macOS only)',
     'Mode: punctual hygiene pass — not a CI gate, not a zero-warning campaign',
     '',
     '## How to use this report',
@@ -631,7 +847,8 @@ function renderMarkdown({
         `- [${group.tool}] ${group.rule}: ${group.count} (${group.category}, max ${group.maxSeverity})`,
       );
       for (const example of group.examples) {
-        const location = example.line > 0 ? `${example.filePath}:${example.line}` : example.filePath;
+        const location =
+          example.line > 0 ? `${example.filePath}:${example.line}` : example.filePath;
         lines.push(`  Example: ${location} — ${example.message}`);
       }
     }

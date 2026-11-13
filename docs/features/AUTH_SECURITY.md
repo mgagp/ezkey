@@ -588,11 +588,12 @@ security_alerts:
 
 ## Compliance and Best Practices
 
-### Security Standards Alignment
+### Security Standards Reference
 
-- **OWASP Top 10**: Addresses A01 (Broken Access Control), A04 (Insecure Design), A06 (Vulnerable Components)
-- **NIST Cybersecurity Framework**: Implements Protect (PR.AC, PR.AT) and Detect (DE.CM) functions
-- **ISO 27001**: Supports A.9.4 (System and application access control), A.12.2 (Protection from malware)
+Reference vocabulary only, not a compliance claim. See [`normative-posture.md`](../../product-docs/global/normative-posture.md).
+
+- **OWASP Top 10**: Relevant to A01 (Broken Access Control), A04 (Insecure Design), A06 (Vulnerable Components)
+- **NIST Cybersecurity Framework**: Relevant to Protect (PR.AC, PR.AT) and Detect (DE.CM) functions
 
 ### Development Security Guidelines
 

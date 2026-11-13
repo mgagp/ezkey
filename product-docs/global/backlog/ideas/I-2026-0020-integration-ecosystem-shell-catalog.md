@@ -24,5 +24,5 @@ Expose a **small, honest set** of named integration-repository shells (SMS vendo
 
 ## Traceability
 
-- Vision: **`V-2026-0007`** (SMS + SPI periphery); adjacent directory sync likely follows same SPI/integration discipline once scoped.
+- Vision: **`V-2026-0007`** (SMS + SPI periphery) and **`V-2026-11-04-connector-spi`** (common approach, including directory sync; connector code incubates in the monorepo).
 - Spec: **`docs/ECOSYSTEM_REPOSITORIES.md`**, shell READMEs under `docs/staging/ecosystem-shells/`.

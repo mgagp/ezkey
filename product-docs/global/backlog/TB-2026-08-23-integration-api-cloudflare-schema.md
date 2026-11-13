@@ -1,4 +1,4 @@
-# Tracer Bullet Brief — `TB-2026-08-23-integration-api-cloudflare-schema` Integration API Cloudflare schema (EXP1)
+# Tracer Bullet Brief — `TB-2026-08-23-integration-api-cloudflare-schema` Integration API Cloudflare schema (community)
 
 ## Metadata
 
@@ -16,12 +16,12 @@
 ## Objective
 
 Apply the proven Auth API Cloudflare API Shield recipe to the Integration API on
-`https://exp1-integration-api.ezkey.org`. Prove that the same host-neutral canonical spec plus
-EXP1-localized OAS 3.0 packaging path works for the three machine-to-machine auth-attempt
-operations, without copying EXP1 Auth **Block** and without starting Admin Cloudflare upload.
+`https://integration-api.ezkey.online`. Prove that the same host-neutral canonical spec plus
+community-localized OAS 3.0 packaging path works for the three machine-to-machine auth-attempt
+operations, without copying community Auth **Block** and without starting Admin Cloudflare upload.
 
 The Integration API operations that must appear **once** under
-`https://exp1-integration-api.ezkey.org` are:
+`https://integration-api.ezkey.online` are:
 
 - `POST /api/v1/auth-attempts`
 - `GET /api/v1/auth-attempts/{id}/wait`
@@ -34,17 +34,17 @@ not check API-key validity, IP whitelist, or enrollment ownership.
 
 - `scripts/update-specs.sh --integration-only` host-neutral normalize (`jq 'del(.servers)'`).
 - `specs/integration-api/openapi-spec.json` as the host-neutral canonical Integration API spec.
-- Generated EXP1/Cloudflare Integration API schema artifact and packaging script.
-- Cloudflare upload script for a distinct schema name (`ezkey-integration-api-exp1`).
+- Generated community host/Cloudflare Integration API schema artifact and packaging script.
+- Cloudflare upload script for a distinct schema name (`ezkey-integration-api-community`).
 - Downstream Integration spec copies dispatched by `update-specs.sh` (portal
   `sites/ezkey-org/api-specs/integration-api-openapi.json`).
-- Operator runbook and one Bruno negative probe through the EXP1 Integration hostname.
-- Bruno environment `exp1` (`base_url_integration_api` already present).
+- Operator runbook and one Bruno negative probe through the community Integration hostname.
+- Bruno environment `community` (ezkey.online) (`base_url_integration_api` already present).
 
 ## Out of scope
 
 - Admin API Cloudflare upload or Block.
-- Copying EXP1 Auth **Block** as the Integration default. Product default remains **None**.
+- Copying community Auth **Block** as the Integration default. Product default remains **None**.
   Ask the operator before Set action.
 - Lightsail / Wrangler coupling.
 - Fallthrough “block unknown endpoints” WAF rule.
@@ -58,8 +58,8 @@ not check API-key validity, IP whitelist, or enrollment ownership.
 1. Extend `update-specs.sh` so Integration uses the same `jq 'del(.servers)'` normalize as Auth
    (`jq` required).
 2. Add `scripts/package-integration-api-cloudflare-schema.sh` modeled on the Auth packager: one
-   EXP1 server, OAS 3.0 downlevel, `--self-test`.
-3. Add `scripts/cloudflare/upload-integration-api-schema-exp1.sh` modeled on the Auth uploader
+   community host server, OAS 3.0 downlevel, `--self-test`.
+3. Add `scripts/cloudflare/upload-integration-api-schema.sh` modeled on the Auth uploader
    (`--list` / `--upload` / `--delete`). Same `CLOUDFLARE_API_SHIELD_TOKEN` rules. Do not delete
    the Auth schema.
 4. Document the operator workflow and origin vs Cloudflare 1020 distinction.
@@ -80,7 +80,7 @@ Cloudflare upload. This slice keeps Admin out.
   mitigation.
 - If Integration normalize causes unexpected portal-copy drift, keep Auth as-is and pause
   further API rollout.
-- Do not restore localhost / EXP1 hosts into Integration `@Server` annotations (none exist
+- Do not restore localhost / community hosts into Integration `@Server` annotations (none exist
   today). Scripted `del(.servers)` remains the real gate.
 
 ## Critical flows
@@ -89,11 +89,11 @@ Cloudflare upload. This slice keeps Admin out.
   `scripts/update-specs.sh --integration-only` fetches it, strips top-level `servers`, validates
   JSON, and dispatches the host-neutral spec to `sites/ezkey-org/api-specs/`.
 - **Deployment localization path:** packaging reads the canonical spec and writes
-  `specs/integration-api/deployments/exp1-cloudflare-openapi.json` with exactly one server:
-  `https://exp1-integration-api.ezkey.org`.
+  `specs/integration-api/deployments/community-cloudflare-openapi.json` with exactly one server:
+  `https://integration-api.ezkey.online`.
 - **Cloudflare manual validation path:** operator uploads the localized spec and confirms each
-  Integration endpoint above is listed once under `exp1-integration-api.ezkey.org`. Product
-  default mitigation is **None**. Do not copy Auth EXP1 Block without an explicit operator
+  Integration endpoint above is listed once under `integration-api.ezkey.online`. Product
+  default mitigation is **None**. Do not copy Auth community host Block without an explicit operator
   decision for this hostname.
 - **Consumer safety path:** Java SDK (`EzkeyClient.baseUrl`) and the TypeScript Integration SDK
   (sibling repo) keep using runtime base URL, not canonical `servers`. Portal copy must stay
@@ -105,14 +105,14 @@ Cloudflare upload. This slice keeps Admin out.
   after refresh.
 - Dispatch check: `sites/ezkey-org/api-specs/integration-api-openapi.json` matches the
   normalized canonical spec.
-- Localization check: generated EXP1 artifact has exactly one server URL,
-  `https://exp1-integration-api.ezkey.org`, and the three paths above once.
+- Localization check: generated community artifact has exactly one server URL,
+  `https://integration-api.ezkey.online`, and the three paths above once.
 - Cloudflare OAS 3.0 check: packaging downlevels `type` arrays and sets `openapi: 3.0.3`.
 - Packaging `--self-test` on a fixture.
 - Documentation check: operator runbook indexed from `docs/cloudflare/README.md` and
   `scripts/README.md`.
 - Cloudflare `--list`: new schema present; Auth schema
-  `9d7d279b-9eff-4661-b536-8afb5a9b6dbf` (`exp1-cloudflare-openapi.json` / Auth name) remains.
+  `9d7d279b-9eff-4661-b536-8afb5a9b6dbf` (`community-cloudflare-openapi.json` / Auth name) remains.
 - Operator upload + Set action: ask before changing mitigation; recommend **None**.
 - Bruno negative probe through the Cloudflare hostname (403 / 1020 only when Block is on).
 - Positive path when credentials exist: schema-valid create that fails binding is origin
@@ -152,39 +152,39 @@ Cloudflare upload. This slice keeps Admin out.
 
 1. the canonical Integration API spec is host-neutral;
 2. the portal dispatch copy is host-neutral;
-3. the EXP1 Cloudflare artifact has one and only one target server and the three operations
+3. the community Cloudflare artifact has one and only one target server and the three operations
    above;
 4. packaging `--self-test` passes;
 5. `--list` shows the new schema and the Auth schema remains;
 6. the operator has uploaded the artifact and confirmed the three operations once under
-   `exp1-integration-api.ezkey.org`;
-7. Set action is an explicit operator decision (EXP1 Integration: **Block**, maintainer-only);
+   `integration-api.ezkey.online`;
+7. Set action is an explicit operator decision (community Integration: **Block**, maintainer-only);
 8. parent `I-*` / next-phase notes record Integration done and Admin still deferred.
 
 ## Implementation outcome (2026-08-23)
 
-Packaging, docs, host-neutral refresh, EXP1 upload, and Set action landed on branch
-`tb/2026-08-23-integration-api-cloudflare-schema`. Mitigation on Integration EXP1 is **Block**
+Packaging, docs, host-neutral refresh, community upload, and Set action landed on branch
+`tb/2026-08-23-integration-api-cloudflare-schema`. Mitigation on Integration the community host is **Block**
 (maintainer-only exception, same reason as Auth).
 
 | Criterion | Evidence |
 | --------- | -------- |
 | Canonical Integration spec is host-neutral | `./scripts/update-specs.sh --integration-only` against local Integration API; `servers` block removed only (no contract drift) |
 | Portal copy is host-neutral | `sites/ezkey-org/api-specs/integration-api-openapi.json` matches the normalized canonical spec |
-| EXP1 artifact has one server | `./scripts/package-integration-api-cloudflare-schema.sh` writes `https://exp1-integration-api.ezkey.org` |
+| community artifact has one server | `./scripts/package-integration-api-cloudflare-schema.sh` writes `https://integration-api.ezkey.online` |
 | Cloudflare OAS 3.0 | Packaging downlevels 3.1 `type` arrays and sets `openapi: 3.0.3` |
 | Paths once | `POST /api/v1/auth-attempts`, `GET /api/v1/auth-attempts/{id}/wait`, `POST /api/v1/auth-attempts/{id}/cancel` |
 | Packaging `--self-test` | passed |
 | Docs | [`docs/cloudflare/integration-api-schema-validation.md`](../../../docs/cloudflare/integration-api-schema-validation.md) |
-| EXP1 `--list` | Auth `9d7d279b-9eff-4661-b536-8afb5a9b6dbf` remains; Integration `bf5cab36-d09c-4b0e-b551-5c23bc17682f` (`ezkey-integration-api-exp1`) enabled |
-| EXP1 operations once | `POST /api/v1/auth-attempts`, `GET …/{id}/wait`, `POST …/{id}/cancel` under `exp1-integration-api.ezkey.org`, mitigation **block**, bound to the Integration schema |
-| EXP1 Set action | **Block** (2026-08-23 operator exception: no external EXP1 traffic; maintainer-only). Zone default stays None. Not the product default. |
-| EXP1 negative probe | `enrollmentId` string → Cloudflare **403 / 1020** (`error code: 1020`). No `via: Caddy`. |
-| EXP1 positive shape | schema-valid create with dummy Basic → origin **401** (`via: 1.1 Caddy`). Request reached Spring; Cloudflare did not 1020. |
+| community host `--list` | Auth `9d7d279b-9eff-4661-b536-8afb5a9b6dbf` remains; Integration `bf5cab36-d09c-4b0e-b551-5c23bc17682f` (`ezkey-integration-api-community`) enabled |
+| community host operations once | `POST /api/v1/auth-attempts`, `GET …/{id}/wait`, `POST …/{id}/cancel` under `integration-api.ezkey.online`, mitigation **block**, bound to the Integration schema |
+| community Set action | **Block** (2026-08-23 operator exception: no external community host traffic; maintainer-only). Zone default stays None. Not the product default. |
+| community host negative probe | `enrollmentId` string → Cloudflare **403 / 1020** (`error code: 1020`). No `via: Caddy`. |
+| community host positive shape | schema-valid create with dummy Basic → origin **401** (`via: 1.1 Caddy`). Request reached Spring; Cloudflare did not 1020. |
 
 Notes:
 
-- EXP1 Integration **Block** (2026-08-23) is the same maintainer-only exception as Auth.
+- community Integration **Block** (2026-08-23) is the same maintainer-only exception as Auth.
   Escape hatch is None. Do not treat Block as the default for Admin or a later public host.
 - After upload, schema operations must be added to Web Assets before Block applies. The
   upload script does not change mitigation.
@@ -195,6 +195,6 @@ Notes:
 
 ## Closeout (2026-08-23 / canon synced 2026-08-25)
 
-Exit criteria met on merge of PR `#479`. EXP1 Integration schema validation is live with Set
+Exit criteria met on merge of PR `#479`. community Integration schema validation is live with Set
 action **Block** (maintainer-only exception, same reason as Auth). Parent `I-2026-06-02` stays
 `active`; Admin Cloudflare remains deferred.

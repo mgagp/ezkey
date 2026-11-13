@@ -16,6 +16,7 @@ jobs** and has **no database of its own** — it reads from the shared schema ma
 
 | Property | Docker env var | Default | Obligation |
 |---|---|---|---|
+| `server.servlet.session.cookie.name` | — | `EZKEY_INTEGRATION_API_SESSION` | recommandé |
 | `ezkey.api-key.rate-limit.enabled` | — | `true` | optionnel |
 | `ezkey.api-key.rate-limit.create-auth-attempt.requests` | — | `100` | optionnel |
 | `ezkey.api-key.rate-limit.create-auth-attempt.window-minutes` | — | `1` | optionnel |
@@ -27,6 +28,12 @@ jobs** and has **no database of its own** — it reads from the shared schema ma
 ---
 
 ## Properties by Functional Group
+
+### 0. Servlet session cookie
+
+| Property | Default | Obligation | Description |
+|---|---|---|---|
+| `server.servlet.session.cookie.name` | `EZKEY_INTEGRATION_API_SESSION` | recommandé | Distinct from other localhost servlet apps so browsers do not share `JSESSIONID` across ports (#799). Lives in `config/application.properties` (API external config); demos set the same key in the JAR instead. **#816:** Integration API is `STATELESS` + `NullRequestCache` (no servlet cookie on 401). Also `http-only` / `same-site=strict` / `secure=${EZKEY_SERVLET_SESSION_COOKIE_SECURE:false}`. |
 
 ### 1. API Key Usage Rate Limiting (`ezkey.api-key.rate-limit.*`)
 
@@ -73,7 +80,7 @@ for the full description.
 
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
-| `ezkey.trusted-proxies.required` | `boolean` | `false` | optionnel [prod] | When `true`, fail startup if `cidrs` is empty or invalid (SEC-011). Set via **`EZKEY_TRUSTED_PROXIES_REQUIRED=true`** on EXP1 / `--with-proxy`. |
+| `ezkey.trusted-proxies.required` | `boolean` | `false` | optionnel [prod] | When `true`, fail startup if `cidrs` is empty or invalid (SEC-011). Set via **`EZKEY_TRUSTED_PROXIES_REQUIRED=true`** on Docker / Lightsail / `--with-proxy`. |
 | `ezkey.trusted-proxies.cidrs` | `List<String>` | *(empty)* | optionnel | CIDR ranges of trusted reverse proxies. |
 
 ---
@@ -113,8 +120,25 @@ for the full description.
 
 ---
 
+## Management port (Actuator)
+
+| Property | Default (IDE) | Docker | Description |
+|---|---|---|---|
+| `management.server.port` | `7081` | `7081` | Dedicated management port (not on `7080`). |
+| `management.server.address` | `127.0.0.1` | `0.0.0.0` | Loopback for IDE; Docker profile sets `0.0.0.0` so PAM/HAProxy peers reach `integration-api:7081` (#905); local compose publishes `127.0.0.1:7081:7081`. |
+
+See [`docs/LOCAL_STACK_PORTS.md`](../docs/LOCAL_STACK_PORTS.md) and [ADR-0015](../product-docs/global/architecture-decisions.md#adr-0015-management-port-separation-actuator-javamelody).
+
+---
+
 ## JavaMelody (opt-in Docker diagnostics)
 
-Disabled by default. Enable with `./ezkey-tests/clean-start.sh --with-java-melody`. Management-port
-reports: `/actuator/monitoring`. Collector UI: `http://localhost:8088`. See
-[`docker/README.md`](../docker/README.md) § JavaMelody collector.
+Disabled by default. Enable with `./ezkey-tests/clean-start.sh --with-java-melody`, or on Lightsail
+via `experimental-hybrid/lightsail/docker-compose.javamelody.yml` (`EZKEY_ENABLE_JAVA_MELODY=true`).
+Management-port reports: `/actuator/monitoring` only. Startup refuses JavaMelody without
+`management-endpoint-monitoring-enabled=true`, without `management.server.port`, or with equal
+business/management ports. Community binds management to `127.0.0.1`; JM overlay reopens `0.0.0.0`.
+Collector UI: `http://127.0.0.1:8088` (SSH tunnel on community — see
+[`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md) § Observability,
+[#846](https://github.com/mgagp/ezkey/issues/846)). See [`docker/README.md`](../docker/README.md)
+§ JavaMelody collector and [ADR-0015](../product-docs/global/architecture-decisions.md#adr-0015-management-port-separation-actuator-javamelody).

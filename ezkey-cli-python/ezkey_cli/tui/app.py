@@ -19,6 +19,11 @@ from pathlib import Path
 from typing import Optional
 
 from ..config import ConfigManager
+from ..utils.tls import (
+  InsecureTlsNotAllowedError,
+  ensure_configured_urls_allow_insecure,
+  ssl_verify_from_config,
+)
 from .screens import (
   HomeScreen,
   IntegrationsScreen,
@@ -149,16 +154,28 @@ class EzkeyAdminTUI(App):
 
     self._enable_mouse_best_effort()
 
-    # Detect dev mode (localhost/docker) - disable SSL verification
-    is_dev = any(x in admin_url.lower() for x in ['localhost', '127.0.0.1', 'docker'])
-
     admin_health_url = self.config.get('adminHealthUrl')
 
-    # Create API client
+    try:
+      verify_ssl = ssl_verify_from_config(self.config, admin_url)
+      if verify_ssl is False:
+        ensure_configured_urls_allow_insecure(self.config)
+    except InsecureTlsNotAllowedError as e:
+      log.error("%s", e)
+      raise
+
+    if verify_ssl is False:
+      log.warning(
+          "TLS certificate verification disabled for loopback URL %s "
+          "(--insecure / EZKEY_CLI_INSECURE)",
+          admin_url,
+      )
+
+    # Create API client (TLS verify on by default; CA bundle or loopback insecure opt-in)
     self.api_client = ApiClient(
       admin_url,
       token,
-      verify_ssl=not is_dev,
+      verify_ssl=verify_ssl,
       admin_health_url=admin_health_url
     )
 

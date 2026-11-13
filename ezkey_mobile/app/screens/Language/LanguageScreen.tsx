@@ -1,23 +1,16 @@
 import React, {useEffect, useState} from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import {Pressable, ScrollView, Text, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTranslation} from 'react-i18next';
-import {changeAppLanguage, i18n, SupportedLocale} from '../../i18n';
-import {
-  DEFAULT_LOCALE,
-  localeStorage,
-  normalizeLocale,
-  SUPPORTED_LOCALES,
-} from '../../services/storage/localeStorage';
-import {borderRadius, colors, spacing, typography} from '../../config/theme';
+import {changeAppLanguage, getLanguagePreference, LanguagePreference} from '../../i18n';
+import {SUPPORTED_LOCALES} from '../../services/storage/localeStorage';
+import {borderRadius, spacing, typography} from '../../config/theme';
+import {createThemedStyles} from '../../theme';
 
-const localeLabels: Record<SupportedLocale, string> = {
+const LANGUAGE_OPTIONS: readonly LanguagePreference[] = ['system', ...SUPPORTED_LOCALES];
+
+const optionLabels: Record<LanguagePreference, string> = {
+  system: 'locale.system',
   en: 'locale.english',
   fr: 'locale.french',
 };
@@ -25,24 +18,24 @@ const localeLabels: Record<SupportedLocale, string> = {
 /**
  * Manual language picker for the app.
  *
- * The selected locale is saved and applied immediately via i18next.
+ * The choice is saved and applied immediately via i18next; on iOS and Android 13+ it is also
+ * the system per-app language, kept in sync both ways (#1157).
  *
  * @since 2025
  */
 export const LanguageScreen: React.FC = () => {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const {t} = useTranslation();
-  const [selectedLocale, setSelectedLocale] = useState<SupportedLocale>(
-    normalizeLocale(i18n.resolvedLanguage ?? i18n.language ?? DEFAULT_LOCALE),
-  );
-  const [pendingLocale, setPendingLocale] = useState<SupportedLocale | undefined>();
+  const [selected, setSelected] = useState<LanguagePreference | undefined>();
+  const [pending, setPending] = useState<LanguagePreference | undefined>();
 
   useEffect(() => {
     let active = true;
 
-    localeStorage.getLocale().then(locale => {
+    getLanguagePreference().then(preference => {
       if (active) {
-        setSelectedLocale(locale);
+        setSelected(preference);
       }
     });
 
@@ -51,18 +44,18 @@ export const LanguageScreen: React.FC = () => {
     };
   }, []);
 
-  const handleSelect = async (locale: SupportedLocale) => {
-    if (pendingLocale || locale === selectedLocale) {
+  const handleSelect = async (preference: LanguagePreference) => {
+    if (pending || preference === selected) {
       return;
     }
 
-    setPendingLocale(locale);
+    setPending(preference);
 
     try {
-      const nextLocale = await changeAppLanguage(locale);
-      setSelectedLocale(nextLocale);
+      await changeAppLanguage(preference);
+      setSelected(preference);
     } finally {
-      setPendingLocale(undefined);
+      setPending(undefined);
     }
   };
 
@@ -72,35 +65,39 @@ export const LanguageScreen: React.FC = () => {
       contentContainerStyle={[styles.content, {paddingBottom: insets.bottom + spacing.xxl}]}
       accessibilityLabel={t('locale.title')}>
       <Text style={styles.intro}>{t('locale.intro')}</Text>
-      <View style={styles.card}>
-        {SUPPORTED_LOCALES.map((locale, index) => {
-          const selected = locale === selectedLocale;
-          const disabled = pendingLocale != null;
+      <View style={styles.card} accessibilityRole="radiogroup">
+        {LANGUAGE_OPTIONS.map((option, index) => {
+          const checked = option === selected;
+          const disabled = pending != null;
 
           return (
             <Pressable
-              key={locale}
+              key={option}
+              testID={`ezkey.language.${option}`}
               style={({pressed}) => [
                 styles.item,
-                index === SUPPORTED_LOCALES.length - 1 && styles.itemLast,
-                selected && styles.itemSelected,
+                index === LANGUAGE_OPTIONS.length - 1 && styles.itemLast,
+                checked && styles.itemSelected,
                 pressed && !disabled && styles.itemPressed,
               ]}
               onPress={() => {
-                handleSelect(locale).catch(() => {});
+                handleSelect(option).catch(() => {});
               }}
               disabled={disabled}
-              accessibilityRole="button"
-              accessibilityState={{selected, disabled}}
-              accessibilityLabel={t(localeLabels[locale])}>
+              accessibilityRole="radio"
+              accessibilityState={{checked, disabled}}
+              accessibilityLabel={t(optionLabels[option])}>
               <View style={styles.itemContent}>
-                <Text style={styles.itemLabel}>{t(localeLabels[locale])}</Text>
-                <Text style={styles.itemSubtitle}>
-                  {selected ? t('locale.current') : ' '}
+                <Text style={styles.itemLabel}>{t(optionLabels[option])}</Text>
+                <Text
+                  style={styles.itemSubtitle}
+                  importantForAccessibility="no"
+                  accessibilityElementsHidden>
+                  {checked ? t('locale.current') : ' '}
                 </Text>
               </View>
-              <View style={[styles.radioOuter, selected && styles.radioOuterSelected]}>
-                {selected ? <View style={styles.radioInner} /> : null}
+              <View style={[styles.radioOuter, checked && styles.radioOuterSelected]}>
+                {checked ? <View style={styles.radioInner} /> : null}
               </View>
             </Pressable>
           );
@@ -110,7 +107,7 @@ export const LanguageScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(colors => ({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -182,4 +179,4 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: colors.primaryLight,
   },
-});
+}));

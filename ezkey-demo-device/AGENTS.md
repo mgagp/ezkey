@@ -8,6 +8,19 @@ Monorepo copy lives under `ezkey/ezkey-demo-device/`; public standalone mirror: 
 
 Bind response `tenantId` / `tenantName` / `tenantDescription` are persisted on `EnrollmentStoreService.Record`. The Ezkey app home groups enrollments via `EnrollmentTenantGrouper` into `tenantGroups` (header + list per tenant). Use `EnrollmentTenantGrouper.normalizeTenantName`: null `tenantId` / absent name → **Platform**. Do not invent “Unknown tenant”. Prefer that helper over ad-hoc sorting in the controller or template.
 
+## Claimed pending session expiry (#895 PR-C)
+
+Auth API pending is read-once (`PENDING` → `READ`). After a successful claim, `ClaimedPendingAuth` is stored in the HTTP session so a second GET can re-show Approve/Deny without calling pending again (204).
+
+**Claim `expiresAt` resolution** (`ClaimExpiresAtResolver`):
+
+1. Prefer server `expiresAt` from the pending JSON when present (`AuthApiService` keeps the raw field even if the generated DTO omits it).
+2. Otherwise fall back to `claimedAt + ezkey.demo-device.claimed-pending-attempt-ttl` (default **120s**, aligned with `ezkey.core.auth-attempt.ttl-seconds`).
+
+Auth API pending currently omits expiry on the wire (#834 — countdown stays on the integrating app). The local fallback can drift: e.g. PAM `ttlSeconds` 90 with a 120 s fallback leaves a stale Approve/Deny visible for ~30 s after server expiry. Prefer aligning the property with the initiator TTL, or rely on respond **409** as the fail-closed net. `PendingAuthClaimSession.findOpen` invalidates at `min(expiresAt, claimedAt + 10 min)`.
+
+On `POST …/auth/respond`, HTTP **409** with ProblemDetail type ending in `auth-attempt-expired` (PR-A) shows the expired result with initiator-neutral copy (“Restart the login from the application” — Admin UI, PAM/SSH, SDK, …). Other 409s (including older `auth-attempt-state-conflict` or a missing type) show “no longer active” — tolerant when PR-A is not yet deployed.
+
 ## QR `authUrl` routing (mobile parity)
 
 When an Admin UI enrollment QR includes `authUrl`, the demo device routes **bind**, **verify**, **pending**, and **respond** for that enrollment to that base URL. The validated URL is persisted in `EnrollmentStoreService.Record.enrollmentUrl`.
@@ -22,10 +35,28 @@ When an Admin UI enrollment QR includes `authUrl`, the demo device routes **bind
 - Client: `enrollment-qr-import.js` populates hidden form field `authApiBaseUrl`.
 - Server: `EnrollmentAuthApiUrlResolver` + `AuthApiUrlValidator` (mirrors mobile `urlValidation.ts`).
 - Invalid non-blank QR URL → hard error (no silent fallback to config).
+- **Host allowlist** (`ezkey.demo-device.allowed-auth-api-hosts`): QR `authUrl` / bind overrides must
+  target an allowed hostname. Default = host of `ezkey.auth.api.url` + `localhost` + `127.0.0.1`.
+  Rejection message is constant (no echo of the submitted URL). Userinfo in the URL is rejected;
+  normalized form is scheme + host + port + path only. Stored `enrollmentUrl` is revalidated on
+  verify/pending/respond (`resolveForStoredEnrollment`) with the same allowlist (fail closed).
+  Docker `http://auth-api:8080` is the **config default** (not an override); HTTP outside loopback
+  still fails override validation — see `CONFIGURATION.md` § Docker. (Code-scanning triage
+  2026-10-13, alerts #9 / #10.)
 
-Standalone Docker default remains Exp1 (`https://exp1-auth-api.ezkey.org`); QR local enrollments override without `.env` change.
+**Auth API URL defaults** (`ezkey.auth.api.url` / `EZKEY_AUTH_API_URL`):
 
-## EXP1 / Cloudflare error bodies
+| Mode | Default / example |
+|------|-------------------|
+| Docker Compose (monorepo / `application-docker.properties`) | `http://auth-api:8080` |
+| Standalone against community | set `EZKEY_AUTH_API_URL=https://auth-api.ezkey.online` |
+
+QR local enrollments override without `.env` change when that host is on the allowlist (default
+includes the configured Auth API host). Public community hostnames (and names that must not be
+used): [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md) § *Product
+hostnames (ezkey.online)*.
+
+## Cloudflare error bodies
 
 When Auth is the Cloudflare hostname, HTTP errors may be **origin** RFC 9457
 (`type` under `https://ezkey.io/problems/`) or **edge** Cloudflare 403/1020
@@ -60,7 +91,7 @@ mvn test -pl ezkey-demo-device -Dtest=EnrollmentStoreRecordJsonRoundtripTest
 
 ## OpenAPI models
 
-- Spec: `openapi-spec.json` (generated Auth API snapshot; refresh via monorepo `scripts/update-specs.sh` when authorized).
+- Spec: Maven reads `../specs/auth-api/openapi-spec.json` in the monorepo (no local symlink/copy — #833). Standalone mirror `mgagp/ezkey-demo-device` keeps its own committed `openapi-spec.json` when synced.
 - Generated package: `org.ezkey.demodevice.generated.dto`.
 - Hand-written HTTP: `AuthApiService` (WebClient + generated DTOs).
 
@@ -86,6 +117,6 @@ bootstrap Global Admin:
 
 **Clean-start stack (monorepo):** demo device on http://localhost:8083, Auth API via Docker internal URL.
 
-**Standalone Docker (Exp1):** `./start.sh` — http://localhost:3080 (see standalone repo).
+**Standalone Docker:** `./start.sh` — http://localhost:3080 (see standalone repo).
 
 **Local JDK:** from module directory, `mvn test` then `mvn spring-boot:run` or run the repackaged JAR.

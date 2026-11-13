@@ -29,6 +29,13 @@ Each decision is recorded with enough context to be understood years later: why 
 | [ADR-0010](#adr-0010-rate-limiting-scoped-by-actor-identity-not-by-ip) | Rate limiting scoped by actor identity, not by IP, across device and M2M surfaces | accepted | 2026-05-08 |
 | [ADR-0011](#adr-0011-tink-native-database-keyset-envelope) | Tink-native database keyset envelope | accepted | 2026-08-02 |
 | [ADR-0012](#adr-0012-admin-owned-keyset-materialization) | Admin-owned keyset materialization | accepted | 2026-08-28 |
+| [ADR-0013](#adr-0013-admin-role-admin-umbrella-keep-vs-split) | Admin `ROLE_ADMIN` umbrella — keep vs split | proposed | 2026-09-16 |
+| [ADR-0014](#adr-0014-qa-sphere-for-test-execution-tracking) | QA Sphere for test execution tracking | accepted | 2026-10-13 |
+| [ADR-0015](#adr-0015-management-port-separation-actuator-javamelody) | Management port separation (Actuator / JavaMelody) | accepted | 2026-10-19 |
+| [ADR-0016](#adr-0016-keyset-blob-single-source-of-truth) | Keyset blob as single source of truth | accepted | 2026-10-21 |
+| [ADR-0017](#adr-0017-product-versioning-one-semver-for-the-monorepo) | Product versioning — one SemVer for the monorepo | accepted | 2026-11-04 |
+| [ADR-0018](#adr-0018--connector-spi-for-external-services) | Connector SPI for external services | accepted | 2026-11-05 |
+| [ADR-0019](#adr-0019--enrollment-invitation-is-the-proof-token) | Enrollment invitation is the proof token | accepted | 2026-11-08 |
 
 ## ADR-0001 — Backend-first cryptographic protocol
 
@@ -264,7 +271,8 @@ Canonical wire formats and payload rules live in [`../../docs/CRYPTO.md`](../../
 
 - **Positive.** Device keys align with platform secure storage; integration signatures stay compact, deterministic, and JDK-native; mobile verifies integration Ed25519 without holding integration private keys.
 - **Negative.** Operators and integrators must understand two algorithm columns in protocol docs; SDKs and tests must implement both paths.
-- **Neutral.** Both families are pre-quantum elliptic-curve schemes; post-quantum migration would be a separate, protocol-wide effort.
+- **Neutral.** Both families are pre-quantum elliptic-curve schemes; post-quantum migration would be a separate, protocol-wide effort. Orientation map:
+  [`V-2026-09-15-post-quantum-crypto-posture`](vision/V-2026-09-15-post-quantum-crypto-posture.md).
 
 ### Impact
 
@@ -445,6 +453,9 @@ Cryptographic formats, storage modes (`FILE` / `DATABASE` / `HYBRID`), and
 - Read-path fail-closed when `encryption.required=true` (orthogonal follow-up):
   [`I-2026-07-09`](backlog/ideas/I-2026-07-09-encryption-required-read-path-parity.md).
 - Detective integrity windows: [ADR-0009](#adr-0009-detective-integrity-windows-align-to-checkpoint-grid).
+- **Supersession (storage modes):** dual-authority / `FILE`/`HYBRID` runtime cache statements in this
+  ADR are superseded by [ADR-0016](#adr-0016-keyset-blob-single-source-of-truth) (RW lock + 5 s tick
+  remain).
 
 ## ADR-0009 — Detective integrity windows align to checkpoint grid
 
@@ -459,7 +470,7 @@ Cryptographic formats, storage modes (`FILE` / `DATABASE` / `HYBRID`), and
 ### Context
 
 Wave B shipped a two-layer integrity model: rolling **attach** (5-minute checkpoints) and nightly
-**detect** (retroactive HMAC + chain verification). On EXP1, the nightly batch raised daily CRITICAL
+**detect** (retroactive HMAC + chain verification). On the community host, the nightly batch raised daily CRITICAL
 `AUDIT_INTEGRITY_RUPTURE` alerts with zero entry and zero chain crypto violations. Investigation
 showed the detective window used wall-clock `now()` (sub-second precision) while checkpoints sit on
 exact grid boundaries, so `findByWindowRange` excluded the first aligned checkpoint and reported a
@@ -499,7 +510,7 @@ that **operator-facing rupture alerts must distinguish coverage findings from cr
   integrity jobs inherit an explicit time-base rule.
 - **Negative.** Slightly less "up to the millisecond" coverage at the trailing edge of the nightly
   window (by design — that edge is not yet a sealed checkpoint).
-- **Neutral.** Historical false-positive OPEN alerts on EXP1 may need manual resolve.
+- **Neutral.** Historical false-positive OPEN alerts on the community host may need manual resolve.
 
 ### Impact
 
@@ -514,7 +525,7 @@ that **operator-facing rupture alerts must distinguish coverage findings from cr
 
 - Unit: sub-second window end does not produce leading undeclared gap on a contiguous checkpoint grid.
 - Regression: real interior gap and digest mismatch still raise/touch `AUDIT_INTEGRITY_RUPTURE`.
-- EXP1: after deploy, next nightly run leaves no new zero-violation rupture alert.
+- community host: after deploy, next nightly run leaves no new zero-violation rupture alert.
 - **Execution:** PR `#318` / issue `#315` merged and closed 2026-07-11; backlog idea
   `I-2026-07-10-nightly-integrity-boundary-false-positives` marked `done` (canon synced 2026-08-02).
 
@@ -703,6 +714,9 @@ dual-read migration because there are no production installations to preserve at
 - Tink keyset concurrent read / reload path: [ADR-0008](#adr-0008-tink-keyset-sync-concurrent-read-path).
 - Proof-token storage tiers on related encrypted data surfaces: [ADR-0007](#adr-0007-proof-token-storage-hash-only-where-protocol-allows).
 - Admin-owned keyset materialization: [ADR-0012](#adr-0012-admin-owned-keyset-materialization).
+- **Supersession (storage modes):** `DATABASE`/`HYBRID` dual-path and file-cache implications are
+  superseded by [ADR-0016](#adr-0016-keyset-blob-single-source-of-truth) (Tink-native envelope format
+  remains).
 
 ## ADR-0012 — Admin-owned keyset materialization
 
@@ -776,3 +790,582 @@ acceleration for clean-start, not the HA contract.
 
 - Tink keyset concurrent read / reload path: [ADR-0008](#adr-0008-tink-keyset-sync-concurrent-read-path).
 - Tink-native database keyset envelope: [ADR-0011](#adr-0011-tink-native-database-keyset-envelope).
+- **Supersession (storage modes):** FILE peripheral load and DATABASE/HYBRID file materialization are
+  superseded by [ADR-0016](#adr-0016-keyset-blob-single-source-of-truth) (Admin-as-sole-writer and
+  non-writer bootstrap-wait remain).
+
+## ADR-0013 — Admin `ROLE_ADMIN` umbrella — keep vs split
+
+### Metadata
+
+- **ID:** ADR-0013.
+- **Date:** 2026-09-16.
+- **Status:** proposed.
+- **Scope:** global (Admin API human authorization; Admin UI role chrome).
+- **Owners:** Marc / Patrick (decision); platform architecture.
+- **Decision pack:** [`decisions/2026-09-16-admin-role-umbrella/`](decisions/2026-09-16-admin-role-umbrella/README.md)
+  (inventory, options A/B/C, test preamble, phasing, verdict draft).
+- **Prior hygiene:** Path A keep-umbrella settled 2026-08-20 in
+  [`hygiene/java-controller-role-validation/2026-08-16-pass-1.md`](hygiene/java-controller-role-validation/2026-08-16-pass-1.md)
+  (`CTRL-ROLE-002` / `002b`). This ADR elevates that call to the global decision log for
+  confirm / challenge.
+
+### Context
+
+Every authenticated human admin JWT-equivalent session receives Spring authority `ROLE_ADMIN`,
+then `ROLE_GLOBAL_ADMIN` or `ROLE_TENANT_ADMIN`
+(`AdminTokenAuthenticationFilter`). Shared operator controllers commonly use
+`@PreAuthorize("hasRole('ADMIN')")`. Tenant isolation and Global-only privilege are **not**
+implied by that umbrella; they require a second check (`AccessControlService.canAccess*`,
+principal tenant scope, or an explicit `GLOBAL_ADMIN` gate). SEC-017 and CTRL-ROLE-001 showed
+the fail-open class when the second check is missing. Service-level `@PreAuthorize("hasRole('ADMIN')")`
+would not fix isolation either — Admin API services today do not use method-security annotations
+for that reason.
+
+The product still wants a sober model for a solo-maintained lab: either keep the umbrella and
+make agent discoverability fail-closed in process, or split authorities greenfield-style and
+estimate the cutover.
+
+### Decision
+
+**Proposed (draft for Patrick):** Option C executing Option A — **keep issuing `ROLE_ADMIN`**;
+do **not** remodel filter assignment in application code in this decision cycle. Harden
+discoverability and characterization tests. Treat dropping the umbrella as an optional later
+atomic peel only if isolation defects recur after that hardening, or if a new role model is
+funded as an explicit program. See the decision pack verdict for the full rationale.
+
+Until status becomes `accepted`, treat Admin API `AGENTS.md` § Authorization at controllers as
+the living operational canon (including the 2026-08-20 Path A sentence).
+
+### Alternatives Considered
+
+- **A — Keep umbrella + harden discoverability.** Preferred near-term execution path. Isolation
+  remains object/list scoped; docs/rules/tests carry the load.
+- **B — Split authorities greenfield-style.** Issue only type roles; annotate
+  `hasAnyRole(GLOBAL,TENANT)` vs `hasRole(GLOBAL)`. Honesty gain for Global-only gates; does
+  **not** replace `canAccess*`. Requires coordinated filter + ~36 annotation migration.
+- **C — Hybrid / phased.** Accept A now; independent peels for 403→404 / dialects; optional
+  annotation honesty; stop issuing `ROLE_ADMIN` only in an atomic final step. **Draft
+  recommendation.**
+
+### Consequences
+
+- **Positive (if accepted as drafted).** No risky authz cutover; elevates prior hygiene to ADR;
+  clear reopen criteria for B; separates deny-shape debt from role remodel.
+- **Negative (if accepted as drafted).** Isolation stays opt-in per endpoint; agents that skip
+  AGENTS can still ship umbrella-only get-by-id.
+- **Neutral.** Admin UI continues to branch on `adminType`. Hide-existence and SQL-isolation
+  workstreams remain separate.
+
+### Impact
+
+- **Affected components:** `ezkey-admin-api` (authz model), `ezkey-admin-ui` (role chrome only),
+  `ezkey-tests` (isolation characterization).
+- **Affected boundaries:** Admin human session authorities; not Auth API device protocol; not
+  Integration API `ROLE_API_KEY`.
+- **Living canon until accepted:** [`../../ezkey-admin-api/AGENTS.md`](../../ezkey-admin-api/AGENTS.md)
+  § Authorization at controllers; [`../../docs/API_SECURITY_MATRIX.md`](../../docs/API_SECURITY_MATRIX.md)
+  role story.
+
+### Validation
+
+- Decision acceptance is documentary (Patrick edits status).
+- If accepted as drafted: optional root/agent pointer; fund ACS Tenant Admin unit matrix and
+  keep `TenantCrossIsolationSecurityTest` + `EncryptionKeyControllerSecurityWebMvcTest` green on
+  authz-touching changes.
+- If B is later funded: characterization suite green before removing `ROLE_ADMIN` from the
+  filter (see decision pack test preamble).
+
+### Related Decisions
+
+- None superseded yet. Hygiene Path A is provenance, not an ADR.
+- Orthogonal: encryption key Global-only (SEC-017) remains; keyset writer ownership is
+  [ADR-0012](#adr-0012-admin-owned-keyset-materialization).
+
+## ADR-0014 — QA Sphere for test execution tracking
+
+### Metadata
+
+- **ID:** ADR-0014.
+- **Date:** 2026-10-13.
+- **Status:** accepted.
+- **Scope:** global (test strategy, execution tracking, security-case sourcing).
+- **Owners:** Marc.
+
+### Context
+
+Ezkey needs a durable place to track **manual**, **exploratory**, and **campaign** test execution
+(Play closed testing, public-alpha rehearsals, operator charters) without turning the git corpus
+into a run log or inventing a second compliance program. Automated unit, integration, and E2E
+proof already lives in the repository and in
+[`spec-test-traceability.md`](spec-test-traceability.md). Agents and humans also need a shared
+taxonomy so case titles remain joinable across tools.
+
+### Decision
+
+Adopt **QA Sphere** (workspace `https://isd.eu1.qasphere.com`, project code `EZK`) as the
+execution-tracking surface for manual, exploratory, and campaign runs. The **repository remains
+the source of truth** for specifications, acceptance criteria, and automated evidence. Living
+canon for taxonomy, nomenclature, pyramid split, and cold-agent MCP usage is
+[`test-strategy.md`](test-strategy.md).
+
+Standards posture for that canon:
+
+- **ISO/IEC/IEEE 29119** — vocabulary and test levels (inspiration, not certification).
+- **OWASP ASVS** (web/API) and **OWASP MASVS** (mobile) — sources of security cases, cited by
+  code via norm tags.
+- Complements [`normative-posture.md`](normative-posture.md); creates **no** parallel SOC 2 /
+  attestation program.
+
+### Alternatives Considered
+
+- **Git-only issue/checklists for every manual run.** Rejected — noisy in the product-docs and
+  PR board; poor campaign/session model for multi-tester passes.
+- **Spreadsheet or ad-hoc Notion board.** Rejected — weak MCP/agent integration and weak
+  durable join to repo case codes.
+- **Full test-management suite with compliance workflow.** Rejected — accidental complexity and
+  conflicts with the normative-posture “no parallel compliance program” lock.
+
+### Consequences
+
+- **Positive.** Clear split: repo = truth, QA Sphere = pointers + execution; shared `CODE` /
+  case-title nomenclature; cold agents can use hosted MCP with env-var API keys.
+- **Negative.** Humans must keep case bodies thin (links, not pasted specs) or the two systems
+  drift.
+- **Neutral.** MCP cannot delete and cannot edit custom fields; automated MCP results are
+  flagged as such — web UI remains required for some admin actions.
+
+### Impact
+
+- **Affected components.** All taxonomy codes in [`test-strategy.md`](test-strategy.md)
+  (Admin UI, APIs, mobile, demos, CLI, experimental PAM, core black-box, ops, docs).
+- **Affected features.** None changed in product behavior; traceability matrices gain an
+  optional pointer to QA Sphere campaigns when useful.
+- **Affected boundaries.** Documentation and QA process only — no API contract change.
+
+### Validation
+
+- Taxonomy codes match existing module paths (verified at authorship).
+- Cold-agent section stays free of secrets and tester personal data.
+- Future campaign notes link milestones/runs in QA Sphere rather than duplicating run logs in
+  git.
+
+### Related Decisions
+
+- Complements normative posture (SOC 2 vocabulary only): [`normative-posture.md`](normative-posture.md).
+- Traceability home for automated proof remains [`spec-test-traceability.md`](spec-test-traceability.md).
+
+## ADR-0015 — Management port separation (Actuator / JavaMelody)
+
+### Metadata
+
+- **ID:** ADR-0015.
+- **Date:** 2026-10-19.
+- **Status:** accepted.
+- **Scope:** global (community host + Docker management surface).
+- **Owners:** Platform / ops.
+
+### Context
+
+Actuator and JavaMelody reports must not share the public business HTTP port. The three core APIs
+already used a separate management port; demo-app-acme still served Actuator on 8082. JavaMelody
+without `management-endpoint-monitoring-enabled` would serve `/monitoring` on the business port.
+Community management listeners defaulted to `0.0.0.0` inside the container (reachable from any
+Docker peer).
+
+### Decision
+
+- **Management port = internal.** Never routed by Caddy. Community base compose binds
+  `management.server.address=127.0.0.1`; healthchecks use `127.0.0.1`.
+- **JavaMelody collection** stays on the business-port filter; **reports** are only
+  `/actuator/monitoring` on the management port. Enabling JavaMelody without
+  `management-endpoint-monitoring-enabled=true` fails startup. Enabling JavaMelody without
+  `management.server.port` also fails (report would mount on the business port). Equal
+  business/management ports fail startup. JavaMelody off + unset management port remains OK
+  (local / IDE).
+- **JM overlay** reopens management to `0.0.0.0` so the collector can scrape; verify/export fail
+  if the overlay omits that reopen.
+- **demo-app-acme** uses management port **8086**. Caddy observability deny remains defense in
+  depth (unchanged).
+
+### Alternatives Considered
+
+- **Rely on Caddy deny alone for Acme Actuator.** Rejected — peer containers on the Docker network
+  could still reach 8082 `/actuator`.
+- **Bind community management to 127.0.0.1 even with JavaMelody.** Rejected — collector in another
+  container would see an empty surface.
+- **Bind local compose JVM management to 127.0.0.1.** Rejected for local Docker — peers such as
+  `ezkey-pam/test/test_pam.sh` call `integration-api:7081` on the Docker network. Local harden instead
+  publishes management host ports as `127.0.0.1:port:port` while the in-container bind stays
+  `0.0.0.0` (PR B). **Decision (2026-10-19, #905):** after PR #889 set IDE defaults to
+  `management.server.address=127.0.0.1`, Docker profiles must **explicitly** set `0.0.0.0` —
+  leaving the key unset inherits the IDE default and breaks HAProxy healthchecks (backends DOWN,
+  LB 503).
+
+### Consequences
+
+- **Positive.** Actuator off business ports for Acme; fail-closed JM misconfig; smaller residual
+  SSRF surface when JM is off. Local host cannot reach management from non-loopback interfaces;
+  IDE defaults bind management to `127.0.0.1`.
+- **Negative.** The dangerous rolling pair is **new Acme image + old compose** (healthcheck still
+  on `8082/actuator/health` → Acme unhealthy → Caddy `depends_on` blocks public APIs). Export
+  refuses `--include-demo-acme --remote-up` without `--sync-operator-files` and checks remote
+  compose for `8086/actuator/health`. Old image + new compose is usually OK (env vars move the
+  port).
+- **Neutral.** Spring Security `permitAll` `/actuator/**` on the management context is required for
+  anonymous health and JM monitoring endpoint access.
+
+### Impact
+
+- Admin / Auth / Integration APIs, demo-app-acme, community compose, JM overlay, verify/export
+  scripts, operator docs.
+
+### Validation
+
+- Unit tests for startup validator; dual-port `@SpringBootTest` (management health **200**,
+  business `/actuator/health` exact **404**; Auth with JM: business `/monitoring` **403**;
+  Admin/Integration minimal chains: business `/monitoring` **401** matching production LIVE;
+  management `/actuator/monitoring` **200**).
+- `verify-javamelody-non-exposure.sh --business-ports` expects native 404 on `/actuator/health`.
+
+### Follow-up
+
+- **N5:** `--check-jm-overlay-bind` is a static grep; a live `docker exec`/`ss` check when JM is on
+  would be stronger (#866).
+- **N6:** Closed by #905 — Docker profiles + compose set management bind `0.0.0.0`; HA API replicas
+  keep management on `expose` only; CI `ha-smoke` probes each LB.
+- **N7:** `JavaMelodyStartupValidator` is duplicated in acme (no ezkey-core dependency) — keep
+  rules aligned until a shared module is justified.
+
+### Related Decisions
+
+- Observability locks in [`docs/SECURITY_POSTURE.md`](../../docs/SECURITY_POSTURE.md) § Observability.
+- Community runbook: [`docs/lightsail/community-host.md`](../../docs/lightsail/community-host.md).
+
+## ADR-0016 — Keyset blob as single source of truth
+
+### Metadata
+
+- **ID:** ADR-0016.
+- **Date:** 2026-10-21.
+- **Status:** accepted (direction adopted on GitHub
+  [#952](https://github.com/mgagp/ezkey/issues/952); blob-only CAS cutover in progress on the
+  implementation PR).
+- **Scope:** global.
+- **Owners:** Platform architecture / security.
+- **Decision pack:**
+  [`decisions/2026-10-21-keyset-storage-strategy/`](decisions/2026-10-21-keyset-storage-strategy/README.md).
+
+### Context
+
+At-rest encryption uses a Tink keyset wrapped by a file-based master key. ADR-0008, ADR-0011, and
+ADR-0012 retained three storage modes (`FILE`, `DATABASE`, `HYBRID`) and, in `DATABASE`/`HYBRID`, a
+keyset **file cache** beside `ezkey_keyset_blob`. Multi-instance hardening (#936) repeatedly hit
+divergence between file and blob (blockers B2, B5, B6). Real deployments already run `DATABASE`;
+`HYBRID` has no production user. Keeping dual authority is accidental complexity.
+
+### Decision
+
+1. **`ezkey_keyset_blob` is the only runtime source of truth** for the Tink keyset. API processes do
+   not read, write, or delete a keyset file.
+2. **Remove `FILE` and `HYBRID`** modes and related flags. Windows and crypto-api align on
+   database-backed load. `master.key` remains a file/secret.
+3. **crypto-api** runs **only** in the disposable local clean-start stack (Marc deployment models,
+   2026-10-21: local clean-start · Lightsail VMs · future AWS/#953; no hybrid laptop+remote-DB). It
+   uses a read-only DataSource and a SELECT-only DB role on `ezkey_keyset_blob` (no
+   `ezkey_encryption_key`); AEAD recovery reloads the blob; split health; never
+   `ezkey.encryption.required=false` ([#942](https://github.com/mgagp/ezkey/issues/942) property
+   purge is an adjacent thin PR). JPA for the blob is registered via Boot
+   `AutoConfiguration` after `DataSourceAutoConfiguration` (not component-scanned
+   `@ConditionalOnBean` alone — that ordered before the pool and yielded 0 repositories).
+4. **Online rotation** remains, **DB-CAS-first** and fail closed. Invariants 1–3 are a **new CAS
+   protocol** inspired by #936 (install only after successful CAS). Invariants 4–8 carry from that
+   line (short tick; unknown kid fail closed; DB errors never generate; no DELETE/TRUNCATE of the
+   blob / no API unlink of key material / disable-kid does not delete the envelope; legacy blob
+   fails startup without overwrite).
+5. **Decrypt paths fail closed** (fix `EncryptionService.decrypt` returning ciphertext as
+   plaintext) in the cutover PR. Logs carry **kids** (and versions) only. `audit-hmac.key` is mode
+   `600` on POSIX. Secrets volumes keep **master + audit keys only**.
+6. Supersedes storage-mode dual-authority statements in ADR-0008, ADR-0011, and ADR-0012. Encrypted
+   off-host backup, KMS, and production HA remain [#953](https://github.com/mgagp/ezkey/issues/953).
+   CLI import/export is an adjacent thin PR. `KEY_ROTATION_PROCEDURES.md` updates in the cutover PR.
+
+### Alternatives Considered
+
+- **Keep three modes with stricter file rules (finish #936 as-is).** Rejected — recurring review
+  cost; HYBRID unused; blockers are conceptual.
+- **File-only + orchestrator secrets.** Rejected — loses hot rotation and Admin promote without a
+  large ops rewrite.
+- **KMS envelope now.** Deferred — extension of blob-only once #953 funds it; self-host needs a
+  local fallback anyway.
+- **D′ keep exclusive FILE for single-instance.** Rejected unless a real offline-without-Postgres
+  need appears; Windows already needs Postgres for the app.
+
+### Consequences
+
+- **Positive.** Single authority; B2/B5/B6-class bugs disappear by construction; backup mental model
+  is DB + master key; crypto-api shares the same load path.
+- **Negative.** No keyset-file cache as informal backup; crypto-api requires Postgres even in lab;
+  community leftover file must be handled deliberately on upgrade.
+- **Neutral.** Master key remains on disk/volume until a future KMS ADR.
+
+### Impact
+
+- `ezkey-core-security` (`TinkKeyManager`, `EncryptionService`), Admin/Auth/Integration/crypto-api
+  config, Docker HA volume story, Windows profiles, grants matrix, operational and security docs.
+- Issues: [#952](https://github.com/mgagp/ezkey/issues/952), related
+  [#942](https://github.com/mgagp/ezkey/issues/942), [#953](https://github.com/mgagp/ezkey/issues/953);
+  supersedes [#936](https://github.com/mgagp/ezkey/pull/936).
+
+### Validation
+
+- Characterization suite flipped to post-cutover assertions (`KeysetStorageCharacterizationTest`).
+- Mutation-probed tests for all eight invariants (`KeysetBlobOnlyInvariantTest`).
+- Real-Postgres CAS (`KeysetBlobCasPostgresTest`, retargets [#938](https://github.com/mgagp/ezkey/issues/938):
+  Hibernate `@Version` + app pre-check, not `updateKeysetIfVersionMatches`).
+- Transactional install boundary (`KeyRotationTransactionalInstallPostgresTest`): live handle
+  installs only afterCommit when `KeyRotationService` `@Transactional` is active.
+- Host ladder: Mac → Windows → community in-place upgrade
+  ([`community-upgrade-impact.md`](decisions/2026-10-21-keyset-storage-strategy/community-upgrade-impact.md)).
+
+### Related Decisions
+
+- Supersedes dual-authority / FILE-cache implications in
+  [ADR-0008](#adr-0008-tink-keyset-sync-concurrent-read-path),
+  [ADR-0011](#adr-0011-tink-native-database-keyset-envelope),
+  [ADR-0012](#adr-0012-admin-owned-keyset-materialization).
+- Complements always-on encryption work in [#942](https://github.com/mgagp/ezkey/issues/942).
+
+## ADR-0017 — Product versioning — one SemVer for the monorepo
+
+### Metadata
+
+- **ID:** ADR-0017.
+- **Date:** 2026-11-04.
+- **Status:** accepted.
+- **Scope:** global.
+- **Owners:** Product / release (Marc).
+- **Trace:** [#1211](https://github.com/mgagp/ezkey/issues/1211) step 1.
+
+### Context
+
+Ezkey is a monorepo (backends, Admin UI, demo surfaces, CLI, PAM, mobile) with no product
+releases yet. Deploy identity today is the git SHA
+([`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../../docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md)).
+Existing tags such as `methodology/*` and `deploy/*` are not product versions. OpenSSF Best
+Practices asks for SemVer and unique version tags; the project needs a minimal solo-maintainer
+scheme before tooling or the first tag.
+
+### Decision
+
+Ezkey uses **Semantic Versioning** with **one product version for the whole monorepo**
+(backends, Admin UI, demo, CLI, PAM, mobile). The product starts at **`0.2.0`**. While the line
+is **`0.x`**, there is **no stability promise** (lab / public-alpha posture).
+
+**Trace:** One SemVer for the whole monorepo starting at `0.2.0` (0.x = no stability) —
+a tag must name everything shipped together; per-module versions are too costly for a solo
+maintainer — Marc, 2026-11-04, [#1211](https://github.com/mgagp/ezkey/issues/1211).
+
+**Trace:** First product version is `0.2.0`, not `0.1.0` — Play already shipped
+`versionName` `0.1.2-alpha`, and the mobile version must not go backwards —
+Marc, 2026-11-04, [#1211](https://github.com/mgagp/ezkey/issues/1211).
+
+Operational detail for tags, non-product namespaces, mobile `versionName` / `versionCode`, and
+SHA complementarity lives in
+[`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../../docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md).
+POM / npm / SDK / Android / CLI alignment tooling is implemented in
+[#1211](https://github.com/mgagp/ezkey/issues/1211) step 2 (`scripts/sync-version.sh`,
+`scripts/check-version-alignment.sh`); see
+[`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../../docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md)
+§ Alignment mechanisms.
+
+**Exception — Jenkins lab plugin SemVer.** The experimental Jenkins lab plugins under
+`ezkey-jenkins/` (`ezkey-lab-auth`, `ezkey-lab-hello`) keep their **own** plugin SemVer
+(e.g. `0.1.0-SNAPSHOT` on the HPI artifact). They are lab-only Jenkins artifacts **outside** the
+product ship set; forcing them onto the monorepo product line would couple an experimental
+SecurityRealm to every product cut. They **do** consume the Java SDK at the product Maven
+coordinate (`ezkey.sdk.version` / install-file pins), which the version-alignment gate checks.
+**Trace:** Jenkins lab plugin SemVer stays independent; SDK consume pins follow the product line —
+[#1211](https://github.com/mgagp/ezkey/issues/1211) step 2.
+
+### Alternatives Considered
+
+- **Per-module / per-surface SemVer.** Rejected — a single ship event would need many tags and
+  constant alignment work; too expensive for a solo maintainer.
+- **Start at `0.1.0`.** Rejected — Play already shipped `versionName` `0.1.2-alpha`; the mobile
+  (and therefore monorepo) product line must not go backwards.
+- **Start at `1.0.0`.** Rejected — would imply a stability promise Ezkey does not make in lab /
+  public-alpha posture.
+- **Defer any product version until registries publish.** Rejected — OpenSSF and operator clarity
+  need a named product version before the first annotated tag; SHA remains the live deploy SOOT.
+- **Fold Jenkins lab HPI SemVer into the product line.** Rejected for now — lab SecurityRealm
+  outside the product ship set; SDK pins still follow the product coordinate (#1211 step 2).
+
+### Consequences
+
+- **Positive.** One tag can name everything that ships together; docs and OpenSSF answers stay
+  simple; SHA ledger remains valid until and after the first product tag.
+- **Negative.** Surfaces that historically drifted (e.g. mobile Play uploads) must eventually
+  follow the shared product line; independent cadence requires an explicit later decision.
+- **Neutral.** `methodology/*` and `deploy/*` tags continue unchanged and are not product versions.
+  Jenkins lab plugin SemVer remains an explicit exception (see Decision).
+
+### Impact
+
+- All shippable surfaces in the monorepo.
+- [`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../../docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md),
+  release checklist work under [#1211](https://github.com/mgagp/ezkey/issues/1211), mobile Play
+  version policy docs.
+
+### Validation
+
+- Docs-only for step 1 (this ADR + versioning doc). No tag and no release in this change.
+- Later steps of [#1211](https://github.com/mgagp/ezkey/issues/1211) prove alignment tooling and
+  the first annotated `v*` tag.
+
+### Related Decisions
+
+- Complements deploy SHA ledger conventions in
+  [`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../../docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md).
+
+## ADR-0018 — Connector SPI for external services
+
+### Metadata
+
+- **ID:** ADR-0018.
+- **Date:** 2026-11-05 (proposed 2026-11-04).
+- **Status:** accepted by Marc after
+  [critical review](hygiene/critical-review/2026-11-05-pr1209-connector-spi.md)
+  (GitHub [#1206](https://github.com/mgagp/ezkey/issues/1206)).
+- **Scope:** global.
+- **Owners:** Platform architecture / security.
+- **Decision pack:** [`decisions/2026-11-04-connector-spi/`](decisions/2026-11-04-connector-spi/README.md).
+
+### Context
+
+Design principle #16 sends optional third-party capabilities through an SPI, but `V-2026-0005` kept
+email in the core with Java Mail, and `V-2026-0007` defined an HTTP adapter for SMS only. Directory
+sync (Active Directory, LDAP) had no model, and its data flows the opposite way from delivery. The
+Admin API machine-to-machine hatch was removed on purpose (`I-2026-08-29`).
+
+### Decision
+
+1. **Connectors are separate processes reached over versioned HTTP contracts.** Ezkey remains fully
+   operational with none configured.
+2. **Email is a connector, like SMS.** There is one principle, and no email library in the core.
+3. **Direction follows the family.** Ezkey calls delivery connectors, synchronously and on operator
+   action. Directory connectors call Ezkey, with outbound connections only.
+4. **Provider credentials stay on the connector side.** Ezkey holds only what it needs to reach or
+   authenticate a connector.
+5. **One message never carries both factors.** Email carries the QR; the challenge stays on screen or
+   goes by SMS later. An admin activation code alone yields both factors (`POST /activate`), so it
+   never goes through a connector, by email or SMS. The core enforces this.
+6. **Connector code incubates in the monorepo** under `ezkey-connectors/`. Extraction is a later question.
+7. **Families share conventions, not a framework.** Each family has its own small contract.
+8. **Connectors are never synchronized with each other.** Scanning starts a sequence and the person
+   needs both items in hand first, however far apart they arrived. The operator passes on whatever no
+   connector sends, by any means they accept.
+
+### Alternatives Considered
+
+- **Email in the core.** Simpler to deploy, but leaves two models and would not test the SPI on a real
+  case. Rejected by Marc on 2026-11-04.
+- **Shared application schema.** Couples connectors to the schema. Rejected.
+- **Dedicated exchange table with a restricted role.** Removes the outbound client and survives a connector
+  outage, but a job the connector can read needs the QR's bearer secret in a readable form, and the state
+  to manage grows. Not retained on 2026-11-06. Reopen on automatic sending, starting from an outbox inside
+  the core that keeps the REST contract (decision pack).
+- **Message queue.** New infrastructure for an SME, against principle #7. Rejected; reopen on real volume.
+- **In-process plugins.** Brings vendor SDKs and secrets into the API process. Rejected.
+- **Connector polling Ezkey for delivery jobs.** Requires stored jobs holding secret material. Rejected for now.
+- **Secrets stored in Ezkey.** Allows configuration in the Admin UI, but requires a vault and enlarges
+  the impact of a compromised database. Rejected.
+
+### Consequences
+
+- **Positive.** The core stays vendor-free, a compromised Ezkey database reveals no provider credential,
+  and a mock connector gives CI, QA and prototypes one fixture.
+- **Negative.** One more container for an operator who wants email, two places to configure, and a new
+  contract to version. A stolen connector credential reveals no provider secret but can still send as
+  the organisation. A send path can be abused as a mail relay, so it needs a fixed template, daily caps,
+  and no access for evaluator sessions or self-registered community tenants (decision pack).
+- **Neutral.** Integrated delivery stays first-class. `V-2026-0007` keeps its HTTP adapter decision.
+  Automatic sending remains out of scope until a dedicated decision.
+
+### Impact
+
+- **Affected components.** `admin-api`, `admin-ui`, `infra`, `docs`, new `ezkey-connectors/`; later a new
+  inbound surface and enrollment schema changes for directories.
+- **Affected boundaries.** A new outbound trust boundary (delivery) now; a new inbound machine boundary later.
+
+### Validation
+
+- Mock connector scenarios run as a CI gate: send, provider error, unknown outcome, slow connector,
+  rejected credential, no connector.
+- A canary test on the real output of all containers looks for bearer material on the send path, including
+  base64 and PNG shapes. It shows known shapes are absent in the scenarios played, not that no path leaks.
+- Real proof: a QR received by email enrolls a phone, locally and then on the community instance.
+
+### Related Decisions
+
+- Refines design principle #16; supersedes the email transport in `V-2026-0005`; keeps `V-2026-0007`.
+- Related: ADR-0016 (existing at-rest encryption, reused for any connector credential Ezkey stores).
+
+## ADR-0019 — Enrollment invitation is the proof token
+
+### Metadata
+
+- **ID:** ADR-0019.
+- **Date:** 2026-11-08.
+- **Status:** accepted by Marc in the enrollment-id study (this change).
+- **Scope:** global (Auth API bind, Admin QR, mobile, Demo Device, Dart SDK).
+- **Owners:** Platform architecture / security.
+
+### Context
+
+The enrollment invitation (QR JSON, and the same payload used for paste and future deep links)
+carried `enrollmentId`, `enrollmentProofToken`, and optional `authUrl`. `enrollment_id` is an
+identity column. It is the primary key, the operator handle, and a field inside signed payloads.
+It is not a secret. Putting it in the invitation made a sequential id look like part of the
+credential, and it was the only reason the legacy `id|token` paste existed.
+
+The device does not need the id before bind. `POST /api/v1/enrollments/bind` already returned
+`enrollmentId`. The proof-token hash is unique (`uq_enrollment_proof_token_hash`), so the server
+can resolve the row from the token alone.
+
+Read-once binding stays. A matching token moves `CREATED` to `BOUND`. The id alone never did that.
+Unauthenticated `POST /verify` can still mark a `CREATED` row `INVALID` from a guessed id before
+any proof check. That burn is a separate issue. Dropping the id from the QR does not fix it and
+must not weaken one-shot invalidation after a real bind.
+
+`authUrl` stays optional in this decision. Real installs set `ezkey.qr.auth-base-url`. Making it
+required touches the mobile `EZKEY_API_BASE_URL` fallback and local stacks, so it is a successor
+issue, not this change.
+
+### Decision
+
+1. The invitation is `enrollmentProofToken` and, when `ezkey.qr.auth-base-url` is set, `authUrl`.
+   `enrollmentId` is not an invitation field. A leftover `enrollmentId` key is ignored. It is not
+   documented and it is not sent to the server.
+2. `POST /api/v1/enrollments/bind` accepts the proof token only. The server loads the row with
+   `findByEnrollmentProofTokenHash` (not the active-only finder: a `CREATED` enrollment is
+   inactive). The response still returns `enrollmentId`.
+3. Clients store that returned id and use it for verify, pending, respond, signatures, local ids,
+   and keystore aliases. Signature canonical forms do not change.
+4. The legacy `id|token` paste leaves with the id. A controlled bypass may paste `proofToken|authUrl`.
+5. No new database index. The existing unique hash constraint is the lookup.
+
+### Consequences
+
+- An already-printed QR that still contains `enrollmentId` still binds, because parsers ignore that
+  key. An old client that requires the id inside the QR must take it from the bind response.
+- Copy-token in Admin UI was already the proof token alone. That clipboard value is enough to bind.
+  That was true before this decision as well, once the id was known or omitted by a client that
+  only sent the token.
+- `authUrl` optionality is unchanged.
+
+### Related Decisions
+
+- ADR-0007 (proof tokens stored as hashes).
+- `docs/SECURITY_POSTURE.md` (sequential ids are not a secret once known).
+- `I-2026-11-03-enrollment-invitation-links` (links use this invitation, without `enrollmentId`).

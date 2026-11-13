@@ -1,12 +1,25 @@
 # Dependabot configuration for automated dependency update PRs.
 # See also: product-docs/global/normative-posture.md (dependency hygiene as operational discipline).
+# Cadence + cooldown policy: product-docs/global/hygiene/dependabot/README.md
+# Curation skill: .cursor/skills/dependabot-curated/SKILL.md
+# Inflow reduction (Marc 2026-10-30): per-directory minor+patch catch-all groups,
+# open-pull-requests-limit 10 -> 5, ignore deferred majors (TypeScript 7 has its own
+# gate; ESLint 10 on mobile waits for the community eslint-comments plugin).
+# Majors stay solo PRs. Crypto libs stay solo (never grouped, never auto-merged).
 
 version: 2
 updates:
   - package-ecosystem: "maven"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "daily"
+    # Supply-chain guard: wait after publish before opening version-update PRs.
+    # Security updates are not delayed. Schema: default-days + semver-*-days (1–90).
+    cooldown:
+      default-days: 3
+      semver-patch-days: 3
+      semver-minor-days: 3
+      semver-major-days: 7
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
@@ -23,14 +36,37 @@ updates:
         patterns:
           - "org.openrewrite.maven:*"
           - "org.openrewrite:*"
+      # Catch-all minor+patch (Marc 2026-10-30). Crypto stays solo: review by Christophe.
+      maven-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "com.google.crypto.tink:*"
+          - "org.bouncycastle:*"
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: "npm"
     directory: "/ezkey-admin-ui"
     schedule:
-      interval: "weekly"
+      interval: "daily"
+    cooldown:
+      default-days: 3
+      semver-patch-days: 3
+      semver-minor-days: 3
+      semver-major-days: 7
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
+    # Keep @types/node on the same major as the runtime in root .nvmrc (Node 24 LTS).
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      # TypeScript 7 has its own gate (Marc 2026-10-30) — no Dependabot major PRs.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
     groups:
       admin-ui-eslint:
         patterns:
@@ -46,27 +82,343 @@ updates:
           - "vite"
           - "vitest"
           - "@vitejs/*"
+      # Catch-all minor+patch (Marc 2026-10-30); majors stay solo.
+      admin-ui-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: "npm"
     directory: "/ezkey-sdk/javascript"
     schedule:
-      interval: "weekly"
+      interval: "daily"
+    cooldown:
+      default-days: 3
+      semver-patch-days: 3
+      semver-minor-days: 3
+      semver-major-days: 7
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
+    # Keep @types/node on the same major as the runtime in root .nvmrc (Node 24 LTS).
+    # SDK package engines (>=14) stay unchanged — types track the repo toolchain, not the publish floor.
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      # TypeScript 7 has its own gate (Marc 2026-10-30) — no Dependabot major PRs.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+    groups:
+      sdk-js-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Yarn 4 workspace (packageManager: yarn@4.x). Dependabot npm ecosystem updates
+  # package.json + yarn.lock. Keep RN-core / vision-camera / Orval out of tooling batches —
+  # see skill dependabot-curated § Mobile RN pulse. Do not group orval (solo PRs → Orval risk grid).
+  # mobile-tooling excludes eslint / jest (ungrouped) — RN deps:monitor gates.
+  - package-ecosystem: "npm"
+    directory: "/ezkey_mobile"
+    schedule:
+      interval: "daily"
+    cooldown:
+      default-days: 3
+      semver-patch-days: 3
+      semver-minor-days: 3
+      semver-major-days: 7
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+    ignore:
+      # TypeScript 7 has its own gate (Marc 2026-10-30) — no Dependabot major PRs.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      # ESLint 10 breaks eslint-plugin-eslint-comments (context.getSourceCode removed);
+      # wait for @eslint-community migration (Marc 2026-10-30, was #1007).
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+    groups:
+      # ESLint / Jest majors stay ungrouped (visible solo PRs). RN preset gates
+      # (`yarn deps:monitor`) block ESLint 10 / Jest 30; do not batch them with
+      # Babel/Prettier patches. See product-docs/.../hygiene/dependabot/README.md.
+      mobile-tooling:
+        patterns:
+          - "prettier"
+          - "prettier-*"
+          - "husky"
+          - "lint-staged"
+          - "typescript"
+          - "@babel/*"
+      mobile-rn-core:
+        patterns:
+          - "react"
+          - "react-native"
+          - "react-test-renderer"
+          - "@types/react"
+          - "@types/react-test-renderer"
+          - "@react-native/babel-preset"
+          - "@react-native/eslint-config"
+          - "@react-native/jest-preset"
+          - "@react-native/metro-config"
+          - "@react-native/typescript-config"
+          - "@react-native-community/cli*"
+      mobile-vision-camera:
+        patterns:
+          - "react-native-vision-camera"
+          - "react-native-vision-camera-*"
+          - "react-native-worklets"
+          - "react-native-nitro-*"
+      mobile-navigation:
+        patterns:
+          - "@react-navigation/*"
+      # Catch-all minor+patch (Marc 2026-10-30). Excludes RN core / vision-camera
+      # (own groups above), orval (O-grid solo) and eslint / jest (RN gates).
+      mobile-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "orval"
+          - "@orval/*"
+          - "eslint"
+          - "eslint-*"
+          - "@eslint/*"
+          - "jest"
+          - "jest-*"
+          - "@jest/*"
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    # github-actions supports default-days only (no semver-*-days in Dependabot schema).
+    cooldown:
+      default-days: 3
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
+    # CodeQL init/analyze must share one version — split PRs fail Analyze.
+    groups:
+      codeql-action:
+        patterns:
+          - "github/codeql-action/*"
+      # Catch-all minor+patch (Marc 2026-10-30).
+      actions-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: "pip"
     directory: "/ezkey-cli-python"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 3
+      semver-patch-days: 3
+      semver-minor-days: 3
+      semver-major-days: 7
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
+    groups:
+      # Catch-all minor+patch (Marc 2026-10-30).
+      cli-python-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # -------------------------------------------------------------------------
+  # Wave 0.3 — close Dependabot coverage gaps (security hygiene, config only).
+  # Weekly + minor/patch groups keep PR volume low for a solo maintainer.
+  # docker / docker-compose / gradle: version bumps only — they do not emit
+  # Dependabot CVE alerts. Container image CVE scanning is planned separately.
+  # -------------------------------------------------------------------------
+
+  # Pinned Bruno CLI for local API collection health runs (scripts/bruno-health.sh). Dev tool only.
+  # Added 2026-11-06: the directory had no version updates and held 53 of the 156 open alerts.
+  - package-ecosystem: "npm"
+    directory: "/bruno"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 3
+      semver-patch-days: 3
+      semver-minor-days: 3
+      semver-major-days: 7
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+    groups:
+      bruno-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Methodology micro-site (adm-zip, express, marked, …). Was missing; a
+  # Dependabot security update for this folder failed without a version-updates
+  # entry. package-lock.json is committed since #763, so alerts cover transitives.
+  - package-ecosystem: "npm"
+    directory: "/product-docs/site"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 3
+      semver-patch-days: 3
+      semver-minor-days: 3
+      semver-major-days: 7
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+    groups:
+      product-docs-site-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Android native deps (conscrypt-android, androidx.biometric, play app-update).
+  # settings.gradle uses includeBuild("../node_modules/@react-native/gradle-plugin"),
+  # so Dependabot Gradle resolution may be partial. Version updates only.
+  # Known gap: native Android CVE alerts are not produced — the dependency graph
+  # does not capture these Gradle deps (automatic Gradle submission declined for
+  # the same includeBuild / node_modules coupling).
+  # AGP / Kotlin / gradle-wrapper follow React Native upgrades, never Dependabot;
+  # react-android, hermes, and autolinked modules are not visible to Dependabot.
+  - package-ecosystem: "gradle"
+    directory: "/ezkey_mobile/android"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 3
+      semver-patch-days: 3
+      semver-minor-days: 3
+      semver-major-days: 7
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+    ignore:
+      - dependency-name: "com.android.tools.build:gradle"
+      - dependency-name: "org.jetbrains.kotlin:*"
+      - dependency-name: "gradle-wrapper"
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      android-gradle-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Dockerfile base images with parseable registry tags (alpine, node,
+  # eclipse-temurin, playwright, …). Version bumps only — not CVE alerts.
+  # Omitted: /ezkey-pam (FROM ${ROCKY_IMAGE} — ARG not parsed) and
+  # /ezkey-auth-api (local ezkey-auth-api-native + busybox:latest floating tag).
+  # Majors are a manual choice (Java/Node LTS, Postgres data, HAProxy LTS):
+  # single-number tags (25-jre-alpine, 22-alpine, 18-alpine) only receive majors
+  # (temurin→27 non-LTS, node→26 vs .nvmrc 24, postgres 19 breaks data, haproxy→3.x).
+  - package-ecosystem: "docker"
+    directories:
+      - "/docker"
+      - "/docker/bootstrap-init"
+      - "/docker/javamelody"
+      - "/ezkey-admin-ui/docker"
+      # Delivery connectors (#1206). Their Maven dependencies are reactor modules under maven "/" (#1278).
+      - "/ezkey-connectors/ezkey-connector-mock"
+      - "/ezkey-connectors/ezkey-connector-smtp"
+    schedule:
+      interval: "weekly"
+    # docker supports default-days only (no semver-*-days in Dependabot).
+    cooldown:
+      default-days: 3
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+      # Project JDK = 25 LTS; refuse non-LTS Temurin on the maven build image
+      # (Marc 2026-10-12; revisit at JDK 29 LTS). Docker ignore `versions` must use
+      # Bundler syntax — globs like `*-eclipse-temurin-26*` fail config validation
+      # (#762 regression).
+      #
+      # Mechanism (dependabot-core): Tag NAME_WITH_VERSION / VERSION_REGEX captures
+      # `3.9` + WORDS_WITH_BUILD `-eclipse-temurin-N`, so numeric_version is `3.9-N`
+      # and Docker::Version becomes `3.9.N` (hyphen → dot). Same format
+      # `<version>-eclipse-temurin-<build_num>` for N=25 and N=26, which is why
+      # Dependabot proposed 3.9-eclipse-temurin-25 → 26 (#718). Source:
+      # https://github.com/dependabot/dependabot-core/blob/main/docker/lib/dependabot/docker/tag.rb
+      # https://github.com/dependabot/dependabot-core/blob/main/docker/lib/dependabot/docker/version.rb
+      #
+      # Ranges cover JDK 26–28 on current and next Maven floating lines (3.9 / 3.10 /
+      # 4.0). A real Maven patch on Temurin 25 (`3.9.11-eclipse-temurin-25` →
+      # `3.9.11.25`) has different precision and is not blocked. Manual: extend one
+      # range per new Maven minor (e.g. 4.1); at JDK 29 LTS, revisit. Fallback: if a
+      # non-LTS Temurin PR still opens, curated pass closes with
+      # `@dependabot ignore this version`.
+      - dependency-name: "maven"
+        versions:
+          - ">= 3.9.26, < 3.9.29"
+          - ">= 3.10.26, < 3.10.29"
+          - ">= 4.0.26, < 4.0.29"
+    groups:
+      docker-images-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Compose service images with registry tags (postgres, caddy, haproxy, …).
+  # Version bumps only — not CVE alerts. Dependabot's pattern already covers
+  # docker-compose.*.yml in each listed directory (e.g. docker-compose.ha.yml,
+  # docker-compose.with-proxy.yml under /docker).
+  # Omitted (build: only, local tags, or env override with no image:):
+  # /ezkey-admin-ui, /ezkey-pam, /experimental-hybrid/local, /scripts/lab.
+  # Majors are a manual choice (Java/Node LTS, Postgres data, HAProxy LTS).
+  - package-ecosystem: "docker-compose"
+    directories:
+      - "/docker"
+      - "/experimental-hybrid/lightsail"
+    schedule:
+      interval: "weekly"
+    # docker-compose supports default-days only (no semver-*-days in Dependabot).
+    cooldown:
+      default-days: 3
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      compose-images-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"

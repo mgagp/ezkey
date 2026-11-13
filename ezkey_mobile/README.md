@@ -5,11 +5,11 @@
 ## Overview
 
 - **Current scope note**: The current mobile product and security posture are **Android-first**. iOS remains a later planned milestone and is **not** a short-term parity or release target. Review Android as the current implementation of record; do not treat missing iOS parity as a present defect unless documentation overclaims it.
-- **Stack**: React Native 0.86.2, React 19.2.7, and TypeScript with dedicated Android (Kotlin) and iOS (Swift/Obj-C++) native modules
+- **Stack**: React Native 0.87.1, React 19.3.0, and TypeScript with dedicated Android (Kotlin) and iOS (Swift/Obj-C++) native modules
 - **Primary Flows**: Enrollment via QR, secure key generation, pending authentication approvals/denials, challenge handling
 - **APIs Consumed**: `auth-api` endpoints documented in [`docs/ENDPOINT.md`](../docs/ENDPOINT.md)
 - **Security Alignment**: Tracks the current guarantees and constraints documented in [`docs/CRYPTO.md`](../docs/CRYPTO.md) and [`docs/features/AUTH_SECURITY.md`](../docs/features/AUTH_SECURITY.md)
-- **Auth API Client Source**: OpenAPI-driven client generation via Orval from the versioned local [`openapi-spec.json`](openapi-spec.json)
+- **Auth API Client Source**: OpenAPI-driven client generation via Orval from the canonical [`../specs/auth-api/openapi-spec.json`](../specs/auth-api/openapi-spec.json) (no local symlink/copy — #833)
 
 ## Core Capabilities
 
@@ -52,7 +52,7 @@ ezkey_mobile/
 
 ## Prerequisites
 
-- Node.js **20.19.4+** and Yarn 4 (Berry) — aligned with React Native 0.86 requirements
+- Node.js **24+** (repo root [`.nvmrc`](../.nvmrc); LTS) and Yarn 4 (Berry). On **nvm-windows**, `.nvmrc` is not applied automatically — `nvm install 24` then `nvm use 24`, then `corepack enable`.
 - JDK 17 and Android Studio with Android SDK 36 / build-tools 36.0.0 available
 - Xcode 16.1+ with CocoaPods 1.16.x recommended (macOS)
 - Watchman (macOS), Git Bash or another POSIX shell on Windows
@@ -97,7 +97,7 @@ yarn start
 ### Useful scripts
 
 ```bash
-yarn generate:api         # Regenerate the local Auth API client from openapi-spec.json
+yarn generate:api         # Regenerate the Auth API client from ../specs/auth-api/openapi-spec.json
 yarn android:clean         # Clear Gradle outputs
 yarn android:assemble:debug
 yarn android:install:debug
@@ -107,15 +107,10 @@ yarn android:bundle:release
 
 ## Auth API spec and code generation policy
 
-- `ezkey_mobile/openapi-spec.json` is the mobile project's local, versioned copy of the Auth API spec.
-- This file exists so the mobile sub-project remains autonomous and reproducible.
-- Do not edit `openapi-spec.json` manually.
-- The only supported way to refresh this file is the centralized update script at [`scripts/update-specs.sh`](../scripts/update-specs.sh).
-- The expected workflow is human-driven: start the Docker stack cleanly, wait for the APIs to be up, then run the centralized spec update script to fetch, format, and dispatch the latest specs into each sub-project.
-- After the mobile spec has been refreshed, regenerate the local client with `yarn generate:api`.
+- Orval reads the canonical Auth API spec at [`../specs/auth-api/openapi-spec.json`](../specs/auth-api/openapi-spec.json) (no local copy or git symlink — #833).
+- Do not edit that file by hand. Refresh it with [`scripts/update-specs.sh`](../scripts/update-specs.sh) against a live stack, then run `yarn generate:api`.
 - The generated models under `app/services/api/generated/auth-api/model/` are the contract source of truth for Auth API DTOs.
 - `app/services/api/types.ts` is intentionally thin: it keeps local mobile domain types such as `EnrollmentSummary` and wrapper input shapes that still accept UI-friendly string values before normalization.
-- Coding assistants working in this project must follow the same rule: never hand-edit `openapi-spec.json`; always rely on the centralized update script and then regenerate.
 
 ### Install on your phone (standalone Android build)
 
@@ -124,27 +119,27 @@ The Android **debug** build is configured in two ways so it can run **without Me
 1. **`debuggableVariants = []`** in `android/app/build.gradle` — Gradle **embeds** `index.android.bundle` in the APK when you run `assembleDebug` / `installDebug`.
 2. **`ezkey.useMetroInDebug=false`** in `android/gradle.properties` (default) — `MainApplication` sets `getUseDeveloperSupport()` from `BuildConfig.USE_DEVELOPER_SUPPORT`, so the app **does not** look for the packager or enable the RN dev menu on a **debug** install.
 
-To work with **Metro + fast refresh** on a debug build, set `ezkey.useMetroInDebug=true`, rebuild, and use `yarn start` (for a physical device, `adb reverse tcp:8081 tcp:8081`).
+To work with **Metro + fast refresh** on a debug build, set `ezkey.useMetroInDebug=true`, rebuild, and use `yarn start`. For a physical device (especially **wireless ADB**), re-apply reverse every session — `yarn android:install:debug:clean` does this automatically when Metro debug is enabled (or pass `--with-metro-reverse`). Non-default Metro port: `yarn start --port 8082` and `--metro-port 8082` / `EZKEY_METRO_PORT=8082`.
 
-1. On the phone, enable **Developer options → USB debugging** and connect via USB (accept the computer’s RSA prompt when prompted).
+1. On the phone, enable **Developer options → USB debugging** (or wireless debugging) and connect (accept the computer’s RSA prompt when prompted).
 2. Confirm the device is visible:
 
     ```bash
-    adb devices
+    adb devices -l
     ```
 
-3. From `ezkey_mobile/`, install the debug APK on the connected device:
+3. From `ezkey_mobile/`, preferred clean install (JDK 17 probe + path preflight + install):
 
     ```bash
-    yarn android:install:debug
+    yarn android:install:debug:clean
     ```
 
-    On Windows, if Gradle fails with a JDK version error, set `JAVA_HOME` to Android Studio’s bundled JBR (JDK 17), then run the command again — see [Android build troubleshooting](#android-build-troubleshooting).
+    On Windows, yarn routes `.sh` scripts through Git Bash (`scripts/run-with-git-bash.mjs`) so WSL `bash` is not used. JDK troubleshooting: [Android JDK posture](#android-jdk-posture-17).
 
-### Alternative: build the APK, then push to the phone
+### Alternative: build the APK without a device, then push
 
 ```bash
-yarn android:assemble:debug
+yarn android:assemble:debug:clean   # or: ./scripts/build-install-debug-clean.sh --build-only
 adb install -r android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
@@ -180,14 +175,17 @@ Pull requests that touch `ezkey_mobile/**` run the workflow [`.github/workflows/
 
 | Job | What it runs |
 |-----|----------------|
-| **js-validate** | `yarn validate:ci` on Ubuntu (Node 20.19.4, Yarn 4 via Corepack) |
-| **android-jvm-unit-tests** | `./gradlew :app:testDebugUnitTest` (JDK 17, Android SDK) |
+| **js-validate** | Daemon-JVM guard (+ negative self-test), `yarn validate:ci`, `yarn license:ci` (Node from root `.nvmrc`, Yarn 4 via Corepack) |
+| **android-jvm-unit-tests** | Daemon-JVM guard, `./gradlew :app:testDebugUnitTest` (JDK 17, Android SDK; Node from `.nvmrc`) |
+| **android-16kb-alignment** | Daemon-JVM guard, release APK + `check-16kb-alignment.sh` |
 
 Before opening or updating a mobile PR, run the same commands locally when possible. A green check on GitHub means the branch passes on a clean runner, not only on your workstation.
 
-### Android build troubleshooting
+### Android JDK posture (17)
 
-If you see **"Error resolving plugin [id: 'com.facebook.react.settings']"** or **"Unsupported class file major version 69"**, the Android build is likely using JDK 25. React Native 0.86.2 and the current Android toolchain require **JDK 17 or 21**; on this workstation, use **JDK 17**.
+Ezkey Mobile standardizes on **JDK 17** for CI and local Gradle (Temurin 17 in GitHub Actions; `scripts/resolve-android-jdk.sh` locally). React Native / AGP also allow JDK 21, but **moving the project to JDK 21 is a separate tracked decision** — do not add `gradle-daemon-jvm.properties` Foojay download URLs or otherwise force a daemon JVM download at build time (`org.gradle.java.installations.auto-download=false` in `android/gradle.properties`).
+
+If you see **"Error resolving plugin [id: 'com.facebook.react.settings']"** or **"Unsupported class file major version 69"**, the Android build is likely using JDK 25. Use JDK 17.
 
 **Option 1 – Canonical clean install (Git Bash, from `ezkey_mobile/`):**
 
@@ -196,7 +194,7 @@ adb devices -l
 ./scripts/build-install-debug-clean.sh
 ```
 
-Same as `yarn android:install:debug:clean`. JDK 17/21 is resolved automatically (`scripts/resolve-android-jdk.sh`); do not point Gradle at JDK 25.
+Same as `yarn android:install:debug:clean`. JDK 17 is resolved automatically (`scripts/resolve-android-jdk.sh`); do not point Gradle at JDK 25.
 
 **Option 2 – Run on device via Metro (helper):**
 

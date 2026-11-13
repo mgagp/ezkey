@@ -21,6 +21,7 @@ import org.ezkey.exception.SystemTenantNotConfiguredException;
 import org.ezkey.integration.domain.IntegrationCreateRequest;
 import org.ezkey.integration.domain.IntegrationCreateResponse;
 import org.ezkey.integration.domain.IntegrationLifecycleStatus;
+import org.ezkey.integration.domain.PendingAttemptPolicy;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
 import org.ezkey.integration.domain.entity.Integration;
@@ -219,6 +220,9 @@ public class IntegrationService {
         createdByAdmin.getAdminType());
 
     Integration integration = integrationServiceMapper.toEntity(request);
+    if (integration.getPendingAttemptPolicy() == null) {
+      integration.setPendingAttemptPolicy(PendingAttemptPolicy.REPLACE);
+    }
     integration.setLifecycleStatus(IntegrationLifecycleStatus.ACTIVE);
     integration.setCreatedAt(OffsetDateTime.now());
     integration.setCreatedByAdmin(createdByAdmin);
@@ -230,10 +234,9 @@ public class IntegrationService {
       tenant =
           tenantRepository
               .findByIsSystemTenantTrue()
-              .orElseThrow(
-                  () ->
-                      new SystemTenantNotConfiguredException(
-                          "System tenant not found. Database may not be properly initialized."));
+              .orElseThrow(() ->
+                  new SystemTenantNotConfiguredException(
+                      "System tenant not found. Database may not be properly initialized."));
       logger.debug("Associating integration with system tenant: {}", tenant.getTenantName());
     } else if (createdByAdmin.getAdminType() == AdminType.TENANT_ADMIN) {
       // Tenant admins create integrations in their own tenant
@@ -277,6 +280,41 @@ public class IntegrationService {
         createdByAdmin.getUsername());
 
     return response;
+  }
+
+  /**
+   * Replaces the pending-attempt policy of an existing integration.
+   *
+   * <p>The system integration stays {@code REPLACE}. Posting the same value is a no-op. Any other
+   * value is refused with {@link SystemIntegrationLifecycleException}.
+   *
+   * @param id integration id
+   * @param policy REPLACE or REFUSE
+   * @return the updated integration
+   */
+  @Transactional
+  public Integration updatePendingAttemptPolicy(Integer id, PendingAttemptPolicy policy) {
+    if (policy == null) {
+      throw new IntegrationCreateValidationException("pendingAttemptPolicy is required");
+    }
+    Integration integration =
+        integrationRepository
+            .findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Integration", id));
+    if (Boolean.TRUE.equals(integration.getIsSystemIntegration())) {
+      PendingAttemptPolicy current =
+          integration.getPendingAttemptPolicy() != null
+              ? integration.getPendingAttemptPolicy()
+              : PendingAttemptPolicy.REPLACE;
+      if (current == policy) {
+        return integration;
+      }
+      throw new SystemIntegrationLifecycleException(
+          "System integration pending-attempt policy cannot be changed because it is reserved for"
+              + " administrator MFA.");
+    }
+    integration.setPendingAttemptPolicy(policy);
+    return integrationRepository.save(integration);
   }
 
   /** Retires an integration while preserving its historical footprint. */

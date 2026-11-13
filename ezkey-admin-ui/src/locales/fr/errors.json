@@ -1,6 +1,6 @@
 {
   "authentication": {
-    "invalid-credentials": "Nom d'utilisateur ou mot de passe invalide.",
+    "invalid-credentials": "Nom d'utilisateur invalide.",
     "account-inactive": "Ce compte administrateur est inactif.",
     "no-enrollment": "Aucun appareil enrôlé n'est disponible pour ce compte.",
     "auth-expired": "La tentative d'authentification a expiré. Veuillez réessayer.",
@@ -25,16 +25,24 @@
     "admin-limit-violation": "Cette opération violerait les limites applicables aux administrateurs.",
     "tenant-not-allowed": "Cette opération sur le tenant n'est pas autorisée.",
     "tenant-inactive": "Impossible d'utiliser les ressources d'un tenant inactif.",
-    "access-denied": "Vous n'avez pas l'autorisation d'effectuer cette action."
+    "access-denied": "Vous n'avez pas l'autorisation d'effectuer cette action.",
+    "temporary-session-restricted": "Cette action n'est pas disponible pendant un accès console temporaire. Enrôlez un appareil et reconnectez-vous pour l'administration complète."
   },
   "domain": {
     "integration-has-enrollments": "Impossible de supprimer cette intégration tant qu'il existe des enrôlements. Retirez ou révoquez les enrôlements d'abord.",
     "pending-encryption-key-exists": "Une clé de chiffrement en attente existe déjà. Promouvez-la ou utilisez la promotion immédiate avant d'en introduire une autre.",
+    "encryption-rotation-disabled": "La rotation de clé est inactive sur cette instance.",
+    "encryption-reencryption-disabled": "Le re-chiffrement est inactif sur cette instance.",
+    "integrity-validation-disabled": "La validation d'intégrité nocturne est inactive sur cette instance.",
+    "integrity-async-job-busy": "Une vérification d'intégrité est déjà en cours. Attendez la fin, puis réessayez.",
+    "integrity-window-over-cap": "Cette période dépasse la limite de 8 jours des contrôles d'intégrité. Choisissez une période de 8 jours ou moins.",
     "integration-code-already-exists": "Une intégration avec ce code existe déjà pour ce tenant.",
     "integration-lifecycle-state": "Cette action n'est pas valide pour l'état du cycle de vie actuel de l'intégration.",
     "system-integration-lifecycle": "L'intégration système est réservée à l'authentification multifacteur des administrateurs et ne peut pas être modifiée ainsi.",
     "api-key-limit-exceeded": "Le nombre maximal de clés API actives pour cette intégration est atteint.",
-    "auth-attempt-state-conflict": "Cette tentative d'authentification n'est plus dans un état permettant cette opération."
+    "auth-attempt-state-conflict": "Cette tentative d'authentification n'est plus dans un état permettant cette opération.",
+    "auth-attempt-pending-exists": "Une demande attend déjà sur l'appareil. Acceptez-la ou refusez-la sur l'appareil, ou attendez qu'elle expire, puis réessayez.",
+    "auth-attempt-creation-cooldown": "Les nouvelles demandes sont suspendues quelques minutes après plusieurs demandes refusées ou codes erronés. Réessayez plus tard."
   },
   "enrollment": {
     "enrollment-inactive": "Cet enrôlement ne peut pas servir à l'authentification (inactif ou non vérifié).",

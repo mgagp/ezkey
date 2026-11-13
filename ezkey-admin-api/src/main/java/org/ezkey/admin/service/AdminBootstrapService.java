@@ -16,7 +16,9 @@ import java.util.Optional;
 import org.ezkey.admin.config.AdminMfaProperties;
 import org.ezkey.admin.config.BootstrapCredentialsOutputMode;
 import org.ezkey.admin.config.InitialGlobalAdminProperties;
+import org.ezkey.admin.util.AdminEnrollmentDisplayNames;
 import org.ezkey.config.OrganizationProperties;
+import org.ezkey.enrollment.EnrollmentBindMaterialPolicy;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
@@ -36,7 +38,6 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Service for bootstrapping admin MFA infrastructure at application startup.
@@ -148,10 +149,8 @@ public class AdminBootstrapService {
    * <p><b>HA Safety:</b> Uses distributed locking to ensure only one instance performs bootstrap in
    * HA deployments.
    *
-   * <p><b>Transaction boundary:</b> {@code @Transactional} is on this public entry point so the
-   * work executed inside {@link LockingTaskExecutor} (including {@code this::doBootstrapAdminMfa})
-   * runs in one Spring-managed transaction. {@code @Transactional} on the private task method would
-   * not apply (proxy bypass via self-invocation).
+   * <p><b>Transaction boundary:</b> {@link LockingTaskExecutor} runs the task in its own
+   * transaction, committed before the lock is released (#1259).
    *
    * <p><b>Startup order:</b> {@code @Order} is {@link
    * ApplicationReadyStartupOrder#ADMIN_MFA_BOOTSTRAP} so keyset empty-table sync and initial global
@@ -159,7 +158,6 @@ public class AdminBootstrapService {
    */
   @EventListener(ApplicationReadyEvent.class)
   @Order(ApplicationReadyStartupOrder.ADMIN_MFA_BOOTSTRAP)
-  @Transactional
   public void bootstrapAdminMfa() {
     if (!mfaProperties.getBootstrap().isEnabled()) {
       logger.info("Admin MFA bootstrap disabled by configuration");
@@ -184,7 +182,7 @@ public class AdminBootstrapService {
    * <p>This method creates System Integration and optionally Global Admin Enrollment if they don't
    * already exist.
    *
-   * <p>Only {@link #bootstrapAdminMfa()} is the Spring transaction boundary.
+   * <p>Runs in the transaction opened by {@link LockingTaskExecutor}.
    */
   private void doBootstrapAdminMfa() {
     try {
@@ -216,8 +214,18 @@ public class AdminBootstrapService {
       }
 
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
-      logger.error("❌ Failed to bootstrap admin MFA: {}", e.getMessage(), e);
-      throw new RuntimeException("Admin MFA bootstrap failed", e);
+      // Never log e.getMessage()/stack. Do not chain the cause: Spring would print the nested
+      // stack (may echo file or credential material). Operator hint stays in the message only.
+      logger.error(
+          "Failed to bootstrap admin MFA (step=admin-mfa-bootstrap, type={})",
+          e.getClass().getSimpleName());
+      if (e instanceof IllegalStateException
+          && e.getMessage() != null
+          && e.getMessage().contains("refusing to complete bootstrap")) {
+        throw new IllegalStateException(e.getMessage());
+      }
+      throw new IllegalStateException(
+          "Admin MFA bootstrap failed (" + e.getClass().getSimpleName() + ")");
     }
   }
 
@@ -304,11 +312,10 @@ public class AdminBootstrapService {
     EzkeyAdmin globalAdmin =
         adminRepository
             .findByUsername(initialGlobalAdminProperties.getUsername())
-            .orElseThrow(
-                () ->
-                    new RuntimeException(
-                        "Initial global admin not found: "
-                            + initialGlobalAdminProperties.getUsername()));
+            .orElseThrow(() ->
+                new RuntimeException(
+                    "Initial global admin not found: "
+                        + initialGlobalAdminProperties.getUsername()));
 
     // Create System Integration
     Integration systemIntegration = new Integration();
@@ -339,11 +346,10 @@ public class AdminBootstrapService {
     EzkeyAdmin globalAdmin =
         adminRepository
             .findByUsername(initialGlobalAdminProperties.getUsername())
-            .orElseThrow(
-                () ->
-                    new RuntimeException(
-                        "Initial global admin not found: "
-                            + initialGlobalAdminProperties.getUsername()));
+            .orElseThrow(() ->
+                new RuntimeException(
+                    "Initial global admin not found: "
+                        + initialGlobalAdminProperties.getUsername()));
 
     // Check if admin already has enrollment
     if (globalAdmin.getEnrollment() != null) {
@@ -357,20 +363,25 @@ public class AdminBootstrapService {
         logger.info("✅ Passwordless defaults configured for global admin");
       }
 
-      // Export existing enrollment credentials if file doesn't exist yet
-      // (Docker-only)
-      // This ensures bootstrap-init can work even if enrollment was created in a
-      // previous run
-      // Reload enrollment from repository to ensure session is active and all
-      // properties are loaded
+      // Re-export bind material only while enrollment is still CREATED (pending bind).
+      // After BOUND/VERIFIED the decrypted proof token must not be rewritten if the file
+      // was deleted (operator deleted it after copying recovery codes).
       Enrollment existingEnrollment =
           enrollmentRepository
               .findById(enrollmentId)
               .orElseThrow(() -> new RuntimeException("Enrollment not found: " + enrollmentId));
-      bootstrapCredentialsFileExporter.exportIfEnabled(
-          existingEnrollment,
-          existingEnrollment.getEnrollmentProofToken(),
-          initialGlobalAdminProperties.getUsername());
+      if (EnrollmentBindMaterialPolicy.proofTokenAvailable(existingEnrollment.getStatus())) {
+        bootstrapCredentialsFileExporter.exportIfEnabled(
+            existingEnrollment,
+            existingEnrollment.getEnrollmentProofToken(),
+            initialGlobalAdminProperties.getUsername(),
+            java.util.List.of());
+      } else {
+        logger.info(
+            "Skipping bootstrap credentials re-export (enrollmentId={}, status={})",
+            enrollmentId,
+            existingEnrollment.getStatus());
+      }
       return;
     }
 
@@ -392,11 +403,10 @@ public class AdminBootstrapService {
     EzkeyAdmin globalAdmin =
         adminRepository
             .findByUsername(initialGlobalAdminProperties.getUsername())
-            .orElseThrow(
-                () ->
-                    new RuntimeException(
-                        "Initial global admin not found: "
-                            + initialGlobalAdminProperties.getUsername()));
+            .orElseThrow(() ->
+                new RuntimeException(
+                    "Initial global admin not found: "
+                        + initialGlobalAdminProperties.getUsername()));
 
     // Generate Ed25519 key pair for integration signing (enrollment)
     logger.info("🔐 Generating Ed25519 key pair for Global Admin Enrollment...");
@@ -408,16 +418,11 @@ public class AdminBootstrapService {
     // Generate enrollment challenge code (6 digits)
     Integer enrollmentChallenge = signatureService.generateSecureChallenge(6);
 
-    // Create Global Admin Enrollment with personalized name (include username for
-    // uniqueness)
+    // Person-first authenticator label. Role is Admin UI chrome, not enrollmentName
+    // (I-2026-09-15-mobile-admin-enrollment-account-label).
     String enrollmentName =
-        "Global Admin MFA - "
-            + globalAdmin.getFirstName()
-            + " "
-            + globalAdmin.getLastName()
-            + " ("
-            + globalAdmin.getUsername()
-            + ")";
+        AdminEnrollmentDisplayNames.personDisplayName(
+            globalAdmin.getFirstName(), globalAdmin.getLastName(), globalAdmin.getUsername());
     Enrollment globalAdminEnrollment = new Enrollment();
     globalAdminEnrollment.setIntegrationId(systemIntegration.getId());
     globalAdminEnrollment.setEnrollmentName(enrollmentName);
@@ -429,6 +434,8 @@ public class AdminBootstrapService {
     globalAdminEnrollment.setIntegrationPublicKey(keyPair.base64UrlPublicKey());
     globalAdminEnrollment.setIntegrationPrivateKey(keyPair.base64PrivateKey());
     globalAdminEnrollment.setCreatedAt(OffsetDateTime.now());
+    int enrollmentExpirationHours = mfaProperties.getBootstrap().getEnrollmentExpirationHours();
+    globalAdminEnrollment.setExpiresAt(OffsetDateTime.now().plusHours(enrollmentExpirationHours));
 
     // Store token in local variable before save (to ensure we log the exact token
     // that was set)
@@ -445,9 +452,16 @@ public class AdminBootstrapService {
     // Challenge is optional - default to false for convenience
     globalAdmin.setChallengeRequired(false);
 
-    // Generate recovery codes for emergency access
+    // Generate recovery codes, persist plaintext to disk (fail-closed), then hash into DB.
+    // Export throws IllegalStateException when codes cannot be written — aborts bootstrap
+    // (transaction rollback). Codes are never written to logs.
     AdminRecoveryService.RecoveryCodesResult recoveryCodes =
         recoveryService.generateRecoveryCodes();
+    bootstrapCredentialsFileExporter.exportIfEnabled(
+        persistedEnrollment,
+        tokenToLog,
+        initialGlobalAdminProperties.getUsername(),
+        recoveryCodes.getPlainCodes());
     globalAdmin.setRecoveryCodes(recoveryCodes.getHashedCodes().toArray(new String[0]));
 
     adminRepository.save(globalAdmin);
@@ -458,52 +472,46 @@ public class AdminBootstrapService {
     logger.info(
         "✅ {} recovery codes generated for global admin", recoveryCodes.getPlainCodes().size());
 
-    // Log credentials with highly visible formatting
-    // Use the token from local variable to ensure we log the exact token that was
-    // set
-    logGlobalAdminEnrollmentCredentials(
-        persistedEnrollment, recoveryCodes.getPlainCodes(), tokenToLog);
-
-    // Export bootstrap credentials to file (Docker-only, if enabled)
-    bootstrapCredentialsFileExporter.exportIfEnabled(
-        persistedEnrollment, tokenToLog, initialGlobalAdminProperties.getUsername());
+    // Log credentials with highly visible formatting (token/challenge/QR by design in FULL;
+    // recovery codes only as a pointer to the 0600 credentials file)
+    logGlobalAdminEnrollmentCredentials(persistedEnrollment, tokenToLog);
   }
 
   /**
    * Log global admin enrollment credentials with highly visible formatting.
    *
-   * <p>This method logs enrollment credentials and recovery codes using WARN level with
-   * 80-character separator lines to ensure visibility in logs. Credentials are logged ONCE at
-   * startup and should be saved securely by the administrator.
+   * <p>Proof token, challenge, and ASCII QR are logged by design for the initial enrollment wizard.
+   * Recovery codes are never logged; operators read them from {@code bootstrap-credentials.json}
+   * ({@code 0600}).
    *
    * @param enrollment the enrollment with credentials to log
-   * @param recoveryCodes the plain recovery codes to log
    * @param enrollmentProofToken the enrollment proof token to log (from local variable, before
    *     save)
    */
   private void logGlobalAdminEnrollmentCredentials(
-      Enrollment enrollment, java.util.List<String> recoveryCodes, String enrollmentProofToken) {
+      Enrollment enrollment, String enrollmentProofToken) {
     if (mfaProperties.getBootstrap().getCredentialsOutputMode()
         == BootstrapCredentialsOutputMode.RECOVERY_PRIMARY) {
-      logRecoveryPrimaryGlobalAdminCredentials(enrollment, recoveryCodes);
+      logRecoveryPrimaryGlobalAdminCredentials(enrollment);
       return;
     }
 
     String separator = "=".repeat(80);
     String username = initialGlobalAdminProperties.getUsername();
-    String email = initialGlobalAdminProperties.getEmail();
-    String firstName = initialGlobalAdminProperties.getFirstName();
-    String lastName = initialGlobalAdminProperties.getLastName();
-    String fullName = firstName + " " + lastName;
+    String recoveryPointer = bootstrapCredentialsFileExporter.recoveryCodesLogPointer();
 
     logger.warn(""); // Blank line for visibility
     logger.warn(separator);
     logger.warn("📱 GLOBAL ADMIN PASSWORDLESS ENROLLMENT - SAVE THESE CREDENTIALS NOW!");
     logger.warn(separator);
     logger.warn("");
-    logger.warn("✅ Global Admin Created: {} ({}) - {}", username, email, fullName);
+    logger.warn("✅ Global Admin Created: {}", username);
     logger.warn("✅ System Integration created: {} Admin", organizationProperties.getName().strip());
     logger.warn("✅ Global Admin Enrollment created: {}", enrollment.getEnrollmentName());
+    if (enrollment.getExpiresAt() != null) {
+      logger.warn(
+          "   Enrollment expires at: {} (bind before this time)", enrollment.getExpiresAt());
+    }
     logger.warn("");
     logger.warn("🔐 ENROLLMENT CREDENTIALS:");
     logger.warn("   Enrollment ID: {}", enrollment.getEnrollmentId());
@@ -513,18 +521,15 @@ public class AdminBootstrapService {
     logger.warn("   Enrollment Challenge Code: {}", enrollment.getEnrollmentChallenge());
     logger.warn("");
 
-    String enrollmentPayload =
-        qrCodePayloadService.composePayload(enrollment.getEnrollmentId(), enrollmentProofToken);
+    String enrollmentPayload = qrCodePayloadService.composePayload(enrollmentProofToken);
     logger.warn("📷 QR CODE (Scan with Ezkey Mobile):");
     logger.warn("");
     for (String line : qrCodeAsciiRenderer.renderAscii(enrollmentPayload).split("\\R")) {
       logger.warn("   {}", line);
     }
     logger.warn("");
-    logger.warn("🔑 RECOVERY CODES (SAVE SECURELY - SINGLE USE ONLY):");
-    for (int i = 0; i < recoveryCodes.size(); i++) {
-      logger.warn("   {}. {}", (i + 1), recoveryCodes.get(i));
-    }
+    logger.warn("🔑 RECOVERY CODES: {}", recoveryPointer);
+    logger.warn("   (single-use — copy from the credentials file into a password manager)");
     logger.warn("");
     logger.warn("🔗 BIND ENROLLMENT (Required before first login):");
     logger.warn("");
@@ -551,59 +556,51 @@ public class AdminBootstrapService {
     logger.warn("⚠️  SECURITY NOTICE:");
     logger.warn("   - NO PASSWORD - Ezkey is passwordless!");
     logger.warn("   - Recovery codes are single-use emergency access only");
-    logger.warn("   - Save all credentials in a secure password manager");
-    logger.warn("   - These credentials cannot be retrieved again without database access");
-    logger.warn("   - Bind enrollment before attempting first login");
+    logger.warn("   - Save recovery codes from the credentials file in a password manager");
+    logger.warn("   - Bind enrollment before the invitation expires (see expires at above)");
+    logger.warn("   - If the invitation expired: use a recovery code from the credentials file →");
+    logger.warn("     Admin UI account recovery → reset enrollment → bind with the new material");
     logger.warn("");
     logger.warn(separator);
     logger.warn("");
   }
 
   /**
-   * Recovery-first bootstrap: log only username context and recovery codes; enrollment proof token,
-   * challenge, and ASCII QR are omitted. Operators use Admin UI recovery (recover → reset
-   * enrollment) to obtain bind material.
+   * Recovery-first bootstrap: log username context and a pointer to recovery codes on disk;
+   * enrollment proof token, challenge, and ASCII QR are omitted. Operators use Admin UI recovery
+   * (recover → reset enrollment) to obtain bind material.
    *
    * @param enrollment enrollment record (enrollment id may be logged as a non-secret correlation
    *     id)
-   * @param recoveryCodes plaintext recovery codes (shown once)
    */
-  private void logRecoveryPrimaryGlobalAdminCredentials(
-      Enrollment enrollment, java.util.List<String> recoveryCodes) {
+  private void logRecoveryPrimaryGlobalAdminCredentials(Enrollment enrollment) {
     String separator = "=".repeat(80);
     String username = initialGlobalAdminProperties.getUsername();
-    String email = initialGlobalAdminProperties.getEmail();
-    String firstName = initialGlobalAdminProperties.getFirstName();
-    String lastName = initialGlobalAdminProperties.getLastName();
-    String fullName = firstName + " " + lastName;
+    String recoveryPointer = bootstrapCredentialsFileExporter.recoveryCodesLogPointer();
 
     logger.warn("");
     logger.warn(separator);
-    logger.warn("GLOBAL ADMIN BOOTSTRAP (recovery-primary) — SAVE RECOVERY CODES NOW");
+    logger.warn("GLOBAL ADMIN BOOTSTRAP (recovery-primary) — SAVE RECOVERY CODES FROM FILE");
     logger.warn(separator);
     logger.warn("");
-    logger.warn("Global Admin: {} ({}) — {}", username, email, fullName);
+    logger.warn("Global Admin: {}", username);
     logger.warn("Enrollment ID (reference only): {}", enrollment.getEnrollmentId());
     logger.warn("");
-    logger.warn("RECOVERY CODES (single-use — store in a password manager):");
-    for (int i = 0; i < recoveryCodes.size(); i++) {
-      logger.warn("   {}. {}", (i + 1), recoveryCodes.get(i));
-    }
+    logger.warn("RECOVERY CODES: {}", recoveryPointer);
+    logger.warn("  (single-use — copy from the credentials file into a password manager)");
     logger.warn("");
     logger.warn("Initial enrollment (no proof token in logs):");
-    logger.warn("  1) Open Admin UI → Login → Use account recovery.");
-    logger.warn("  2) POST /api/v1/admin/auth/recover with username + one recovery code.");
-    logger.warn("  3) POST /api/v1/admin/enrollments/reset with the recovery token — new bind");
+    logger.warn("  1) Read a recovery code from the credentials file.");
+    logger.warn("  2) Open Admin UI → Login → Use account recovery.");
+    logger.warn("  3) POST /api/v1/admin/auth/recover with username + one recovery code.");
+    logger.warn("  4) POST /api/v1/admin/enrollments/reset with the recovery token — new bind");
     logger.warn("     credentials are returned in the HTTP response body only (not in logs).");
-    logger.warn("  4) Bind the mobile app using those credentials, then use passwordless login.");
+    logger.warn("  5) Bind the mobile app using those credentials, then use passwordless login.");
     logger.warn("");
-    logger.warn(
-        "Bootstrap JSON file export is disabled in recovery-primary mode "
-            + "(no bootstrap-credentials.json).");
     logger.warn(
         "For Docker automation that needs unattended bind+verify, use"
             + " credentials-output-mode=full");
-    logger.warn("or implement a separate recovery-based automation path.");
+    logger.warn("so enrollment secrets are also written to bootstrap-credentials.json.");
     logger.warn("");
     logger.warn(separator);
     logger.warn("");

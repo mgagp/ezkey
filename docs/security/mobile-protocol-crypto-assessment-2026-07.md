@@ -137,7 +137,7 @@ Critical honesty boundary: **honest-client assertions** (storage tier, local bio
 | iOS deferred framing | **Still valid boundary** | Not treated as current defect |
 | No certificate pinning | **Residual** (honest roadmap) | See MOB-005 |
 | Debug / QR logging | **Resolved** (Lot A) | See MOB-004 |
-| EXP1 Cloudflare edge posture | **Out of this assessment** | Deployment edge, not mobile protocol |
+| Community Cloudflare edge posture | **Out of this assessment** | Deployment edge, not mobile protocol |
 | Minimal root/tamper resistance | **Residual / deferred** | See MOB-009 |
 
 ## 6. Findings register

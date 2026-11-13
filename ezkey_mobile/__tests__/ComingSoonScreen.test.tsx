@@ -14,8 +14,10 @@ describe('ComingSoonScreen', () => {
     const textContent = tree!.root.findAllByType(Text).map(node => node.props.children).flat().join(' ');
 
     expect(textContent).toContain('Coming soon');
-    expect(textContent).toContain('Authentication policy and stronger validation');
-    expect(textContent).toContain('Certificate pinning, Ezkey-style');
+    expect(textContent).toContain('Clearer approval rules');
+    expect(textContent).toContain('Stronger connection checks');
+    expect(textContent).not.toContain('Certificate pinning');
+    expect(textContent).not.toContain('over-claiming perfection');
     expect(textContent).not.toContain('Language switching without restart');
   });
 });

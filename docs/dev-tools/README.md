@@ -71,11 +71,13 @@ Validates code style compliance:
 - Fails build on violations
 - Configuration matches Google Java Format behavior (e.g., single parameterless annotations on same line)
 
-**Usage:**
+**Usage:** on a machine that has already built this reactor at least once:
+
 ```bash
-# Run checkstyle
 mvn checkstyle:check
 ```
+
+On a **fresh clone**, use `./scripts/build.sh` instead. Checkstyle is not a plugin you install from a remote repo: it loads `org.ezkey:checkstyle-config` from the local Maven repository. See [`docs/DEVELOPMENT.md`](../DEVELOPMENT.md) § *First clone on a new workstation*.
 
 ### Checkstyle (Eclipse Plugin Integration)
 Eclipse reads the `.checkstyle` files stored in each module and points them to the shared configuration in the repository root.

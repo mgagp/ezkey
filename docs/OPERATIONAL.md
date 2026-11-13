@@ -4,19 +4,48 @@
 
 This document provides operational guidance for deploying and configuring Ezkey in production environments. It covers security considerations, performance tuning, monitoring, and infrastructure-specific configurations.
 
-## Production security posture (docker / EXP1)
+**Public maturity and “what is live”:** Ezkey’s operator-facing claim is **Public alpha**; technical identity of a live deploy is the **git SHA** (complements a product SemVer tag when one exists — ADR-0017 / #1211). See [`VERSIONING_AND_DEPLOY_TRACEABILITY.md`](VERSIONING_AND_DEPLOY_TRACEABILITY.md). The community/Lightsail live ledger is [`lightsail/community/DEPLOYED.md`](lightsail/community/DEPLOYED.md) (update after a successful publish).
 
-Spring profile **`docker`** (used by EXP1 Lightsail and `clean-start --prod-safe`) enables fail-closed and rate-limit defaults:
+## Production security posture (docker / community)
 
-| Property | Docker / EXP1 | Notes |
-|----------|---------------|-------|
+Spring profile **`docker`** (used by the community Lightsail host and `clean-start --prod-safe`) enables fail-closed and rate-limit defaults:
+
+| Property | Docker / community | Notes |
+|----------|--------------------|-------|
 | `ezkey.rate-limit.enabled` | `true` | Auth API pending/respond/bind/verify (SEC-005). `docker-test` turns this off for churn tests only. |
-| `ezkey.encryption.required` | `true` | Fail startup if Tink cannot initialize (SEC-002). |
+| `ezkey.encryption.required` | `true` (Java default + base/docker props) | Fail startup if Tink cannot initialize (SEC-002 / #961 C-M1). |
 | `ezkey.audit.integrity.required` | `true` | Fail startup if HMAC signing is inactive (SEC-008). |
 | `ezkey.trusted-proxies.required` | `true` when behind Caddy | Via `EZKEY_TRUSTED_PROXIES_REQUIRED` on Lightsail and `./docker/start.sh --with-proxy`. Leave `false` for direct-port local stacks (no reverse proxy). |
 | `ezkey.trusted-proxies.cidrs` | set on proxy stacks | `EZKEY_TRUSTED_PROXIES_CIDRS` — must cover the Docker/Caddy network. |
 
 See module `CONFIGURATION.md` files and [`experimental-hybrid/lightsail/.env.example`](../experimental-hybrid/lightsail/.env.example).
+
+### No public hostname in generic defaults
+
+Product defaults (Spring properties, generic Compose `${VAR:-…}` fallbacks, Cloudflare Admin UI
+deploy scripts) must **not** embed a named public hostname such as `*.ezkey.online`. Local /
+Docker uses localhost, Compose DNS, or relative URLs. Live surfaces set URLs via **explicit env
+or overlay only**. When a feature is enabled and a required URL is missing, fail closed at
+startup (or script exit ≠ 0).
+
+| Surface | Where operators set it |
+|---------|------------------------|
+| Community (ezkey.online) | [`experimental-hybrid/lightsail/.env.ezkey-online.example`](../experimental-hybrid/lightsail/.env.ezkey-online.example), [`docs/lightsail/community-host.md`](lightsail/community-host.md); community installs [`Caddyfile.ezkey-online`](../experimental-hybrid/lightsail/Caddyfile.ezkey-online) |
+| Admin UI Pages build | Root `.env` `VITE_API_BASE_URL` (required for `deploy-admin-ui-*.sh --build`); commented examples in `ezkey-admin-ui/.env.cloudflare` |
+
+Seb inventory context (community already overrides most live values): QR Auth base, evaluator
+`admin-ui-url` / `guided-tour-url`, Admin UI `VITE_API_BASE_URL`, and Caddyfile choice were the
+remaining silent footguns if an override dropped — closed in code/docs above; do not reintroduce
+community hostnames into generic defaults.
+
+### Runtime profile (integrity vs base)
+
+Product key `EZKEY_RUNTIME_PROFILE` / clean-start `--runtime=` selects **integrity** (default) or
+**base** (opt-in). Base keeps MFA encryption and HMAC audit write on, and turns off audit-integrity
+**monitoring** (checkpoints + heartbeat together, nightly validation, archive seal/purge, rotation /
+re-encryption jobs). Legitimate ops posture with limited claims — not an “eval-only lab”.
+Tamper-evident claims apply only under integrity. Details:
+[`docker/README.md`](../docker/README.md) § Runtime profiles.
 
 ## Table of Contents
 
@@ -149,7 +178,7 @@ On first startup, Ezkey automatically initializes the admin authentication syste
    - Passwordless authentication (no passwords)
    - System Integration created for global admin authentication
    - Global Admin Enrollment created with RSA-2048 keys
-   - Recovery codes generated (10 single-use codes)
+   - Recovery codes generated into `bootstrap-credentials.json` (`0600`; never logged; count from `ezkey.admin.recovery.codes-count`)
    - Admin linked to system tenant
 
 ### Organization Configuration
@@ -165,6 +194,8 @@ ezkey.organization.about-url=https://www.example.com/about-ezkey
 
 | Variable | Maps to | Purpose |
 | -------- | ------- | ------- |
+| `EZKEY_ORGANIZATION_NAME` | `ezkey.organization.name` | Instance display name; seeds system tenant and system integration names; `instanceName` on instance-info |
+| `EZKEY_ORGANIZATION_DESCRIPTION` | `ezkey.organization.description` | Instance blurb; seeds system tenant description; `instanceDescription` on instance-info |
 | `EZKEY_ORGANIZATION_ABOUT_URL` | `ezkey.organization.about-url` | Optional “About / learn more” link; `aboutUrl` on `GET /api/v1/public/instance-info` (Admin API and Auth API) |
 | `EZKEY_QR_AUTH_BASE_URL` | `ezkey.qr.auth-base-url` | Public Auth API base URL embedded as `authUrl` in enrollment QR JSON and returned as `authApiPublicBaseUrl` from `GET /api/v1/public/instance-info` (Admin API and Auth API) |
 
@@ -453,16 +484,24 @@ normative table × privilege matrix is
 | `ezkey_admin` | Admin API + schedulers |
 | `ezkey_auth` | Auth API |
 | `ezkey_integration` | Integration API |
+| `ezkey_crypto` | crypto-api lab stack only — `SELECT` on `ezkey_keyset_blob` (ADR-0016) |
 
 **Docker / clean-start:** roles are created on first Postgres init
 (`docker/postgres/init/01-create-roles.sh`); DML grants are applied after
 Flyway by `scripts/db/apply-grants.sh` (Compose service `db-grants`).
+
+**Existing volume upgrade (main → blob-only):** `docker-entrypoint-initdb.d` does **not**
+re-run. `apply-grants.sh` therefore **ensures** `ezkey_crypto` exists before applying grants
+(`ensure-crypto-role.sql`). `EZKEY_DB_CRYPTO_PASSWORD` is **required** on that path (no
+default). Smoke: `./scripts/db/test-upgrade-crypto-role.sh`. See also
+`community-upgrade-impact.md` §2.1a.
 
 **Local IDE:**
 
 ```bash
 ./scripts/db/create-roles.sh
 # run Flyway as ezkey_migrate
+export EZKEY_DB_CRYPTO_PASSWORD=...   # required by apply-grants.sh
 ./scripts/db/apply-grants.sh
 ./scripts/db/verify-grants.sh   # optional smoke
 ```
@@ -510,16 +549,125 @@ ssl_stapling_verify on;
 
 ### Logging and secrets (Admin API)
 
-Server logs must **not** duplicate high-value secrets that are already returned in API responses (for example enrollment proof tokens and challenge codes after enrollment reset). Use identifiers such as `enrollmentId` and usernames for correlation. Plaintext recovery codes appear only in deliberate bootstrap output when configured.
+Server logs must **not** duplicate high-value secrets that are already returned in API responses (for example enrollment proof tokens and challenge codes after enrollment reset). Use identifiers such as `enrollmentId`, `authAttemptId`, and usernames for correlation. Admin login challenge codes, bootstrap admin email addresses, and plaintext recovery codes must not appear in logs.
+
+**Deliberate bootstrap exception (bind material only):** in `credentials-output-mode=full`, the Admin API startup logs still print the enrollment proof token, challenge code, and ASCII QR so operators can complete the first global-admin enrollment wizard. Recovery codes are never printed; they are written only to `bootstrap-credentials.json` with owner-only mode (`0600`).
 
 ### Global admin bootstrap and recovery codes
 
 `ezkey.admin.mfa.bootstrap.credentials-output-mode` controls what the Admin API prints at first global-admin enrollment:
 
-- **`full`** (default for development and Docker clean-start): enrollment secrets and ASCII QR may appear in startup logs; `bootstrap-credentials.json` may be written when file export is enabled (for `bootstrap-init` automation).
-- **`recovery_primary`**: recovery codes and operator instructions only; enrollment secrets are omitted from logs and JSON export is skipped. Use the Admin UI account-recovery flow (recover → reset enrollment → bind). For Docker, set **`EZKEY_BOOTSTRAP_INIT_ENABLED=false`** on the `bootstrap-init` service when no `bootstrap-credentials.json` is produced, or omit that service.
+- **`full`** (default for development and Docker clean-start): enrollment proof token, challenge, and ASCII QR appear in startup logs (by design). Recovery codes are written to `bootstrap-credentials.json` (`0600` when POSIX) — never to logs. File export also includes enrollment bind material for `bootstrap-init`.
+- **`recovery_primary`**: enrollment secrets and ASCII QR are omitted from logs. Recovery codes are written to `bootstrap-credentials.json` (`0600` when POSIX) only. Use the Admin UI account-recovery flow (recover → reset enrollment → bind). For Docker unattended bind, keep `credentials-output-mode=full`; with `recovery_primary`, set **`EZKEY_BOOTSTRAP_INIT_ENABLED=false`** on `bootstrap-init` (or omit that service) because the file has no proof token.
 
-**Operational recommendation:** After the global administrator completes first device binding and can sign in, **regenerate recovery codes** from the Admin UI so unused codes from bootstrap logs are invalidated.
+**Windows / non-POSIX (`windows` profile):** `ezkey.admin.bootstrap.export.allow-non-posix-permissions=true` writes under `${user.home}/.ezkey/bootstrap/` without POSIX `0600`. The file inherits the user-profile ACL. That is acceptable on a single-user dev workstation; there is no extra ACL code. Avoid a shared or synced profile (e.g. OneDrive) for that path. Optional lock-down: `icacls <file> /inheritance:r /grant:r "%USERNAME%:F"`. Docker/prod omit the property (fail-closed).
+
+**Bootstrap enrollment TTL:** `ezkey.admin.mfa.bootstrap.enrollment-expiration-hours` (default **24**, minimum **1**, env `EZKEY_ADMIN_MFA_BOOTSTRAP_ENROLLMENT_EXPIRATION_HOURS`). Bind is refused after expiry. To re-issue: read a recovery code from `bootstrap-credentials.json` → Admin UI account recovery → reset enrollment (refreshes `expiresAt`) → bind with the new material returned in the HTTP response.
+
+**Retrieve recovery codes (Docker / Lightsail):** do **not** `cat` the file into the terminal.
+Copy into a local `0600` file, then open it in an editor or password-manager import.
+
+```bash
+# Default = community Lightsail. Override for docker/ (ezkey_…) or HA (ezkey-ha_…).
+# Discover: docker volume ls --filter name=bootstrap-artifacts
+VOL=${VOL:-ezkey-experimental-lightsail_bootstrap-artifacts}
+docker volume inspect "$VOL" >/dev/null || { echo "volume not found: $VOL"; exit 1; }
+
+TMP=$(mktemp)
+CID=$(docker create -v "$VOL":/data alpine) || exit 1
+docker cp "$CID":/data/bootstrap-credentials.json "$TMP"
+docker rm "$CID" >/dev/null
+chmod 600 "$TMP"
+echo "Copied to $TMP (mode 0600) — import codes, then shred/rm the temp file."
+```
+
+**Delete from the volume** (after codes are stored safely):
+
+```bash
+VOL=${VOL:-ezkey-experimental-lightsail_bootstrap-artifacts}
+docker volume inspect "$VOL" >/dev/null || { echo "volume not found: $VOL"; exit 1; }
+docker run --rm -v "$VOL":/data alpine rm -f /data/bootstrap-credentials.json
+# Confirm absent (docker run -v must not have auto-created an empty volume — inspect above prevents that).
+docker run --rm -v "$VOL":/data alpine test ! -e /data/bootstrap-credentials.json \
+  || { echo "ERROR: bootstrap-credentials.json still present on $VOL"; exit 1; }
+```
+
+After a successful bind, Admin API (startup + short ShedLock schedule) removes the proof token and
+challenge from the file while keeping recovery codes. Auth API does **not** mount the credentials
+volume. `bootstrap-init` does not rewrite the file (single redaction owner).
+
+**Operator action — delete the file once recovery codes are stored safely.** Do not leave plaintext
+recovery codes on disk longer than needed. The file should be owner-only `0600`; `admin-api` and
+`bootstrap-init` both run as pinned UID `100` / GID `101` (`spring`) so init can read it before
+redaction.
+
+**Deleting during redaction:** Admin API’s bind-secret redactor checks that the credentials file
+exists before querying the database (startup + ~60s ShedLock). After you delete the file, scheduled
+passes become a no-op (no DB hit). Safe to delete any time after codes are copied — including while
+a redaction tick is due.
+
+**Re-issue after invitation expiry:** recover with a recovery code → reset enrollment (refreshes
+`expiresAt` to now + `enrollment-expiration-hours` for the **bootstrap** initial global admin only)
+→ bind with the new material from the HTTP response. Scheduler-marked `EXPIRED` enrollments are
+accepted by reset (status returns to `CREATED`).
+
+**Operational recommendation:** After the global administrator completes first device binding and can sign in, **regenerate recovery codes** from the Admin UI so unused codes from the bootstrap credentials file are invalidated.
+
+### Log rotation and hygiene
+
+**Audience:** next Lightsail / small-VM installs (≈4 GB RAM / ≈80 GB disk). This does **not** reconfigure a running live instance; Docker applies `logging:` only when a container is created.
+
+**Compose defaults** (`experimental-hybrid/lightsail/docker-compose.yml`, `x-logging` on every service):
+
+| Option | Value | Why |
+| ------ | ----- | --- |
+| `driver` | `json-file` | Docker default; supports rotation options |
+| `max-size` | `20m` | Per-file cap suited to a small disk |
+| `max-file` | `3` | Keep a short rotated history |
+
+Ceiling ≈ **8 services × 20 MiB × 3 files ≈ 480 MiB** of container json logs — intentional headroom beside Postgres data and images on a ~80 GB disk.
+
+**Host script:** [`scripts/ops/docker-log-hygiene.sh`](../scripts/ops/docker-log-hygiene.sh) (Bash, idempotent, local Docker only — no SSH/remote). Invoke as `bash scripts/ops/docker-log-hygiene.sh …`. Prefer `--project ezkey-experimental-lightsail` on the community VM. Rotated-file purge needs read access under `/var/lib/docker/containers` (often **sudo**).
+
+| When | Command | Purpose |
+| ---- | ------- | ------- |
+| After first `compose up` on a new VM | `bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail` | Confirm every container has `max-size` / `max-file` |
+| Periodically (e.g. monthly) | same without `--scan` | Report sizes; exit `1` if rotation missing |
+| Optional content scan | `… --scan` (stdout+stderr; `--since` window) | Counts of credential-like patterns only (never values) |
+| Plan cleanup | `… --purge` | Dry-run: stopped-container logs + rotated files older than 7d (project containers only) |
+| Apply cleanup | `… --project NAME --purge --apply --yes` | Truncate/remove (**`--project` or `COMPOSE_PROJECT_NAME` required** — no host-wide apply) |
+
+**Exit codes:** `0` ok, `1` findings, `2` error.
+
+**What the script never does:** change Compose or recreate containers; talk to remote hosts; print secret values from `--scan`; truncate logs of **running** containers; delete Postgres or named volumes; purge rotated logs outside the selected project's container IDs.
+
+**Pre-upgrade `--scan` order (community):** sync `--sync-operator-files` **without** `--remote-up` (or `scp` the hygiene script) → confirm remote `Caddyfile` is still the community variant (`Caddyfile.ezkey-online` content) → `bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail --scan` → `--remote-up`.
+
+### Post-upgrade checks (m6) — community VM `ezkey-experimental-lightsail`
+
+Run on the VM after an upgrade (no `cat` of secrets). For the commissioned community host, prefer the non-destructive checklist in [`docs/lightsail/community-host.md`](lightsail/community-host.md) over blind `rolling` / `--sync-operator-files --remote-up`:
+
+1. `bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail`
+2. Confirm `json-file` rotation via `docker inspect` / hygiene check
+3. Caddyfile is the community variant (`Caddyfile.ezkey-online` content)
+4. Bootstrap credentials — mode + key absence only (parametrize `VOL`; **never** `docker cp` to `/tmp`):
+
+   ```bash
+   # Discover: docker volume ls --filter name=bootstrap-artifacts
+   VOL=${VOL:-ezkey-experimental-lightsail_bootstrap-artifacts}
+   docker volume inspect "$VOL" >/dev/null || { echo "volume not found: $VOL"; exit 1; }
+   # Read-only inside the volume — never prints file content; preserves volume mode/owner.
+   docker run --rm -v "$VOL":/v:ro alpine sh -c '
+     stat -c "%a %u:%g" /v/bootstrap-credentials.json
+     for k in enrollmentProofToken enrollmentChallengeCode authUrl; do
+       printf "%s=" "$k"
+       grep -c "\"$k\"" /v/bootstrap-credentials.json || true
+     done
+   '
+   ```
+
+   Expect mode `600` (POSIX) and `0` counts for token/challenge/authUrl after bind redaction. If still `644` with old Sept-23 secrets, delete **only with Marc's go** (recipe above) and confirm the file is absent.
+5. Optional `--scan` (counts only) — only after the script is on the host (see pre-upgrade order).
 
 ### Log Configuration
 
@@ -528,9 +676,10 @@ Server logs must **not** duplicate high-value secrets that are already returned 
 logging:
   level:
     org.ezkey: INFO
+    org.springframework.web: WARN
     org.springframework.security: WARN
     org.hibernate.SQL: WARN
-    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+    org.hibernate.orm.jdbc.bind: WARN
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
@@ -539,6 +688,16 @@ logging:
     max-size: 100MB
     max-history: 30
 ```
+
+Never set `org.springframework.web=DEBUG` in shared profiles: MVC body dumps can expose proof tokens and signatures (#752). Hibernate 6 bind parameters use `org.hibernate.orm.jdbc.bind` (the legacy `BasicBinder` logger has no effect). Keep it at WARN — TRACE would log SQL bind values.
+
+For safe request-line diagnostics without body dumps, use:
+
+```properties
+logging.level.org.springframework.web.servlet.DispatcherServlet=DEBUG
+```
+
+That logs HTTP method, URI, and status only.
 
 ### Monitoring Setup
 
@@ -638,11 +797,30 @@ public class SecurityConfig {
 
 ## Backup and Recovery
 
+### What constitutes a restore set (ADR-0016)
+
+After the blob-only keyset cutover, a recoverable backup is:
+
+1. **Database dump** (`pg_dump` of the Ezkey database, including `ezkey_keyset_blob`)
+2. **`master.key`** (file/secret that wraps the Tink keyset envelope)
+
+There is **no keyset-file primary**. Leftover keyset files on a secrets volume (if any) are not a
+supported restore path. Encrypted off-host backup / KMS escrow is tracked separately
+([#953](https://github.com/mgagp/ezkey/issues/953)).
+
+### Community host honesty
+
+The community public-alpha host (`<static-ip ezkey-online-community>`, also known as ezkey.online)
+has **no guaranteed backup**. Operators must not assume `pg_dump` or `master.key` escrow exists
+there unless they have verified a backup they themselves control. Prefer in-place upgrade over
+full reinstall when possible; see
+[`product-docs/global/decisions/2026-10-21-keyset-storage-strategy/community-upgrade-impact.md`](../product-docs/global/decisions/2026-10-21-keyset-storage-strategy/community-upgrade-impact.md).
+
 ### Database Backup
 
 ```bash
 #!/bin/bash
-# backup-ezkey-db.sh
+# backup-ezkey-db.sh — restore set part 1 (pg_dump includes ezkey_keyset_blob)
 
 BACKUP_DIR="/var/backups/ezkey"
 DATE=$(date +%Y%m%d_%H%M%S)
@@ -661,17 +839,22 @@ find $BACKUP_DIR -name "ezkey_*.sql.gz" -mtime +30 -delete
 gunzip -t $BACKUP_DIR/ezkey_$DATE.sql.gz
 ```
 
-### Application Backup
+### Master key (restore set part 2)
+
+Escrow `master.key` (and `audit-hmac.key` when integrity is enabled) with the same care as the
+database dump. Without the master key, the keyset blob in a restored dump cannot be opened.
+
+### Application configuration backup
 
 ```bash
 #!/bin/bash
-# backup-ezkey-app.sh
+# backup-ezkey-app.sh — config/systemd only (not a keyset restore path)
 
 APP_DIR="/opt/ezkey"
 BACKUP_DIR="/var/backups/ezkey/app"
 DATE=$(date +%Y%m%d_%H%M%S)
 
-# Backup application configuration
+# Backup application configuration (not keyset authority)
 tar -czf $BACKUP_DIR/ezkey_config_$DATE.tar.gz \
     $APP_DIR/config/ \
     $APP_DIR/application.properties \

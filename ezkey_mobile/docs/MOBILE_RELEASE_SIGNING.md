@@ -54,6 +54,11 @@ variables (Gradle automatically maps them to project properties).
 yarn android:bundle:release
 ```
 
+That script runs `bundleRelease`, then
+[`scripts/check-16kb-alignment.sh`](../scripts/check-16kb-alignment.sh) on the AAB (16 KB
+PT_LOAD + GNU_RELRO gate; see [`MOBILE_ANDROID_PLATFORM_SUPPORT.md`](MOBILE_ANDROID_PLATFORM_SUPPORT.md)
+§ *16 KB page-size gate*). Do not use `useLegacyPackaging` to silence failures.
+
 The bundle lands at:
 
 ```
@@ -86,31 +91,23 @@ release mode, it is almost always a missing ProGuard `-keep` rule; add it to
 
 ## 5. Version bumping
 
-Edit **`ezkey_mobile/package.json`** and bump the semantic version there before each
-Play Store upload. Android `versionName` is injected from that file during the build,
-so `package.json` is the human-readable source of truth:
+Canon: [`MOBILE_PLAY_PUBLISHING.md`](MOBILE_PLAY_PUBLISHING.md) § *Versioning policy*;
+product SemVer:
+[`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../../docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md)
+(ADR-0017 / [#1211](https://github.com/mgagp/ezkey/issues/1211)).
 
-```gradle
-versionCode 2     // monotonically increasing integer; +1 per Play upload
-```
+- **`versionName`** — `ezkey_mobile/package.json` `"version"` equals product `X.Y.Z` (optional
+  matching pre-release). Gradle injects it as Android `versionName`. iOS `MARKETING_VERSION`
+  uses the same string. It changes when the product cut changes, not on every Play upload.
+- **`versionCode`** — bump in `android/app/build.gradle` every Play upload (strictly increasing).
+- **Play release name** — `play-upload-internal.sh` sets `'<versionCode> (<versionName>)'`.
 
-Confirm the next integer against **Play Console → App bundle explorer** before upload. The
-workspace default is `2` because the experimental drop used `versionCode` `1`. Then update
-**`ezkey_mobile/android/app/build.gradle`** only for that Android-specific counter:
-
-```gradle
-versionCode 2
-```
-
-Example: if `package.json` contains `"version": "1.0.1"`, Android will package
-that same value as `versionName`, and the About screen will surface `1.0.1` from
-the same source.
+Confirm the next `versionCode` against **Play Console → App bundle explorer** before upload.
+Same `versionName` across uploads is fine when `versionCode` increases; vc4 went out as a bare
+name and the Console could not tell it from vc3. The release name carries both.
 
 > Play Console rejects an AAB whose `versionCode` is not strictly greater than
-> the previously published one in the same track.
-
-A future iteration can automate this from `git describe`; for v1 the manual
-process is intentionally explicit and reviewable.
+> every previously uploaded AAB for the app.
 
 ## 6. What never goes in the repo
 

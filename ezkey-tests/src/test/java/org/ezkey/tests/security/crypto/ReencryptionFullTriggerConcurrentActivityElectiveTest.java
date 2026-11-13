@@ -121,23 +121,22 @@ public class ReencryptionFullTriggerConcurrentActivityElectiveTest extends Abstr
 
     for (int t = 0; t < 4; t++) {
       futures.add(
-          pool.submit(
-              () -> {
-                while (running.get() && !Thread.currentThread().isInterrupted()) {
-                  List<Integer> ids = listEnrollmentIdsWithOldKeyPrefix(oldKeyId);
-                  if (ids.isEmpty()) {
-                    sleepQuiet(100);
-                    continue;
-                  }
-                  int id = ids.get(rng.nextInt(ids.size()));
-                  String sql =
-                      "UPDATE ezkey_enrollment SET last_used_at = NOW(), version = version + 1"
-                          + " WHERE enrollment_id = "
-                          + id;
-                  databaseHelper.executeUpdate(sql);
-                  sleepQuiet(40 + rng.nextInt(80));
-                }
-              }));
+          pool.submit(() -> {
+            while (running.get() && !Thread.currentThread().isInterrupted()) {
+              List<Integer> ids = listEnrollmentIdsWithOldKeyPrefix(oldKeyId);
+              if (ids.isEmpty()) {
+                sleepQuiet(100);
+                continue;
+              }
+              int id = ids.get(rng.nextInt(ids.size()));
+              String sql =
+                  "UPDATE ezkey_enrollment SET last_used_at = NOW(), version = version + 1"
+                      + " WHERE enrollment_id = "
+                      + id;
+              databaseHelper.executeUpdate(sql);
+              sleepQuiet(40 + rng.nextInt(80));
+            }
+          }));
     }
 
     sleepQuiet(1500);

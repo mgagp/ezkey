@@ -34,6 +34,6 @@ Fill policy inventory (targeted repository grep + paginated matrix Tier B) → i
 ## Links
 
 - Policy: [`../../sql-business-limits-policy.md`](../../sql-business-limits-policy.md)
-- Decision: [`../../../methodology/decisions/2026-05-24-controllers-registry-downscope.md`](../../../methodology/decisions/2026-05-24-controllers-registry-downscope.md)
+- Decision: [`I-2026-0009-global-controllers-registry.md`](I-2026-0009-global-controllers-registry.md) § Drop rationale
 - Grill: `../grill-sessions/blitz-2026-05-08-2-D6-D10-guards-grill-me.md`
 - Companion: `I-2026-0013`, `I-2026-0014`

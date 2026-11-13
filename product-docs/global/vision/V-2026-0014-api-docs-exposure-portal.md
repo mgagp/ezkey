@@ -8,7 +8,7 @@
   with `ezkey.org`, while the exposure of raw `/api-docs` and embedded Swagger UI is segmented
   explicitly by deployment posture.
 - **Signals:** Current runtime exposure is inconsistent with the likely production posture:
-  public-evaluator `exp1` currently exposes Swagger UI and `/api-docs` on the
+  public-evaluator `community` (ezkey.online) currently exposes Swagger UI and `/api-docs` on the
   production-capable APIs, while the repository already contains partial hardening precedent in
   native profiles. Ezkey also has a natural documentation-hosting anchor in the static Cloudflare
   Pages site under `sites/ezkey-org/`, plus a product-specific need to segment `Admin API`,

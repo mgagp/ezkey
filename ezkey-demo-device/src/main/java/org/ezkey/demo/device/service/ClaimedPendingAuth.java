@@ -16,6 +16,12 @@ import java.time.Instant;
  * HTTP session so a second GET (double navigation, re-check, refresh) can re-show Approve/Deny
  * without calling pending again and getting HTTP 204.
  *
+ * <p>{@code expiresAt} bounds how long that rehydration may hide a newer pending pull. Prefer the
+ * server value from the pending JSON when present; otherwise {@link ClaimExpiresAtResolver} uses
+ * {@code claimedAt + ezkey.demo-device.claimed-pending-attempt-ttl} (default 120 s). Auth API
+ * pending currently omits expiry (#834). {@link PendingAuthClaimSession#findOpen} invalidates at
+ * {@code min(expiresAt, claimedAt + 10 min)} when {@code expiresAt} is present.
+ *
  * @param enrollmentId enrollment that claimed the attempt
  * @param authAttemptId claimed auth attempt id
  * @param authAttemptProofToken proof token required for respond
@@ -23,6 +29,8 @@ import java.time.Instant;
  * @param contextTitle optional business context title
  * @param contextMessage optional business context message
  * @param claimedAt instant when the claim was stored in session
+ * @param expiresAt session invalidation instant for this claim; {@code null} means use only the
+ *     session TTL cap
  * @since 2026
  */
 public record ClaimedPendingAuth(
@@ -32,7 +40,8 @@ public record ClaimedPendingAuth(
     boolean challengeRequired,
     String contextTitle,
     String contextMessage,
-    Instant claimedAt) {
+    Instant claimedAt,
+    Instant expiresAt) {
 
   /**
    * Creates a claim snapshot at the current instant.
@@ -43,6 +52,7 @@ public record ClaimedPendingAuth(
    * @param challengeRequired whether a challenge code is required
    * @param contextTitle optional business context title
    * @param contextMessage optional business context message
+   * @param expiresAt session invalidation instant (may be {@code null})
    * @return claim with {@code claimedAt} set to {@link Instant#now()}
    */
   public static ClaimedPendingAuth of(
@@ -51,7 +61,8 @@ public record ClaimedPendingAuth(
       String authAttemptProofToken,
       boolean challengeRequired,
       String contextTitle,
-      String contextMessage) {
+      String contextMessage,
+      Instant expiresAt) {
     return new ClaimedPendingAuth(
         enrollmentId,
         authAttemptId,
@@ -59,6 +70,7 @@ public record ClaimedPendingAuth(
         challengeRequired,
         contextTitle,
         contextMessage,
-        Instant.now());
+        Instant.now(),
+        expiresAt);
   }
 }

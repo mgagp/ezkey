@@ -17,6 +17,8 @@ import net.javacrumbs.shedlock.core.SimpleLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Helper service for programmatic distributed locking using ShedLock.
@@ -46,9 +48,12 @@ public class LockingTaskExecutor {
   private static final Logger logger = LoggerFactory.getLogger(LockingTaskExecutor.class);
 
   private final LockProvider lockProvider;
+  private final TransactionTemplate taskTransaction;
 
-  public LockingTaskExecutor(LockProvider lockProvider) {
+  public LockingTaskExecutor(
+      LockProvider lockProvider, PlatformTransactionManager transactionManager) {
     this.lockProvider = lockProvider;
+    this.taskTransaction = new TransactionTemplate(transactionManager);
   }
 
   /**
@@ -56,6 +61,10 @@ public class LockingTaskExecutor {
    *
    * <p>If the lock cannot be acquired, the task is skipped and false is returned. This is useful
    * for startup bootstrap operations where only one instance should perform initialization.
+   *
+   * <p><b>Transaction boundary (#1259):</b> the task runs in its own transaction, committed before
+   * the lock is released. A caller's outer transaction would commit after the release, letting the
+   * next lock holder act on data it cannot see yet.
    *
    * @param lockName the name of the lock (must be unique)
    * @param lockAtMostFor maximum duration to hold the lock (safety margin for crash recovery)
@@ -71,7 +80,7 @@ public class LockingTaskExecutor {
     if (lock.isPresent()) {
       try {
         logger.debug("Acquired lock '{}', executing task", lockName);
-        task.run();
+        taskTransaction.executeWithoutResult(_ -> task.run());
         logger.debug("Task completed, releasing lock '{}'", lockName);
         return true;
       } finally {

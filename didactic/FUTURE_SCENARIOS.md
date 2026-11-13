@@ -1,10 +1,10 @@
 # Future didactic article scenarios (not implemented)
 
-This file records **intentional follow-up work** that is **out of scope** for the current article template ([`templates/article-full.md`](templates/article-full.md)).
+This file records **intentional follow-up work** that is **out of scope** for the current default article template ([`templates/access-login/article-full.md`](templates/access-login/article-full.md)).
 
 ## Current template (implemented)
 
-**“Admin-authorized integration enrollment + MFA trace”** — an operator uses **Admin API** credentials (Bearer from passwordless admin login in the lab) to create **enrollments** on an **integration**, then the transcript walks **bind → verify → auth attempt** on **Auth API** with **Crypto API** as oracle. The narrative in [`article-full.md`](templates/article-full.md) is aligned with that scenario.
+**“Admin-authorized integration enrollment + MFA trace”** — an operator uses **Admin API** credentials (Bearer from passwordless admin login in the lab) to create **enrollments** on an **integration**, then the transcript walks **bind → verify → auth attempt** on **Auth API** with **Crypto API** as oracle. The default narrative in [`templates/access-login/article-full.md`](templates/access-login/article-full.md) frames the auth request as a user sign-in / access approval; [`templates/contextual-approval/article-full.md`](templates/contextual-approval/article-full.md) keeps the richer context-copy variant.
 
 ## Future template (planned)
 
@@ -15,7 +15,7 @@ This file records **intentional follow-up work** that is **out of scope** for th
 - Create **enrollments** and/or **auth attempts** using **HTTP Basic / API key** posture where the product supports it (rather than leading with Global Admin Bearer for every call).
 - Optional: split article instances so **credential posture** matches **integrator documentation** (tenant admin vs integration key).
 
-When implemented, add a second Markdown template (e.g. `article-integration-api.md`) and extend [`protocol_lab`](../protocol_lab/) only if new steps are required beyond the existing Bruno parity manifest.
+When implemented, add a second family of Markdown templates under `templates/` and extend [`protocol_lab`](../protocol_lab/) only if new steps are required beyond the existing Bruno parity manifest.
 
 ## Why keep this split
 

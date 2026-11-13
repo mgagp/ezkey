@@ -11,6 +11,9 @@
 package org.ezkey.audit.domain.repository;
 
 import java.time.OffsetDateTime;
+import java.util.Collection;
+import java.util.List;
+import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.domain.entity.AuditLog;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -50,6 +53,29 @@ public interface AuditLogRepository
   Long nextAuditLogId();
 
   /**
+   * Counts audit entries of one type and some actions for one tenant since a moment.
+   *
+   * @param eventType event type
+   * @param tenantId tenant
+   * @param eventActions actions to count
+   * @param since inclusive start
+   * @return the count
+   */
+  long countByEventTypeAndTenantIdAndEventActionInAndCreatedAtGreaterThanEqual(
+      EventType eventType, Integer tenantId, Collection<String> eventActions, OffsetDateTime since);
+
+  /**
+   * Counts audit entries of one type and some actions across the instance since a moment.
+   *
+   * @param eventType event type
+   * @param eventActions actions to count
+   * @param since inclusive start
+   * @return the count
+   */
+  long countByEventTypeAndEventActionInAndCreatedAtGreaterThanEqual(
+      EventType eventType, Collection<String> eventActions, OffsetDateTime since);
+
+  /**
    * Delete audit logs older than the specified date.
    *
    * @param cutoffDate cutoff date for deletion
@@ -58,4 +84,26 @@ public interface AuditLogRepository
   @Modifying
   @Query("DELETE FROM AuditLog a WHERE a.createdAt < :cutoffDate")
   int deleteOlderThan(@Param("cutoffDate") OffsetDateTime cutoffDate);
+
+  /**
+   * Loads {@code entry_hmac} values for a half-open checkpoint window (Integrity cut 3 D5).
+   *
+   * <p>Same filter and sort as the former full-entity {@code findAll(Specification)} path in {@code
+   * AuditChainVerificationService#computeEntriesDigest}: {@code createdAt >= windowStart} and
+   * {@code createdAt < windowEnd}, ordered by {@code auditLogId} ascending.
+   *
+   * @param windowStart inclusive window start
+   * @param windowEnd exclusive window end
+   * @return projected rows (id + entry HMAC only)
+   */
+  @Query(
+      """
+      SELECT a.auditLogId AS auditLogId, a.entryHmac AS entryHmac
+      FROM AuditLog a
+      WHERE a.createdAt >= :windowStart AND a.createdAt < :windowEnd
+      ORDER BY a.auditLogId ASC
+      """)
+  List<AuditLogEntryHmacView> findEntryHmacsInWindow(
+      @Param("windowStart") OffsetDateTime windowStart,
+      @Param("windowEnd") OffsetDateTime windowEnd);
 }

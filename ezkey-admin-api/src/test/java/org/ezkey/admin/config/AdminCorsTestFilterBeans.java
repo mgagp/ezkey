@@ -22,6 +22,7 @@ import java.io.IOException;
 import org.ezkey.admin.security.AdminCookieCsrfFilter;
 import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.security.AdminTokenAuthenticationFilter;
+import org.ezkey.admin.security.EvaluatorTempAccessFilter;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.springframework.context.annotation.Bean;
@@ -55,7 +56,20 @@ public class AdminCorsTestFilterBeans {
     return passThrough(AdminCookieCsrfFilter.class);
   }
 
-  private static <T extends Filter> T passThrough(Class<T> clazz) {
+  @Bean
+  @Primary
+  EvaluatorTempAccessFilter evaluatorTempAccessFilter() {
+    return passThrough(EvaluatorTempAccessFilter.class);
+  }
+
+  /**
+   * Builds a Mockito filter mock that forwards every request to the next chain element.
+   *
+   * @param clazz filter type to mock
+   * @param <T> filter type
+   * @return pass-through filter mock
+   */
+  public static <T extends Filter> T passThrough(Class<T> clazz) {
     T filter = mock(clazz);
     try {
       lenient()

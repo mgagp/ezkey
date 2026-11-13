@@ -44,6 +44,95 @@
       "rule": "no-unowned-async-error-clear",
       "pathFragment": "usePendingAuth.ts",
       "reason": "Stale overlapping loadPendingAttempt is a real pattern but rare (enrollment switch / double refresh). No generation-counter rewrite in the pending-auth path without an observed race. Campaign 2026-08-25 pass-1."
+    },
+    {
+      "tool": "detekt",
+      "rule": "UnusedParameter",
+      "pathFragment": "EzkeyCryptoModule.kt",
+      "reason": "Level 2 policy at respond; keygen securityLevel reserved for deferred MOB-001 Track B; do not wire in hygiene. Live product not broken: ensureEnrollmentKeyPair does not pass securityLevel; keys stay setUserAuthenticationRequired(false). Christophe 2026-09-17; campaign 2026-09-17 pass-1."
+    },
+    {
+      "tool": "detekt",
+      "rule": "UnusedPrivateProperty",
+      "pathFragment": "EzkeyCryptoModule.kt",
+      "reason": "SECURITY_LEVEL_CONFIRM_BEFORE_APPROVALS reserved for deferred MOB-001 Track B; Level 2 policy at respond — do not wire in hygiene. Live product not broken. Christophe 2026-09-17; campaign 2026-09-17 pass-1."
+    },
+    {
+      "tool": "periphery",
+      "rule": "unused",
+      "pathFragment": "ios/ezkeymobile/crypto/ezkeycryptocodec.swift",
+      "messageFragment": "'verify'",
+      "reason": "EzkeyCryptoErrorCode.verify keeps the iOS EZK_* code table identical to Android's. iOS verify never rejects by design (false on malformed input, XCTest testVerifyNeverRejectsOnMalformedInput); Android's EZK_VERIFY_ERROR branches are effectively unreachable too. Crypto code that works: leave it (pass 2026-11-03 #1)."
+    },
+    {
+      "tool": "periphery",
+      "rule": "unused",
+      "pathFragment": "ios/ezkeymobile/crypto/ezkeycryptocodec.swift",
+      "messageFragment": "'isLowS(_:)'",
+      "reason": "Codec test helper, called from XCTest only (Periphery does not count the @testable test target as a caller). isLowS checks the low-S boundary and real signatures; flipS builds the high-S malleability case. Kept next to the arithmetic it exercises (pass 2026-11-03 #2)."
+    },
+    {
+      "tool": "periphery",
+      "rule": "unused",
+      "pathFragment": "ios/ezkeymobile/crypto/ezkeycryptocodec.swift",
+      "messageFragment": "'flipS(_:)'",
+      "reason": "Codec test helper, called from XCTest only (Periphery does not count the @testable test target as a caller). isLowS checks the low-S boundary and real signatures; flipS builds the high-S malleability case. Kept next to the arithmetic it exercises (pass 2026-11-03 #2)."
+    },
+    {
+      "tool": "swiftlint",
+      "rule": "unused_parameter",
+      "pathFragment": "ios/ezkeymobile/crypto/ezkeycryptomodule.swift",
+      "messageFragment": "'securitylevel'",
+      "reason": "Vestigial bridge parameter: ignored on Android too (StrongBox first, fallback), never passed by the JS caller (cryptoService.ts); the user security preference applies at approval time (usePendingAuth). Parity holds; no crypto churn (pass 2026-11-03 #3)."
+    },
+    {
+      "tool": "swiftlint",
+      "rule": "unneeded_escaping",
+      "pathFragment": "ios/ezkeymobile/crypto/ezkeycryptomodule.swift",
+      "reason": "React Native promise blocks (RCTPromiseResolveBlock / RCTPromiseRejectBlock) are @escaping by convention; several bridge methods call them asynchronously (signWithAuthentication via queue.async), and dropping @escaping would break the build the day a method goes async (pass 2026-11-03 #4)."
+    },
+    {
+      "tool": "swiftlint",
+      "rule": "unused_parameter",
+      "pathFragment": "ios/ezkeymobile/crypto/ezkeycryptomodule.swift",
+      "messageFragment": "'reject'",
+      "reason": "Bridge methods that never fail (canUseProtectedSigning, verify: never rejects by design) still need the resolve/reject pair for React Native to expose a promise. Scoped to 'reject' so a future truly unused parameter still shows (pass 2026-11-03 #4)."
+    },
+    {
+      "tool": "swiftlint",
+      "rule": "discouraged_optional_collection",
+      "pathFragment": "ios/ezkeymobile/crypto/ezkeycryptomodule.swift",
+      "reason": "infoDictionary mirrors Bundle.main.infoDictionary, which is optional, and is injected for tests (pass 2026-11-03 #4)."
+    },
+    {
+      "tool": "swiftlint",
+      "rule": "unused_parameter",
+      "pathFragment": "ios/ezkeymobile/appdelegate.swift",
+      "reason": "UIApplicationDelegate signature from the React Native 0.88.1 template (pass 2026-11-03 #4)."
+    },
+    {
+      "tool": "swiftlint",
+      "rule": "discouraged_optional_collection",
+      "pathFragment": "ios/ezkeymobile/appdelegate.swift",
+      "reason": "launchOptions type is imposed by UIApplicationDelegate (pass 2026-11-03 #4)."
+    },
+    {
+      "tool": "swiftlint",
+      "rule": "unused_parameter",
+      "pathFragment": "ios/ezkeymobile/scenedelegate.swift",
+      "reason": "UIWindowSceneDelegate signature from the React Native 0.88.1 template (pass 2026-11-03 #4)."
+    },
+    {
+      "tool": "swiftlint",
+      "rule": "implicitly_unwrapped_optional",
+      "pathFragment": "ios/ezkeymobiletests/ezkeycryptomoduletests.swift",
+      "reason": "XCTest idiom: fixture set in setUp, cleared in tearDown (pass 2026-11-03 #5)."
+    },
+    {
+      "tool": "swiftlint",
+      "rule": "legacy_objc_type",
+      "pathFragment": "ios/ezkeymobiletests/ezkeycryptomoduletests.swift",
+      "reason": "constantsToExport() returns [AnyHashable: Any], which is not Equatable; NSDictionary is how the test compares the dictionary exported to React Native (pass 2026-11-03 #5)."
     }
   ]
 }

@@ -110,28 +110,16 @@ public class RestAssuredTestConfig {
   }
 
   /**
-   * Configures RestAssured with Crypto API base URL.
-   *
-   * <p>Used by {@link CryptoApiClient}. After any Crypto API call, tests that then hit Auth API or
-   * Admin API must call {@link #configureForAuthApi} or {@link #configureForAdminApi} before the
-   * next request.
-   *
-   * @param dockerStackConfig Docker stack configuration
-   */
-  public static void configureForCryptoApi(DockerStackConfig dockerStackConfig) {
-    configureDefaults();
-    RestAssured.baseURI = dockerStackConfig.getCryptoApiUrl();
-    RestAssured.basePath = "/api/v1/crypto";
-  }
-
-  /**
    * Resets RestAssured configuration to defaults.
    *
-   * <p>Clears base URI and base path settings.
+   * <p>RestAssured {@code given()} / {@code RequestSpecBuilder} require a non-null static {@code
+   * baseURI}. Use a dead-port loopback placeholder so tearDown cannot accidentally hit a live
+   * service; callers must still call {@code configureFor*} before real API traffic. Prefer {@link
+   * CryptoApiClient} for Crypto API (isolated {@code RequestSpecification}).
    */
   public static void reset() {
-    RestAssured.baseURI = null;
-    RestAssured.basePath = null;
+    RestAssured.baseURI = "http://127.0.0.1:9";
+    RestAssured.basePath = "";
     configureDefaults();
   }
 }

@@ -10,6 +10,10 @@ disappear once the substance is canonized.
 
 **Not** product vision, ADR, or backlog execution. No `I-*` / `TB-*` per finding.
 
+**Cadence:** **not scheduled**. Pending repositioning as a **challenger** (mandate to Mathieu,
+2026-10-19). Do not invent a weekly/monthly slot until that lands — see
+[`../README.md`](../README.md) § *Cadence & automation*.
+
 ## Invoke
 
 - Cursor skill: [`.cursor/skills/corpus-ablation/SKILL.md`](../../../.cursor/skills/corpus-ablation/SKILL.md)

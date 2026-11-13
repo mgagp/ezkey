@@ -75,6 +75,8 @@ export type StoredEnrollment = EnrollmentSummary & {
   integrationDescription?: string;
   enrollmentName?: string;
   deviceLabel?: string;
+  isSystemIntegration?: boolean;
+  adminType?: 'GLOBAL_ADMIN' | 'TENANT_ADMIN';
   approvalPolicy?: EnrollmentApprovalPolicy;
   securityLevel?: SecurityLevel;
 };
@@ -135,6 +137,7 @@ type StorageDelegate = {
   setItem(key: string, value: string, installationScopeId: string): Promise<void>;
   getItem(key: string, installationScopeId: string): Promise<string | undefined>;
   removeItem(key: string): Promise<void>;
+  removeAllWithKeyPrefixes(keyPrefixes: string[]): Promise<number>;
 };
 
 type EnrollmentStorageOptions = {
@@ -627,7 +630,27 @@ class EnrollmentStorage {
     );
     await this.metadata.removeItem(ENROLLMENT_COLLECTION_KEY);
     await this.sweepEnrollmentSecretRemnants();
+    await this.sweepSecureStoreRemnantsBestEffort();
     await this.deleteAllSealKeysBestEffort();
+  }
+
+  /**
+   * Best-effort sweep of enrollment secrets left in the platform secure store (Keychain) that
+   * id-based cleanup could not reach: a corrupt collection, or items from a previous installation
+   * (iOS Keychain items survive uninstall). On iOS this is where the secrets live (ADR-MOB-0007).
+   */
+  private async sweepSecureStoreRemnantsBestEffort(): Promise<void> {
+    try {
+      await this.secure.removeAllWithKeyPrefixes([
+        `${ENROLLMENT_PROOF_TOKEN_KEY_PREFIX}.`,
+        `${INTEGRATION_PUBLIC_KEY_KEY_PREFIX}.`,
+      ]);
+    } catch (error) {
+      console.warn(
+        '[enrollmentStorage] Failed to sweep secure-store secret remnants (continuing wipe):',
+        error,
+      );
+    }
   }
 
   /**

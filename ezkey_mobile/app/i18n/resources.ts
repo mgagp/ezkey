@@ -5,6 +5,11 @@ export const resources = {
         loading: 'Loading...',
         back: 'Back',
       },
+      identity: {
+        administration: 'Administration',
+        globalAdmin: 'Global Admin',
+        tenantAdmin: 'Tenant Admin',
+      },
       navigation: {
         home: 'Ezkey Authenticator',
         enrollmentDetail: 'Enrollment Detail',
@@ -16,8 +21,10 @@ export const resources = {
         about: 'About',
         releaseNotes: "What's new",
         licenses: 'Open Source Licenses',
+        licenseDetail: 'License',
         dangerZone: 'Danger Zone',
         language: 'Language',
+        appearance: 'Appearance',
       },
       settings: {
         general: 'General',
@@ -26,9 +33,11 @@ export const resources = {
         releaseNotesLabel: "What's new",
         releaseNotesSubtitle: 'What this release includes',
         comingSoonLabel: 'Coming soon',
-        comingSoonSubtitle: 'Near-term roadmap and expectation-setting notes',
+        comingSoonSubtitle: 'What we plan next for this app',
         languageLabel: 'Language',
-        languageSubtitle: 'English by default; French available',
+        languageSubtitle: 'Follows this phone by default; English or French',
+        appearanceLabel: 'Appearance',
+        appearanceSubtitle: 'Light, dark, or the system setting',
         securityLabel: 'Security',
         securitySubtitleStandard: 'No extra confirmation before responding',
         securitySubtitleProtected: 'Ask for device confirmation before approving or denying',
@@ -36,6 +45,7 @@ export const resources = {
         dangerZoneSubtitle: 'Delete enrollments or clear all data',
         licensesLabel: 'Open Source Licenses',
         licensesSubtitle: 'Third-party license listing',
+        publicAlpha: 'Public alpha',
       },
       security: {
         title: 'Security',
@@ -51,13 +61,13 @@ export const resources = {
         unavailableBody:
           'This device does not currently support the stronger device confirmation mode required for protected approvals.',
         preferenceNoteEyebrow: 'This phone',
-        preferenceNoteTitle: 'This setting is your device preference',
+        preferenceNoteTitle: 'Device confirmation on this phone',
         preferenceNoteBody:
-          'When enabled, this phone asks for device confirmation before it approves or denies requests. Android may use strong biometrics or the device credential, depending on what is available.',
+          'When enabled, this phone asks for biometrics or your screen lock before approving or denying.',
         declarativeNoteEyebrow: 'Current version',
-        declarativeNoteTitle: 'This protection is enforced by the app',
+        declarativeNoteTitle: 'Honest limits',
         declarativeNoteBody:
-          'The app asks for local device confirmation before responding. The signing key itself does not require that confirmation, and the backend receives no cryptographic proof that it occurred or was bound to the signature.',
+          'Confirmation happens on this phone. The server is not cryptographically told that it took place.',
         settingChangeCancelled:
           'The change was canceled. Protected confirmation remains enabled.',
         settingChangeUnavailable:
@@ -67,7 +77,7 @@ export const resources = {
       },
       releaseNotes: {
         accessibilityLabel: 'What is new in Ezkey Mobile',
-        eyebrow: 'Version 1.0',
+        eyebrow: 'Public alpha',
         title: 'Ezkey Mobile for Android',
         intro:
           'Approve sign-ins from a trusted Android device. Scan an enrollment QR from your Ezkey installation, then approve or deny authentication requests on this phone.',
@@ -77,37 +87,26 @@ export const resources = {
         includedTitle: 'Included in this release',
         includedItem1: 'Enroll a trusted device by scanning a QR code.',
         includedItem2: 'Approve or deny authentication requests from the mobile device.',
-        includedItem3: 'Local storage for enrollments and device cryptographic keys.',
+        includedItem3: 'Local storage for enrollments and the keys used on this phone.',
         requirementsTitle: 'Requirements',
         requirementsBody:
           'Android 12 or later. Camera access is used only to scan enrollment QR codes. Optional device confirmation (biometrics or screen lock) stays on this phone.',
-        comingNextTitle: 'Coming next',
-        comingNextItem1:
-          'Further work is planned on authentication policy, local-auth rules, and stronger cryptographic validation boundaries.',
-        comingNextItem2:
-          'Certificate pinning is planned in a lightweight Ezkey form, starting with trust on first use during enrollment and a controlled refresh path later if the pin changes.',
-        notesTitle: 'Important notes',
-        note1:
-          'Your organization runs its own Ezkey installation. This app does not collect analytics or advertising identifiers.',
       },
       comingSoon: {
         accessibilityLabel: 'Coming soon in Ezkey Mobile',
-        eyebrow: 'Near-term roadmap',
+        eyebrow: 'Coming up',
         title: 'Coming soon',
-        intro:
-          'These are the next mobile improvements that matter most for expectation-setting and practical security. This is a focused roadmap, not an exhaustive feature list.',
+        intro: 'A short look at what we plan next. Not a full feature list.',
         auth: {
-          title: 'Authentication policy and stronger validation',
+          title: 'Clearer approval rules',
           body:
-            'Future work will continue on authentication policy, local-auth enforcement, and stronger cryptographic validation. The goal is to keep the current protection honest while preparing a clearer policy model and stronger proof boundaries over time.',
+            'Make it clearer when this phone must confirm before you approve or deny — and keep that honest.',
         },
         pinning: {
-          title: 'Certificate pinning, Ezkey-style',
+          title: 'Stronger connection checks',
           body:
-            'Certificate pinning is planned in a pragmatic lightweight form. The initial direction is trust on first use during enrollment, followed by a controlled refresh path if the pin no longer matches, so later authentication cycles get meaningful network trust hardening without pretending to reach the most extreme pinning model.',
+            'Remember the server you enrolled with, so later check-ins have a clearer network trust path.',
         },
-        footer:
-          'Ezkey Mobile is intentionally aiming for practical, explicit security improvements rather than over-claiming perfection. Future work will continue in that same spirit.',
       },
       unsupportedOs: {
         accessibilityLabel: 'Unsupported Android version',
@@ -119,23 +118,40 @@ export const resources = {
       },
       locale: {
         title: 'Language',
-        intro: 'Choose the app language. Changes are saved and applied immediately.',
+        intro:
+          'Choose the app language. Changes are saved and applied immediately. System default follows the language of this phone when it is English or French.',
+        system: 'System default',
         english: 'English',
         french: 'French',
         current: 'Current language',
       },
+      appearance: {
+        title: 'Appearance',
+        intro:
+          'Choose how the app looks. System default follows the dark theme setting of this phone.',
+        system: 'System default',
+        light: 'Light',
+        dark: 'Dark',
+        current: 'Current setting',
+      },
       about: {
         accessibilityLabel: 'About Ezkey Authenticator',
         title: 'Ezkey Authenticator',
-        tagline: 'Cryptographic MFA - backend-first, self-hosted, open source.',
+        tagline: 'Confirm sign-ins from a trusted phone. Self-hosted. Open source.',
         version: 'Version',
+        channel: 'Channel',
+        publicAlpha: 'Public alpha',
+        revision: 'Revision',
+        revisionAccessibility: 'Git revision of this build',
         buildUtc: 'Build (UTC)',
         buildTimeAccessibility: 'Native app build time UTC',
         unavailable: 'unavailable',
         license: 'License',
         licenseValue: 'MIT - Open Source',
         description:
-          'Ezkey lets you enroll trusted devices and approve sign-in requests from your admin console. It is a proprietary cryptographic protocol, intentionally distinct from FIDO2/WebAuthn and passkeys, designed for operators who want full control over their authentication backend.',
+          'Ezkey lets you enroll this phone as a trusted device and approve or deny sign-in requests when an app asks you to confirm. Your organization runs Ezkey; this app is the trusted phone that confirms those sign-ins.',
+        privacyNote:
+          'This app does not collect analytics or advertising identifiers.',
         openWebsite: 'Open Ezkey website',
         openWebsiteHint: 'Opens ezkey.org in the browser',
         projectSite: 'ezkey.org - project site and updates',
@@ -190,22 +206,41 @@ export const resources = {
       licenses: {
         accessibilityLabel: 'Open source licenses',
         intro:
-          'This app bundles the following direct npm dependencies. Run yarn license:app-data in the project to refresh this list after dependency changes.',
-        generatedAtAccessibility: 'Data generated at {{value}}',
-        snapshot: 'Data snapshot: {{value}}',
+          'Ezkey Mobile is built with these components. Thanks to their authors. Tap one to read its license.',
+        generatedAtAccessibility: 'List updated on {{value}}',
+        snapshot: 'List updated: {{value}}',
         rowAccessibility: '{{name}} version {{version}}, {{license}} license',
+        rowHint: 'Opens the full license text',
+        sectionApp: 'App libraries',
+        sectionNative: '{{platform}} libraries',
+        sectionVendor: 'Vendor components',
+        sectionVendorNote: 'Provided by their vendor under their own terms, not an open source license.',
+        detail: {
+          version: 'Version',
+          license: 'License',
+          website: 'Project website',
+          websiteHint: 'Opens the project page in the browser',
+          terms: 'Read the terms',
+          termsHint: 'Opens the terms in the browser',
+          vendorNote:
+            'This component is provided by its vendor under its own terms, not an open source license.',
+          noText: 'License text not available.',
+          notFound: 'This component is no longer listed.',
+        },
       },
       enrollmentWizard: {
         integrationFallback: 'Integration',
         description: 'Description',
         organization: 'Organization',
+        account: 'Account',
+        role: 'Role',
         device: 'Device',
         server: 'Server',
         challengeInput: 'Challenge code input',
-        challengeInputHint: 'Enter the 6-digit code shown in the admin console',
+        challengeInputHint: 'Enter the 6-digit code shown with the QR code',
         requestFailed: 'Request failed.',
         unexpectedError: 'Unexpected error.',
-        missingIdOrToken: 'Enrollment ID and proof token are required.',
+        missingIdOrToken: 'The enrollment proof token is required.',
         missingAuthUrl:
           'No Auth API URL: scan a QR that includes authUrl (set ezkey.qr.auth-base-url on the server), or set EZKEY_API_BASE_URL in .env and rebuild.',
         invalidServerIdentity: 'Could not verify server identity (integration signature).',
@@ -231,7 +266,7 @@ export const resources = {
         scanDescription:
           'Have the enrollment QR visible on your workstation. Tap Open scanner to use the camera.',
         verifyLabel: 'Verify',
-        verifyTitle: 'Enter the 6-digit code from the admin console',
+        verifyTitle: 'Enter the 6-digit code shown with the QR code',
         verifyHint:
           'Tap Complete enrollment below to finish linking this device to {{name}}.',
         enrollmentDetails: 'Enrollment details',
@@ -243,7 +278,7 @@ export const resources = {
         qrUnsupportedFormat: 'Unsupported QR format',
         controlledBypassAction: 'Use controlled test seed',
         controlledBypassInputPlaceholder:
-          'Optional: paste runtime enrollment seed payload (JSON or enrollmentId|proofToken)',
+          'Optional: paste runtime enrollment seed payload (JSON or proofToken|authUrl)',
         controlledBypassHint:
           'Debug/test only. Camera scan is bypassed, but bind/verify trust checks still run.',
         controlledBypassActive: 'Controlled bypass seed used',
@@ -253,16 +288,26 @@ export const resources = {
           'Controlled test seed payload is missing. Set EZKEY_ENROLLMENT_SEED_BYPASS_QR_PAYLOAD and rebuild.',
       },
       pendingAuth: {
+        captureBlocked: 'Stop recording or mirroring the screen to answer this request.',
         challengeInput: 'Challenge code input',
-        challengeInputHint: 'Enter the 2-digit code shown in the admin console',
+        challengeInputHint: 'Enter the 2-digit code shown on the sign-in screen',
         requestFailed: 'Request failed.',
         unexpectedError: 'Unexpected error.',
+        requestNoLongerActive: 'This request is no longer active. No action is required.',
+        requestExpired: 'This request has expired.',
+        resultNotConfirmed:
+          'The response was sent, but its confirmation could not be verified. Check the sign-in where it was started.',
+        uncertainDecision:
+          'The result of this request is uncertain. Check the sign-in where it was started. This is not a failure — do not send another decision from this device.',
+        leaveDeclinesHint: 'Leaving this screen declines the request.',
+        integrationSigningUnavailable:
+          'Authentication signing is temporarily unavailable. Try again later.',
         missingPendingPublicKey:
           'Enrollment missing integration public key; cannot verify pending response.',
         invalidPendingSignature: 'Invalid integration signature on pending response.',
         malformedPendingResponse:
           'Pending response was incomplete or malformed; cannot continue safely.',
-        enterChallenge: 'Enter the 2-digit code from the admin console.',
+        enterChallenge: 'Enter the 2-digit code shown on the sign-in screen.',
         missingRespondPublicKey:
           'Enrollment missing integration public key; cannot verify respond response.',
         missingRespondSignature: 'Missing integration signature on respond response.',
@@ -299,7 +344,7 @@ export const resources = {
         createdAt: 'Created {{value}}',
         lastVerificationAt: 'Last verification {{value}}',
         pendingSuffix: 'Pending',
-        challengeHeading: 'Enter the 2-digit code from the admin console',
+        challengeHeading: 'Enter the 2-digit code shown on the sign-in screen',
         deny: 'Deny',
         sending: 'Sending...',
         approve: 'Approve',
@@ -321,6 +366,7 @@ export const resources = {
         emptyHint:
           'Tap the + button below and scan a QR code from your Ezkey-enabled service to enroll your first device.',
         tenantSection: 'Section {{tenantName}}',
+        tenantSectionEyebrow: 'Tenant',
         installationLabel: '{{name}} installation',
         collapseInstallation: 'Collapses this installation section',
         expandInstallation: 'Expands this installation section',
@@ -368,6 +414,11 @@ export const resources = {
         loading: 'Chargement...',
         back: 'Retour',
       },
+      identity: {
+        administration: 'Administration',
+        globalAdmin: 'Admin global',
+        tenantAdmin: 'Admin tenant',
+      },
       navigation: {
         home: 'Authentificateur Ezkey',
         enrollmentDetail: 'Détail de l’enrôlement',
@@ -379,8 +430,10 @@ export const resources = {
         about: 'À propos',
         releaseNotes: 'Nouveautés',
         licenses: 'Licences open source',
+        licenseDetail: 'Licence',
         dangerZone: 'Zone dangereuse',
         language: 'Langue',
+        appearance: 'Apparence',
       },
       settings: {
         general: 'Général',
@@ -389,9 +442,11 @@ export const resources = {
         releaseNotesLabel: 'Nouveautés',
         releaseNotesSubtitle: 'Contenu de cette version',
         comingSoonLabel: 'À venir',
-        comingSoonSubtitle: 'Feuille de route rapprochée et notes de cadrage',
+        comingSoonSubtitle: 'Ce que nous prévoyons ensuite pour cette application',
         languageLabel: 'Langue',
-        languageSubtitle: 'Anglais par défaut; français disponible',
+        languageSubtitle: 'Suit ce téléphone par défaut; anglais ou français',
+        appearanceLabel: 'Apparence',
+        appearanceSubtitle: 'Clair, sombre ou réglage du système',
         securityLabel: 'Sécurité',
         securitySubtitleStandard: 'Aucune confirmation supplémentaire avant de répondre',
         securitySubtitleProtected: 'Demander une confirmation de l’appareil avant d’approuver ou de refuser',
@@ -399,6 +454,7 @@ export const resources = {
         dangerZoneSubtitle: 'Supprimer des enrôlements ou effacer toutes les données',
         licensesLabel: 'Licences open source',
         licensesSubtitle: 'Liste des licences tierces',
+        publicAlpha: 'Alpha publique',
       },
       security: {
         title: 'Sécurité',
@@ -414,13 +470,13 @@ export const resources = {
         unavailableBody:
           'Cet appareil ne prend pas actuellement en charge le mode de confirmation renforcée requis pour les approbations protégées.',
         preferenceNoteEyebrow: 'Ce téléphone',
-        preferenceNoteTitle: 'Ce réglage correspond à votre préférence locale',
+        preferenceNoteTitle: 'Confirmation sur cet appareil',
         preferenceNoteBody:
-          'Lorsque ce mode est activé, ce téléphone demande une confirmation de l’appareil avant d’approuver ou de refuser une demande. Android peut utiliser une biométrie forte ou le code de l’appareil selon ce qui est disponible.',
+          'Lorsque ce mode est activé, ce téléphone demande la biométrie ou le verrouillage de l’écran avant d’approuver ou de refuser.',
         declarativeNoteEyebrow: 'Version actuelle',
-        declarativeNoteTitle: 'Cette protection est appliquée par l’application',
+        declarativeNoteTitle: 'Limites honnêtes',
         declarativeNoteBody:
-          'L’application demande une confirmation locale de l’appareil avant de répondre. La clé de signature elle-même n’exige pas cette confirmation et le backend ne reçoit aucune preuve cryptographique qu’elle a eu lieu ou qu’elle était liée à la signature.',
+          'La confirmation a lieu sur ce téléphone. Le serveur n’en reçoit pas de preuve cryptographique.',
         settingChangeCancelled:
           'Le changement a été annulé. La confirmation renforcée reste activée.',
         settingChangeUnavailable:
@@ -430,7 +486,7 @@ export const resources = {
       },
       releaseNotes: {
         accessibilityLabel: 'Nouveautés de Ezkey Mobile',
-        eyebrow: 'Version 1.0',
+        eyebrow: 'Alpha publique',
         title: 'Ezkey Mobile pour Android',
         intro:
           'Approuvez les connexions depuis un appareil Android de confiance. Scannez un QR d’enrôlement de votre installation Ezkey, puis approuvez ou refusez les demandes d’authentification sur ce téléphone.',
@@ -440,37 +496,27 @@ export const resources = {
         includedTitle: 'Ce qui est inclus',
         includedItem1: 'Enrôlement d’un appareil de confiance par code QR.',
         includedItem2: 'Approbation ou refus des demandes d’authentification depuis l’appareil mobile.',
-        includedItem3: 'Stockage local des enrôlements et des clés cryptographiques de l’appareil.',
+        includedItem3: 'Stockage local des enrôlements et des clés utilisées sur ce téléphone.',
         requirementsTitle: 'Prérequis',
         requirementsBody:
           'Android 12 ou plus récent. L’accès à la caméra sert uniquement à scanner les QR d’enrôlement. La confirmation facultative sur l’appareil (biométrie ou verrouillage) reste sur ce téléphone.',
-        comingNextTitle: 'À venir',
-        comingNextItem1:
-          'Du travail supplémentaire est prévu sur la policy d’authentification, les règles de réauthentification locale et des frontières de validation cryptographique plus fortes.',
-        comingNextItem2:
-          'Le certificate pinning est prévu sous une forme légère à la manière Ezkey, en commençant par un trust on first use pendant l’enrôlement et un parcours contrôlé de rafraîchissement si le pin change par la suite.',
-        notesTitle: 'Notes importantes',
-        note1:
-          'Votre organisation exploite sa propre installation Ezkey. Cette application ne collecte pas d’analytique ni d’identifiants publicitaires.',
       },
       comingSoon: {
         accessibilityLabel: 'À venir dans Ezkey Mobile',
-        eyebrow: 'Feuille de route rapprochée',
+        eyebrow: 'Prochaines étapes',
         title: 'À venir',
         intro:
-          'Voici les prochains chantiers mobiles les plus utiles pour cadrer les attentes et faire progresser la sécurité de façon pragmatique. Il s’agit d’une feuille de route ciblée, pas d’une liste exhaustive.',
+          'Un aperçu court de ce que nous prévoyons ensuite. Pas une liste exhaustive.',
         auth: {
-          title: 'Policy d’authentification et validation plus forte',
+          title: 'Règles d’approbation plus claires',
           body:
-            'Le travail futur va continuer sur la policy d’authentification, l’application locale des exigences et une validation cryptographique plus forte. L’objectif est de garder la protection actuelle honnête tout en préparant avec le temps un modèle de policy plus clair et de meilleures frontières de preuve.',
+            'Rendre plus clair le moment où ce téléphone doit confirmer avant d’approuver ou de refuser — en restant honnête.',
         },
         pinning: {
-          title: 'Certificate pinning, à la manière Ezkey',
+          title: 'Contrôles de connexion plus solides',
           body:
-            'Le certificate pinning est prévu sous une forme légère et assumée. La direction initiale est un trust on first use pendant l’enrôlement, suivi d’un petit cycle de rafraîchissement contrôlé si le pin ne correspond plus, afin de renforcer utilement la confiance réseau des cycles d’authentification suivants sans prétendre atteindre le modèle de pinning le plus extrême.',
+            'Mémoriser le serveur auquel vous vous êtes enrôlé, pour que les vérifications suivantes aient un chemin de confiance réseau plus clair.',
         },
-        footer:
-          'Ezkey Mobile vise volontairement des améliorations de sécurité pratiques et explicites plutôt que des promesses excessives. La suite du travail restera dans ce même esprit.',
       },
       unsupportedOs: {
         accessibilityLabel: 'Version Android non prise en charge',
@@ -483,23 +529,40 @@ export const resources = {
       locale: {
         title: 'Langue',
         intro:
-          'Choisissez la langue de l’application. Les changements sont enregistrés et appliqués immédiatement.',
+          'Choisissez la langue de l’application. Les changements sont enregistrés et appliqués immédiatement. Par défaut du système suit la langue de ce téléphone si c’est l’anglais ou le français.',
+        system: 'Par défaut du système',
         english: 'Anglais',
         french: 'Français',
         current: 'Langue actuelle',
       },
+      appearance: {
+        title: 'Apparence',
+        intro:
+          'Choisissez l’apparence de l’application. Par défaut du système suit le réglage du thème sombre de ce téléphone.',
+        system: 'Par défaut du système',
+        light: 'Clair',
+        dark: 'Sombre',
+        current: 'Réglage actuel',
+      },
       about: {
         accessibilityLabel: 'À propos de l’authentificateur Ezkey',
         title: 'Authentificateur Ezkey',
-        tagline: 'AMF cryptographique - backend-first, auto-hébergée, open source.',
+        tagline:
+          'Confirmez les connexions depuis un téléphone de confiance. Auto-hébergé. Open source.',
         version: 'Version',
+        channel: 'Canal',
+        publicAlpha: 'Alpha publique',
+        revision: 'Révision',
+        revisionAccessibility: 'Révision Git de ce build',
         buildUtc: 'Build (UTC)',
         buildTimeAccessibility: 'Heure de build native de l’application en UTC',
         unavailable: 'indisponible',
         license: 'Licence',
         licenseValue: 'MIT - Open Source',
         description:
-          'Ezkey vous permet d’enrôler des appareils de confiance et d’approuver des demandes de connexion depuis votre console d’administration. Il s’agit d’un protocole cryptographique propriétaire, volontairement distinct de FIDO2/WebAuthn et des passkeys, conçu pour les opérateurs qui veulent un contrôle complet sur leur backend d’authentification.',
+          'Ezkey vous permet d’enrôler ce téléphone comme appareil de confiance et d’approuver ou de refuser les demandes de connexion lorsqu’une application vous demande de confirmer. Votre organisation exploite Ezkey ; cette application est le téléphone de confiance qui confirme ces connexions.',
+        privacyNote:
+          'Cette application ne collecte ni analytiques ni identifiants publicitaires.',
         openWebsite: 'Ouvrir le site web Ezkey',
         openWebsiteHint: 'Ouvre ezkey.org dans le navigateur',
         projectSite: 'ezkey.org - site du projet et mises à jour',
@@ -554,22 +617,42 @@ export const resources = {
       licenses: {
         accessibilityLabel: 'Licences open source',
         intro:
-          'Cette application embarque les dépendances npm directes suivantes. Exécutez yarn license:app-data dans le projet pour rafraîchir cette liste après une modification des dépendances.',
-        generatedAtAccessibility: 'Données générées à {{value}}',
-        snapshot: 'Instantané des données : {{value}}',
+          'Ezkey Mobile est construite avec ces composants. Merci à leurs auteurs. Touchez-en un pour lire sa licence.',
+        generatedAtAccessibility: 'Liste mise à jour le {{value}}',
+        snapshot: 'Liste mise à jour : {{value}}',
         rowAccessibility: '{{name}} version {{version}}, licence {{license}}',
+        rowHint: 'Ouvre le texte complet de la licence',
+        sectionApp: 'Bibliothèques de l’application',
+        sectionNative: 'Bibliothèques {{platform}}',
+        sectionVendor: 'Composants d’éditeurs',
+        sectionVendorNote:
+          'Fournis par leur éditeur selon ses propres conditions, pas sous une licence open source.',
+        detail: {
+          version: 'Version',
+          license: 'Licence',
+          website: 'Site du projet',
+          websiteHint: 'Ouvre la page du projet dans le navigateur',
+          terms: 'Lire les conditions',
+          termsHint: 'Ouvre les conditions dans le navigateur',
+          vendorNote:
+            'Ce composant est fourni par son éditeur selon ses propres conditions, pas sous une licence open source.',
+          noText: 'Texte de licence indisponible.',
+          notFound: 'Ce composant ne figure plus dans la liste.',
+        },
       },
       enrollmentWizard: {
         integrationFallback: 'Intégration',
         description: 'Description',
         organization: 'Organisation',
+        account: 'Compte',
+        role: 'Rôle',
         device: 'Appareil',
         server: 'Serveur',
         challengeInput: 'Saisie du code de challenge',
-        challengeInputHint: 'Entrez le code à 6 chiffres affiché dans la console d’administration',
+        challengeInputHint: 'Entrez le code à 6 chiffres affiché avec le code QR',
         requestFailed: 'Échec de la requête.',
         unexpectedError: 'Erreur inattendue.',
-        missingIdOrToken: 'L’identifiant d’enrôlement et le proof token sont requis.',
+        missingIdOrToken: 'Le proof token d’enrôlement est requis.',
         missingAuthUrl:
           'Aucune URL Auth API : scannez un QR qui inclut authUrl (définissez ezkey.qr.auth-base-url côté serveur), ou configurez EZKEY_API_BASE_URL dans .env puis reconstruisez.',
         invalidServerIdentity:
@@ -596,7 +679,7 @@ export const resources = {
         scanDescription:
           'Gardez le QR d’enrôlement visible sur votre poste de travail. Touchez Ouvrir le scanner pour utiliser la caméra.',
         verifyLabel: 'Vérification',
-        verifyTitle: 'Entrez le code à 6 chiffres de la console d’administration',
+        verifyTitle: 'Entrez le code à 6 chiffres affiché avec le code QR',
         verifyHint:
           'Touchez Terminer l’enrôlement ci-dessous pour finaliser la liaison de cet appareil à {{name}}.',
         enrollmentDetails: 'Détails de l’enrôlement',
@@ -608,7 +691,7 @@ export const resources = {
         qrUnsupportedFormat: 'Format QR non pris en charge',
         controlledBypassAction: 'Utiliser la seed de test contrôlée',
         controlledBypassInputPlaceholder:
-          'Optionnel : collez la charge seed runtime (JSON ou enrollmentId|proofToken)',
+          'Optionnel : collez la charge seed runtime (JSON ou proofToken|authUrl)',
         controlledBypassHint:
           'Debug/test uniquement. Le scan caméra est contourné, mais les vérifications de confiance bind/verify restent actives.',
         controlledBypassActive: 'Seed via contournement contrôlé utilisée',
@@ -618,16 +701,26 @@ export const resources = {
           'La charge utile de seed de test contrôlée est absente. Définissez EZKEY_ENROLLMENT_SEED_BYPASS_QR_PAYLOAD puis reconstruisez.',
       },
       pendingAuth: {
+        captureBlocked: 'Arrêtez l’enregistrement ou la recopie de l’écran pour répondre à cette demande.',
         challengeInput: 'Saisie du code de challenge',
-        challengeInputHint: 'Entrez le code à 2 chiffres affiché dans la console d’administration',
+        challengeInputHint: 'Entrez le code à 2 chiffres affiché sur l’écran de connexion',
         requestFailed: 'Échec de la requête.',
         unexpectedError: 'Erreur inattendue.',
+        requestNoLongerActive: "Cette demande n'est plus active. Aucune action requise.",
+        requestExpired: 'Cette demande a expiré.',
+        resultNotConfirmed:
+          "La réponse a été envoyée, mais sa confirmation n'a pas pu être vérifiée. Vérifiez l'écran de connexion où vous avez commencé.",
+        uncertainDecision:
+          "Le résultat de cette demande est incertain. Vérifiez l'écran de connexion où vous avez commencé. Ce n'est pas un échec — n'envoyez pas une nouvelle décision depuis cet appareil.",
+        leaveDeclinesHint: 'Quitter cet écran refuse la demande.',
+        integrationSigningUnavailable:
+          "La signature d'authentification est temporairement indisponible. Réessayez plus tard.",
         missingPendingPublicKey:
           'L’enrôlement ne contient pas de clé publique d’intégration; impossible de vérifier la réponse pending.',
         invalidPendingSignature: 'Signature d’intégration invalide sur la réponse pending.',
         malformedPendingResponse:
           'La réponse pending était incomplète ou mal formée; impossible de continuer en sécurité.',
-        enterChallenge: 'Entrez le code à 2 chiffres depuis la console d’administration.',
+        enterChallenge: 'Entrez le code à 2 chiffres affiché sur l’écran de connexion.',
         missingRespondPublicKey:
           'L’enrôlement ne contient pas de clé publique d’intégration; impossible de vérifier la réponse respond.',
         missingRespondSignature: 'Signature d’intégration manquante sur la réponse respond.',
@@ -665,7 +758,7 @@ export const resources = {
         createdAt: 'Créé {{value}}',
         lastVerificationAt: 'Dernière vérification {{value}}',
         pendingSuffix: 'En attente',
-        challengeHeading: 'Entrez le code à 2 chiffres de la console d’administration',
+        challengeHeading: 'Entrez le code à 2 chiffres affiché sur l’écran de connexion',
         deny: 'Refuser',
         sending: 'Envoi...',
         approve: 'Approuver',
@@ -687,6 +780,7 @@ export const resources = {
         emptyHint:
           'Touchez le bouton + ci-dessous puis scannez un code QR de votre service compatible Ezkey pour enrôler votre premier appareil.',
         tenantSection: 'Section {{tenantName}}',
+        tenantSectionEyebrow: 'Tenant',
         installationLabel: 'Installation {{name}}',
         collapseInstallation: 'Replie cette section d’installation',
         expandInstallation: 'Déplie cette section d’installation',

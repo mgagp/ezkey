@@ -1,0 +1,379 @@
+# GitHub CI/CD and repository-settings best practices — Ezkey inventory and plan
+
+**Audience:** eventual external evaluator comparing Ezkey to generally accepted GitHub /
+OpenSSF practice for a multi-ecosystem public OSS security product (Java/Spring + Maven,
+TypeScript/React Admin UI, React Native/Android, Python CLI, Docker).
+
+**Scope:** documentation and prioritization only. This PR no longer modifies workflows —
+`persist-credentials` and the CodeQL header/`security-extended` suite live on `main` via
+[#809](https://github.com/mgagp/ezkey/pull/809) (and related). This file does **not** change
+repository Settings.
+
+**Decision (2026-10-14, PR [#808](https://github.com/mgagp/ezkey/pull/808)):** Keep a living
+inventory and phased improvement plan in this document (linked from
+[`docs/README.md`](../README.md) and [`docs/DEVELOPMENT.md`](../DEVELOPMENT.md) § Continuous
+Integration) so evaluators and maintainers share one source of truth for CI/governance parity —
+without inventing a methodology `I-*` / `TB-*` for routine hygiene.
+
+**Inventory snapshot:** 2026-10-14 (repo `mgagp/ezkey`, default branch `main`). Items that could
+not be verified via API or committed files are marked **to confirm by Marc in Settings**.
+**Refresh cadence:** re-check §1 during the Monday `dependabot-curated` full pass (and whenever
+Settings or workflows change in the same PR).
+
+**Prior CI baseline:** PR [#697](https://github.com/mgagp/ezkey/pull/697) (merged 2026-10-07)
+introduced path-filtered Admin UI / Maven / mobile checks and aggregate **`ci-gate`**. Living
+operator notes: [`docs/DEVELOPMENT.md`](../DEVELOPMENT.md) § Continuous Integration. CodeQL advanced
+setup and scanning policy: PR [#805](https://github.com/mgagp/ezkey/pull/805) (merged 2026-10-14,
+head `f26cbe55`) plus [`docs/SECURITY_POSTURE.md`](../SECURITY_POSTURE.md) § Code scanning policy —
+five language analyses uploaded on `main` at that commit.
+
+---
+
+## 1. Current posture inventory
+
+### 1.1 Committed workflows and config
+
+| Asset | Present? | Notes (verified in tree) |
+|-------|----------|--------------------------|
+| [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) | Yes | Aggregate CI: path filter → `admin-ui` / `backend` / `mobile` / `cli-python` → **`ci-gate`**. Top-level `permissions: contents: read`. Concurrency cancel-in-progress on PRs. Job timeouts. Third-party actions SHA-pinned; version comments are usually `# vX.Y.Z`, but some are major-only (`# v7` on `setup-node` / `upload-artifact` at `ci.yml` ~L134 and ~L224). `persist-credentials: false` on checkouts in this workflow. No `pull_request_target`. |
+| [`.github/workflows/ezkey-mobile-unit-tests.yml`](../../.github/workflows/ezkey-mobile-unit-tests.yml) | Yes | Reusable: Yarn `validate:ci`, license snapshot, Android JVM unit tests, **16 KB APK alignment**. **JDK 17** for Android (LTS toolchain policy below). |
+| [`.github/workflows/maven-dependency-submission.yml`](../../.github/workflows/maven-dependency-submission.yml) | Yes | See §1.1.1. Not part of `ci-gate`. |
+| [`.github/workflows/codeql.yml`](../../.github/workflows/codeql.yml) | Yes (since #805) | Advanced CodeQL matrix: `java-kotlin`, `javascript-typescript`, `python`, `c-cpp`, `actions` (`codeql.yml` ~L37–45). **Swift intentionally excluded.** Weekly cron; SHA-pinned `codeql-action`; `persist-credentials: false` on checkout; local model pack. Header documents Advanced + `security-extended` ([#809](https://github.com/mgagp/ezkey/pull/809)). |
+| [`.github/codeql/codeql-config.yml`](../../.github/codeql/codeql-config.yml) | Yes | `queries: security-extended` ([#809](https://github.com/mgagp/ezkey/pull/809)); `paths-ignore: ezkey-tests/**`. |
+| [`.github/dependabot.yml`](../../.github/dependabot.yml) | Yes | See §1.1.2. |
+| `.github/CODEOWNERS` | **No** | File absent. |
+| [`.github/pull_request_template.md`](../../.github/pull_request_template.md) | Yes | Checklist includes `ci-gate`, CodeQL alerts, threads, secrets. |
+| `.github/ISSUE_TEMPLATE/` | **No** | Directory absent (see diminishing-returns). |
+| [`SECURITY.md`](../../SECURITY.md) | Yes | Private vulnerability reporting URL; lists CI / CodeQL / Dependabot / secret scanning practices. Last updated **2026-10-14** (#808). |
+| [`docs/SECURITY_POSTURE.md`](../SECURITY_POSTURE.md) | Yes | Honest product security claims + § Code scanning policy (SLAs, dismiss rules). |
+| [`.github/workflows/scorecard.yml`](../../.github/workflows/scorecard.yml) | Yes | OpenSSF Scorecard (`ossf/scorecard-action`); push/`main` + weekly cron + `branch_protection_rule` + `workflow_dispatch`; `publish_results: true`; SARIF → code scanning. README badge deferred to a follow-up after first publish. |
+| `dependency-review.yml` | **Yes** | Warn-only on manifest and workflow PRs; not in `ci-gate` (G7). |
+| `issue-response-reminder.yml` | **Yes** | Daily. Reminds the maintainer in one tracking issue when a report from outside the project has had no maintainer response for 7 days (alert at 12), backing the 14-day promise in `SECURITY.md` and `CONTRIBUTING.md` (2026-11-08). Logic in `scripts/issue-response-reminder.sh`, dry-runnable, locked by `scripts/issue-response-reminder.test.sh` (no GitHub). Does not cover private vulnerability reports or the `security@ezkey.org` mailbox. |
+| SBOM / provenance / release / harden-runner workflows | **No** | Not in `.github/workflows/`. |
+
+#### 1.1.1 Maven dependency submission
+
+Workflow [`.github/workflows/maven-dependency-submission.yml`](../../.github/workflows/maven-dependency-submission.yml):
+
+- **Triggers:** `push` to `main` when paths match `pom.xml`, `**/pom.xml`, `checkstyle-config/**`,
+  `.mvn/**`, or the workflow file itself; plus `workflow_dispatch`.
+- **Permissions:** workflow top-level `permissions: {}`; job `submit-maven` sets
+  `contents: write` for graph upload. Checkouts use `persist-credentials: false`.
+- **Bootstrap:** JDK **25** + install unpublished `checkstyle-config` (same as backend CI).
+- **Implication for “main green”:** a docs-only push to `main` does **not** re-run this
+  workflow. Graph freshness is judged on the last POM/`checkstyle-config`/`.mvn` change (or a
+  manual dispatch), not on every green `ci-gate` on `main`.
+
+#### 1.1.2 Dependabot version updates (`.github/dependabot.yml`)
+
+| Ecosystem | Directory / paths | Cadence | Limit | Cooldown |
+|-----------|-------------------|---------|-------|----------|
+| Maven | `/` | **daily** | 10 | default/patch/minor 3d; major 7d |
+| npm | `/ezkey-admin-ui`, `/ezkey-sdk/javascript`, `/ezkey_mobile` | **daily** | 10 | same |
+| github-actions | `/` | **weekly** | 10 | default 3d only |
+| pip | `/ezkey-cli-python` | **weekly** | 10 | 3d / major 7d |
+| npm | `/product-docs/site` | **weekly** | 10 | 3d / major 7d |
+| gradle | `/ezkey_mobile/android` | **weekly** | 10 | 3d / major 7d |
+| docker | `/docker`, `/docker/bootstrap-init`, `/docker/javamelody`, `/ezkey-admin-ui/docker` | **weekly** | 10 | default 3d |
+| docker-compose | `/docker`, `/experimental-hybrid/lightsail` | **weekly** | 10 | default 3d |
+
+**Ignores (line refs in `dependabot.yml`):**
+
+- `@types/node` semver-major — Admin UI (~L48–51) and SDK (~L80–84); track root `.nvmrc` Node 24.
+- Gradle: `com.android.tools.build:gradle`, `org.jetbrains.kotlin:*`, `gradle-wrapper`, and all
+  semver-majors (~L214–219). AGP / Kotlin / wrapper follow React Native upgrades, not Dependabot
+  (~L200–201).
+- Docker / docker-compose: all semver-majors (~L250–252, ~L305–307).
+- Docker `maven` image: non-LTS Temurin ranges (JDK 26–28 style) from the #764 / #762 lineage
+  (~L253–276).
+
+**Groups:** Maven SpotBugs/Checkstyle/Rewrite; Admin UI eslint/typescript/vite; mobile tooling /
+RN-core / vision-camera / navigation; site / android-gradle / docker / compose minor-patch groups
+(see file). **Orval is not grouped** (solo PRs → Orval risk grid).
+
+**Known gap — Android Gradle CVE alerts:** version updates only; native Android CVE alerts are
+**not** produced because the dependency graph does not capture these Gradle deps
+(`dependabot.yml` ~L196–201; automatic Gradle submission declined for `includeBuild` /
+`node_modules` coupling).
+
+Security updates are not delayed by cooldown (Dependabot product behavior).
+
+#### 1.1.3 LTS toolchain policy (CI-enforced)
+
+| Surface | Pin | Where |
+|---------|-----|-------|
+| Node.js | **24** LTS | Root [`.nvmrc`](../../.nvmrc); Admin UI + mobile CI `node-version-file` |
+| Backend JDK | **25** LTS (Temurin) | `ci.yml` backend + Maven dependency submission; `scripts/build.sh` |
+| Android / Gradle JDK | **17** | `ezkey-mobile-unit-tests.yml` (not JDK 25) |
+
+#### 1.1.4 Actions hardening notes
+
+**Already in place (good):** least-privilege default `contents: read` on CI; no
+`pull_request_target`; SHA-pinned actions; concurrency groups; timeouts; `persist-credentials: false`
+on checkouts in `ci.yml`, mobile, Maven submission, and CodeQL (`codeql.yml` on `main` via #809
+lineage). Aligns with OpenSSF Scorecard **Token-Permissions**, **Pinned-Dependencies**, and
+**Dangerous-Workflow** ([checks.md](https://github.com/ossf/scorecard/blob/main/docs/checks.md)).
+
+**Quality gates in `ci-gate` today:** Spotless + Checkstyle + Maven unit tests (excl. Docker
+`ezkey-tests`); Admin UI tsc/lint/Vitest/build; mobile Yarn validate + Android JVM tests + 16 KB
+gate; Python CLI pytest on 3.12/3.14. **Not** in PR CI: Playwright, full Docker functional suite,
+doctor/pentest hygiene, Jacoco coverage thresholds, Android `lint`, SonarQube (mentioned as
+aspiration in `DEVELOPMENT.md` but not wired — see G18 hygiene).
+
+### 1.2 Repository ruleset and merge settings (API-verified 2026-11-06)
+
+| Setting | Observed | Source |
+|---------|----------|--------|
+| Ruleset | **Basic protection**, `enforcement: active`, targets `~DEFAULT_BRANCH` | `GET /repos/mgagp/ezkey/rulesets/7558701` |
+| Rules | `deletion`, `non_fast_forward`, `required_status_checks` with context **`ci-gate`** only, `pull_request` with **0** required approvals (added 2026-11-06, G5). GitHub also returns `require_extra_approval_for_unattributed_changes: true`, which we did not request and could not find documented; maintainer and Dependabot PRs still merge normally | Same |
+| Strict up-to-date | `strict_required_status_checks_policy: false` | Same |
+| Bypass | `RepositoryRole` `actor_id: 5`, `bypass_mode: pull_request` (Admin role bypass on PRs only; direct pushes are refused) | Same |
+| Required approvals / CODEOWNERS review / signed commits / linear history | **Not** present on this ruleset | Same |
+| Classic branch protection API | 404 `Branch not protected`: none on `main` | `GET …/branches/main/protection` |
+| `allow_squash_merge` / `allow_merge_commit` / `allow_rebase_merge` | All **true** | Repo REST |
+| `delete_branch_on_merge` | **false** | Repo REST |
+| `allow_auto_merge` / `allow_update_branch` | **true** (used by `dependabot-auto-merge.yml`) / **false** | Repo REST |
+| Deploy environments | One env: `copilot`, **no** protection rules | `GET …/environments` |
+
+**Ruleset vs bot autonomy:** Required status is **`ci-gate` only** — path-filtered jobs may skip;
+every change to `main` goes through a PR, and Dependabot and agent PRs merge when `ci-gate` is green
+and Marc (or auto-merge for allowed Dependabot patches) merges. Agents and Dependabot **cannot**
+self-approve. Admin bypass (`actor_id: 5`, PRs only) remains the solo-maintainer escape hatch on a
+PR whose checks are stuck; it no longer permits a direct push. Soft merge bar (#787) still applies
+in process even when bypass is available.
+
+**`allow_auto_merge`:** currently **false**. Options for later: enable for **T1-only** Dependabot
+lots under `dependabot-curated`, or keep an **explicit decision not to enable** (preferred until
+alerts + dependency-review land). Record the choice in the Monday campaign note when decided.
+
+### 1.3 Security product features (mixed verification)
+
+| Feature | Evidence | Status |
+|---------|----------|--------|
+| **Private vulnerability reporting** | `GET …/private-vulnerability-reporting` → `enabled: true` | **Verified on** |
+| **Dependency graph** | Was **disabled** (Maven submission failed on runs [38298454193](https://github.com/mgagp/ezkey/actions/runs/38298454193) and [38447903477](https://github.com/mgagp/ezkey/actions/runs/38447903477)). Marc **re-enabled** 2026-10-13. Operator posture documented in [#798](https://github.com/mgagp/ezkey/pull/798) (merged `638b4214`). | **G4 done** |
+| **Automatic dependency submission** | Docs say Disabled 2026-10-08; Actions still lists dynamic workflow type | **to confirm by Marc in Settings** (listing ≠ enabled) |
+| **Dependabot version updates** | `dependabot.yml` + open Dependabot PRs + dynamic “Dependabot Updates” workflow | **Verified on** |
+| **Dependabot alerts** | Enabled 2026-11-06 (`PUT …/vulnerability-alerts`, Marc's decision): 156 open at activation, triage per [`hygiene/dependabot`](../../product-docs/global/hygiene/dependabot/README.md) § *Alerts* | **Verified on** |
+| **Dependabot security updates** | `security_and_analysis.dependabot_security_updates: enabled`. Patch-level PRs enter `dependabot-auto-merge.yml` with its exclusions (crypto, Docker, Gradle, RN core, `deferred:*`, `hitl*`) | **On by decision** (2026-11-06, after stock triage) |
+| **Secret scanning** | `security_and_analysis.secret_scanning: enabled` (API, 2026-11-05) | **Verified on** |
+| **Secret scanning push protection** | `security_and_analysis.secret_scanning_push_protection: enabled` (API, 2026-11-05) | **Verified on** |
+| **Code scanning — Advanced** | #805 merged; five analyses uploaded on `main` at `f26cbe55` | **G1 done** |
+| **CodeQL query suite** | `security-extended` restored in [#809](https://github.com/mgagp/ezkey/pull/809) (`287757ed`) | **Done** — default suite had undercounted (log-injection / sensitive-log) |
+| **CodeQL open-alert baseline on `main`** | Re-analyze under `security-extended` after #809/#810; record count in a later inventory refresh | **Pending re-count** (default-suite 2026-10-14 figure undercounts) |
+| **Alert #16 (`java/sensitive-log`)** | Fixed in [#810](https://github.com/mgagp/ezkey/pull/810) (`115dde38`) — recovery token fingerprint + LogSanitizer in `AdminOperationsRateLimitService` | **Fixed** |
+| **Alert #9 (`java/ssrf`)** | Barrier model + stored-URL revalidation in [#810](https://github.com/mgagp/ezkey/pull/810) (`AuthApiUrlValidator` / demo-device) | **Addressed** (confirm closure under `security-extended`) |
+| **Code scanning as required check / ruleset `code_scanning` rule** | Not on ruleset `7558701` | Policy-only by decision (G24) |
+| **Security advisory / SECURITY.md** | Present; public alpha honesty | Good |
+| **OpenSSF Best Practices badge** | Answers drafted 2026-11-08 against `main`, with evidence; Marc holds the draft and his approved personal declarations outside the repo. Only blocker: `release_notes`, until the first product release (#1211). First-response promise: [`report-intake`](../../product-docs/global/hygiene/report-intake/README.md) | **Entry to create** (Marc, GitHub login) |
+| **Security Insights file** | [`.github/security-insights.yml`](../../.github/security-insights.yml), spec 2.2.0, schema-validated (2026-11-06). Lets the OSPS Baseline scanner evaluate controls it previously skipped; review `last-reviewed` in the Monday full pass | **Present** |
+
+### 1.4 Process and hygiene (repo memory)
+
+| Practice | Ezkey today |
+|----------|-------------|
+| Merge bar | Maintainer go + `ci-gate` green + **zero open CodeQL alerts** + **zero unresolved review threads** (recorded in [#787](https://github.com/mgagp/ezkey/pull/787); also PR template / `AGENTS.md`) |
+| Peer review | Soft process (“Manual Review”); **not** ruleset-enforced (solo: author cannot approve own PR) |
+| Dependabot curation | [#678](https://github.com/mgagp/ezkey/pull/678) risk model: tiers **T1–T4**; Orval **O0–O3** grid; Docker + Android Gradle under HITL until [#702](https://github.com/mgagp/ezkey/pull/702); labels `deferred:later-train` and `deferred:rn-upgrade`; weekday **autonomous light** passes for **T1–T3** and Orval **O0/O1**. Canon: [`product-docs/global/hygiene/dependabot/`](../../product-docs/global/hygiene/dependabot/) + skill `dependabot-curated` |
+| CodeQL triage | Hygiene lane `product-docs/global/hygiene/code-scanning/` + SLAs in `SECURITY_POSTURE` |
+| Deploy traceability | Git SHA ledger + monorepo product SemVer decision (ADR-0017 / [#1211](https://github.com/mgagp/ezkey/issues/1211); [`VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../VERSIONING_AND_DEPLOY_TRACEABILITY.md)); **no** GitHub Releases / signed publish train yet |
+| Labels | Rich lane/type/component/priority/status set (verified via `gh label list`) |
+| Stale bot | Not present (diminishing returns) |
+
+### 1.5 Role owners used in the plan
+
+Plan owner suggestions use the names in
+[`product-docs/global/team-roles.md`](../../product-docs/global/team-roles.md)
+(Fred = hygiene/CI, Christophe = security, Edgar = deploy/edge, Justin = Android builds, Marc =
+Settings + merge authority). Do not duplicate that table here.
+
+---
+
+## 2. Best-practice reference (external norms)
+
+Primary references:
+
+- GitHub Docs: [About rulesets](https://docs.github.com/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets),
+  [Available rules](https://docs.github.com/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets),
+  [Security hardening for GitHub Actions](https://docs.github.com/actions/security-guides/security-hardening-for-github-actions),
+  [Dependabot](https://docs.github.com/code-security/dependabot),
+  [Dependency review](https://docs.github.com/code-security/supply-chain-security/understanding-your-software-supply-chain/about-dependency-review),
+  [Code scanning](https://docs.github.com/code-security/code-scanning),
+  [Secret scanning](https://docs.github.com/code-security/secret-scanning),
+  [OIDC hardening](https://docs.github.com/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect).
+- OpenSSF Scorecard checks (Branch-Protection, Token-Permissions, Pinned-Dependencies,
+  Dangerous-Workflow, SAST, Dependency-Update-Tool, Security-Policy, etc.):
+  [docs/checks.md](https://github.com/ossf/scorecard/blob/main/docs/checks.md).
+- SLSA ([slsa.dev](https://slsa.dev/)) for release provenance when publishing starts.
+- OWASP [CI/CD Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/CI_CD_Security_Cheat_Sheet.html).
+
+Evaluator-facing bar for a project like Ezkey (public alpha, security-sensitive, multi-language):
+
+1. Protected default branch with required CI + no force-push / no deletion.
+2. Documented disclosure path (`SECURITY.md` + private reporting).
+3. Least-privilege, SHA-pinned Actions; no dangerous `pull_request_target` patterns.
+4. Dependabot (version + alerts) across ecosystems; dependency graph populated.
+5. CodeQL (or equivalent SAST) on the languages Ezkey chooses to analyze (here: Java/Kotlin, JS/TS,
+   Python, C/C++, Actions — **not** Swift) with a triage policy.
+6. Secret scanning + push protection.
+7. Honest gap between “lab / alpha” and production release signing (SLSA, attestations) — do not fake maturity.
+
+Ezkey already meets much of (1)–(5) in spirit; Settings confirmation and a few high-value
+controls close the evaluator gap without overbuilding.
+
+---
+
+## 3. Gap table
+
+Effort: **S** = settings toggle or small docs/config; **M** = one workflow or ruleset change +
+tests; **L** = multi-surface program (release signing, full SLSA).
+
+Value: evaluator / supply-chain / operator impact (High / Med / Low).
+
+| # | Practice | Ezkey today | Gap | Effort | Value | Priority |
+|---|----------|-------------|-----|--------|-------|----------|
+| G1 | CodeQL Advanced only (no default conflict) | #805 merged; 5 analyses on `main` at `f26cbe55` | None — **done** | — | — | **Done** |
+| G2 | Dependabot **alerts** + security updates | Alerts on since 2026-11-06; `SECURITY.md` aligned | None | S | High | **Done** 2026-11-06 (Marc) |
+| G3 | Secret scanning + push protection | Both enabled (API, 2026-11-05) | None | — | High | **Done** |
+| G4 | Dependency graph on; automatic submission off | Graph re-enabled 2026-10-13; #798 merged (`638b4214`) | Confirm automatic submission still Disabled in Settings | S | High | **Done** (graph + docs); confirm automatic submission |
+| G7 | Dependency review Action on PRs | `dependency-review.yml`, warn-only, not in `ci-gate` (2026-11-06); Maven not covered | Promote to blocking on high/critical after the alert stock is triaged | S | High | **Observing** |
+| G8 | `SECURITY.md` Advanced CodeQL wording | Updated in #808 | Reconfirm after Marc verifies Settings toggles | S | Med | P1 |
+| G5 | Ruleset: require **PR** before merge (no approval) | **Done 2026-11-06 (Marc):** `pull_request` rule on ruleset `7558701`, 0 approvals, bypass and merge methods unchanged. Direct pushes to `main` had stopped on 2026-09-21. The OSPS scanner still fails AC-03.01: v0.33.2 passes only with at least 1 required approval or an update-restriction rule. Accepted for a solo maintainer | None. Approvals stay soft / #787 | — | — | **Done** |
+| G9 | `delete_branch_on_merge` | false | Enable for hygiene | S | Low | P2 |
+| G10 | Prefer squash-only (or document merge strategy) | All three merge methods on | Pick one preferred; disable others or document | S | Low | P2 |
+| G12 | Scorecard workflow + badge | Workflow present (`scorecard.yml`); badge still absent | Keep scheduled Scorecard; add README badge after first successful publish | M | Med | P2 (workflow done; badge follow-up) |
+| G14 | Container image CVE scanning | Docker Dependabot version bumps only | Trivy/Grype job or registry scan; not a substitute for alerts | M | Med | P2 |
+| G15 | SBOM generation (CycloneDX/SPDX) | Absent | Generate on `main` / release tags; attach artifacts | M | Med | P2 |
+| G17 | Android Lint in CI | Unit tests + 16 KB only | Add `lintDebug` (or release lint) to mobile workflow | M | Med | P2 |
+| G18 | Coverage gate vs aspirational “90%” | Jacoco in POM; “90%” in `DEVELOPMENT.md`; not CI-enforced | Hygiene: either enforce a realistic floor or remove the aspirational claim from `DEVELOPMENT.md` (not a release-train item) | M | Med | P2 (hygiene) |
+| G24 | CodeQL as blocking required check | **Decided 2026-11-06 (Marc): keep policy-only.** `ci-gate` stays the single required check. CodeQL analyzes only the languages a PR changes, so a required per-language context would stay pending on PRs that skip it. The merge-ready rule (zero new unresolved alerts) covers the need | None. Revisit only if a new alert reaches `main` unnoticed. Scanners that look for required SAST (OSPS, Scorecard) may keep flagging this: accepted | — | — | **Closed** |
+| G6 | `CODEOWNERS` + optional required-reviewer paths | Absent | Only useful if paired with G5-style enforcement later; otherwise soft ownership docs | S–M | Low–Med | **P3** (tie to G5) |
+| G11 | Strict status checks (branch up to date) | `strict: false` | Skip for now — daily Dependabot PRs would force serial rebases | S | Low | **Skip / P3** |
+| G13 | Harden-runner (egress audit) | Absent | Optional later; see diminishing-returns | M | Low–Med | **P3** |
+| G19 | Signed commits | Not required | Optional ruleset rule; costly for AI agents / Dependabot | S | Low | P3 |
+| G20 | GitHub Releases + signed artifacts / image attestations (SLSA) | Explicitly not implemented; SHA ledger only | Needed when publishing packages — not for alpha SHA deploys | L | High *when releasing* | P3 / later |
+| G21 | Deploy environments + OIDC (no long-lived cloud secrets) | Manual Lightsail/Pages; `copilot` env empty | When automation lands: environments + OIDC | L | High *when automating deploy* | P3 / later |
+| G16 | Pin Docker base digests | Floating tags (`eclipse-temurin:25-jre-alpine`, etc.) | Digest pins + Dependabot digest updates | M | Med | **Phase 3** |
+| G25 | `pull_request_target` / over-privileged tokens | Already avoided | Keep regression watch in Scorecard / review | — | — | Maintain |
+| G26 | Query suites / PR gating polish | `security-extended` restored (#809) | Optional further suite tuning / required-check gating; watch noise | M | Low–Med | P3 (suite restore **done**) |
+| — | `allow_auto_merge` for Dependabot T1 | `false` today | Enable T1-only **or** record explicit “do not enable” | S | Med | P2 decision |
+
+---
+
+## 4. Phased plan
+
+### Phase 1 — Quick wins, high value (Settings + honesty)
+
+Owner suggestions in parentheses. **Marc** required wherever Settings is named.
+
+1. ~~Enable Dependabot alerts~~ — **done** 2026-11-06, `SECURITY.md` aligned. Security updates
+   **enabled** the same day, after the stock was triaged.
+2. ~~Confirm secret scanning and push protection~~ — **done**, verified on by API 2026-11-05.
+3. ~~Merge [#798](https://github.com/mgagp/ezkey/pull/798)~~ — **done** (`638b4214`); graph
+   must stay enabled; automatic submission stays Disabled (**G4**).
+4. **Refresh `SECURITY.md` “practices in use”** after the Settings toggles above are verified (Fred) —
+   Advanced CodeQL wording already updated in #808.
+5. ~~Switch CodeQL to Advanced~~ — **done** (#805; analyses on `main` at `f26cbe55`).
+6. ~~Fix stale “ci-gate intended to become required”~~ — **done** in #808 (`DEVELOPMENT.md`).
+
+Exit criteria: Marc signs the Settings checklist for G2/G3 (+ automatic submission); docs match
+verified toggles.
+
+### Phase 2 — Structural parity (supply-chain PR gate + light ruleset)
+
+1. **Dependency review Action** (G7, before G6): in place in warn-only mode on PRs that **touch
+   manifests**. **Decided 2026-11-06 (Marc): stays warn-only for now**, because it would flag
+   alerts we chose to leave open while upstream moves, and it has little history yet. **Review on
+   2026-11-30.** Being outside `ci-gate`, a failing job would not block a merge anyway.
+2. ~~**Ruleset: require a pull request**~~ — **done 2026-11-06** (G5): `pull_request` rule, 0 approvals,
+   because a solo maintainer cannot approve PRs opened as `mgagp`.
+3. **OpenSSF Scorecard** — workflow landed (`scorecard.yml`); README badge still follow-up after
+   first publish (Fred); triage with Christophe (no 10/10 campaign).
+4. **Optional hygiene:** `delete_branch_on_merge`; document preferred merge method; decide
+   `allow_auto_merge` T1-only vs never (Marc + Fred).
+5. **Mobile:** Android Lint job or step (Justin + Fred) (G17).
+6. **Container scanning** job (Edgar + Fred) (G14) — separate from Dependabot version PRs.
+7. **Coverage honesty (G18 hygiene):** remove or enforce the “90%” claim in `DEVELOPMENT.md`
+   (Fred + Patrick) — not a Phase 3 release item.
+8. **CODEOWNERS (G6)** only if/when G5-style enforcement is revisited (P3).
+9. ~~**CodeQL required check (G24)**~~ — **decided 2026-11-06:** policy-only, not a required check (see G24).
+
+Exit criteria: dependency review on manifest PRs; PR-required ruleset (no fake self-approval);
+Scorecard signal; Settings still documented.
+
+### Phase 3 — Release-shaped supply chain (when publishing justifies it)
+
+Defer until GitHub Releases / Maven Central / Play / signed images are real product goals
+([`VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../VERSIONING_AND_DEPLOY_TRACEABILITY.md)):
+
+1. SBOM attach on release tags (Fred) (G15).
+2. Image/provenance attestations (SLSA-oriented) and **digest-pinned** runtime images (Edgar + Fred)
+   (G16 + G20).
+3. GitHub Environments with protection rules + OIDC to cloud (Edgar) (G21).
+4. Signed release artifacts (Christophe security opinion + Marc).
+
+### Diminishing returns — deliberately not doing (now)
+
+| Item | Reason |
+|------|--------|
+| Mandatory signed commits for all contributors (#808 decision) | Breaks Dependabot, many agents, and low-friction lab flow; Scorecard Branch-Protection tier is optional for solo public alpha |
+| Full SLSA L3 + always-on provenance before first published artifact (#808) | No release train yet; SHA ledger is the honest deploy identity |
+| SonarQube / enterprise SAST suite parallel to CodeQL (#808) | Accidental complexity; CodeQL + java-doctor/semgrep hygiene lanes already cover intent |
+| Stale-bot auto-close / issue-form bureaucracy (#808) | High false-close risk; labels + human triage; security path already in `SECURITY.md` |
+| Making Playwright / Docker `ezkey-tests` part of every PR `ci-gate` (#808) | Cost/time; covered by `quality-gate` / clean-start when needed |
+| Zero Scorecard findings / 10/10 campaign (#808) | Hygiene theater; triage actionable checks only |
+| Harden-runner on every job (G13 / #808) | P3 at best; Phase 1 Settings + dependency review give more evaluator signal per hour — keep out of Phase 1–2 |
+| Strict status checks with daily Dependabot (G11 / #808) | Forces serial rebases; keep `strict: false` |
+| Required approving reviews for solo `mgagp` PRs (G5 approvals / #808) | Author cannot approve own PR; require PR without approval instead |
+| Org-wide rulesets / GitHub Enterprise-only controls (#808) | Personal/`mgagp` public lab; out of scope |
+
+---
+
+## 5. Settings Marc must confirm (checklist)
+
+Copy into a maintainer note; check each in **Settings → Code security / Rules / General**:
+
+- [x] **CodeQL Advanced** — done via #805 uploads on `main` (`f26cbe55`); reconfirm UI still Advanced if desired.
+- [x] **Dependency graph:** Enabled (Marc 2026-10-13; document via #798).
+- [ ] **Automatic dependency submission:** Disabled (dedicated Maven workflow feeds the graph).
+- [x] **Dependabot alerts:** Enabled (2026-11-06).
+- [x] **Dependabot security updates:** Enabled after stock triage (API, 2026-11-06).
+- [x] **Secret scanning:** Enabled (API, 2026-11-05).
+- [x] **Push protection** (secret scanning): Enabled (API, 2026-11-05).
+- [ ] **Private vulnerability reporting:** Enabled (API already `true` — reconfirm UI).
+- [ ] **Ruleset “Basic protection”:** still requires **`ci-gate` only** for status checks (do not add path-filtered job names).
+- [x] **Classic branch protection** on `main`: none (API 404, 2026-11-06).
+- [ ] Desired merge button set (squash / merge commit / rebase) and **delete branch on merge**.
+- [x] Admin **bypass** on the ruleset: kept, PRs only (2026-11-06).
+- [ ] **`allow_auto_merge`:** keep off, or enable for Dependabot T1 only (record decision).
+
+Anything not checked stays marked **unverified** in future inventory refreshes — never guess.
+
+---
+
+## 6. Traceability and refresh
+
+| Doc / artifact | Role |
+|----------------|------|
+| This file | Inventory + gap table + phased plan (evaluator + maintainer) |
+| [`docs/DEVELOPMENT.md`](../DEVELOPMENT.md) § Continuous Integration | Operator how-to for running CI locally and what `ci-gate` means |
+| [`docs/SECURITY_POSTURE.md`](../SECURITY_POSTURE.md) § Code scanning policy | CodeQL SLAs and dismiss rules |
+| [`SECURITY.md`](../../SECURITY.md) | Public disclosure + high-level practices |
+| [`product-docs/global/hygiene/code-scanning/`](../../product-docs/global/hygiene/code-scanning/) | Triage campaign notes |
+| [`product-docs/global/hygiene/dependabot/`](../../product-docs/global/hygiene/dependabot/) | Dependabot curation (#678 model) |
+| PR [#697](https://github.com/mgagp/ezkey/pull/697) | Original `ci-gate` introduction |
+| PR [#787](https://github.com/mgagp/ezkey/pull/787) | Merge-ready bar (CodeQL / threads) |
+| PR [#798](https://github.com/mgagp/ezkey/pull/798) (`638b4214`) | Dependency graph must stay enabled |
+| PR [#805](https://github.com/mgagp/ezkey/pull/805) (`f26cbe55`) | CodeQL Advanced + policy |
+| PR [#809](https://github.com/mgagp/ezkey/pull/809) (`287757ed`) | Restore CodeQL `security-extended` |
+| PR [#810](https://github.com/mgagp/ezkey/pull/810) (`115dde38`) | Alert #16 sensitive-log fix; alert #9 SSRF barrier |
+| PR [#808](https://github.com/mgagp/ezkey/pull/808) | This inventory |
+
+**Refresh rule:** when Settings or workflows change, update §1 and the gap row in the **same PR**
+(repo-as-memory). Also refresh §1 at the **Monday Dependabot full pass**. Do not fork a second
+“CI audit” without linking here.
+
+---
+
+*Inventory date: 2026-10-14 (review-applied; refreshed after merge of #809/#810). Docs-only on
+this branch after conflict resolution — `codeql.yml` matches `main`.*

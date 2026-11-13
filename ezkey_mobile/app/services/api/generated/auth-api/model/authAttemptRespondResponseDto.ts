@@ -28,6 +28,9 @@ export interface AuthAttemptRespondResponseDto {
   authAttemptResult: AuthAttemptRespondResponseDtoAuthAttemptResult;
   /** Success confirmation or error details for user feedback */
   authAttemptMessage: string;
-  /** Ed25519 signature (Base64URL, no padding, raw 64 bytes) over proofToken|authAttemptId|result|message (see AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md) */
-  authAttemptProofTokenResultSignedByIntegration?: string;
+  /**
+     * Ed25519 signature (Base64URL, no padding, raw 64 bytes) over proofToken|authAttemptId|result|message (see AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md)
+     * @nullable
+     */
+  authAttemptProofTokenResultSignedByIntegration?: string | null;
 }

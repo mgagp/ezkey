@@ -16,21 +16,33 @@ serves them to enrolled mobile devices, and processes responses. It runs **no sc
 
 | Property | Docker env var | Default | Obligation |
 |---|---|---|---|
+| `server.servlet.session.cookie.name` | — | `EZKEY_AUTH_API_SESSION` | recommandé |
 | `ezkey.rate-limit.enabled` | — | `false` | requis [docker] |
 | `ezkey.rate-limit.pending.requests` | — | `10` | optionnel |
 | `ezkey.rate-limit.pending.window-minutes` | — | `1` | optionnel |
 | `ezkey.rate-limit.respond.requests` | — | `1` | optionnel |
 | `ezkey.rate-limit.respond.window-minutes` | — | `5` | optionnel |
+| `ezkey.rate-limit.respond.fail-ip-requests` | — | `30` | optionnel |
+| `ezkey.rate-limit.respond.fail-ip-window-minutes` | — | `1` | optionnel |
 | `ezkey.rate-limit.verify.requests` | — | `10` | optionnel |
 | `ezkey.rate-limit.bind.requests` | — | `10` | optionnel |
+| `ezkey.rate-limit.backstop.verify.requests` | — | `100` | optionnel |
 | `ezkey.trusted-proxies.required` | — | `false` | optionnel [prod] |
 | `ezkey.trusted-proxies.cidrs` | — | *(empty list)* | optionnel |
 | `ezkey.qr.auth-base-url` | `EZKEY_QR_AUTH_BASE_URL` | *(null)* | requis [docker] |
+| `ezkey.organization.name` | `EZKEY_ORGANIZATION_NAME` | `Ezkey System` | optionnel |
+| `ezkey.organization.description` | `EZKEY_ORGANIZATION_DESCRIPTION` | `Ezkey MFA instance for your organization` | optionnel |
 | `ezkey.organization.about-url` | `EZKEY_ORGANIZATION_ABOUT_URL` | *(null)* | optionnel |
 
 ---
 
 ## Properties by Functional Group
+
+### 0. Servlet session cookie
+
+| Property | Default | Obligation | Description |
+|---|---|---|---|
+| `server.servlet.session.cookie.name` | `EZKEY_AUTH_API_SESSION` | recommandé | Distinct from other localhost servlet apps so browsers do not share `JSESSIONID` across ports (#799). Lives in `config/application.properties` (API external config); demos set the same key in the JAR instead. |
 
 ### 1. Auth API Rate Limiting (`ezkey.rate-limit.*`)
 
@@ -47,15 +59,24 @@ inventory: [rate-limit-baseline-policy.md](../product-docs/global/rate-limit-bas
 | `ezkey.rate-limit.pending.requests` | `int` | `10` | optionnel | Max pending-check requests per window. |
 | `ezkey.rate-limit.pending.window-minutes` | `int` | `1` | optionnel | Window for `pending` endpoint (minutes). |
 | `ezkey.rate-limit.pending.key-strategy` | `String` | `client-ip` | optionnel | Rate-limit key strategy. Docker: `enrollment-id`. |
-| `ezkey.rate-limit.respond.requests` | `int` | `1` | optionnel | Max respond requests per auth-attempt per window. Strict by design (one approve/deny per attempt). |
-| `ezkey.rate-limit.respond.window-minutes` | `int` | `5` | optionnel | Window for `respond` endpoint (minutes). |
-| `ezkey.rate-limit.respond.key-strategy` | `String` | `auth-attempt-id` | optionnel | Default `auth-attempt-id`. Do not change. |
+| `ezkey.rate-limit.respond.requests` | `int` | `1` | optionnel | Max respond requests **per auth-attempt after ownership** per window (#912 C1). |
+| `ezkey.rate-limit.respond.window-minutes` | `int` | `5` | optionnel | Window for the post-ownership per-id budget (minutes). |
+| `ezkey.rate-limit.respond.key-strategy` | `String` | `auth-attempt-id` | optionnel | Default `auth-attempt-id`. Filter uses fail-IP; id budget is post-signature. |
+| `ezkey.rate-limit.respond.fail-ip-requests` | `int` | `30` | optionnel | Filter IP ceiling for **all** respond requests (#912 C1). |
+| `ezkey.rate-limit.respond.fail-ip-window-minutes` | `int` | `1` | optionnel | Window for the respond fail-IP ceiling (minutes). |
 | `ezkey.rate-limit.verify.requests` | `int` | `10` | optionnel | Max enrollment-verify requests per window. |
 | `ezkey.rate-limit.verify.window-minutes` | `int` | `1` | optionnel | Window for `verify` endpoint (minutes). |
 | `ezkey.rate-limit.verify.key-strategy` | `String` | `client-ip` | optionnel | Key strategy. Docker: `client-ip`. |
 | `ezkey.rate-limit.bind.requests` | `int` | `10` | optionnel | Max enrollment-bind requests per window. |
 | `ezkey.rate-limit.bind.window-minutes` | `int` | `1` | optionnel | Window for `bind` endpoint (minutes). |
 | `ezkey.rate-limit.bind.key-strategy` | `String` | `client-ip` | optionnel | Key strategy. Docker: `client-ip`. |
+| `ezkey.rate-limit.backstop.enabled` | `boolean` | `true` | optionnel | Unkeyed per-process cap on `verify` / `bind` / enrolled `instance-info`. Follows ADR-0010 (not distributed). |
+| `ezkey.rate-limit.backstop.verify.requests` | `int` | `100` | optionnel | Process-wide verify budget. Docker: `50` / 5 min. |
+| `ezkey.rate-limit.backstop.verify.window-minutes` | `int` | `1` | optionnel | Window for the verify backstop. |
+| `ezkey.rate-limit.backstop.bind.requests` | `int` | `60` | optionnel | Process-wide bind + enrolled instance-info budget. Docker: `30` / 5 min. |
+| `ezkey.rate-limit.backstop.bind.window-minutes` | `int` | `1` | optionnel | Window for the bind backstop. |
+
+`pending` and `respond` are keyed on a target id and are **not** covered by this backstop. N Auth replicas imply N times the backstop headroom; edge rate limiting remains the public-host control.
 
 **Key strategy options:**
 
@@ -81,6 +102,11 @@ ezkey.rate-limit.verify.key-strategy=client-ip
 ezkey.rate-limit.bind.requests=3
 ezkey.rate-limit.bind.window-minutes=5
 ezkey.rate-limit.bind.key-strategy=client-ip
+ezkey.rate-limit.backstop.enabled=true
+ezkey.rate-limit.backstop.verify.requests=50
+ezkey.rate-limit.backstop.verify.window-minutes=5
+ezkey.rate-limit.backstop.bind.requests=30
+ezkey.rate-limit.backstop.bind.window-minutes=5
 ```
 
 ---
@@ -95,8 +121,9 @@ for the full description.
 
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
-| `ezkey.trusted-proxies.required` | `boolean` | `false` | optionnel [prod] | When `true`, fail startup if `cidrs` is empty or invalid (SEC-011). Set via **`EZKEY_TRUSTED_PROXIES_REQUIRED=true`** on EXP1 / `--with-proxy`. |
+| `ezkey.trusted-proxies.required` | `boolean` | `false` | optionnel [prod] | When `true`, fail startup if `cidrs` is empty or invalid (SEC-011). Set via **`EZKEY_TRUSTED_PROXIES_REQUIRED=true`** on Docker / Lightsail / `--with-proxy`. |
 | `ezkey.trusted-proxies.cidrs` | `List<String>` | *(empty)* | optionnel | CIDR ranges of trusted reverse proxies. |
+| `ezkey.trusted-proxies.trust-cloudflare-connecting-ip` | `boolean` | `false` | optionnel | Prefer `CF-Connecting-IP` only when the immediate hop is a declared Cloudflare edge (#1140). Default OFF. Env: **`EZKEY_TRUSTED_PROXIES_TRUST_CLOUDFLARE_CONNECTING_IP`**. |
 
 ---
 
@@ -138,6 +165,8 @@ for the full description.
 | Spring property | Docker env var | docker-compose default |
 |---|---|---|
 | `ezkey.qr.auth-base-url` | `EZKEY_QR_AUTH_BASE_URL` | *(empty)* |
+| `ezkey.organization.name` | `EZKEY_ORGANIZATION_NAME` | `Ezkey System` |
+| `ezkey.organization.description` | `EZKEY_ORGANIZATION_DESCRIPTION` | `Ezkey MFA instance for your organization` |
 | `ezkey.organization.about-url` | `EZKEY_ORGANIZATION_ABOUT_URL` | *(empty)* |
 | `ezkey.audit.integrity.instance-id` | `EZKEY_INSTANCE_ID` | `auth-api` |
 
@@ -145,16 +174,35 @@ for the full description.
 
 ## Security Notes
 
-1. `ezkey.rate-limit.enabled` is `false` by default — the **docker** profile sets `true` (SEC-005). Keep it on for EXP1 / production.
+1. `ezkey.rate-limit.enabled` is `false` by default — the **docker** profile sets `true` (SEC-005). Keep it on for Lightsail / production.
 2. Do not change `ezkey.rate-limit.respond.key-strategy`; `auth-attempt-id` is required for
    correct per-attempt throttling.
 3. Docker profile also sets `ezkey.encryption.required=true` and `ezkey.audit.integrity.required=true`
    (SEC-002 / SEC-008). Behind Caddy, set `EZKEY_TRUSTED_PROXIES_REQUIRED=true` (SEC-011).
+5. The unkeyed `ezkey.rate-limit.backstop.*` budgets are **per Auth process** (ADR-0010). Do not
+   treat them as a cluster-wide aggregate; public hosts should also apply edge rate limiting.
+
+---
+
+## Management port (Actuator)
+
+| Property | Default (IDE / `windows`) | Docker | Description |
+|---|---|---|---|
+| `management.server.port` | `8085` | `8085` | Dedicated management port (not on `8080`). |
+| `management.server.address` | `127.0.0.1` | `0.0.0.0` | Loopback for IDE; Docker profile sets `0.0.0.0` for HAProxy/peers (#905); local compose publishes `127.0.0.1:8085:8085`. |
+
+See [`docs/LOCAL_STACK_PORTS.md`](../docs/LOCAL_STACK_PORTS.md) and [ADR-0015](../product-docs/global/architecture-decisions.md#adr-0015-management-port-separation-actuator-javamelody).
 
 ---
 
 ## JavaMelody (opt-in Docker diagnostics)
 
-Disabled by default. Enable with `./ezkey-tests/clean-start.sh --with-java-melody`. Management-port
-reports: `/actuator/monitoring`. Collector UI: `http://localhost:8088`. See
-[`docker/README.md`](../docker/README.md) § JavaMelody collector.
+Disabled by default. Enable with `./ezkey-tests/clean-start.sh --with-java-melody`, or on Lightsail
+via `experimental-hybrid/lightsail/docker-compose.javamelody.yml` (`EZKEY_ENABLE_JAVA_MELODY=true`).
+Management-port reports: `/actuator/monitoring` only. Startup refuses JavaMelody without
+`management-endpoint-monitoring-enabled=true`, without `management.server.port`, or with equal
+business/management ports. Community binds management to `127.0.0.1`; JM overlay reopens `0.0.0.0`.
+Collector UI: `http://127.0.0.1:8088` (SSH tunnel on community — see
+[`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md) § Observability,
+[#846](https://github.com/mgagp/ezkey/issues/846)). See [`docker/README.md`](../docker/README.md)
+§ JavaMelody collector and [ADR-0015](../product-docs/global/architecture-decisions.md#adr-0015-management-port-separation-actuator-javamelody).

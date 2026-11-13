@@ -1,0 +1,61 @@
+meta {
+  name: read integrity bootstrap
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url_admin_api}}/api/v1/audit-logs/integrity/bootstrap
+  body: none
+  auth: inherit
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Response has integrity bootstrap dual-source fields and window caps", function () {
+      var jsonData = res.getBody();
+      expect(jsonData).to.have.property('runtimeProfile');
+      expect(['base', 'integrity']).to.include(jsonData.runtimeProfile);
+      expect(jsonData).to.have.property('chainCheckpointsEnabled');
+      expect(jsonData).to.have.property('nightlyValidationEnabled');
+      expect(jsonData.chainCheckpointsEnabled).to.be.a('boolean');
+      expect(jsonData.nightlyValidationEnabled).to.be.a('boolean');
+      expect(jsonData).to.have.property('maxWindowDays');
+      expect(jsonData).to.have.property('maxSyncWindowDays');
+      expect(jsonData).to.have.property('nightlyWindowHours');
+      expect(jsonData.maxWindowDays).to.be.a('number');
+      expect(jsonData.maxSyncWindowDays).to.be.a('number');
+      expect(jsonData.nightlyWindowHours).to.be.a('number');
+  });
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Thin Global Admin Integrity atelier bootstrap for Admin UI honesty chrome.
+
+  **Dual source:** `runtimeProfile` comes from Spring (`docker-base` → `base`; else `integrity`). Monitoring enable flags come from live config. Do not collapse one into the other.
+
+  **Access:** Global Admin only.
+
+  **Response (200 OK):**
+  ```json
+  {
+    "runtimeProfile": "integrity",
+    "chainCheckpointsEnabled": true,
+    "nightlyValidationEnabled": true,
+    "maxWindowDays": 92,
+    "maxSyncWindowDays": 8,
+    "nightlyWindowHours": 24
+  }
+  ```
+
+  Caps: `maxWindowDays` = async VERIFY / RUN_VALIDATION; `maxSyncWindowDays` = sync report GETs (PR 0 M1).
+
+  **Status Codes:** 200 OK · 401 Unauthorized · 403 Forbidden
+}

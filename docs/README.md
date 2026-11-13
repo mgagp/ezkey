@@ -15,6 +15,8 @@ If you are new to the repository, read these first:
 4. [ENDPOINT.md](ENDPOINT.md) for canonical API semantics.
 5. [CRYPTO.md](CRYPTO.md) for shared cryptographic wording and guarantees.
 
+Installing a **host JDK** to build Java modules from a fresh clone is a different path: [DEVELOPMENT.md](DEVELOPMENT.md) § *First clone on a new workstation* (`./scripts/build.sh`).
+
 ## Core References
 
 - [PROJECT_POSITIONING.md](PROJECT_POSITIONING.md): what Ezkey is, what it is not, and why it exists.
@@ -26,8 +28,10 @@ If you are new to the repository, read these first:
 - [AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md](AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md): canonical auth-attempt pending/respond signature payload construction.
 - [LIFECYCLE_GOVERNANCE.md](LIFECYCLE_GOVERNANCE.md): entity hierarchy, eligibility chain, and reversible/irreversible action rules across all Ezkey domain entities.
 - [ALERTS.md](ALERTS.md): operator-facing `ezkey_alert` subsystem (raise/touch/resolve, types, Admin API).
-- [DEVELOPMENT.md](DEVELOPMENT.md): build, test, and development workflow.
+- [DEVELOPMENT.md](DEVELOPMENT.md): first clone on a new workstation, host JDK 25 / Maven baseline, tests, and development workflow.
+- [engineering/ci-cd-best-practices-plan.md](engineering/ci-cd-best-practices-plan.md): GitHub CI/CD and repo-settings inventory vs accepted practice, gap table, and phased plan (evaluator-facing; docs-only posture).
 - [OPERATIONAL.md](OPERATIONAL.md): deployment, operations, and production posture.
+- [VERSIONING_AND_DEPLOY_TRACEABILITY.md](VERSIONING_AND_DEPLOY_TRACEABILITY.md): public alpha claim, monorepo product SemVer (ADR-0017 / #1211), git-SHA deploy ledger, and non-product `methodology/*` / `deploy/*` tags.
 - [configuration/README.md](configuration/README.md): index for configuration properties and per-module configuration docs.
 - [MAINTENANCE.md](MAINTENANCE.md): documentation maintenance expectations and standards.
 
@@ -36,6 +40,7 @@ If you are new to the repository, read these first:
 - [ADMIN_UI.md](ADMIN_UI.md): Admin UI purpose, role split, workflow boundaries, and operator-facing scope.
 - [../ezkey-admin-ui/README.md](../ezkey-admin-ui/README.md): Admin UI module-specific setup and local development.
 - [MOBILE_DEVELOPER_GUIDE.md](MOBILE_DEVELOPER_GUIDE.md): shared protocol guide for third-party or alternative mobile clients.
+- [CLIENT_BEHAVIOUR_CONTRACT.md](CLIENT_BEHAVIOUR_CONTRACT.md): application-independent MUST/SHOULD/MAY client behaviour (RFC 2119), derived from the mobile state machine and #834.
 - [../ezkey_mobile/docs/README.md](../ezkey_mobile/docs/README.md): primary mobile documentation corpus for the React Native reference app.
 - [LOCAL_STACK_PORTS.md](LOCAL_STACK_PORTS.md): local stack ports, proxy mapping, and testing entry points.
 
@@ -56,6 +61,9 @@ If you are new to the repository, read these first:
 
 - [monitoring/](monitoring/): dashboards, monitoring setup, and supporting notes.
 - [cloudflare/](cloudflare/): site and edge workflow notes.
+- [lightsail/community-host.md](lightsail/community-host.md): create/bootstrap a NEW community Lightsail host for ezkey.online (AWS CLI scripts under `scripts/lightsail/`).
+- [lightsail/community/DEPLOYED.md](lightsail/community/DEPLOYED.md): live state ledger for the community surface (update after successful publish).
+- [VERSIONING_AND_DEPLOY_TRACEABILITY.md](VERSIONING_AND_DEPLOY_TRACEABILITY.md): public alpha, product SemVer, and git-SHA deploy traceability (pointer for cold agents).
 - [dev-tools/](dev-tools/): internal development tools and helper assets.
 - [plan/operational-churn-ezkey.plan.md](plan/operational-churn-ezkey.plan.md): operational churn testing plan.
 

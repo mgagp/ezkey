@@ -10,6 +10,7 @@
 
 package org.ezkey.authattempt.service;
 
+import java.time.OffsetDateTime;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
@@ -44,51 +45,70 @@ public class AuthAttemptTxHelper {
 
   private final AuthAttemptRepository authAttemptRepository;
 
-  public AuthAttemptTxHelper(AuthAttemptRepository authAttemptRepository) {
+  private final AuthAttemptEnrollmentAlert enrollmentAlert;
+
+  /**
+   * Creates the helper.
+   *
+   * @param authAttemptRepository attempt store
+   * @param enrollmentAlert alert raised after this transaction commits
+   */
+  public AuthAttemptTxHelper(
+      AuthAttemptRepository authAttemptRepository, AuthAttemptEnrollmentAlert enrollmentAlert) {
     this.authAttemptRepository = authAttemptRepository;
+    this.enrollmentAlert = enrollmentAlert;
   }
 
   /**
-   * Mark auth attempt as INVALID in an independent transaction.
+   * Mark auth attempt as INVALID in an independent transaction, only when status is still {@code
+   * READ}.
    *
-   * <p>This method commits immediately regardless of the calling method's transaction state. This
-   * ensures auth attempts are marked as INVALID even when validation throws an exception (e.g.,
-   * challenge mismatch, signature validation failure).
+   * <p>This method commits immediately regardless of the calling method's transaction state. Used
+   * for challenge mismatches after ownership was proven. Conditional on {@code READ} so a
+   * concurrent cancel/approve cannot be overwritten (#912).
    *
-   * <p><b>Security:</b> Critical for audit trail - we need to record INVALID attempts even when the
-   * response processing fails. This helps detect brute force attacks and provides accurate security
-   * metrics.
+   * <p><b>Security:</b> Invalid-signature probes must <em>not</em> call this method — they keep the
+   * attempt in {@code READ} and return generic state-conflict (#912). Challenge mismatch after a
+   * valid device signature still records INVALID for audit. A successful flip schedules the same
+   * enrollment alert as a device deny. The alert runs after this transaction commits, so a failure
+   * to record it cannot roll the status back to {@code READ}.
    *
    * @param authAttemptId the auth attempt ID to mark as invalid
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void markAsInvalid(Integer authAttemptId) {
-    AuthAttempt authAttempt = authAttemptRepository.findById(authAttemptId).orElse(null);
-    if (authAttempt != null) {
-      authAttempt.setAuthAttemptStatus(AuthAttemptStatus.INVALID);
-      authAttemptRepository.save(authAttempt);
+    OffsetDateTime now = OffsetDateTime.now();
+    int updated =
+        authAttemptRepository.updateStatusIfCurrent(
+            authAttemptId, AuthAttemptStatus.READ, AuthAttemptStatus.INVALID, now);
+    if (updated == 1) {
       logger.warn("🔒 Auth attempt {} marked as INVALID (committed independently)", authAttemptId);
+      raiseInvalidAlert(authAttemptId);
+      return;
     }
+    AuthAttempt latest = authAttemptRepository.findById(authAttemptId).orElse(null);
+    if (latest == null) {
+      logger.warn("Skip markAsInvalid for auth attempt {}: not found", authAttemptId);
+      return;
+    }
+    logger.warn(
+        "Skip markAsInvalid for auth attempt {}: status is {} (not READ or expired)",
+        authAttemptId,
+        latest.getAuthAttemptStatus());
     // Transaction commits here when method returns
   }
 
   /**
-   * Mark auth attempt as REJECTED in an independent transaction.
+   * Schedules the shared enrollment alert once the INVALID row is committed. The payload is the
+   * enrollment id only; challenge digits are never included.
    *
-   * <p>Similar to markAsInvalid, ensures the rejection is persisted even if subsequent processing
-   * fails.
-   *
-   * @param authAttemptId the auth attempt ID to mark as rejected
+   * @param authAttemptId attempt that was just marked INVALID
    */
-  @Transactional(propagation = Propagation.REQUIRES_NEW)
-  public void markAsRejected(Integer authAttemptId) {
-    AuthAttempt authAttempt = authAttemptRepository.findById(authAttemptId).orElse(null);
-    if (authAttempt != null) {
-      authAttempt.setAuthAttemptStatus(AuthAttemptStatus.REJECTED);
-      authAttemptRepository.save(authAttempt);
-      logger.debug(
-          "🔒 Auth attempt {} marked as REJECTED (committed independently)", authAttemptId);
+  private void raiseInvalidAlert(Integer authAttemptId) {
+    AuthAttempt marked = authAttemptRepository.findById(authAttemptId).orElse(null);
+    if (marked == null) {
+      return;
     }
-    // Transaction commits here when method returns
+    enrollmentAlert.raiseAfterCommit(marked.getEnrollmentId());
   }
 }

@@ -47,6 +47,7 @@ const semgrepArgs = [
   'app/services/api/generated/**',
   'app',
   'android/app/src/main/java',
+  'ios/EzkeyMobile',
 ];
 
 const semgrepDockerArgs = [
@@ -62,6 +63,7 @@ const semgrepDockerArgs = [
   'app/services/api/generated/**',
   'app',
   'android/app/src/main/java',
+  'ios/EzkeyMobile',
 ];
 
 let exitCode;

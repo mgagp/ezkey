@@ -23,7 +23,7 @@ This document is the canonical source for the vocabulary used across the product
 
 - Use **kebab-case** for filenames: `product-intent.md`, `spec-test-traceability.md`.
 - Use **uppercase words** only for well-established historical docs (e.g. `ARCHITECTURE.md` in the legacy `docs/` hub).
-- Templates use the suffix **`.template.md`**: `feature-brief.template.md`.
+- Templates use the suffix **`.template.md`**: e.g. `backlog-idea.template.md` (see [`templates/README.md`](templates/README.md)).
 - Component packs sit under `components/<kebab-component-name>/`.
 
 ## Cross-Reference Conventions
@@ -56,7 +56,7 @@ For feature, milestone, and traceability entries:
 | Role | Meaning |
 | --- | --- |
 | **Global Admin** | Operator responsible for platform-wide, IT-level concerns (e.g. cryptographic keys, system configuration). |
-| **Tenant Admin** | Operator responsible for day-to-day tenant administration (integrations, enrollments, API keys). |
+| **Tenant Admin** | Operator responsible for day-to-day tenant administration (integrations, enrollments, API keys). French UI copy keeps the English loanword **tenant** (`Admin tenant`); do not use *locataire*. |
 | **End user** | A person being authenticated through an integration. |
 | **Integrating application** | A backend system that uses the product to authenticate its users. |
 
@@ -64,6 +64,7 @@ For feature, milestone, and traceability entries:
 
 | Term | Meaning |
 | --- | --- |
+| **Connector** | A separate process that links Ezkey to an external service over a versioned HTTP contract: email, SMS or a directory ([ADR-0018](global/architecture-decisions.md#adr-0018--connector-spi-for-external-services)). In `ezkey-pam` documents, the word means the PAM client, which is unrelated. |
 | **Enrollment** | Cryptographic binding between a user context, an integration, and a mobile device. |
 | **Authentication attempt** | A single MFA decision flow tied to an enrollment. |
 | **Proof token** | One-time cryptographic material used to protect a flow step. |

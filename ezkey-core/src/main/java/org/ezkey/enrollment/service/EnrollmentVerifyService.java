@@ -135,7 +135,10 @@ public class EnrollmentVerifyService {
     // Step 7: Mark as verified and activate
     markAsVerified(lockedEnrollment, request);
 
-    // Step 7: Build and return response
+    // EVALUATOR_TEMP supersede is admin-api only (SESSION mint + TEMP validation gate).
+    // Auth enrollment-verify stays enrollment-only — no writes to ezkey_admin_tokens.
+
+    // Step 8: Build and return response
     return buildVerifyResponse(lockedEnrollment);
   }
 
@@ -148,23 +151,26 @@ public class EnrollmentVerifyService {
    * @param request the verify request
    * @return the validated enrollment
    * @throws EnrollmentVerifyStateConflictException if enrollment is not found or in invalid state
-   * @throws EnrollmentVerifyFailedException if invitation expired
+   * @throws EnrollmentVerifyFailedException if invitation expired or enrollment ID is missing
    */
   private Enrollment validateEnrollmentState(EnrollmentVerifyRequest request) {
     logger.debug(
         "Step 1: Performing read-only pre-checks for enrollment ID: {}", request.getEnrollmentId());
 
+    if (request.getEnrollmentId() == null) {
+      logger.warn("Validation failed: enrollment ID is missing");
+      throw new EnrollmentVerifyFailedException("Enrollment verification failed");
+    }
+
     Enrollment enrollment =
         enrollmentRepository
             .findById(request.getEnrollmentId())
-            .orElseThrow(
-                () -> {
-                  logger.warn(
-                      "Validation failed: Enrollment not found for ID: {}",
-                      request.getEnrollmentId());
-                  return new EnrollmentVerifyStateConflictException(
-                      "Enrollment not available for verification");
-                });
+            .orElseThrow(() -> {
+              logger.warn(
+                  "Validation failed: Enrollment not found for ID: {}", request.getEnrollmentId());
+              return new EnrollmentVerifyStateConflictException(
+                  "Enrollment not available for verification");
+            });
 
     logger.debug(
         "Enrollment found: ID={}, Status={}", enrollment.getEnrollmentId(), enrollment.getStatus());
@@ -221,24 +227,23 @@ public class EnrollmentVerifyService {
   private void validateAdminLinkedEnrollmentEligibility(Enrollment enrollment) {
     ezkeyAdminRepository
         .findByEnrollmentId(enrollment.getEnrollmentId())
-        .ifPresent(
-            admin -> {
-              String ineligibilityReason =
-                  eligibilityService.adminLinkedEnrollmentIneligibilityReason(admin);
-              if (ineligibilityReason != null) {
-                logger.warn(
-                    "Validation failed: Admin-linked enrollment is not eligible for verify -"
-                        + " enrollmentId: {}, adminId: {}, lifecycleStatus: {}, active: {},"
-                        + " reason: {}",
-                    enrollment.getEnrollmentId(),
-                    admin.getAdminId(),
-                    admin.getLifecycleStatus(),
-                    admin.getActive(),
-                    ineligibilityReason);
-                throw new EnrollmentVerifyFailedException(
-                    "Enrollment verification failed: " + ineligibilityReason);
-              }
-            });
+        .ifPresent(admin -> {
+          String ineligibilityReason =
+              eligibilityService.adminLinkedEnrollmentIneligibilityReason(admin);
+          if (ineligibilityReason != null) {
+            logger.warn(
+                "Validation failed: Admin-linked enrollment is not eligible for verify -"
+                    + " enrollmentId: {}, adminId: {}, lifecycleStatus: {}, active: {},"
+                    + " reason: {}",
+                enrollment.getEnrollmentId(),
+                admin.getAdminId(),
+                admin.getLifecycleStatus(),
+                admin.getActive(),
+                ineligibilityReason);
+            throw new EnrollmentVerifyFailedException(
+                "Enrollment verification failed: " + ineligibilityReason);
+          }
+        });
   }
 
   /**
@@ -324,11 +329,8 @@ public class EnrollmentVerifyService {
 
     if (!request.getChallengeResponse().equals(enrollment.getEnrollmentChallenge())) {
       logger.warn(
-          "Validation failed: Invalid challenge response for enrollment ID: {} - Expected: {},"
-              + " Received: {}",
-          request.getEnrollmentId(),
-          enrollment.getEnrollmentChallenge(),
-          request.getChallengeResponse());
+          "Validation failed: Invalid challenge response for enrollment ID: {}",
+          request.getEnrollmentId());
       enrollmentTxHelper.markInvalidAndClear(request.getEnrollmentId());
       throw new EnrollmentVerifyFailedException("Invalid challenge response");
     }

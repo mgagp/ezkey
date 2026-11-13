@@ -14,10 +14,20 @@
 |--------|----------|----------------|-------------|
 | `EzkeyCryptoModule` | Android (Kotlin) | EC P-256 key management via `Android Keystore`, with `StrongBox` requested when available | `android/app/src/main/java/org/ezkey/mobile/crypto/EzkeyCryptoModule.kt` |
 | `EzkeyPlayUpdateModule` | Android (Kotlin) | Play Core flexible in-app update check/start; fail-open when Play is unavailable | `android/app/src/main/java/org/ezkey/mobile/play/EzkeyPlayUpdateModule.kt` |
-| `EzkeyCryptoModule` | iOS (Swift) | Native secure-hardware-backed EC P-256 parity is not yet complete | `ios/EzkeyMobile/Crypto/EzkeyCryptoModule.swift` |
+| `EzkeyCryptoModule` | iOS (Swift) | EC P-256 enrollment keys (Secure Enclave on device, software on simulator), low-S signing, Ed25519 verify, proof token, build info, LocalAuthentication gate. No seal/unseal (Keychain via `react-native-keychain`) | `ios/EzkeyMobile/Crypto/EzkeyCryptoModule.swift` (+ `EzkeyEnrollmentKeyStore.swift`, `EzkeyCryptoCodec.swift`) |
 | `EzkeyCryptoPackage` | Android (Kotlin) | Registers crypto module with React Native | `android/app/src/main/java/org/ezkey/mobile/crypto/EzkeyCryptoPackage.kt` |
 | `EzkeyPlayUpdatePackage` | Android (Kotlin) | Registers Play update module with React Native | `android/app/src/main/java/org/ezkey/mobile/play/EzkeyPlayUpdatePackage.kt` |
-| `EzkeyCryptoModuleBridge` | iOS (Objective-C) | Exposes Swift crypto module to React Native bridge | `ios/EzkeyMobile/Crypto/EzkeyCryptoModuleBridge.m` |
+| `EzkeyWindowSecurityModule` | Android (Kotlin) | While the pending-auth screen is focused: `FLAG_SECURE`, hidden third-party overlays, touches dropped when the window is obscured (#1154); fail-open. JS: `app/hooks/useSensitiveScreen.ts` | `android/app/src/main/java/org/ezkey/mobile/security/EzkeyWindowSecurityModule.kt` |
+| `EzkeyWindowSecurityModule` | iOS (Swift) | Same name: while the pending-auth screen is focused, a cover window hides the request from the app switcher and from screen recording or mirroring (#1154); fail-open. Screenshots cannot be blocked on iOS. JS: `app/hooks/useSensitiveScreen.ts` | `ios/EzkeyMobile/Security/EzkeyWindowSecurityModule.swift` |
+| `EzkeyWindowSecurityPackage` | Android (Kotlin) | Registers window security module with React Native | `android/app/src/main/java/org/ezkey/mobile/security/EzkeyWindowSecurityPackage.kt` |
+| `EzkeyAppearanceModule` | Android (Kotlin) | Per-app night mode (`UiModeManager#setApplicationNightMode`) for the Appearance setting, so the splash and system dialogs match from the next cold start; `MainActivity` keeps status / navigation bar icons readable on theme switches (#1156); fail-open. JS: `app/services/appearance/appearance.ts` | `android/app/src/main/java/org/ezkey/mobile/appearance/EzkeyAppearanceModule.kt` |
+| `EzkeyAppearancePackage` | Android (Kotlin) | Registers the appearance module with React Native | `android/app/src/main/java/org/ezkey/mobile/appearance/EzkeyAppearancePackage.kt` |
+| `EzkeyAppearanceModule` | iOS (Swift) | Same name and method as Android: `setApplicationNightMode` keeps the choice in `UserDefaults`; `SceneDelegate` applies it to the window (`overrideUserInterfaceStyle`) before React Native starts, so the first frame uses the chosen palette (#1188); fail-open. The launch screen follows the system appearance (iOS limit) | `ios/EzkeyMobile/Appearance/EzkeyAppearanceModule.swift` |
+| `EzkeyAppearanceModule` (extern) | iOS (Objective-C) | `RCT_EXTERN_MODULE` / `RCT_EXTERN_METHOD` declaration exposing the Swift module | `ios/EzkeyMobile/Appearance/EzkeyAppearanceModule.m` |
+| `EzkeyLocaleModule` | Android (Kotlin) | Per-app language through framework `LocaleManager` (API 33+): read / write the Settings → App languages choice, read the phone's language list; `locale` is in `configChanges` so a change does not recreate the activity (#1157). JS: `app/services/locale/appLanguage.ts` | `android/app/src/main/java/org/ezkey/mobile/locale/EzkeyLocaleModule.kt` |
+| `EzkeyLocaleModule` | iOS (Swift) | Same name and methods: per-app language through `AppleLanguages` in the app's own defaults, the store of Settings → Ezkey → Language (#1157). JS: `app/services/locale/appLanguage.ts` | `ios/EzkeyMobile/Locale/EzkeyLocaleModule.swift` |
+| `EzkeyLocalePackage` | Android (Kotlin) | Registers the locale module with React Native | `android/app/src/main/java/org/ezkey/mobile/locale/EzkeyLocalePackage.kt` |
+| `EzkeyCryptoModule` (extern) | iOS (Objective-C) | `RCT_EXTERN_MODULE` / `RCT_EXTERN_METHOD` declarations exposing the Swift module | `ios/EzkeyMobile/Crypto/EzkeyCryptoModule.m` |
 
 ## Communication Flow
 
@@ -36,8 +46,8 @@ sequenceDiagram
 
 - JavaScript calls are issued through `app/services/crypto/nativeCrypto.ts`.
 - Android uses `Android Keystore` (`AndroidKeyStore`) and requests `StrongBox` when available; one EC P-256 key pair is generated per enrollment, and private key material is not exposed to application code.
-- iOS native secure-hardware-backed EC P-256 support is not yet at parity with the Android path and should be described as planned / in progress rather than assumed.
-- Enrollment QR capture uses Vision Camera plus `react-native-vision-camera-barcode-scanner` (`useBarcodeScannerOutput` / ML Kit) in JavaScript — there is no custom native QR frame-processor plugin.
+- iOS stores one P-256 key per enrollment as a Keychain item (`org.ezkey.mobile.enrollment-key`, `WhenUnlockedThisDeviceOnly`): a Secure Enclave key on devices, a software key on the simulator. A lazy, fail-closed purge removes keys left by a previous installation (Keychain items survive uninstall). Secure Enclave behaviour on a physical iPhone is not yet verified. `sealSecret` / `unsealSecret` / `deleteAllSealKeys` are deliberately absent on iOS (secrets are Keychain items, ADR-MOB-0007); the JS fallbacks apply (`deleteAllSealKeys` → `false`) and clear-all sweeps the Keychain secret items instead.
+- Enrollment QR capture uses Vision Camera: ML Kit (`useBarcodeScannerOutput`) on Android, native AVFoundation object output on iOS (`app/components/enrollmentCodeOutput.*.ts`) — there is no custom native QR frame-processor plugin.
 
 Important boundary: `EzkeyCryptoModule` is a **signing and verification** bridge. It does not currently expose a
 general encrypt/decrypt or wrap/unwrap API for all local mobile secrets. In the present Android app,
@@ -95,8 +105,9 @@ fleet yet). Provenance:
 - StrongBox `STRONG` tier and StrongBox→Keystore fallback evidence are **manual / physical device**
   only — see [`MOBILE_STRONGBOX_MANUAL_CHECKLIST.md`](MOBILE_STRONGBOX_MANUAL_CHECKLIST.md).
   Do not claim CI StrongBox.
-- iOS modules should include XCTests verifying key generation and signing round trips using the Bridge module
-  (later milestone; not current Android-first parity debt).
+- iOS: hosted XCTest target `EzkeyMobileTests` (codec, bridge-level resolve/reject codes, key lifecycle, reinstall
+  purge, Secure Enclave path forced by injection, build info). Command and purge probe in
+  [`IOS_SETUP.md`](IOS_SETUP.md).
 - Maestro pilots UI approve paths; they do not assert hardware tier.
 
 @since 2025

@@ -145,7 +145,6 @@ class EnrollmentServiceTest {
 
     // Setup bind request
     bindRequest = new EnrollmentBindRequest();
-    bindRequest.setEnrollmentId(456);
     bindRequest.setEnrollmentProofToken("test-proof-token");
 
     // Setup verify request

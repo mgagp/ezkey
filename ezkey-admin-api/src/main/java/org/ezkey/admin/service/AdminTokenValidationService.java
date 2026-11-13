@@ -13,10 +13,12 @@ package org.ezkey.admin.service;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.ezkey.admin.config.AdminTokenRotationProperties;
+import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.integration.domain.AdminTokenPurpose;
 import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
+import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminLifecycleStatus;
 import org.ezkey.integration.domain.repository.AdminTokenRepository;
 import org.ezkey.security.SensitiveDataHasher;
 import org.slf4j.Logger;
@@ -74,10 +76,14 @@ public class AdminTokenValidationService {
    * <p>This method eagerly loads admin, tenant, and integration to support AdminPrincipal creation
    * without lazy loading issues.
    *
+   * <p>Not read-only: an active {@link AdminTokenPurpose#EVALUATOR_TEMP} token is deactivated when
+   * the admin’s enrollment is already device-bound {@link EnrollmentStatus#VERIFIED} (admin-owned
+   * supersede after bind; Auth-api does not touch tokens).
+   *
    * @param token the bearer token to validate
    * @return Optional containing the AdminToken with relations if token is valid, empty otherwise
    */
-  @Transactional(readOnly = true)
+  @Transactional
   public Optional<AdminToken> validateTokenWithRelations(String token) {
     try {
       String hash = SensitiveDataHasher.sha256Hex(token);
@@ -92,11 +98,12 @@ public class AdminTokenValidationService {
       if (tokenOptional.isPresent()) {
         AdminToken adminToken = tokenOptional.get();
 
-        // SEC-021: recovery tokens must not authenticate as Admin API sessions
-        if (adminToken.getTokenPurpose() == AdminTokenPurpose.RECOVERY) {
+        // Allowlist (SEC-021, #1122): RECOVERY, ACTIVATION and any future purpose fail closed.
+        if (adminToken.getTokenPurpose() != AdminTokenPurpose.SESSION
+            && adminToken.getTokenPurpose() != AdminTokenPurpose.EVALUATOR_TEMP) {
           logger.warn(
-              "❌ Token rejected: recovery-purpose token cannot authenticate ordinary Admin API"
-                  + " requests");
+              "❌ Token rejected: {}-purpose token cannot authenticate Admin API requests",
+              adminToken.getTokenPurpose());
           return Optional.empty();
         }
 
@@ -115,13 +122,48 @@ public class AdminTokenValidationService {
             return Optional.empty();
           }
 
+          // #1122: a pending admin has not completed /activate; no purpose may authenticate.
+          if (admin.getLifecycleStatus() == AdminLifecycleStatus.PENDING_ACTIVATION) {
+            logger.warn("❌ Token rejected: admin is pending activation: {}", admin.getUsername());
+            return Optional.empty();
+          }
+
           // Check if the admin's enrollment is still active.
           // Defence-in-depth: EnrollmentRevocationService already invalidates tokens
           // immediately on revocation, but this guard catches any window where the
           // enrollment was deactivated without explicit token revocation.
+          // EVALUATOR_TEMP may run before MFA VERIFIED; still require active when linked.
           Enrollment enrollment = admin.getEnrollment();
           if (enrollment != null && !Boolean.TRUE.equals(enrollment.getActive())) {
             logger.warn("❌ Token rejected: enrollment inactive for admin: {}", admin.getUsername());
+            return Optional.empty();
+          }
+
+          // SESSION requires a device-bound MFA enrollment; only EVALUATOR_TEMP runs pre-bind.
+          if (adminToken.getTokenPurpose() == AdminTokenPurpose.SESSION && enrollment == null) {
+            logger.warn("❌ Token rejected: no enrollment for admin: {}", admin.getUsername());
+            return Optional.empty();
+          }
+
+          if (adminToken.getTokenPurpose() == AdminTokenPurpose.SESSION
+              && !EnrollmentStatus.VERIFIED.equals(enrollment.getStatus())) {
+            logger.warn(
+                "❌ Token rejected: enrollment is not verified for admin: {}", admin.getUsername());
+            return Optional.empty();
+          }
+
+          // Temporary evaluator console: once MFA is VERIFIED, TEMP must die on first Admin API
+          // call (even before passwordless SESSION re-login).
+          if (adminToken.getTokenPurpose() == AdminTokenPurpose.EVALUATOR_TEMP
+              && enrollment != null
+              && EnrollmentStatus.VERIFIED.equals(enrollment.getStatus())) {
+            int revoked =
+                tokenRepository.deactivateTokensForAdminByPurpose(
+                    admin.getAdminId(), AdminTokenPurpose.EVALUATOR_TEMP);
+            logger.info(
+                "Rejected EVALUATOR_TEMP after VERIFIED bind for admin: {} (revoked {} token(s))",
+                admin.getUsername(),
+                revoked);
             return Optional.empty();
           }
 
@@ -144,9 +186,10 @@ public class AdminTokenValidationService {
    * Updates the last used timestamp and, for non-recovery tokens, extends expiration (sliding
    * expiration).
    *
-   * <p>This method requires a separate transaction for the update. For normal admin tokens, the
-   * token's expiration is extended to now + expirationHours on each validated request, so the
-   * session stays valid as long as the user is active. Recovery tokens are not extended.
+   * <p>Looks up the token by bearer hash, then delegates to {@link
+   * #updateTokenLastUsed(AdminToken)}. Prefer the entity overload on the authenticated request hot
+   * path when {@link #validateTokenWithRelations(String)} already loaded the row (JavaMelody A1 /
+   * JM-001: avoid a second SELECT; the entity overload does not merge).
    *
    * @param token the bearer token to update
    * @return updated expiration timestamp when the token was found and updated
@@ -160,18 +203,53 @@ public class AdminTokenValidationService {
       }
       Optional<AdminToken> tokenOptional = tokenRepository.findByBearerTokenHashAndActiveTrue(hash);
       if (tokenOptional.isPresent()) {
-        AdminToken adminToken = tokenOptional.get();
-        OffsetDateTime now = OffsetDateTime.now();
-        adminToken.setLastUsedAt(now);
-        // Sliding expiration for SESSION tokens only (SEC-021: never extend RECOVERY).
-        if (adminToken.getTokenPurpose() != AdminTokenPurpose.RECOVERY) {
-          int hours = Math.max(1, rotationProperties.getExpirationHours());
-          adminToken.setExpiresAt(now.plusHours(hours));
-        }
-        tokenRepository.save(adminToken);
-        logger.debug("✅ Updated last used and expiration for token");
-        return Optional.ofNullable(adminToken.getExpiresAt());
+        return updateTokenLastUsed(tokenOptional.get());
       }
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
+      logger.error("❌ Error updating token timestamp: {}", e.getMessage());
+    }
+    return Optional.empty();
+  }
+
+  /**
+   * Updates last used and sliding expiration on an already-loaded {@link AdminToken}.
+   *
+   * <p>Does not re-query by bearer hash (JavaMelody A1 / JM-001). Issues a conditional UPDATE that
+   * succeeds only while {@code active = true}. Does not {@code save} or mutate the entity: with
+   * Open Session in View, merging the loaded row can write {@code active=true} and revive a token
+   * revoked concurrently by logout, login rotation, or deactivation.
+   *
+   * <p>For SESSION tokens, expiration is extended to now + expirationHours. Recovery,
+   * EVALUATOR_TEMP and ACTIVATION tokens keep the loaded expiration (SEC-021 / Mode C / #1122
+   * absolute TTL).
+   *
+   * @param adminToken the loaded token entity (id and purpose are read; the instance is not saved)
+   * @return updated expiration when an active row was touched; empty if the token is null, has no
+   *     id, is inactive, or the update fails
+   */
+  @Transactional
+  public Optional<OffsetDateTime> updateTokenLastUsed(AdminToken adminToken) {
+    if (adminToken == null || adminToken.getTokenId() == null) {
+      return Optional.empty();
+    }
+    try {
+      OffsetDateTime now = OffsetDateTime.now();
+      OffsetDateTime expiresAt;
+      // Sliding expiration for SESSION tokens only (SEC-021: never extend RECOVERY;
+      // Mode C: EVALUATOR_TEMP is absolute TTL).
+      if (adminToken.getTokenPurpose() == AdminTokenPurpose.SESSION) {
+        int hours = Math.max(1, rotationProperties.getExpirationHours());
+        expiresAt = now.plusHours(hours);
+      } else {
+        expiresAt = adminToken.getExpiresAt();
+      }
+      int updated = tokenRepository.touchLastUsedIfActive(adminToken.getTokenId(), now, expiresAt);
+      if (updated == 0) {
+        logger.debug("Skipped last-used update: token is no longer active");
+        return Optional.empty();
+      }
+      logger.debug("✅ Updated last used and expiration for token");
+      return Optional.ofNullable(expiresAt);
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("❌ Error updating token timestamp: {}", e.getMessage());
     }

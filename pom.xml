@@ -5,7 +5,7 @@
 
 	<groupId>org.ezkey</groupId>
 	<artifactId>ezkey-parent</artifactId>
-	<version>${revision}${buildQualifier}${changelist}</version>
+	<version>${revision}${changelist}</version>
 	<packaging>pom</packaging>
 
 	<name>Ezkey Parent</name>
@@ -50,47 +50,58 @@
 		<module>ezkey-demo-app-acme</module>
 		<module>ezkey-demo-device</module>
 		<module>ezkey-tests</module>
+		<module>ezkey-connectors</module>
 	</modules>
 
 	<properties>
-		<!-- CI-friendly version properties -->
-		<revision>0.0.1</revision>
+		<!--
+		  Product SemVer (ADR-0017 / #1211): one version for the whole monorepo.
+		  CI-friendly formula: ${revision}${changelist} → 0.2.0-SNAPSHOT in dev.
+		  Release cuts clear changelist (empty) so the coordinate is 0.2.0.
+		  Local branch/worktree isolation: scripts/mvn-branch.sh appends a qualifier to
+		  revision (e.g. -Drevision=0.2.0-feature-x). Do not put a custom property inside
+		  <version> — flatten resolveCiFriendliesOnly only expands revision/changelist/sha1.
+		  npm / Android / SDK consumers sync from these properties via scripts/sync-version.sh.
+		-->
+		<revision>0.2.0</revision>
 		<changelist>-SNAPSHOT</changelist>
-		<!-- buildQualifier is injected by wrapper scripts or .mvn/maven.config (empty by default) -->
-		<buildQualifier></buildQualifier>
+		<flatten-maven-plugin.version>1.9.0</flatten-maven-plugin.version>
 		<java.version>25</java.version>
 		<maven.compiler.source>25</maven.compiler.source>
 		<maven.compiler.target>25</maven.compiler.target>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-		<spring-boot.version>4.1.1</spring-boot.version>
-		<!-- SEC-019: targeted BOM overrides (July 2026 Security Challenge advisories) -->
-		<postgresql.version>42.7.13</postgresql.version>
-		<logback.version>1.6.3</logback.version>
-		<tomcat.version>11.0.25</tomcat.version>
+		<spring-boot.version>4.1.2</spring-boot.version>
+		<!-- SEC-019: targeted BOM overrides (July 2026 Security Challenge advisories).
+		     postgresql / tomcat pins dropped with Boot 4.1.2 — BOM manages 42.7.14 / 11.0.27 (#1031, #939). -->
+		<logback.version>1.6.6</logback.version>
 
-		<jackson-bom.version>3.2.2</jackson-bom.version>
-		<jackson-2-bom.version>2.22.2</jackson-2-bom.version>
+		<jackson-bom.version>3.3.0</jackson-bom.version>
+		<jackson-2-bom.version>2.23.0</jackson-2-bom.version>
 		<mapstruct.version>1.6.3</mapstruct.version>
-		<springdoc.version>3.1.0</springdoc.version>
+		<springdoc.version>3.2.0</springdoc.version>
 		<!-- SpotBugs engine + Maven plugin (report-only via java-doctor-curated; not a build gate) -->
-		<spotbugs.version>4.10.4</spotbugs.version>
-		<spotbugs-maven-plugin.version>4.10.4.1</spotbugs-maven-plugin.version>
+		<spotbugs.version>4.10.5</spotbugs.version>
+		<spotbugs-maven-plugin.version>4.10.5.0</spotbugs-maven-plugin.version>
 		<checkstyle.version>3.6.0</checkstyle.version>
 		<!-- maven-pmd-plugin version (narrow ruleset under config/java-doctor/; not a build gate) -->
 		<pmd.version>3.28.0</pmd.version>
-		<jacoco.version>0.8.15</jacoco.version>
+		<jacoco.version>0.8.16</jacoco.version>
 		<zxing.version>3.5.4</zxing.version>
-		<spotless.version>3.10.1</spotless.version>
+		<spotless.version>3.11.0</spotless.version>
 		<!-- Nested Spotless pin; Dependabot typically misses the plugin XML. Pulse in dependabot-curated. -->
-		<google-java-format.version>1.36.1</google-java-format.version>
-		<bucket4j.version>8.19.0</bucket4j.version>
-		<caffeine.version>3.2.4</caffeine.version>
-		<tink.version>1.23.0</tink.version>
-		<shedlock.version>7.10.0</shedlock.version>
-		<javamelody.version>2.8.0</javamelody.version>
+		<!-- 2.0.0 (2026-10-30): new layout engine; cleanup pass on by default (Spotless 3.10.4 supports <cleanup>). -->
+		<google-java-format.version>2.0.0</google-java-format.version>
+		<bucket4j.version>8.22.0</bucket4j.version>
+		<caffeine.version>3.3.1</caffeine.version>
+		<tink.version>1.24.0</tink.version>
+		<shedlock.version>7.11.0</shedlock.version>
+		<javamelody.version>2.9.0</javamelody.version>
 		<ipaddress.version>5.6.2</ipaddress.version>
-		<license-maven-plugin.version>2.7.1</license-maven-plugin.version>
+		<license-maven-plugin.version>2.8.0</license-maven-plugin.version>
+		<!-- Skip copying root THIRD-PARTY.txt into META-INF/licenses/ unless a shipped
+		     server/backend module opts in (see ezkey-admin-api and siblings). -->
+		<ezkey.skip.third-party.licenses.copy>true</ezkey.skip.third-party.licenses.copy>
 	</properties>
 
 	<!-- Gestion centralisée des dépendances -->
@@ -105,12 +116,8 @@
 				<scope>import</scope>
 			</dependency>
 
-			<!-- SEC-019: explicit overrides (imported BOM keeps its own property values) -->
-			<dependency>
-				<groupId>org.postgresql</groupId>
-				<artifactId>postgresql</artifactId>
-				<version>${postgresql.version}</version>
-			</dependency>
+			<!-- SEC-019: explicit overrides (imported BOM keeps its own property values).
+			     postgresql + tomcat-embed-* removed: Boot 4.1.2 BOM already manages those versions. -->
 			<dependency>
 				<groupId>ch.qos.logback</groupId>
 				<artifactId>logback-classic</artifactId>
@@ -120,21 +127,6 @@
 				<groupId>ch.qos.logback</groupId>
 				<artifactId>logback-core</artifactId>
 				<version>${logback.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>org.apache.tomcat.embed</groupId>
-				<artifactId>tomcat-embed-core</artifactId>
-				<version>${tomcat.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>org.apache.tomcat.embed</groupId>
-				<artifactId>tomcat-embed-el</artifactId>
-				<version>${tomcat.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>org.apache.tomcat.embed</groupId>
-				<artifactId>tomcat-embed-websocket</artifactId>
-				<version>${tomcat.version}</version>
 			</dependency>
 
 			<!-- MapStruct -->
@@ -261,7 +253,7 @@
 				<groupId>com.fasterxml.jackson.core</groupId>
 				<artifactId>jackson-annotations</artifactId>
 				<!-- Annotations drop the patch digit (jackson-2-bom property jackson.version.annotations). -->
-				<version>2.22</version>
+				<version>2.23</version>
 			</dependency>
 
 
@@ -314,7 +306,7 @@
     					<dependency>
       						<groupId>com.puppycrawl.tools</groupId>
       						<artifactId>checkstyle</artifactId>
-      						<version>14.1.0</version> <!-- Override default -->
+      						<version>14.4.0</version> <!-- Override default -->
     					</dependency>
 						<dependency>
 							<groupId>org.ezkey</groupId>
@@ -365,7 +357,7 @@
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-surefire-plugin</artifactId>
-					<version>3.6.0</version>
+					<version>3.6.1</version>
 					<configuration>
 						<includes>
 							<include>**/*Test.java</include>
@@ -381,7 +373,7 @@
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-failsafe-plugin</artifactId>
-					<version>3.5.6</version>
+					<version>3.6.1</version>
 					<configuration>
 						<includes>
 							<include>**/*IntegrationTest.java</include>
@@ -451,7 +443,8 @@
 					</executions>
 				</plugin>
 
-				<!-- Maven Resources Plugin - Include license files -->
+				<!-- Maven Resources Plugin — copy committed root THIRD-PARTY.txt into
+				     META-INF/licenses/ for shipped JARs (opt-in via property). -->
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-resources-plugin</artifactId>
@@ -461,6 +454,55 @@
 							<nonFilteredFileExtension>txt</nonFilteredFileExtension>
 						</nonFilteredFileExtensions>
 					</configuration>
+					<executions>
+						<execution>
+							<id>copy-third-party-licenses</id>
+							<phase>process-resources</phase>
+							<goals>
+								<goal>copy-resources</goal>
+							</goals>
+							<configuration>
+								<skip>${ezkey.skip.third-party.licenses.copy}</skip>
+								<outputDirectory>${project.build.outputDirectory}/META-INF/licenses</outputDirectory>
+								<resources>
+									<resource>
+										<directory>${maven.multiModuleProjectDirectory}</directory>
+										<includes>
+											<include>THIRD-PARTY.txt</include>
+										</includes>
+									</resource>
+								</resources>
+							</configuration>
+						</execution>
+					</executions>
+				</plugin>
+
+				<!-- Fail closed when a shipped module opts in but root THIRD-PARTY.txt is absent
+				     (e.g. Docker build forgot to COPY it). Skipped with the same property. -->
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-enforcer-plugin</artifactId>
+					<version>3.7.0</version>
+					<executions>
+						<execution>
+							<id>require-third-party-licenses-file</id>
+							<phase>process-resources</phase>
+							<goals>
+								<goal>enforce</goal>
+							</goals>
+							<configuration>
+								<skip>${ezkey.skip.third-party.licenses.copy}</skip>
+								<rules>
+									<requireFilesExist>
+										<files>
+											<file>${maven.multiModuleProjectDirectory}/THIRD-PARTY.txt</file>
+											<file>${project.build.outputDirectory}/META-INF/licenses/THIRD-PARTY.txt</file>
+										</files>
+									</requireFilesExist>
+								</rules>
+							</configuration>
+						</execution>
+					</executions>
 				</plugin>
 
 				<!-- SpotBugs (report-only; invoked by scripts/java-doctor-curated.sh) -->
@@ -504,40 +546,41 @@
 					</configuration>
 				</plugin>
 
-				<!-- License Maven Plugin -->
-				<plugin>
-					<groupId>org.codehaus.mojo</groupId>
-					<artifactId>license-maven-plugin</artifactId>
-					<version>${license-maven-plugin.version}</version>
-					<configuration>
-						<outputDirectory>${project.basedir}</outputDirectory>
-						<thirdPartyFilename>THIRD-PARTY.txt</thirdPartyFilename>
-						<useMissingFile>true</useMissingFile>
-						<missingFile>${project.basedir}/src/license/THIRD-PARTY.properties</missingFile>
-						<licenseMerges>
-							<licenseMerge>The Apache Software License, Version 2.0|Apache License, Version 2.0|Apache 2.0|Apache-2.0</licenseMerge>
-							<licenseMerge>MIT License|MIT|The MIT License</licenseMerge>
-							<licenseMerge>Eclipse Public License - v 1.0|EPL-1.0|Eclipse Public License 1.0</licenseMerge>
-							<licenseMerge>GNU General Public License, Version 2.0|GPL 2.0|GPL-2.0</licenseMerge>
-							<licenseMerge>GNU Lesser General Public License, Version 2.1|LGPL 2.1|LGPL-2.1</licenseMerge>
-						</licenseMerges>
-						<excludedGroups>org.ezkey</excludedGroups>
-					</configuration>
-					<executions>
-						<execution>
-							<id>aggregate-add-third-party</id>
-							<goals>
-								<goal>aggregate-add-third-party</goal>
-							</goals>
-							<phase>validate</phase>
-						</execution>
-					</executions>
-				</plugin>
 			</plugins>
 		</pluginManagement>
 
 		<!-- Plugins appliqués à tous les modules -->
 		<plugins>
+			<!--
+			  Resolve CI-friendly ${revision}/${changelist} in installed/deployed POMs
+			  (ADR-0017 / #1211 step 2). flattenMode resolveCiFriendliesOnly keeps the rest of
+			  the POM intact.
+			-->
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>flatten-maven-plugin</artifactId>
+				<version>${flatten-maven-plugin.version}</version>
+				<configuration>
+					<updatePomFile>true</updatePomFile>
+					<flattenMode>resolveCiFriendliesOnly</flattenMode>
+				</configuration>
+				<executions>
+					<execution>
+						<id>flatten</id>
+						<phase>process-resources</phase>
+						<goals>
+							<goal>flatten</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>flatten.clean</id>
+						<phase>clean</phase>
+						<goals>
+							<goal>clean</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
 			<plugin>
 				<groupId>com.diffplug.spotless</groupId>
 				<artifactId>spotless-maven-plugin</artifactId>
@@ -554,9 +597,15 @@
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
 			</plugin>
+			<!-- Opt-in copy of committed root THIRD-PARTY.txt → META-INF/licenses/
+			     (skipped unless a shipped module sets ezkey.skip.third-party.licenses.copy=false). -->
 			<plugin>
-				<groupId>org.codehaus.mojo</groupId>
-				<artifactId>license-maven-plugin</artifactId>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-resources-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-enforcer-plugin</artifactId>
 			</plugin>
 			<!-- Available for explicit goals only (spotbugs:spotbugs / pmd:pmd); no lifecycle binding -->
 			<plugin>
@@ -599,6 +648,85 @@
 	</build>
 
 	<profiles>
+		<!--
+			Regenerate committed root THIRD-PARTY.txt. Not part of the default build —
+			run explicitly: mvn -Plicenses generate-resources
+			CI enforces freshness via the licenses-drift job.
+		-->
+		<profile>
+			<id>licenses</id>
+			<properties>
+				<!-- Generation only — do not require checkstyle-config for this profile.
+				     Plugin dependency resolution can fail before checkstyle.skip is honoured,
+				     so pluginManagement below also unbinds Checkstyle (same approach as no-checkstyle). -->
+				<checkstyle.skip>true</checkstyle.skip>
+			</properties>
+			<build>
+				<pluginManagement>
+					<plugins>
+						<plugin>
+							<groupId>org.apache.maven.plugins</groupId>
+							<artifactId>maven-checkstyle-plugin</artifactId>
+							<configuration>
+								<skip>true</skip>
+							</configuration>
+							<dependencies>
+								<!-- Empty: avoid resolving reactor checkstyle-config. -->
+							</dependencies>
+							<executions>
+								<execution>
+									<id>validate</id>
+									<phase>none</phase>
+								</execution>
+							</executions>
+						</plugin>
+					</plugins>
+				</pluginManagement>
+				<plugins>
+					<plugin>
+						<groupId>org.codehaus.mojo</groupId>
+						<artifactId>license-maven-plugin</artifactId>
+						<version>${license-maven-plugin.version}</version>
+						<!-- Aggregate goal belongs on the reactor parent only. -->
+						<inherited>false</inherited>
+						<configuration>
+							<outputDirectory>${maven.multiModuleProjectDirectory}</outputDirectory>
+							<thirdPartyFilename>THIRD-PARTY.txt</thirdPartyFilename>
+							<useMissingFile>true</useMissingFile>
+							<missingFile>${maven.multiModuleProjectDirectory}/src/license/THIRD-PARTY.properties</missingFile>
+							<failOnMissing>true</failOnMissing>
+							<sortArtifactByName>true</sortArtifactByName>
+							<excludedScopes>test,provided,system</excludedScopes>
+							<excludedGroups>org.ezkey</excludedGroups>
+							<licenseMerges>
+								<licenseMerge>Apache-2.0|The Apache Software License, Version 2.0|Apache License, Version 2.0|Apache 2.0|Apache License 2.0|Apache License, version 2.0|ASL, version 2</licenseMerge>
+								<licenseMerge>MIT|MIT License|The MIT License|The MIT License (MIT)</licenseMerge>
+								<licenseMerge>EPL-2.0|Eclipse Public License - v 2.0|Eclipse Public License 2.0|EPL 2.0</licenseMerge>
+								<licenseMerge>EPL-1.0|Eclipse Public License - v 1.0|Eclipse Public License 1.0|EPL 1.0</licenseMerge>
+								<licenseMerge>BSD-3-Clause|BSD 3-Clause|BSD 3-clause License|The BSD 3-Clause License|BSD Licence 3|BSD-3-Clause License|3-Clause BSD License|BSD 3-clause License w/nuclear disclaimer</licenseMerge>
+								<licenseMerge>BSD-2-Clause|BSD 2-Clause|BSD 2-clause License|The BSD 2-Clause License|BSD Licence 2</licenseMerge>
+								<licenseMerge>CDDL-1.0|CDDL|Common Development and Distribution License|CDDL License|COMMON DEVELOPMENT AND DISTRIBUTION LICENSE (CDDL) Version 1.0|CDDL 1.0</licenseMerge>
+								<licenseMerge>LGPL-2.1-only|GNU Lesser General Public License, Version 2.1|LGPL 2.1|LGPL-2.1|GNU Lesser General Public License</licenseMerge>
+								<licenseMerge>GPL-2.0-only|GNU General Public License, Version 2.0|GPL 2.0|GPL-2.0|GNU General Public License, version 2</licenseMerge>
+								<licenseMerge>GPL-2.0-with-classpath-exception|GNU General Public License, version 2 with the GNU Classpath Exception|GPLv2+CE|GPL2 w/ CPE</licenseMerge>
+								<licenseMerge>MPL-2.0|Mozilla Public License Version 2.0|MPL 2.0</licenseMerge>
+								<licenseMerge>EDL-1.0|Eclipse Distribution License - v 1.0|Eclipse Distribution License v. 1.0|EDL 1.0</licenseMerge>
+							</licenseMerges>
+						</configuration>
+						<executions>
+							<execution>
+								<id>aggregate-add-third-party</id>
+								<phase>generate-resources</phase>
+								<goals>
+									<goal>aggregate-add-third-party</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+
 		<!--
 			Profile used for Docker image builds and other environments
 			where we explicitly want to skip all Checkstyle execution.

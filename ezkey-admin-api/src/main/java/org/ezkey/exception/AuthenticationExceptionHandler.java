@@ -121,7 +121,7 @@ public class AuthenticationExceptionHandler extends ExceptionHandlerBase {
    * "type": "https://ezkey.io/problems/authentication/invalid-credentials",
    * "title": "Invalid Credentials",
    * "status": 401,
-   * "detail": "Invalid username or password",
+   * "detail": "Invalid username",
    * "path": "/api/v1/admin/auth/login"
    * }
    * }</pre>

@@ -65,6 +65,7 @@ import org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerial
       "org.ezkey.enrollment.domain.repository",
       "org.ezkey.audit.domain.repository",
       "org.ezkey.audit.integrity",
+      "org.ezkey.audit.asyncjob",
       "org.ezkey.security.domain.repository",
       "org.ezkey.alert.repository"
     })
@@ -75,6 +76,7 @@ import org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerial
       "org.ezkey.enrollment.domain.entity",
       "org.ezkey.audit.domain.entity",
       "org.ezkey.audit.integrity",
+      "org.ezkey.audit.asyncjob",
       "org.ezkey.security.domain.entity",
       "org.ezkey.alert.domain.entity"
     })

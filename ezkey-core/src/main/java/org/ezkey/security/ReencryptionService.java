@@ -30,6 +30,7 @@ import org.ezkey.security.domain.entity.ReencryptionBatch;
 import org.ezkey.security.domain.entity.ReencryptionBatch.BatchStatus;
 import org.ezkey.security.domain.repository.EncryptionKeyRepository;
 import org.ezkey.security.domain.repository.ReencryptionBatchRepository;
+import org.ezkey.security.exception.EncryptionLifecycleDisabledException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -81,6 +82,22 @@ public class ReencryptionService {
     this.jobLastRunService = jobLastRunService;
   }
 
+  /**
+   * Whether scheduled and manual re-encryption is enabled.
+   *
+   * @return {@code true} when {@code ezkey.encryption.reencryption.enabled} is on
+   */
+  public boolean isReencryptionEnabled() {
+    return properties.getReencryption().isEnabled();
+  }
+
+  private void ensureReencryptionEnabled() {
+    if (!isReencryptionEnabled()) {
+      throw new EncryptionLifecycleDisabledException(
+          EncryptionLifecycleDisabledException.Operation.REENCRYPTION);
+    }
+  }
+
   @Scheduled(cron = "${ezkey.encryption.reencryption.schedule:0 0 3 * * ?}")
   @SchedulerLock(name = "REENCRYPTION", lockAtMostFor = "PT2H")
   public void processReencryptionBatches() {
@@ -127,7 +144,8 @@ public class ReencryptionService {
             batchesProcessed++;
           } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
             logger.error("Failed to process batch {}: {}", batch.getBatchId(), e.getMessage(), e);
-            batchProcessingService.markBatchFailed(batch, e.getMessage());
+            // #785: persist classified reason only (never raw exception message).
+            batchProcessingService.markBatchFailed(batch, classifiedFailureReason(e));
           }
         }
         logger.info(
@@ -141,7 +159,9 @@ public class ReencryptionService {
           slice.add(batch);
         }
         parallelRunner.runBatches(
-            slice, (batch, e) -> batchProcessingService.markBatchFailed(batch, e.getMessage()));
+            slice,
+            (batch, e) ->
+                batchProcessingService.markBatchFailed(batch, classifiedFailureReason(e)));
         batchesProcessed = slice.size();
         logger.info(
             "✅ Re-encryption batch processing completed (parallel workers={}). Submitted {}"
@@ -154,8 +174,10 @@ public class ReencryptionService {
       jobLastRunService.recordSuccess(ScheduledJobKey.REENCRYPTION, scope);
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Failed to process re-encryption batches", e);
+      // #785: persist classified reason only (same pattern as nightly integrity #741/#783).
+      String failureReason = classifiedFailureReason(e);
       jobLastRunService.recordFailure(
-          ScheduledJobKey.REENCRYPTION, "Batch re-encryption cycle", e.getMessage());
+          ScheduledJobKey.REENCRYPTION, "Batch re-encryption cycle", failureReason);
       auditLogService.log(
           AuditLog.builder()
               .eventType(EventType.REENCRYPTION_FAILED)
@@ -165,9 +187,9 @@ public class ReencryptionService {
               .ipAddress("127.0.0.1")
               .eventDetails(
                   AuditDetailsBuilder.builder()
-                      .errorSummary("Scheduled batch processing failed: " + e.getMessage())
+                      .errorSummary("Scheduled batch processing failed: " + failureReason)
                       .toJson())
-              .errorMessage(e.getMessage())
+              .errorMessage(failureReason)
               .build());
     }
   }
@@ -183,11 +205,13 @@ public class ReencryptionService {
    * @param batches batches to process asynchronously
    */
   public void enqueueBatchProcessing(List<ReencryptionBatch> batches) {
+    ensureReencryptionEnabled();
     submitBatchesForBackgroundProcessing(batches);
   }
 
   /** Enqueues batches for all applicable old keys and targets (no row crypto). */
   public void createBatchesForOldKeys() {
+    ensureReencryptionEnabled();
     batchCreationService.createBatchesForOldKeys();
   }
 
@@ -198,6 +222,7 @@ public class ReencryptionService {
    * @return enqueue summary with batch ids submitted for processing
    */
   public ManualReencryptionEnqueueResult enqueueFullReencryption() {
+    ensureReencryptionEnabled();
     if (!encryptionOperations.isEncryptionAvailable()) {
       throw new IllegalStateException("Encryption not available");
     }
@@ -224,6 +249,7 @@ public class ReencryptionService {
    * @return enqueue summary with batch ids submitted for processing
    */
   public ManualReencryptionEnqueueResult enqueueReencryptionForKey(Long keyId) {
+    ensureReencryptionEnabled();
     if (!encryptionOperations.isEncryptionAvailable()) {
       throw new IllegalStateException("Encryption not available");
     }
@@ -292,7 +318,7 @@ public class ReencryptionService {
         batchesToProcess,
         (batch, e) -> {
           logger.error("Failed to process batch {}: {}", batch.getBatchId(), e.getMessage(), e);
-          batchProcessingService.markBatchFailed(batch, e.getMessage());
+          batchProcessingService.markBatchFailed(batch, classifiedFailureReason(e));
         });
 
     int batchesProcessed = 0;
@@ -301,10 +327,9 @@ public class ReencryptionService {
       ReencryptionBatch refreshed =
           batchRepository
               .findById(batch.getBatchId())
-              .orElseThrow(
-                  () ->
-                      new IllegalStateException(
-                          "Re-encryption batch missing after processing: " + batch.getBatchId()));
+              .orElseThrow(() ->
+                  new IllegalStateException(
+                      "Re-encryption batch missing after processing: " + batch.getBatchId()));
       if (refreshed.getStatus() == BatchStatus.COMPLETED) {
         batchesProcessed++;
       } else if (refreshed.getStatus() == BatchStatus.FAILED) {
@@ -370,17 +395,16 @@ public class ReencryptionService {
           created,
           (batch, e) -> {
             logger.error("Failed to process batch {}: {}", batch.getBatchId(), e.getMessage(), e);
-            batchProcessingService.markBatchFailed(batch, e.getMessage());
+            batchProcessingService.markBatchFailed(batch, classifiedFailureReason(e));
           });
 
       for (ReencryptionBatch batch : created) {
         ReencryptionBatch refreshed =
             batchRepository
                 .findById(batch.getBatchId())
-                .orElseThrow(
-                    () ->
-                        new IllegalStateException(
-                            "Re-encryption batch missing after processing: " + batch.getBatchId()));
+                .orElseThrow(() ->
+                    new IllegalStateException(
+                        "Re-encryption batch missing after processing: " + batch.getBatchId()));
         if (refreshed.getStatus() == BatchStatus.COMPLETED) {
           batchesProcessed++;
         } else if (refreshed.getStatus() == BatchStatus.FAILED) {
@@ -414,8 +438,24 @@ public class ReencryptionService {
         batches,
         (batch, e) -> {
           logger.error("Failed to process batch {}: {}", batch.getBatchId(), e.getMessage(), e);
-          batchProcessingService.markBatchFailed(batch, e.getMessage());
+          batchProcessingService.markBatchFailed(batch, classifiedFailureReason(e));
         });
+  }
+
+  /**
+   * Classified failure reason for persisted batch / job-registry rows (#785).
+   *
+   * <p>Same pattern as nightly integrity (#741/#783): store the exception simple name only so SQL,
+   * tokens, or other message text never land in operator-visible failure columns.
+   *
+   * @param failure caught failure
+   * @return non-null simple class name
+   */
+  private static String classifiedFailureReason(Throwable failure) {
+    if (failure == null) {
+      return "UnknownFailure";
+    }
+    return failure.getClass().getSimpleName();
   }
 
   private static String buildReencryptionScope(int batchesProcessed) {

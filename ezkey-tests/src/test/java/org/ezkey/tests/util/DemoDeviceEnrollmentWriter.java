@@ -17,6 +17,7 @@ import io.restassured.response.Response;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import org.ezkey.tests.config.DockerStackConfig;
 import org.slf4j.Logger;
@@ -146,6 +147,8 @@ public class DemoDeviceEnrollmentWriter {
    * @param devicePublicKey Base64-encoded device public key
    * @param devicePrivateKey Base64-encoded device private key
    * @param enrollmentProofToken Enrollment proof token
+   * @param integrationPublicKey Key from the Auth API bind response; null when bind was skipped, in
+   *     which case the key already in the Demo Device file is kept
    * @param adminToken Admin bearer token for API calls
    * @throws IllegalStateException if enrollment file cannot be written
    */
@@ -154,6 +157,7 @@ public class DemoDeviceEnrollmentWriter {
       String devicePublicKey,
       String devicePrivateKey,
       String enrollmentProofToken,
+      String integrationPublicKey,
       String adminToken) {
     log.info("═══════════════════════════════════════════════════════════════");
     log.info("Writing enrollment file to demo-device container...");
@@ -197,7 +201,20 @@ public class DemoDeviceEnrollmentWriter {
       Boolean authAttemptChallengeRequired =
           enrollmentResponse.jsonPath().getBoolean("authAttemptChallengeRequired");
       Integer integrationId = enrollmentResponse.jsonPath().getInt("integrationId");
-      String integrationPublicKey = enrollmentResponse.jsonPath().getString("integrationPublicKey");
+      // The Admin API does not return this key (#1180). A blank key would make the Demo Device
+      // reject
+      // every pending request with "Invalid integration signature", so refuse to write one.
+      String resolvedIntegrationPublicKey =
+          integrationPublicKey != null && !integrationPublicKey.isBlank()
+              ? integrationPublicKey
+              : readIntegrationPublicKeyFromContainer(
+                  ENROLLMENTS_DIR + "/" + enrollmentId + ".json");
+      if (resolvedIntegrationPublicKey == null || resolvedIntegrationPublicKey.isBlank()) {
+        throw new IllegalStateException(
+            "No integration public key for enrollment "
+                + enrollmentId
+                + ": not in the bind response and not in the Demo Device file");
+      }
 
       log.info("   Enrollment Name: {}", enrollmentName);
       log.info("   Integration ID: {}", integrationId);
@@ -236,8 +253,7 @@ public class DemoDeviceEnrollmentWriter {
       enrollmentJson.putNull("integrationId");
       enrollmentJson.put("enrollmentName", enrollmentName != null ? enrollmentName : "");
       enrollmentJson.putNull("enrollmentUrl");
-      enrollmentJson.put(
-          "integrationPublicKey", integrationPublicKey != null ? integrationPublicKey : "");
+      enrollmentJson.put("integrationPublicKey", resolvedIntegrationPublicKey);
       enrollmentJson.put("enrollmentProofToken", enrollmentProofToken);
       enrollmentJson.put("devicePublicKey", devicePublicKey);
       enrollmentJson.put("devicePrivateKey", devicePrivateKey);
@@ -294,6 +310,30 @@ public class DemoDeviceEnrollmentWriter {
       throw new IllegalStateException(
           "Failed to write enrollment file to demo-device container: " + e.getMessage(), e);
     }
+  }
+
+  /**
+   * Reads {@code integrationPublicKey} from an existing enrollment file in the demo-device
+   * container.
+   *
+   * @param filePath Path to file inside container
+   * @return the key, or null if the file is absent or holds no key
+   * @throws java.io.IOException if the file cannot be read or parsed
+   * @throws InterruptedException if interrupted while waiting for docker
+   */
+  private String readIntegrationPublicKeyFromContainer(String filePath)
+      throws java.io.IOException, InterruptedException {
+    if (!fileExistsInContainer(filePath)) {
+      return null;
+    }
+    Process process =
+        new ProcessBuilder("docker", "exec", detectDemoDeviceContainer(), "cat", filePath).start();
+    String content = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+    if (process.waitFor() != 0) {
+      throw new java.io.IOException(
+          "Could not read " + filePath + " from the demo-device container");
+    }
+    return objectMapper.readTree(content).path("integrationPublicKey").asText(null);
   }
 
   /**

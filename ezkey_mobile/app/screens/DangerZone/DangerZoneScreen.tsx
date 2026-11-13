@@ -15,7 +15,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  StyleSheet,
+  ListRenderItemInfo,
   Text,
   TouchableOpacity,
   View,
@@ -27,8 +27,16 @@ import {
   enrollmentStorage,
   EnrollmentMetadataRecord,
 } from '../../services/storage/enrollmentStorage';
-import {borderRadius, colors, spacing, typography} from '../../config/theme';
+import {borderRadius, spacing, typography} from '../../config/theme';
+import {createThemedStyles, useTheme} from '../../theme';
 import {shouldShowInstallationHostHint} from '../../utils/installationMetadata';
+import {formatDateTime} from '../../utils/formatDateTime';
+import {i18n} from '../../i18n';
+import {
+  buildEnrollmentIdentityDisplay,
+  buildHomeCardLabels,
+  identityDisplayCopy,
+} from '../../utils/enrollmentDisplay';
 
 const RECENT_ACTIVITY_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -43,25 +51,16 @@ const sortEnrollments = (items: EnrollmentMetadataRecord[]) =>
     return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
   });
 
-const getEnrollmentDisplayName = (enrollment: EnrollmentMetadataRecord) =>
-  enrollment.enrollmentName?.trim() ||
-  enrollment.deviceLabel?.trim() ||
-  enrollment.integrationName;
-
-const formatAbsoluteDateTime = (value?: string) => {
-  if (!value) {
-    return undefined;
-  }
-
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return undefined;
-  }
-
-  return parsed.toLocaleString(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  });
+const getEnrollmentDisplayName = (
+  enrollment: EnrollmentMetadataRecord,
+  t: (key: string) => string,
+) => {
+  const identity = buildEnrollmentIdentityDisplay(
+    enrollment,
+    t('dangerZone.installationFallback'),
+    identityDisplayCopy(t),
+  );
+  return identity.accountLabel ?? identity.heroTitle;
 };
 
 const formatRelativeAge = (
@@ -139,13 +138,29 @@ const buildDeleteMessage = (
   t: (key: string, options?: Record<string, string | number>) => string,
 ) => {
   const lines = [
-    t('dangerZone.removeQuestion', {name: getEnrollmentDisplayName(enrollment)}),
+    t('dangerZone.removeQuestion', {name: getEnrollmentDisplayName(enrollment, t)}),
     '',
-    t('dangerZone.integration', {value: enrollment.integrationName}),
+    t('dangerZone.integration', {
+      value:
+        buildHomeCardLabels(
+          enrollment,
+          t('dangerZone.installationFallback'),
+          identityDisplayCopy(t),
+        ).title,
+    }),
   ];
 
-  if (enrollment.tenantName) {
-    lines.push(t('dangerZone.tenant', {value: enrollment.tenantName}));
+  const identity = buildEnrollmentIdentityDisplay(
+    enrollment,
+    t('dangerZone.installationFallback'),
+    identityDisplayCopy(t),
+  );
+  if (identity.roleLabel) {
+    lines.push(identity.roleLabel);
+  }
+
+  if (identity.tenantLabel) {
+    lines.push(t('dangerZone.tenant', {value: identity.tenantLabel}));
   }
 
   const installationLabel = enrollment.installation?.name || enrollment.installation?.host;
@@ -153,7 +168,7 @@ const buildDeleteMessage = (
     lines.push(t('dangerZone.installation', {value: installationLabel}));
   }
 
-  const lastActivity = formatAbsoluteDateTime(enrollment.lastActivityAt);
+  const lastActivity = formatDateTime(enrollment.lastActivityAt, i18n.language);
   if (lastActivity) {
     lines.push(t('dangerZone.lastActivity', {value: lastActivity}));
   }
@@ -170,6 +185,77 @@ const buildDeleteMessage = (
   return lines.join('\n');
 };
 
+type DangerZoneEnrollmentRowProps = {
+  item: EnrollmentMetadataRecord;
+  isBroken: boolean;
+  deletePending: boolean;
+  onDelete: (enrollment: EnrollmentMetadataRecord) => void;
+};
+
+/**
+ * Single Danger Zone enrollment row. Memoized so FlatList can keep stable row callbacks.
+ */
+const DangerZoneEnrollmentRow = React.memo(function DangerZoneEnrollmentRow({
+  item,
+  isBroken,
+  deletePending,
+  onDelete,
+}: DangerZoneEnrollmentRowProps) {
+  const styles = useStyles();
+  const {t} = useTranslation();
+
+  const handlePress = useCallback(() => {
+    onDelete(item);
+  }, [item, onDelete]);
+
+  const card = buildHomeCardLabels(
+    item,
+    t('dangerZone.installationFallback'),
+    identityDisplayCopy(t),
+  );
+  const displayName = getEnrollmentDisplayName(item, t);
+  const showHostHint = shouldShowInstallationHostHint(item);
+  const installationLabel =
+    showHostHint && item.installation?.host
+      ? `${item.installation?.name ?? t('dangerZone.installationFallback')} · ${item.installation.host}`
+      : item.installation?.name;
+
+  return (
+    <View style={styles.row}>
+      <View style={styles.rowInfo}>
+        <View style={styles.rowTitleLine}>
+          <Text style={styles.rowTitle}>{displayName}</Text>
+          {isBroken ? (
+            <Text style={styles.unusableBadge}>{t('dangerZone.unusableBadge')}</Text>
+          ) : null}
+          {item.favorited ? <Text style={styles.favoriteBadge}>{t('dangerZone.favorite')}</Text> : null}
+        </View>
+        <Text style={styles.rowMeta}>
+          {[card.title, card.roleLabel].filter(Boolean).join(' · ')}
+        </Text>
+        <Text style={styles.rowMeta}>
+          {[item.isSystemIntegration ? undefined : item.tenantName, installationLabel]
+            .filter(Boolean)
+            .join(' · ')}
+        </Text>
+        <Text
+          style={[styles.rowRecency, wasRecentlyActive(item) && styles.rowRecencyRecent]}>
+          {buildRecencyLabel(item, t)}
+        </Text>
+      </View>
+      <TouchableOpacity
+        style={[styles.deleteButton, deletePending && styles.deleteButtonDisabled]}
+        onPress={handlePress}
+        disabled={deletePending}
+        accessibilityRole="button"
+        accessibilityLabel={t('dangerZone.deleteAccessibility', {name: displayName})}
+        accessibilityHint={t('dangerZone.deleteAccessibilityHint')}>
+        <Text style={styles.deleteLabel}>{t('dangerZone.delete')}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+});
+
 /**
  * Administrative screen for deleting enrollments and clearing all local data.
  * Separated from the main flow to avoid accidental deletion.
@@ -177,6 +263,8 @@ const buildDeleteMessage = (
  * @since 2025
  */
 export const DangerZoneScreen: React.FC = () => {
+  const {colors} = useTheme();
+  const styles = useStyles();
   const {t} = useTranslation();
   const navigation = useNavigation();
   const {data, isLoading, refetch} = useEnrollments();
@@ -253,6 +341,18 @@ export const DangerZoneScreen: React.FC = () => {
     );
   }, [refetch, t]);
 
+  const renderEnrollmentItem = useCallback(
+    ({item}: ListRenderItemInfo<EnrollmentMetadataRecord>) => (
+      <DangerZoneEnrollmentRow
+        item={item}
+        isBroken={brokenIds.has(item.id)}
+        deletePending={deleteMutation.isPending}
+        onDelete={handleDelete}
+      />
+    ),
+    [brokenIds, deleteMutation.isPending, handleDelete],
+  );
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer} accessibilityLabel={t('dangerZone.loading')}>
@@ -291,62 +391,22 @@ export const DangerZoneScreen: React.FC = () => {
             <Text style={styles.footerHint}>{t('dangerZone.footerHint')}</Text>
           </View>
         }
-        renderItem={({item}) => {
-          const displayName = getEnrollmentDisplayName(item);
-          const showHostHint = shouldShowInstallationHostHint(item);
-          const installationLabel = showHostHint && item.installation?.host
-            ? `${item.installation?.name ?? t('dangerZone.installationFallback')} · ${item.installation.host}`
-            : item.installation?.name;
-
-          return (
-            <View style={styles.row}>
-              <View style={styles.rowInfo}>
-                <View style={styles.rowTitleLine}>
-                  <Text style={styles.rowTitle}>{displayName}</Text>
-                  {brokenIds.has(item.id) ? (
-                    <Text style={styles.unusableBadge}>{t('dangerZone.unusableBadge')}</Text>
-                  ) : null}
-                  {item.favorited ? <Text style={styles.favoriteBadge}>{t('dangerZone.favorite')}</Text> : null}
-                </View>
-                <Text style={styles.rowMeta}>{item.integrationName}</Text>
-                <Text style={styles.rowMeta}>
-                  {[item.tenantName, installationLabel].filter(Boolean).join(' · ')}
-                </Text>
-                <Text
-                  style={[
-                    styles.rowRecency,
-                    wasRecentlyActive(item) && styles.rowRecencyRecent,
-                  ]}>
-                  {buildRecencyLabel(item, t)}
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={[styles.deleteButton, deleteMutation.isPending && styles.deleteButtonDisabled]}
-                onPress={() => handleDelete(item)}
-                disabled={deleteMutation.isPending}
-                accessibilityRole="button"
-                accessibilityLabel={t('dangerZone.deleteAccessibility', {name: displayName})}
-                accessibilityHint={t('dangerZone.deleteAccessibilityHint')}>
-                <Text style={styles.deleteLabel}>{t('dangerZone.delete')}</Text>
-              </TouchableOpacity>
-            </View>
-          );
-        }}
+        renderItem={renderEnrollmentItem}
       />
     </View>
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(colors => ({
   container: {
     flex: 1,
     backgroundColor: colors.background,
   },
   banner: {
     padding: spacing.lg,
-    backgroundColor: 'rgba(255, 102, 102, 0.1)',
+    backgroundColor: colors.dangerBg,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 102, 102, 0.2)',
+    borderBottomColor: colors.dangerBorder,
   },
   bannerTitle: {
     fontSize: typography.fontSize.xl,
@@ -405,9 +465,9 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.semibold,
     color: colors.warning,
-    backgroundColor: 'rgba(245, 194, 107, 0.12)',
+    backgroundColor: colors.cautionBgStrong,
     borderWidth: 1,
-    borderColor: 'rgba(245, 194, 107, 0.35)',
+    borderColor: colors.cautionBorder,
     borderRadius: borderRadius.xl,
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
@@ -416,9 +476,9 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.semibold,
     color: colors.errorLight,
-    backgroundColor: 'rgba(255, 102, 102, 0.12)',
+    backgroundColor: colors.dangerBgStrong,
     borderWidth: 1,
-    borderColor: 'rgba(255, 102, 102, 0.25)',
+    borderColor: colors.dangerBorderStrong,
     borderRadius: borderRadius.xl,
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
@@ -427,7 +487,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: spacing.lg,
     borderRadius: borderRadius.sm,
-    backgroundColor: colors.error,
+    backgroundColor: colors.danger,
     alignSelf: 'flex-start',
   },
   deleteButtonDisabled: {
@@ -436,7 +496,7 @@ const styles = StyleSheet.create({
   deleteLabel: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textOnPrimary,
+    color: colors.textOnDanger,
   },
   empty: {
     padding: spacing.xxl,
@@ -453,7 +513,7 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
   clearAllButton: {
-    backgroundColor: colors.error,
+    backgroundColor: colors.danger,
     borderRadius: borderRadius.md,
     paddingVertical: spacing.md,
     alignItems: 'center',
@@ -464,7 +524,7 @@ const styles = StyleSheet.create({
   clearAllLabel: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textOnPrimary,
+    color: colors.textOnDanger,
   },
   footerHint: {
     marginTop: spacing.md,
@@ -478,4 +538,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.background,
   },
-});
+}));

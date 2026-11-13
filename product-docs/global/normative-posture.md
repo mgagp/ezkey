@@ -19,11 +19,15 @@ This page is the single canon for that stance. Honest security claims live in
 
 ## Priority
 
-Current funded work is **operable release quality** and **continuous code hygiene**. See
-[`operational-readiness-prioritization-2026-09.md`](operational-readiness-prioritization-2026-09.md).
-That compass already states that operable does **not** mean full SOC 2 certification.
+Current funded work is **continuous product and code hygiene** under an intention-first laboratory
+/ public-alpha posture — not a September P0 release gate. See
+[`vision/V-2026-09-26-public-alpha-posture-closeout.md`](vision/V-2026-09-26-public-alpha-posture-closeout.md).
+Historical Waves A–C + freeze D ordering lives in
+[`operational-readiness-prioritization-2026-09.md`](operational-readiness-prioritization-2026-09.md)
+(superseded as next-P0 gate). That history already stated that operable does **not** mean full
+SOC 2 certification.
 
-Normative posture **orients** design. It does not outrank the release compass, invent control
+Normative posture **orients** design. It does not outrank the live posture lock, invent control
 coverage percentages, or justify ceremony that does not improve the product.
 
 ## What we aim for
@@ -42,6 +46,22 @@ Designs and operator paths that stay mappable:
 Roadmap milestone `P4-compliance-readiness` is this quality as **operational discipline**
 (provisioning procedures, recovery-code lifecycle, stable audit artifacts). It is not "start an
 auditor engagement."
+
+## Assurance ladder (exploration)
+
+The project is never the audited party: an adopter's SOC 2 or ISO/IEC 27001 auditor examines the
+adopter, and sees Ezkey as a third-party component and as a source of control evidence. Ezkey aims
+to be a good component and a good evidence source; the mobile apps, which Ezkey publishes, follow
+store policies and OWASP MASVS; the community instance stays out of scope of any standard. The
+proportionate ladder (necessary → facilitator → sponsor-triggered) and the signal passes that feed
+the hygiene lanes are explored in
+[`backlog/ideas/I-2026-11-03-assurance-ladder.md`](backlog/ideas/I-2026-11-03-assurance-ladder.md).
+ISO/IEC 27001:2022 Annex A joins the TSC as a **reference-only** vocabulary for that exploration.
+
+**Decision trace (2026-11-03):** Marc reopened standards posture as a laboratory exploration,
+framed around the adopter as audited party and a proportionate ladder, without reversing the
+"what we do not do" list below. Reason: give adopters a facilitator path and the maintainer a
+cheap signal source for continuous improvement.
 
 ## What we do not do
 
@@ -84,9 +104,9 @@ create SOC 2 roadmaps, policy template farms, Comply setup, or certification che
 reintroduce CC IDs or “required for SOC 2 compliance” at the call site — use the product term and,
 if a mapping is needed, link this page.
 
-The hygiene lanes already in the repo (`java-doctor-curated`, `dependabot-curated`,
-`security-pentest-curated`, `assessment-curated`) **are** the continuous discipline. Do not invent
-a parallel compliance program.
+The hygiene lanes already in the repo (`java-doctor-curated`, `pam-doctor-curated`,
+`dependabot-curated`, `security-pentest-curated`, `assessment-curated`) **are** the continuous
+discipline. Do not invent a parallel compliance program.
 
 ## Related documents
 
@@ -95,5 +115,7 @@ a parallel compliance program.
 - [`design-principles.md`](design-principles.md) — especially security as posture, not a bolted-on
   feature.
 - [`docs/SECURITY_POSTURE.md`](../../docs/SECURITY_POSTURE.md) — honest claims and threat model.
+- [`vision/V-2026-09-26-public-alpha-posture-closeout.md`](vision/V-2026-09-26-public-alpha-posture-closeout.md)
+  — live public alpha posture closeout.
 - [`operational-readiness-prioritization-2026-09.md`](operational-readiness-prioritization-2026-09.md)
-  — current release-order compass.
+  — historical Waves A–C + freeze D release-order record.

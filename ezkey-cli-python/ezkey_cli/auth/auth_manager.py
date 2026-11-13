@@ -9,8 +9,9 @@ Description: Handles passwordless authentication via Ezkey API
 """
 
 from typing import Optional, Dict, Any
-import requests
 import logging
+
+from ezkey_cli.utils.tls import SslVerify, requests_post
 
 log = logging.getLogger(__name__)
 
@@ -22,13 +23,14 @@ class AuthManager:
   Delegates to the same API endpoints as the CLI (`ezkey admin auth login`).
   """
 
-  def __init__(self, admin_url: str, verify_ssl: bool = True):
+  def __init__(self, admin_url: str, verify_ssl: SslVerify = True):
     """
     Initialize auth manager.
 
     Args:
         admin_url: Base URL for Admin API (e.g., https://localhost:9080)
-        verify_ssl: Whether to verify SSL certificates (False for development)
+        verify_ssl: Value for requests ``verify=`` (True, CA bundle path, or
+            False only after explicit loopback-only insecure opt-in).
     """
     self.admin_url = admin_url.rstrip('/')
     self.verify_ssl = verify_ssl
@@ -63,7 +65,7 @@ class AuthManager:
           "nonBlocking": non_blocking
       }
 
-      response = requests.post(
+      response = requests_post(
           url,
           json=payload,
           timeout=timeout,
@@ -113,7 +115,7 @@ class AuthManager:
       if waiter_secret:
         payload["waiterSecret"] = waiter_secret
 
-      response = requests.post(
+      response = requests_post(
           url,
           json=payload,
           timeout=timeout + 5,
@@ -125,6 +127,7 @@ class AuthManager:
     except Exception as e:
       log.error("Wait for challenge failed: %s", e)
       return None
+
   def logout(self) -> None:
     """No-op: callers clear persisted tokens via ConfigManager."""
     log.debug("AuthManager logout (token cleared by ConfigManager at call site)")

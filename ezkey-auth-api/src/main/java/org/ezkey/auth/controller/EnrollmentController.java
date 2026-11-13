@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
@@ -76,7 +77,7 @@ import org.springframework.web.bind.annotation.RestController;
  * <p><b>Enrollment Flow:</b>
  *
  * <ol>
- *   <li>Mobile device scans QR code or deep link containing enrollmentId
+ *   <li>Mobile device scans a QR code or deep link containing the enrollment proof token
  *   <li>Device calls bind endpoint to retrieve enrollment details and challenges
  *   <li>Device generates cryptographic keys and signs enrollment code
  *   <li>Device calls verify endpoint to complete enrollment with signatures
@@ -161,17 +162,13 @@ public class EnrollmentController {
   /**
    * Initiates the device binding process for mobile enrollment with proof token authentication.
    *
-   * <p>The mobile device calls this endpoint to start the enrollment binding process. It requires
-   * both the enrollment ID and enrollment proof token to prevent enumeration attacks and ensure
-   * secure access to enrollment data.
+   * <p>The mobile device calls this endpoint to start the enrollment binding process. The
+   * enrollment proof token is the invitation secret. The server resolves the enrollment from that
+   * token and returns the enrollment id (ADR-0019).
    *
-   * <p><b>Security Enhancement:</b> This endpoint now requires an enrollment proof token in
-   * addition to the enrollment ID, preventing attackers from systematically testing enrollment IDs
-   * to discover valid enrollments.
-   *
-   * @param request the binding request containing enrollment ID and enrollment proof token
-   * @return ResponseEntity containing enrollment binding information with HTTP 200, or 400 for
-   *     invalid enrollment ID/proof token, or 409 if enrollment is already bound
+   * @param request the binding request containing the enrollment proof token
+   * @return ResponseEntity containing enrollment binding information with HTTP 200, or 400 for an
+   *     invalid proof token, or 409 if enrollment is already bound
    */
   @PostMapping("/bind")
   @Operation(
@@ -189,7 +186,7 @@ public class EnrollmentController {
                             implementation = EnrollmentBindResponseDto.class))),
         @ApiResponse(
             responseCode = "400",
-            description = "Invalid enrollment ID, proof token, or enrollment expired",
+            description = "Invalid proof token, or enrollment expired",
             content =
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =
@@ -217,15 +214,13 @@ public class EnrollmentController {
 
     String clientIp =
         AuditHelper.extractClientIp(
-            httpRequest, trustedProxyProperties != null ? trustedProxyProperties.getCidrs() : null);
+            httpRequest,
+            trustedProxyProperties != null ? trustedProxyProperties.getCidrs() : null,
+            trustedProxyProperties != null
+                && trustedProxyProperties.isTrustCloudflareConnectingIp());
     String userAgent = AuditHelper.extractUserAgent(httpRequest);
 
-    // Validation: enrollmentId + enrollmentProofToken required
-    if (request.enrollmentId() == null
-        || request.enrollmentProofToken() == null
-        || request.enrollmentProofToken().trim().isEmpty()) {
-
-      Integer validationTenantId = resolveTenantIdForAudit(request.enrollmentId());
+    if (request.enrollmentProofToken() == null || request.enrollmentProofToken().trim().isEmpty()) {
       auditLogService.log(
           AuditLog.builder()
               .eventType(EventType.ENROLLMENT_BIND)
@@ -235,20 +230,19 @@ public class EnrollmentController {
               .ipAddress(clientIp)
               .userAgent(userAgent)
               .enrollmentId(null)
-              .integrationId(resolveIntegrationId(request.enrollmentId()))
-              .tenantId(validationTenantId)
-              .errorMessage("Enrollment ID and enrollment proof token are required")
+              .integrationId(null)
+              .tenantId(null)
+              .errorMessage("Enrollment proof token is required")
               .build());
 
-      throw new EnrollmentBindingFailedException(
-          "Enrollment ID and enrollment proof token are required");
+      throw new EnrollmentBindingFailedException("Enrollment proof token is required");
     }
-
-    Integer auditTenantId = resolveTenantIdForAudit(request.enrollmentId());
 
     try {
       EnrollmentBindRequest bindRequest = enrollmentMapper.toEnrollmentBindRequest(request);
       EnrollmentBindResponse response = enrollmentService.bind(bindRequest);
+      Integer boundEnrollmentId = response.getEnrollmentId();
+      Integer auditTenantId = resolveTenantIdForAudit(boundEnrollmentId);
 
       auditLogService.log(
           AuditLog.builder()
@@ -258,8 +252,8 @@ public class EnrollmentController {
               .apiName(ApiName.AUTH_API)
               .ipAddress(clientIp)
               .userAgent(userAgent)
-              .enrollmentId(request.enrollmentId())
-              .integrationId(resolveIntegrationId(request.enrollmentId()))
+              .enrollmentId(boundEnrollmentId)
+              .integrationId(resolveIntegrationId(boundEnrollmentId))
               .tenantId(auditTenantId)
               .build());
 
@@ -276,9 +270,9 @@ public class EnrollmentController {
               .apiName(ApiName.AUTH_API)
               .ipAddress(clientIp)
               .userAgent(userAgent)
-              .enrollmentId(request.enrollmentId())
-              .integrationId(resolveIntegrationId(request.enrollmentId()))
-              .tenantId(auditTenantId)
+              .enrollmentId(null)
+              .integrationId(null)
+              .tenantId(null)
               .errorMessage(e.getMessage())
               .build());
 
@@ -294,7 +288,7 @@ public class EnrollmentController {
               .userAgent(userAgent)
               .enrollmentId(null)
               .integrationId(null)
-              .tenantId(auditTenantId)
+              .tenantId(null)
               .errorMessage(e.getMessage())
               .build());
 
@@ -355,11 +349,14 @@ public class EnrollmentController {
                             implementation = ProblemDetail.class)))
       })
   public ResponseEntity<EnrollmentVerifyResponseDto> verify(
-      @RequestBody EnrollmentVerifyRequestDto req, HttpServletRequest httpRequest) {
+      @Valid @RequestBody EnrollmentVerifyRequestDto req, HttpServletRequest httpRequest) {
 
     String clientIp =
         AuditHelper.extractClientIp(
-            httpRequest, trustedProxyProperties != null ? trustedProxyProperties.getCidrs() : null);
+            httpRequest,
+            trustedProxyProperties != null ? trustedProxyProperties.getCidrs() : null,
+            trustedProxyProperties != null
+                && trustedProxyProperties.isTrustCloudflareConnectingIp());
     String userAgent = AuditHelper.extractUserAgent(httpRequest);
     Integer verifyTenantId = resolveTenantIdForAudit(req.enrollmentId());
 

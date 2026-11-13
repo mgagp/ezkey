@@ -327,6 +327,28 @@ public interface AdminTokenRepository extends JpaRepository<AdminToken, Integer>
   int deactivateAllTokensForAdmin(@Param("adminId") Integer adminId);
 
   /**
+   * Updates last-used and expiration only when the token is still active.
+   *
+   * <p>Used on the authenticated request hot path instead of {@code save}/{@code merge} of a
+   * previously loaded {@link AdminToken}. Hibernate's default UPDATE writes all columns, so merging
+   * a stale entity with {@code active=true} can revive a token that logout, login rotation, or
+   * deactivation already revoked.
+   *
+   * @param tokenId token primary key
+   * @param lastUsedAt last-used timestamp to persist
+   * @param expiresAt expiration to persist (sliding TTL for SESSION; unchanged value otherwise)
+   * @return 1 when an active row was updated; 0 when the token is missing or already inactive
+   */
+  @Modifying
+  @Query(
+      "UPDATE AdminToken t SET t.lastUsedAt = :lastUsedAt, t.expiresAt = :expiresAt WHERE"
+          + " t.tokenId = :tokenId AND t.active = true")
+  int touchLastUsedIfActive(
+      @Param("tokenId") Integer tokenId,
+      @Param("lastUsedAt") OffsetDateTime lastUsedAt,
+      @Param("expiresAt") OffsetDateTime expiresAt);
+
+  /**
    * Deactivates all active tokens for administrators belonging to a specific tenant.
    *
    * <p>This method is used during tenant deactivation to revoke all active tokens for
@@ -340,4 +362,48 @@ public interface AdminTokenRepository extends JpaRepository<AdminToken, Integer>
       "UPDATE AdminToken t SET t.active = false WHERE t.tenant.tenantId = :tenantId AND t.active ="
           + " true")
   int deactivateAllTokensForTenant(@Param("tenantId") Integer tenantId);
+
+  /**
+   * Returns whether any token (active or inactive) of the given purpose exists for the admin.
+   *
+   * <p>Used to enforce one-shot {@code EVALUATOR_TEMP} footholds: cookie loss cannot re-mint.
+   *
+   * @param adminId administrator id
+   * @param purpose token purpose
+   * @return true when at least one matching row exists
+   */
+  boolean existsByAdminAdminIdAndTokenPurpose(
+      Integer adminId, org.ezkey.integration.domain.AdminTokenPurpose purpose);
+
+  /**
+   * Finds active tokens of a given purpose whose absolute expiry is at or before {@code cutoff}.
+   *
+   * @param purpose token purpose
+   * @param cutoff expiry cutoff (typically now)
+   * @return matching active tokens with admin and tenant loaded
+   */
+  @Query(
+      "SELECT t FROM AdminToken t "
+          + "LEFT JOIN FETCH t.admin a "
+          + "LEFT JOIN FETCH a.enrollment "
+          + "LEFT JOIN FETCH t.tenant "
+          + "WHERE t.tokenPurpose = :purpose AND t.active = true AND t.expiresAt <= :cutoff")
+  List<AdminToken> findActiveExpiredByPurposeWithRelations(
+      @Param("purpose") org.ezkey.integration.domain.AdminTokenPurpose purpose,
+      @Param("cutoff") OffsetDateTime cutoff);
+
+  /**
+   * Deactivates all active tokens of a given purpose for one administrator.
+   *
+   * @param adminId administrator id
+   * @param purpose token purpose
+   * @return number of tokens deactivated
+   */
+  @Modifying
+  @Query(
+      "UPDATE AdminToken t SET t.active = false WHERE t.admin.adminId = :adminId AND t.active ="
+          + " true AND t.tokenPurpose = :purpose")
+  int deactivateTokensForAdminByPurpose(
+      @Param("adminId") Integer adminId,
+      @Param("purpose") org.ezkey.integration.domain.AdminTokenPurpose purpose);
 }

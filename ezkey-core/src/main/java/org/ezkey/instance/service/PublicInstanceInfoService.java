@@ -52,6 +52,7 @@ public class PublicInstanceInfoService {
         authBase,
         organizationProperties.getName(),
         organizationProperties.getDescription(),
-        aboutUrl);
+        aboutUrl,
+        null);
   }
 }

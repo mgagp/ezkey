@@ -11,6 +11,7 @@
 package org.ezkey.enrollment.service;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.ezkey.enrollment.domain.EnrollmentBindRequest;
 import org.ezkey.enrollment.domain.EnrollmentBindResponse;
@@ -119,11 +120,12 @@ public class EnrollmentBindService {
    * @throws EnrollmentAlreadyBoundException if the enrollment is already processed
    */
   public EnrollmentBindResponse bind(EnrollmentBindRequest request) {
-    logger.info(
-        "Starting enrollment bind process for enrollment ID: {}", request.getEnrollmentId());
+    logger.info("Starting enrollment bind");
 
     // Step 1: Validate enrollment and proof token
     Enrollment enrollment = validateEnrollment(request);
+
+    logger.info("Enrollment located for bind, id={}", enrollment.getEnrollmentId());
 
     // Step 2: Load integration
     Integration integration = loadIntegration(enrollment.getIntegrationId());
@@ -131,52 +133,45 @@ public class EnrollmentBindService {
     String integrationDescription = integration.getDescription();
 
     // Step 3: Acquire lock and validate state
-    Enrollment lockedEnrollment = acquireLockAndValidate(request);
+    Enrollment lockedEnrollment =
+        acquireLockAndValidate(enrollment.getEnrollmentId(), request.getEnrollmentProofToken());
 
     // Step 4: Mark as BOUND (read-once guarantee)
     markAsBound(lockedEnrollment);
 
-    // Step 5: Build and return response (uses locked row for integration signing material)
+    // Step 5: Build and return response (uses locked row for integration signing material).
+    // Bootstrap credentials file redaction stays in Admin API (volume must not mount on Auth API).
     return buildBindResponse(
         lockedEnrollment, integration, integrationName, integrationDescription);
   }
 
   /**
-   * Validates the enrollment using the proof token and enrollment ID.
+   * Validates the enrollment using the proof token.
    *
-   * <p>This method ensures that the enrollment exists, is active, and that the provided enrollment
-   * ID matches the proof token to prevent unauthorized access.
+   * <p>The proof-token hash is unique, so it is the invitation handle. The enrollment id is read
+   * from the row and is not supplied by the caller (ADR-0019).
    *
-   * @param request the bind request containing enrollment proof token and ID
+   * @param request the bind request containing the enrollment proof token
    * @return the validated enrollment
    * @throws EnrollmentBindingFailedException if enrollment validation fails
    * @throws EnrollmentAlreadyBoundException if enrollment is not in CREATED state
    * @throws EnrollmentInvitationExpiredException if the invitation has expired
    */
   private Enrollment validateEnrollment(EnrollmentBindRequest request) {
-    logger.debug(
-        "Step 1: Performing read-only pre-checks with proof token validation for enrollment ID: {}",
-        request.getEnrollmentId());
+    logger.debug("Step 1: Performing read-only pre-checks with proof token validation");
 
     String proofTokenHash = SensitiveDataHasher.sha256Hex(request.getEnrollmentProofToken());
 
     if (proofTokenHash == null) {
-      logger.warn(
-          "Validation failed: Missing or blank enrollment proof token for ID: {}",
-          request.getEnrollmentId());
+      logger.warn("Validation failed: Missing or blank enrollment proof token");
       throw new EnrollmentBindingFailedException("Enrollment binding failed");
     }
 
     Enrollment enrollment =
-        enrollmentRepository
-            .findByEnrollmentIdAndEnrollmentProofTokenHash(
-                request.getEnrollmentId(), proofTokenHash)
-            .orElse(null);
+        enrollmentRepository.findByEnrollmentProofTokenHash(proofTokenHash).orElse(null);
 
     if (enrollment == null) {
-      logger.warn(
-          "Validation failed: Enrollment not found or invalid proof token for ID: {}",
-          request.getEnrollmentId());
+      logger.warn("Validation failed: Enrollment not found or invalid proof token");
       throw new EnrollmentBindingFailedException("Enrollment binding failed");
     }
 
@@ -227,24 +222,23 @@ public class EnrollmentBindService {
   private void validateAdminLinkedEnrollmentEligibility(Enrollment enrollment) {
     ezkeyAdminRepository
         .findByEnrollmentId(enrollment.getEnrollmentId())
-        .ifPresent(
-            admin -> {
-              String ineligibilityReason =
-                  eligibilityService.adminLinkedEnrollmentIneligibilityReason(admin);
-              if (ineligibilityReason != null) {
-                logger.warn(
-                    "Validation failed: Admin-linked enrollment is not eligible for bind -"
-                        + " enrollmentId: {}, adminId: {}, lifecycleStatus: {}, active: {},"
-                        + " reason: {}",
-                    enrollment.getEnrollmentId(),
-                    admin.getAdminId(),
-                    admin.getLifecycleStatus(),
-                    admin.getActive(),
-                    ineligibilityReason);
-                throw new EnrollmentBindingFailedException(
-                    "Enrollment binding failed: " + ineligibilityReason);
-              }
-            });
+        .ifPresent(admin -> {
+          String ineligibilityReason =
+              eligibilityService.adminLinkedEnrollmentIneligibilityReason(admin);
+          if (ineligibilityReason != null) {
+            logger.warn(
+                "Validation failed: Admin-linked enrollment is not eligible for bind -"
+                    + " enrollmentId: {}, adminId: {}, lifecycleStatus: {}, active: {},"
+                    + " reason: {}",
+                enrollment.getEnrollmentId(),
+                admin.getAdminId(),
+                admin.getLifecycleStatus(),
+                admin.getActive(),
+                ineligibilityReason);
+            throw new EnrollmentBindingFailedException(
+                "Enrollment binding failed: " + ineligibilityReason);
+          }
+        });
   }
 
   /**
@@ -274,31 +268,31 @@ public class EnrollmentBindService {
    * <p>This method implements the read-once guarantee by atomically locking and validating the
    * enrollment state.
    *
-   * @param request the bind request
+   * @param enrollmentId the enrollment located by proof-token hash
+   * @param enrollmentProofToken the proof token from the request, re-checked after the lock
    * @return the locked enrollment
    * @throws EnrollmentNotAvailableAfterLockException if enrollment is not found or already bound
    * @throws EnrollmentBindingFailedException if proof token mismatch after lock
    * @throws EnrollmentAlreadyBoundException if enrollment is in invalid state
    */
-  private Enrollment acquireLockAndValidate(EnrollmentBindRequest request) {
-    logger.debug("Step 4: Acquiring lock for enrollment ID: {}", request.getEnrollmentId());
+  private Enrollment acquireLockAndValidate(Integer enrollmentId, String enrollmentProofToken) {
+    logger.debug("Step 4: Acquiring lock for enrollment ID: {}", enrollmentId);
 
-    Enrollment enrollment =
-        enrollmentRepository.findAndLockUnreadById(request.getEnrollmentId()).orElse(null);
+    Enrollment enrollment = enrollmentRepository.findAndLockUnreadById(enrollmentId).orElse(null);
 
     if (enrollment == null) {
       logger.warn(
           "Validation failed: Enrollment not found or already bound after lock acquisition for ID:"
               + " {}",
-          request.getEnrollmentId());
+          enrollmentId);
       throw new EnrollmentNotAvailableAfterLockException("Enrollment not found or already bound");
     }
 
     // Additional validation: ensure the proof token still matches after lock
-    if (!enrollment.getEnrollmentProofToken().equals(request.getEnrollmentProofToken())) {
+    if (!enrollment.getEnrollmentProofToken().equals(enrollmentProofToken)) {
       logger.warn(
           "Validation failed: Proof token mismatch after lock acquisition for ID: {}",
-          request.getEnrollmentId());
+          enrollmentId);
       throw new EnrollmentBindingFailedException("Enrollment binding failed");
     }
 
@@ -363,6 +357,14 @@ public class EnrollmentBindService {
     response.setEnrollmentProofToken(enrollment.getEnrollmentProofToken());
     response.setIntegrationName(integrationName);
     response.setIntegrationDescription(integrationDescription);
+    boolean systemIntegration = Boolean.TRUE.equals(integration.getIsSystemIntegration());
+    response.setIsSystemIntegration(systemIntegration);
+    if (systemIntegration) {
+      ezkeyAdminRepository
+          .findByEnrollmentId(enrollment.getEnrollmentId())
+          .map(admin -> admin.getAdminType() != null ? admin.getAdminType().name() : null)
+          .ifPresent(response::setAdminType);
+    }
 
     // Tenant resolution: use scalar queries only to avoid loading Tenant entity and its
     // administrators collection (prevents "Found shared references to collection:
@@ -372,20 +374,24 @@ public class EnrollmentBindService {
     //   use integration's tenant via scalar query.
     // - For non-system integrations: use integration's tenant via scalar query.
     if (Boolean.TRUE.equals(integration.getIsSystemIntegration())) {
-      Optional<Object[]> tenantInfo =
+      List<Object[]> adminTenantRows =
           ezkeyAdminRepository.findTenantInfoByAdminEnrollmentId(enrollment.getEnrollmentId());
-      if (tenantInfo.isPresent()) {
-        applyTenantInfoFromRow(response, tenantInfo.get());
+      if (!adminTenantRows.isEmpty()) {
+        applyTenantInfoFromRow(response, adminTenantRows.getFirst());
       } else {
         // Global admin (no tenant): use integration's tenant (system tenant) via scalar query
-        integrationRepository
-            .findTenantInfoByIntegrationId(integration.getId())
-            .ifPresent(row -> applyTenantInfoFromRow(response, row));
+        List<Object[]> integrationTenantRows =
+            integrationRepository.findTenantInfoByIntegrationId(integration.getId());
+        if (!integrationTenantRows.isEmpty()) {
+          applyTenantInfoFromRow(response, integrationTenantRows.getFirst());
+        }
       }
     } else {
-      integrationRepository
-          .findTenantInfoByIntegrationId(integration.getId())
-          .ifPresent(row -> applyTenantInfoFromRow(response, row));
+      List<Object[]> integrationTenantRows =
+          integrationRepository.findTenantInfoByIntegrationId(integration.getId());
+      if (!integrationTenantRows.isEmpty()) {
+        applyTenantInfoFromRow(response, integrationTenantRows.getFirst());
+      }
     }
 
     String bindPayload =
@@ -399,7 +405,9 @@ public class EnrollmentBindService {
             response.getEnrollmentName(),
             response.getTenantId(),
             response.getTenantName(),
-            response.getTenantDescription());
+            response.getTenantDescription(),
+            response.getIsSystemIntegration(),
+            response.getAdminType());
     String bindSignature =
         signatureService.signIntegrationPayload(bindPayload, enrollment.getIntegrationPrivateKey());
     response.setEnrollmentBindPayloadSignedByIntegration(bindSignature);
@@ -416,19 +424,37 @@ public class EnrollmentBindService {
   }
 
   /**
-   * Applies tenant info from a native query row [tenantId, tenantName, tenantDescription].
+   * Applies tenant info from a native query row {@code [tenantId, tenantName, tenantDescription]}.
    *
    * <p>Uses safe extraction for tenantId since PostgreSQL JDBC may return Integer, Long, or
-   * BigDecimal depending on column type and driver version.
+   * BigDecimal depending on column type and driver version. Unwraps a nested {@code Object[]} when
+   * Spring Data delivers a three-column row as {@code Object[]{Object[]{...}}}.
+   *
+   * @param response bind response to enrich
+   * @param row native scalar row, possibly nested
    */
   private void applyTenantInfoFromRow(EnrollmentBindResponse response, Object[] row) {
-    if (row == null || row.length == 0) {
+    Object[] cells = unwrapTenantInfoRow(row);
+    if (cells == null || cells.length == 0) {
       return;
     }
-    Object tenantIdVal = row[0];
+    Object tenantIdVal = cells[0];
     Integer tenantId = tenantIdVal instanceof Number n ? n.intValue() : null;
     response.setTenantId(tenantId);
-    response.setTenantName(row.length > 1 ? (String) row[1] : null);
-    response.setTenantDescription(row.length > 2 ? (String) row[2] : null);
+    response.setTenantName(cells.length > 1 ? (String) cells[1] : null);
+    response.setTenantDescription(cells.length > 2 ? (String) cells[2] : null);
+  }
+
+  /**
+   * Unwraps a native scalar row that Spring Data may nest as a single-element {@code Object[]}.
+   *
+   * @param row repository result row
+   * @return the three-column cell array, or {@code row} when already flat
+   */
+  static Object[] unwrapTenantInfoRow(Object[] row) {
+    if (row != null && row.length == 1 && row[0] instanceof Object[] nested) {
+      return nested;
+    }
+    return row;
   }
 }

@@ -36,17 +36,19 @@ in the static output.
 
 ```bash
 cd product-docs/site
-npm install
+npm ci
 npm start
 ```
 
 Then open <http://localhost:4321>.
 
-Use `PORT=5000 npm start` to override the port.
+Use `PORT=5000 npm start` to override the port. Node version matches the repo root
+[`.nvmrc`](../../.nvmrc) (24 LTS).
 
 Static build for Cloudflare Pages:
 
 ```bash
+npm ci
 npm run build
 ```
 

@@ -18,14 +18,14 @@ Define an Ezkey-wide policy for how OpenAPI documentation is exposed across depl
 
 ## Problem and value
 
-- **Problem:** OpenAPI exposure is currently implicit and uneven. Public-evaluator `exp1` exposes Swagger UI and raw `/api-docs` on the production-capable APIs, while the desired production posture is likely stricter. At the same time, Ezkey still needs a credible, inspectable API documentation experience for internal use, evaluators, and future public developer-facing documentation.
+- **Problem:** OpenAPI exposure is currently implicit and uneven. Public-evaluator `community` (ezkey.online) exposes Swagger UI and raw `/api-docs` on the production-capable APIs, while the desired production posture is likely stricter. At the same time, Ezkey still needs a credible, inspectable API documentation experience for internal use, evaluators, and future public developer-facing documentation.
 - **Expected value:** Ezkey gets a clear documentation posture instead of ad hoc per-service exposure. Operators know which surfaces are public, internal, evaluator-only, or disabled. Public documentation can live in a curated portal that matches the existing `ezkey.org` deployment model without introducing unnecessary platform complexity.
 
 ## Scope
 
 - **In scope:**
   - Define the OpenAPI exposure matrix for `Admin API`, `Auth API`, optional `Integration API`, and test-only `Crypto API`.
-  - Decide how that matrix differs across local/dev, internal shared, evaluator (`EXP1`), public production-like, and test-only postures.
+  - Decide how that matrix differs across local/dev, internal shared, evaluator (`community` (ezkey.online)), public production-like, and test-only postures.
   - Compare credible open-source portal candidates for Ezkey's needs (`ReDoc`, `Scalar`, `Swagger UI`, `RapiDoc`; Cloudflare API Shield as a reference point only).
   - Decide whether the curated portal should live inside `sites/ezkey-org/`, in a separate Cloudflare Pages project, or in another hosting pattern.
   - Define the public/internal documentation scope and the migration path away from public per-service Swagger as the default posture.
@@ -39,7 +39,7 @@ Define an Ezkey-wide policy for how OpenAPI documentation is exposed across depl
 
 - The simplest acceptable path is likely the best one: reuse the existing static Cloudflare Pages marketing-site model unless a stronger reason emerges.
 - Raw Springdoc endpoints should not be the long-term public-facing documentation posture for production-capable deployments.
-- `EXP1` must be classified intentionally, not treated as an accidental hybrid of internal and public behavior.
+- `community` (ezkey.online) must be classified intentionally, not treated as an accidental hybrid of internal and public behavior.
 
 ## Triage notes (2026-05-21)
 
@@ -48,7 +48,7 @@ Define an Ezkey-wide policy for how OpenAPI documentation is exposed across depl
   - curated portal posture (tool, hosting placement, public/internal scope).
 - The existing repository and live-environment evidence are already strong enough to justify an `incubating` status instead of leaving the idea at simple capture.
 - The leading simplification bias is to keep the public portal aligned with `ezkey.org` and Cloudflare Pages unless a compelling reason emerges to separate it.
-- `EXP1` is no longer treated as an accidental evaluator exception for raw OpenAPI exposure. Working direction: align `EXP1` with the prod-like posture for public API-host Swagger/UI exposure, then satisfy evaluator/reference needs through the curated portal or another controlled documentation path.
+- `community` (ezkey.online) is no longer treated as an accidental evaluator exception for raw OpenAPI exposure. Working direction: align `community` (ezkey.online) with the prod-like posture for public API-host Swagger/UI exposure, then satisfy evaluator/reference needs through the curated portal or another controlled documentation path.
 - The portal is a near-term public documentation concern for `ezkey.org`, not a distant placeholder to be revisited only after a broader repository-opening milestone.
 - The leading public-portal posture is **read-only reference**. Public “try it out” is intentionally out of the default direction and should remain internal or otherwise controlled if ever needed.
 - `Integration API` belongs to the public/prod-capable documentation group; `Crypto API` remains outside the public portal and outside the normal public documentation posture.
@@ -79,7 +79,7 @@ This idea was promoted into [`TB-2026-0003-openapi-public-portal-first-cut.md`](
 - Public API portal implemented on `ezkey.org` with one landing page plus one page per public/prod-capable API.
 - `ReDoc CE` selected, validated visually, and pinned to `v2.5.2` for the deployed portal pages.
 - Centralized spec workflow extended so `Integration API` joins both the canonical `specs/` set and the portal-published static assets.
-- `EXP1` now has a concrete prod-like hardening pattern: public raw `/api-docs` and Swagger routes are blocked at the Lightsail `Caddy` edge on the public API hostnames.
+- `community` (ezkey.online) now has a concrete prod-like hardening pattern: public raw `/api-docs` and Swagger routes are blocked at the Lightsail `Caddy` edge on the public API hostnames.
 - French portal parity is sufficient at the **portal shell** level. The generated OpenAPI description text remains in the source-language contract artifacts and is intentionally **not** translated annotation by annotation in this dossier.
 - `ReDoc CE` version governance for this dossier is intentionally simple and closed: stay pinned on `v2.5.2` unless a security/availability issue, a rendering/compatibility issue, or an explicit renderer-posture review creates a real trigger for re-evaluation.
 

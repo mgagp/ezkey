@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="A technical trace of one complete Ezkey flow">
+    <meta property="og:description" content="A full open-book Ezkey protocol trace: enrollment, signed instance info, pending, respond, and the cryptographic chain that ties the mobile app to backend trust.">
+    <meta property="og:url" content="https://ezkey.org/technical-trace-ezkey-enrollment-authentication.html">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Ezkey">
+    <meta property="og:image" content="https://ezkey.org/logo.svg">
+    <meta property="og:locale" content="en_US">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="A technical trace of one complete Ezkey flow">
+    <meta name="twitter:description" content="A full open-book Ezkey protocol trace: enrollment, signed instance info, pending, respond, and the cryptographic chain that ties the mobile app to backend trust.">
+    <meta name="twitter:image" content="https://ezkey.org/logo.svg">
+    <link rel="canonical" href="https://ezkey.org/technical-trace-ezkey-enrollment-authentication.html">
+    <link rel="alternate" hreflang="en" href="https://ezkey.org/technical-trace-ezkey-enrollment-authentication.html">
+    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/technical-trace-ezkey-enrollment-authentication.html">
+    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/technical-trace-ezkey-enrollment-authentication.html">
+    <title>A technical trace of one complete Ezkey flow</title>
+    <meta name="description" content="A full open-book Ezkey protocol trace: enrollment, signed instance info, pending, respond, and the cryptographic chain that ties the mobile app to backend trust.">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #1a1a2e;
+            line-height: 1.68;
+        }
+        .shell {
+            max-width: 920px;
+            margin: 0 auto;
+            padding: 28px 20px 48px;
+        }
+        .nav-top {
+            font-size: 0.95rem;
+            margin-bottom: 20px;
+            color: rgba(255, 255, 255, 0.95);
+        }
+        .nav-top a {
+            color: rgba(255, 255, 255, 0.95);
+            text-decoration: underline;
+        }
+        .nav-top a:hover { color: #fff; }
+        article {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
+            padding: 40px 36px 48px;
+            text-align: left;
+        }
+        @media (max-width: 700px) {
+            article { padding: 28px 20px 36px; }
+        }
+        h1 {
+            font-size: 1.72rem;
+            font-weight: 800;
+            color: #111;
+            line-height: 1.28;
+            margin: 0 0 22px;
+            padding-bottom: 18px;
+            border-bottom: 2px solid #667eea;
+        }
+        h2 {
+            font-size: 1.18rem;
+            font-weight: 750;
+            color: #222;
+            margin: 32px 0 12px;
+        }
+        h3 {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #222;
+            margin: 24px 0 10px;
+        }
+        p {
+            margin-bottom: 12px;
+            font-size: 0.99rem;
+        }
+        ul, ol {
+            margin: 10px 0 14px 1.5rem;
+        }
+        li {
+            margin-bottom: 8px;
+            font-size: 0.98rem;
+        }
+        strong {
+            font-weight: 700;
+            color: #1a1a2e;
+        }
+        code {
+            font-family: ui-monospace, 'Cascadia Code', 'Segoe UI Mono', Consolas, monospace;
+            font-size: 0.9em;
+            background: #f4f6ff;
+            padding: 2px 7px;
+            border-radius: 4px;
+            border: 1px solid #e2e6f5;
+        }
+        pre {
+            background: #f4f6ff;
+            border: 1px solid #dde3ff;
+            border-radius: 10px;
+            padding: 16px 18px;
+            margin: 14px 0 18px;
+            overflow-x: auto;
+        }
+        pre code {
+            background: none;
+            border: none;
+            padding: 0;
+            font-size: 0.91em;
+            line-height: 1.6;
+            white-space: pre;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 14px 0 18px;
+            font-size: 0.95rem;
+        }
+        th, td {
+            border: 1px solid #e2e6f5;
+            padding: 10px 12px;
+            vertical-align: top;
+        }
+        th {
+            background: #f4f6ff;
+            text-align: left;
+        }
+        hr {
+            border: none;
+            border-top: 1px solid #d8ddf2;
+            margin: 28px 0;
+        }
+        blockquote {
+            margin: 16px 0 20px;
+            padding: 14px 16px;
+            border-left: 4px solid #667eea;
+            background: #f7f8ff;
+            border-radius: 8px;
+        }
+        a { color: #4a56c4; }
+        footer.doc-footer {
+            margin-top: 24px;
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.78);
+            text-align: center;
+        }
+        footer.doc-footer a { color: rgba(255, 255, 255, 0.92); }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <div class="nav-top"><a href="/articles.html">← Back to articles</a></div>
+        <article>
+<h1>A technical trace of one complete Ezkey flow</h1>
+<p><em>Technical note · October 5, 2026</em></p>
+<p>Many strong-authentication texts promise cryptography. Fewer show, in a readable way, <strong>where cryptography actually enters the flow</strong>, <strong>what is signed</strong>, <strong>which key verifies it</strong>, and <strong>when the backend or the mobile client should decide to trust what they just received</strong>.</p>
+<p>Ezkey lends itself unusually well to that kind of article because the product is deliberately <strong>backend-first</strong>. Useful state remains on the server, meaningful transitions are exposed through APIs, and the mobile client does not merely display an approval request: it participates in an explicit cryptographic chain.</p>
+<p>What follows is not a general product tour. It is a <strong>commented technical trace</strong> of one fully validated local-stack run: enrollment issuance, device binding, signed instance branding, and a completed authentication request. The goal is not to publish raw JSON for its own sake. The goal is to make the protocol legible without flattening away the details that actually matter.</p>
+<h2>Who this is for</h2>
+<p>This text is written for readers who already have the right kind of context:</p>
+<ul>
+<li>backend developers who want to understand what they would really integrate;</li>
+<li>architects evaluating the readability of a proprietary MFA protocol;</li>
+<li>security teams looking at continuity between enrollment and authentication;</li>
+<li>technically curious readers who are already past the “what is Ezkey?” stage.</li>
+</ul>
+<p>If you are discovering Ezkey for the first time, this is probably not the right entry point. The purpose here is different: <strong>show one real flow at technical resolution</strong>, not summarize the whole product in beginner-friendly terms.</p>
+<h2>What this trace shows, and what it does not</h2>
+<p>The scenario is intentionally plain.</p>
+<p>An authenticated operator uses the <strong>Admin API</strong> to create an enrollment tied to one integration. A simulated device then performs <strong>bind</strong>, <strong>verify</strong>, <strong>pending</strong>, and <strong>respond</strong> against the <strong>Auth API</strong>, with the <strong>Crypto API</strong> used only as a lab oracle to rebuild canonical strings and verify signatures.</p>
+<p>The use case is equally simple: <strong>a user approves access to an integration</strong>. No business-heavy message, no payment approval, no extra storytelling layer. The point is to let the protocol speak for itself.</p>
+<p>Not shown here:</p>
+<ul>
+<li>the bootstrap of the administrative passwordless login;</li>
+<li>the <code>deny</code> branch;</li>
+<li>a <code>challengeRequired=true</code> branch;</li>
+<li>or an integration-API-key-led issuance posture.</li>
+</ul>
+<h2>Why publish the secrets at all?</h2>
+<p>Normally, publishing bearer tokens, proof tokens, private keys, and signatures in full would be irresponsible.</p>
+<p>This article is an intentional exception. The demonstrated flow was produced on a <strong>disposable local Docker stack</strong> dedicated to the article itself. That stack is already gone. Nothing published here is a still-live credential or a reusable secret. The open-book transcript is part of the value: it lets the reader inspect the protocol at full resolution instead of trusting a curated summary.</p>
+<h2>How to read the detailed trace</h2>
+<p>The detailed trace below is the validated run itself. It keeps the exact request/response blocks and cryptographic helper steps.</p>
+<p>The key reading pattern is simple:</p>
+<ol>
+<li>identify who is acting;</li>
+<li>identify the canonical string being signed;</li>
+<li>identify which key verifies that step;</li>
+<li>identify what state transition or trust decision becomes valid only after that verification.</li>
+</ol>
+<p>Read that way, the trace is more than a transcript. It becomes a visible argument for the kind of backend-first MFA Ezkey is trying to build.</p>
+<h2>Full validated transcript</h2>
+<p>What follows is the <strong>complete validated trace</strong> from the disposable local run. Secrets, signatures, proof tokens, and private keys are left visible intentionally: this material came from a one-purpose local Docker stack created for the article and then destroyed.</p>
+<p>The transcript stays at protocol resolution. That is part of the point.</p>
+<h2>Administration — issuing enrollment credentials</h2>
+<p>The operator inserts a <strong>pending enrollment</strong> keyed to <strong><code>integrationId</code></strong>. The <strong>create</strong> handshake hands back identifiers and enrollment <strong>challenge</strong>. <strong>Bind</strong> consumes <strong><code>enrollmentProofToken</code></strong>; that nonce is ordinarily revealed through the administrative <strong>GET</strong> shown next, rather than echoed wholesale in <strong>create</strong>.</p>
+<p>Illustrative captures often label enrollments using the familiar cryptographic roster personas (<strong>Alice</strong>, <strong>Bob</strong>, <strong>Carol</strong>, … with realistic surnames) so payloads resemble production roster imports without inventing lore.</p>
+<h3>POST <code>/api/v1/enrollments</code> (create)</h3>
+<pre><code class="language-json">{
+  &quot;method&quot;: &quot;POST&quot;,
+  &quot;url&quot;: &quot;http://localhost:9080/api/v1/enrollments&quot;,
+  &quot;request_headers&quot;: {
+    &quot;User-Agent&quot;: &quot;python-requests/2.32.5&quot;,
+    &quot;Accept-Encoding&quot;: &quot;gzip, deflate&quot;,
+    &quot;Accept&quot;: &quot;application/json&quot;,
+    &quot;Connection&quot;: &quot;keep-alive&quot;,
+    &quot;Authorization&quot;: &quot;Bearer ezkey_14c52717ab34444bb1cebcca5db71140&quot;,
+    &quot;Content-Type&quot;: &quot;application/json&quot;,
+    &quot;Content-Length&quot;: &quot;81&quot;
+  },
+  &quot;request_body&quot;: {
+    &quot;integrationId&quot;: 2,
+    &quot;name&quot;: &quot;Alice Chen&quot;,
+    &quot;authAttemptChallengeRequired&quot;: false
+  }
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;status_code&quot;: 201,
+  &quot;response_body&quot;: {
+    &quot;enrollmentId&quot;: 2,
+    &quot;enrollmentChallenge&quot;: 436767,
+    &quot;expiresAt&quot;: &quot;2026-10-12T12:19:24.965206608Z&quot;
+  }
+}
+</code></pre>
+<p>In <strong>create</strong>, <strong><code>integrationId</code></strong> scopes issuance to exactly one integration record; <strong><code>name</code></strong> survives into signed payloads with integration-facing title strings; <strong><code>authAttemptChallengeRequired</code></strong> pins whether MFA attempts may escalate to auxiliary short challenges downstream.</p>
+<hr>
+<h3>GET <code>/api/v1/enrollments/:id</code></h3>
+<pre><code class="language-json">{
+  &quot;method&quot;: &quot;GET&quot;,
+  &quot;url&quot;: &quot;http://localhost:9080/api/v1/enrollments/2&quot;,
+  &quot;request_headers&quot;: {
+    &quot;User-Agent&quot;: &quot;python-requests/2.32.5&quot;,
+    &quot;Accept-Encoding&quot;: &quot;gzip, deflate&quot;,
+    &quot;Accept&quot;: &quot;application/json&quot;,
+    &quot;Connection&quot;: &quot;keep-alive&quot;,
+    &quot;Authorization&quot;: &quot;Bearer ezkey_14c52717ab34444bb1cebcca5db71140&quot;
+  },
+  &quot;request_body&quot;: null
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;status_code&quot;: 200,
+  &quot;response_body&quot;: {
+    &quot;enrollmentId&quot;: 2,
+    &quot;version&quot;: 0,
+    &quot;integrationId&quot;: 2,
+    &quot;enrollmentName&quot;: &quot;Alice Chen&quot;,
+    &quot;enrollmentStatus&quot;: &quot;CREATED&quot;,
+    &quot;enrollmentActive&quot;: false,
+    &quot;enrollmentChallenge&quot;: 436767,
+    &quot;enrollmentProofToken&quot;: &quot;zcVVTLjqNlftuLroSLK3UtM-YaUMf5qyc3G5GZkI8zA.dPiUqyB5iQGh6y9x1rgcXw&quot;,
+    &quot;authAttemptChallengeRequired&quot;: false,
+    &quot;integrationPublicKey&quot;: &quot;o_g1NmS1Gm95e2Ftiq9e2UG31cZtE-sJYjn486I4g_o&quot;,
+    &quot;devicePublicKey&quot;: null,
+    &quot;devicePrivateKeyStorageTier&quot;: null,
+    &quot;verifiedAt&quot;: null,
+    &quot;expiresAt&quot;: &quot;2026-10-12T12:19:24.965207Z&quot;,
+    &quot;createdAt&quot;: &quot;2026-10-05T12:19:24.965207Z&quot;,
+    &quot;createdByAdminId&quot;: 1,
+    &quot;createdByAdminUsername&quot;: &quot;admin.docker&quot;,
+    &quot;lastUsedAt&quot;: null,
+    &quot;contactEmail&quot;: null,
+    &quot;contactPhoneNumber&quot;: null,
+    &quot;userIdentifier&quot;: null,
+    &quot;deactivatedAt&quot;: null,
+    &quot;deactivatedByAdminId&quot;: null,
+    &quot;deactivatedByAdminUsername&quot;: null,
+    &quot;revokedAt&quot;: null,
+    &quot;revokedByAdminId&quot;: null,
+    &quot;revokedByAdminUsername&quot;: null,
+    &quot;integrationName&quot;: &quot;Orbit Console&quot;,
+    &quot;tenantId&quot;: 1,
+    &quot;tenantName&quot;: &quot;Ezkey System&quot;,
+    &quot;isSystemIntegration&quot;: false,
+    &quot;operational&quot;: false
+  }
+}
+</code></pre>
+<p><strong>Bind</strong> prerequisite: <strong><code>enrollmentProofToken</code></strong> is mandatory. Many stacks omit returning it verbatim on <strong>POST create</strong> responses; authoritative retrieval for operators feeding QR or copy channels is <strong><code>GET</code></strong> on the enrollment identifier.</p>
+<hr>
+<h2>Device posture — bind, verify, then fetch signed instance branding</h2>
+<p>On <strong>bind</strong>, possessing <strong><code>enrollmentProofToken</code></strong> earns the handset integration-backed metadata bundles plus <strong><code>enrollmentBindPayloadSignedByIntegration</code></strong>. Clients rebuild the deterministic <strong>canonical bind line</strong>: a single UTF‑8 row with <strong><code>|</code></strong> between enrollment proof fragments, hashing aids, <strong><code>ed25519</code></strong>, integration and tenant copy, the <strong><code>isSystemIntegration</code></strong> boolean, and the optional <strong><code>adminType</code></strong> literal when the enrollment is administrator-linked. Ed25519 must validate against <strong><code>integrationPublicKey</code></strong> from the same envelope before any field becomes authoritative.</p>
+<h3>POST <code>/api/v1/enrollments/bind</code></h3>
+<pre><code class="language-json">{
+  &quot;method&quot;: &quot;POST&quot;,
+  &quot;url&quot;: &quot;http://localhost:8080/api/v1/enrollments/bind&quot;,
+  &quot;request_headers&quot;: {
+    &quot;Accept&quot;: &quot;application/json&quot;,
+    &quot;Content-Type&quot;: &quot;application/json&quot;,
+    &quot;Content-Length&quot;: &quot;113&quot;
+  },
+  &quot;request_body&quot;: {
+    &quot;enrollmentId&quot;: 2,
+    &quot;enrollmentProofToken&quot;: &quot;zcVVTLjqNlftuLroSLK3UtM-YaUMf5qyc3G5GZkI8zA.dPiUqyB5iQGh6y9x1rgcXw&quot;
+  }
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;status_code&quot;: 200,
+  &quot;response_body&quot;: {
+    &quot;enrollmentId&quot;: 2,
+    &quot;integrationPublicKey&quot;: &quot;o_g1NmS1Gm95e2Ftiq9e2UG31cZtE-sJYjn486I4g_o&quot;,
+    &quot;integrationKeyAlgorithm&quot;: &quot;ed25519&quot;,
+    &quot;enrollmentProofToken&quot;: &quot;zcVVTLjqNlftuLroSLK3UtM-YaUMf5qyc3G5GZkI8zA.dPiUqyB5iQGh6y9x1rgcXw&quot;,
+    &quot;integrationName&quot;: &quot;Orbit Console&quot;,
+    &quot;integrationDescription&quot;: &quot;Operator sign-in portal for the Europa relay team.&quot;,
+    &quot;enrollmentName&quot;: &quot;Alice Chen&quot;,
+    &quot;tenantId&quot;: 1,
+    &quot;tenantName&quot;: &quot;Ezkey System&quot;,
+    &quot;tenantDescription&quot;: &quot;Ezkey MFA instance for your organization&quot;,
+    &quot;isSystemIntegration&quot;: false,
+    &quot;adminType&quot;: null,
+    &quot;enrollmentBindPayloadSignedByIntegration&quot;: &quot;PCEpS7EHPl15MmVIJBoxBCwiivMg-xVMrEqd_6yArFUuSkj3ty1okCkXRc0Snq6oXUrMAkjkOQvLkIyhJB9dAw&quot;
+  }
+}
+</code></pre>
+<p>The preceding JSON summarizes human-visible labels and PEM material. Integrity evidence is <strong><code>enrollmentBindPayloadSignedByIntegration</code></strong>. The paired Crypto excerpts below regenerate the canonical UTF‑8 substrate and certify Ed25519 against <strong><code>integrationPublicKey</code></strong>—matching how production SDKs wire their local crypto providers.</p>
+<h3>Crypto API — bind canonical line and Ed25519 verification</h3>
+<p><strong>Helper usage:</strong> <code>payload-helper</code> with type <code>enrollment-bind</code> materializes the canonical string; <code>verify-ed25519</code> pins that signature to the bind response’s <strong>integration</strong> public key and exact bytes.</p>
+<pre><code class="language-json">{
+  &quot;method&quot;: &quot;POST&quot;,
+  &quot;url&quot;: &quot;http://localhost:9090/api/v1/crypto/payload-helper&quot;,
+  &quot;request_headers&quot;: {
+    &quot;User-Agent&quot;: &quot;python-requests/2.32.5&quot;,
+    &quot;Accept-Encoding&quot;: &quot;gzip, deflate&quot;,
+    &quot;Accept&quot;: &quot;application/json&quot;,
+    &quot;Connection&quot;: &quot;keep-alive&quot;,
+    &quot;Content-Type&quot;: &quot;application/json&quot;,
+    &quot;Content-Length&quot;: &quot;546&quot;
+  },
+  &quot;request_body&quot;: {
+    &quot;type&quot;: &quot;enrollment-bind&quot;,
+    &quot;proofToken&quot;: &quot;zcVVTLjqNlftuLroSLK3UtM-YaUMf5qyc3G5GZkI8zA.dPiUqyB5iQGh6y9x1rgcXw&quot;,
+    &quot;enrollmentId&quot;: 2,
+    &quot;integrationPublicKey&quot;: &quot;o_g1NmS1Gm95e2Ftiq9e2UG31cZtE-sJYjn486I4g_o&quot;,
+    &quot;integrationKeyAlgorithm&quot;: &quot;ed25519&quot;,
+    &quot;integrationName&quot;: &quot;Orbit Console&quot;,
+    &quot;integrationDescription&quot;: &quot;Operator sign-in portal for the Europa relay team.&quot;,
+    &quot;enrollmentName&quot;: &quot;Alice Chen&quot;,
+    &quot;tenantId&quot;: 1,
+    &quot;tenantName&quot;: &quot;Ezkey System&quot;,
+    &quot;tenantDescription&quot;: &quot;Ezkey MFA instance for your organization&quot;,
+    &quot;isSystemIntegration&quot;: false,
+    &quot;adminType&quot;: null
+  }
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;status_code&quot;: 200,
+  &quot;response_body&quot;: {
+    &quot;type&quot;: &quot;enrollment-bind&quot;,
+    &quot;payload&quot;: &quot;zcVVTLjqNlftuLroSLK3UtM-YaUMf5qyc3G5GZkI8zA.dPiUqyB5iQGh6y9x1rgcXw|2|o_g1NmS1Gm95e2Ftiq9e2UG31cZtE-sJYjn486I4g_o|ed25519|Orbit Console|Operator sign-in portal for the Europa relay team.|Alice Chen|1|Ezkey System|Ezkey MFA instance for your organization|false|&quot;,
+    &quot;encoding&quot;: &quot;UTF-8 + NFC where applicable&quot;
+  }
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;method&quot;: &quot;POST&quot;,
+  &quot;url&quot;: &quot;http://localhost:9090/api/v1/crypto/verify-ed25519&quot;,
+  &quot;request_headers&quot;: {
+    &quot;User-Agent&quot;: &quot;python-requests/2.32.5&quot;,
+    &quot;Accept-Encoding&quot;: &quot;gzip, deflate&quot;,
+    &quot;Accept&quot;: &quot;application/json&quot;,
+    &quot;Connection&quot;: &quot;keep-alive&quot;,
+    &quot;Content-Type&quot;: &quot;application/json&quot;,
+    &quot;Content-Length&quot;: &quot;434&quot;
+  },
+  &quot;request_body&quot;: {
+    &quot;data&quot;: &quot;zcVVTLjqNlftuLroSLK3UtM-YaUMf5qyc3G5GZkI8zA.dPiUqyB5iQGh6y9x1rgcXw|2|o_g1NmS1Gm95e2Ftiq9e2UG31cZtE-sJYjn486I4g_o|ed25519|Orbit Console|Operator sign-in portal for the Europa relay team.|Alice Chen|1|Ezkey System|Ezkey MFA instance for your organization|false|&quot;,
+    &quot;signature&quot;: &quot;PCEpS7EHPl15MmVIJBoxBCwiivMg-xVMrEqd_6yArFUuSkj3ty1okCkXRc0Snq6oXUrMAkjkOQvLkIyhJB9dAw&quot;,
+    &quot;publicKey&quot;: &quot;o_g1NmS1Gm95e2Ftiq9e2UG31cZtE-sJYjn486I4g_o&quot;
+  }
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;status_code&quot;: 200,
+  &quot;response_body&quot;: {
+    &quot;valid&quot;: true,
+    &quot;message&quot;: &quot;Signature is valid&quot;,
+    &quot;algorithm&quot;: &quot;ED25519&quot;
+  }
+}
+</code></pre>
+<hr>
+<h3>Device keys and verify-device canonical line (<code>enrollment-verify-device</code>)</h3>
+<p>The handset provisions an <strong>EC P‑256</strong> keypair (here via Crypto API <code>GET /keypair</code>; shipping apps use keystore / secure enclave surfaces). <code>payload-helper</code> type <code>enrollment-verify-device</code> concatenates <code>enrollmentProofToken|enrollmentId|challengeResponse|devicePublicKey</code> as one canonical UTF‑8 line. <strong><code>POST /crypto/sign</code></strong> produces ECDSA over that exact string; the signature populates <strong><code>enrollmentProofTokenSigned</code></strong> on <strong>POST <code>/api/v1/enrollments/verify</code></strong>.</p>
+<pre><code class="language-json">{
+  &quot;method&quot;: &quot;GET&quot;,
+  &quot;url&quot;: &quot;http://localhost:9090/api/v1/crypto/keypair&quot;,
+  &quot;request_headers&quot;: {
+    &quot;User-Agent&quot;: &quot;python-requests/2.32.5&quot;,
+    &quot;Accept-Encoding&quot;: &quot;gzip, deflate&quot;,
+    &quot;Accept&quot;: &quot;application/json&quot;,
+    &quot;Connection&quot;: &quot;keep-alive&quot;
+  },
+  &quot;request_body&quot;: null
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;status_code&quot;: 200,
+  &quot;response_body&quot;: {
+    &quot;privateKey&quot;: &quot;MEECAQAwEwYHKoZIzj0CAQYIKoZIzj0DAQcEJzAlAgEBBCCfICmLZC9zocqwPE131NZ0dtwptE1xMOYLGeIHlahLgQ==&quot;,
+    &quot;publicKey&quot;: &quot;MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEEqyRodVYHgW5WgeXGhFRivOdQhLMEnIevjm9Q7HIi5+hD3EZJTUpUDr6ZMAhS/PGWivFOpuhxzaSJQhRH0gAzA==&quot;
+  }
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;method&quot;: &quot;POST&quot;,
+  &quot;url&quot;: &quot;http://localhost:9090/api/v1/crypto/payload-helper&quot;,
+  &quot;request_headers&quot;: {
+    &quot;User-Agent&quot;: &quot;python-requests/2.32.5&quot;,
+    &quot;Accept-Encoding&quot;: &quot;gzip, deflate&quot;,
+    &quot;Accept&quot;: &quot;application/json&quot;,
+    &quot;Connection&quot;: &quot;keep-alive&quot;,
+    &quot;Content-Type&quot;: &quot;application/json&quot;,
+    &quot;Content-Length&quot;: &quot;315&quot;
+  },
+  &quot;request_body&quot;: {
+    &quot;type&quot;: &quot;enrollment-verify-device&quot;,
+    &quot;proofToken&quot;: &quot;zcVVTLjqNlftuLroSLK3UtM-YaUMf5qyc3G5GZkI8zA.dPiUqyB5iQGh6y9x1rgcXw&quot;,
+    &quot;enrollmentId&quot;: 2,
+    &quot;challengeResponse&quot;: 436767,
+    &quot;devicePublicKey&quot;: &quot;MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEEqyRodVYHgW5WgeXGhFRivOdQhLMEnIevjm9Q7HIi5+hD3EZJTUpUDr6ZMAhS/PGWivFOpuhxzaSJQhRH0gAzA==&quot;
+  }
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;status_code&quot;: 200,
+  &quot;response_body&quot;: {
+    &quot;type&quot;: &quot;enrollment-verify-device&quot;,
+    &quot;payload&quot;: &quot;zcVVTLjqNlftuLroSLK3UtM-YaUMf5qyc3G5GZkI8zA.dPiUqyB5iQGh6y9x1rgcXw|2|436767|MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEEqyRodVYHgW5WgeXGhFRivOdQhLMEnIevjm9Q7HIi5+hD3EZJTUpUDr6ZMAhS/PGWivFOpuhxzaSJQhRH0gAzA==&quot;,
+    &quot;encoding&quot;: &quot;UTF-8 + NFC where applicable&quot;
+  }
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;method&quot;: &quot;POST&quot;,
+  &quot;url&quot;: &quot;http://localhost:9090/api/v1/crypto/sign&quot;,
+  &quot;request_headers&quot;: {
+    &quot;User-Agent&quot;: &quot;python-requests/2.32.5&quot;,
+    &quot;Accept-Encoding&quot;: &quot;gzip, deflate&quot;,
+    &quot;Accept&quot;: &quot;application/json&quot;,
+    &quot;Connection&quot;: &quot;keep-alive&quot;,
+    &quot;Content-Type&quot;: &quot;application/json&quot;,
+    &quot;Content-Length&quot;: &quot;322&quot;
+  },
+  &quot;request_body&quot;: {
+    &quot;data&quot;: &quot;zcVVTLjqNlftuLroSLK3UtM-YaUMf5qyc3G5GZkI8zA.dPiUqyB5iQGh6y9x1rgcXw|2|436767|MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEEqyRodVYHgW5WgeXGhFRivOdQhLMEnIevjm9Q7HIi5+hD3EZJTUpUDr6ZMAhS/PGWivFOpuhxzaSJQhRH0gAzA==&quot;,
+    &quot;privateKey&quot;: &quot;MEECAQAwEwYHKoZIzj0CAQYIKoZIzj0DAQcEJzAlAgEBBCCfICmLZC9zocqwPE131NZ0dtwptE1xMOYLGeIHlahLgQ==&quot;
+  }
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;status_code&quot;: 200,
+  &quot;response_body&quot;: {
+    &quot;signature&quot;: &quot;MEUCIQDcJKYpIHKWNSw6Flp680DM6Qb988aENBSaLOn8D4cO9gIgehoHaKib88FLmhYrDz3kWh0f15piMR4DAR9W99EFVvQ=&quot;,
+    &quot;originalData&quot;: &quot;zcVVTLjqNlftuLroSLK3UtM-YaUMf5qyc3G5GZkI8zA.dPiUqyB5iQGh6y9x1rgcXw|2|436767|MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEEqyRodVYHgW5WgeXGhFRivOdQhLMEnIevjm9Q7HIi5+hD3EZJTUpUDr6ZMAhS/PGWivFOpuhxzaSJQhRH0gAzA==&quot;,
+    &quot;algorithm&quot;: &quot;EC_P256&quot;
+  }
+}
+</code></pre>
+<hr>
+<h3>POST <code>/api/v1/enrollments/verify</code></h3>
+<p>Auth API validates ECDSA device evidence, activates enrollment consistent with tenancy policy, then returns <strong><code>enrollmentVerifyPayloadSignedByIntegration</code></strong> attesting integration approval over the canonical <strong>verify-result</strong> line.</p>
+<pre><code class="language-json">{
+  &quot;method&quot;: &quot;POST&quot;,
+  &quot;url&quot;: &quot;http://localhost:8080/api/v1/enrollments/verify&quot;,
+  &quot;request_headers&quot;: {
+    &quot;Accept&quot;: &quot;application/json&quot;,
+    &quot;Content-Type&quot;: &quot;application/json&quot;,
+    &quot;Content-Length&quot;: &quot;368&quot;
+  },
+  &quot;request_body&quot;: {
+    &quot;enrollmentId&quot;: 2,
+    &quot;challengeResponse&quot;: 436767,
+    &quot;devicePublicKey&quot;: &quot;MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEEqyRodVYHgW5WgeXGhFRivOdQhLMEnIevjm9Q7HIi5+hD3EZJTUpUDr6ZMAhS/PGWivFOpuhxzaSJQhRH0gAzA==&quot;,
+    &quot;enrollmentProofTokenSigned&quot;: &quot;MEUCIQDcJKYpIHKWNSw6Flp680DM6Qb988aENBSaLOn8D4cO9gIgehoHaKib88FLmhYrDz3kWh0f15piMR4DAR9W99EFVvQ=&quot;,
+    &quot;devicePrivateKeyStorageTier&quot;: &quot;STANDARD&quot;
+  }
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;status_code&quot;: 200,
+  &quot;response_body&quot;: {
+    &quot;active&quot;: true,
+    &quot;enrollmentVerifyMessage&quot;: &quot;Enrollment verified successfully&quot;,
+    &quot;enrollmentVerifyPayloadSignedByIntegration&quot;: &quot;EOmqg9APSLR7o9YxL3WWZzwAY400AkP94gSCjLeirpyFEWx67G_JHrQhRHsgPoUPNLvjxIsvbNT5P6vO8UdODA&quot;
+  }
+}
+</code></pre>
+<h3>Crypto API — verify-result integration signature</h3>
+<p>Rebuild the canonical <strong>verify-result</strong> line with the same tooling pattern as bind, then certify Ed25519 with the unchanged integration signing key surfaced earlier.</p>
+<pre><code class="language-json">{
+  &quot;method&quot;: &quot;POST&quot;,
+  &quot;url&quot;: &quot;http://localhost:9090/api/v1/crypto/payload-helper&quot;,
+  &quot;request_headers&quot;: {
+    &quot;User-Agent&quot;: &quot;python-requests/2.32.5&quot;,
+    &quot;Accept-Encoding&quot;: &quot;gzip, deflate&quot;,
+    &quot;Accept&quot;: &quot;application/json&quot;,
+    &quot;Connection&quot;: &quot;keep-alive&quot;,
+    &quot;Content-Type&quot;: &quot;application/json&quot;,
+    &quot;Content-Length&quot;: &quot;208&quot;
+  },
+  &quot;request_body&quot;: {
+    &quot;type&quot;: &quot;enrollment-verify-result&quot;,
+    &quot;proofToken&quot;: &quot;zcVVTLjqNlftuLroSLK3UtM-YaUMf5qyc3G5GZkI8zA.dPiUqyB5iQGh6y9x1rgcXw&quot;,
+    &quot;enrollmentId&quot;: 2,
+    &quot;result&quot;: &quot;VERIFIED&quot;,
+    &quot;message&quot;: &quot;Enrollment verified successfully&quot;
+  }
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;status_code&quot;: 200,
+  &quot;response_body&quot;: {
+    &quot;type&quot;: &quot;enrollment-verify-result&quot;,
+    &quot;payload&quot;: &quot;zcVVTLjqNlftuLroSLK3UtM-YaUMf5qyc3G5GZkI8zA.dPiUqyB5iQGh6y9x1rgcXw|2|VERIFIED|Enrollment verified successfully&quot;,
+    &quot;encoding&quot;: &quot;UTF-8 + NFC where applicable&quot;
+  }
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;method&quot;: &quot;POST&quot;,
+  &quot;url&quot;: &quot;http://localhost:9090/api/v1/crypto/verify-ed25519&quot;,
+  &quot;request_headers&quot;: {
+    &quot;User-Agent&quot;: &quot;python-requests/2.32.5&quot;,
+    &quot;Accept-Encoding&quot;: &quot;gzip, deflate&quot;,
+    &quot;Accept&quot;: &quot;application/json&quot;,
+    &quot;Connection&quot;: &quot;keep-alive&quot;,
+    &quot;Content-Type&quot;: &quot;application/json&quot;,
+    &quot;Content-Length&quot;: &quot;285&quot;
+  },
+  &quot;request_body&quot;: {
+    &quot;data&quot;: &quot;zcVVTLjqNlftuLroSLK3UtM-YaUMf5qyc3G5GZkI8zA.dPiUqyB5iQGh6y9x1rgcXw|2|VERIFIED|Enrollment verified successfully&quot;,
+    &quot;signature&quot;: &quot;EOmqg9APSLR7o9YxL3WWZzwAY400AkP94gSCjLeirpyFEWx67G_JHrQhRHsgPoUPNLvjxIsvbNT5P6vO8UdODA&quot;,
+    &quot;publicKey&quot;: &quot;o_g1NmS1Gm95e2Ftiq9e2UG31cZtE-sJYjn486I4g_o&quot;
+  }
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;status_code&quot;: 200,
+  &quot;response_body&quot;: {
+    &quot;valid&quot;: true,
+    &quot;message&quot;: &quot;Signature is valid&quot;,
+    &quot;algorithm&quot;: &quot;ED25519&quot;
+  }
+}
+</code></pre>
+<hr>
+<h3>POST <code>/api/v1/enrollments/instance-info</code></h3>
+<p>Once enrollment is active, the official mobile path does <strong>not</strong> trust unsigned public branding. It calls enrolled <strong><code>instance-info</code></strong> with the same <strong><code>enrollmentProofToken</code></strong> used during bind/verify, receives deployment branding plus <strong><code>instanceInfoPayloadSignedByIntegration</code></strong>, and must verify that Ed25519 signature before applying <strong><code>authApiPublicBaseUrl</code></strong>, <strong><code>instanceName</code></strong>, <strong><code>instanceDescription</code></strong>, or <strong><code>aboutUrl</code></strong>.</p>
+<pre><code class="language-json">{
+  &quot;method&quot;: &quot;POST&quot;,
+  &quot;url&quot;: &quot;http://localhost:8080/api/v1/enrollments/instance-info&quot;,
+  &quot;request_headers&quot;: {
+    &quot;Accept&quot;: &quot;application/json&quot;,
+    &quot;Content-Type&quot;: &quot;application/json&quot;,
+    &quot;Content-Length&quot;: &quot;94&quot;
+  },
+  &quot;request_body&quot;: {
+    &quot;enrollmentProofToken&quot;: &quot;zcVVTLjqNlftuLroSLK3UtM-YaUMf5qyc3G5GZkI8zA.dPiUqyB5iQGh6y9x1rgcXw&quot;
+  }
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;status_code&quot;: 200,
+  &quot;response_body&quot;: {
+    &quot;enrollmentId&quot;: 2,
+    &quot;authApiPublicBaseUrl&quot;: &quot;https://goateed-katalina-monsoonal.ngrok-free.dev&quot;,
+    &quot;instanceName&quot;: &quot;Ezkey System&quot;,
+    &quot;instanceDescription&quot;: &quot;Ezkey MFA instance for your organization&quot;,
+    &quot;aboutUrl&quot;: null,
+    &quot;instanceInfoPayloadSignedByIntegration&quot;: &quot;B2NEtVQrO4ZpCnNRjlv8zB0thN2v0O5G-pHSw9rNIiO6Dsv3OW_YGvh9Pe6tnt4Y_M8RH1K0eIn4KvWv7LeNCw&quot;
+  }
+}
+</code></pre>
+<h3>Crypto API — enrolled instance-info integration signature</h3>
+<p>The lab oracle reconstructs the canonical line <code>proofToken|enrollmentId|INSTANCE_INFO|authApiPublicBaseUrl|instanceName|instanceDescription|aboutUrl</code>, then verifies the returned Ed25519 signature with the same integration key used for bind and verify-result.</p>
+<pre><code class="language-json">{
+  &quot;method&quot;: &quot;POST&quot;,
+  &quot;url&quot;: &quot;http://localhost:9090/api/v1/crypto/payload-helper&quot;,
+  &quot;request_headers&quot;: {
+    &quot;User-Agent&quot;: &quot;python-requests/2.32.5&quot;,
+    &quot;Accept-Encoding&quot;: &quot;gzip, deflate&quot;,
+    &quot;Accept&quot;: &quot;application/json&quot;,
+    &quot;Connection&quot;: &quot;keep-alive&quot;,
+    &quot;Content-Type&quot;: &quot;application/json&quot;,
+    &quot;Content-Length&quot;: &quot;333&quot;
+  },
+  &quot;request_body&quot;: {
+    &quot;type&quot;: &quot;enrollment-instance-info&quot;,
+    &quot;proofToken&quot;: &quot;zcVVTLjqNlftuLroSLK3UtM-YaUMf5qyc3G5GZkI8zA.dPiUqyB5iQGh6y9x1rgcXw&quot;,
+    &quot;enrollmentId&quot;: 2,
+    &quot;authApiPublicBaseUrl&quot;: &quot;https://goateed-katalina-monsoonal.ngrok-free.dev&quot;,
+    &quot;instanceName&quot;: &quot;Ezkey System&quot;,
+    &quot;instanceDescription&quot;: &quot;Ezkey MFA instance for your organization&quot;,
+    &quot;aboutUrl&quot;: null
+  }
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;status_code&quot;: 200,
+  &quot;response_body&quot;: {
+    &quot;type&quot;: &quot;enrollment-instance-info&quot;,
+    &quot;payload&quot;: &quot;zcVVTLjqNlftuLroSLK3UtM-YaUMf5qyc3G5GZkI8zA.dPiUqyB5iQGh6y9x1rgcXw|2|INSTANCE_INFO|https://goateed-katalina-monsoonal.ngrok-free.dev|Ezkey System|Ezkey MFA instance for your organization|&quot;,
+    &quot;encoding&quot;: &quot;UTF-8 + NFC where applicable&quot;
+  }
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;method&quot;: &quot;POST&quot;,
+  &quot;url&quot;: &quot;http://localhost:9090/api/v1/crypto/verify-ed25519&quot;,
+  &quot;request_headers&quot;: {
+    &quot;User-Agent&quot;: &quot;python-requests/2.32.5&quot;,
+    &quot;Accept-Encoding&quot;: &quot;gzip, deflate&quot;,
+    &quot;Accept&quot;: &quot;application/json&quot;,
+    &quot;Connection&quot;: &quot;keep-alive&quot;,
+    &quot;Content-Type&quot;: &quot;application/json&quot;,
+    &quot;Content-Length&quot;: &quot;362&quot;
+  },
+  &quot;request_body&quot;: {
+    &quot;data&quot;: &quot;zcVVTLjqNlftuLroSLK3UtM-YaUMf5qyc3G5GZkI8zA.dPiUqyB5iQGh6y9x1rgcXw|2|INSTANCE_INFO|https://goateed-katalina-monsoonal.ngrok-free.dev|Ezkey System|Ezkey MFA instance for your organization|&quot;,
+    &quot;signature&quot;: &quot;B2NEtVQrO4ZpCnNRjlv8zB0thN2v0O5G-pHSw9rNIiO6Dsv3OW_YGvh9Pe6tnt4Y_M8RH1K0eIn4KvWv7LeNCw&quot;,
+    &quot;publicKey&quot;: &quot;o_g1NmS1Gm95e2Ftiq9e2UG31cZtE-sJYjn486I4g_o&quot;
+  }
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;status_code&quot;: 200,
+  &quot;response_body&quot;: {
+    &quot;valid&quot;: true,
+    &quot;message&quot;: &quot;Signature is valid&quot;,
+    &quot;algorithm&quot;: &quot;ED25519&quot;
+  }
+}
+</code></pre>
+<hr>
+<h2>Administration — opening an MFA attempt</h2>
+<h3>Authentication attempt TTL</h3>
+<p>After <strong>POST</strong> creating an MFA attempt the stack enforces <strong><code>timeoutSeconds</code></strong> with an absolute <strong><code>expiresAt</code></strong>. <strong><code>respond</code></strong> on the handset must conclude inside that horizon—TTL metadata for this capture fills the block below.</p>
+<pre><code class="language-json">{
+  &quot;timeoutSeconds&quot;: 120,
+  &quot;expiresAt&quot;: &quot;2026-10-05T12:21:25.576731583Z&quot;
+}
+</code></pre>
+<p>Opening an MFA <strong>authentication attempt</strong> for a verified enrollment yields attempt identifiers plus metadata echoed in transcripts. In this template the example remains intentionally plain: the handset is asked to approve access to the integration, not to authorize a richer business transaction. If <strong><code>contextTitle</code></strong> or <strong><code>contextMessage</code></strong> are present, they are still covered by the signed <strong>pending</strong> payload, but they should read as simple sign-in or access copy.</p>
+<pre><code class="language-json">{
+  &quot;method&quot;: &quot;POST&quot;,
+  &quot;url&quot;: &quot;http://localhost:9080/api/v1/auth-attempts&quot;,
+  &quot;request_headers&quot;: {
+    &quot;User-Agent&quot;: &quot;python-requests/2.32.5&quot;,
+    &quot;Accept-Encoding&quot;: &quot;gzip, deflate&quot;,
+    &quot;Accept&quot;: &quot;application/json&quot;,
+    &quot;Connection&quot;: &quot;keep-alive&quot;,
+    &quot;Authorization&quot;: &quot;Bearer ezkey_14c52717ab34444bb1cebcca5db71140&quot;,
+    &quot;Content-Type&quot;: &quot;application/json&quot;,
+    &quot;Content-Length&quot;: &quot;48&quot;
+  },
+  &quot;request_body&quot;: {
+    &quot;enrollmentId&quot;: 2,
+    &quot;challengeRequested&quot;: false
+  }
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;status_code&quot;: 201,
+  &quot;response_body&quot;: {
+    &quot;authAttemptId&quot;: 2,
+    &quot;authAttemptChallenge&quot;: null,
+    &quot;timeoutSeconds&quot;: 120,
+    &quot;expiresAt&quot;: &quot;2026-10-05T12:21:25.576731583Z&quot;,
+    &quot;contextTitle&quot;: null,
+    &quot;contextMessage&quot;: null
+  }
+}
+</code></pre>
+<hr>
+<h2>Device posture — pending then respond</h2>
+<p>MFA choreography reuses the disciplined pattern above: ECDSA-signed <strong>proof token</strong>, <strong>pending</strong> retrieval with <strong><code>authAttemptProofTokenSignedByIntegration</code></strong> requiring Ed25519 confirmation, ECDSA-signed <strong>respond</strong>, then <strong><code>authAttemptProofTokenResultSignedByIntegration</code></strong> validating the eventual integration stance over the <strong>respond-result</strong> canonical substrate.</p>
+<h3>Read-once <code>pending</code> and chaining <code>respond</code></h3>
+<p>While an MFA attempt sits <strong><code>PENDING</code></strong>, callers may probe with fresh ephemeral <strong><code>deviceProofToken</code></strong> payloads until Ezkey validates one complete poll. That successful poll flips the attempt from <strong><code>PENDING</code></strong> to <strong><code>READ</code></strong> and returns the one proof token the handset needs for the next step. From that moment, the mobile side must verify the integration Ed25519 signature over the reconstructed <strong>pending</strong> canonical line before trusting the displayed title, message, or challenge posture. Only then can it sign the follow-up <strong>respond</strong> payload with the exact <strong><code>authAttemptProofToken</code></strong> it just received.</p>
+<p>Cryptography snippets below occupy the same structural role handset firmware plays in deployment.</p>
+<h3>Crypto API — device proof token and ECDSA</h3>
+<p>Issue a fresh ephemeral <strong><code>deviceProofToken</code></strong>, ECDSA-signed with enrollment’s device private key—the signature rides <strong>pending</strong> as proof-of-handset.</p>
+<pre><code class="language-json">{
+  &quot;method&quot;: &quot;GET&quot;,
+  &quot;url&quot;: &quot;http://localhost:9090/api/v1/crypto/prooftoken&quot;,
+  &quot;request_headers&quot;: {
+    &quot;User-Agent&quot;: &quot;python-requests/2.32.5&quot;,
+    &quot;Accept-Encoding&quot;: &quot;gzip, deflate&quot;,
+    &quot;Accept&quot;: &quot;application/json&quot;,
+    &quot;Connection&quot;: &quot;keep-alive&quot;
+  },
+  &quot;request_body&quot;: null
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;status_code&quot;: 200,
+  &quot;response_body&quot;: {
+    &quot;proofToken&quot;: &quot;ie7WkkJwjKvbsy36__yconTf69JGw42BU0tzufznfpk.OGdDNT5oJNwFuRocXVpW2A&quot;
+  }
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;method&quot;: &quot;POST&quot;,
+  &quot;url&quot;: &quot;http://localhost:9090/api/v1/crypto/sign&quot;,
+  &quot;request_headers&quot;: {
+    &quot;User-Agent&quot;: &quot;python-requests/2.32.5&quot;,
+    &quot;Accept-Encoding&quot;: &quot;gzip, deflate&quot;,
+    &quot;Accept&quot;: &quot;application/json&quot;,
+    &quot;Connection&quot;: &quot;keep-alive&quot;,
+    &quot;Content-Type&quot;: &quot;application/json&quot;,
+    &quot;Content-Length&quot;: &quot;188&quot;
+  },
+  &quot;request_body&quot;: {
+    &quot;data&quot;: &quot;ie7WkkJwjKvbsy36__yconTf69JGw42BU0tzufznfpk.OGdDNT5oJNwFuRocXVpW2A&quot;,
+    &quot;privateKey&quot;: &quot;MEECAQAwEwYHKoZIzj0CAQYIKoZIzj0DAQcEJzAlAgEBBCCfICmLZC9zocqwPE131NZ0dtwptE1xMOYLGeIHlahLgQ==&quot;
+  }
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;status_code&quot;: 200,
+  &quot;response_body&quot;: {
+    &quot;signature&quot;: &quot;MEUCIQCx065Msmz+0ks2kKZEAFsxkA3GZvr7ZhPBmgihmRlm8AIgCoFepRI6G7C9h6NncH/tZMRwc9pdpiqIwSkEG9imjRU=&quot;,
+    &quot;originalData&quot;: &quot;ie7WkkJwjKvbsy36__yconTf69JGw42BU0tzufznfpk.OGdDNT5oJNwFuRocXVpW2A&quot;,
+    &quot;algorithm&quot;: &quot;EC_P256&quot;
+  }
+}
+</code></pre>
+<hr>
+<h3>POST <code>/api/v1/auth-attempts/pending</code></h3>
+<p>Determine whether MFA state exists for handset plus enrollment linkage. <strong><code>200</code></strong> embeds <strong><code>authAttemptProofTokenSignedByIntegration</code></strong>; authenticate Ed25519 on the reconstructed <strong>pending</strong> canonical line exactly like bind before treating the MFA payload fields as authoritative. If the integration supplied a simple access title or short message, those strings are signed too; they are secondary to the protocol, but not outside it.</p>
+<pre><code class="language-json">{
+  &quot;method&quot;: &quot;POST&quot;,
+  &quot;url&quot;: &quot;http://localhost:8080/api/v1/auth-attempts/pending&quot;,
+  &quot;request_headers&quot;: {
+    &quot;Accept&quot;: &quot;application/json&quot;,
+    &quot;Content-Type&quot;: &quot;application/json&quot;,
+    &quot;Content-Length&quot;: &quot;329&quot;
+  },
+  &quot;request_body&quot;: {
+    &quot;enrollmentId&quot;: 2,
+    &quot;enrollmentProofToken&quot;: &quot;zcVVTLjqNlftuLroSLK3UtM-YaUMf5qyc3G5GZkI8zA.dPiUqyB5iQGh6y9x1rgcXw&quot;,
+    &quot;deviceProofToken&quot;: &quot;ie7WkkJwjKvbsy36__yconTf69JGw42BU0tzufznfpk.OGdDNT5oJNwFuRocXVpW2A&quot;,
+    &quot;deviceProofTokenSigned&quot;: &quot;MEUCIQCx065Msmz+0ks2kKZEAFsxkA3GZvr7ZhPBmgihmRlm8AIgCoFepRI6G7C9h6NncH/tZMRwc9pdpiqIwSkEG9imjRU=&quot;
+  }
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;status_code&quot;: 200,
+  &quot;response_body&quot;: {
+    &quot;authAttemptId&quot;: 2,
+    &quot;authAttemptProofToken&quot;: &quot;k0mbnhwIeXbrRyGvaLX_itHjUU9SmxTj-u4NxnDEe2M.-6miqe4VXXVkFibCksc3tA&quot;,
+    &quot;authAttemptProofTokenSignedByIntegration&quot;: &quot;wcA8__dnGLsL_Rrjoxq5vg8SMPDVeX58gIS58_bAEgLFUzl3RgaPIYa3OFyI0DU9-dl_fFsYBwkCajYaqYtCCA&quot;,
+    &quot;authAttemptChallengeRequired&quot;: false,
+    &quot;contextTitle&quot;: null,
+    &quot;contextMessage&quot;: null
+  }
+}
+</code></pre>
+<h3>Crypto API — pending integration signature verification</h3>
+<pre><code class="language-json">{
+  &quot;method&quot;: &quot;POST&quot;,
+  &quot;url&quot;: &quot;http://localhost:9090/api/v1/crypto/payload-helper&quot;,
+  &quot;request_headers&quot;: {
+    &quot;User-Agent&quot;: &quot;python-requests/2.32.5&quot;,
+    &quot;Accept-Encoding&quot;: &quot;gzip, deflate&quot;,
+    &quot;Accept&quot;: &quot;application/json&quot;,
+    &quot;Connection&quot;: &quot;keep-alive&quot;,
+    &quot;Content-Type&quot;: &quot;application/json&quot;,
+    &quot;Content-Length&quot;: &quot;173&quot;
+  },
+  &quot;request_body&quot;: {
+    &quot;type&quot;: &quot;pending&quot;,
+    &quot;proofToken&quot;: &quot;k0mbnhwIeXbrRyGvaLX_itHjUU9SmxTj-u4NxnDEe2M.-6miqe4VXXVkFibCksc3tA&quot;,
+    &quot;challengeRequired&quot;: false,
+    &quot;contextTitle&quot;: &quot;&quot;,
+    &quot;contextMessage&quot;: &quot;&quot;
+  }
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;status_code&quot;: 200,
+  &quot;response_body&quot;: {
+    &quot;type&quot;: &quot;pending&quot;,
+    &quot;payload&quot;: &quot;k0mbnhwIeXbrRyGvaLX_itHjUU9SmxTj-u4NxnDEe2M.-6miqe4VXXVkFibCksc3tA|false||&quot;,
+    &quot;encoding&quot;: &quot;UTF-8 + NFC where applicable&quot;
+  }
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;method&quot;: &quot;POST&quot;,
+  &quot;url&quot;: &quot;http://localhost:9090/api/v1/crypto/verify-ed25519&quot;,
+  &quot;request_headers&quot;: {
+    &quot;User-Agent&quot;: &quot;python-requests/2.32.5&quot;,
+    &quot;Accept-Encoding&quot;: &quot;gzip, deflate&quot;,
+    &quot;Accept&quot;: &quot;application/json&quot;,
+    &quot;Connection&quot;: &quot;keep-alive&quot;,
+    &quot;Content-Type&quot;: &quot;application/json&quot;,
+    &quot;Content-Length&quot;: &quot;249&quot;
+  },
+  &quot;request_body&quot;: {
+    &quot;data&quot;: &quot;k0mbnhwIeXbrRyGvaLX_itHjUU9SmxTj-u4NxnDEe2M.-6miqe4VXXVkFibCksc3tA|false||&quot;,
+    &quot;signature&quot;: &quot;wcA8__dnGLsL_Rrjoxq5vg8SMPDVeX58gIS58_bAEgLFUzl3RgaPIYa3OFyI0DU9-dl_fFsYBwkCajYaqYtCCA&quot;,
+    &quot;publicKey&quot;: &quot;o_g1NmS1Gm95e2Ftiq9e2UG31cZtE-sJYjn486I4g_o&quot;
+  }
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;status_code&quot;: 200,
+  &quot;response_body&quot;: {
+    &quot;valid&quot;: true,
+    &quot;message&quot;: &quot;Signature is valid&quot;,
+    &quot;algorithm&quot;: &quot;ED25519&quot;
+  }
+}
+</code></pre>
+<hr>
+<h3>Respond canonical line (<code>authAttemptProofToken|true|false</code>)</h3>
+<p>The accept/deny decision reduces to an ECDSA commitment over <strong><code>authAttemptProofToken|accepted</code></strong>. On the acceptance branch, that means the handset signs <strong><code>authAttemptProofToken|true</code></strong> and the server recomputes the exact same two-segment line before recording the result.</p>
+<pre><code class="language-json">{
+  &quot;method&quot;: &quot;POST&quot;,
+  &quot;url&quot;: &quot;http://localhost:9090/api/v1/crypto/sign&quot;,
+  &quot;request_headers&quot;: {
+    &quot;User-Agent&quot;: &quot;python-requests/2.32.5&quot;,
+    &quot;Accept-Encoding&quot;: &quot;gzip, deflate&quot;,
+    &quot;Accept&quot;: &quot;application/json&quot;,
+    &quot;Connection&quot;: &quot;keep-alive&quot;,
+    &quot;Content-Type&quot;: &quot;application/json&quot;,
+    &quot;Content-Length&quot;: &quot;193&quot;
+  },
+  &quot;request_body&quot;: {
+    &quot;data&quot;: &quot;k0mbnhwIeXbrRyGvaLX_itHjUU9SmxTj-u4NxnDEe2M.-6miqe4VXXVkFibCksc3tA|true&quot;,
+    &quot;privateKey&quot;: &quot;MEECAQAwEwYHKoZIzj0CAQYIKoZIzj0DAQcEJzAlAgEBBCCfICmLZC9zocqwPE131NZ0dtwptE1xMOYLGeIHlahLgQ==&quot;
+  }
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;status_code&quot;: 200,
+  &quot;response_body&quot;: {
+    &quot;signature&quot;: &quot;MEUCIQD7KYOGpwtP6tH/yakKXA8tazMiHkDbHRPPt/3M8rxThAIgGgdx9kFNlPMJUlpC8aiZvDcvA7WQrSCIT7mRdFfFMmM=&quot;,
+    &quot;originalData&quot;: &quot;k0mbnhwIeXbrRyGvaLX_itHjUU9SmxTj-u4NxnDEe2M.-6miqe4VXXVkFibCksc3tA|true&quot;,
+    &quot;algorithm&quot;: &quot;EC_P256&quot;
+  }
+}
+</code></pre>
+<hr>
+<h3>POST <code>/api/v1/auth-attempts/respond</code></h3>
+<pre><code class="language-json">{
+  &quot;method&quot;: &quot;POST&quot;,
+  &quot;url&quot;: &quot;http://localhost:8080/api/v1/auth-attempts/respond&quot;,
+  &quot;request_headers&quot;: {
+    &quot;Accept&quot;: &quot;application/json&quot;,
+    &quot;Content-Type&quot;: &quot;application/json&quot;,
+    &quot;Content-Length&quot;: &quot;223&quot;
+  },
+  &quot;request_body&quot;: {
+    &quot;authAttemptId&quot;: 2,
+    &quot;authAttemptAccepted&quot;: true,
+    &quot;authAttemptProofTokenSignedByDevice&quot;: &quot;MEUCIQD7KYOGpwtP6tH/yakKXA8tazMiHkDbHRPPt/3M8rxThAIgGgdx9kFNlPMJUlpC8aiZvDcvA7WQrSCIT7mRdFfFMmM=&quot;,
+    &quot;authAttemptChallengeResponse&quot;: 0
+  }
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;status_code&quot;: 200,
+  &quot;response_body&quot;: {
+    &quot;authAttemptId&quot;: 2,
+    &quot;authAttemptResult&quot;: &quot;APPROVED&quot;,
+    &quot;authAttemptMessage&quot;: &quot;Auth attempt completed&quot;,
+    &quot;authAttemptProofTokenResultSignedByIntegration&quot;: &quot;f0dwir7hNNs20Reso2sXNqftLB0CmpiODNPzkfe2E2msEdk7Aa8ugGBV0VEG5rwipJfzefazQv6_jTCqOVTzAw&quot;
+  }
+}
+</code></pre>
+<h3>Crypto API — respond-result integration signature</h3>
+<p>The JSON embeds <strong><code>authAttemptProofTokenResultSignedByIntegration</code></strong>. Reproduce the <strong><code>respond-result</code></strong> canonical string using <code>payload-helper</code> type <strong><code>respond-result</code></strong>, then certify Ed25519—closing the MFA loop exactly as integrations signed earlier segments.</p>
+<pre><code class="language-json">{
+  &quot;method&quot;: &quot;POST&quot;,
+  &quot;url&quot;: &quot;http://localhost:9090/api/v1/crypto/payload-helper&quot;,
+  &quot;request_headers&quot;: {
+    &quot;User-Agent&quot;: &quot;python-requests/2.32.5&quot;,
+    &quot;Accept-Encoding&quot;: &quot;gzip, deflate&quot;,
+    &quot;Accept&quot;: &quot;application/json&quot;,
+    &quot;Connection&quot;: &quot;keep-alive&quot;,
+    &quot;Content-Type&quot;: &quot;application/json&quot;,
+    &quot;Content-Length&quot;: &quot;189&quot;
+  },
+  &quot;request_body&quot;: {
+    &quot;type&quot;: &quot;respond-result&quot;,
+    &quot;proofToken&quot;: &quot;k0mbnhwIeXbrRyGvaLX_itHjUU9SmxTj-u4NxnDEe2M.-6miqe4VXXVkFibCksc3tA&quot;,
+    &quot;authAttemptId&quot;: 2,
+    &quot;result&quot;: &quot;APPROVED&quot;,
+    &quot;message&quot;: &quot;Auth attempt completed&quot;
+  }
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;status_code&quot;: 200,
+  &quot;response_body&quot;: {
+    &quot;type&quot;: &quot;respond-result&quot;,
+    &quot;payload&quot;: &quot;k0mbnhwIeXbrRyGvaLX_itHjUU9SmxTj-u4NxnDEe2M.-6miqe4VXXVkFibCksc3tA|2|APPROVED|Auth attempt completed&quot;,
+    &quot;encoding&quot;: &quot;UTF-8 + NFC where applicable&quot;
+  }
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;method&quot;: &quot;POST&quot;,
+  &quot;url&quot;: &quot;http://localhost:9090/api/v1/crypto/verify-ed25519&quot;,
+  &quot;request_headers&quot;: {
+    &quot;User-Agent&quot;: &quot;python-requests/2.32.5&quot;,
+    &quot;Accept-Encoding&quot;: &quot;gzip, deflate&quot;,
+    &quot;Accept&quot;: &quot;application/json&quot;,
+    &quot;Connection&quot;: &quot;keep-alive&quot;,
+    &quot;Content-Type&quot;: &quot;application/json&quot;,
+    &quot;Content-Length&quot;: &quot;275&quot;
+  },
+  &quot;request_body&quot;: {
+    &quot;data&quot;: &quot;k0mbnhwIeXbrRyGvaLX_itHjUU9SmxTj-u4NxnDEe2M.-6miqe4VXXVkFibCksc3tA|2|APPROVED|Auth attempt completed&quot;,
+    &quot;signature&quot;: &quot;f0dwir7hNNs20Reso2sXNqftLB0CmpiODNPzkfe2E2msEdk7Aa8ugGBV0VEG5rwipJfzefazQv6_jTCqOVTzAw&quot;,
+    &quot;publicKey&quot;: &quot;o_g1NmS1Gm95e2Ftiq9e2UG31cZtE-sJYjn486I4g_o&quot;
+  }
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;status_code&quot;: 200,
+  &quot;response_body&quot;: {
+    &quot;valid&quot;: true,
+    &quot;message&quot;: &quot;Signature is valid&quot;,
+    &quot;algorithm&quot;: &quot;ED25519&quot;
+  }
+}
+</code></pre>
+<hr>
+<h2>Administration — synchronous wait</h2>
+<p>When tooling chains <strong>admin <code>/wait</code></strong>, transcripts include the blocking poll that observes Auth API attempt convergence—useful symmetry for backends that hinge UX on deterministic completion cues.</p>
+<pre><code class="language-json">{
+  &quot;method&quot;: &quot;GET&quot;,
+  &quot;url&quot;: &quot;http://localhost:9080/api/v1/auth-attempts/2/wait&quot;,
+  &quot;request_headers&quot;: {
+    &quot;User-Agent&quot;: &quot;python-requests/2.32.5&quot;,
+    &quot;Accept-Encoding&quot;: &quot;gzip, deflate&quot;,
+    &quot;Accept&quot;: &quot;application/json&quot;,
+    &quot;Connection&quot;: &quot;keep-alive&quot;,
+    &quot;Authorization&quot;: &quot;Bearer ezkey_14c52717ab34444bb1cebcca5db71140&quot;
+  },
+  &quot;request_body&quot;: null
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;status_code&quot;: 200,
+  &quot;response_body&quot;: {
+    &quot;authAttempt&quot;: {
+      &quot;authAttemptId&quot;: 2,
+      &quot;enrollmentId&quot;: 2,
+      &quot;authAttemptStatus&quot;: &quot;ACCEPTED&quot;,
+      &quot;authAttemptChallenge&quot;: null,
+      &quot;authAttemptProofToken&quot;: &quot;k0mbnhwIeXbrRyGvaLX_itHjUU9SmxTj-u4NxnDEe2M.-6miqe4VXXVkFibCksc3tA&quot;,
+      &quot;createdAt&quot;: &quot;2026-10-05T12:19:25.576731Z&quot;,
+      &quot;expiresAt&quot;: &quot;2026-10-05T12:21:25.576732Z&quot;,
+      &quot;contextTitle&quot;: null,
+      &quot;contextMessage&quot;: null,
+      &quot;integrationId&quot;: null,
+      &quot;integrationName&quot;: null,
+      &quot;enrollmentName&quot;: null,
+      &quot;tenantId&quot;: null,
+      &quot;tenantName&quot;: null
+    },
+    &quot;status&quot;: &quot;ACCEPTED&quot;,
+    &quot;completed&quot;: true,
+    &quot;timeoutReached&quot;: false,
+    &quot;waitDuration&quot;: 0,
+    &quot;completedAt&quot;: &quot;2026-10-05T12:19:26.059614264Z&quot;
+  }
+}
+</code></pre>
+<hr>
+<h2>Closing</h2>
+<p>Ezkey concentrates trust in explicit <strong>canonical UTF‑8 scaffolding</strong>: integration Ed25519 for integration-issued payloads, ECDSA handset math for proofs and MFA decisions, and a read-once pending handshake that forces the device to bind its final decision to the exact attempt it claimed. In an access-login walkthrough like this one, any sign-in copy displayed to the user is inside the same signed envelope as the proof token and challenge posture. The Crypto API excerpts prove the strings <strong>mechanically</strong>; production mobiles implement the identical math locally without round-tripping through lab services.</p>
+
+        </article>
+        <footer class="doc-footer"><p><a href="/articles.html">Articles</a> · <a href="/fr/articles.html">Articles (FR)</a></p></footer>
+    </div>
+</body>
+</html>

@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.PlatformTransactionManager;
 
 /**
  * Layer 1 lock: Auth/Integration ({@code keyset.writer=false}) must not attempt empty-table sync.
@@ -39,6 +40,7 @@ class KeyRotationServiceKeysetWriterTest {
   @Mock private AuditLogService auditLogService;
   @Mock private EncryptionKeyMigrationScopeService migrationScopeService;
   @Mock private KeyUsageVerificationService keyUsageVerificationService;
+  @Mock private PlatformTransactionManager transactionManager;
 
   private KeyRotationService keyRotationService;
 
@@ -51,7 +53,8 @@ class KeyRotationServiceKeysetWriterTest {
             properties,
             auditLogService,
             migrationScopeService,
-            keyUsageVerificationService);
+            keyUsageVerificationService,
+            transactionManager);
   }
 
   @Test

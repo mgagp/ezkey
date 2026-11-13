@@ -363,4 +363,27 @@ public final class TestTags {
    * <p>See {@code ezkey_mobile/docs/MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md}.
    */
   public static final String MOBILE_REAL_DEVICE = "mobile-real-device";
+
+  /**
+   * Quality-gate C1 (#912): Auth API respond rate-limit ownership isolation. Requires the test-only
+   * {@code ezkey-tests/gate-c1} compose overlay (Auth rate limit ON, AdminRateLimitFilter OFF).
+   * Excluded from default and all-tests Surefire runs so clean-start {@code docker-test} (limits
+   * off) never false-passes or pollutes the suite with 429s. Invoke with {@code -P gate-c1-tests}
+   * or the quality-gate {@code c1-rate-limit} phase.
+   */
+  public static final String GATE_C1 = "gate-c1";
+
+  /**
+   * Needs the mock delivery connector on the stack ({@code docker-compose.connector-mock.yml}).
+   * Excluded by default. Run through {@code scripts/ci-connector-scenarios.sh} or {@code
+   * -Pconnector-mock}.
+   */
+  public static final String CONNECTOR_MOCK = "connector-mock";
+
+  /**
+   * Needs the SMTP delivery connector and Mailpit on the stack ({@code
+   * docker-compose.connector-smtp.yml}). Excluded by default. Run through {@code
+   * scripts/ci-connector-scenarios.sh} or {@code -Pconnector-smtp}.
+   */
+  public static final String CONNECTOR_SMTP = "connector-smtp";
 }

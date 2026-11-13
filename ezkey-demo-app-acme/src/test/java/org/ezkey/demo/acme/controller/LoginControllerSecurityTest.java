@@ -16,6 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import org.ezkey.demo.acme.config.EzkeyClientProvider;
 import org.ezkey.demo.acme.security.DemoRateLimitService;
+import org.ezkey.demo.acme.service.AccessCodeService;
 import org.ezkey.demo.acme.service.DemoApiKeyConfigService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,8 +34,10 @@ class LoginControllerSecurityTest {
     EzkeyClientProvider ezkeyClientProvider = mock(EzkeyClientProvider.class);
     DemoApiKeyConfigService demoApiKeyConfigService = mock(DemoApiKeyConfigService.class);
     DemoRateLimitService demoRateLimitService = mock(DemoRateLimitService.class);
+    AccessCodeService accessCodeService = mock(AccessCodeService.class);
     LoginController loginController =
-        new LoginController(ezkeyClientProvider, demoApiKeyConfigService, demoRateLimitService);
+        new LoginController(
+            ezkeyClientProvider, demoApiKeyConfigService, demoRateLimitService, accessCodeService);
     mockMvc =
         MockMvcBuilders.standaloneSetup(loginController)
             .addFilters(new CsrfFilter(new HttpSessionCsrfTokenRepository()))

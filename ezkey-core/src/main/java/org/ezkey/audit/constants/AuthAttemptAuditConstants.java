@@ -30,4 +30,11 @@ public final class AuthAttemptAuditConstants {
    * scheduled TTL alignment job (past {@code expires_at}).
    */
   public static final String AUTH_ATTEMPT_EXPIRED_SCHEDULER = "auth_attempt_expired_scheduler";
+
+  /**
+   * Respond rejected: device signature failed ownership verification. Attempt status unchanged;
+   * client receives generic state-conflict (#912). Event details must never include the signature.
+   */
+  public static final String AUTH_ATTEMPT_RESPOND_SIGNATURE_REJECTED =
+      "auth_attempt_respond_signature_rejected";
 }

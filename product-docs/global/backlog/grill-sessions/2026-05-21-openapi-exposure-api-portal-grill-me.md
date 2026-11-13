@@ -16,7 +16,7 @@
 |----|------------------|
 | G1 | Keep two concerns explicit: **live API-host exposure policy** and **curated API portal information architecture** must be decided together but not collapsed into one implementation choice. |
 | G2 | Treat per-service Springdoc Swagger UI and raw `/api-docs` as **operator/developer tooling**, not as the default long-term public surface for production-capable Ezkey deployments. |
-| G3 | Use an explicit **environment matrix** for exposure decisions: `local/dev`, `internal shared`, `evaluator (EXP1)`, `public production-like`, and `test-only`. |
+| G3 | Use an explicit **environment matrix** for exposure decisions: `local/dev`, `internal shared`, `evaluator (community)`, `public production-like`, and `test-only`. |
 | G4 | Treat `Admin API`, `Auth API`, and optional `Integration API` as the production-capable group; treat `Crypto API` as **test/internal only** and exclude it from the default public portal posture. |
 | G5 | Bias the public portal toward a **curated read-only reference** rather than public “try it out” against live endpoints. Interactive tooling may still exist for internal/operator contexts. |
 | G6 | The default hosting bias is to reuse the existing static site deployment model under `sites/ezkey-org/` / Cloudflare Pages, not to introduce a new service or worker unless the gains are clear. |
@@ -24,7 +24,7 @@
 | G8 | `Integration API` being optional by deployment means the documentation posture must tolerate **partial API groups** without implying that every deployment always exposes every production-capable surface. |
 | G9 | The current generated-spec workflow already supports `Admin API` and `Auth API`; `Integration API` and `Crypto API` need an explicit publication decision rather than accidental omission. |
 | G10 | The next bounded product-docs slice is documentation and recommendation work: environment matrix, candidate comparison, placement recommendation, and first implementation slice definition. |
-| G11 | **Operator decision (2026-05-21):** treat `EXP1` as **prod-like** for raw OpenAPI exposure posture. Public Swagger UI and raw `/api-docs` on API hosts should not be the target evaluator posture; evaluator documentation should converge toward the curated portal / controlled-access model instead. |
+| G11 | **Operator decision (2026-05-21):** treat `community` (ezkey.online) as **prod-like** for raw OpenAPI exposure posture. Public Swagger UI and raw `/api-docs` on API hosts should not be the target evaluator posture; evaluator documentation should converge toward the curated portal / controlled-access model instead. |
 | G12 | **Operator decision (2026-05-21):** the public API portal is part of the near-term documentation posture for `ezkey.org`. It may start small and sober, but it is not deferred until a much later repository-opening phase. |
 | G13 | **Operator decision (2026-05-21):** the public portal posture is **read-only reference**, not public interactive execution. Any “try it out” capability stays internal or otherwise controlled outside the default public portal. |
 | G14 | **Operator decision (2026-05-21):** include `Integration API` in the public/prod-capable documentation group, but keep `Crypto API` outside the public portal and outside the normal public documentation posture. |

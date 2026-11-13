@@ -10,6 +10,9 @@
     "filterStatusPending": "En attente",
     "refresh": "Actualiser",
     "rotateKey": "Rotation de clé",
+    "rotateInactiveHint": "Inactive sur cette instance",
+    "rotateInactiveTooltip": "La rotation de clé est inactive sur cette instance.",
+    "reencryptInactiveTooltip": "Le re-chiffrement est inactif sur cette instance.",
     "emptyMessage": "Aucune clé de chiffrement trouvée.",
     "columns": {
       "id": "ID",
@@ -151,6 +154,7 @@
     "helpCreateBatches": "Crée des lignes de lot pour chaque ancienne clé et colonne chiffrée applicable. Ne re-chiffre pas—pour le prochain cycle planifié ou pour inspection.",
     "helpTriggerFull": "Crée les lots manquants puis traite immédiatement tous les lots en attente ou reprises (charge élevée—tests ou urgences).",
     "helpResume": "Exécute le traitement pour ce lot (en attente ou en échec). Équivalent à POST …/reencryption-batches/{id}/resume.",
+    "lifecycleInactiveHint": "Inactive sur cette instance",
     "filterAll": "Tous les statuts",
     "filterPending": "En attente",
     "filterInProgress": "En cours",

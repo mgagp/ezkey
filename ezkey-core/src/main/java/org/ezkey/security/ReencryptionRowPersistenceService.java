@@ -50,10 +50,9 @@ public class ReencryptionRowPersistenceService {
     Enrollment e =
         enrollmentRepository
             .findByIdForReencryptionUpdate(enrollmentId)
-            .orElseThrow(
-                () ->
-                    new IllegalStateException(
-                        "Enrollment not found for re-encryption persistence: " + enrollmentId));
+            .orElseThrow(() ->
+                new IllegalStateException(
+                    "Enrollment not found for re-encryption persistence: " + enrollmentId));
     ReencryptionRecordCipher.ReencryptResult result = recordCipher.reencryptRecord(batch, e);
     if (!result.reencrypted()) {
       return;
@@ -67,10 +66,9 @@ public class ReencryptionRowPersistenceService {
     AuthAttempt a =
         authAttemptRepository
             .findByIdForReencryptionUpdate(authAttemptId)
-            .orElseThrow(
-                () ->
-                    new IllegalStateException(
-                        "AuthAttempt not found for re-encryption persistence: " + authAttemptId));
+            .orElseThrow(() ->
+                new IllegalStateException(
+                    "AuthAttempt not found for re-encryption persistence: " + authAttemptId));
     ReencryptionRecordCipher.ReencryptResult result = recordCipher.reencryptRecord(batch, a);
     if (!result.reencrypted()) {
       return;
@@ -84,10 +82,9 @@ public class ReencryptionRowPersistenceService {
     ApiKey apiKey =
         apiKeyRepository
             .findByIdForReencryptionUpdate(apiKeyId)
-            .orElseThrow(
-                () ->
-                    new IllegalStateException(
-                        "ApiKey not found for re-encryption persistence: " + apiKeyId));
+            .orElseThrow(() ->
+                new IllegalStateException(
+                    "ApiKey not found for re-encryption persistence: " + apiKeyId));
     ReencryptionRecordCipher.ReencryptResult result = recordCipher.reencryptRecord(batch, apiKey);
     if (!result.reencrypted()) {
       return;

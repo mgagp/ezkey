@@ -18,6 +18,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.util.List;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
@@ -43,8 +44,12 @@ import org.ezkey.exception.EnrollmentInactiveException;
 import org.ezkey.exception.RateLimitExceededException;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.exception.auth.AuthAttemptCreateValidationException;
+import org.ezkey.exception.auth.AuthAttemptCreationCooldownException;
+import org.ezkey.exception.auth.AuthAttemptPendingExistsException;
+import org.ezkey.exception.auth.AuthAttemptRequestInvalidException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.exception.auth.AuthAttemptWaitValidationException;
+import org.ezkey.integration.api.config.ApiKeyRateLimitProperties;
 import org.ezkey.integration.api.constants.IntegrationApiAuditConstants;
 import org.ezkey.integration.api.security.RateLimitService;
 import org.ezkey.integration.api.util.AuditHelper;
@@ -113,6 +118,7 @@ public class IntegrationApiAuthAttemptController {
   private final EnrollmentRepository enrollmentRepository;
   private final IntegrationRepository integrationRepository;
   private final AuditEntityFkResolver auditEntityFkResolver;
+  private final ApiKeyRateLimitProperties rateLimitProperties;
 
   /**
    * Constructs the Integration API auth attempt controller with required dependencies.
@@ -124,6 +130,7 @@ public class IntegrationApiAuthAttemptController {
    * @param enrollmentRepository the enrollment repository for resolve-time ownership checks
    * @param integrationRepository the integration repository for tenant resolution in audit logs
    * @param auditEntityFkResolver resolves audit foreign keys only when referenced rows exist
+   * @param rateLimitProperties configured per-key bucket sizes (#1070)
    */
   public IntegrationApiAuthAttemptController(
       AuthAttemptService authAttemptService,
@@ -132,7 +139,8 @@ public class IntegrationApiAuthAttemptController {
       RateLimitService rateLimitService,
       EnrollmentRepository enrollmentRepository,
       IntegrationRepository integrationRepository,
-      AuditEntityFkResolver auditEntityFkResolver) {
+      AuditEntityFkResolver auditEntityFkResolver,
+      ApiKeyRateLimitProperties rateLimitProperties) {
     this.authAttemptService = authAttemptService;
     this.authAttemptMapper = authAttemptMapper;
     this.auditLogService = auditLogService;
@@ -140,6 +148,7 @@ public class IntegrationApiAuthAttemptController {
     this.enrollmentRepository = enrollmentRepository;
     this.integrationRepository = integrationRepository;
     this.auditEntityFkResolver = auditEntityFkResolver;
+    this.rateLimitProperties = rateLimitProperties;
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -169,7 +178,9 @@ public class IntegrationApiAuthAttemptController {
   @Operation(
       summary = "Create authentication attempt",
       description =
-          "Creates a new MFA authentication attempt. The integration is derived from the API key.")
+          "Creates a new MFA authentication attempt. The integration is derived from the API key."
+              + " Optional ttlSeconds (min 15) overrides the server default; values above 120 are"
+              + " clamped. Response timeoutSeconds and expiresAt reflect the applied TTL (#895).")
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "201", description = "Auth attempt created successfully"),
@@ -177,13 +188,20 @@ public class IntegrationApiAuthAttemptController {
         @ApiResponse(
             responseCode = "403",
             description = "Enrollment does not belong to this integration"),
+        @ApiResponse(
+            responseCode = "409",
+            description =
+                "Live attempt already exists (auth-attempt-pending-exists) or creation is"
+                    + " suspended (auth-attempt-creation-cooldown). Retry-After is set."),
         @ApiResponse(responseCode = "429", description = "Rate limit exceeded"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
   @PreAuthorize("hasRole('API_KEY')")
   @PostMapping
   public ResponseEntity<?> create(
-      @Parameter(description = "Auth attempt creation parameters", required = true) @RequestBody
+      @Parameter(description = "Auth attempt creation parameters", required = true)
+          @Valid
+          @RequestBody
           AuthAttemptCreateRequestDto request,
       HttpServletRequest httpRequest) {
 
@@ -192,7 +210,13 @@ public class IntegrationApiAuthAttemptController {
 
     // Rate limiting check
     if (apiKeyId != null && !rateLimitService.canCreateAuthAttempt(apiKeyId)) {
-      throw new RateLimitExceededException("CREATE_AUTH_ATTEMPT", 100, 0, 15);
+      throw createRateLimitExceeded();
+    }
+
+    // TTL floor before enrollment/user lookup — non-enumerating 400 (#895).
+    // Must map to the same ProblemDetail as @Valid / unreadable JSON (Christophe nit on #898).
+    if (request.ttlSeconds() != null && request.ttlSeconds() < 15) {
+      throw new AuthAttemptRequestInvalidException("ttlSeconds must be at least 15");
     }
 
     // Resolve effective enrollment ID from the request
@@ -236,6 +260,7 @@ public class IntegrationApiAuthAttemptController {
       createRequest.setChallengeRequested(request.challengeRequested());
       createRequest.setContextTitle(request.contextTitle());
       createRequest.setContextMessage(request.contextMessage());
+      createRequest.setTtlSeconds(request.ttlSeconds());
 
       AuthAttemptCreateResponse response = authAttemptService.create(createRequest);
 
@@ -298,6 +323,22 @@ public class IntegrationApiAuthAttemptController {
               .build());
       throw e;
 
+    } catch (AuthAttemptPendingExistsException | AuthAttemptCreationCooldownException e) {
+      auditLogService.log(
+          AuditHelper.createIntegrationApiAudit(
+                  context,
+                  EventType.AUTH_ATTEMPT_CREATED,
+                  IntegrationApiAuditConstants.AUTH_ATTEMPT_CREATION_FAILED,
+                  auditTenantId)
+              .eventStatus(EventStatus.FAILURE)
+              .enrollmentId(auditEntityFkResolver.enrollmentIdForAuditOrNull(effectiveEnrollmentId))
+              .integrationId(
+                  auditEntityFkResolver.integrationIdForAuditOrNull(
+                      resolveIntegrationIdFromEnrollment(effectiveEnrollmentId)))
+              .errorMessage(e.getMessage())
+              .build());
+      throw e;
+
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       auditLogService.log(
           AuditHelper.createIntegrationApiAudit(
@@ -341,7 +382,9 @@ public class IntegrationApiAuthAttemptController {
       summary = "Wait for device response",
       description =
           "Blocks until device responds or timeout elapses. Uses virtual threads for high"
-              + " concurrency.")
+              + " concurrency. Status may be EXPIRED (cancel, supersession, or clock expiry)."
+              + " Ownership is enforced: the API key may only wait on attempts for enrollments of"
+              + " its integration.")
   @ApiResponses(
       value = {
         @ApiResponse(
@@ -349,6 +392,9 @@ public class IntegrationApiAuthAttemptController {
             description = "Response received (or timeout reached with status still pending)",
             content =
                 @Content(schema = @Schema(implementation = AuthAttemptWaitResponseDto.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Auth attempt does not belong to this integration"),
         @ApiResponse(responseCode = "404", description = "Auth attempt not found"),
         @ApiResponse(responseCode = "429", description = "Rate limit exceeded"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
@@ -374,7 +420,7 @@ public class IntegrationApiAuthAttemptController {
 
     // Rate limiting check
     if (apiKeyId != null && !rateLimitService.canWaitAuthAttempt(apiKeyId)) {
-      throw new RateLimitExceededException("WAIT_AUTH_ATTEMPT", 200, 0, 15);
+      throw waitRateLimitExceeded("WAIT_AUTH_ATTEMPT");
     }
 
     try {
@@ -419,10 +465,19 @@ public class IntegrationApiAuthAttemptController {
    */
   @Operation(
       summary = "Cancel authentication attempt",
-      description = "Marks a pending or read authentication attempt as expired (cancelled).")
+      description =
+          "Marks a pending or read authentication attempt as EXPIRED (cancelled). There is no"
+              + " separate CANCELLED status — cancel and TTL expiry share EXPIRED. Ownership is"
+              + " enforced: the API key may only cancel attempts for enrollments of its"
+              + " integration.")
   @ApiResponses(
       value = {
-        @ApiResponse(responseCode = "200", description = "Auth attempt cancelled successfully"),
+        @ApiResponse(
+            responseCode = "200",
+            description = "Auth attempt cancelled successfully (status EXPIRED)"),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Auth attempt does not belong to this integration"),
         @ApiResponse(
             responseCode = "409",
             description = "Auth attempt already in final state (cannot be cancelled)"),
@@ -442,7 +497,7 @@ public class IntegrationApiAuthAttemptController {
 
     // Rate limiting check (reuses wait bucket — cancel is similar in cost)
     if (apiKeyId != null && !rateLimitService.canWaitAuthAttempt(apiKeyId)) {
-      throw new RateLimitExceededException("CANCEL_AUTH_ATTEMPT", 200, 0, 15);
+      throw waitRateLimitExceeded("CANCEL_AUTH_ATTEMPT");
     }
 
     Integer cancelTenantId = resolveTenantIdFromAuthAttempt(id);
@@ -517,6 +572,25 @@ public class IntegrationApiAuthAttemptController {
   // ═══════════════════════════════════════════════════════════════════════════
   // Private helpers
   // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Builds the create-operation rate-limit signal from {@code ezkey.api-key.rate-limit}.
+   *
+   * @return exception carrying the configured request budget and window
+   */
+  private RateLimitExceededException createRateLimitExceeded() {
+    ApiKeyRateLimitProperties.CreateAuthAttemptConfig config =
+        rateLimitProperties.getCreateAuthAttempt();
+    return new RateLimitExceededException(
+        "CREATE_AUTH_ATTEMPT", config.getRequests(), 0, config.getWindowMinutes());
+  }
+
+  private RateLimitExceededException waitRateLimitExceeded(String operation) {
+    ApiKeyRateLimitProperties.WaitAuthAttemptConfig config =
+        rateLimitProperties.getWaitAuthAttempt();
+    return new RateLimitExceededException(
+        operation, config.getRequests(), 0, config.getWindowMinutes());
+  }
 
   /**
    * Extracts a stable API key identifier from the security context for rate limiting.
@@ -598,10 +672,9 @@ public class IntegrationApiAuthAttemptController {
       Enrollment enrollmentForPath1 =
           enrollmentRepository
               .findById(enrollmentId)
-              .orElseThrow(
-                  () ->
-                      new AuthAttemptCreateValidationException(
-                          "Enrollment not found for ID: " + enrollmentId));
+              .orElseThrow(() ->
+                  new AuthAttemptCreateValidationException(
+                      "Enrollment not found for ID: " + enrollmentId));
       if (!integrationIdForPath1.equals(enrollmentForPath1.getIntegrationId())) {
         logger.warn(
             "Integration API cross-integration access attempt: API key from integration {} tried to"

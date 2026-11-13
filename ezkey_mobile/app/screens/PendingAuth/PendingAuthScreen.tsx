@@ -9,27 +9,27 @@
  *              All business logic is delegated to {@link usePendingAuth}.
  * Security Context: Embeds the polling model, proof token usage, and read-once semantics described in
  *                   docs/features/AUTH_SECURITY.md to keep user actions intentional and replay resistant.
- * UX: Approve and Deny only — there is no mobile "cancel" API; leaving the screen without responding
- *     relies on server-side TTL expiry (see Auth API / Admin batch expiry). Do not add a Cancel
- *     button that implies a distinct server action without an endpoint.
+ * UX: Approve and Deny. Leaving the screen with a loaded pending attempt (hardware back / gesture)
+ *     is treated as Deny via Auth API respond(accepted=false) so Admin login wait unblocks (#831).
+ *     Do not leave PENDING until TTL when the user explicitly abandons the request.
  * @since 2025
  */
 
-import React, {useCallback} from 'react';
-import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import React, {useCallback, useEffect} from 'react';
+import {ActivityIndicator, ScrollView, Text, TouchableOpacity, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {useTranslation} from 'react-i18next';
 import {env} from '../../config/env';
 import {RootStackParamList} from '../../navigation/types';
 import PinCodeInput from '../../components/PinCodeInput';
 import {usePendingAuth, AUTH_CHALLENGE_LENGTH, tracePendingAuthRespond} from '../../hooks/usePendingAuth';
+import {useSensitiveScreen} from '../../hooks/useSensitiveScreen';
+import {useAccessibilityAnnouncement} from '../../hooks/useAccessibilityAnnouncement';
+import {createThemedStyles} from '../../theme';
+import {
+  buildEnrollmentIdentityDisplay,
+  identityDisplayCopy,
+} from '../../utils/enrollmentDisplay';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PendingAuth'>;
 
@@ -41,8 +41,12 @@ type Props = NativeStackScreenProps<RootStackParamList, 'PendingAuth'>;
  * @since 2025
  */
 export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
+  const styles = useStyles();
   const {t} = useTranslation();
   const {enrollmentId, initialAttempt} = route.params;
+
+  // No screenshots, overlays or obscured touches while a decision is on screen (#1154).
+  useSensitiveScreen(navigation);
 
   const navigateToEnrollmentDetail = useCallback(
     () => navigation.navigate('EnrollmentDetail', {enrollmentId}),
@@ -58,27 +62,87 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
     formError,
     setFormError,
     globalError,
+    globalErrorRetryable,
     isProcessing,
     loading,
     debugInfo,
     showEmptyState,
     primaryTitle,
     secondaryTitle,
+    roleLabel,
     loadPendingAttempt,
     handleRespond,
+    hasSubmittedServerDecision,
+    isRespondInFlight,
+    dismissRetryableErrorKeepAttempt,
   } = usePendingAuth(enrollmentId, initialAttempt, {
     canGoBack: () => navigation.canGoBack(),
     goBack: () => navigation.goBack(),
     navigateToEnrollmentDetail,
   });
 
+  // Leave with a loaded pending attempt → Auth API deny so passwordless-wait unblocks (#831).
+  // Skip when approve/deny is already in flight (sync ref) so leave cannot send a second deny (#833 m2).
+  // isRespondInFlight already covers the isProcessing window — do not also check isProcessing.
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', e => {
+      if (!attempt || hasSubmittedServerDecision() || isRespondInFlight()) {
+        return;
+      }
+      e.preventDefault();
+      tracePendingAuthRespond('pendingAuth_leave_as_deny', {
+        authAttemptId: attempt.authAttemptId,
+      });
+      void handleRespond(false).finally(() => {
+        // Successful deny already navigates via handleReturnToEnrollmentDetail.
+        // On failure, still allow leave so the user is not trapped on this screen.
+        if (!hasSubmittedServerDecision()) {
+          navigation.dispatch(e.data.action);
+        }
+      });
+    });
+    return unsubscribe;
+  }, [navigation, attempt, handleRespond, hasSubmittedServerDecision, isRespondInFlight]);
+
+  useAccessibilityAnnouncement(globalError);
+  useAccessibilityAnnouncement(formError);
+
+  const handleInactiveBack = useCallback(() => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    navigateToEnrollmentDetail();
+  }, [navigation, navigateToEnrollmentDetail]);
+
+  const approveChallengeIncomplete =
+    Boolean(attempt?.challengeRequired) &&
+    challengeInput.trim().length !== AUTH_CHALLENGE_LENGTH;
+
+  const emptyIdentity = enrollment
+    ? buildEnrollmentIdentityDisplay(
+        enrollment,
+        t('enrollmentDetail.installationFallback'),
+        identityDisplayCopy(t),
+      )
+    : undefined;
+
   return (
     <View style={styles.container}>
-      {!attempt && enrollment ? (
+      {!attempt && emptyIdentity ? (
         <View style={styles.enrollmentBox}>
-          <Text style={styles.enrollmentIntegration}>{enrollment.integrationName}</Text>
-          {enrollment.tenantName ? (
-            <Text style={styles.enrollmentTenant}>{enrollment.tenantName}</Text>
+          <Text style={styles.enrollmentIntegration}>{emptyIdentity.heroTitle}</Text>
+          {emptyIdentity.purposeLabel ? (
+            <Text style={styles.enrollmentTenant}>{emptyIdentity.purposeLabel}</Text>
+          ) : null}
+          {emptyIdentity.roleLabel ? (
+            <Text style={styles.enrollmentTenant}>{emptyIdentity.roleLabel}</Text>
+          ) : null}
+          {emptyIdentity.tenantLabel ? (
+            <Text style={styles.enrollmentTenant}>{emptyIdentity.tenantLabel}</Text>
+          ) : null}
+          {emptyIdentity.installationContext ? (
+            <Text style={styles.enrollmentTenant}>{emptyIdentity.installationContext}</Text>
           ) : null}
         </View>
       ) : null}
@@ -139,12 +203,27 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
               )}
             </View>
           ) : null}
-          <TouchableOpacity
-            testID="ezkey.e2e.pendingAuth.tryAgain"
-            onPress={loadPendingAttempt}
-            style={styles.secondaryButton}>
-            <Text style={styles.secondaryLabel}>{t('pendingAuth.tryAgain')}</Text>
-          </TouchableOpacity>
+          {globalErrorRetryable ? (
+            <TouchableOpacity
+              testID="ezkey.e2e.pendingAuth.tryAgain"
+              onPress={
+                // 503 (and other retryable respond errors) keep the loaded attempt — do not
+                // re-claim pending (would often land on empty while READ still waits) (#833).
+                attempt ? dismissRetryableErrorKeepAttempt : loadPendingAttempt
+              }
+              style={styles.secondaryButton}
+              accessibilityRole="button">
+              <Text style={styles.secondaryLabel}>{t('pendingAuth.tryAgain')}</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              testID="ezkey.e2e.pendingAuth.inactiveBack"
+              onPress={handleInactiveBack}
+              style={styles.secondaryButton}
+              accessibilityRole="button">
+              <Text style={styles.secondaryLabel}>{t('common.back')}</Text>
+            </TouchableOpacity>
+          )}
         </View>
       ) : showEmptyState ? (
         <View style={styles.emptyState}>
@@ -152,7 +231,8 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
           <TouchableOpacity
             testID="ezkey.e2e.pendingAuth.checkAgain"
             onPress={loadPendingAttempt}
-            style={styles.checkAgainButton}>
+            style={styles.checkAgainButton}
+            accessibilityRole="button">
             <Text style={styles.checkAgainLabel}>{t('pendingAuth.checkAgain')}</Text>
           </TouchableOpacity>
         </View>
@@ -160,6 +240,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
         attempt && (
           <ScrollView
             testID="ezkey.e2e.pendingAuth.attemptScroll"
+            keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.pendingScrollContent}>
             <View style={styles.card}>
@@ -171,6 +252,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
               {secondaryTitle ? (
                 <Text style={styles.cardSubtitle}>{secondaryTitle}</Text>
               ) : null}
+              {roleLabel ? <Text style={styles.cardSubtitle}>{roleLabel}</Text> : null}
 
               {attempt.contextMessage ? (
                 <View style={[styles.contextMessageBox, styles.borderInfo]}>
@@ -208,7 +290,9 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
                     await handleRespond(false);
                   }}
                   style={[styles.actionButton, styles.rejectButton]}
-                  disabled={isProcessing}>
+                  disabled={isProcessing}
+                  accessibilityRole="button"
+                  accessibilityState={{disabled: isProcessing}}>
                   <Text style={styles.rejectLabel}>{t('pendingAuth.deny')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -217,13 +301,31 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
                     tracePendingAuthRespond('pendingAuth_ui_approve_press', {});
                     await handleRespond(true);
                   }}
-                  style={[styles.actionButton, styles.approveButton]}
-                  disabled={isProcessing}>
-                  <Text style={styles.approveLabel}>
+                  style={[
+                    styles.actionButton,
+                    approveChallengeIncomplete ? styles.approveButtonDisabled : styles.approveButton,
+                  ]}
+                  disabled={isProcessing || approveChallengeIncomplete}
+                  accessibilityRole="button"
+                  accessibilityState={{
+                    disabled: isProcessing || approveChallengeIncomplete,
+                    busy: isProcessing,
+                  }}>
+                  <Text
+                    style={
+                      approveChallengeIncomplete ? styles.approveLabelDisabled : styles.approveLabel
+                    }>
                     {isProcessing ? t('pendingAuth.sending') : t('pendingAuth.approve')}
                   </Text>
                 </TouchableOpacity>
               </View>
+              {!isProcessing ? (
+                <Text
+                  testID="ezkey.e2e.pendingAuth.leaveDeclinesHint"
+                  style={styles.leaveDeclinesHint}>
+                  {t('pendingAuth.leaveDeclinesHint')}
+                </Text>
+              ) : null}
               {isProcessing ? (
                 <View
                   testID="ezkey.e2e.pendingAuth.respondInFlight"
@@ -240,37 +342,32 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(colors => ({
   container: {
     flex: 1,
     padding: 24,
     gap: 16,
-    backgroundColor: '#0b0d11',
-  },
-  heading: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#f4f7ff',
+    backgroundColor: colors.background,
   },
   pendingScrollContent: {
     paddingBottom: 24,
     flexGrow: 1,
   },
   enrollmentBox: {
-    backgroundColor: '#151923',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(54, 115, 223, 0.15)',
+    borderColor: colors.border,
   },
   enrollmentIntegration: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#f4f7ff',
+    color: colors.textPrimary,
   },
   enrollmentTenant: {
     fontSize: 14,
-    color: '#9aa3b6',
+    color: colors.textMuted,
     marginTop: 4,
   },
   loading: {
@@ -281,7 +378,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: '#9aa3b6',
+    color: colors.textMuted,
   },
   emptyState: {
     flex: 1,
@@ -292,11 +389,11 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#f4f7ff',
+    color: colors.textPrimary,
     textAlign: 'center',
   },
   checkAgainButton: {
-    backgroundColor: '#3076df',
+    backgroundColor: colors.primary,
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 24,
@@ -305,10 +402,10 @@ const styles = StyleSheet.create({
   checkAgainLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
+    color: colors.textOnPrimary,
   },
   card: {
-    backgroundColor: '#151923',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 20,
     gap: 16,
@@ -321,8 +418,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
-    backgroundColor: 'rgba(97, 208, 149, 0.14)',
-    color: '#61d095',
+    backgroundColor: colors.successBg,
+    color: colors.success,
     fontSize: 12,
     fontWeight: '700',
     textTransform: 'uppercase',
@@ -331,11 +428,11 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#f4f7ff',
+    color: colors.textPrimary,
   },
   cardSubtitle: {
     fontSize: 14,
-    color: '#c2c8d5',
+    color: colors.textSecondary,
   },
   challengeSection: {
     gap: 12,
@@ -343,65 +440,37 @@ const styles = StyleSheet.create({
   challengeHeading: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#f4f7ff',
+    color: colors.textPrimary,
     lineHeight: 24,
   },
-  challengeContainer: {
-    position: 'relative',
-  },
-  challengeBoxes: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  challengeBox: {
-    width: 44,
-    height: 52,
-    borderRadius: 10,
-    backgroundColor: '#151923',
-    borderWidth: 3,
-    borderColor: 'rgba(54, 115, 223, 0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  challengeBoxFilled: {
-    borderColor: 'rgba(54, 115, 223, 0.85)',
-  },
-  challengeDigit: {
-    fontSize: 28,
-    fontWeight: '600',
-    color: '#f4f7ff',
-  },
-  challengeInputHidden: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    opacity: 0,
-    fontSize: 1,
-  },
   errorBanner: {
-    backgroundColor: 'rgba(255, 120, 120, 0.15)',
+    backgroundColor: colors.errorBg,
     borderLeftWidth: 4,
-    borderLeftColor: '#ff6666',
+    borderLeftColor: colors.error,
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
   },
   errorBannerText: {
     fontSize: 14,
-    color: '#ff6666',
+    color: colors.error,
   },
   actions: {
     flexDirection: 'row',
     gap: 12,
+  },
+  leaveDeclinesHint: {
+    fontSize: 13,
+    color: colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 18,
   },
   respondInFlightMarker: {
     alignSelf: 'stretch',
     height: 2,
     marginTop: 6,
     opacity: 0.06,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.textOnPrimary,
   },
   actionButton: {
     flex: 1,
@@ -411,20 +480,30 @@ const styles = StyleSheet.create({
   },
   rejectButton: {
     borderWidth: 1,
-    borderColor: '#ff7878',
+    borderColor: colors.errorLight,
   },
   approveButton: {
-    backgroundColor: '#61d095',
+    backgroundColor: colors.success,
+  },
+  approveButtonDisabled: {
+    borderWidth: 1,
+    borderColor: colors.successBorderMuted,
+    backgroundColor: 'transparent',
   },
   rejectLabel: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#ff7878',
+    color: colors.errorLight,
   },
   approveLabel: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#0b0d11',
+    color: colors.textOnSuccess,
+  },
+  approveLabelDisabled: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.successTextMuted,
   },
   secondaryButton: {
     alignItems: 'center',
@@ -432,40 +511,24 @@ const styles = StyleSheet.create({
   },
   secondaryLabel: {
     fontSize: 14,
-    color: '#9aa3b6',
-  },
-  /* Context level badge variants */
-  badgeInfo: {
-    color: '#61d095',
-  },
-  badgeWarning: {
-    color: '#f5a623',
-  },
-  badgeCritical: {
-    color: '#ff6666',
+    color: colors.textMuted,
   },
   /* Context message box */
   contextMessageBox: {
     borderLeftWidth: 3,
     paddingLeft: 12,
     paddingVertical: 8,
-    backgroundColor: '#1c2130',
+    backgroundColor: colors.surfaceElevated,
     borderRadius: 8,
   },
   contextMessageText: {
     fontSize: 14,
-    color: '#e0e5f0',
+    color: colors.textBody,
     lineHeight: 20,
   },
   /* Context level border accents */
   borderInfo: {
-    borderLeftColor: '#61d095',
-  },
-  borderWarning: {
-    borderLeftColor: '#f5a623',
-  },
-  borderCritical: {
-    borderLeftColor: '#ff6666',
+    borderLeftColor: colors.success,
   },
   errorState: {
     flex: 1,
@@ -476,38 +539,38 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#f4f7ff',
+    color: colors.textPrimary,
   },
   errorBody: {
     fontSize: 14,
-    color: '#ff6666',
+    color: colors.error,
     textAlign: 'center',
   },
   debugBox: {
     alignSelf: 'stretch',
-    backgroundColor: '#1a1d26',
+    backgroundColor: colors.surface,
     borderRadius: 8,
     padding: 12,
     marginTop: 8,
     borderWidth: 1,
-    borderColor: 'rgba(154, 163, 182, 0.3)',
+    borderColor: colors.borderMuted,
   },
   debugTitle: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#9aa3b6',
+    color: colors.textMuted,
     marginBottom: 4,
   },
   debugTimestamp: {
     fontSize: 11,
-    color: '#61d095',
+    color: colors.success,
     fontFamily: 'monospace',
     marginBottom: 8,
   },
   debugLine: {
     fontSize: 11,
-    color: '#9aa3b6',
+    color: colors.textMuted,
     fontFamily: 'monospace',
     marginTop: 2,
   },
-});
+}));

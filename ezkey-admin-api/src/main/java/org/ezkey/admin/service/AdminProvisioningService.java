@@ -23,10 +23,13 @@ import org.ezkey.admin.exception.AdminNotAllowedException;
 import org.ezkey.admin.exception.AuthenticationException;
 import org.ezkey.admin.exception.GlobalAdminLimitException;
 import org.ezkey.admin.security.AdminPrincipal;
+import org.ezkey.admin.util.AdminEnrollmentDisplayNames;
+import org.ezkey.enrollment.EnrollmentBindMaterialPolicy;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.integration.domain.AdminTokenPurpose;
 import org.ezkey.integration.domain.IntegrationLifecycleStatus;
 import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
@@ -499,21 +502,23 @@ public class AdminProvisioningService {
     // Generate enrollment challenge code (6 digits)
     Integer enrollmentChallenge = signatureService.generateSecureChallenge(6);
 
-    // Create enrollment name (include username for uniqueness)
+    String preferredName =
+        AdminEnrollmentDisplayNames.personDisplayName(
+            admin.getFirstName(), admin.getLastName(), admin.getUsername());
+    List<Enrollment> preferredNameHits =
+        enrollmentRepository.findByIntegrationIdAndEnrollmentNameAndStatus(
+            systemIntegration.getId(), preferredName, EnrollmentStatus.VERIFIED);
     String enrollmentName =
-        "%s Admin MFA - %s %s (%s)"
-            .formatted(
-                admin.getAdminType() == AdminType.GLOBAL_ADMIN ? "Global" : "Tenant",
-                admin.getFirstName() != null ? admin.getFirstName() : "",
-                admin.getLastName() != null ? admin.getLastName() : "",
-                admin.getUsername())
-            .trim();
+        AdminEnrollmentDisplayNames.uniqueEnrollmentName(
+            preferredName, admin.getUsername(), !preferredNameHits.isEmpty());
 
     // Security validation: Check for existing VERIFIED enrollment with same name
     // This ensures idempotence and prevents conflicts when tests are re-executed
     List<Enrollment> existingVerifiedEnrollments =
-        enrollmentRepository.findByIntegrationIdAndEnrollmentNameAndStatus(
-            systemIntegration.getId(), enrollmentName.trim(), EnrollmentStatus.VERIFIED);
+        enrollmentName.equals(preferredName)
+            ? preferredNameHits
+            : enrollmentRepository.findByIntegrationIdAndEnrollmentNameAndStatus(
+                systemIntegration.getId(), enrollmentName, EnrollmentStatus.VERIFIED);
 
     if (!existingVerifiedEnrollments.isEmpty()) {
       Enrollment existing = existingVerifiedEnrollments.get(0);
@@ -602,7 +607,8 @@ public class AdminProvisioningService {
 
     OffsetDateTime expiresAt = OffsetDateTime.now().plus(ACTIVATION_CODE_TTL_DAYS, ChronoUnit.DAYS);
     AdminToken activationToken =
-        new AdminToken(tokenHash, admin, admin.getAdminType().name(), expiresAt);
+        new AdminToken(
+            tokenHash, admin, admin.getAdminType().name(), expiresAt, AdminTokenPurpose.ACTIVATION);
     activationToken.setTenant(admin.getTenant());
     activationToken.setIntegration(admin.getIntegration());
     activationToken.setCreatedAt(OffsetDateTime.now());
@@ -623,7 +629,7 @@ public class AdminProvisioningService {
    *
    * <p>This is the deferred counterpart to immediate onboarding. It validates the one-time token,
    * generates recovery codes, creates the first enrollment, marks the admin active, and deactivates
-   * the activation token.
+   * the presented activation token plus any other outstanding activation code of the same admin.
    *
    * @param activationCode the one-time activation code
    * @return provisioning result with first enrollment credentials and recovery codes
@@ -647,6 +653,10 @@ public class AdminProvisioningService {
         tokenRepository
             .findByBearerTokenHashAndActiveTrueWithRelations(tokenHash)
             .orElseThrow(() -> new AuthenticationException("Invalid activation code"));
+
+    if (activationToken.getTokenPurpose() != AdminTokenPurpose.ACTIVATION) {
+      throw new AuthenticationException("Invalid activation code");
+    }
 
     if (activationToken.getExpiresAt() == null
         || activationToken.getExpiresAt().isBefore(OffsetDateTime.now())) {
@@ -689,11 +699,18 @@ public class AdminProvisioningService {
     activationToken.setLastUsedAt(OffsetDateTime.now());
     tokenRepository.save(activationToken);
 
+    // Activation is one-shot per admin: any other outstanding code must not outlive it (#1122).
+    int siblingCodesRevoked =
+        tokenRepository.deactivateTokensForAdminByPurpose(
+            admin.getAdminId(), AdminTokenPurpose.ACTIVATION);
+
     logger.info(
-        "✅ Pending administrator activated: {} (adminId: {}, enrollmentId: {})",
+        "✅ Pending administrator activated: {} (adminId: {}, enrollmentId: {},"
+            + " otherActivationCodesRevoked: {})",
         result.admin().getUsername(),
         result.admin().getAdminId(),
-        result.enrollment() != null ? result.enrollment().getEnrollmentId() : null);
+        result.enrollment() != null ? result.enrollment().getEnrollmentId() : null,
+        siblingCodesRevoked);
 
     return result;
   }
@@ -946,7 +963,8 @@ public class AdminProvisioningService {
    *
    * <p>This method retrieves sensitive onboarding credentials (enrollment proof token, challenge
    * code, recovery codes) for an administrator. Access is restricted to authorized administrators
-   * who have permission to view these credentials.
+   * who have permission to view these credentials. {@link EnrollmentBindMaterialPolicy} decides
+   * which values are present for the current enrollment status; the others are null.
    *
    * <p><b>Authorization:</b>
    *
@@ -1026,11 +1044,18 @@ public class AdminProvisioningService {
         adminId,
         loadedEnrollment.getEnrollmentId());
 
+    // #1266: an operator gets the bind material only while it is needed to complete enrollment.
+    EnrollmentStatus status = loadedEnrollment.getStatus();
     return new OnboardingCredentialsResult(
         loadedEnrollment.getEnrollmentId(),
-        loadedEnrollment.getEnrollmentProofToken(),
-        loadedEnrollment.getEnrollmentChallenge(),
-        null); // Recovery codes cannot be retrieved after initial provisioning (BCrypt hashed)
+        EnrollmentBindMaterialPolicy.proofTokenAvailable(status)
+            ? loadedEnrollment.getEnrollmentProofToken()
+            : null,
+        EnrollmentBindMaterialPolicy.challengeAvailable(status)
+            ? loadedEnrollment.getEnrollmentChallenge()
+            : null,
+        null, // Recovery codes cannot be retrieved after initial provisioning (BCrypt hashed)
+        status);
   }
 
   /**
@@ -1152,12 +1177,14 @@ public class AdminProvisioningService {
    * @param enrollmentProofToken Enrollment proof token
    * @param enrollmentChallenge Enrollment challenge code
    * @param recoveryCodes Recovery codes (null if not available)
+   * @param enrollmentStatus Enrollment status that decided which material is present
    */
   public record OnboardingCredentialsResult(
       Integer enrollmentId,
       String enrollmentProofToken,
       Integer enrollmentChallenge,
-      java.util.List<String> recoveryCodes) {}
+      java.util.List<String> recoveryCodes,
+      EnrollmentStatus enrollmentStatus) {}
 
   /**
    * Result containing a newly generated set of recovery codes for an administrator.
@@ -1165,9 +1192,13 @@ public class AdminProvisioningService {
    * @param admin target administrator
    * @param recoveryCodes new plain-text recovery codes shown once
    * @param previousCodesCount count of codes that existed before regeneration
+   * @param previousSetExhausted whether a previous set had been issued and fully consumed
    */
   public record RecoveryCodesRegenerationResult(
-      EzkeyAdmin admin, java.util.List<String> recoveryCodes, int previousCodesCount) {}
+      EzkeyAdmin admin,
+      java.util.List<String> recoveryCodes,
+      int previousCodesCount,
+      boolean previousSetExhausted) {}
 
   @Transactional
   public RecoveryCodesRegenerationResult issueInitialRecoveryCodes(
@@ -1184,6 +1215,7 @@ public class AdminProvisioningService {
       throw new IllegalStateException(
           "Initial recovery codes already exist for this administrator; use regeneration instead");
     }
+    boolean previousSetExhausted = admin.getRecoveryCodes() != null;
 
     AdminRecoveryService.RecoveryCodesResult recoveryCodes =
         recoveryService.generateRecoveryCodes();
@@ -1196,7 +1228,8 @@ public class AdminProvisioningService {
         requesterPrincipal.adminId(),
         recoveryCodes.getPlainCodes().size());
 
-    return new RecoveryCodesRegenerationResult(admin, recoveryCodes.getPlainCodes(), 0);
+    return new RecoveryCodesRegenerationResult(
+        admin, recoveryCodes.getPlainCodes(), 0, previousSetExhausted);
   }
 
   /**
@@ -1235,7 +1268,7 @@ public class AdminProvisioningService {
         recoveryCodes.getPlainCodes().size());
 
     return new RecoveryCodesRegenerationResult(
-        admin, recoveryCodes.getPlainCodes(), previousCodesCount);
+        admin, recoveryCodes.getPlainCodes(), previousCodesCount, false);
   }
 
   private EzkeyAdmin loadAdminAuthorizedForRecoveryCodeManagement(

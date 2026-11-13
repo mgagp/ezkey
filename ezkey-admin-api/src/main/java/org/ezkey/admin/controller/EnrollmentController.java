@@ -42,6 +42,7 @@ import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.audit.support.AuditEntityFkResolver;
 import org.ezkey.audit.util.ClientContext;
+import org.ezkey.enrollment.EnrollmentBindMaterialPolicy;
 import org.ezkey.enrollment.domain.EnrollmentCreateRequest;
 import org.ezkey.enrollment.domain.EnrollmentCreateResponse;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
@@ -314,8 +315,8 @@ public class EnrollmentController {
    *
    * <p>Only non-null fields in the request body are applied. Supports enrollmentName, contactEmail,
    * expiresAt, authAttemptChallengeRequired, userIdentifier. Only active, non-revoked VERIFIED
-   * enrollments can be updated. Include {@code version} from the GET response for optimistic
-   * locking.
+   * enrollments can be updated; while CREATED, only contactEmail can change. Include {@code
+   * version} from the GET response for optimistic locking.
    *
    * @param id the enrollment ID to update
    * @param request the partial update request
@@ -326,8 +327,9 @@ public class EnrollmentController {
       summary = "Partially update enrollment metadata",
       description =
           "Updates enrollment metadata (name, contactEmail, expiresAt,"
-              + " authAttemptChallengeRequired, userIdentifier). Only active VERIFIED enrollments."
-              + " Include version from GET for optimistic locking.")
+              + " authAttemptChallengeRequired, userIdentifier). Only active VERIFIED enrollments,"
+              + " or contactEmail alone while CREATED. Include version from GET for optimistic"
+              + " locking.")
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "200", description = "Enrollment updated successfully"),
@@ -718,7 +720,7 @@ public class EnrollmentController {
    * <p>Returns a PNG image containing a QR code with a JSON payload:
    *
    * <pre>
-   * {"enrollmentId":"4","enrollmentProofToken":"abc...","authUrl":"https://..."}
+   * {"enrollmentProofToken":"abc...","authUrl":"https://..."}
    * </pre>
    *
    * <p>The {@code authUrl} field is included only when {@code ezkey.qr.auth-base-url} is
@@ -744,7 +746,8 @@ public class EnrollmentController {
       summary = "Generate QR code for enrollment",
       description =
           "Returns a PNG QR code image containing enrollment credentials as JSON"
-              + " ({enrollmentId, enrollmentProofToken, authUrl})")
+              + " ({enrollmentProofToken, authUrl}). Only while the enrollment is"
+              + " CREATED; 409 otherwise")
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "200", description = "QR code generated successfully"),
@@ -752,6 +755,7 @@ public class EnrollmentController {
         @ApiResponse(
             responseCode = "404",
             description = "Enrollment not found or not visible to this admin"),
+        @ApiResponse(responseCode = "409", description = "Enrollment is not CREATED"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
   @PreAuthorize("hasRole('ADMIN')")
@@ -768,6 +772,11 @@ public class EnrollmentController {
 
       var enrollment = enrollmentService.getById(id);
 
+      // #1180: the QR encodes the proof token, so it follows the same rule as the JSON GET.
+      if (!EnrollmentBindMaterialPolicy.proofTokenAvailable(enrollment.getStatus())) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).build();
+      }
+
       // Validate enrollment has proof token
       if (enrollment.getEnrollmentProofToken() == null
           || enrollment.getEnrollmentProofToken().isEmpty()) {
@@ -775,9 +784,7 @@ public class EnrollmentController {
       }
 
       // Compose JSON payload with optional authUrl
-      String qrContent =
-          qrCodePayloadService.composePayload(
-              enrollment.getEnrollmentId(), enrollment.getEnrollmentProofToken());
+      String qrContent = qrCodePayloadService.composePayload(enrollment.getEnrollmentProofToken());
 
       // Generate QR code (300x300 pixels)
       byte[] qrCodeImage = qrCodeGeneratorService.generateQrCodeImage(qrContent, 300, 300);
@@ -1086,9 +1093,8 @@ public class EnrollmentController {
             : integrationRepository.findAllByIdWithTenant(integrationIds).stream()
                 .collect(Collectors.toMap(Integration::getId, Function.identity()));
 
-    return page.map(
-        enrollment ->
-            enrollmentMapper.toResponseWithIntegration(
-                enrollment, integrationsById.get(enrollment.getIntegrationId())));
+    return page.map(enrollment ->
+        enrollmentMapper.toResponseWithIntegration(
+            enrollment, integrationsById.get(enrollment.getIntegrationId())));
   }
 }

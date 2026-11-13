@@ -131,13 +131,12 @@ class ApiKeyControllerTest {
     lenient().when(eligibilityService.isApiKeyFullyOperational(any(), any())).thenReturn(true);
     lenient()
         .when(integrationRepository.findAllByIdWithTenant(any()))
-        .thenAnswer(
-            _ -> {
-              Integration integration = new Integration();
-              integration.setId(123);
-              integration.setName("Acme Integration");
-              return List.of(integration);
-            });
+        .thenAnswer(_ -> {
+          Integration integration = new Integration();
+          integration.setId(123);
+          integration.setName("Acme Integration");
+          return List.of(integration);
+        });
     controller =
         new ApiKeyController(
             apiKeyService,
@@ -201,6 +200,9 @@ class ApiKeyControllerTest {
       assertEquals(
           "IMPORTANT: Save the secret key now. It will not be shown again.",
           responseBody.warning());
+      // One-time secret in body must not be cacheable (#1043).
+      assertNotNull(response.getHeaders().getCacheControl());
+      assertTrue(response.getHeaders().getCacheControl().contains("no-store"));
 
       verify(apiKeyService)
           .createApiKey(eq(123), any(EzkeyAdmin.class), eq("Test API Key"), any(), any());
@@ -417,11 +419,10 @@ class ApiKeyControllerTest {
           new org.springframework.data.jpa.domain.Specification[1];
       when(apiKeyRepository.findAll(
               isA(org.springframework.data.jpa.domain.Specification.class), eq(pageable)))
-          .thenAnswer(
-              invocation -> {
-                capturedSpec[0] = invocation.getArgument(0);
-                return new PageImpl<>(mockApiKeys, pageable, 1);
-              });
+          .thenAnswer(invocation -> {
+            capturedSpec[0] = invocation.getArgument(0);
+            return new PageImpl<>(mockApiKeys, pageable, 1);
+          });
 
       // Act
       ResponseEntity<org.springframework.data.domain.Page<ApiKeyResponseDto>> response =

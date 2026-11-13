@@ -62,7 +62,7 @@ When the initial global admin is created or updated, it has the following proper
 - **Admin Type**: `GLOBAL_ADMIN` (full system access)
 - **Tenant**: System tenant (Ezkey System)
 - **Passwordless Authentication**: Enabled via System Integration and Global Admin Enrollment
-- **Recovery Codes**: 10 single-use codes generated during enrollment
+- **Recovery Codes**: Single-use codes generated during enrollment (`ezkey.admin.recovery.codes-count`, default 5); plaintext only in `bootstrap-credentials.json` (`0600`)
 - **Active**: `true`
 
 ## Bootstrap Process
@@ -70,14 +70,14 @@ When the initial global admin is created or updated, it has the following proper
 On first application startup:
 
 1. **InitialGlobalAdminService** (Order 1):
-   - Validates configuration
+   - Validates configuration (logs **username** only — never the configured email)
    - Creates or updates initial global admin with configured identity
 
 2. **AdminBootstrapService** (Order 2):
    - Creates System Integration (for global admin authentication)
-   - Creates Global Admin Enrollment (if auto-enrollment enabled)
-   - Generates recovery codes
-   - Logs enrollment credentials
+   - Creates Global Admin Enrollment with pending TTL (`ezkey.admin.mfa.bootstrap.enrollment-expiration-hours`, default **24**)
+   - Generates recovery codes into `bootstrap-credentials.json` (`0600`) — never into logs
+   - In `credentials-output-mode=full`, logs bind material (proof token, challenge, ASCII QR) by design
 
 ## Security Considerations
 
@@ -122,10 +122,10 @@ For production deployments:
 
 If `ezkey.admin.mfa.bootstrap.enabled=true`, the Admin API also bootstraps System Integration and Global Admin Enrollment for the Ezkey mobile application.
 
-- Startup logs include an **ASCII QR code** containing `enrollmentId|enrollmentProofToken`
-- Scan the QR with the Ezkey Mobile wizard to bind the first device
-- The textual values (enrollment ID, proof token, challenge) remain in the logs as a fallback
-- Store them securely if you rely on copy/paste
+- In `credentials-output-mode=full`, startup logs include the enrollment ID, proof token, challenge, and an **ASCII QR** (JSON payload with `enrollmentId` / `enrollmentProofToken`) so operators can complete the first bind wizard
+- **Recovery codes are never logged.** Read them from `bootstrap-credentials.json` (file mode `0600`), e.g. on Docker: `docker run --rm -v ezkey_bootstrap-artifacts:/data alpine cat /data/bootstrap-credentials.json`
+- The bootstrap enrollment has a pending invitation TTL of **`ezkey.admin.mfa.bootstrap.enrollment-expiration-hours`** (default **24**). Bind before that time; after expiry, use a recovery code from the credentials file → Admin UI account recovery → reset enrollment → bind with the new material
+- Startup logs name the bootstrap **username** only (not the configured email)
 
 ## Passwordless Authentication
 

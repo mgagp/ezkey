@@ -170,5 +170,5 @@ See the authoritative workflow in [`../GOVERNANCE.md`](../GOVERNANCE.md). Summar
 
 1. Pick the right milestone in [`roadmap.md`](roadmap.md) (or propose a new milestone through an ADR).
 2. Add an entry to the catalog above using the short format.
-3. Create a feature brief using [`../templates/feature-brief.template.md`](../templates/feature-brief.template.md) inside the relevant component pack.
+3. Document durable truth in the relevant component pack; open an `I-*` / `TB-*` from [`../templates/`](../templates/README.md) only when methodology calls for it.
 4. Update the component and [global traceability matrix](spec-test-traceability.md) in the same change set.

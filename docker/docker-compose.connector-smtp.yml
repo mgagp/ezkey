@@ -1,0 +1,56 @@
+# Adds the SMTP delivery connector and Mailpit, a local mail catcher, on the private Docker network (#1206 step 5).
+# Every email lands in Mailpit, whose web view is published on localhost only: http://localhost:8025.
+# Local only: the connector talks plain SMTP to Mailpit under an explicit private-network declaration.
+# A real provider uses STARTTLS or TLS (EZKEY_CONNECTOR_SMTP_SECURITY), the connector's default.
+services:
+  mailpit:
+    image: axllent/mailpit:v1.33.0
+    container_name: ezkey-mailpit
+    ports:
+      - "127.0.0.1:8025:8025"
+    networks:
+      - ezkey-network
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  connector-smtp:
+    build:
+      context: ..
+      dockerfile: ezkey-connectors/ezkey-connector-smtp/Dockerfile
+    container_name: ezkey-connector-smtp
+    environment:
+      EZKEY_CONNECTOR_SMTP_TOKEN: local-test-only-smtp-connector-token
+      EZKEY_CONNECTOR_SMTP_HOST: mailpit
+      EZKEY_CONNECTOR_SMTP_SMTP_PORT: "1025"
+      EZKEY_CONNECTOR_SMTP_FROM_ADDRESS: invitations@ezkey.local
+      EZKEY_CONNECTOR_SMTP_FROM_NAME: Ezkey (local)
+      EZKEY_CONNECTOR_SMTP_SECURITY: plain
+      EZKEY_CONNECTOR_SMTP_PLAIN_PRIVATE_NETWORK: "true"
+      EZKEY_CONNECTOR_SMTP_DAILY_CAP: ${EZKEY_CONNECTOR_SMTP_DAILY_CAP:-100}
+    networks:
+      - ezkey-network
+    depends_on:
+      mailpit:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'wget -q --header "Authorization: Bearer local-test-only-smtp-connector-token" -O /dev/null http://localhost:8091/v1/health'
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
+  admin-api:
+    environment:
+      EZKEY_ADMIN_CONNECTOR_DELIVERY_URL: http://connector-smtp:8091
+      EZKEY_ADMIN_CONNECTOR_DELIVERY_TOKEN: ${EZKEY_ADMIN_CONNECTOR_DELIVERY_TOKEN:-local-test-only-smtp-connector-token}
+      EZKEY_ADMIN_CONNECTOR_DELIVERY_PLAIN_HTTP_PRIVATE_NETWORK: "true"
+      # The email names the server the app should show, so the send needs one. localhost suits an app
+      # on the host, such as the iOS simulator, and is the only plain-HTTP host the apps accept.
+      EZKEY_QR_AUTH_BASE_URL: ${EZKEY_QR_AUTH_BASE_URL:-http://localhost:8080}
+    depends_on:
+      connector-smtp:
+        condition: service_healthy

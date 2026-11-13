@@ -63,5 +63,10 @@ docs {
   
   **Response (200 OK):** `valid: true` when the signature matches.
   
-  **Note:** If the Auth API returned a FAILED response without a signature, step 7 will fail the "signature present" test — that is expected for that edge case.
+  **Note (#844):** Respond 200 bodies are always integration-signed (including legitimate FAILED).
+  Cancelled / terminal / PENDING / not-found use problem+json (409/400/404). A missing
+  **per-enrollment** integration private key yields **runtime 503**
+  `integration-signing-unavailable` (respond transaction rolls back) — there is no JVM startup
+  check for that key. If step 7 finds no signature on a 200, treat it as a server or MITM fault,
+  not a cancelled-attempt contract.
 }

@@ -4,17 +4,15 @@
     {
       "name": "ezkey.encryption.keyset.storage-mode",
       "type": "org.ezkey.config.TinkProperties$Keyset$StorageMode",
-      "description": "Keyset storage mode. Always FILE in Crypto API (no database).",
-      "defaultValue": "FILE"
+      "description": "Keyset storage mode. DATABASE (ADR-0016 blob-only); Crypto API uses writer=false.",
+      "defaultValue": "DATABASE"
     }
   ],
   "hints": [
     {
       "name": "ezkey.encryption.keyset.storage-mode",
       "values": [
-        { "value": "FILE", "description": "Keyset stored only in file. Required for Crypto API (no DB)." },
-        { "value": "DATABASE", "description": "Database as source of truth (Admin/Auth/Integration API)." },
-        { "value": "HYBRID", "description": "Both file and database; database preferred for reads." }
+        { "value": "DATABASE", "description": "ezkey_keyset_blob is the sole runtime source of truth (ADR-0016)." }
       ]
     },
     {

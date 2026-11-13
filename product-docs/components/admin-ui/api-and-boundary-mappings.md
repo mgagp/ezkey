@@ -4,7 +4,7 @@
 
 This document describes how the Admin UI maps its internal state and user actions onto the Admin API contract. It is a **boundary document**: the left side is the UI (components, forms, state), the right side is the Admin API (endpoints, DTOs, problem types).
 
-Representative mappings are listed below; additional mappings can be added using the [mapping matrix template](../../templates/mapping-matrix.template.md).
+Representative mappings are listed below; additional mappings are added as entries in this file (see [`../../templates/README.md`](../../templates/README.md)).
 
 ## Mapping Index
 

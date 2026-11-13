@@ -50,6 +50,14 @@ For structural analogies (Global Admin ≈ IT/platform ops; Tenant Admin ≈ Dev
 - Organizations that want a developer-friendly MFA option without depending on a closed vendor model.
 - Teams looking for an API-first authentication component that remains easy to reason about.
 
+### Scale and positioning compass
+
+Ezkey is the middle path for SMEs: stronger than passwords and TOTP, and not built for large-enterprise
+scale. Large enterprises have the means and the need to meet much stricter standards, and they are not
+the target market. Weigh designs against SME volumes: directory changes, for example, typically involve
+a handful of people at a time, even where the user base is much larger. Do not size a decision on bulk
+scenarios unless a real adopter signal calls for it (Marc, 2026-11-05, #1206).
+
 ## Core Product Requirements
 
 ### 1. Distinct protocol identity
@@ -120,7 +128,7 @@ Ezkey's security model is based on explicit backend trust and cryptographic veri
 
 Key properties:
 
-- One-time proof tokens limit replay.
+- One-time proof tokens limit replay. The enrollment invitation is the proof token (and an optional Auth API URL). The enrollment id is a server handle returned at bind, not a field of the QR (ADR-0019).
 - Signatures bind requests and responses to the correct flow.
 - Enrollment and authentication are both modeled as cryptographic processes, not just API calls with business flags.
 - Mobile secure storage can strengthen device key handling and local secret persistence when available, but those layers must be described honestly. In the current Android reference app, per-enrollment private keys live in `Android Keystore` with `StrongBox` requested when available, while long-lived local secrets such as `enrollmentProofToken` and `integrationPublicKey` are sealed at rest through a separate app-level `Android Keystore` AES path rather than being unsealed by the device signing key. See [`docs/CRYPTO.md`](../../docs/CRYPTO.md) and the [mobile component pack](../components/mobile/README.md).
@@ -140,6 +148,13 @@ See [`design-principles.md`](design-principles.md) for the full set of principle
 - **Explicit trust boundaries** — make clear which component is trusted for what, and why.
 - **Developer-first design** — stay understandable from the integrator's perspective.
 - **Open source transparency** — keep protocol, code, and operational behavior inspectable.
+- **Heavy actions are asynchronous and exclusive** — see below; no long/heavy work on a blocking HTTP request.
+
+### Heavy actions are asynchronous and exclusive
+
+No Ezkey API may expose a long or resource-heavy action (chain verification, seal-archive, re-encryption batches, bulk scans, and similar data-volume-bound work) as a blocking HTTP request. Public deployments on `ezkey.org` and `ezkey.online` sit behind Cloudflare Free, which cuts the origin at **100 s** (HTTP **524**, not raisable) while the server may keep working. Heavy actions return **202**, run as a polled job with a **server-side cap**, and hold a **DB-level single slot** for mutual exclusion across all global admins and replicas (a concurrent request gets **409** with the holder). Synchronous endpoints remain only for bounded, small operations (single record, paginated list). The current **8-day** cap on synchronous Integrity verification is an **interim** guarantee only until sync report paths are retired.
+
+**Decision trace (2026-10-13):** Recorded the non-blocking heavy-actions principle in product intent because Cloudflare Free proxies time out at 100 s (HTTP 524) on public hosts; umbrella [#789](https://github.com/mgagp/ezkey/issues/789).
 
 ## Current Product Surface
 
@@ -152,6 +167,13 @@ At a high level, Ezkey currently includes:
 - a mobile application,
 - local stack and test tooling,
 - self-hosted deployment support.
+
+**Community instance vs self-host:** A maintained **public alpha** community instance runs on
+**ezkey.online** for evaluation (lab · discreet; alpha ≠ production; no SLA; no IdP parity).
+Self-hosted and clean-start deployments remain first-class. Anonymous evaluator self-registration
+(`ezkey.evaluator.self-registration.enabled`) is **OFF by default**; the community host may turn
+it **ON explicitly**. Self-host operators do not inherit an open signup path unless they choose it.
+Public runtime presets are named **`base`** and **`integrity`** — not an « eval profile ».
 
 Detailed architecture and boundaries are described in [`architecture-overview.md`](architecture-overview.md). Component-specific behavior lives in the [component packs](../components/README.md).
 

@@ -55,4 +55,32 @@ public record EnrollmentInstanceInfoResponseDto(
                 "Base64URL (no padding) Ed25519 signature over the canonical INSTANCE_INFO"
                     + " payload",
             requiredMode = RequiredMode.REQUIRED)
-        String instanceInfoPayloadSignedByIntegration) {}
+        String instanceInfoPayloadSignedByIntegration) {
+
+  /**
+   * Returns a string representation with integration signatures masked.
+   *
+   * @return string representation safe for logs
+   */
+  @Override
+  public String toString() {
+    return "EnrollmentInstanceInfoResponseDto{"
+        + "enrollmentId="
+        + enrollmentId
+        + ", authApiPublicBaseUrl='"
+        + authApiPublicBaseUrl
+        + '\''
+        + ", instanceName='"
+        + instanceName
+        + '\''
+        + ", instanceDescription='"
+        + instanceDescription
+        + '\''
+        + ", aboutUrl='"
+        + aboutUrl
+        + '\''
+        + ", instanceInfoPayloadSignedByIntegration="
+        + (instanceInfoPayloadSignedByIntegration != null ? "[PROTECTED]" : "null")
+        + '}';
+  }
+}

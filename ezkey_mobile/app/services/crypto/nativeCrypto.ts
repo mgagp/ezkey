@@ -29,8 +29,10 @@ type NativeModuleShape = {
    * false when none were present or on platforms without the Android seal-key model.
    */
   deleteAllSealKeys(): Promise<boolean>;
-  /** UTC ISO-8601 string set at native build time (Android `BuildConfig`); iOS uses bundle mtime proxy. */
+  /** UTC ISO-8601 string set at native build time (Android `BuildConfig`; iOS built Info.plist `EzkeyBuildTimestamp`). */
   getBuildTimestamp(): Promise<string>;
+  /** Seven-character git SHA stamped at native build time (Android `BuildConfig`, iOS Info.plist); `unknown` when unavailable. */
+  getGitShortSha(): Promise<string>;
   /** Same wire format as `SignatureService.generateProofToken()`; uses platform CSPRNG (no `RNGetRandomValues`). */
   generateProofToken(): Promise<string>;
   /** installationScopeId scopes the AES seal key to one installation trust zone (MOB-017). */
@@ -86,6 +88,9 @@ const fallback: NativeModuleShape = {
   async getBuildTimestamp(): Promise<string> {
     throw new Error('EzkeyCryptoModule is not linked. Unable to read build timestamp.');
   },
+  async getGitShortSha(): Promise<string> {
+    throw new Error('EzkeyCryptoModule is not linked. Unable to read git SHA.');
+  },
   async generateProofToken(): Promise<string> {
     throw new Error('EzkeyCryptoModule is not linked. Unable to generate proof token.');
   },
@@ -138,6 +143,7 @@ export const nativeCrypto = {
     cryptoModule?.deleteAllSealKeys?.() ?? fallback.deleteAllSealKeys(),
   getBuildTimestamp: () =>
     cryptoModule?.getBuildTimestamp?.() ?? fallback.getBuildTimestamp(),
+  getGitShortSha: () => cryptoModule?.getGitShortSha?.() ?? fallback.getGitShortSha(),
   generateProofToken: () =>
     cryptoModule?.generateProofToken?.() ?? fallback.generateProofToken(),
   getEnrollmentPrivateKeyStorageTier: (enrollmentId: string) =>

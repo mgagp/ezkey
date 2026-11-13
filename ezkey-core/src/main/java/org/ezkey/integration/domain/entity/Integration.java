@@ -24,6 +24,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
 import org.ezkey.integration.domain.IntegrationLifecycleStatus;
+import org.ezkey.integration.domain.PendingAttemptPolicy;
 
 /**
  * JPA entity representing an integration in the Ezkey system.
@@ -98,6 +99,14 @@ public class Integration {
    */
   @Column(name = "integration_code", nullable = false)
   private String code;
+
+  /**
+   * What to do when a live authentication attempt already exists. {@code REPLACE} is the stored
+   * default so existing integrations keep supersession.
+   */
+  @Enumerated(EnumType.STRING)
+  @Column(name = "pending_attempt_policy", nullable = false, length = 16)
+  private PendingAttemptPolicy pendingAttemptPolicy = PendingAttemptPolicy.REPLACE;
 
   /**
    * Reference to the administrator who created this integration.
@@ -289,5 +298,23 @@ public class Integration {
    */
   public void setCode(String code) {
     this.code = code;
+  }
+
+  /**
+   * Gets the pending-attempt policy.
+   *
+   * @return REPLACE or REFUSE; never null on a persisted row
+   */
+  public PendingAttemptPolicy getPendingAttemptPolicy() {
+    return pendingAttemptPolicy;
+  }
+
+  /**
+   * Sets the pending-attempt policy.
+   *
+   * @param pendingAttemptPolicy REPLACE or REFUSE
+   */
+  public void setPendingAttemptPolicy(PendingAttemptPolicy pendingAttemptPolicy) {
+    this.pendingAttemptPolicy = pendingAttemptPolicy;
   }
 }

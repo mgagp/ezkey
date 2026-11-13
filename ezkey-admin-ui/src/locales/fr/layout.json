@@ -12,6 +12,7 @@
     "enrollments": "Enrôlements",
     "authAttempts": "Tentatives d'auth.",
     "auditLogs": "Journaux d'audit",
+    "integrity": "Intégrité",
     "alerts": "Alertes",
     "admins": "Administrateurs",
     "apiKeys": "Clés API",
@@ -35,7 +36,8 @@
   },
   "sidebar": {
     "demoModeTitle": "Ctrl+clic pour basculer le mode démo",
-    "about": "À propos"
+    "about": "À propos",
+    "buildIdentity": "Alpha publique · {{sha}}"
   },
   "about": {
     "title": "À propos de EZKey",
@@ -44,6 +46,10 @@
     "productIntroGlobal": "Administration de l'instance pour les équipes TI : création de tenants, clés de chiffrement et supervision globale. Vous utilisez aussi les mêmes écrans d'intégrations, d'enrôlements et d'authentification que les administrateurs tenant.",
     "learnMore": "En savoir plus",
     "learnMoreDefaultUrl": "https://github.com/your-org/ezkey"
+  },
+  "temporarySession": {
+    "banner": "Accès éval temporaire borné — expire le {{expiresAt}}. À usage unique : si vous perdez cette session, elle n'est pas récupérable. Enrôlez un appareil quand vous êtes prêt.",
+    "bindLink": "Enrôler un appareil"
   },
   "demoQuickReason": "Raison rapide (démo) :"
 }

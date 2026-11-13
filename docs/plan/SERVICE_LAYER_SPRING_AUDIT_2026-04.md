@@ -211,6 +211,7 @@ an SRP / nested-transaction finding. Canon:
 | `ReencryptionBatchProcessingService` | Batch step in `REQUIRES_NEW` | **Keep as-is** | Matches batch lifecycle. |
 | `ReencryptionBatchCreationService` | Batch creation in `REQUIRES_NEW` | **Keep as-is** | Matches batch lifecycle. |
 | `AuditLogService` | Programmatic `TransactionTemplate` with `REQUIRES_NEW` (not declarative) | **Keep as-is** | Documented **intentional** deviation: avoids `UnexpectedRollbackException` escaping after internal catch; high cohesion for audit safety. |
+| `IntegrityNightlyTerminalService` | `TransactionTemplate` `REQUIRES_NEW` on `tryInsert*` (WARN catch outside TX); declarative `@Transactional(REQUIRES_NEW)` on public `insert*` for external callers | **Keep as-is** | Same fail-open shape as `AuditLogService`: self-invocation of `insert*` from `tryInsert*` would bypass the proxy; annotating `tryInsert*` would put the WARN catch inside the TX. |
 
 **Optional follow-up (low priority):** If `AdminAuthAttemptTxHelper` ever grows beyond delegating `create`, revisit whether a **named use-case service** would read clearer than “helper + `AuthAttemptService`”.
 

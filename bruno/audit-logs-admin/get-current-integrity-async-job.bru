@@ -1,0 +1,45 @@
+meta {
+  name: get current integrity async job
+  type: http
+  seq: 21
+}
+
+get {
+  url: {{base_url_admin_api}}/api/v1/audit-logs/integrity/jobs/current
+  body: none
+  auth: inherit
+}
+
+script:post-response {
+  test("Status is 200 or 204", function () {
+      expect([200, 204]).to.include(res.getStatus());
+  });
+
+  test("200 body has status and no secrets", function () {
+      if (res.getStatus() !== 200) {
+          return;
+      }
+      var body = res.getBody();
+      expect(body).to.have.property('jobId');
+      expect(body).to.have.property('status');
+      expect(body).to.have.property('type');
+      expect(body).to.have.property('trigger');
+      // busyHolder is additive nullable (NIGHTLY | REPORT_GET | OPERATOR_JOB).
+      if (body.busyHolder != null) {
+          expect(['NIGHTLY', 'REPORT_GET', 'OPERATOR_JOB']).to.include(body.busyHolder);
+      }
+      expect(JSON.stringify(body)).to.not.match(/hmacSecret|rawKey|privateKey/i);
+  });
+}
+
+docs {
+  Current Integrity async job for the banner (operator slot).
+
+  When ShedLock holds nightly and no operator RUNNING job exists, returns a synthetic RUNNING job
+  with `busyHolder=NIGHTLY`. OPERATOR_JOB always returns the real row. Persisted nightly terminal
+  rows are excluded from this endpoint (see last-verdict).
+
+  **Access:** Global Admin only.
+
+  **Status Codes:** 200 OK · 204 No Content · 401 Unauthorized · 403 Forbidden
+}

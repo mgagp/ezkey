@@ -3,7 +3,7 @@
 ## Table of Contents
 1. [OpenAPI Documentation](#openapi-documentation)
 2. [Testing Strategy](#testing-strategy)
-3. [Development Workflow](#development-workflow)
+3. [Development Workflow](#development-workflow) — [first clone](#first-clone-on-a-new-workstation)
 4. [Quality Assurance](#quality-assurance)
 
 ---
@@ -243,6 +243,37 @@ class OpenApiIntegrationTest {
 
 ## Development Workflow
 
+### First clone on a new workstation
+
+A fresh git clone plus an empty `~/.m2` is the expected first-build situation on **Windows, macOS, or Linux**. It is not a Mac-only problem, and it does not require a custom Checkstyle remote repository.
+
+**Prerequisites**
+
+- JDK 25 (`JAVA_HOME` recommended; `java` and `mvn` must agree on that JDK)
+- Maven 3.9+
+- Bash — `./scripts/*.sh` from Git Bash on Windows, or the system Bash on macOS/Linux
+- Docker Desktop (or Engine + Compose) for the local stack
+- Node.js: root [`.nvmrc`](../.nvmrc) pins **24** (LTS) as the single source of truth for Admin UI, mobile JS CI (`node-version-file: '.nvmrc'`), and agent workstations. Orval and package `engines` must be satisfied by that runtime (`ezkey-admin-ui` and `ezkey_mobile` require `>=24`; Orval needs `>=22.18`). Bruno CLI follows the tool you install locally. **nvm-windows** does not read `.nvmrc` automatically — run `nvm install 24` then `nvm use 24`, then `corepack enable` for Yarn 4. After **every checkout** (and after `npm ci`) in `ezkey-admin-ui/`, run `npm run generate:api` — the Orval client under `src/generated/` is **gitignored**. Skipping it leaves a stale or missing client; the Integrity page (and other Orval-backed screens) can crash at runtime. Orval reads the committed `ezkey-admin-ui/openapi-spec.json` (no live API required).
+
+**Do this**
+
+```bash
+./scripts/build.sh --diagnose-only
+./scripts/build.sh
+```
+
+`build.sh` installs the unpublished `org.ezkey:checkstyle-config` module into the local Maven repository **before** `mvn checkstyle:check`. That artifact is not on Maven Central or Apache Snapshots. A first `checkstyle:check` on an empty `~/.m2` fails with a cached "not found in apache.snapshots" error that looks like a missing plugin repository.
+
+On macOS, Temurin via SDKMAN is not registered with `/usr/libexec/java_home`. `build.sh` therefore also probes `~/.sdkman/candidates/java/current` when `JAVA_HOME` is unset. A login shell that already exports SDKMAN `JAVA_HOME` needs no extra step. System `/bin/bash` is 3.2: scripts with `set -u` must not expand empty arrays as `"${arr[@]}"` (that fails before Playwright even starts).
+
+**Do not** treat `mvn checkstyle:check` or `mvn -pl some-module …` as the first command on a machine that has never built this reactor. Use the script, or see [Reliable Local Maven Validation](#reliable-local-maven-validation) for the expanded sequence.
+
+**POSIX vs Windows in Tink tests:** `TinkKeyManager` requires master-key files at mode `600` on macOS/Linux and skips that check on Windows. Tests must write temp keys through `TestMasterKeys` (owner-only permissions). Copying `Files.writeString` without that helper fails on a POSIX first build even when Windows is green.
+
+**Postgres first-boot roles:** `docker/postgres/init/01-create-roles.sh` is bind-mounted into `postgres:18-alpine` and must be executable (`git` mode `100755`). A `644` checkout plus Docker Desktop on macOS fails first init with `/bin/sh: bad interpreter: Permission denied`; Postgres can still become healthy while application roles are missing and the rest of the stack stays `Created`.
+
+Without a host JDK, use [`./scripts/build-docker.sh`](../scripts/build-docker.sh) instead ([Docker-only Java validation](#docker-only-java-validation-no-host-jdkmaven)).
+
 ### Code Quality Standards
 - **Java 25+**: Use modern Java features
 - **Spring Boot 3.x**: Follow Spring Boot best practices
@@ -278,15 +309,19 @@ below before any targeted module optimization:
 
 ```bash
 mvn spotless:apply
+mvn -pl checkstyle-config install -DskipTests
 mvn checkstyle:check
 mvn clean
 mvn install -DskipTests
 ```
 
 This is the most reliable path because Checkstyle depends on the internal `checkstyle-config`
-module from the Maven reactor. **`./scripts/build.sh`** is the single portable entrypoint (Git Bash
-on Windows, Linux, or macOS). It auto-detects the canonical JDK 25 path on the maintainer Windows
-workstation when `JAVA_HOME` is unset. From a Windows-hosted agent shell (PowerShell), invoke Git
+module. That artifact is not published to a remote repository, so a fresh `~/.m2` must install it
+locally before `checkstyle:check` can resolve the plugin dependency. **`./scripts/build.sh`** is the
+single portable entrypoint (Git Bash on Windows, Linux, or macOS); it performs this bootstrap
+automatically. It auto-detects the canonical JDK 25 path on the maintainer Windows
+workstation when `JAVA_HOME` is unset, and SDKMAN's `~/.sdkman/candidates/java/current` on macOS/Linux.
+From a Windows-hosted agent shell (PowerShell), invoke Git
 Bash explicitly: `& "C:\Program Files\Git\bin\bash.exe" -lc './scripts/build.sh'`.
 
 ### Docker-only Java validation (no host JDK/Maven)
@@ -328,12 +363,13 @@ Ezkey uses **CI-friendly Maven versions** with branch-specific qualifiers to pre
 
 #### How It Works
 
-- **Root POM version**: `${revision}${buildQualifier}${changelist}`
-  - `revision`: Base version (default: `0.0.1`)
-  - `buildQualifier`: Branch-specific qualifier (empty on `main`, `-<branch-name>` on feature branches)
+- **Root POM version**: `${revision}${changelist}` (product SemVer, ADR-0017)
+  - `revision`: Base version (default: `0.2.0`)
   - `changelist`: Suffix (default: `-SNAPSHOT`)
-- **Defaults**: Parent POM properties supply the defaults; `mvn` / `./scripts/build.sh` work without a local config file. Optional per-checkout overrides: copy `.mvn/maven.config.example` → gitignored `.mvn/maven.config` (e.g. worktree suffix `-wt1`). See root `AGENTS.md` § Local Maven version properties.
-- **Branch isolation**: `scripts/mvn-branch.sh` injects `buildQualifier` from the current git branch so local `install` coordinates do not collide across branches
+- **Flatten**: `flatten-maven-plugin` (`resolveCiFriendliesOnly`) resolves those placeholders in installed/deployed POMs
+- **Cross-ecosystem sync**: `./scripts/sync-version.sh` aligns npm / Python / Android / Jenkins SDK pins; `./scripts/check-version-alignment.sh` is the CI divergence gate. .NET is deferred until a client exists (#1219; empty shell removed in #1232). Details: [`VERSIONING_AND_DEPLOY_TRACEABILITY.md`](VERSIONING_AND_DEPLOY_TRACEABILITY.md) § Alignment mechanisms.
+- **Defaults**: Parent POM properties supply the defaults; `mvn` / `./scripts/build.sh` work without a local config file. Optional per-checkout overrides: copy `.mvn/maven.config.example` → gitignored `.mvn/maven.config` (e.g. `-Drevision=0.2.0-wt1`). See root `AGENTS.md` § Local Maven version properties.
+- **Branch isolation**: `scripts/mvn-branch.sh` appends `-<branch>` to `revision` so local `install` coordinates do not collide across branches
 
 #### Building Without Collisions
 
@@ -350,46 +386,34 @@ mvn clean install
 
 #### How Branch Qualifiers Are Generated
 
-- **Feature branches**: `0.0.1-feature-login-SNAPSHOT` (branch name sanitized)
-- **Main/master**: `0.0.1-SNAPSHOT` (no qualifier)
-- **Detached HEAD**: `0.0.1-abc1234-SNAPSHOT` (fallback to git SHA)
+- **Feature branches**: `0.2.0-feature-login-SNAPSHOT` (branch name sanitized)
+- **Main/master**: `0.2.0-SNAPSHOT` (no qualifier)
+- **Detached HEAD**: `0.2.0-abc1234-SNAPSHOT` (fallback to git SHA)
 
 #### IDE Configuration
 
 For IntelliJ IDEA or other IDEs, you can configure Maven to use the wrapper:
 
 1. **IntelliJ IDEA**: Settings → Build, Execution, Deployment → Build Tools → Maven → Runner
-   - Add VM options: `-DbuildQualifier=-$(git rev-parse --abbrev-ref HEAD)` (bash) or use the wrapper script path
+   - Prefer `scripts/mvn-branch.sh` as the Maven executable, or set `-Drevision=0.2.0-<branch>` for local isolation
 
 2. **Alternative**: Use the wrapper script as your Maven executable path in IDE settings
 
-#### Release Process (Future)
+#### Release tagging (not implemented in GitHub Actions)
 
-When preparing for Maven Central releases:
+There is **no** tag-triggered release workflow today. Do not expect GitHub Actions to publish
+artifacts when you push a `vX.Y.Z` tag. A future Maven Central release train would need its own
+workflow (version properties, signing, deploy). Until then, use local/`./scripts/build.sh` builds
+and the PR `CI` workflow only.
 
-**Release Workflow:**
-1. **Tag creation**: Create git tag `vX.Y.Z` (e.g., `v1.2.0`) on `main` branch
-2. **CI build**: GitHub Actions detects tag and builds with:
-   - `-Drevision=X.Y.Z`
-   - `-Dchangelist=` (empty, removes `-SNAPSHOT`)
-   - `-DbuildQualifier=` (empty)
-3. **Deployment**: Artifacts deployed to Maven Central with clean, resolved versions
-4. **Post-release**: `main` branch version bumped to next development line (e.g., `1.3.0-SNAPSHOT`)
+**Branch conventions (local version isolation only):**
+- **`main`**: `X.Y.Z-SNAPSHOT` (next development version)
+- **Feature branches**: optional branch-specific revision via `scripts/mvn-branch.sh` or
+  `.mvn/maven.config` (e.g. `-Drevision=0.2.0-feature-login`)
+- Feature branches do **not** publish to Maven Central
 
-**Maven Central Requirements (to be implemented):**
-- GPG signing of artifacts
-- Sources and Javadoc JARs
-- Reproducible builds
-- Proper `scm`/`licenses`/`developers` metadata in POMs
-- Flatten plugin for deployed POMs (ensures no `${revision}` expressions in published artifacts)
-
-**Branch Conventions:**
-- **`main`**: Always `X.Y.Z-SNAPSHOT` (next development version)
-- **Feature branches**: Use branch-specific qualifiers locally (e.g., `0.0.1-feature-login-SNAPSHOT`)
-- **Release branches** (optional, for maintenance): `release/X.Y` for patch releases (`X.Y.(Z+1)`)
-- **No branch-specific published versions**: Feature branches do not publish to Maven Central
-
-Living entry points: this section, root `AGENTS.md` § Local Maven version properties, `.mvn/maven.config.example`, and `scripts/mvn-branch.sh`.
+Living entry points: this section, root `AGENTS.md` § Local Maven version properties,
+`.mvn/maven.config.example`, and `scripts/mvn-branch.sh`.
 
 ### Git Workflow
 - **Conventional Commits**: Use conventional commit messages
@@ -398,7 +422,7 @@ Living entry points: this section, root `AGENTS.md` § Local Maven version prope
 - **Branch Strategy**: Feature branches for new development
 
 ### Code Review Process
-- **Automated Checks**: CI/CD pipeline validation
+- **Automated Checks**: GitHub Actions `CI` workflow — wait for **`ci-gate`** (see below)
 - **Manual Review**: Peer review for all changes
 - **Security Review**: Security-focused review for sensitive changes
 - **Documentation**: Ensure documentation is updated
@@ -408,10 +432,105 @@ Living entry points: this section, root `AGENTS.md` § Local Maven version prope
 ## Quality Assurance
 
 ### Continuous Integration
-- **Build Validation**: Automated Maven builds
-- **Test Execution**: Automated test suite execution
-- **Code Coverage**: Coverage reporting and thresholds
-- **Security Scanning**: Automated security vulnerability scanning
+
+PR and `main` pushes run the aggregate workflow [`.github/workflows/ci.yml`](../.github/workflows/ci.yml).
+A `changes` job (path filter) decides which suites run. Unrelated areas are **skipped**, not left
+pending. Manual `workflow_dispatch` and the **nightly schedule** on `main` (UTC 07:23, no-op when
+`main` had no commit in the last 24 h) force **every** suite. A change to `ci.yml` runs every job;
+a change to a reusable workflow runs only the job that calls it.
+
+**Heavy jobs skip the post-merge push.** `ha-smoke`, `connectors`, `ezkey-pam`, `mobile-ios` and the mobile
+`android-16kb-alignment` job run on pull requests (where they gate the change) and nightly, but not
+on the push to `main` that follows a merge, which would repeat the PR run. The ruleset does not
+require branches to be up to date, so a merge of a stale PR is caught by the nightly run at the
+latest. Rationale: proportionality review 2026-11-02 (~300 CI runs per week).
+
+The final job **`ci-gate`**
+(`if: always()`) fails if any needed job failed or was cancelled, and **passes when those jobs
+were skipped**. That is the single check **required** on `main` via repository ruleset
+**Basic protection** (context `ci-gate` only; verified 2026-10-14). Do not require path-filtered
+job names alone — that leaves docs-only PRs stuck on "Expected — waiting". Evaluator-facing
+inventory and improvement plan:
+[`engineering/ci-cd-best-practices-plan.md`](engineering/ci-cd-best-practices-plan.md).
+
+| Job | When it runs | What it checks |
+|-----|--------------|----------------|
+| `changes` | Always | Path filter outputs (one per suite, plus `workflows` = `ci.yml` and `heavy` = not a push); all forced on `workflow_dispatch` and nightly |
+| `admin-ui` | `ezkey-admin-ui/**`, `specs/**`, or a `ci.yml` change | `cmp` of `specs/admin-api/openapi-spec.json` vs `ezkey-admin-ui/openapi-spec.json`; Node from root `.nvmrc` (24 LTS); `npm ci`; `generate:api`; `tsc -b`; lint; Vitest; `vite build`; no-demo assert on `dist/` |
+| `backend` | Java reactor paths / root `pom.xml` / `scripts/build.sh` / `.mvn/**` / `docker/**` or workflows | JDK 25; install `checkstyle-config`; `spotless:check`; Checkstyle; full-reactor `install -DskipTests` (so `ezkey-tests` **compiles**); `test -pl '!ezkey-tests'` (H2 unit tests; **does not run** the Docker `ezkey-tests` suite) |
+| `ha-smoke` | Same path filter as `backend` (or `ci.yml`); PRs and nightly only | Live HA clean-start + HTTP probes through each HAProxy LB (and crypto management); expect documented status codes, never 503 (#905). On failure it prints the state and logs of unhealthy or restarted containers before teardown (#1259). Script: `scripts/ci-ha-lb-smoke.sh` |
+| `connectors` | `ezkey-connectors/**`, the Admin API delivery port, its functional tests and `scripts/ci-connector-scenarios.sh` (or `ci.yml`); PRs and nightly only | Mock connector unit tests, then the Docker delivery scenarios and the log canary (#1206) |
+| `mobile` | `ezkey_mobile/**`, its reusable workflow, or `ci.yml` | Calls reusable [`.github/workflows/ezkey-mobile-unit-tests.yml`](../.github/workflows/ezkey-mobile-unit-tests.yml): Yarn validate, Android JVM unit tests, **16 KB APK alignment** (PRs and nightly only) |
+| `mobile-ios` | iOS native surface (`ezkey_mobile/ios/**`, `package.json`, `yarn.lock`, `Gemfile*`, `scripts/ios-*.sh`), its reusable workflow, or `ci.yml`; PRs and nightly only | Calls reusable [`.github/workflows/ezkey-mobile-ios.yml`](../.github/workflows/ezkey-mobile-ios.yml) on `macos-26`: `yarn ios:lint` (swift-format + SwiftLint, strict), `pod install`, `yarn ios:test` (simulator build + XCTest) |
+| `dart-sdk` | `ezkey_dart/**` or workflows | Experimental Dart SDK offline gate in a pinned `dart` image: `ezkey_dart/scripts/test.sh` (format check, `analyze --fatal-infos`, unit tests). The live-stack suite `ezkey_dart/scripts/e2e.sh` stays local ([`ezkey_dart/README.md`](../ezkey_dart/README.md) §6) |
+| `ci-gate` | Always | Aggregate pass/fail for the jobs above |
+
+CI checks that the Admin UI’s committed OpenAPI copy matches `specs/admin-api/`, but it does **not**
+guarantee that copy matches the real running Admin API — refresh the committed spec by hand with
+`./scripts/update-specs.sh` against a live stack.
+
+**Not in PR CI:** Playwright Admin UI browser tests (need a live Docker stack + Demo Device),
+running the full `ezkey-tests` functional suite, doctor-curated / java-doctor / pentest hygiene
+passes, and any tag-triggered Maven Central release (not implemented). The `ha-smoke` job is the
+exception that **does** start a Docker stack on PRs that touch backend/docker paths.
+
+**Maven dependency graph (not a PR check):** workflow
+[`.github/workflows/maven-dependency-submission.yml`](../.github/workflows/maven-dependency-submission.yml)
+submits the full (transitive) Maven graph to GitHub Insights. It triggers only on push to `main`
+that touches `pom.xml` / `**/pom.xml` / `.mvn/**` / `checkstyle-config/**` / the workflow file
+itself, or via `workflow_dispatch`. It uses **JDK 25** and installs the unpublished
+`checkstyle-config` reactor module first — the same bootstrap as the `backend` job — so
+resolution succeeds. It is **not** part of `ci-gate`.
+
+Keep the repository **Dependency graph** setting **enabled**. When it is off, this workflow
+fails with `HttpError: The Dependency graph is disabled for this repository` (runs 38298454193
+and 38447903477, Oct 2026). GitHub’s **Automatic dependency submission** is a separate
+repo-wide toggle (not per ecosystem / “for Maven”): Settings → Advanced Security (section
+**Security and quality**) → Dependency graph → Automatic dependency submission (`Enabled` /
+`Enabled for labeled runners` / `Disabled`). Keep Automatic dependency submission
+**Disabled** (2026-10-08) because
+[`.github/workflows/maven-dependency-submission.yml`](../.github/workflows/maven-dependency-submission.yml)
+feeds the graph instead (cf. #722). The built-in submitter uses Java 21, never builds
+`checkstyle-config`, and fails with “NOT allowed from central”. First dedicated-workflow run
+was green; Spring Boot is visible under Insights → Dependency graph.
+
+**Run the same checks locally:**
+
+```bash
+# Admin UI (from ezkey-admin-ui/; Node from root .nvmrc — 24 LTS)
+cmp ../specs/admin-api/openapi-spec.json openapi-spec.json
+npm ci && npm run generate:api && npx tsc -b && npm run lint && npm test && npx vite build
+bash scripts/assert-no-demo-in-build.sh dist
+
+# Backend (repo root; JDK 25) — CI uses spotless:check; local baseline applies then checks:
+./scripts/build.sh
+# Or CI-shaped: mvn -pl checkstyle-config install -DskipTests
+#               && mvn spotless:check checkstyle:check
+#               && mvn clean install -DskipTests
+#               && mvn test -pl '!ezkey-tests'
+
+# Mobile (from ezkey_mobile/)
+yarn install --immutable && yarn validate:ci
+# Android JVM + 16 KB gate: see ezkey_mobile/AGENTS.md and the mobile workflow
+```
+
+**Ruleset (maintainer):** keep required status check **`ci-gate`** only (plus non-check rules as
+desired: deletion / non-fast-forward / pull request with 0 approvals already on). No other job names need to be required. Broader
+ruleset / Settings backlog: [`engineering/ci-cd-best-practices-plan.md`](engineering/ci-cd-best-practices-plan.md).
+
+**CodeQL (advanced setup):** workflow [`.github/workflows/codeql.yml`](../.github/workflows/codeql.yml)
+with config [`.github/codeql/codeql-config.yml`](../.github/codeql/codeql-config.yml)
+(`paths-ignore: ezkey-tests/**`). Local model pack
+[`.github/codeql/extensions/ezkey-java-models/`](../.github/codeql/extensions/ezkey-java-models/)
+(`ezkey/java-models`) declares `LogSanitizer.sanitizeForLog` as a `log-injection` barrier; advanced
+setup does **not** auto-detect that directory — the java-kotlin analyze step loads it via
+`CODEQL_ACTION_EXTRA_OPTIONS` (`--additional-packs` + `--extension-packs=ezkey/java-models`). Proven on
+PR #805 (Actions run [`38488035924`](https://github.com/mgagp/ezkey/actions/runs/38488035924)
+java-kotlin analyze: `run-queries` includes `--extension-packs=ezkey/java-models`). Five language
+analyses uploaded on `main` at `f26cbe55`. Keep the repository CodeQL setting on **Advanced**
+(default setup off).
+Policy and SLAs: [`SECURITY_POSTURE.md`](SECURITY_POSTURE.md) § Code scanning policy. Triage notes:
+[`../product-docs/global/hygiene/code-scanning/`](../product-docs/global/hygiene/code-scanning/).
 
 ### Code Quality Metrics
 - **Test Coverage**: Minimum 90% line coverage

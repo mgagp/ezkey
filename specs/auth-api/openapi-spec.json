@@ -53,7 +53,8 @@
               }
             }
           }
-        }
+        },
+        "security": []
       }
     },
     "/api/v1/enrollments/bind": {
@@ -86,7 +87,7 @@
             }
           },
           "400": {
-            "description": "Invalid enrollment ID, proof token, or enrollment expired",
+            "description": "Invalid proof token, or enrollment expired",
             "content": {
               "*/*": {
                 "schema": {
@@ -111,6 +112,18 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests. Retry-After is seconds until the rate-limit budget refills.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until retry is allowed",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
                 }
               }
             }
@@ -176,113 +189,15 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "/api/v1/auth-attempts/pending": {
-      "post": {
-        "tags": [
-          "Authentication Attempts"
-        ],
-        "summary": "Get pending authentication attempt",
-        "description": "Retrieve pending authentication attempts using secure enrollment proof token. This endpoint prevents enumeration attacks by requiring cryptographic proof of enrollment ownership.",
-        "operationId": "pending",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AuthAttemptPendingRequestDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Pending authentication attempt found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthAttemptPendingResponseDto"
-                }
-              }
-            }
-          },
-          "204": {
-            "description": "No pending authentication attempts"
-          },
-          "400": {
-            "description": "Invalid request or enrollment proof token",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            }
           },
           "429": {
-            "description": "Rate limit exceeded"
-          }
-        }
-      }
-    },
-    "/api/v1/auth-attempts/respond": {
-      "post": {
-        "tags": [
-          "Authentication Attempts"
-        ],
-        "summary": "Submit authentication response",
-        "description": "Submits mobile device's response to an authentication request. The authAttemptId is provided in the request body for uniform API design. HTTP 200 may include a business-level FAILED result in the JSON body (integration-signed) when validation fails in the respond service; uncaught IllegalArgumentException uses 400.",
-        "operationId": "respond",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AuthAttemptRespondRequestDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Respond processed; body may be APPROVED, DENIED, or FAILED (signed FAILED when validation/crypto checks fail in the respond service)",
-            "content": {
-              "*/*": {
+            "description": "Too many requests. Retry-After is seconds until the rate-limit budget refills.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until retry is allowed",
                 "schema": {
-                  "$ref": "#/components/schemas/AuthAttemptRespondResponseDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid response data or validation failed",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Authentication attempt state conflict",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
+                  "type": "integer",
+                  "format": "int32"
                 }
               }
             }
@@ -335,6 +250,159 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests. Retry-After is seconds until the rate-limit budget refills.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until retry is allowed",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth-attempts/pending": {
+      "post": {
+        "tags": [
+          "Authentication Attempts"
+        ],
+        "summary": "Get pending authentication attempt",
+        "description": "Retrieve pending authentication attempts using secure enrollment proof token. This endpoint prevents enumeration attacks by requiring cryptographic proof of enrollment ownership.",
+        "operationId": "pending",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthAttemptPendingRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Pending authentication attempt found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAttemptPendingResponseDto"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No pending authentication attempts"
+          },
+          "400": {
+            "description": "Invalid request or enrollment proof token",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until retry is allowed",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth-attempts/respond": {
+      "post": {
+        "tags": [
+          "Authentication Attempts"
+        ],
+        "summary": "Submit authentication response",
+        "description": "Submits mobile device's response to an authentication request. The authAttemptId is provided in the request body for uniform API design. HTTP 200 bodies (APPROVED/DENIED/FAILED) are always integration-signed; the server never emits an unsigned 200 (#844). Not-found, PENDING, and terminal / cancelled / superseded map to 409 auth-attempt-state-conflict (#844 Marc m1). Wall-clock expiry after expiresAt maps to 409 auth-attempt-expired (#895). Missing per-enrollment integration signing key → runtime 503 integration-signing-unavailable (transaction rolls back; no JVM startup gate).",
+        "operationId": "respond",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthAttemptRespondRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Respond processed; body may be APPROVED, DENIED, or FAILED — always integration-signed (#844)",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAttemptRespondResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid response data or validation failed",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "auth-attempt-state-conflict (not found, PENDING, terminal / cancelled / superseded — #844) or auth-attempt-expired (wall-clock expiry — #895)",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Per-enrollment integration signing key missing/blank — runtime 503, transaction rolls back (never unsigned 200)",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests. Retry-After is seconds until the rate-limit budget refills.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until retry is allowed",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
                 }
               }
             }
@@ -434,7 +502,8 @@
           },
           "instance": {
             "type": "string",
-            "format": "uri"
+            "format": "uri-reference",
+            "description": "URI-reference of the occurrence. Ezkey uses the request path (relative), matching RFC 9457; it is not an absolute URI."
           },
           "properties": {
             "type": "object",
@@ -509,12 +578,6 @@
         "type": "object",
         "description": "Request DTO for enrollment binding initiation with proof token",
         "properties": {
-          "enrollmentId": {
-            "type": "integer",
-            "format": "int32",
-            "description": "Enrollment ID to bind to the mobile device",
-            "example": 123
-          },
           "enrollmentProofToken": {
             "type": "string",
             "description": "Enrollment proof token for authentication",
@@ -522,7 +585,6 @@
           }
         },
         "required": [
-          "enrollmentId",
           "enrollmentProofToken"
         ]
       },
@@ -563,8 +625,8 @@
           },
           "enrollmentName": {
             "type": "string",
-            "description": "Human-readable name for the enrollment",
-            "example": "John's iPhone"
+            "description": "Person-facing enrollment label shown on the device (for admin MFA: first and last name; not a role or username blob)",
+            "example": "Marie Dupont"
           },
           "tenantId": {
             "type": "integer",
@@ -582,6 +644,16 @@
             "description": "Tenant description of the integration associated with this enrollment",
             "example": "Acme Corp tenant workspace"
           },
+          "isSystemIntegration": {
+            "type": "boolean",
+            "description": "True when this enrollment is administrator MFA on the system integration",
+            "example": false
+          },
+          "adminType": {
+            "type": "string",
+            "description": "Administrator type when this enrollment is admin MFA (GLOBAL_ADMIN or TENANT_ADMIN); absent for regular enrollments",
+            "example": "TENANT_ADMIN"
+          },
           "enrollmentBindPayloadSignedByIntegration": {
             "type": "string",
             "description": "Ed25519 signature (Base64URL, no padding, raw 64 bytes) over the canonical bind payload (see docs/ENROLLMENT_SIGNATURE_PAYLOAD.md)",
@@ -593,7 +665,8 @@
           "enrollmentId",
           "enrollmentProofToken",
           "integrationKeyAlgorithm",
-          "integrationPublicKey"
+          "integrationPublicKey",
+          "isSystemIntegration"
         ]
       },
       "AuthAttemptRespondRequestDto": {
@@ -659,7 +732,10 @@
             "example": "Auth attempt completed"
           },
           "authAttemptProofTokenResultSignedByIntegration": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "description": "Ed25519 signature (Base64URL, no padding, raw 64 bytes) over proofToken|authAttemptId|result|message (see AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md)",
             "example": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
           }
@@ -778,6 +854,14 @@
             ],
             "description": "Optional URL for About / learn more (e.g. company instance page)",
             "example": "https://www.example.com/about-ezkey"
+          },
+          "evaluatorSelfRegistrationEnabled": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "When true, evaluator self-registration and temporary console explore are available on this Admin API (community/lab). False or omitted when disabled.",
+            "example": false
           }
         }
       }

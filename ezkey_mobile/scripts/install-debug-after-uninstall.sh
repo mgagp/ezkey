@@ -19,4 +19,4 @@ echo "Uninstalling ${PKG} (ignore failure if not installed)..."
 adb uninstall "${PKG}" 2>/dev/null || true
 echo "Installing debug via Gradle..."
 (cd "${MOBILE_ROOT}/android" && ./gradlew installDebug --no-daemon)
-echo "Done. Launch the app manually or: adb shell monkey -p ${PKG} -c android.intent.category.LAUNCHER 1"
+echo "Done. Launch the app manually or: adb shell am start -n ${PKG}/.MainActivity"

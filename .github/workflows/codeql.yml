@@ -1,0 +1,161 @@
+# Advanced CodeQL setup for mgagp/ezkey.
+#
+# Repository CodeQL is Advanced (default setup disabled 2026-10-14 with #805).
+# Query suite: security-extended via .github/codeql/codeql-config.yml (restores
+# coverage the former default setup had). See docs/SECURITY_POSTURE.md
+# § Code scanning policy.
+#
+# Decision: code-scanning triage 2026-10-13, approved by Marc 2026-10-13 19:40.
+#
+# c-cpp: build-mode manual compiles ezkey-pam so pam_ezkey.c is extracted into
+# the CodeQL database (build-mode none does not reliably scan compiled C).
+#
+# Proportionality (2026-11-02): on pull requests and pushes, only the languages
+# whose files changed are analyzed (job `changes`). The weekly schedule and
+# workflow_dispatch analyze every language. A language skipped on a push keeps
+# its previous analysis on main; the CodeQL check may then note a configuration
+# missing on the PR, which is informational. A change to the CodeQL setup itself
+# (.github/codeql/**, this file) analyzes every language.
+name: CodeQL
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  schedule:
+    # Weekly catch-up (UTC Sunday 05:17) — same spirit as GitHub's default template.
+    - cron: "17 5 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    name: changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.resolve.outputs.matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Detect changed paths
+        id: filter
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        with:
+          filters: |
+            setup:
+              - '.github/codeql/**'
+              - '.github/workflows/codeql.yml'
+            java-kotlin:
+              - '**/*.java'
+              - '**/*.kt'
+              - '**/*.kts'
+              - '**/pom.xml'
+            javascript-typescript:
+              - '**/*.js'
+              - '**/*.jsx'
+              - '**/*.mjs'
+              - '**/*.cjs'
+              - '**/*.ts'
+              - '**/*.tsx'
+              - '**/*.html'
+              - '**/package.json'
+            python:
+              - '**/*.py'
+              - '**/pyproject.toml'
+              - '**/requirements*.txt'
+            c-cpp:
+              - 'ezkey-pam/**'
+            actions:
+              - '.github/workflows/**'
+              - '.github/actions/**'
+
+      - name: Resolve language matrix
+        id: resolve
+        env:
+          EVENT: ${{ github.event_name }}
+          SETUP: ${{ steps.filter.outputs.setup }}
+          JAVA: ${{ steps.filter.outputs.java-kotlin }}
+          JS: ${{ steps.filter.outputs.javascript-typescript }}
+          PY: ${{ steps.filter.outputs.python }}
+          CPP: ${{ steps.filter.outputs.c-cpp }}
+          ACTIONS: ${{ steps.filter.outputs.actions }}
+        run: |
+          set -euo pipefail
+          all=false
+          if [[ "$EVENT" != "pull_request" && "$EVENT" != "push" ]] || [[ "$SETUP" == "true" ]]; then
+            all=true
+          fi
+          entries=()
+          add() { entries+=("{\"language\":\"$1\",\"build-mode\":\"$2\"}"); }
+          if [[ "$all" == "true" || "$JAVA" == "true" ]]; then add java-kotlin none; fi
+          if [[ "$all" == "true" || "$JS" == "true" ]]; then add javascript-typescript none; fi
+          if [[ "$all" == "true" || "$PY" == "true" ]]; then add python none; fi
+          if [[ "$all" == "true" || "$CPP" == "true" ]]; then add c-cpp manual; fi
+          if [[ "$all" == "true" || "$ACTIONS" == "true" ]]; then add actions none; fi
+          matrix="[$(IFS=,; echo "${entries[*]:-}")]"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "CodeQL languages ($EVENT): $matrix"
+
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    needs: changes
+    if: needs.changes.outputs.matrix != '[]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: ${{ matrix.language == 'c-cpp' && 360 || 120 }}
+    permissions:
+      security-events: write
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.changes.outputs.matrix) }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          config-file: ./.github/codeql/codeql-config.yml
+
+      - name: Build ezkey-pam (C/C++ database)
+        if: matrix.language == 'c-cpp'
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential libpam0g-dev libcurl4-openssl-dev libcjson-dev
+          make -C ezkey-pam clean all
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          category: "/language:${{ matrix.language }}"
+        env:
+          # Advanced setup does NOT auto-detect `.github/codeql/extensions/`.
+          # `packs:` in codeql-config.yml only accepts registry `scope/name` refs,
+          # not filesystem paths. Load the local model pack the same way
+          # codeql-action loads its generated pr-diff-range pack:
+          #   --additional-packs = search path (parent of the pack directory)
+          #   --extension-packs  = pack name from qlpack.yml (`ezkey/java-models`)
+          # EXTRA_OPTIONS are appended after the action's own run-queries flags,
+          # so pr-diff-range (when present) and this pack both appear on the CLI.
+          # Java-kotlin only — the pack targets codeql/java-all.
+          CODEQL_ACTION_EXTRA_OPTIONS: >-
+            ${{ matrix.language == 'java-kotlin' &&
+            format('{{"database":{{"run-queries":["--additional-packs={0}/.github/codeql/extensions","--extension-packs=ezkey/java-models"]}}}}', github.workspace)
+            || '' }}

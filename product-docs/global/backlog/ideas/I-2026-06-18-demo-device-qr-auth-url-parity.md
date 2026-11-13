@@ -18,19 +18,19 @@
 Close the gap between **mobile QR-first enrollment** and the **Demo Device simulator**: when an
 Admin UI enrollment QR includes `authUrl`, the demo device must route bind/verify and subsequent
 Auth API calls for that enrollment to that base URL, while keeping a simple configured default for
-manual entry and Exp1-style deployments.
+manual entry and community-style deployments.
 
 ## Problem and value
 
 - **Problem:** Demo Device parses `authUrl` from QR (`enrollment-qr-import.js`) but only shows a
   mismatch warning; all server-side calls use `ezkey.auth.api.url`. Operators running standalone
-  Demo Device (default Exp1) against a **local** Admin UI enrollment see bind failures (HTTP 400)
+  Demo Device (default community) against a **local** Admin UI enrollment see bind failures (HTTP 400)
   even with a valid QR — configuration mismatch, not protocol or Java source drift.
 - **Expected value:**
   - Parity with mobile `installation.authUrl` routing.
   - Smoother local dev: standalone Demo Device on `:3080` + clean-start stack without mandatory
     `.env` override when QR carries the correct Auth API URL.
-  - Clearer simulator credibility for EXP1 and integrator demos.
+  - Clearer simulator credibility for the community host and integrator demos.
 
 ## Scope
 
@@ -48,13 +48,13 @@ manual entry and Exp1-style deployments.
   - Changing Admin UI QR payload format (already includes `authUrl` when configured).
   - Mobile app changes.
   - Multi-tenant routing beyond one URL per enrollment.
-  - Replacing Exp1 as Docker default for standalone repo.
+  - Replacing community as Docker default for standalone repo.
   - Playwright Admin UI browser tests (low risk; manual matrix sufficient).
 
 ## Key assumptions
 
 - Admin UI QR includes `authUrl` when instance branding / `authApiPublicBaseUrl` is set for the
-  target Auth API (local or Exp1).
+  target Auth API (local or community).
 - `enrollment-qr-import.js` validation rules remain the client-side first pass; server re-validates.
 - Demo Device remains a **simulator**, not a production mobile client — same contract, pragmatic
   security posture.
@@ -68,7 +68,7 @@ manual entry and Exp1-style deployments.
 ## Promotion notes
 
 Promoted to `TB-2026-06-18-demo-device-qr-auth-url-parity` after Grill Me settles UX edge cases.
-No separate `V-*` required — direction already established by mobile QR-first model and EXP1
+No separate `V-*` required — direction already established by mobile QR-first model and community host
 positioning.
 
 ## Links
@@ -80,7 +80,7 @@ positioning.
 - Tracer bullet: [`TB-2026-06-18-demo-device-qr-auth-url-parity.md`](TB-2026-06-18-demo-device-qr-auth-url-parity.md)
 - Implementation handoff: **TB § Implementation handoff (cold session bootstrap)**
 - Method log (Lane E retro): [`../method-logs/ML-2026-06-18-demo-device-qr-session.md`](../method-logs/ML-2026-06-18-demo-device-qr-session.md)
-- Observed incident: standalone `:3080` → `exp1-auth-api.ezkey.org` while enrollment 180 on local stack
+- Observed incident: standalone `:3080` → `auth-api.ezkey.online` while enrollment 180 on local stack
 
 ## Closeout (2026-06-18)
 

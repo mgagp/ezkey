@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="Community instance — Ezkey alpha on ezkey.online">
+    <meta property="og:description" content="Ezkey is in alpha. Try the maintained community instance on ezkey.online — not a production SLA, not vendor or WebAuthn parity.">
+    <meta property="og:url" content="https://ezkey.org/community-instance.html">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Ezkey">
+    <meta property="og:image" content="https://ezkey.org/logo.svg">
+    <meta property="og:locale" content="en_US">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Community instance — Ezkey alpha on ezkey.online">
+    <meta name="twitter:description" content="Ezkey is in alpha. Try the maintained community instance on ezkey.online — not a production SLA, not vendor or WebAuthn parity.">
+    <meta name="twitter:image" content="https://ezkey.org/logo.svg">
+
+    <link rel="canonical" href="https://ezkey.org/community-instance.html">
+    <link rel="alternate" hreflang="en" href="https://ezkey.org/community-instance.html">
+    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/community-instance.html">
+    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/community-instance.html">
+    <title>Community instance — Ezkey alpha on ezkey.online</title>
+    <meta name="description" content="Ezkey is in alpha. Try the maintained community instance on ezkey.online — limited access, honesty bounds, guided tour.">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #1a1a2e;
+            line-height: 1.65;
+        }
+
+        .shell {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 28px 20px 48px;
+        }
+
+        .nav-top {
+            font-size: 0.95rem;
+            margin-bottom: 20px;
+            color: rgba(255, 255, 255, 0.95);
+        }
+
+        .nav-top a {
+            color: rgba(255, 255, 255, 0.95);
+            text-decoration: underline;
+        }
+
+        .nav-top a:hover {
+            color: #fff;
+        }
+
+        article {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
+            padding: 40px 36px 40px;
+            text-align: left;
+        }
+
+        @media (max-width: 600px) {
+            article { padding: 28px 18px 32px; }
+        }
+
+        .doc-meta {
+            font-size: 0.85rem;
+            color: #555;
+            margin-bottom: 16px;
+        }
+
+        /* Hero: badge echoes the home page amber badge (static here: motion stays on the home hero). */
+        .hero {
+            text-align: center;
+            margin-bottom: 32px;
+            padding-bottom: 28px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .alpha-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.3rem 0.7rem 0.3rem 0.45rem;
+            border-radius: 12px;
+            background: linear-gradient(155deg, #fde68a 0%, #f59e0b 28%, #ea580c 62%, #7c2d12 100%);
+            color: #fffbeb;
+            box-shadow: 0 0 0 2px rgba(67, 20, 7, 0.35), 0 4px 12px rgba(234, 88, 12, 0.35);
+            margin-bottom: 16px;
+        }
+
+        .alpha-badge svg {
+            width: 1.15rem;
+            height: 1.15rem;
+            flex-shrink: 0;
+        }
+
+        .alpha-badge-text {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            line-height: 1.1;
+            text-shadow: 0 1px 2px rgba(67, 20, 7, 0.35);
+        }
+
+        .alpha-badge-main {
+            font-size: 0.72rem;
+            font-weight: 800;
+        }
+
+        .alpha-badge-sub {
+            font-size: 0.58rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .hero h1 {
+            font-size: 1.65rem;
+            font-weight: 800;
+            color: #111;
+            line-height: 1.25;
+            margin-bottom: 14px;
+        }
+
+        .lede {
+            max-width: 620px;
+            margin: 0 auto 22px;
+            font-size: 1.04rem;
+            color: #33334d;
+        }
+
+        .cta-row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 22px;
+            border-radius: 10px;
+            font-size: 0.98rem;
+            font-weight: 700;
+            text-decoration: none;
+            transition: transform 0.18s ease, box-shadow 0.18s ease;
+        }
+
+        .btn:focus-visible {
+            outline: 3px solid #f59e0b;
+            outline-offset: 2px;
+        }
+
+        article a.btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.35);
+        }
+
+        article a.btn-primary:hover {
+            color: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 22px rgba(102, 126, 234, 0.45);
+        }
+
+        article a.btn-secondary {
+            background: #fff;
+            color: #4a56c4;
+            border: 2px solid #c7cbf2;
+        }
+
+        article a.btn-secondary:hover {
+            border-color: #667eea;
+            color: #3847a8;
+        }
+
+        .cta-note {
+            font-size: 0.86rem;
+            color: #5a5a72;
+            margin: 0;
+        }
+
+        h2 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #222;
+            margin: 34px 0 14px;
+        }
+
+        p {
+            margin-bottom: 12px;
+            font-size: 0.98rem;
+        }
+
+        strong {
+            font-weight: 700;
+            color: #1a1a2e;
+        }
+
+        article a {
+            color: #4a56c4;
+            font-weight: 600;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+
+        article a:hover {
+            color: #3847a8;
+        }
+
+        /* Choices as cards. */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 14px;
+        }
+
+        .card {
+            display: flex;
+            flex-direction: column;
+            padding: 18px 18px 16px;
+            border: 1px solid #e3e4f3;
+            border-radius: 12px;
+            background: #fafaff;
+        }
+
+        .card--highlight {
+            border: 2px solid #667eea;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+        }
+
+        .card-eyebrow {
+            font-size: 0.7rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 6px;
+        }
+
+        .card-title {
+            font-size: 1.04rem;
+            font-weight: 700;
+            color: #111;
+            margin-bottom: 8px;
+        }
+
+        .card p {
+            font-size: 0.92rem;
+            color: #33334d;
+            flex: 1;
+        }
+
+        .card .card-foot {
+            flex: 0;
+            margin: 4px 0 0;
+            font-size: 0.85rem;
+            color: #5a5a72;
+        }
+
+        /* Inventory as tiles. */
+        .tile-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 12px;
+            margin-top: 6px;
+        }
+
+        .tile {
+            padding: 14px 16px;
+            border-left: 4px solid #667eea;
+            border-radius: 8px;
+            background: #f6f6fc;
+        }
+
+        .tile-title {
+            font-weight: 700;
+            font-size: 0.98rem;
+            color: #111;
+            margin-bottom: 4px;
+        }
+
+        .tile p {
+            font-size: 0.9rem;
+            color: #33334d;
+            margin-bottom: 6px;
+        }
+
+        .tile .tile-host {
+            margin: 0;
+            font-size: 0.86rem;
+            overflow-wrap: anywhere;
+        }
+
+        .status-pill {
+            display: inline-block;
+            margin-left: 6px;
+            padding: 1px 8px;
+            border-radius: 20px;
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            vertical-align: 2px;
+            color: #92400e;
+            background: #fff8e6;
+            border: 1px solid #f5d48a;
+        }
+
+        /* Caveats said once. */
+        .scope-box {
+            margin: 34px 0 0;
+            padding: 18px 20px;
+            background: #fff8e6;
+            border-left: 4px solid #c9a227;
+            border-radius: 8px;
+        }
+
+        .scope-box h2 {
+            margin: 0 0 10px;
+            font-size: 1.05rem;
+        }
+
+        .scope-box ul {
+            margin: 0 0 0 1.15rem;
+        }
+
+        .scope-box li {
+            margin-bottom: 6px;
+            font-size: 0.92rem;
+        }
+
+        /* Sequences as steps. */
+        .steps {
+            list-style: none;
+            counter-reset: step;
+            display: grid;
+            gap: 12px;
+        }
+
+        .steps li {
+            counter-increment: step;
+            position: relative;
+            padding: 4px 0 4px 48px;
+            min-height: 36px;
+            font-size: 0.98rem;
+        }
+
+        .steps li::before {
+            content: counter(step);
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .steps .step-title {
+            display: block;
+            font-weight: 700;
+            color: #111;
+        }
+
+        .steps .step-desc {
+            font-size: 0.92rem;
+            color: #33334d;
+        }
+
+        .page-foot {
+            margin-top: 30px;
+            padding-top: 18px;
+            border-top: 1px solid #e3e4f3;
+            font-size: 0.92rem;
+            color: #33334d;
+        }
+
+        .page-foot p {
+            font-size: 0.92rem;
+        }
+
+        footer.doc-footer {
+            margin-top: 24px;
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.75);
+            text-align: center;
+        }
+
+        footer.doc-footer a {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        @media print {
+            body { background: #fff; }
+            .shell { max-width: none; padding: 0; }
+            .nav-top, footer.doc-footer, .cta-row { display: none; }
+            article { box-shadow: none; border-radius: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <p class="nav-top">
+            <a href="/">Home (English)</a>
+            · <a href="/fr/community-instance.html">Français (this article)</a>
+            · <a href="/fr/">French home</a>
+        </p>
+
+        <article>
+            <p class="doc-meta">Product · alpha · community instance</p>
+
+            <header class="hero">
+                <span class="alpha-badge">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path fill="currentColor" fill-rule="evenodd" d="M15.75 1.5a6.75 6.75 0 0 0-6.651 7.906c.067.39-.032.717-.221.906l-6.5 6.499a3 3 0 0 0-.878 2.121v2.818c0 .414.336.75.75.75H6a.75.75 0 0 0 .75-.75v-1.5h1.5A.75.75 0 0 0 9 19.5V18h1.5a.75.75 0 0 0 .53-.22l2.658-2.658c.19-.189.517-.288.906-.22A6.75 6.75 0 1 0 15.75 1.5Zm0 3a.75.75 0 0 0 0 1.5A2.25 2.25 0 0 1 18 8.25a.75.75 0 0 0 1.5 0 3.75 3.75 0 0 0-3.75-3.75Z" clip-rule="evenodd"/>
+                    </svg>
+                    <span class="alpha-badge-text">
+                        <span class="alpha-badge-main">Alpha</span>
+                        <span class="alpha-badge-sub">ezkey.online</span>
+                    </span>
+                </span>
+                <h1>Community instance — try Ezkey in alpha</h1>
+                <p class="lede">Ezkey is a product in alpha. The product site stays on ezkey.org; a maintained community instance runs on <strong>ezkey.online</strong> so evaluators can try the live stack, without any claim of a production offering.</p>
+                <div class="cta-row">
+                    <a class="btn btn-primary" href="/community-signup.html">Get instant access</a>
+                    <a class="btn btn-secondary" href="mailto:info@ezkey.org">Request reviewed access</a>
+                </div>
+                <p class="cta-note">Instant access has limited daily slots · Alpha, no production SLA</p>
+            </header>
+
+            <h2>Three ways in</h2>
+            <div class="card-grid">
+                <div class="card">
+                    <span class="card-eyebrow">Invitation</span>
+                    <span class="card-title">You were invited</span>
+                    <p>Direct invitations come first, aimed at specific profiles: engineering, product, specialized press.</p>
+                    <p class="card-foot">Activation code by email.</p>
+                </div>
+                <div class="card card--highlight">
+                    <span class="card-eyebrow">Instant · limited daily slots</span>
+                    <span class="card-title">Sign up now</span>
+                    <p>When enabled on the instance, <a href="/community-signup.html">request a workspace</a> and get a one-time activation code on the spot, with no email needed. When the day's slots are taken, try again later or write to us.</p>
+                    <p class="card-foot">Code shown immediately.</p>
+                </div>
+                <div class="card">
+                    <span class="card-eyebrow">By email</span>
+                    <span class="card-title">Ask for reviewed access</span>
+                    <p>Write to <a href="mailto:info@ezkey.org">info@ezkey.org</a> in a few sentences: who you are and what you want to validate. Capacity is small and each request is reviewed; a reply is not guaranteed.</p>
+                    <p class="card-foot">Code by email, allow about two business days.</p>
+                </div>
+            </div>
+
+            <h2>What you can use on ezkey.online</h2>
+            <p>An all-in-one deployment meant for low volume and evaluation, not for load or the assurances of a production environment.</p>
+            <div class="tile-grid">
+                <div class="tile">
+                    <p class="tile-title">Administration (tenant scope)</p>
+                    <p>Where you start with your activation code.</p>
+                    <p class="tile-host"><a href="https://admin-ui.ezkey.online" rel="noopener noreferrer">admin-ui.ezkey.online</a></p>
+                </div>
+                <div class="tile">
+                    <p class="tile-title">Acme integration demo</p>
+                    <p>A sample application that signs you in with Ezkey.</p>
+                    <p class="tile-host"><a href="https://demo-acme.ezkey.online" rel="noopener noreferrer">demo-acme.ezkey.online</a></p>
+                </div>
+                <div class="tile">
+                    <p class="tile-title">Ezkey Demo Device</p>
+                    <p>A simulated phone (public GitHub project) that stands in for the mobile app during evaluation.</p>
+                    <p class="tile-host"><a href="https://github.com/mgagp/ezkey-demo-device" rel="noopener noreferrer">github.com/mgagp/ezkey-demo-device</a></p>
+                </div>
+                <div class="tile">
+                    <p class="tile-title">Mobile app (Android) <span class="status-pill">Internal testing</span></p>
+                    <p>Early-adopter preview; not the default path for anonymous evaluators.</p>
+                </div>
+                <div class="tile">
+                    <p class="tile-title">Admin API</p>
+                    <p>Plus parallel Auth and Integration API hostnames on the same domain, for tooling.</p>
+                    <p class="tile-host"><a href="https://admin-api.ezkey.online" rel="noopener noreferrer">admin-api.ezkey.online</a></p>
+                </div>
+            </div>
+
+            <h2>Your role: tenant administrator</h2>
+            <p>Administration has two levels: global (the whole instance) and tenant (one organization). <strong>On the community instance, you act as a tenant administrator</strong>, which is enough for the Acme demo, enrollments, and authentication with the mobile app or the Demo Device.</p>
+            <p>Ezkey supports other enrollment paths (including QR and recovery); here, the documented path is the activation code.</p>
+
+            <aside class="scope-box" aria-labelledby="before-you-start">
+                <h2 id="before-you-start">Before you start</h2>
+                <ul>
+                    <li><strong>Alpha, not production:</strong> no production SLA.</li>
+                    <li>Ezkey is not Duo / Okta / Keycloak parity, and not WebAuthn / FIDO2 / passkey equivalence.</li>
+                    <li>The community host runs the <em>integrity</em> profile by default (audit-trail integrity checks on); <em>base</em> is an opt-in profile for limited claims, not an “eval-by-default” posture.</li>
+                    <li>Mobile: Android only in this milestone; no iOS release date announced. The app does not yet have the full hardening of a shipping production release. Local secret storage is already strengthened; app-open locking (biometrics or an equivalent strong mechanism) is on the roadmap. If it is missing or partial here, treat that as a transitional state, not the final model.</li>
+                </ul>
+            </aside>
+
+            <h2>Next: three steps</h2>
+            <ol class="steps">
+                <li>
+                    <span class="step-title">Get an activation code</span>
+                    <span class="step-desc"><a href="/community-signup.html">Instant signup</a> when slots are available, or by email after review.</span>
+                </li>
+                <li>
+                    <span class="step-title">Sign in to the Admin UI with it</span>
+                    <span class="step-desc"><a href="https://admin-ui.ezkey.online" rel="noopener noreferrer">admin-ui.ezkey.online</a>, as a tenant administrator.</span>
+                </li>
+                <li>
+                    <span class="step-title">Follow the guided tour</span>
+                    <span class="step-desc">The <a href="/community-guided-tour.html">illustrated walkthrough</a> covers enrollment and the Acme demo, through to a successful sign-in.</span>
+                </li>
+            </ol>
+
+            <div class="page-foot">
+                <p>Feedback (flows, bugs, ideas): <a href="mailto:info@ezkey.org">info@ezkey.org</a>. Matters covered by the product policy: see the <a href="/privacy.html">privacy policy</a>.</p>
+                <p><a href="/">← Back to ezkey.org</a></p>
+            </div>
+        </article>
+
+        <footer class="doc-footer">
+            <p>Ezkey · <a href="/">ezkey.org</a></p>
+        </footer>
+    </div>
+</body>
+</html>

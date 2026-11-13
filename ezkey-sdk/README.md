@@ -17,7 +17,11 @@ pending / respond). Details: [`java/README.md`](java/). Living demo: `ezkey-demo
 |----------|-----------|--------|
 | JavaScript/TypeScript | [`javascript/`](javascript/) | Generated Admin + Auth OpenAPI clients (separate from the Java Integration API client) |
 | Python | [`python/`](python/) | Experimental / incomplete vs the Java Integration API client |
-| .NET | [`dotnet/`](dotnet/) | Experimental / incomplete vs the Java Integration API client |
+
+**.NET:** no SDK today. The former `dotnet/` folder held only a project file and a README, with no
+source code; it was removed on 2026-11-06 (Marc's decision) because it advertised coverage and a
+package that never existed. A .NET client may return later as a laboratory session after the Java
+SDK is validated ([#1219](https://github.com/mgagp/ezkey/issues/1219)).
 
 ## API surfaces (do not mix)
 

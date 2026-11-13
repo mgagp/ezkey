@@ -191,6 +191,32 @@ export function integrityExclusiveDateRangeToApiParams(
 }
 
 /**
+ * Inverse of {@link integrityExclusiveDateRangeToApiParams}: exclusive Instant bounds
+ * back to inclusive calendar YYYY-MM-DD for Integrity UI display.
+ *
+ * {@code createdBefore} is exclusive (start of the day after the inclusive end). Displaying
+ * it with a naive Instant→local date conversion shows +1 day — subtract one calendar day
+ * after formatting in the active zone.
+ */
+export function integrityExclusiveApiParamsToDisplayRange(
+  createdAfter: string,
+  createdBefore: string,
+  timeZone?: string,
+): { from: string; to: string } {
+  const fromInstant = new Date(createdAfter);
+  const toExclusiveInstant = new Date(createdBefore);
+  if (timeZone) {
+    const from = formatYmdInTimeZone(fromInstant, timeZone);
+    const exclusiveToYmd = formatYmdInTimeZone(toExclusiveInstant, timeZone);
+    return { from, to: addDaysYmd(exclusiveToYmd, -1) };
+  }
+  return {
+    from: toYYYYMMDD(fromInstant),
+    to: addDaysYmd(toYYYYMMDD(toExclusiveInstant), -1),
+  };
+}
+
+/**
  * Estimates the wall-clock hours between integrity API bounds for a calendar date range.
  */
 export function estimateIntegrityWindowHours(

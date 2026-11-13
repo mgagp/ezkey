@@ -550,6 +550,24 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
   }
 
   /**
+   * Returns the 7-character git SHA embedded at native compile time, or {@code unknown} when git
+   * was unavailable. About uses this as the public-alpha revision, matching ezkey.org chrome.
+   *
+   * @param promise Resolved with the short SHA string.
+   * @since 2026
+   */
+  @ReactMethod
+  fun getGitShortSha(promise: Promise) {
+    try {
+      promise.resolve(BuildConfig.GIT_SHORT_SHA)
+    } catch (error: SecurityException) {
+      promise.reject(ERROR_CODE_GIT_SHA, error)
+    } catch (error: IllegalStateException) {
+      promise.reject(ERROR_CODE_GIT_SHA, error)
+    }
+  }
+
+  /**
    * Generates a device proof token for pending auth: same wire format as {@code
    * SignatureService.generateProofToken()} in ezkey-core (32 + 16 random bytes, URL-safe Base64
    * without padding, dot-separated). Uses {@link SecureRandom} (platform CSPRNG); does not depend
@@ -815,6 +833,7 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
     private const val ERROR_CODE_DELETE = "EZK_DELETE_ERROR"
     private const val ERROR_CODE_VERIFY = "EZK_VERIFY_ERROR"
     private const val ERROR_CODE_BUILD_TIMESTAMP = "EZK_BUILD_TIMESTAMP_ERROR"
+    private const val ERROR_CODE_GIT_SHA = "EZK_GIT_SHA_ERROR"
     private const val ERROR_CODE_PROOF_TOKEN = "EZK_PROOF_TOKEN_ERROR"
     private const val ERROR_CODE_STORAGE_TIER = "EZK_STORAGE_TIER_ERROR"
     private const val ERROR_CODE_SEAL_SECRET = "EZK_SEAL_SECRET_ERROR"

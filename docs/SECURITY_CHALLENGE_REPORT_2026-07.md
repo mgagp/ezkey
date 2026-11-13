@@ -655,9 +655,9 @@ SEC-017 is useful, but backend 403 tests—not Playwright—must prove that secu
 
 ## 5. Deployment boundary assessment
 
-The production-oriented Docker profile and EXP1 edge have meaningful controls: required Tink and
-audit integrity, health-only management exposure, TLS 1.3 at the EXP1 edge, blocked public Swagger
-on EXP1, loopback-bound PostgreSQL, and non-root Java containers.
+The production-oriented Docker profile and community edge have meaningful controls: required Tink and
+audit integrity, health-only management exposure, TLS 1.3 at the community edge, blocked public Swagger
+on the community host, loopback-bound PostgreSQL, and non-root Java containers.
 
 The standard local stack intentionally optimizes demonstration and test productivity. It must not
 be mistaken for a production baseline:
@@ -671,7 +671,7 @@ be mistaken for a production baseline:
 - Swagger/OpenAPI remains public on direct Docker API ports.
 
 These are not promoted into separate product-vulnerability IDs because the repository documents
-them as local/demo tooling and provides `--prod-safe` plus an EXP1-specific edge posture. They are,
+them as local/demo tooling and provides `--prod-safe` plus a community edge posture. They are,
 however, a material deployment trap. Release and operator guidance should make the boundary
 unmistakable:
 
@@ -708,7 +708,7 @@ promotion:
 - when `encryption.required=false`, a missing keyset file can auto-generate a new keyset and make
   existing ciphertext unreadable.
 
-The normal Docker/EXP1 posture already mitigates the last item with `encryption.required=true`.
+The normal Docker/community posture already mitigates the last item with `encryption.required=true`.
 None of these candidates is presented as a demonstrated authentication bypass.
 
 ---

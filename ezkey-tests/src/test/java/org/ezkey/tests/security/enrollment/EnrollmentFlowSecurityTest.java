@@ -83,7 +83,6 @@ public class EnrollmentFlowSecurityTest extends AbstractSecurityTest {
       // Step 3: Bind device via Auth API
       configureForAuthApi(dockerStackConfig);
       Map<String, Object> bindRequest = new HashMap<>();
-      bindRequest.put("enrollmentId", enrollmentId);
       bindRequest.put("enrollmentProofToken", enrollmentProofToken);
 
       Response bindResponse =
@@ -165,7 +164,6 @@ public class EnrollmentFlowSecurityTest extends AbstractSecurityTest {
       // Try to bind with invalid proof token
       configureForAuthApi(dockerStackConfig);
       Map<String, Object> bindRequest = new HashMap<>();
-      bindRequest.put("enrollmentId", enrollmentId);
       bindRequest.put("enrollmentProofToken", "invalid-proof-token");
 
       Response bindResponse =
@@ -215,7 +213,6 @@ public class EnrollmentFlowSecurityTest extends AbstractSecurityTest {
 
       configureForAuthApi(dockerStackConfig);
       Map<String, Object> bindRequest = new HashMap<>();
-      bindRequest.put("enrollmentId", enrollmentId);
       bindRequest.put("enrollmentProofToken", enrollmentProofToken);
 
       Response bindResp =
@@ -284,10 +281,9 @@ public class EnrollmentFlowSecurityTest extends AbstractSecurityTest {
           .isNotEmpty();
       boolean hasVerifyFailed =
           auditContent.stream()
-              .anyMatch(
-                  e ->
-                      "enrollment_verify_failed".equals(e.get("eventAction"))
-                          && enrollmentId.equals(e.get("enrollmentId")));
+              .anyMatch(e ->
+                  "enrollment_verify_failed".equals(e.get("eventAction"))
+                      && enrollmentId.equals(e.get("enrollmentId")));
       assertThat(hasVerifyFailed)
           .as(
               "At least one audit entry must have eventAction=enrollment_verify_failed and"
@@ -329,7 +325,6 @@ public class EnrollmentFlowSecurityTest extends AbstractSecurityTest {
 
       configureForAuthApi(dockerStackConfig);
       Map<String, Object> bindRequest = new HashMap<>();
-      bindRequest.put("enrollmentId", enrollmentId);
       bindRequest.put("enrollmentProofToken", enrollmentProofToken);
 
       Response bindResp =

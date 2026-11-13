@@ -12,11 +12,12 @@ instance metadata. Applications that depend on ezkey-core declare these properti
 | Property | Docker env var | Default | Obligation |
 |---|---|---|---|
 | `ezkey.encryption.enabled` | — | `true` | optionnel |
-| `ezkey.encryption.required` | `EZKEY_ENCRYPTION_REQUIRED` | `false` | optionnel [prod] / **true [docker]** |
+| `ezkey.encryption.required` | `EZKEY_ENCRYPTION_REQUIRED` | `true` | optionnel [prod] / **true [docker]** |
 | `ezkey.encryption.master-key-file` | — | *(null)* | requis [docker] |
-| `ezkey.encryption.keyset-file` | — | *(null)* | requis [docker] lors du mode FILE/HYBRID |
+| `ezkey.encryption.keyset-file` | — | *(null)* | unused at runtime (ADR-0016); retained for config compatibility only |
 | `ezkey.encryption.algorithm` | — | `AES256_GCM` | optionnel |
-| `ezkey.encryption.keyset.storage-mode` | — | `DATABASE` | optionnel |
+| `ezkey.encryption.keyset.storage-mode` | — | `DATABASE` | optionnel (DATABASE only) |
+| `ezkey.encryption.keyset.version-check-interval` | — | `PT5S` | optionnel (clamped ≤ 5 s) |
 | `ezkey.encryption.keyset.writer` | `EZKEY_ENCRYPTION_KEYSET_WRITER` | `false` | **true [admin]** |
 | `ezkey.encryption.keyset.bootstrap-wait` | `EZKEY_ENCRYPTION_KEYSET_BOOTSTRAP_WAIT` | `PT90S` | optionnel |
 | `ezkey.audit.integrity.enabled` | — | `true` | optionnel |
@@ -31,13 +32,17 @@ instance metadata. Applications that depend on ezkey-core declare these properti
 | `ezkey.audit.archive.purge-delay` | — | `P30D` | optionnel |
 | `ezkey.audit.archive.purge.enabled` | — | `true` | optionnel |
 | `ezkey.audit.archive.purge.cron` | — | `0 0 2 * * ?` | optionnel |
-| `ezkey.organization.name` | — | `Ezkey System` | optionnel |
+| `ezkey.organization.name` | `EZKEY_ORGANIZATION_NAME` | `Ezkey System` | optionnel |
+| `ezkey.organization.description` | `EZKEY_ORGANIZATION_DESCRIPTION` | `Ezkey MFA instance for your organization` | optionnel |
 | `ezkey.organization.about-url` | `EZKEY_ORGANIZATION_ABOUT_URL` | *(null)* | optionnel |
 | `ezkey.qr.auth-base-url` | `EZKEY_QR_AUTH_BASE_URL` | *(null)* | requis [docker] |
 | `ezkey.enrollment.pending-expiration-days` | — | `7` | optionnel |
 | `ezkey.core.crypto.rsa-key-size` | — | `2048` | optionnel |
 | `ezkey.core.auth-attempt.challenge-digits` | — | `2` | optionnel |
 | `ezkey.core.auth-attempt.ttl-seconds` | — | `120` | optionnel |
+| `ezkey.core.auth-attempt.cooldown-threshold` | — | `3` | optionnel |
+| `ezkey.core.auth-attempt.cooldown-window-seconds` | — | `600` | optionnel |
+| `ezkey.core.auth-attempt.cooldown-duration-seconds` | — | `300` | optionnel |
 
 ---
 
@@ -57,7 +62,10 @@ plus authentication attempt challenge configuration.
 | `ezkey.core.crypto.signature-algorithm` | `String` | `SHA256withRSA` | optionnel | Digital signature algorithm. |
 | `ezkey.core.crypto.minimum-key-size` | `int` | `2048` | optionnel | Minimum RSA key size for validation; keys smaller than this are rejected. |
 | `ezkey.core.auth-attempt.challenge-digits` | `int` | `2` | optionnel | Number of digits in the challenge code (range 1–6). |
-| `ezkey.core.auth-attempt.ttl-seconds` | `int` | `120` | optionnel | Auth attempt time-to-live in seconds (range 30–600). |
+| `ezkey.core.auth-attempt.ttl-seconds` | `int` | `120` | optionnel | Default auth attempt TTL when Integration create omits `ttlSeconds` (Bean Validation range **30–600**). **Applied** create TTL is always `min(request\|default, **120**)` (#895 Patrick M2). At startup a configured default **> 120** is clamped to **120** with a WARN. Per-request `ttlSeconds`: min **15**, hard clamp **120**; non-integer JSON rejected. |
+| `ezkey.core.auth-attempt.cooldown-threshold` | `int` | `3` | optionnel | Device-signed REJECTED or INVALID attempts inside the window that suspend further creates for that enrollment, on every integration. `0` disables the cooldown. Derived from existing attempt rows; no extra counter (#992). EXPIRED is not counted. Supersession and cancellation write EXPIRED only from PENDING or READ, so they do not arm the cooldown. |
+| `ezkey.core.auth-attempt.cooldown-window-seconds` | `int` | `600` | optionnel | Counting window (10 minutes) on attempt `createdAt` of the counted statuses only (`REJECTED` and `INVALID`). Scheduler-written `EXPIRED` is not in that set. |
+| `ezkey.core.auth-attempt.cooldown-duration-seconds` | `int` | `300` | optionnel | Suspension length after a crossing (5 minutes). It expires on its own. |
 
 **Exemple minimal :**
 
@@ -65,6 +73,9 @@ plus authentication attempt challenge configuration.
 # All defaults are production-viable; override only if necessary.
 ezkey.core.auth-attempt.challenge-digits=2
 ezkey.core.auth-attempt.ttl-seconds=120
+ezkey.core.auth-attempt.cooldown-threshold=3
+ezkey.core.auth-attempt.cooldown-window-seconds=600
+ezkey.core.auth-attempt.cooldown-duration-seconds=300
 ```
 
 ---
@@ -84,13 +95,26 @@ version check so encrypt/decrypt does not serialize on DB sync. See
 Admin-only materialization of the blob and of `ezkey_encryption_key` metadata:
 [ADR-0012](../product-docs/global/architecture-decisions.md#adr-0012-admin-owned-keyset-materialization).
 
-**HA keyset sync (operator summary):** Use `storage-mode=DATABASE` so `ezkey_keyset_blob` is the
-shared source of truth across Admin/Auth/Integration instances. On introduce, a new key stays
-`PENDING` for `rotation.sync-window-seconds` before promotion to `PRIMARY`, giving instances time
-to reload the updated keyset (async check in ADR-0008) while encrypt still uses the previous
-primary; Tink can decrypt with older ENABLED keys throughout. In the Docker stack the mode remains
-`DATABASE`, but the shared `encryption-secrets` volume also mounts the keyset file as a
-cache/backup path — do not treat that shared file alone as the multi-instance sync contract.
+**HA keyset sync (operator summary):** `storage-mode=DATABASE` only (ADR-0016). `ezkey_keyset_blob`
+is the sole runtime source of truth across Admin/Auth/Integration (and lab crypto-api). On introduce,
+a new key stays `PENDING` for `rotation.sync-window-seconds` before promotion to `PRIMARY`, giving
+instances time to reload the updated keyset (async check ≤ 5 s in ADR-0008 / ADR-0016) while encrypt
+still uses the previous primary; Tink can decrypt with older ENABLED keys throughout. The shared
+`encryption-secrets` volume holds **`master.key` and `audit-hmac.key` only** — not keyset-file
+authority.
+
+**crypto-api (local clean-start lab only):** `DATABASE`, `writer=false`, read-only DataSource with
+SELECT-only DB role on `ezkey_keyset_blob`. AEAD recovery reloads the blob. Not deployed on
+Lightsail / ezkey.online. See ADR-0016 and design pack §2.5.
+
+**Windows native checklist** (`application-windows.properties`):
+
+| Property | Admin | Auth |
+|----------|-------|------|
+| `ezkey.encryption.keyset.storage-mode` | `DATABASE` | `DATABASE` |
+| `ezkey.encryption.keyset.writer` | `true` | `false` |
+| `ezkey.encryption.keyset.degraded-mode-enabled` | `false` | `false` |
+| `ezkey.encryption.required` | `true` | `true` |
 
 **Defined in:** `TinkProperties`
 
@@ -99,32 +123,32 @@ cache/backup path — do not treat that shared file alone as the multi-instance 
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
 | `ezkey.encryption.enabled` | `boolean` | `true` | optionnel | Enable/disable encryption at rest. |
-| `ezkey.encryption.required` | `boolean` | `false` | optionnel [prod] / **requis [docker]** | When `true`, fail startup if encryption is enabled but Tink cannot initialize (SEC-002). Also fail-closed on **read** and **write** of at-rest fields via `AtRestEncryptionAccess` (ApiKey, Enrollment, AuthAttempt). Docker profile sets `true`. |
+| `ezkey.encryption.required` | `boolean` | `true` | optionnel [prod] / **requis [docker]** | When `true`, fail startup if encryption is enabled but Tink cannot initialize (SEC-002). Also fail-closed on **read** and **write** of at-rest fields via `AtRestEncryptionAccess` (ApiKey, Enrollment, AuthAttempt). Default `true` (#961 C-M1); set `false` only for explicit degraded lab tests. |
 | `ezkey.encryption.master-key-file` | `String` | *(null)* | requis [docker] | Path to the Base64-encoded 256-bit master key file (e.g. `/etc/ezkey/secrets/master.key`). |
-| `ezkey.encryption.keyset-file` | `String` | *(null)* | requis [docker] en mode FILE/HYBRID | Path to the encrypted Tink keyset file (e.g. `/etc/ezkey/keysets/keyset.json.encrypted`). |
+| `ezkey.encryption.keyset-file` | `String` | *(null)* | unused at runtime | Legacy path property; API processes do not read/write a keyset file after ADR-0016. |
 | `ezkey.encryption.algorithm` | `String` | `AES256_GCM` | optionnel | AEAD algorithm. Accepted values: `AES256_GCM`, `CHACHA20_POLY1305`. |
 
 #### Keyset Storage (`ezkey.encryption.keyset.*`)
 
-In `DATABASE` and `HYBRID` modes, `ezkey_keyset_blob.keyset_data` stores Tink's
-encrypted-keyset JSON envelope directly. The key material remains encrypted by the configured
-master key; Tink envelope metadata such as key IDs and primary-key status may remain visible and is
-treated as non-secret operational metadata.
+`ezkey_keyset_blob.keyset_data` stores Tink's encrypted-keyset JSON envelope. The key material
+remains encrypted by the configured master key; Tink envelope metadata such as key IDs (**kids**)
+and primary-key status may remain visible and is treated as non-secret operational metadata.
 
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
-| `ezkey.encryption.keyset.storage-mode` | `StorageMode` | `DATABASE` | optionnel | Enum: `FILE` (file only), `DATABASE` (DB as source of truth), `HYBRID` (both, DB preferred). Use `DATABASE` in multi-instance deployments. |
-| `ezkey.encryption.keyset.writer` | `boolean` | `false` | **requis [admin]** | When `true`, this process may upsert `ezkey_keyset_blob` and `ezkey_encryption_key` metadata. Admin API sets `true`. Auth/Integration keep the default `false` (ADR-0012). Do not reuse `rotation.enabled`. |
-| `ezkey.encryption.keyset.bootstrap-wait` | `Duration` | `PT90S` | optionnel | How long a non-writer waits for `ezkey_keyset_blob` on DATABASE/HYBRID boot before fail-closed (`required=true`). |
+| `ezkey.encryption.keyset.storage-mode` | `StorageMode` | `DATABASE` | optionnel | **DATABASE only** after ADR-0016 (`FILE` / `HYBRID` removed). |
+| `ezkey.encryption.keyset.writer` | `boolean` | `false` | **requis [admin]** | When `true`, this process may upsert `ezkey_keyset_blob` and `ezkey_encryption_key` metadata. Admin API sets `true`. Auth/Integration/crypto-api keep `false` (ADR-0012). Do not reuse `rotation.enabled`. |
+| `ezkey.encryption.keyset.bootstrap-wait` | `Duration` | `PT90S` | optionnel | How long a non-writer waits for `ezkey_keyset_blob` on boot before fail-closed (`required=true`). |
 | `ezkey.encryption.keyset.bootstrap-poll-interval` | `Duration` | `PT1S` | optionnel | Sleep between blob polls during `bootstrap-wait`. Tests may use a millisecond interval. |
-| `ezkey.encryption.keyset.degraded-mode-enabled` | `boolean` | `false` | optionnel | When true, a decryption failure triggers a DB reload and a read-only degraded mode instead of a hard failure. |
+| `ezkey.encryption.keyset.version-check-interval` | `Duration` | `PT5S` | optionnel | Async DB version-check tick. Hard upper bound **5 s** (clamped). |
+| `ezkey.encryption.keyset.degraded-mode-enabled` | `boolean` | `false` | optionnel | When true, a decryption failure triggers a DB reload path; decrypt itself remains fail-closed (never returns ciphertext as plaintext). |
 | `ezkey.encryption.keyset.max-reload-retries` | `int` | `1` | optionnel | Maximum keyset reload attempts on decryption failure. |
 
 #### Key Rotation (`ezkey.encryption.rotation.*`)
 
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
-| `ezkey.encryption.rotation.enabled` | `boolean` | `true` | optionnel | Enable scheduled key rotation. Disable in Auth API and Integration API. |
+| `ezkey.encryption.rotation.enabled` | `boolean` | `true` | optionnel | Enable scheduled key rotation **and** `KEY_PROMOTION`. When `false`, encryption/Tink may stay on while promotion idles (base runtime). Disable in Auth API and Integration API. |
 | `ezkey.encryption.rotation.schedule` | `String` | `0 0 2 * * ?` | optionnel | Cron schedule for rotation checks (daily at 2 AM by default). |
 | `ezkey.encryption.rotation.max-key-age-days` | `int` | `90` | optionnel | Maximum primary key age in days before automatic rotation. |
 | `ezkey.encryption.rotation.backup-before-rotation` | `boolean` | `true` | optionnel | Create a keyset backup before each rotation for rollback capability. |
@@ -159,9 +183,9 @@ treated as non-secret operational metadata.
 ezkey.encryption.enabled=true
 ezkey.encryption.required=true
 ezkey.encryption.master-key-file=/etc/ezkey/secrets/master.key
-ezkey.encryption.keyset-file=/etc/ezkey/keysets/keyset.json.encrypted
 ezkey.encryption.algorithm=AES256_GCM
 ezkey.encryption.keyset.storage-mode=DATABASE
+ezkey.encryption.keyset.writer=true
 ```
 
 ---
@@ -257,19 +281,74 @@ raw wall-clock `now()` with sub-second precision into chain range queries.
 **Registry:** successful runs update `NIGHTLY_INTEGRITY_VALIDATION` in `ezkey_scheduled_job_last_run`.
 Batch infrastructure failures record `FAILED` on the registry row only (C9 — no “batch did not run” alert).
 
-`enabled=false` idles the **scheduler only** — operator `POST /api/v1/audit-logs/integrity-validation/run` remains available when HMAC is active.
+`enabled=false` idles the **scheduler** and fail-closes operator `POST /api/v1/audit-logs/integrity-validation/run` and async `POST …/integrity/jobs` with type `RUN_VALIDATION` with HTTP 409 (`integrity-validation-disabled`). HMAC-inactive remains a 200 skipped result when the flag is on. Gate on this flag, not on the product runtime profile name.
 
 ---
 
-### Operator retroactive validation (`ezkey.audit.integrity.retroactive.*`)
+### Integrity async operator jobs (`ezkey.audit.integrity.async-job.*`)
 
-**Description:** Caps and configuration for Global Admin `POST …/integrity-validation/run` (B2.7). Uses the same orchestration as the nightly batch; operator runs do **not** update the nightly job registry.
+**Description:** Single global slot for long Integrity Admin UI/API operations (chain range verify,
+entry HMAC range verify, run validation). DB-backed (`ezkey_integrity_async_job`); distinct from
+`ezkey_scheduled_job_last_run`. Occupied slot → HTTP 409. TTL expiry without heartbeat → EXPIRED.
 
-**Defined in:** `RetroactiveIntegrityProperties`
+**Defined in:** `IntegrityAsyncJobProperties`
 
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
-| `ezkey.audit.integrity.retroactive.operator-max-window-hours` | `Integer` | *(null — no cap)* | optionnel | When set, hard-reject operator POST when `[from, to)` exceeds this many hours. When unset, operator POST accepts the same bounds as GET verify (no duration limit). Nightly scheduled window remains `nightly.window-hours`. |
+| `ezkey.audit.integrity.async-job.enabled` | `boolean` | `false` | **true [admin runtime]** | When `true`, Admin API loads Integrity async job beans (`org.ezkey.audit.asyncjob`). Auth/Integration leave unset/`false` (least privilege on `ezkey_integrity_async_job`). |
+| `ezkey.audit.integrity.async-job.ttl` | `Duration` | `PT60M` | optionnel | Max age of RUNNING without heartbeat before EXPIRED on next GET/POST. |
+
+**API:** `POST/GET /api/v1/audit-logs/integrity/jobs`, `GET …/current`, `POST …/current/abandon`. Sync single-entry verify stays outside the slot.
+
+---
+
+### Integrity heavy-crypto window caps (`ezkey.audit.integrity.max-*-window-days`)
+
+**Description:** Two days-based Instant-span caps for Integrity heavy-crypto paths (#730 D2 /
+Integrity cut 3 PR 0, **amended** Christophe M1 / maintainer option A — keep two caps).
+
+| Cap | Property | Default | Applies to |
+|---|---|---|---|
+| **Async** | `max-window-days` | **92** | async VERIFY starts, async `RUN_VALIDATION` |
+| **Sync** | `max-sync-window-days` | **8** | all synchronous paths: report GETs (`integrity-check`, `chain-integrity`) and operator `POST …/integrity-validation/run` |
+
+**Why two caps:** Cloudflare Free on ezkey.org / ezkey.online has a non-raisable **100 s** origin
+timeout (HTTP 524). A synchronous call over a long window can outlive the client while the busy gate
+stays held (409s for others; skipped nightly). Longer windows must use the **async job**. The sync
+default **8** preserves the #743 Instant-span floor (`8×24+1 = 193` h). Option A + B1: sync cap
+covers every synchronous path.
+
+Report GETs and operator retroactive POST recompute under `IntegrityHeavyCryptoGate` (HTTP 409 +
+`Retry-After` when busy — same `integrity-async-job-busy` contract as async start). Non-blocking
+`tryEnter` so gated waits cannot exceed reverse-proxy / Tomcat timeouts. Nightly scheduled window
+remains `nightly.window-hours` (not these caps).
+
+**Defined in:** `IntegrityWindowCapProperties` (prefix `ezkey.audit.integrity` — coexists with
+`AuditHmacProperties` on the same prefix; each `@ConfigurationProperties` type binds independently).
+
+| Property | Type | Default | Obligation | Description |
+|---|---|---|---|---|
+| `ezkey.audit.integrity.max-window-days` | `int` | `92` | optionnel | Async hard-reject (HTTP 400, type `integrity-window-over-cap`, extensions `maxWindowDays` + `capKind=ASYNC`) when `[from, to)` exceeds **`days × 24 h + 1 h`**. Primitive `int` + `@Min(1)` + `@Max(366)`. Must be **>=** `max-sync-window-days` (fail-fast at startup otherwise). |
+| `ezkey.audit.integrity.max-sync-window-days` | `int` | `8` | optionnel | Sync hard-reject for report GETs and operator `POST …/integrity-validation/run` (same problem type; `capKind=SYNC`). Same Instant-span rule. Over-cap ProblemDetail also includes fixed extension `asyncAlternative` = `POST /api/v1/audit-logs/integrity/jobs` (not from request input). Empty/`0`/`367+` fails startup. |
+
+**Upgrade note (old → new):**
+
+| Removed (fail-fast if set) | Replacement |
+|---|---|
+| `ezkey.audit.integrity.verify-report.max-window-hours` | `max-sync-window-days` (sync GETs) / `max-window-days` (async VERIFY) |
+| `ezkey.audit.integrity.retroactive.operator-max-window-hours` | `max-sync-window-days` (sync operator POST) / `max-window-days` (async `RUN_VALIDATION`) |
+
+**[live] host pre-check (2026-10-12, ezkey.online):** the community host sets **neither** old key
+(no property, no relaxed env form, nothing in `.env` / compose / mounts / `app.jar`). The Oct 5 tip
+currently deployed **predates #743 entirely**, so the next install goes straight to the new days
+keys with **nothing to migrate**.
+
+Relaxed env forms of the removed keys (compact and underscore — e.g.
+`EZKEY_AUDIT_INTEGRITY_VERIFYREPORT_MAXWINDOWHOURS`,
+`EZKEY_AUDIT_INTEGRITY_VERIFY_REPORT_MAX_WINDOW_HOURS`,
+`EZKEY_AUDIT_INTEGRITY_RETROACTIVE_OPERATORMAXWINDOWHOURS`) also fail startup. Startup messages name
+the replacement key and never echo values. Effective Instant length: async default **2209 h**
+(`92×24+1`); sync default **193 h** (`8×24+1`).
 
 ---
 
@@ -343,16 +422,18 @@ is not set in that profile (Java class default applies).
 
 ### `ezkey.encryption.*`
 
-| Property | default | docker | docker-test | native (admin-api) |
+| Property | default | docker | docker-test | windows (admin / auth) |
 |---|---|---|---|---|
 | `enabled` | `true` | `true` | `true` | `true` |
-| `master-key-file` | *(null)* | `/etc/ezkey/secrets/master.key` | `/etc/ezkey/secrets/master.key` | *(null)* |
-| `keyset-file` | *(null)* | `/etc/ezkey/keysets/keyset.json.encrypted` | `/etc/ezkey/keysets/keyset.json.encrypted` | *(null)* |
+| `required` | `false` | `true` | `true` | `true` |
+| `master-key-file` | *(null)* | `/etc/ezkey/secrets/master.key` | `/etc/ezkey/secrets/master.key` | ProgramData path |
+| `keyset-file` | *(null)* | unused at runtime | unused at runtime | unused at runtime |
 | `algorithm` | `AES256_GCM` | `AES256_GCM` | `AES256_GCM` | `AES256_GCM` |
-| `keyset.storage-mode` | `DATABASE` | `DATABASE` | `DATABASE` | `FILE` |
-| `rotation.enabled` | `true` | `true` (admin) / `false` (auth, int) | `true` | `true` |
+| `keyset.storage-mode` | `DATABASE` | `DATABASE` | `DATABASE` | `DATABASE` |
+| `keyset.writer` | `false` | `true` (admin) / `false` (auth, int, crypto) | `true` (admin) | `true` / `false` |
+| `rotation.enabled` | `true` | `true` (admin) / `false` (auth, int) | `true` | `true` (admin) |
 | `rotation.schedule` | `0 0 2 * * ?` | `0 0 2 * * ?` | `0 */5 * * * ?` | `0 0 2 * * ?` |
-| `reencryption.enabled` | `true` | `true` (admin) / `false` (auth, int) | `true` | `true` |
+| `reencryption.enabled` | `true` | `true` (admin) / `false` (auth, int) | `true` | `true` (admin) |
 | `reencryption.batch-size` | `500` | `500` | `500` | `500` |
 
 ### `ezkey.audit.integrity.*`
@@ -367,8 +448,8 @@ is not set in that profile (Java class default applies).
 
 | Property | default | docker |
 |---|---|---|
-| `name` | `Ezkey System` | `Ezkey System` |
-| `description` | `Ezkey MFA instance for your organization` | `Ezkey MFA instance for your organization` |
+| `name` | `Ezkey System` | `${EZKEY_ORGANIZATION_NAME:Ezkey System}` |
+| `description` | `Ezkey MFA instance for your organization` | `${EZKEY_ORGANIZATION_DESCRIPTION:Ezkey MFA instance for your organization}` |
 | `about-url` | *(null)* | `${EZKEY_ORGANIZATION_ABOUT_URL:}` |
 
 ---
@@ -378,6 +459,8 @@ is not set in that profile (Java class default applies).
 | Spring property | Docker env var | Notes |
 |---|---|---|
 | `ezkey.audit.integrity.instance-id` | `EZKEY_INSTANCE_ID` | Per-instance. E.g. `admin-api-1`. |
+| `ezkey.organization.name` | `EZKEY_ORGANIZATION_NAME` | Set in `docker-compose.yml`. Default `Ezkey System`. |
+| `ezkey.organization.description` | `EZKEY_ORGANIZATION_DESCRIPTION` | Set in `docker-compose.yml`. |
 | `ezkey.organization.about-url` | `EZKEY_ORGANIZATION_ABOUT_URL` | Set in `docker-compose.yml`. |
 | `ezkey.qr.auth-base-url` | `EZKEY_QR_AUTH_BASE_URL` | Public Auth API URL for mobile QR. |
 

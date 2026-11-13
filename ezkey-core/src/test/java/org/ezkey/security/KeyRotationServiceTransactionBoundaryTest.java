@@ -13,6 +13,7 @@ package org.ezkey.security;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -34,6 +35,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.annotation.Order;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseBuilder;
 import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType;
@@ -46,8 +48,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * Regression test for {@link KeyRotationService} startup keyset sync (assessment TX-002).
  *
  * <p>The public {@link KeyRotationService#initializeKeysetSync()} entry must open a Spring
- * transaction so empty-table sync saves run together. {@code @PostConstruct} would not apply
- * {@code @Transactional}.
+ * transaction so empty-table sync saves run together. {@code @PostConstruct} would not apply a
+ * declarative boundary.
  *
  * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *
@@ -90,29 +92,37 @@ class KeyRotationServiceTransactionBoundaryTest {
     AtomicReference<EncryptionKey> savedPrimary = new AtomicReference<>();
     when(keyRepository.count()).thenReturn(0L);
     when(keyRepository.findByKeyStatus(EncryptionKey.KeyStatus.PRIMARY))
-        .thenAnswer(
-            _ -> {
-              EncryptionKey saved = savedPrimary.get();
-              return saved == null ? List.of() : List.of(saved);
-            });
+        .thenAnswer(_ -> {
+          EncryptionKey saved = savedPrimary.get();
+          return saved == null ? List.of() : List.of(saved);
+        });
     when(keyRepository.findById(PRIMARY_KEY_ID)).thenReturn(Optional.empty());
     when(keyRepository.save(any(EncryptionKey.class)))
-        .thenAnswer(
-            invocation -> {
-              assertTrue(
-                  TransactionSynchronizationManager.isActualTransactionActive(),
-                  "Keyset sync save must run inside the public initializeKeysetSync()"
-                      + " @Transactional boundary (TX-002)");
-              EncryptionKey key = invocation.getArgument(0);
-              savedPrimary.set(key);
-              return key;
-            });
+        .thenAnswer(invocation -> {
+          assertTrue(
+              TransactionSynchronizationManager.isActualTransactionActive(),
+              "Keyset sync save must run inside the initializeKeysetSync()"
+                  + " transaction boundary (TX-002)");
+          EncryptionKey key = invocation.getArgument(0);
+          savedPrimary.set(key);
+          return key;
+        });
   }
 
   @Test
   @DisplayName("Public initializeKeysetSync() opens a transaction for empty-table sync saves")
   void publicReadyEntryOpensTransactionForSyncSaves() {
     assertDoesNotThrow(() -> keyRotationService.initializeKeysetSync());
+  }
+
+  @Test
+  @DisplayName("A duplicate key that leaves the table empty still stops startup (#1259)")
+  void duplicateKeyWithEmptyTableStopsStartup() {
+    when(keyRepository.save(any(EncryptionKey.class)))
+        .thenThrow(new DataIntegrityViolationException("duplicate key"));
+
+    assertThrows(
+        DataIntegrityViolationException.class, () -> keyRotationService.initializeKeysetSync());
   }
 
   @Test

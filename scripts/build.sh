@@ -14,7 +14,8 @@ if [ -z "${JAVA_HOME:-}" ]; then
     "/c/Tools/jdk-25.0.3+9" \
     "/mnt/c/Tools/jdk-25.0.3+9" \
     "/c/Tools/jdk25" \
-    "/mnt/c/Tools/jdk25"; do
+    "/mnt/c/Tools/jdk25" \
+    "${HOME}/.sdkman/candidates/java/current"; do
     if [ -x "$candidate/bin/java" ] || [ -x "$candidate/bin/java.exe" ]; then
       export JAVA_HOME="$candidate"
       break

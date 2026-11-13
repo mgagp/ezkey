@@ -50,6 +50,7 @@ The mobile app already carries a well-structured documentation set. This pack:
 
 | Document | Purpose |
 |----------|---------|
+| [`settings-copy-end-user-compass.md`](settings-copy-end-user-compass.md) | **Draft** end-user editorial compass for Settings / Paramètres informational copy (About, What's new, Coming soon, Security). Follow before changing FR/EN strings in `ezkey_mobile/app/i18n/resources.ts`. |
 | [`stack-and-architecture.md`](stack-and-architecture.md) | Stack, module layout, runtime shape. |
 | [`functional-flows.md`](functional-flows.md) | Enrollment, pending retrieval, respond flows. |
 | [`data-model-and-persistence.md`](data-model-and-persistence.md) | Installation trust zone, enrollments, Keystore/StrongBox + seal keys (cornerstone diagrams). |

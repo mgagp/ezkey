@@ -6,10 +6,11 @@
  */
 
 import React, {useEffect, useState} from 'react';
-import {Text, StyleSheet, ScrollView, TouchableOpacity, Linking, View} from 'react-native';
+import {Text, ScrollView, TouchableOpacity, Linking, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTranslation} from 'react-i18next';
-import {borderRadius, colors, spacing, typography} from '../../config/theme';
+import {borderRadius, spacing, typography} from '../../config/theme';
+import {createThemedStyles} from '../../theme';
 import {EzkeyLogo} from '../../components/EzkeyLogo';
 import {nativeCrypto} from '../../services/crypto';
 import {APP_VERSION} from '../../config/appInfo';
@@ -22,11 +23,13 @@ const EZKEY_SITE_URL = 'https://ezkey.org';
  * @since 2025
  */
 export const AboutScreen: React.FC = () => {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const {t} = useTranslation();
   const [buildTimestampUtc, setBuildTimestampUtc] = useState<string | 'loading' | 'unavailable'>(
     'loading',
   );
+  const [gitShortSha, setGitShortSha] = useState<string | 'loading' | 'unavailable'>('loading');
 
   useEffect(() => {
     let cancelled = false;
@@ -41,6 +44,19 @@ export const AboutScreen: React.FC = () => {
       .catch(() => {
         if (!cancelled) {
           setBuildTimestampUtc('unavailable');
+        }
+      });
+    nativeCrypto
+      .getGitShortSha()
+      .then(value => {
+        const trimmed = value.trim();
+        if (!cancelled) {
+          setGitShortSha(trimmed.length > 0 && trimmed !== 'unknown' ? trimmed : 'unavailable');
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setGitShortSha('unavailable');
         }
       });
     return () => {
@@ -68,6 +84,23 @@ export const AboutScreen: React.FC = () => {
           </Text>
         </View>
         <View style={styles.metaRow}>
+          <Text style={styles.metaLabel}>{t('about.channel')}</Text>
+          <Text style={styles.metaValue}>{t('about.publicAlpha')}</Text>
+        </View>
+        <View style={styles.metaRow}>
+          <Text style={styles.metaLabel}>{t('about.revision')}</Text>
+          <Text
+            style={styles.metaValue}
+            selectable
+            accessibilityLabel={t('about.revisionAccessibility')}>
+            {gitShortSha === 'loading'
+              ? '…'
+              : gitShortSha === 'unavailable'
+                ? t('about.unavailable')
+                : gitShortSha}
+          </Text>
+        </View>
+        <View style={styles.metaRow}>
           <Text style={styles.metaLabel}>{t('about.buildUtc')}</Text>
           <Text
             style={styles.metaValue}
@@ -86,6 +119,7 @@ export const AboutScreen: React.FC = () => {
         </View>
       </View>
       <Text style={styles.description}>{t('about.description')}</Text>
+      <Text style={styles.privacyNote}>{t('about.privacyNote')}</Text>
       <TouchableOpacity
         style={styles.linkButton}
         onPress={openSite}
@@ -98,7 +132,7 @@ export const AboutScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(colors => ({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -157,6 +191,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     alignSelf: 'stretch',
   },
+  privacyNote: {
+    fontSize: typography.fontSize.sm,
+    color: colors.textMuted,
+    lineHeight: 20,
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.sm,
+    textAlign: 'center',
+    alignSelf: 'stretch',
+  },
   linkButton: {
     marginTop: spacing.xl,
     paddingVertical: spacing.md,
@@ -169,4 +212,4 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeight.medium,
     textAlign: 'center',
   },
-});
+}));

@@ -41,6 +41,9 @@ public class IntegrationCreateRequest {
    */
   private String description;
 
+  /** Optional pending-attempt policy. Null means {@link PendingAttemptPolicy#REPLACE}. */
+  private PendingAttemptPolicy pendingAttemptPolicy;
+
   /**
    * Gets the unique business identifier code for the integration.
    *
@@ -93,5 +96,23 @@ public class IntegrationCreateRequest {
    */
   public void setDescription(String description) {
     this.description = description;
+  }
+
+  /**
+   * Gets the optional pending-attempt policy.
+   *
+   * @return the policy, or null when the caller omitted it
+   */
+  public PendingAttemptPolicy getPendingAttemptPolicy() {
+    return pendingAttemptPolicy;
+  }
+
+  /**
+   * Sets the optional pending-attempt policy.
+   *
+   * @param pendingAttemptPolicy REPLACE, REFUSE, or null for the default
+   */
+  public void setPendingAttemptPolicy(PendingAttemptPolicy pendingAttemptPolicy) {
+    this.pendingAttemptPolicy = pendingAttemptPolicy;
   }
 }

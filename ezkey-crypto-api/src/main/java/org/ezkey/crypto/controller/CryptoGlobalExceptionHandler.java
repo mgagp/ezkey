@@ -13,6 +13,7 @@ package org.ezkey.crypto.controller;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import org.ezkey.crypto.exception.CryptoApiProblemCatalog;
+import org.ezkey.util.LogSanitizer;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -49,7 +50,10 @@ public class CryptoGlobalExceptionHandler {
   @ExceptionHandler(HttpMessageNotReadableException.class)
   public ResponseEntity<ProblemDetail> handleHttpMessageNotReadableException(
       HttpMessageNotReadableException e, HttpServletRequest request) {
-    logger.error("JSON parsing error in crypto API endpoint: {}", request.getRequestURI(), e);
+    logger.error(
+        "JSON parsing error in crypto API endpoint: {}",
+        LogSanitizer.sanitizeForLog(request.getRequestURI()),
+        e);
 
     String exceptionMessage = e.getMessage();
     if (exceptionMessage == null || exceptionMessage.isEmpty()) {
@@ -112,7 +116,8 @@ public class CryptoGlobalExceptionHandler {
       return null;
     }
 
-    logger.error("RuntimeException in crypto API endpoint: {}", path, e);
+    logger.error(
+        "RuntimeException in crypto API endpoint: {}", LogSanitizer.sanitizeForLog(path), e);
 
     return problemResponse(
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -130,7 +135,7 @@ public class CryptoGlobalExceptionHandler {
       return null;
     }
 
-    logger.error("Exception in crypto API endpoint: {}", path, e);
+    logger.error("Exception in crypto API endpoint: {}", LogSanitizer.sanitizeForLog(path), e);
 
     String exceptionMessage = e.getMessage();
     if (exceptionMessage == null || exceptionMessage.isEmpty()) {

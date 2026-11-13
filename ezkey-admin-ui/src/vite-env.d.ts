@@ -15,6 +15,11 @@ interface ImportMetaEnv {
   readonly VITE_DEMO_MODE?: string;
   /** Optional `authUrl` in enrollment QR JSON; mirrors Admin API `ezkey.qr.auth-base-url` when set. */
   readonly VITE_QR_AUTH_BASE_URL?: string;
+  /**
+   * Short git SHA stamped at build time for Public alpha chrome.
+   * Set explicitly for Docker/CI (`git rev-parse --short=7 HEAD`); Vite also resolves from git when available.
+   */
+  readonly VITE_GIT_SHA?: string;
 }
 
 interface ImportMeta {

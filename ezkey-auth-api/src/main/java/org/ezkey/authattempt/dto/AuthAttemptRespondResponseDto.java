@@ -69,5 +69,28 @@ public record AuthAttemptRespondResponseDto(
                     + " AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md)",
             example =
                 "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-            requiredMode = RequiredMode.NOT_REQUIRED)
-        String authAttemptProofTokenResultSignedByIntegration) {}
+            requiredMode = RequiredMode.NOT_REQUIRED,
+            nullable = true)
+        String authAttemptProofTokenResultSignedByIntegration) {
+
+  /**
+   * Returns a string representation with integration signatures masked.
+   *
+   * @return string representation safe for logs
+   */
+  @Override
+  public String toString() {
+    return "AuthAttemptRespondResponseDto{"
+        + "authAttemptId="
+        + authAttemptId
+        + ", authAttemptResult='"
+        + authAttemptResult
+        + '\''
+        + ", authAttemptMessage='"
+        + authAttemptMessage
+        + '\''
+        + ", authAttemptProofTokenResultSignedByIntegration="
+        + (authAttemptProofTokenResultSignedByIntegration != null ? "[PROTECTED]" : "null")
+        + '}';
+  }
+}

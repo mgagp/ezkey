@@ -12,7 +12,7 @@
 - **Progression markers:** `P3-operable-release`
 - **Component tags:** `core`, `admin-api`, `admin-ui`, `audit`, `docs`
 - **Lane:** `D`
-- **Captured by:** maintainer + agent (EXP1 investigation 2026-07-09)
+- **Captured by:** maintainer + agent (community-lab investigation 2026-07-09)
 - **GitHub issue:** `#315` (closed)
 - **Issue labels:** `lane:d`, `type:fix`, `component:core`, `component:admin-api`, `component:admin-ui`, `priority:p1`, `status:ready`
 - **GitHub PR:** `#318` (merged 2026-07-11)
@@ -27,7 +27,7 @@ grid and make operator-facing summaries honest about undeclared gaps vs crypto v
 
 ## Problem and value
 
-- **Problem:** On EXP1, the nightly job at 02:00 UTC raised one OPEN `AUDIT_INTEGRITY_RUPTURE` per
+- **Problem:** On the community host, the nightly job at 02:00 UTC raised one OPEN `AUDIT_INTEGRITY_RUPTURE` per
   day for six consecutive days. Payloads showed `chainStatus=UNDECLARED_GAP_DETECTED` with
   **zero** entry HMAC and **zero** chain crypto violations. The Admin UI summarized
   “0 entry + 0 chain violations,” which looked like a false CRITICAL. Root cause: detective window
@@ -54,11 +54,11 @@ grid and make operator-facing summaries honest about undeclared gaps vs crypto v
   - Re-litigating C8-6 heartbeat deferral.
   - Snooze UI.
   - Changing gap-declaration or manipulation-conciliation workflows.
-  - Auto-resolving historical EXP1 false-positive alerts (operator may resolve manually).
+  - Auto-resolving former experimental lab (retired 2026-10) false-positive alerts (operator may resolve manually).
 
 ## Key assumptions
 
-- Investigation on EXP1 (2026-07-09) is authoritative; see method log.
+- Investigation on the community host (2026-07-09) is authoritative; see method log.
 - `lastInRangeIsLatest` already suppresses trailing gaps when the global latest checkpoint is in
   range; the dominant false positive is the **leading** sub-second exclusion.
 - Aligning `windowEnd` to the grid is the primary fix; payload/UI honesty is the secondary fix.
@@ -72,7 +72,7 @@ grid and make operator-facing summaries honest about undeclared gaps vs crypto v
 
 ## Promotion notes
 
-Challenge complete via EXP1 DB + code analysis (2026-07-09). Implemented without a separate Grill Me
+Challenge complete via community DB + code analysis (2026-07-09). Implemented without a separate Grill Me
 or `TB-*` (bounded Lane D single-pass on `I-*`).
 
 ## Closeout (2026-07-11 / canon synced 2026-08-02)
@@ -81,8 +81,8 @@ or `TB-*` (bounded Lane D single-pass on `I-*`).
   longer raise `AUDIT_INTEGRITY_RUPTURE`; Admin UI list summary honest for gap-only status;
   ADR-0009 + design-pack pitfall note.
 - **Evidence:** unit coverage on scheduler/verification; PR `#318` merged; issue `#315` closed.
-- **Residual:** historical EXP1 OPEN false-positive alerts remain for manual resolve (by design).
-- **Next:** none on this idea. Nightly quietness on EXP1 is operator watch, not remaining debt.
+- **Residual:** former experimental lab (retired 2026-10) OPEN false-positive alerts remain for manual resolve (by design).
+- **Next:** none on this idea. Nightly quietness on the community host is operator watch, not remaining debt.
 
 ## Links
 

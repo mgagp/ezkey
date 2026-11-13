@@ -7,11 +7,23 @@ import 'encoding.dart';
 import 'payload.dart' as payloads;
 import 'secure_random.dart';
 
+/// Static facade over the Ezkey crypto primitives and canonical payload builders.
+///
+/// Device side: EC P-256 / ECDSA-SHA256 (SPKI + DER, standard Base64).
+/// Integration side: Ed25519 (raw key / raw signature, Base64URL without padding).
 class EzKeyCrypto {
   static EcP256KeyPair generateDeviceKeyPair() => generateEcP256KeyPair();
 
   static String exportDevicePublicKey(EcP256KeyPair keyPair) {
     return ecPublicKeyToSpkiBase64(keyPair.publicKey);
+  }
+
+  static String exportDevicePrivateKeyPkcs8(EcP256KeyPair keyPair) {
+    return ecPrivateKeyToPkcs8Base64(keyPair);
+  }
+
+  static EcP256KeyPair importDeviceKeyPairPkcs8(String pkcs8Base64Std) {
+    return ecKeyPairFromPkcs8Base64(pkcs8Base64Std);
   }
 
   static String signWithDeviceKey(EcP256KeyPair keyPair, String data) {
@@ -73,7 +85,6 @@ class EzKeyCrypto {
     );
   }
 
-  /// Canonical bind payload string (integration-signed). Delegates to `payload.dart`.
   static String buildEnrollmentBindPayload({
     required String enrollmentProofToken,
     required int enrollmentId,
@@ -85,6 +96,8 @@ class EzKeyCrypto {
     int? tenantId,
     String? tenantName,
     String? tenantDescription,
+    bool? isSystemIntegration,
+    String? adminType,
   }) {
     return payloads.buildEnrollmentBindPayload(
       enrollmentProofToken: enrollmentProofToken,
@@ -97,10 +110,11 @@ class EzKeyCrypto {
       tenantId: tenantId,
       tenantName: tenantName,
       tenantDescription: tenantDescription,
+      isSystemIntegration: isSystemIntegration,
+      adminType: adminType,
     );
   }
 
-  /// Canonical verify-request payload (device-signed). Delegates to `payload.dart`.
   static String buildEnrollmentVerifyDevicePayload(
     String enrollmentProofToken,
     int enrollmentId,
@@ -115,7 +129,6 @@ class EzKeyCrypto {
     );
   }
 
-  /// Canonical verify-response payload (integration-signed). Delegates to `payload.dart`.
   static String buildEnrollmentVerifyResultPayload(
     String enrollmentProofToken,
     int enrollmentId,
@@ -127,6 +140,24 @@ class EzKeyCrypto {
       enrollmentId,
       outcome,
       message,
+    );
+  }
+
+  static String buildEnrollmentInstanceInfoPayload({
+    required String enrollmentProofToken,
+    required int enrollmentId,
+    String? authApiPublicBaseUrl,
+    String? instanceName,
+    String? instanceDescription,
+    String? aboutUrl,
+  }) {
+    return payloads.buildEnrollmentInstanceInfoPayload(
+      enrollmentProofToken: enrollmentProofToken,
+      enrollmentId: enrollmentId,
+      authApiPublicBaseUrl: authApiPublicBaseUrl,
+      instanceName: instanceName,
+      instanceDescription: instanceDescription,
+      aboutUrl: aboutUrl,
     );
   }
 

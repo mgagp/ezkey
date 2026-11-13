@@ -1,0 +1,52 @@
+# Settings → Language (#1157): the choice applies at once, survives a cold start, and returns to the
+# phone's language on System default. The sync with iOS Settings → Ezkey → Language is in
+# ios_language_system_settings.yaml. Debug build + Metro, no backend needed:
+#   maestro test maestro/flows/ios_language.yaml
+# Ends on System default (the app default).
+appId: org.ezkey.mobile
+---
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible: "Settings|Paramètres"
+    timeout: 60000
+- tapOn: "Settings|Paramètres"
+- tapOn: "(Language|Langue).*"
+- extendedWaitUntil:
+    visible:
+      id: "ezkey.language.fr"
+    timeout: 10000
+- tapOn:
+    id: "ezkey.language.fr"
+- assertVisible:
+    id: "ezkey.language.fr"
+    text: ".*, (checked|coché)"
+- assertVisible: "Langue"
+- takeScreenshot: language1_french
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible: "Authentificateur Ezkey"
+    timeout: 60000
+- tapOn: "Paramètres"
+- tapOn: "Langue.*"
+- tapOn:
+    id: "ezkey.language.en"
+- assertVisible:
+    id: "ezkey.language.en"
+    text: ".*, (checked|coché)"
+- assertVisible: "Language"
+- takeScreenshot: language2_english
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible: "Ezkey Authenticator"
+    timeout: 60000
+- tapOn: "Settings"
+- tapOn: "Language.*"
+- tapOn:
+    id: "ezkey.language.system"
+- assertVisible:
+    id: "ezkey.language.system"
+    text: ".*, (checked|coché)"
+- takeScreenshot: language3_system_default

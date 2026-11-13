@@ -1,148 +1,80 @@
 # Security Policy
 
-## Reporting a Vulnerability
+Ezkey is a **public, experimental security and MFA laboratory** (community lab, public alpha). It is **not** production-qualified and offers **no bug bounty**.
 
-The Ezkey project takes security seriously. We appreciate your efforts to responsibly disclose your findings and will make every effort to acknowledge your contributions.
+For honest product-level security claims and limits, see [`docs/SECURITY_POSTURE.md`](docs/SECURITY_POSTURE.md).
 
-### Where to Report
+## Supported versions
 
-**Please DO NOT report security vulnerabilities through public GitHub issues.**
+Security attention focuses on:
 
-Instead, please report security vulnerabilities to:
-- **Email**: security@ezkey.org
-- **Alternative**: Direct message to [@mgagp](https://github.com/mgagp)
+- the **`main`** branch (current development line), and
+- the **latest published release**, once GitHub Releases exist.
 
-### What to Include
+There are **no published release packages yet**. Do not treat historical tags or third-party builds as supported unless they match `main` or a later published release.
 
-To help us better understand and resolve the issue, please include as much of the following information as possible:
+## Reporting a vulnerability
 
-1. **Type of vulnerability** (e.g., authentication bypass, SQL injection, XSS, etc.)
-2. **Full paths of source file(s)** related to the manifestation of the issue
-3. **Location of the affected source code** (tag/branch/commit or direct URL)
-4. **Step-by-step instructions to reproduce the issue**
-5. **Proof-of-concept or exploit code** (if possible)
-6. **Impact of the issue**, including how an attacker might exploit it
-7. **Any potential mitigations** you've identified
+**Do not open public GitHub issues for security vulnerabilities.**
 
-### Response Timeline
+Report privately using GitHub’s **Report a vulnerability** form (private vulnerability reporting):
 
-- **Initial Response**: Within 48 hours of report submission
-- **Status Update**: Within 7 days with assessment of the issue
-- **Resolution Target**:
-  - Critical vulnerabilities: 7 days
-  - High vulnerabilities: 30 days
-  - Medium vulnerabilities: 60 days
-  - Low vulnerabilities: 90 days
+https://github.com/mgagp/ezkey/security/advisories/new
 
-### Disclosure Policy
+You may also email **security@ezkey.org** if the GitHub form is unavailable.
 
-- **Coordinated Disclosure**: We follow coordinated vulnerability disclosure
-- **Embargo Period**: We request a 90-day embargo period for critical vulnerabilities
-- **Public Disclosure**: After remediation, we will:
-  1. Release a security patch
-  2. Publish a security advisory
-  3. Credit the reporter (unless anonymity is requested)
-  4. Update this document with CVE information (if applicable)
+Please include:
 
-### Security Researcher Recognition
+1. A short description of the issue and its impact
+2. Affected component or path (API, Admin UI, mobile, crypto, deploy, etc.)
+3. Steps to reproduce, or a minimal proof of concept when practical
+4. The commit, branch, or deploy SHA you tested against, if known
 
-We believe in recognizing security researchers who help make Ezkey more secure:
+## What to expect
 
-- Public acknowledgment on our security page (if desired)
-- Detailed description of the issue and fix in release notes
-- CVE assignment for qualifying vulnerabilities
+This is a small community lab project maintained primarily by [@mgagp](https://github.com/mgagp), with AI-assisted review.
 
-### Out of Scope
+We acknowledge vulnerability reports within 14 days. Fixes remain best effort, with no SLA.
 
-The following are considered out of scope for security reports:
+After remediation where applicable, we may publish a GitHub Security Advisory and credit the reporter unless anonymity is requested.
 
-- **Social Engineering**: Attacks that require social engineering
-- **Physical Attacks**: Attacks requiring physical access to user devices
-- **Third-Party Services**: Issues in third-party services (report to the service provider)
-- **Denial of Service**: Generic DoS attacks without demonstrating significant impact
-- **Automated Scanners**: Reports from automated scanners without manual verification
-- **Already Known Issues**: Issues already listed in our security advisories or issue tracker
+Published advisories: https://github.com/mgagp/ezkey/security/advisories
 
-### Secure Development Practices
+## Out of scope
 
-Ezkey follows secure development practices including:
+Reports that are generally out of scope include:
 
-- **Code Review**: All code changes require peer review
-- **Automated Security Scanning**:
-  - Dependency vulnerability scanning (Dependabot)
-  - Static Application Security Testing (SAST)
-  - Secret scanning
-- **Cryptographic Standards**:
-  - EC P-256 (secp256r1) with ECDSA-SHA256 for all digital signatures
-  - SHA-256 for hashing
-  - Industry-standard cryptographic libraries
-- **Regular Updates**: Dependencies are regularly updated for security patches
-- **Security Testing**: Regular security assessments and penetration testing
+- Social engineering or physical attacks on devices or operators
+- Issues solely in third-party services or dependencies (prefer reporting upstream)
+- Generic denial-of-service without a clear, significant impact demonstration
+- Unverified automated-scanner output with no reproduction steps
+- Issues already fixed on `main` or already published in advisories
 
-### Supported Versions
+## Design compass (fail-open vs fail-closed)
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 1.x.x   | :white_check_mark: |
-| < 1.0   | :x:                |
+When a control or side effect can fail at a trust or availability boundary, name whether the primary
+path **continues** (fail-open; failure must stay observable) or **stops** (fail-closed). Canon:
+[`product-docs/global/design-principles.md`](product-docs/global/design-principles.md) §17.
 
-**Note**: Only the latest stable release receives security updates. We strongly recommend always running the latest version.
+## Security practices in this repository
 
-### Security Features
+The following are **actually in use** today (they are hygiene and review practices, not a production guarantee):
 
-Ezkey implements multiple layers of security:
+- Required pull-request CI aggregate check **`ci-gate`** (GitHub Actions; repository ruleset)
+- **CodeQL** code scanning (advanced setup workflow in-repo; Settings must use Advanced — see [`docs/SECURITY_POSTURE.md`](docs/SECURITY_POSTURE.md) § Code scanning policy)
+- **Dependabot** version updates for Maven, npm, pip, Gradle, Docker, docker-compose, and GitHub Actions
+- **Dependabot alerts** on the dependency graph (enabled 2026-11-06). Automatic security-update PRs are on since the same day, once the initial stock was triaged. Known gap: native Android (Gradle) and iOS (CocoaPods) dependencies are not in the graph, so they produce no alerts
+- **Secret scanning** with **push protection**
+- Periodic AI-assisted security and hygiene passes, reviewed by the maintainer (static analysis, local API pentest campaigns, Dependabot triage); see `product-docs/global/hygiene/`
 
-1. **Authentication Security**
-   - Cryptographic key-based authentication
-   - One-time proof tokens to prevent replay attacks
-   - Signature validation on all authentication attempts
+CI/CD and Settings parity inventory (gaps, phased plan): [`docs/engineering/ci-cd-best-practices-plan.md`](docs/engineering/ci-cd-best-practices-plan.md).
 
-2. **API Security**
-   - Rate limiting to prevent abuse
-   - IP-based access controls
-   - Secure session management
-   - JWT token authentication with rotation
+Ezkey does **not** claim mandatory peer review of every change, anomaly-detection product features, or real-time operational alerting as part of this policy.
 
-3. **Data Protection**
-   - Encryption in transit (TLS 1.2+)
-   - Encryption at rest for sensitive data
-   - Secure key storage and management
-   - PII data minimization
+## Non-security contact
 
-4. **Audit & Monitoring**
-   - Comprehensive audit logging
-   - Security event monitoring
-   - Anomaly detection
-   - Real-time alerting
-
-5. **Infrastructure Security**
-   - Regular security updates
-   - Network segmentation
-   - Database access controls
-   - Secure configuration management
-
-### Compliance
-
-Ezkey aligns operational practices with operator-visible discipline and does not claim SOC 2
-certification or standards equivalence. See
-[product-docs/global/normative-posture.md](product-docs/global/normative-posture.md) and the honest
-claims in [docs/SECURITY_POSTURE.md](docs/SECURITY_POSTURE.md).
-
-### Security Advisories
-
-Published security advisories can be found at:
-- https://github.com/mgagp/ezkey/security/advisories
-
-### Contact
-
-For non-security-related questions, please use:
-- GitHub Issues: https://github.com/mgagp/ezkey/issues
-- GitHub Discussions: https://github.com/mgagp/ezkey/discussions
-
-For security concerns, always use: **security@ezkey.org**
+For ordinary bugs and questions, use [GitHub Issues](https://github.com/mgagp/ezkey/issues).
 
 ---
 
-**Last Updated**: 2025-10-12
-**Policy Version**: 1.0
-
+**Last updated:** 2026-10-14

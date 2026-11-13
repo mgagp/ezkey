@@ -1,6 +1,8 @@
 # Caddy reverse proxy for EZkey APIs (docker-compose.with-proxy.yml).
 # Host ports 19080, 18080, 17080 map to Admin API, Auth API, Integration API.
-# Requests forward proxy headers so apps can resolve client IP when EZKEY_TRUSTED_PROXIES_CIDRS is set.
+# reverse_proxy overwrites X-Forwarded-For with the Caddy peer address and strips
+# CF-Connecting-IP / X-Real-IP so a client-supplied header cannot rotate IP-keyed buckets
+# (#1140 / P7-6). Apps resolve client IP via EZKEY_TRUSTED_PROXIES_CIDRS (XFF right-to-left).
 #
 # Response headers: baseline hardening for API JSON responses (no HTML CSP needed).
 #
@@ -11,6 +13,15 @@
 (springdoc_deny) {
 	@springdoc path /api-docs* /swagger-ui* /webjars/swagger-ui*
 	handle @springdoc {
+		respond 404
+	}
+}
+
+# Mirror community #846: JavaMelody / Actuator never via the proxy surface.
+# Case-insensitive; one-or-more leading slashes; / or ; after the segment.
+(observability_deny) {
+	@blockedObs path_regexp (?i)^/+(monitoring|actuator)([/;].*)?$
+	handle @blockedObs {
 		respond 404
 	}
 }
@@ -26,23 +37,38 @@
 :9080 {
 	import api_headers
 	import springdoc_deny
+	import observability_deny
 	handle {
-		reverse_proxy admin-api:9080
+		reverse_proxy admin-api:9080 {
+			header_up -CF-Connecting-IP
+			header_up -X-Real-IP
+			header_up X-Forwarded-For {remote_host}
+		}
 	}
 }
 
 :8080 {
 	import api_headers
 	import springdoc_deny
+	import observability_deny
 	handle {
-		reverse_proxy auth-api:8080
+		reverse_proxy auth-api:8080 {
+			header_up -CF-Connecting-IP
+			header_up -X-Real-IP
+			header_up X-Forwarded-For {remote_host}
+		}
 	}
 }
 
 :7080 {
 	import api_headers
 	import springdoc_deny
+	import observability_deny
 	handle {
-		reverse_proxy integration-api:7080
+		reverse_proxy integration-api:7080 {
+			header_up -CF-Connecting-IP
+			header_up -X-Real-IP
+			header_up X-Forwarded-For {remote_host}
+		}
 	}
 }

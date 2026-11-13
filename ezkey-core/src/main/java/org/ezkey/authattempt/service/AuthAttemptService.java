@@ -10,6 +10,7 @@
 
 package org.ezkey.authattempt.service;
 
+import jakarta.annotation.PostConstruct;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Tuple;
@@ -17,11 +18,15 @@ import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
+import java.time.Clock;
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalLong;
+import org.ezkey.audit.util.ClientContext;
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
 import org.ezkey.authattempt.domain.AuthAttemptCreateResponse;
 import org.ezkey.authattempt.domain.AuthAttemptDashboard24hStats;
@@ -42,8 +47,12 @@ import org.ezkey.exception.EnrollmentInactiveException;
 import org.ezkey.exception.NoPendingAuthAttemptException;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.exception.auth.AuthAttemptCreateValidationException;
+import org.ezkey.exception.auth.AuthAttemptCreationCooldownException;
+import org.ezkey.exception.auth.AuthAttemptPendingExistsException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
+import org.ezkey.integration.domain.PendingAttemptPolicy;
 import org.ezkey.integration.domain.entity.Integration;
+import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.signature.SignatureService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -140,6 +149,24 @@ public class AuthAttemptService {
 
   private static final Logger logger = LoggerFactory.getLogger(AuthAttemptService.class);
 
+  /** Minimum accepted per-request {@code ttlSeconds} (#895). Below this → 400. */
+  static final int REQUEST_TTL_MIN_SECONDS = 15;
+
+  /** Hard ceiling for per-request {@code ttlSeconds} (#895). Above this → clamped. */
+  static final int REQUEST_TTL_MAX_SECONDS = 120;
+
+  /**
+   * Device-signed outcomes that arm the creation cooldown on every integration. {@code EXPIRED} is
+   * omitted: supersession, cancel, and timeout must not let an unauthenticated caller suspend the
+   * user.
+   */
+  private static final List<AuthAttemptStatus> COOLDOWN_STATUSES =
+      List.of(AuthAttemptStatus.REJECTED, AuthAttemptStatus.INVALID);
+
+  /** Statuses supersession may expire. A signed status is left as it is. */
+  private static final List<AuthAttemptStatus> OPENABLE_STATUSES =
+      List.of(AuthAttemptStatus.PENDING, AuthAttemptStatus.READ);
+
   private final AuthAttemptRepository authAttemptRepository;
   private final EnrollmentRepository enrollmentRepository;
   private final SignatureService signatureService;
@@ -149,6 +176,9 @@ public class AuthAttemptService {
   private final AuthAttemptPendingService pendingService;
   private final AuthAttemptRespondService respondService;
   private final AuthAttemptWaitService waitService;
+  private final IntegrationRepository integrationRepository;
+  private final AuthAttemptCreateLock createLock;
+  private final Clock clock;
 
   @PersistenceContext private EntityManager entityManager; // Mandatory for unit tests
 
@@ -162,6 +192,9 @@ public class AuthAttemptService {
    * @param pendingService the specialized service for pending operations
    * @param respondService the specialized service for respond operations
    * @param waitService the specialized service for wait operations
+   * @param integrationRepository integration rows, for the pending-attempt policy
+   * @param createLock serializes creates for one enrollment
+   * @param clock clock used for cooldown, remaining TTL, and the new attempt timestamps
    */
   public AuthAttemptService(
       AuthAttemptRepository authAttemptRepository,
@@ -170,7 +203,10 @@ public class AuthAttemptService {
       EzkeyCoreProperties ezkeyCoreProperties,
       AuthAttemptPendingService pendingService,
       AuthAttemptRespondService respondService,
-      AuthAttemptWaitService waitService) {
+      AuthAttemptWaitService waitService,
+      IntegrationRepository integrationRepository,
+      AuthAttemptCreateLock createLock,
+      Clock clock) {
     this.authAttemptRepository = authAttemptRepository;
     this.enrollmentRepository = enrollmentRepository;
     this.signatureService = signatureService;
@@ -178,6 +214,29 @@ public class AuthAttemptService {
     this.pendingService = pendingService;
     this.respondService = respondService;
     this.waitService = waitService;
+    this.integrationRepository = integrationRepository;
+    this.createLock = createLock;
+    this.clock = clock;
+  }
+
+  /**
+   * Clamps a configured default TTL above the hard ceiling at startup (#895 Patrick M2).
+   *
+   * <p>Property validation still allows {@code 30–600}; applied create TTL is always {@code
+   * min(request|default, 120)}. When the configured default exceeds 120, it is reduced to 120 with
+   * a WARN so operators notice the effective ceiling.
+   */
+  @PostConstruct
+  void clampConfiguredDefaultTtlIfAboveHardCeiling() {
+    int configured = ezkeyCoreProperties.getAuthAttempt().getTtlSeconds();
+    if (configured > REQUEST_TTL_MAX_SECONDS) {
+      logger.warn(
+          "ezkey.core.auth-attempt.ttl-seconds={} exceeds hard ceiling {}; clamping default to {}",
+          configured,
+          REQUEST_TTL_MAX_SECONDS,
+          REQUEST_TTL_MAX_SECONDS);
+      ezkeyCoreProperties.getAuthAttempt().setTtlSeconds(REQUEST_TTL_MAX_SECONDS);
+    }
   }
 
   /**
@@ -364,10 +423,9 @@ public class AuthAttemptService {
     Enrollment enrollment =
         enrollmentRepository
             .findById(authRequest.getEnrollmentId())
-            .orElseThrow(
-                () ->
-                    new AuthAttemptCreateValidationException(
-                        "Enrollment not found for ID: " + authRequest.getEnrollmentId()));
+            .orElseThrow(() ->
+                new AuthAttemptCreateValidationException(
+                    "Enrollment not found for ID: " + authRequest.getEnrollmentId()));
 
     // Security gate: reject auth attempts for inactive or non-verified enrollments.
     // This covers enrollments that have been administratively deactivated or revoked.
@@ -394,18 +452,46 @@ public class AuthAttemptService {
               + authRequest.getEnrollmentId());
     }
 
-    // Supersession: Mark existing non-final attempts as EXPIRED
+    createLock.lockEnrollment(enrollment.getEnrollmentId());
+    OffsetDateTime now = OffsetDateTime.now(clock);
+    assertCooldownAllows(enrollment, now);
+
     List<AuthAttempt> existingAttempts =
         authAttemptRepository.findByEnrollmentIdAndStatusIn(
             authRequest.getEnrollmentId(),
             List.of(AuthAttemptStatus.PENDING, AuthAttemptStatus.READ));
-    if (!existingAttempts.isEmpty()) {
-      List<Integer> attemptIds =
-          existingAttempts.stream().map(AuthAttempt::getAuthAttemptId).toList();
+    List<AuthAttempt> liveAttempts = new ArrayList<>();
+    List<AuthAttempt> staleAttempts = new ArrayList<>();
+    for (AuthAttempt existing : existingAttempts) {
+      if (existing.getExpiresAt() != null && existing.getExpiresAt().isAfter(now)) {
+        liveAttempts.add(existing);
+      } else {
+        staleAttempts.add(existing);
+      }
+    }
 
+    PendingAttemptPolicy policy = resolvePendingAttemptPolicy(enrollment);
+    if (policy == PendingAttemptPolicy.REFUSE && !liveAttempts.isEmpty()) {
+      long retryAfterSeconds = 1L;
+      for (AuthAttempt live : liveAttempts) {
+        long remaining = Duration.between(now, live.getExpiresAt()).getSeconds();
+        if (remaining > retryAfterSeconds) {
+          retryAfterSeconds = remaining;
+        }
+      }
+      logger.info(
+          "Auth attempt create refused: live attempt exists for enrollment {}",
+          authRequest.getEnrollmentId());
+      throw new AuthAttemptPendingExistsException(retryAfterSeconds);
+    }
+
+    List<AuthAttempt> toExpire =
+        policy == PendingAttemptPolicy.REPLACE ? existingAttempts : staleAttempts;
+    if (!toExpire.isEmpty()) {
+      List<Integer> attemptIds = toExpire.stream().map(AuthAttempt::getAuthAttemptId).toList();
       int updatedCount =
           authAttemptRepository.updateStatusForMultipleAttempts(
-              attemptIds, AuthAttemptStatus.EXPIRED);
+              attemptIds, AuthAttemptStatus.EXPIRED, OPENABLE_STATUSES);
       logger.info(
           "Supersession: Marked {} existing auth attempts as EXPIRED for enrollment {}",
           updatedCount,
@@ -423,8 +509,7 @@ public class AuthAttemptService {
             || Boolean.TRUE.equals(authRequest.getChallengeRequested());
     if (shouldGenerateChallenge) {
       authAttempt.setAuthAttemptChallenge(generateChallenge());
-      logger.debug(
-          "Generated challenge code for auth attempt: {}", authAttempt.getAuthAttemptChallenge());
+      logger.debug("Generated challenge code for enrollment {}", authRequest.getEnrollmentId());
     } else {
       authAttempt.setAuthAttemptChallenge(null);
       logger.debug("No challenge code generated for auth attempt");
@@ -436,9 +521,9 @@ public class AuthAttemptService {
     authAttempt.setContextMessage(authRequest.getContextMessage());
     authAttempt.setWaiterSecretHash(authRequest.getWaiterSecretHash());
 
-    int ttlSeconds = ezkeyCoreProperties.getAuthAttempt().getTtlSeconds();
-    authAttempt.setCreatedAt(OffsetDateTime.now());
-    authAttempt.setExpiresAt(OffsetDateTime.now().plusSeconds(ttlSeconds));
+    int ttlSeconds = resolveAppliedTtlSeconds(authRequest.getTtlSeconds());
+    authAttempt.setCreatedAt(now);
+    authAttempt.setExpiresAt(now.plusSeconds(ttlSeconds));
 
     // Save the authorization attempt
     AuthAttempt savedAuthAttempt = authAttemptRepository.save(authAttempt);
@@ -449,12 +534,97 @@ public class AuthAttemptService {
     response.setAuthAttemptChallenge(
         savedAuthAttempt.getAuthAttemptChallenge()); // Include challenge if generated
     response.setCreatedAt(savedAuthAttempt.getCreatedAt()); // Required for FK to partitioned table
-    response.setTimeoutSeconds(ttlSeconds);
+    response.setTimeoutSeconds(ttlSeconds); // Applied TTL (request clamp or server default)
     response.setExpiresAt(savedAuthAttempt.getExpiresAt()); // Absolute expiration timestamp
     response.setContextTitle(savedAuthAttempt.getContextTitle());
     response.setContextMessage(savedAuthAttempt.getContextMessage());
 
     return response;
+  }
+
+  /**
+   * Refuses creation while a recent run of device-signed attempts is still cooling down.
+   *
+   * <p>Only {@code REJECTED} and {@code INVALID} count, on every integration. Supersession and
+   * cancel write {@code EXPIRED} and only from {@code PENDING} or {@code READ}, so those rows never
+   * carry a counted status and never raise the enrollment alert. The window uses {@code createdAt}
+   * of the counted rows. Scheduler-written {@code EXPIRED} is outside that set.
+   *
+   * @param enrollment enrollment being created against
+   * @param now evaluation instant, shared with the attempt row
+   */
+  private void assertCooldownAllows(Enrollment enrollment, OffsetDateTime now) {
+    EzkeyCoreProperties.AuthAttempt config = ezkeyCoreProperties.getAuthAttempt();
+    int threshold = config.getCooldownThreshold();
+    int windowSeconds = config.getCooldownWindowSeconds();
+    int durationSeconds = config.getCooldownDurationSeconds();
+    if (threshold <= 0 || windowSeconds <= 0 || durationSeconds <= 0) {
+      return;
+    }
+    OffsetDateTime since = now.minusSeconds((long) windowSeconds + durationSeconds);
+    List<OffsetDateTime> eventTimes =
+        authAttemptRepository.findCreatedAtByEnrollmentIdAndStatusInSince(
+            enrollment.getEnrollmentId(), COOLDOWN_STATUSES, since);
+    OptionalLong remaining =
+        AuthAttemptCooldown.remainingSeconds(
+            eventTimes, now, threshold, windowSeconds, durationSeconds);
+    if (remaining.isPresent()) {
+      logger.info(
+          "Auth attempt create suspended: enrollment {} cooldown retryAfterSeconds={}",
+          enrollment.getEnrollmentId(),
+          remaining.getAsLong());
+      throw new AuthAttemptCreationCooldownException(remaining.getAsLong());
+    }
+  }
+
+  /**
+   * Resolves the integration policy. A null integration id (unit fixtures) keeps REPLACE. A set id
+   * with no integration row fails closed.
+   *
+   * @param enrollment enrollment that will own the attempt
+   * @return the policy to apply
+   */
+  private PendingAttemptPolicy resolvePendingAttemptPolicy(Enrollment enrollment) {
+    if (enrollment.getIntegrationId() == null) {
+      return PendingAttemptPolicy.REPLACE;
+    }
+    Integration integration =
+        integrationRepository
+            .findById(enrollment.getIntegrationId())
+            .orElseThrow(() ->
+                new AuthAttemptCreateValidationException(
+                    "Integration not found for enrollment " + enrollment.getEnrollmentId()));
+    if (integration.getPendingAttemptPolicy() == null) {
+      return PendingAttemptPolicy.REPLACE;
+    }
+    return integration.getPendingAttemptPolicy();
+  }
+
+  /**
+   * Resolves the applied attempt TTL for a create request (#895 Patrick M2).
+   *
+   * <p>Effective rule: {@code min(ttlSeconds ?? configuredDefault, 120)}.
+   *
+   * <ul>
+   *   <li>Absent → {@code min(ezkey.core.auth-attempt.ttl-seconds, 120)}
+   *   <li>{@code < 15} → {@link AuthAttemptCreateValidationException} (400)
+   *   <li>{@code > 120} → clamped to 120
+   * </ul>
+   *
+   * @param requestedTtlSeconds optional per-request TTL from the initiator
+   * @return applied TTL in seconds
+   * @throws AuthAttemptCreateValidationException when the requested TTL is below 15
+   */
+  int resolveAppliedTtlSeconds(Integer requestedTtlSeconds) {
+    if (requestedTtlSeconds != null && requestedTtlSeconds < REQUEST_TTL_MIN_SECONDS) {
+      throw new AuthAttemptCreateValidationException(
+          "ttlSeconds must be at least " + REQUEST_TTL_MIN_SECONDS);
+    }
+    int candidate =
+        requestedTtlSeconds != null
+            ? requestedTtlSeconds
+            : ezkeyCoreProperties.getAuthAttempt().getTtlSeconds();
+    return Math.min(candidate, REQUEST_TTL_MAX_SECONDS);
   }
 
   /**
@@ -488,29 +658,32 @@ public class AuthAttemptService {
    */
   @Transactional
   public AuthAttempt cancel(Integer authAttemptId) {
+    // Conditional UPDATE — no read-modify-write race with approve/deny (#833 m1).
+    int updated =
+        authAttemptRepository.expireIfPendingOrRead(
+            authAttemptId,
+            List.of(AuthAttemptStatus.PENDING, AuthAttemptStatus.READ),
+            AuthAttemptStatus.EXPIRED);
+    if (updated == 1) {
+      AuthAttempt updatedAttempt =
+          authAttemptRepository
+              .findById(authAttemptId)
+              .orElseThrow(
+                  () -> new ResourceNotFoundException("Authentication attempt", authAttemptId));
+      logger.info(
+          "Authentication attempt {} cancelled (marked as EXPIRED) by user request", authAttemptId);
+      return updatedAttempt;
+    }
+
     AuthAttempt authAttempt =
         authAttemptRepository
             .findById(authAttemptId)
             .orElseThrow(
                 () -> new ResourceNotFoundException("Authentication attempt", authAttemptId));
-
-    // Only allow cancellation of non-final states
-    if (authAttempt.getAuthAttemptStatus() != AuthAttemptStatus.PENDING
-        && authAttempt.getAuthAttemptStatus() != AuthAttemptStatus.READ) {
-      throw new AuthAttemptStateConflictException(
-          "Cannot cancel authentication attempt with status: "
-              + authAttempt.getAuthAttemptStatus()
-              + ". Only PENDING or READ attempts can be cancelled.");
-    }
-
-    // Mark as expired
-    authAttempt.setAuthAttemptStatus(AuthAttemptStatus.EXPIRED);
-    AuthAttempt updatedAttempt = authAttemptRepository.save(authAttempt);
-
-    logger.info(
-        "Authentication attempt {} cancelled (marked as EXPIRED) by user request", authAttemptId);
-
-    return updatedAttempt;
+    throw new AuthAttemptStateConflictException(
+        "Cannot cancel authentication attempt with status: "
+            + authAttempt.getAuthAttemptStatus()
+            + ". Only PENDING or READ attempts can be cancelled.");
   }
 
   /**
@@ -608,17 +781,16 @@ public class AuthAttemptService {
    * @see AuthenticationResult
    */
   /**
-   * Processes an authentication response from a mobile device.
-   *
-   * <p>This method delegates to the specialized AuthAttemptRespondService to handle the complex
-   * logic of processing authentication responses while maintaining the same public API for backward
-   * compatibility.
+   * Processes an authentication response with optional client context for signature-reject audit
+   * (#912). Controllers must pass {@link ClientContext}; tests may pass {@code null}.
    *
    * @param request the authentication response request from mobile device
+   * @param clientContext client IP/UA for audit (may be null)
    * @return the authentication response result with status and message
    */
-  public AuthAttemptRespondResponse respond(AuthAttemptRespondRequest request) {
-    return respondService.respond(request);
+  public AuthAttemptRespondResponse respond(
+      AuthAttemptRespondRequest request, ClientContext clientContext) {
+    return respondService.respond(request, clientContext);
   }
 
   /**

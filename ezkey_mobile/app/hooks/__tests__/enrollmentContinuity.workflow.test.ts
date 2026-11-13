@@ -119,7 +119,6 @@ beforeEach(() => {
     mutateAsync: mockSaveEnrollmentMutateAsync,
   } as unknown as ReturnType<typeof useSaveEnrollment>);
   mockParseQrPayload.mockReturnValue({
-    enrollmentId: '1',
     enrollmentProofToken: 'token-abc',
     authUrl: 'https://auth.example.com',
   });
@@ -129,6 +128,7 @@ beforeEach(() => {
     integrationPublicKey: 'pubkey',
     integrationKeyAlgorithm: 'ed25519',
     integrationName: 'Acme',
+    isSystemIntegration: false,
     enrollmentBindPayloadSignedByIntegration: 'bind-sig',
   });
   mockBuildBindPayload.mockReturnValue('bind-payload');

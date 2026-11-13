@@ -1,0 +1,2973 @@
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useTranslation, Trans } from 'react-i18next';
+import { Link, Navigate, useSearchParams } from 'react-router-dom';
+import { ShieldCheck, Info, ShieldAlert, Archive, AlertTriangle, CheckCircle, XCircle, ChevronDown, ChevronUp, ListOrdered, ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { AppShell } from '@/components/layout/app-shell';
+import { DataTable } from '@/components/data-table/data-table';
+import { Pagination } from '@/components/data-table/pagination';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { ReasonFieldRow } from '@/components/feature/reason-field-row';
+import { ContextHelp } from '@/components/ui/context-help';
+import { Tooltip } from '@/components/ui/tooltip';
+import { DateRangeFilter } from '@/components/ui/date-range-filter';
+import { Dialog } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select } from '@/components/ui/select';
+import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
+import { getTranslatedApiError } from '@/lib/api-error-i18n';
+import {
+  dateRangeToApiParams,
+  integrityExclusiveApiParamsToDisplayRange,
+  integrityExclusiveDateRangeToApiParams,
+} from '@/lib/date-range-presets';
+import {
+  INTEGRITY_REPORT_MAX_SYNC_WINDOW_DAYS,
+  IntegrityReportHydrationOverCapError,
+  isIntegrityReportHydrationBusyError,
+  isIntegrityReportScopeOverCap,
+  isIntegrityWindowOverCapError,
+  isSucceededVerifyJobForReportHydration,
+} from '@/lib/integrity-async-job-report-hydration';
+import {
+  applyIntegrityAsyncJobChange,
+  decideIntegrityOpenAction,
+  defaultAutoVerifyInstantRange,
+  INTEGRITY_DEFAULT_MAX_WINDOW_DAYS,
+  installIntegrityJobAfterStart,
+  integrityFinishedJobScopeToDisplayRange,
+  integrityReverifyDisabled,
+  integrityVerifyActionDisabled,
+  integrityWindowDaysToHours,
+  isIntegrityChainStatusNonGreen,
+} from '@/lib/integrity-micro-dashboard';
+import { api } from '@/lib/api-client';
+import { queryKeys } from '@/lib/query-keys';
+import { cn, formatDateOnly, formatDateWithTimezone } from '@/lib/utils';
+import {
+  loadIntegrityInvestigationSession,
+  resolveEntryIntegrityReportSummaryState,
+  type IntegrityInvestigationSession,
+} from '@/lib/integrity-investigation-session';
+import {
+  INTEGRITY_ATELIER_MODES,
+  resolveIntegrityAtelierMode,
+  type IntegrityAtelierMode,
+} from '@/lib/integrity-atelier-mode';
+import {
+  isActionableIncidentStatus,
+  isChainReportNonGreen,
+  shouldAutoOpenRemediateCluster,
+  shouldForceTimelineOpen,
+  undeclaredGapCountFromReport,
+} from '@/lib/integrity-progressive-disclosure';
+import {
+  CHECKPOINT_RANGE_FROM_PARAM,
+  CHECKPOINT_RANGE_TO_PARAM,
+  CHECKPOINT_TYPE_PARAM,
+  buildCheckpointTimelineDisplayRows,
+  defaultCheckpointRecentRange,
+  readQuietCompressFromSearchParams,
+  writeQuietCompressToSearchParams,
+  type CheckpointTimelineDisplayRow,
+} from '@/lib/checkpoint-quiet-collapse';
+import { useAuth } from '@/context/use-auth';
+import { useDisplayTimezone } from '@/context/use-display-timezone';
+import { useToast } from '@/context/use-toast';
+import { EntryIntegrityReportBadge } from '@/components/feature/entry-integrity-report-badge';
+import { EntryIntegrityViolationLine } from '@/components/feature/entry-integrity-violation-line';
+import { IntegrityMicroDashboard } from '@/components/feature/integrity-micro-dashboard';
+import { IntegrityReconcileDialog } from '@/components/feature/integrity-reconcile-dialog';
+import { useIntegrityAsyncJobReportHydration } from '@/hooks/use-integrity-async-job-report-hydration';
+import { useGetAlert } from '@/generated/admin-api/alerts/alerts';
+import {
+  getArchiveEligibility,
+  getChainCheckpoints,
+  getGetIntegrityBootstrapQueryKey,
+  getIntegrityBootstrap,
+  listLifecycleIncidents,
+  useConfirmArchived,
+  useDeclareGap,
+  useSealArchive,
+} from '@/generated/admin-api/audit-logs/audit-logs';
+import type {
+  AlertResponseDto,
+  AuditChainCheckpointResponseDto,
+  AuditChainIncidentResponseDto,
+  ArchiveConfirmArchivedResult,
+  ArchiveEligibilityResult,
+  ChainVerificationReport,
+  GetChainCheckpointsParams,
+  IntegrityBootstrapResponseDto,
+  IntegrityReport,
+  ArchiveSealResult,
+  GapDeclarationResult,
+  ListLifecycleIncidentsParams,
+  RetroactiveIntegrityValidationRunResponse,
+} from '@/generated/admin-api/model';
+import {
+  getCurrentIntegrityAsyncJob,
+  getLastIntegrityVerdict,
+  integrityAsyncBusyResumeLine,
+  isIntegrityAsyncEscapeStatus,
+  startIntegrityAsyncJob,
+  type IntegrityAsyncJobResponse,
+} from '@/lib/integrity-async-jobs';
+
+type IntegrityRuntimeProfile = 'base' | 'integrity';
+
+type IntegrityMonitoringTruth = {
+  runtimeProfile?: IntegrityRuntimeProfile;
+  chainCheckpointsEnabled?: boolean;
+  nightlyValidationEnabled?: boolean;
+  /** Async VERIFY / RUN_VALIDATION cap (calendar days). */
+  maxWindowDays?: number;
+  /** Sync report-GET / operator validation cap (calendar days). */
+  maxSyncWindowDays?: number;
+};
+
+function resolveIntegrityMonitoringTruth(
+  bootstrap: IntegrityBootstrapResponseDto | undefined,
+): IntegrityMonitoringTruth {
+  const runtimeProfile = bootstrap?.runtimeProfile;
+  const profile: IntegrityRuntimeProfile | undefined =
+    runtimeProfile === 'base' || runtimeProfile === 'integrity' ? runtimeProfile : undefined;
+  return {
+    runtimeProfile: profile,
+    chainCheckpointsEnabled: bootstrap?.chainCheckpointsEnabled,
+    nightlyValidationEnabled: bootstrap?.nightlyValidationEnabled,
+    maxWindowDays: bootstrap?.maxWindowDays,
+    maxSyncWindowDays: bootstrap?.maxSyncWindowDays,
+  };
+}
+
+/**
+ * Inactive badge when either monitoring flag is off (config flags — not derived from profile name).
+ * Base naming still requires runtimeProfile === 'base'.
+ */
+function isScheduledDetectionInactive(truth: IntegrityMonitoringTruth): boolean {
+  return (
+    truth.chainCheckpointsEnabled === false
+    || truth.nightlyValidationEnabled === false
+  );
+}
+
+/**
+ * Present-tense schedule copy is unsafe when either chain or nightly monitoring is off.
+ */
+function shouldUseMonitoringOffCopy(truth: IntegrityMonitoringTruth): boolean {
+  return isScheduledDetectionInactive(truth);
+}
+const AUDIT_CHAIN_INCIDENT_ROOT_CAUSES = [
+  'PLANNED_SYSTEM_UPGRADE',
+  'ADMIN_API_DOWN',
+  'SCHEDULER_FAILURE',
+  'DB_UNAVAILABLE',
+  'NETWORK_PARTITION',
+  'MISCONFIGURATION',
+  'UNKNOWN',
+] as const;
+
+function ReportBadge({
+  intact,
+  status,
+  intactLabel,
+  undeclaredGapsLabel,
+  violationLabel,
+}: {
+  intact?: boolean;
+  status?: string;
+  intactLabel: string;
+  undeclaredGapsLabel: string;
+  violationLabel: string;
+}) {
+  if (intact === true) {
+    return (
+      <Badge variant="success">
+        <CheckCircle className="size-3 mr-1" />
+        {intactLabel}
+      </Badge>
+    );
+  }
+  if (status === 'UNDECLARED_GAP_DETECTED') {
+    return (
+      <Badge variant="warning">
+        <AlertTriangle className="size-3 mr-1" />
+        {undeclaredGapsLabel}
+      </Badge>
+    );
+  }
+  if (intact === false) {
+    return (
+      <Badge variant="error">
+        <XCircle className="size-3 mr-1" />
+        {violationLabel}
+      </Badge>
+    );
+  }
+  return null;
+}
+
+// ── Checkpoint type badge and timeline table ───────────────────────────────────
+
+function LateWrittenBadge() {
+  const { t } = useTranslation('audit-logs');
+  return (
+    <Tooltip content={t('integrity.lateWrittenHelp')}>
+      <Badge variant="muted" className="text-[10px] px-1.5 py-0" data-testid="checkpoint-late-written">
+        {t('integrity.lateWrittenBadge')}
+      </Badge>
+    </Tooltip>
+  );
+}
+
+function CheckpointTypeBadge({ type }: { type?: string }) {
+  const { t } = useTranslation('audit-logs');
+  if (type === 'REGULAR') {
+    return (
+      <Tooltip content={t('integrity.helpCheckpointRegular')}>
+        <Badge variant="muted">{t('integrity.checkpointTypeRegular')}</Badge>
+      </Tooltip>
+    );
+  }
+  if (type === 'ARCHIVE_SEAL') {
+    return (
+      <Tooltip content={t('integrity.helpCheckpointArchiveSeal')}>
+        <Badge variant="success">{t('integrity.checkpointTypeSealed')}</Badge>
+      </Tooltip>
+    );
+  }
+  if (type === 'GAP_DECLARATION') {
+    return (
+      <Tooltip content={t('integrity.helpCheckpointGapDeclaration')}>
+        <Badge variant="warning">{t('integrity.checkpointTypeGapDeclaration')}</Badge>
+      </Tooltip>
+    );
+  }
+  if (type === 'MANIPULATION_CONCILIATION') {
+    return (
+      <Tooltip content={t('integrity.helpCheckpointManipulationConciliation')}>
+        <Badge variant="default">{t('integrity.checkpointTypeConciliation')}</Badge>
+      </Tooltip>
+    );
+  }
+  return <span className="text-fg-muted">—</span>;
+}
+
+function CheckpointLifecycleStateBadge({ state }: { state?: string }) {
+  const { t } = useTranslation('audit-logs');
+
+  if (state === 'ACTIVE') return <Badge variant="muted">{t('integrity.lifecycleStateActive')}</Badge>;
+  if (state === 'SEALED') return <Badge variant="success">{t('integrity.lifecycleStateSealed')}</Badge>;
+  if (state === 'EXPORTED') return <Badge variant="muted">{t('integrity.lifecycleStateExported')}</Badge>;
+  if (state === 'PURGEABLE') return <Badge variant="warning">{t('integrity.lifecycleStatePurgeable')}</Badge>;
+  if (state === 'PURGED') return <Badge variant="error">{t('integrity.lifecycleStatePurged')}</Badge>;
+
+  return <span className="text-fg-muted">—</span>;
+}
+
+function CheckpointTimelineTable({
+  rows,
+  isLoading,
+  currentSort,
+  onSort,
+  focusGap,
+  focusCheckpointId,
+  expandedQuietIds,
+  onToggleQuietSummary,
+}: {
+  rows: CheckpointTimelineDisplayRow[];
+  isLoading: boolean;
+  currentSort: string;
+  onSort: (s: string) => void;
+  /** When set, highlight checkpoint rows immediately before/after this gap (bordering rows). */
+  focusGap?: { gapStart: string; gapEnd: string } | null;
+  /** When set, highlight the checkpoint row with this id (integrity / gap deep link). */
+  focusCheckpointId?: number | null;
+  expandedQuietIds: ReadonlySet<string>;
+  onToggleQuietSummary: (summaryId: string) => void;
+}) {
+  const [field = '', dir = ''] = currentSort.split(',');
+  const handleSort = (sortKey: string) => {
+    if (sortKey === field) onSort(`${sortKey},${dir === 'ASC' ? 'DESC' : 'ASC'}`);
+    else onSort(`${sortKey},DESC`);
+  };
+  const { t } = useTranslation('audit-logs');
+  const sortable = (sortKey: string, label: string, colClass?: string) => {
+    const isActive = field === sortKey;
+    return (
+      <th key={sortKey} className={cn('px-3 py-2.5 text-left text-xs font-black uppercase tracking-wider', colClass)}>
+        <button
+          type="button"
+          onClick={() => handleSort(sortKey)}
+          className="inline-flex items-center gap-1.5 cursor-pointer select-none hover:bg-white/10 transition-colors"
+        >
+          {label}
+          {isActive ? (dir === 'ASC' ? <ArrowUp className="size-3 opacity-90" /> : <ArrowDown className="size-3 opacity-90" />) : <ArrowUpDown className="size-3 opacity-40" />}
+        </button>
+      </th>
+    );
+  };
+  const cols = 7;
+
+  return (
+    <div className="w-full overflow-x-auto border-2 border-fg">
+      <table className="w-full text-sm border-collapse">
+        <thead>
+          <tr className="bg-fg text-surface">
+            {sortable('checkpointId', t('integrity.timelineColId'), 'w-20')}
+            {sortable('windowStart', t('integrity.timelineColWindowStart'))}
+            {sortable('windowEnd', t('integrity.timelineColWindowEnd'))}
+            {sortable('entryCount', t('integrity.timelineColEntries'), 'w-20')}
+            {sortable('checkpointType', t('integrity.timelineColType'), 'w-24')}
+            {sortable('lifecycleState', t('integrity.timelineColLifecycleState'), 'w-24')}
+            <th className="px-3 py-2.5 text-left text-xs font-black uppercase tracking-wider">{t('integrity.timelineColNotes')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {isLoading ? (
+            <tr>
+              <td colSpan={cols} className="px-3 py-10 text-center text-fg-muted">
+                <span className="inline-block size-5 border-2 border-fg border-t-transparent rounded-full animate-spin" />
+              </td>
+            </tr>
+          ) : rows.length === 0 ? (
+            <tr>
+              <td colSpan={cols} className="px-3 py-10 text-center text-fg-muted text-sm italic">
+                {t('integrity.noCheckpoints')}
+              </td>
+            </tr>
+          ) : (
+            rows.map((item, index) => {
+              if (item.kind === 'gap') {
+                return (
+                  <tr
+                    key={`gap-${item.gapEnd}-${item.gapStart}`}
+                    className="bg-warning/10 border-l-4 border-warning"
+                    data-testid="checkpoint-undeclared-gap-row"
+                  >
+                    <td colSpan={cols} className="px-3 py-2 text-sm">
+                      <span className="font-bold text-warning">{t('integrity.checkpointTypeGap')}:</span>{' '}
+                      {formatDateWithTimezone(item.gapEnd)} → {formatDateWithTimezone(item.gapStart)}
+                      {item.durationMin > 0 && (
+                        <span className="text-fg-muted ml-2">(~{item.durationMin} min)</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              }
+              if (item.kind === 'quiet-summary') {
+                const expanded = expandedQuietIds.has(item.summaryId);
+                return (
+                  <tr
+                    key={item.summaryId}
+                    className="border-b border-fg/10 bg-fg/10 border-l-4 border-l-fg/30"
+                    data-testid="checkpoint-quiet-summary-row"
+                  >
+                    <td colSpan={cols} className="px-3 py-2 text-sm">
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-2 text-left w-full hover:bg-fg/5 -mx-1 px-1 py-0.5"
+                        onClick={() => onToggleQuietSummary(item.summaryId)}
+                        aria-expanded={expanded}
+                        data-testid="checkpoint-quiet-summary-toggle"
+                      >
+                        {expanded ? <ChevronUp className="size-3.5 shrink-0" /> : <ChevronDown className="size-3.5 shrink-0" />}
+                        <span className="text-fg-muted font-medium">
+                          {t('integrity.quietSummary', {
+                            from: item.windowStart ? formatDateWithTimezone(item.windowStart) : '—',
+                            to: item.windowEnd ? formatDateWithTimezone(item.windowEnd) : '—',
+                            count: item.windowCount,
+                            entries: item.entryCount,
+                          })}
+                        </span>
+                        {item.lateWritten && <LateWrittenBadge />}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              }
+              const r = item.row;
+              const gapStartMs = focusGap ? new Date(focusGap.gapStart).getTime() : null;
+              const gapEndMs = focusGap ? new Date(focusGap.gapEnd).getTime() : null;
+              const rowEndMs = r.windowEnd ? new Date(r.windowEnd).getTime() : null;
+              const rowStartMs = r.windowStart ? new Date(r.windowStart).getTime() : null;
+              const isAnchor = focusGap && gapStartMs != null && rowEndMs === gapStartMs;
+              const isAfterGap = focusGap && gapEndMs != null && rowStartMs === gapEndMs;
+              const isBorderingGap = isAnchor || isAfterGap;
+              const isFocusedCheckpoint =
+                focusCheckpointId != null && r.checkpointId === focusCheckpointId;
+              return (
+                <tr
+                  key={r.checkpointId ?? index}
+                  className={cn(
+                    'border-b border-fg/10 bg-surface even:bg-bg',
+                    isBorderingGap && '!bg-warning/25 border-2 border-warning shadow-brutal',
+                    isFocusedCheckpoint && '!bg-accent/15 border-l-4 border-l-accent',
+                  )}
+                >
+                  <td className="px-3 py-2 font-mono text-xs">
+                    {isBorderingGap ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="font-black text-warning">{r.checkpointId ?? '—'}</span>
+                        <Badge variant="warning" className="text-[10px] px-1.5 py-0">{isAnchor ? t('integrity.anchorBadge') : t('integrity.afterGapBadge')}</Badge>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5">
+                        {r.checkpointId ?? '—'}
+                        {item.lateWritten && <LateWrittenBadge />}
+                      </span>
+                    )}
+                  </td>
+                  <td className={cn('px-3 py-2 text-xs', isBorderingGap ? 'text-fg font-semibold' : 'text-fg-muted')}>{r.windowStart ? formatDateWithTimezone(r.windowStart) : '—'}</td>
+                  <td className={cn('px-3 py-2 text-xs', isBorderingGap ? 'text-fg font-semibold' : 'text-fg-muted')}>{r.windowEnd ? formatDateWithTimezone(r.windowEnd) : '—'}</td>
+                  <td className="px-3 py-2 font-mono text-xs">{r.entryCount ?? 0}</td>
+                  <td className="px-3 py-2">
+                    <CheckpointTypeBadge type={r.checkpointType} />
+                  </td>
+                  <td className="px-3 py-2">
+                    <CheckpointLifecycleStateBadge state={r.lifecycleState} />
+                  </td>
+                  <td className="px-3 py-2 text-xs text-fg-muted max-w-48 truncate" title={r.notes ?? undefined}>
+                    {r.notes ?? '—'}
+                  </td>
+                </tr>
+              );
+            })
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ── Integrity Panel (GLOBAL_ADMIN only) ───────────────────────────────────────
+
+function IntegrityPanel({
+  focusCheckpointId = null,
+  investigationSource = null,
+  reconcileAction = false,
+  initialCheckRange = null,
+  reconcileAlertId = null,
+  reconcileFailBoundary = null,
+  reconcileResumeBoundary = null,
+  autoOpenReconcile = false,
+  monitoringTruth,
+}: {
+  focusCheckpointId?: number | null;
+  /** Deep-link `source` (e.g. integrity-alert) — investigation context may open the timeline. */
+  investigationSource?: string | null;
+  /** True when deep-link `action=reconcile` (Remediate cluster; not timeline by itself). */
+  reconcileAction?: boolean;
+  initialCheckRange?: { createdAfter: string; createdBefore: string } | null;
+  /** Open AUDIT_INTEGRITY_RUPTURE alert id for Integrity-atelier reconcile. */
+  reconcileAlertId?: number | null;
+  /** Boundaries resolved from the alert payload (not from URL window params). */
+  reconcileFailBoundary?: string | null;
+  reconcileResumeBoundary?: string | null;
+  /** When true (deep-link `action=reconcile`), open the reconcile dialog once boundaries are ready. */
+  autoOpenReconcile?: boolean;
+  /** Server truth for runtime profile + integrity monitoring flags (from Integrity bootstrap). */
+  monitoringTruth: IntegrityMonitoringTruth;
+}) {
+  const { t } = useTranslation('audit-logs');
+  const { effectiveTimeZoneId } = useDisplayTimezone();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const monitoringOffCopy = shouldUseMonitoringOffCopy(monitoringTruth);
+  const disclosureQuery = useMemo(
+    () => ({
+      action: reconcileAction || autoOpenReconcile ? 'reconcile' : null,
+      source: investigationSource,
+      focusCheckpointId,
+    }),
+    [reconcileAction, autoOpenReconcile, investigationSource, focusCheckpointId],
+  );
+  const forceTimelineOpen = shouldForceTimelineOpen(disclosureQuery, false);
+  const forceRemediateFromQuery = shouldAutoOpenRemediateCluster(disclosureQuery, {
+    undeclaredGapCount: 0,
+    hasActionableIncident: false,
+    awaitingConfirmTranche: false,
+    chainNonGreen: false,
+  });
+  const nightlyValidationEnabled = monitoringTruth.nightlyValidationEnabled === true;
+  const [timelineExpanded, setTimelineExpanded] = useState(forceTimelineOpen);
+  const [prevForceTimelineOpen, setPrevForceTimelineOpen] = useState(forceTimelineOpen);
+  const [maintenanceExpanded, setMaintenanceExpanded] = useState(forceRemediateFromQuery);
+  const [incidentsExpanded, setIncidentsExpanded] = useState(forceRemediateFromQuery);
+  /** Gaps list: collapsed by default; auto-opens with Remediate when gaps exist. */
+  const [gapsListExpanded, setGapsListExpanded] = useState(false);
+
+  // Deep-link props: open during render (no post-paint flash) when the query turns on.
+  if (forceTimelineOpen !== prevForceTimelineOpen) {
+    setPrevForceTimelineOpen(forceTimelineOpen);
+    if (forceTimelineOpen) {
+      setTimelineExpanded(true);
+    }
+  }
+
+  // ── Check results ──
+  const [chainReport, setChainReport] = useState<ChainVerificationReport | null>(null);
+  const [integrityReport, setIntegrityReport] = useState<IntegrityReport | null>(null);
+  const [chainReportRange, setChainReportRange] = useState<{ from: string; to: string } | null>(null);
+  const [integrityReportRange, setIntegrityReportRange] = useState<{ from: string; to: string } | null>(null);
+  const [chainLoading, setChainLoading] = useState(false);
+  const [integrityLoading, setIntegrityLoading] = useState(false);
+  const [validationRunLoading, setValidationRunLoading] = useState(false);
+  const [validationRunResult, setValidationRunResult] =
+    useState<RetroactiveIntegrityValidationRunResponse | null>(null);
+  const [asyncJob, setAsyncJob] = useState<IntegrityAsyncJobResponse | null>(null);
+  const handleAsyncJobChange = useCallback((next: IntegrityAsyncJobResponse | null) => {
+    // #788: 204 keeps a finished glance, but never escape-sticky (Patrick B2).
+    // Nightly RUNNING → 204 reloads `/last-verdict`.
+    applyIntegrityAsyncJobChange(next, {
+      setJob: setAsyncJob,
+      loadLastVerdict: getLastIntegrityVerdict,
+    });
+  }, []);
+  const asyncSlotRunning = asyncJob?.status === 'RUNNING';
+  const asyncEscapeSticky =
+    asyncJob != null
+    && asyncJob.abandonedAt == null
+    && isIntegrityAsyncEscapeStatus(asyncJob.status);
+  const asyncStartsBlocked = asyncSlotRunning || asyncEscapeSticky;
+  const maxWindowDays = monitoringTruth.maxWindowDays ?? INTEGRITY_DEFAULT_MAX_WINDOW_DAYS;
+  const maxSyncWindowDays =
+    monitoringTruth.maxSyncWindowDays ?? INTEGRITY_REPORT_MAX_SYNC_WINDOW_DAYS;
+  const maxSyncWindowHours = integrityWindowDaysToHours(maxSyncWindowDays);
+  const maxAsyncWindowHours = integrityWindowDaysToHours(maxWindowDays);
+
+  // ── Date range for integrity checks (shared DateRangeFilter) ──
+  const [checkRange, setCheckRange] = useState({ from: '', to: '' });
+  const [verdictDisplayRange, setVerdictDisplayRange] = useState<{
+    from: string;
+    to: string;
+  } | null>(null);
+  /** OQ1: freeze open-time non-green → Remédier; ban mid-work auto-switch. */
+  const [openTimeChainNonGreen, setOpenTimeChainNonGreen] = useState<boolean | undefined>(
+    undefined,
+  );
+  const [hydrationReloadNonce, setHydrationReloadNonce] = useState(0);
+  const [hydrationFailedKind, setHydrationFailedKind] = useState<'chain' | 'entry' | null>(
+    null,
+  );
+  const [hydrationFailedBusy, setHydrationFailedBusy] = useState(false);
+  const [hydrationFailedOverCap, setHydrationFailedOverCap] = useState(false);
+
+  // After VERIFY_* SUCCEEDED without D3 counters, hydrate detailed reports from
+  // read-only verify endpoints. Cut 3: skip auto GET when job-backed glance exists.
+  useIntegrityAsyncJobReportHydration({
+    job: asyncJob,
+    reloadNonce: hydrationReloadNonce,
+    skipAutoHydrateWhenJobBacked: true,
+    maxSyncWindowHours,
+    toDisplayRange: (fromIso, toIso) =>
+      integrityExclusiveApiParamsToDisplayRange(fromIso, toIso, effectiveTimeZoneId),
+    onChainReport: (report, range) => {
+      setHydrationFailedKind(null);
+      setHydrationFailedBusy(false);
+      setHydrationFailedOverCap(false);
+      setChainReport(report);
+      setChainReportRange(range);
+    },
+    onEntryReport: (report, range) => {
+      setHydrationFailedKind(null);
+      setHydrationFailedBusy(false);
+      setHydrationFailedOverCap(false);
+      setIntegrityReport(report);
+      setIntegrityReportRange(range);
+    },
+    onChainHydratingChange: setChainLoading,
+    onEntryHydratingChange: setIntegrityLoading,
+    onError: (kind, error) => {
+      const busy = isIntegrityReportHydrationBusyError(error);
+      const overCap =
+        error instanceof IntegrityReportHydrationOverCapError
+        || isIntegrityWindowOverCapError(error);
+      setHydrationFailedKind(kind);
+      setHydrationFailedBusy(busy);
+      setHydrationFailedOverCap(overCap);
+      // Busy / over-cap: inline warning only (no red error toast / retry storm).
+      if (busy || overCap) {
+        return;
+      }
+      toast(
+        getTranslatedApiError(
+          error,
+          t,
+          kind === 'chain'
+            ? t('integrity.asyncJob.hydrateChainError')
+            : t('integrity.asyncJob.hydrateEntryError'),
+        ),
+        'error',
+      );
+    },
+  });
+
+  // Align Vérifier picker to the glance job scope (#696). Deep-link ranges (#693)
+  // win for the picker so a later job hydration cannot overwrite them.
+  useEffect(() => {
+    const display = integrityFinishedJobScopeToDisplayRange(asyncJob, effectiveTimeZoneId);
+    if (display == null) {
+      return;
+    }
+    setVerdictDisplayRange(display);
+    if (initialCheckRange?.createdAfter && initialCheckRange.createdBefore) {
+      return;
+    }
+    setCheckRange(display);
+  }, [
+    asyncJob,
+    asyncJob?.jobId,
+    asyncJob?.status,
+    asyncJob?.scopeFrom,
+    asyncJob?.scopeTo,
+    effectiveTimeZoneId,
+    initialCheckRange?.createdAfter,
+    initialCheckRange?.createdBefore,
+  ]);
+
+  // Deep-link / reconcile Instant bounds → inclusive display dates in the
+  // effective timezone (#693). Never use browser-local Instant→date conversion
+  // for exclusive createdBefore (that shows +1 day).
+  useEffect(() => {
+    if (!initialCheckRange?.createdAfter || !initialCheckRange.createdBefore) {
+      return;
+    }
+    setCheckRange(
+      integrityExclusiveApiParamsToDisplayRange(
+        initialCheckRange.createdAfter,
+        initialCheckRange.createdBefore,
+        effectiveTimeZoneId,
+      ),
+    );
+  }, [
+    initialCheckRange?.createdAfter,
+    initialCheckRange?.createdBefore,
+    effectiveTimeZoneId,
+  ]);
+
+  // ── Dialogs ──
+  const [sealOpen, setSealOpen] = useState(false);
+  const [gapOpen, setGapOpen] = useState(false);
+  const [confirmArchivedOpen, setConfirmArchivedOpen] = useState(false);
+  const [reconcileOpen, setReconcileOpen] = useState(false);
+  const [sealResult, setSealResult] = useState<ArchiveSealResult | null>(null);
+  const [gapResult, setGapResult] = useState<GapDeclarationResult | null>(null);
+  const [confirmArchivedResult, setConfirmArchivedResult] =
+    useState<ArchiveConfirmArchivedResult | null>(null);
+
+  // ── Seal archive form state ──
+  const [sealPeriodStart, setSealPeriodStart] = useState('');
+  const [sealPeriodEnd, setSealPeriodEnd] = useState('');
+  const [sealCheckpointFrom, setSealCheckpointFrom] = useState('');
+  const [sealCheckpointTo, setSealCheckpointTo] = useState('');
+  const [sealJustification, setSealJustification] = useState('');
+
+  // ── Confirm archived form state ──
+  const [confirmDigest, setConfirmDigest] = useState('');
+  const [confirmArchivedAt, setConfirmArchivedAt] = useState('');
+
+  // ── Gap declaration state (driven by selection from the detected-gaps list) ──
+  const [selectedGapForDeclaration, setSelectedGapForDeclaration] = useState<
+    { gapStart: string; gapEnd: string; gapMinutes: number } | null
+  >(null);
+  const [gapJustification, setGapJustification] = useState('');
+
+  // ── Checkpoint timeline (nested expandable) ──
+  // Compress/filter state lives in the URL only (cpQuiet / cpFrom / cpTo / cpType) — no localStorage.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [checkpointRange, setCheckpointRange] = useState(() => {
+    const from = searchParams.get(CHECKPOINT_RANGE_FROM_PARAM);
+    const to = searchParams.get(CHECKPOINT_RANGE_TO_PARAM);
+    if (from && to) {
+      return { from, to };
+    }
+    return defaultCheckpointRecentRange();
+  });
+  const [checkpointTypeFilter, setCheckpointTypeFilter] = useState(
+    () => searchParams.get(CHECKPOINT_TYPE_PARAM) ?? '',
+  );
+  const compressQuietWindows = readQuietCompressFromSearchParams(searchParams);
+  const [expandedQuietIds, setExpandedQuietIds] = useState<Set<string>>(() => new Set());
+  /** Focused gap from "Undeclared gaps for consultation" – highlights bordering checkpoints in timeline */
+  const [focusedGap, setFocusedGap] = useState<{ gapStart: string; gapEnd: string; gapMinutes: number } | null>(null);
+
+  function setCompressQuietWindows(next: boolean) {
+    setSearchParams(
+      (prev) => {
+        const nextParams = new URLSearchParams(prev);
+        writeQuietCompressToSearchParams(nextParams, next);
+        return nextParams;
+      },
+      { replace: true },
+    );
+    if (!next) {
+      setExpandedQuietIds(new Set());
+    }
+  }
+
+  function updateCheckpointRange(next: { from: string; to: string }) {
+    setCheckpointRange(next);
+    setSearchParams(
+      (prev) => {
+        const nextParams = new URLSearchParams(prev);
+        if (next.from && next.to) {
+          nextParams.set(CHECKPOINT_RANGE_FROM_PARAM, next.from);
+          nextParams.set(CHECKPOINT_RANGE_TO_PARAM, next.to);
+        } else {
+          nextParams.delete(CHECKPOINT_RANGE_FROM_PARAM);
+          nextParams.delete(CHECKPOINT_RANGE_TO_PARAM);
+        }
+        return nextParams;
+      },
+      { replace: true },
+    );
+  }
+
+  function updateCheckpointTypeFilter(next: string) {
+    setCheckpointTypeFilter(next);
+    setSearchParams(
+      (prev) => {
+        const nextParams = new URLSearchParams(prev);
+        if (next) {
+          nextParams.set(CHECKPOINT_TYPE_PARAM, next);
+        } else {
+          nextParams.delete(CHECKPOINT_TYPE_PARAM);
+        }
+        return nextParams;
+      },
+      { replace: true },
+    );
+  }
+
+  function toggleQuietSummary(summaryId: string) {
+    setExpandedQuietIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(summaryId)) {
+        next.delete(summaryId);
+      } else {
+        next.add(summaryId);
+      }
+      return next;
+    });
+  }
+
+  const [incidentDeclareOpen, setIncidentDeclareOpen] = useState(false);
+  const [incidentActive, setIncidentActive] = useState<AuditChainIncidentResponseDto | null>(null);
+  const [incidentJustification, setIncidentJustification] = useState('');
+  const [incidentRootCause, setIncidentRootCause] =
+    useState<(typeof AUDIT_CHAIN_INCIDENT_ROOT_CAUSES)[number]>('UNKNOWN');
+
+  const {
+    data: archiveEligibility,
+    isLoading: archiveEligibilityLoading,
+  } = useQuery({
+    queryKey: ['audit-archive-eligibility'],
+    queryFn: () => getArchiveEligibility() as Promise<ArchiveEligibilityResult>,
+  });
+
+  const {
+    data: incidents,
+    pagination: incidentsPagination,
+    isLoading: incidentsLoading,
+    isError: incidentsError,
+    refetch: refetchIncidents,
+  } = usePaginatedFromOrval<AuditChainIncidentResponseDto, Record<string, never>>({
+    queryKey: [...queryKeys.auditChainIncidents],
+    baseParams: {},
+    fetchPage: (params) => listLifecycleIncidents(params as ListLifecycleIncidentsParams),
+    defaultSize: 20,
+    defaultSort: 'createdAt,DESC',
+  });
+
+  const declareIncidentMutation = useMutation({
+    mutationFn: ({
+      incidentId,
+      justification,
+      rootCause,
+    }: {
+      incidentId: number;
+      justification: string;
+      rootCause: string;
+    }) =>
+      api.post<AuditChainIncidentResponseDto>(
+        `/api/v1/audit-logs/lifecycle/incidents/${incidentId}/declare`,
+        { justification, rootCause },
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [...queryKeys.auditChainIncidents] });
+      setIncidentDeclareOpen(false);
+      setIncidentActive(null);
+      setIncidentJustification('');
+      setIncidentRootCause('UNKNOWN');
+      toast(t('integrity.incidents.declareSuccess'), 'success');
+    },
+    onError: (e: unknown) => {
+      toast(getTranslatedApiError(e, t, t('integrity.incidents.declareError')), 'error');
+    },
+  });
+
+  /**
+   * Checkpoint list filters — UI-only. Never pass entryCountMin for quiet filtering:
+   * GAP_DECLARATION / MANIPULATION_CONCILIATION are written with entry_count=0 and must stay visible.
+   * Quiet collapse is client-side on the full page sequence (Patrick craft lock).
+   */
+  const checkpointApiParams = useMemo(() => {
+    if (focusedGap) {
+      const start = new Date(focusedGap.gapStart);
+      start.setHours(start.getHours() - 1, start.getMinutes(), start.getSeconds(), 0);
+      const end = new Date(focusedGap.gapEnd);
+      end.setHours(end.getHours() + 1, end.getMinutes(), end.getSeconds(), 0);
+      return {
+        windowStartAfter: start.toISOString(),
+        windowStartBefore: end.toISOString(),
+        checkpointType: checkpointTypeFilter || undefined,
+      } as GetChainCheckpointsParams;
+    }
+    const sharedFilters = {
+      checkpointType: checkpointTypeFilter || undefined,
+    };
+    if (!checkpointRange.from || !checkpointRange.to) {
+      return sharedFilters as GetChainCheckpointsParams;
+    }
+    const { createdAfter, createdBefore } = dateRangeToApiParams(
+      checkpointRange.from,
+      checkpointRange.to,
+      effectiveTimeZoneId,
+    );
+    return {
+      windowStartAfter: createdAfter,
+      windowStartBefore: createdBefore,
+      ...sharedFilters,
+    } as GetChainCheckpointsParams;
+  }, [focusedGap, checkpointRange.from, checkpointRange.to, checkpointTypeFilter, effectiveTimeZoneId]);
+
+  const {
+    data: checkpointData,
+    pagination: checkpointPagination,
+    isLoading: checkpointLoading,
+    refetch: refetchCheckpoints,
+  } = usePaginatedFromOrval<AuditChainCheckpointResponseDto, GetChainCheckpointsParams>({
+    queryKey: [
+      ...queryKeys.auditChainCheckpoints,
+      checkpointApiParams.windowStartAfter ?? '',
+      checkpointApiParams.windowStartBefore ?? '',
+      checkpointApiParams.checkpointType ?? '',
+    ],
+    baseParams: checkpointApiParams,
+    fetchPage: (params) => getChainCheckpoints(params as GetChainCheckpointsParams),
+    /** ~12 windows/hour × several hours on one page; newest-first so Verify does not open on oldest history. */
+    defaultSize: 50,
+    defaultSort: 'windowStart,DESC',
+    enabled: timelineExpanded,
+    /** When a gap is focused, show loading then correct page 0 instead of keeping previous (wide) data. */
+    keepPreviousData: !focusedGap,
+  });
+
+  /**
+   * Display rows: orange undeclared-gap detection on the full unfiltered page
+   * sequence, then optional grey quiet-REGULAR collapse. When a type filter is
+   * active, skip inventing gaps between filtered neighbors (#695) — REGULARs
+   * that fill the span are hidden by the API filter, not real undeclared holes.
+   */
+  const checkpointTimelineRows = useMemo(
+    () =>
+      buildCheckpointTimelineDisplayRows(
+        checkpointData,
+        checkpointPagination.sort,
+        compressQuietWindows,
+        expandedQuietIds,
+        !checkpointTypeFilter,
+      ),
+    [
+      checkpointData,
+      checkpointPagination.sort,
+      compressQuietWindows,
+      expandedQuietIds,
+      checkpointTypeFilter,
+    ],
+  );
+
+  /** Format Date to YYYY-MM-DD for checkpoint range filter. */
+  function toYYYYMMDD(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  /** Focus a gap and navigate timeline: narrow API window so page 0 contains anchor + first-after gap; set date range to that same window so the filter matches the request; set sort, page 0, expand. */
+  function focusGapAndNavigate(g: { gapStart: string; gapEnd: string; gapMinutes: number }) {
+    setFocusedGap(g);
+    const start = new Date(g.gapStart);
+    start.setHours(start.getHours() - 1, start.getMinutes(), start.getSeconds(), 0);
+    const end = new Date(g.gapEnd);
+    end.setHours(end.getHours() + 1, end.getMinutes(), end.getSeconds(), 0);
+    updateCheckpointRange({ from: toYYYYMMDD(start), to: toYYYYMMDD(end) });
+    checkpointPagination.setSort('windowStart,ASC');
+    checkpointPagination.goToPage(0);
+    setTimelineExpanded(true);
+  }
+
+  function integrityRangeToApiParams(range: { from: string; to: string }) {
+    const { createdAfter, createdBefore } = integrityExclusiveDateRangeToApiParams(
+      range.from,
+      range.to,
+      effectiveTimeZoneId,
+    );
+    return { from: createdAfter, to: createdBefore };
+  }
+
+  const verifyRangeOverCap = (() => {
+    if (!checkRange.from || !checkRange.to) {
+      return false;
+    }
+    const api = integrityRangeToApiParams(checkRange);
+    if (!api.from || !api.to) {
+      return false;
+    }
+    return isIntegrityReportScopeOverCap(api.from, api.to, maxAsyncWindowHours);
+  })();
+  const asyncStartsDisabledReason = asyncSlotRunning
+    ? t('integrity.asyncJob.startsDisabledTooltip')
+    : asyncEscapeSticky
+      ? t('integrity.asyncJob.startsDisabledEscapeTooltip')
+      : chainLoading
+        ? t('integrity.checking')
+        : verifyRangeOverCap
+          ? t('integrity.microDashboard.rangeOverCapWarning', { maxWindowDays })
+          : !checkRange.from || !checkRange.to
+            ? t('integrity.selectDateRangeToRun')
+            : undefined;
+
+  /**
+   * Start VERIFY_CHAIN_RANGE. Pass Instant ISO bounds via {@code instantRange}
+   * (D1 auto-run), or YYYY-MM-DD display bounds via {@code rangeOverride}.
+   */
+  async function runChainCheck(options?: {
+    rangeOverride?: { from: string; to: string };
+    instantRange?: { from: string; to: string };
+    trigger?: 'MANUAL' | 'AUTO';
+    /** Open-path busy must not toast 409 (nightly / synthetic). */
+    quietBusy?: boolean;
+  }) {
+    const trigger = options?.trigger ?? 'MANUAL';
+    let createdAfter: string | undefined;
+    let createdBefore: string | undefined;
+    let displayRange: { from: string; to: string } | undefined;
+
+    if (options?.instantRange) {
+      createdAfter = options.instantRange.from;
+      createdBefore = options.instantRange.to;
+    } else {
+      const range = options?.rangeOverride ?? checkRange;
+      if (!range.from || !range.to) {
+        return;
+      }
+      displayRange = range;
+      const api = integrityRangeToApiParams(range);
+      createdAfter = api.from;
+      createdBefore = api.to;
+    }
+
+    if (!createdAfter || !createdBefore) {
+      return;
+    }
+
+    // #743 / Julie C1: over-cap is inline warning + disabled button — no toast.
+    if (isIntegrityReportScopeOverCap(createdAfter, createdBefore, maxAsyncWindowHours)) {
+      return;
+    }
+
+    if (options?.instantRange) {
+      displayRange = integrityExclusiveApiParamsToDisplayRange(
+        createdAfter,
+        createdBefore,
+        effectiveTimeZoneId,
+      );
+    }
+
+    setChainLoading(true);
+    if (trigger === 'MANUAL') {
+      setChainReport(null);
+      setChainReportRange(null);
+      setFocusedGap(null);
+    }
+    try {
+      const accepted = await startIntegrityAsyncJob({
+        type: 'VERIFY_CHAIN_RANGE',
+        from: createdAfter,
+        to: createdBefore,
+        trigger,
+      });
+      if (displayRange != null) {
+        setChainReportRange(displayRange);
+        setCheckRange(displayRange);
+        setVerdictDisplayRange(displayRange);
+      }
+      // #788 F1: provisional RUNNING keeps the strip up if the first /current fails.
+      await installIntegrityJobAfterStart(
+        accepted,
+        {
+          type: 'VERIFY_CHAIN_RANGE',
+          from: createdAfter,
+          to: createdBefore,
+          trigger,
+        },
+        getCurrentIntegrityAsyncJob,
+        handleAsyncJobChange,
+      );
+    } catch (e) {
+      const resume = integrityAsyncBusyResumeLine(e);
+      if (resume) {
+        // Nightly / gate busy on open: micro-dashboard shows running; no error toast.
+        if (!options?.quietBusy) {
+          toast(t('integrity.asyncJob.busyToast', { resume }), 'error');
+        }
+        try {
+          handleAsyncJobChange(await getCurrentIntegrityAsyncJob());
+        } catch {
+          // Keep prior glance; RUNNING poll (if any) will surface inline errors.
+        }
+      } else if (isIntegrityWindowOverCapError(e)) {
+        // Defense in depth — button should already be disabled for known over-cap.
+        return;
+      } else {
+        toast(getTranslatedApiError(e, t, t('integrity.errorChainCheck')), 'error');
+      }
+    } finally {
+      setChainLoading(false);
+    }
+  }
+
+  async function runIntegrityCheck() {
+    if (!checkRange.from || !checkRange.to) {
+      return;
+    }
+    const { from: createdAfter, to: createdBefore } = integrityRangeToApiParams(checkRange);
+    if (!createdAfter || !createdBefore) {
+      return;
+    }
+    // #743 / Julie C1: over-cap is inline warning + disabled button — no toast.
+    if (isIntegrityReportScopeOverCap(createdAfter, createdBefore, maxAsyncWindowHours)) {
+      return;
+    }
+    setIntegrityLoading(true);
+    setIntegrityReport(null);
+    setIntegrityReportRange(null);
+    try {
+      const accepted = await startIntegrityAsyncJob({
+        type: 'VERIFY_ENTRY_HMAC_RANGE',
+        from: createdAfter,
+        to: createdBefore,
+      });
+      setIntegrityReportRange({ from: checkRange.from, to: checkRange.to });
+      await installIntegrityJobAfterStart(
+        accepted,
+        {
+          type: 'VERIFY_ENTRY_HMAC_RANGE',
+          from: createdAfter,
+          to: createdBefore,
+          trigger: 'MANUAL',
+        },
+        getCurrentIntegrityAsyncJob,
+        handleAsyncJobChange,
+      );
+    } catch (e) {
+      const resume = integrityAsyncBusyResumeLine(e);
+      if (resume) {
+        toast(t('integrity.asyncJob.busyToast', { resume }), 'error');
+        try {
+          handleAsyncJobChange(await getCurrentIntegrityAsyncJob());
+        } catch {
+          // Keep prior glance.
+        }
+      } else if (isIntegrityWindowOverCapError(e)) {
+        // Defense in depth — button should already be disabled for known over-cap.
+        return;
+      } else {
+        toast(getTranslatedApiError(e, t, t('integrity.errorIntegrityCheck')), 'error');
+      }
+    } finally {
+      setIntegrityLoading(false);
+    }
+  }
+
+  async function runRetroactiveValidation() {
+    if (!checkRange.from || !checkRange.to) {
+      return;
+    }
+    const { from: createdAfter, to: createdBefore } = integrityRangeToApiParams(checkRange);
+    if (!createdAfter || !createdBefore) {
+      return;
+    }
+    // #743 / Julie C1: over-cap is inline warning + disabled button — no toast.
+    if (isIntegrityReportScopeOverCap(createdAfter, createdBefore, maxAsyncWindowHours)) {
+      return;
+    }
+    setValidationRunLoading(true);
+    setValidationRunResult(null);
+    try {
+      const accepted = await startIntegrityAsyncJob({
+        type: 'RUN_VALIDATION',
+        from: createdAfter,
+        to: createdBefore,
+        raiseAlert: true,
+      });
+      await installIntegrityJobAfterStart(
+        accepted,
+        {
+          type: 'RUN_VALIDATION',
+          from: createdAfter,
+          to: createdBefore,
+          trigger: 'MANUAL',
+        },
+        getCurrentIntegrityAsyncJob,
+        handleAsyncJobChange,
+      );
+    } catch (e) {
+      const resume = integrityAsyncBusyResumeLine(e);
+      if (resume) {
+        toast(t('integrity.asyncJob.busyToast', { resume }), 'error');
+        try {
+          handleAsyncJobChange(await getCurrentIntegrityAsyncJob());
+        } catch {
+          // Keep prior glance.
+        }
+      } else if (isIntegrityWindowOverCapError(e)) {
+        return;
+      } else {
+        toast(getTranslatedApiError(e, t, t('integrity.validationRun.error')), 'error');
+      }
+    } finally {
+      setValidationRunLoading(false);
+    }
+  }
+
+  const sealMutation = useSealArchive({
+    mutation: {
+      onSuccess: (data) => {
+        const result = data as unknown as ArchiveSealResult;
+        setSealResult(result);
+        toast(t('integrity.toastSealSuccess', { count: result.checkpointsSealed }), 'success');
+        queryClient.invalidateQueries({ queryKey: queryKeys.auditLogs });
+        queryClient.invalidateQueries({ queryKey: queryKeys.auditChainCheckpoints });
+        queryClient.invalidateQueries({ queryKey: ['audit-archive-eligibility'] });
+      },
+      onError: (e) => toast(getTranslatedApiError(e, t, t('integrity.errorSeal')), 'error'),
+    },
+  });
+
+  const confirmArchivedMutation = useConfirmArchived({
+    mutation: {
+      onSuccess: (data) => {
+        const result = data as unknown as ArchiveConfirmArchivedResult;
+        setConfirmArchivedResult(result);
+        toast(
+          t('confirmArchivedDialog.toastSuccess', { count: result.checkpointsExported ?? 0 }),
+          'success',
+        );
+        queryClient.invalidateQueries({ queryKey: queryKeys.auditLogs });
+        queryClient.invalidateQueries({ queryKey: queryKeys.auditChainCheckpoints });
+        queryClient.invalidateQueries({ queryKey: ['audit-archive-eligibility'] });
+      },
+      onError: (e) =>
+        toast(getTranslatedApiError(e, t, t('confirmArchivedDialog.errorFailed')), 'error'),
+    },
+  });
+
+  const gapMutation = useDeclareGap({
+    mutation: {
+      onSuccess: (data, variables) => {
+        const result = data as unknown as GapDeclarationResult;
+        setGapResult(result);
+        toast(t('integrity.toastGapSuccess'), 'success');
+        queryClient.invalidateQueries({ queryKey: queryKeys.auditLogs });
+        queryClient.invalidateQueries({ queryKey: queryKeys.auditChainCheckpoints });
+        queryClient.invalidateQueries({ queryKey: ['audit-archive-eligibility'] });
+        // Post-declaration refresh sequence (see plan):
+        //   1) clear focus if it matched the declared gap,
+        //   2) re-run the chain integrity check so the declared gap drops off the list.
+        const declaredStart = variables?.data?.gapStart;
+        const declaredEnd = variables?.data?.gapEnd;
+        if (
+          focusedGap !== null &&
+          declaredStart === focusedGap.gapStart &&
+          declaredEnd === focusedGap.gapEnd
+        ) {
+          setFocusedGap(null);
+        }
+        void runChainCheck();
+      },
+      onError: (e) => toast(getTranslatedApiError(e, t, t('integrity.errorGap')), 'error'),
+    },
+  });
+
+  function resetSealForm() {
+    setSealPeriodStart('');
+    setSealPeriodEnd('');
+    setSealCheckpointFrom('');
+    setSealCheckpointTo('');
+    setSealJustification('');
+    setSealResult(null);
+  }
+
+  function resetConfirmArchivedForm() {
+    setConfirmDigest('');
+    setConfirmArchivedAt('');
+    setConfirmArchivedResult(null);
+  }
+
+  function openConfirmArchivedDialog() {
+    resetConfirmArchivedForm();
+    setConfirmArchivedOpen(true);
+  }
+
+  const awaitingConfirmTranche =
+    archiveEligibility?.confirmationRequired === true
+    && archiveEligibility.checkpointIdFrom != null
+    && archiveEligibility.checkpointIdTo != null;
+
+  const undeclaredGapCountFromDto =
+    asyncJob?.status === 'SUCCEEDED' && typeof asyncJob.undeclaredGaps === 'number'
+      ? asyncJob.undeclaredGaps
+      : 0;
+  const undeclaredGapCount = Math.max(
+    undeclaredGapCountFromReport(chainReport as { undeclaredGaps?: unknown[] } | null),
+    undeclaredGapCountFromDto,
+  );
+  const hasActionableIncident = incidents.some((row) =>
+    isActionableIncidentStatus(row.status),
+  );
+  const reportChainNonGreen = isChainReportNonGreen(
+    chainReport as {
+      intact?: boolean;
+      status?: string;
+      undeclaredGaps?: unknown[];
+      invalidCheckpoints?: number;
+    } | null,
+  );
+  const dtoChainNonGreen = isIntegrityChainStatusNonGreen(asyncJob?.chainStatus);
+  // OQ1: open-time non-green drives default Remédier; mid-work arrivals do not flip tabs.
+  const chainNonGreenForMode =
+    openTimeChainNonGreen === true
+    || (openTimeChainNonGreen === undefined && (reportChainNonGreen || dtoChainNonGreen));
+  const chainNonGreen = reportChainNonGreen || dtoChainNonGreen;
+  const disclosureState = {
+    undeclaredGapCount,
+    hasActionableIncident,
+    awaitingConfirmTranche,
+    chainNonGreen: chainNonGreenForMode,
+  };
+  const autoOpenRemediate = shouldAutoOpenRemediateCluster(disclosureQuery, disclosureState);
+
+  const modeParam = searchParams.get('mode');
+  const derivedMode = resolveIntegrityAtelierMode({
+    modeParam,
+    query: disclosureQuery,
+    state: disclosureState,
+    hasFocusedGap: focusedGap != null,
+  });
+  const [modeOverride, setModeOverride] = useState<IntegrityAtelierMode | null>(null);
+  const activeMode = modeOverride ?? derivedMode;
+  // Mid-work non-green: offer Ouvrir Remédier instead of auto-switching (OQ1).
+  const showOpenRemediate =
+    chainNonGreen && activeMode !== 'remediate' && openTimeChainNonGreen !== true;
+
+  function selectAtelierMode(next: IntegrityAtelierMode) {
+    setModeOverride(next);
+    setSearchParams(
+      (prev) => {
+        const nextParams = new URLSearchParams(prev);
+        nextParams.set('mode', next);
+        return nextParams;
+      },
+      { replace: true },
+    );
+  }
+
+  // Non-green server/UI state (or deep-link): expand Remediate cluster once signals arrive.
+  // Does not force the checkpoint timeline open — that stays query/operator-driven.
+  useEffect(() => {
+    if (!autoOpenRemediate) {
+      return;
+    }
+    setMaintenanceExpanded(true);
+    setIncidentsExpanded(true);
+    if (undeclaredGapCount > 0) {
+      setGapsListExpanded(true);
+    }
+  }, [autoOpenRemediate, undeclaredGapCount]);
+
+  // Gap locate: keep timeline open when a gap is focused; switch to Verify (investigation job).
+  useEffect(() => {
+    if (focusedGap == null) {
+      return;
+    }
+    setTimelineExpanded(true);
+    setGapsListExpanded(true);
+    setMaintenanceExpanded(true);
+    setModeOverride('verify');
+    setSearchParams(
+      (prev) => {
+        const nextParams = new URLSearchParams(prev);
+        nextParams.set('mode', 'verify');
+        return nextParams;
+      },
+      { replace: true },
+    );
+  }, [focusedGap, setSearchParams]);
+
+  const canReconcileOnIntegrity =
+    reconcileAlertId != null
+    && reconcileAlertId > 0
+    && Boolean(reconcileFailBoundary && reconcileResumeBoundary);
+
+  const [autoReconcileConsumed, setAutoReconcileConsumed] = useState(false);
+  useEffect(() => {
+    if (
+      !autoOpenReconcile
+      || autoReconcileConsumed
+      || !canReconcileOnIntegrity
+      || !reconcileFailBoundary
+      || !reconcileResumeBoundary
+    ) {
+      return;
+    }
+    setReconcileOpen(true);
+    setAutoReconcileConsumed(true);
+  }, [
+    autoOpenReconcile,
+    autoReconcileConsumed,
+    canReconcileOnIntegrity,
+    reconcileFailBoundary,
+    reconcileResumeBoundary,
+  ]);
+
+  function resetGapForm() {
+    setSelectedGapForDeclaration(null);
+    setGapJustification('');
+    setGapResult(null);
+  }
+
+  /** Open the declaration dialog for a specific detected gap (timestamps prefilled). */
+  function openDeclareDialogFor(g: { gapStart: string; gapEnd: string; gapMinutes: number }) {
+    setSelectedGapForDeclaration(g);
+    setGapJustification('');
+    setGapResult(null);
+    setGapOpen(true);
+  }
+
+  function closeGapDialog() {
+    setGapOpen(false);
+    resetGapForm();
+  }
+
+  // D1 page open (cut 3 / #788): stop only for RUNNING, escape-sticky, or a
+  // fresh chain verdict. Otherwise read `/last-verdict`, show the newer of the
+  // two, and auto-run when neither is fresh. Read errors → null (fail-open).
+  useEffect(() => {
+    if (chainReport || chainLoading) return;
+
+    let cancelled = false;
+    void (async () => {
+      let current: IntegrityAsyncJobResponse | null;
+      try {
+        current = await getCurrentIntegrityAsyncJob();
+      } catch {
+        // Error contract (#788): fail-open toward auto-run when no glance remains.
+        current = null;
+      }
+      if (cancelled) {
+        return;
+      }
+
+      // Early hold: RUNNING / escape — no `/last-verdict` fetch required.
+      const early = decideIntegrityOpenAction(current, null);
+      if (early.action === 'hold' && (early.reason === 'running' || early.reason === 'escape')) {
+        handleAsyncJobChange(early.displayJob);
+        setOpenTimeChainNonGreen(isIntegrityChainStatusNonGreen(early.displayJob.chainStatus));
+        return;
+      }
+
+      let lastVerdict: IntegrityAsyncJobResponse | null;
+      try {
+        lastVerdict = await getLastIntegrityVerdict();
+      } catch {
+        lastVerdict = null;
+      }
+      if (cancelled) {
+        return;
+      }
+
+      const decision = decideIntegrityOpenAction(current, lastVerdict);
+      if (decision.displayJob != null) {
+        handleAsyncJobChange(decision.displayJob);
+      }
+      if (decision.action === 'hold') {
+        setOpenTimeChainNonGreen(isIntegrityChainStatusNonGreen(decision.displayJob.chainStatus));
+        return;
+      }
+
+      setOpenTimeChainNonGreen(false);
+      // Remount after a failed AUTO may retry — bounded by navigation (#788).
+      await runChainCheck({
+        instantRange: defaultAutoVerifyInstantRange(),
+        trigger: 'AUTO',
+        quietBusy: true,
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div id="integrity-lifecycle-panel" className="space-y-6">
+      <div className="flex items-center gap-2">
+        <ShieldAlert className="size-4 text-fg-muted" />
+        <p className="text-sm text-fg-muted">{t('integrity.subtitle')}</p>
+        <ContextHelp
+          title={t('integrity.pageTitle')}
+          content={
+            <Trans
+              i18nKey={
+                monitoringOffCopy
+                  ? 'audit-logs:help.integrityLifecycle.contentMonitoringOff'
+                  : 'audit-logs:help.integrityLifecycle.content'
+              }
+              components={{ strong: <strong /> }}
+            />
+          }
+          ariaLabel={t('common:help.ariaLabel', { title: t('integrity.pageTitle') })}
+        />
+      </div>
+
+      <IntegrityMicroDashboard
+        job={asyncJob}
+        onJobChange={handleAsyncJobChange}
+        active
+        pickerRange={checkRange}
+        verdictDisplayRange={verdictDisplayRange}
+        onReverify={() => void runChainCheck({ trigger: 'MANUAL' })}
+        reverifyDisabled={integrityReverifyDisabled({
+          asyncStartsBlocked,
+          chainLoading,
+          rangeFrom: checkRange.from,
+          rangeTo: checkRange.to,
+        })}
+        reverifyDisabledReason={asyncStartsDisabledReason}
+        showOpenRemediate={showOpenRemediate}
+        onOpenRemediate={() => selectAtelierMode('remediate')}
+      />
+
+      {hydrationFailedKind != null
+        && isSucceededVerifyJobForReportHydration(asyncJob) && (
+        <div
+          className="border-2 border-warning/40 bg-warning/5 px-3 py-2 text-sm flex flex-wrap items-center gap-2"
+          data-testid="integrity-report-hydrate-failed"
+          role="alert"
+        >
+          <span className="min-w-0 flex-1">
+            {hydrationFailedOverCap
+              ? t('integrity.asyncJob.hydrateOverCapHint', { maxSyncDays: maxSyncWindowDays })
+              : hydrationFailedBusy
+                ? t('integrity.asyncJob.hydrateBusyHint')
+                : hydrationFailedKind === 'chain'
+                  ? t('integrity.asyncJob.hydrateChainError')
+                  : t('integrity.asyncJob.hydrateEntryError')}
+          </span>
+          {!hydrationFailedOverCap && (
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              className="ml-auto shrink-0"
+              data-testid="integrity-report-reload"
+              onClick={() => {
+                setHydrationFailedKind(null);
+                setHydrationFailedBusy(false);
+                setHydrationFailedOverCap(false);
+                setHydrationReloadNonce((n) => n + 1);
+              }}
+            >
+              {t('integrity.asyncJob.reloadReport')}
+            </Button>
+          )}
+        </div>
+      )}
+
+      <div
+        role="tablist"
+        aria-label={t('integrity.modes.ariaLabel')}
+        className="inline-flex border-2 border-fg"
+        data-testid="integrity-mode-tabs"
+      >
+        {INTEGRITY_ATELIER_MODES.map((mode) => {
+          const selected = activeMode === mode;
+          return (
+            <button
+              key={mode}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              data-testid={`integrity-mode-${mode}`}
+              className={cn(
+                'px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors',
+                selected ? 'bg-fg text-bg' : 'bg-surface text-fg hover:bg-fg/5',
+              )}
+              onClick={() => selectAtelierMode(mode)}
+            >
+              {t(`integrity.modes.${mode}`)}
+            </button>
+          );
+        })}
+      </div>
+
+          {/* ── Observe: lifecycle glance ── */}
+          {activeMode === 'observe' && (
+          <div className="space-y-3" data-testid="integrity-mode-panel-observe">
+            <h3 className="font-bold text-xs uppercase tracking-wider text-fg-muted">{t('integrity.lifecycleOverview')}</h3>
+            <div className="border-2 border-fg/10 bg-bg p-3 space-y-3">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <p className="font-bold text-xs uppercase tracking-wider text-fg-muted">{t('integrity.lifecyclePolicyTitle')}</p>
+                  <p className="text-xs text-fg-muted">
+                    {t(
+                      monitoringOffCopy
+                        ? 'integrity.lifecyclePolicyHintMonitoringOff'
+                        : 'integrity.lifecyclePolicyHint',
+                    )}
+                  </p>
+                </div>
+                {!monitoringOffCopy && (
+                  <Badge variant="muted">{t('integrity.policyDriven')}</Badge>
+                )}
+              </div>
+
+              {archiveEligibilityLoading ? (
+                <div className="text-xs text-fg-muted">{t('integrity.loadingLifecycleOverview')}</div>
+              ) : archiveEligibility ? (
+                <>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                    <Stat label={t('integrity.sealedCheckpointCount')} value={archiveEligibility.sealedCheckpointCount ?? 0} />
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-fg-muted">{t('integrity.externalArchival')}</p>
+                      <p className="font-bold text-fg">{archiveEligibility.externalArchivalEnabled ? t('integrity.statusEnabled') : t('integrity.statusDisabled')}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-fg-muted">{t('integrity.confirmationRequired')}</p>
+                      <p className="font-bold text-fg">{archiveEligibility.confirmationRequired ? t('integrity.statusYes') : t('integrity.statusNo')}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2 text-xs text-fg-muted sm:grid-cols-2">
+                    <div className="border border-fg/10 p-2">
+                      <p className="font-bold uppercase tracking-wider text-[10px] text-fg-muted">{t('integrity.awaitingArchiveWindow')}</p>
+                      <p>
+                        {archiveEligibility.oldestSealedWindowStart && archiveEligibility.newestSealedWindowEnd
+                          ? t('integrity.lifecycleWindowFromTo', {
+                              from: formatDateWithTimezone(archiveEligibility.oldestSealedWindowStart),
+                              to: formatDateWithTimezone(archiveEligibility.newestSealedWindowEnd),
+                            })
+                          : t('integrity.noLifecycleWindow')}
+                      </p>
+                    </div>
+                    <div className="border border-fg/10 p-2">
+                      <p className="font-bold uppercase tracking-wider text-[10px] text-fg-muted">{t('integrity.awaitingArchiveCheckpointRange')}</p>
+                      <p>
+                        {archiveEligibility.checkpointIdFrom != null && archiveEligibility.checkpointIdTo != null
+                          ? t('integrity.lifecycleCheckpointRange', {
+                              from: archiveEligibility.checkpointIdFrom,
+                              to: archiveEligibility.checkpointIdTo,
+                            })
+                          : t('integrity.noLifecycleWindow')}
+                      </p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="text-xs text-fg-muted">{t('integrity.noLifecycleOverview')}</div>
+              )}
+            </div>
+            <p className="text-xs text-fg-muted">{t('integrity.modes.observeHint')}</p>
+          </div>
+          )}
+
+          {/* ── Verify: detective verification ── */}
+          {activeMode === 'verify' && (
+          <div className="space-y-6" data-testid="integrity-mode-panel-verify">
+          {/* ── Verification section ── */}
+          <div className="space-y-3">
+            <h3 className="font-bold text-xs uppercase tracking-wider text-fg-muted">{t('integrity.verification')}</h3>
+
+            {/* Date range filter (range required for verification) */}
+            <DateRangeFilter
+              value={checkRange}
+              onChange={setCheckRange}
+              emptyOptionLabel={t('integrity.dateRangeSelect')}
+            />
+            {(() => {
+              if (!checkRange.from || !checkRange.to) {
+                return null;
+              }
+              const api = integrityRangeToApiParams(checkRange);
+              if (
+                !api.from
+                || !api.to
+                || !isIntegrityReportScopeOverCap(api.from, api.to, maxAsyncWindowHours)
+              ) {
+                return null;
+              }
+              return (
+                <p
+                  className="text-xs text-warning"
+                  data-testid="integrity-range-over-cap-warning"
+                  role="status"
+                >
+                  {t('integrity.microDashboard.rangeOverCapWarning', { maxWindowDays })}
+                </p>
+              );
+            })()}
+
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => void runChainCheck()}
+                disabled={integrityVerifyActionDisabled({
+                  loading: chainLoading,
+                  asyncStartsBlocked,
+                  rangeFrom: checkRange.from,
+                  rangeTo: checkRange.to,
+                  rangeOverCap: verifyRangeOverCap,
+                })}
+                className="gap-1.5"
+                title={asyncStartsDisabledReason}
+                data-testid="integrity-verify-chain"
+              >
+                <ShieldCheck className="size-3.5" />
+                {chainLoading || (asyncSlotRunning && asyncJob?.type === 'VERIFY_CHAIN_RANGE')
+                  ? t('integrity.checking')
+                  : t('integrity.verifyChain')}
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => void runIntegrityCheck()}
+                disabled={integrityVerifyActionDisabled({
+                  loading: integrityLoading,
+                  asyncStartsBlocked,
+                  rangeFrom: checkRange.from,
+                  rangeTo: checkRange.to,
+                  rangeOverCap: verifyRangeOverCap,
+                })}
+                className="gap-1.5"
+                title={asyncStartsDisabledReason}
+                data-testid="integrity-verify-entry-range"
+              >
+                <ShieldCheck className="size-3.5" />
+                {integrityLoading || (asyncSlotRunning && asyncJob?.type === 'VERIFY_ENTRY_HMAC_RANGE')
+                  ? t('integrity.checking')
+                  : t('integrity.verifyEntry')}
+              </Button>
+              <div className="ml-auto flex items-center gap-2">
+                {!nightlyValidationEnabled && (
+                  <span
+                    className="text-xs text-fg-muted"
+                    data-testid="integrity-run-validation-inactive-hint"
+                  >
+                    {t('integrity.runValidationInactiveHint')}
+                  </span>
+                )}
+                {nightlyValidationEnabled ? (
+                  <Button
+                    size="sm"
+                    onClick={() => void runRetroactiveValidation()}
+                    disabled={integrityVerifyActionDisabled({
+                      loading: validationRunLoading,
+                      asyncStartsBlocked,
+                      rangeFrom: checkRange.from,
+                      rangeTo: checkRange.to,
+                      rangeOverCap: verifyRangeOverCap,
+                    })}
+                    className="gap-1.5"
+                    title={asyncStartsDisabledReason}
+                    data-testid="integrity-run-validation"
+                  >
+                    <ShieldAlert className="size-3.5" />
+                    {validationRunLoading || (asyncSlotRunning && asyncJob?.type === 'RUN_VALIDATION')
+                      ? t('integrity.validationRun.running')
+                      : t('integrity.runValidation')}
+                  </Button>
+                ) : (
+                  <Tooltip content={t('integrity.runValidationInactiveTooltip')}>
+                    <span className="inline-flex">
+                      <Button
+                        size="sm"
+                        onClick={() => void runRetroactiveValidation()}
+                        disabled
+                        className="gap-1.5"
+                        data-testid="integrity-run-validation"
+                      >
+                        <ShieldAlert className="size-3.5" />
+                        {t('integrity.runValidation')}
+                      </Button>
+                    </span>
+                  </Tooltip>
+                )}
+              </div>
+            </div>
+            <p className="text-xs text-fg-muted">
+              {nightlyValidationEnabled
+                ? t('integrity.verifyVsRunHint')
+                : t('integrity.verifyVsRunHintInactive')}
+            </p>
+
+            {/* Chain report */}
+            {chainReport && (
+              <div className="border-2 border-fg/10 p-3 space-y-2 bg-bg">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-xs uppercase tracking-wider">{t('integrity.chainVerification')}</span>
+                  <ReportBadge
+                    intact={chainReport.intact}
+                    status={(chainReport as { status?: string }).status}
+                    intactLabel={t('integrity.reportIntact')}
+                    undeclaredGapsLabel={t('integrity.reportUndeclaredGaps')}
+                    violationLabel={t('integrity.reportViolation')}
+                  />
+                </div>
+                {chainReportRange && (
+                  <p className="text-xs text-fg-muted">
+                    {t('integrity.periodFromTo', {
+                      from: formatDateOnly(chainReportRange.from),
+                      to: formatDateOnly(chainReportRange.to),
+                    })}
+                  </p>
+                )}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                  <Stat label={t('integrity.statTotal')} value={chainReport.totalCheckpoints} />
+                  <Stat label={t('integrity.statValid')} value={chainReport.validCheckpoints} ok />
+                  <Stat label={t('integrity.statInvalid')} value={chainReport.invalidCheckpoints} bad />
+                  <Stat label={t('integrity.statArchived')} value={chainReport.archivedCheckpoints} />
+                  <Stat label={t('integrity.statUndeclaredGaps')} value={(chainReport as { undeclaredGaps?: unknown[] }).undeclaredGaps?.length ?? 0} bad={((chainReport as { undeclaredGaps?: unknown[] }).undeclaredGaps?.length ?? 0) > 0} />
+                </div>
+                {chainReport.gapDeclaredCheckpoints != null && chainReport.gapDeclaredCheckpoints > 0 && (
+                  <p className="text-xs text-fg-muted">{t('integrity.gapDeclaredCheckpoints', { count: chainReport.gapDeclaredCheckpoints })}</p>
+                )}
+                {chainReport.violations && chainReport.violations.length > 0 && (
+                  <div className="mt-2">
+                    <p className="text-xs font-bold text-error mb-1">{t('integrity.violations')}</p>
+                    <ul className="text-xs text-error list-disc pl-4 space-y-0.5">
+                      {chainReport.violations.map((v, i) => <li key={i}>{v}</li>)}
+                    </ul>
+                  </div>
+                )}
+                {chainReport.chainViolations && chainReport.chainViolations.length > 0 && (
+                  <div className="mt-2">
+                    <p className="text-xs font-bold text-error mb-1">{t('integrity.structuredChainViolations')}</p>
+                    <ul className="text-xs text-error space-y-1">
+                      {chainReport.chainViolations.map((v) => (
+                        <li key={`${v.checkpointId}-${v.violationType}`} className="font-mono">
+                          #{v.checkpointId} {v.violationType}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Entry integrity report */}
+            {integrityReport && (
+              <div className="border-2 border-fg/10 p-3 space-y-2 bg-bg">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-xs uppercase tracking-wider">{t('integrity.entryIntegrityReport')}</span>
+                  <EntryIntegrityReportBadge report={integrityReport} />
+                </div>
+                {integrityReportRange && (
+                  <p className="text-xs text-fg-muted">
+                    {t('integrity.periodFromTo', {
+                      from: formatDateOnly(integrityReportRange.from),
+                      to: formatDateOnly(integrityReportRange.to),
+                    })}
+                  </p>
+                )}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                  <Stat label={t('integrity.statTotal')} value={integrityReport.totalEntries} />
+                  <Stat label={t('integrity.statValid')} value={integrityReport.validEntries} ok />
+                  <Stat label={t('integrity.statInvalid')} value={integrityReport.invalidEntries} bad />
+                  <Stat label={t('integrity.statUnsigned')} value={integrityReport.unsignedEntries} />
+                </div>
+                {integrityReport.entryViolations?.items && integrityReport.entryViolations.items.length > 0 && (
+                  <div className="mt-2">
+                    <p
+                      className={cn(
+                        'text-xs font-bold mb-1',
+                        resolveEntryIntegrityReportSummaryState(integrityReport) === 'allExplained'
+                          ? 'text-warning'
+                          : 'text-error',
+                      )}
+                    >
+                      {t('integrity.structuredEntryViolations')}
+                    </p>
+                    <ul className="text-xs space-y-1">
+                      {integrityReport.entryViolations.items.map((v) => (
+                        <EntryIntegrityViolationLine key={v.auditLogId} violation={v} />
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {validationRunResult && (
+              <div className="border-2 border-fg/10 p-3 space-y-2 bg-bg">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-bold text-xs uppercase tracking-wider">
+                    {t('integrity.validationRun.title')}
+                  </span>
+                  {validationRunResult.skipped ? (
+                    <Badge variant="warning">{t('integrity.validationRun.skippedBadge')}</Badge>
+                  ) : validationRunResult.intact ? (
+                    <Badge variant="success">{t('integrity.reportIntact')}</Badge>
+                  ) : (
+                    <Badge variant="error">{t('integrity.reportViolation')}</Badge>
+                  )}
+                </div>
+                {validationRunResult.skipReason && (
+                  <p className="text-xs text-fg-muted">{validationRunResult.skipReason}</p>
+                )}
+                {validationRunResult.windowStart && validationRunResult.windowEnd && (
+                  <p className="text-xs text-fg-muted font-mono break-all">
+                    {t('integrity.validationRun.windowBounds', {
+                      from: validationRunResult.windowStart,
+                      to: validationRunResult.windowEnd,
+                    })}
+                  </p>
+                )}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                  <Stat
+                    label={t('integrity.validationRun.entryViolations')}
+                    value={validationRunResult.entryHmacViolationCount ?? 0}
+                    bad={(validationRunResult.entryHmacViolationCount ?? 0) > 0}
+                  />
+                  <Stat
+                    label={t('integrity.validationRun.entryAlertEligible')}
+                    value={validationRunResult.entryAlertEligibleCount ?? 0}
+                    bad={(validationRunResult.entryAlertEligibleCount ?? 0) > 0}
+                  />
+                  <Stat
+                    label={t('integrity.validationRun.chainViolations')}
+                    value={validationRunResult.chainViolationCount ?? 0}
+                    bad={(validationRunResult.chainViolationCount ?? 0) > 0}
+                  />
+                  {validationRunResult.chainStatus && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-fg-muted">
+                        {t('integrity.validationRun.chainStatus')}
+                      </p>
+                      <p className="font-mono text-xs font-bold">{validationRunResult.chainStatus}</p>
+                    </div>
+                  )}
+                </div>
+                {validationRunResult.alertRaised && validationRunResult.alertId != null && (
+                  <Link
+                    to={`/alerts/${validationRunResult.alertId}`}
+                    className="inline-flex items-center gap-1 text-sm font-bold text-accent hover:underline"
+                  >
+                    {t('integrity.validationRun.viewAlert', { id: validationRunResult.alertId })}
+                  </Link>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* ── Checkpoint timeline (nested expandable) ── */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 p-2 -m-2">
+              <button
+                type="button"
+                className="flex items-center gap-2 text-left hover:bg-fg/5 transition-colors"
+                onClick={() => setTimelineExpanded((v) => !v)}
+                aria-expanded={timelineExpanded}
+                data-testid="integrity-timeline-toggle"
+              >
+                <h3 className="font-bold text-xs uppercase tracking-wider text-fg-muted">{t('integrity.checkpointTimeline')}</h3>
+                {timelineExpanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+              </button>
+              <ContextHelp title={t('integrity.checkpointTimeline')} content={<Trans i18nKey="audit-logs:help.checkpointTimeline.content" components={{ strong: <strong /> }} />} ariaLabel={t('common:help.ariaLabel', { title: t('integrity.checkpointTimeline') })} />
+            </div>
+            {timelineExpanded && (
+              <div className="border-2 border-fg/10 bg-bg p-3 space-y-3">
+                <div className="flex gap-3 items-center flex-wrap">
+                  <DateRangeFilter
+                    value={checkpointRange}
+                    onChange={updateCheckpointRange}
+                    showClear={true}
+                    emptyOptionLabel={t('list.dateRangeFull')}
+                  />
+                  <div className="w-40">
+                    <Select
+                      value={checkpointTypeFilter}
+                      onChange={(e) => updateCheckpointTypeFilter(e.target.value)}
+                    >
+                      <option value="">{t('integrity.allTypes')}</option>
+                      <option value="REGULAR">{t('integrity.typeRegular')}</option>
+                      <option value="ARCHIVE_SEAL">{t('integrity.typeArchiveSeal')}</option>
+                      <option value="GAP_DECLARATION">{t('integrity.typeGapDeclaration')}</option>
+                      <option value="MANIPULATION_CONCILIATION">{t('integrity.typeManipulationConciliation')}</option>
+                    </Select>
+                  </div>
+                  <label className="flex items-center gap-2 text-xs cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      className="size-4 accent-accent"
+                      checked={compressQuietWindows}
+                      onChange={(e) => setCompressQuietWindows(e.target.checked)}
+                      data-testid="checkpoint-compress-quiet"
+                    />
+                    {t('integrity.compressQuietWindows')}
+                  </label>
+                  <Button size="sm" variant="secondary" onClick={() => refetchCheckpoints()} className="gap-1.5">
+                    <ListOrdered className="size-3.5" />
+                    {t('list.refresh')}
+                  </Button>
+                </div>
+                {checkpointRange.from && checkpointRange.to && (
+                  <p className="text-xs text-fg-muted">
+                    {t('integrity.showingCheckpointsFor', {
+                      from: formatDateOnly(checkpointRange.from),
+                      to: formatDateOnly(checkpointRange.to),
+                    })}
+                  </p>
+                )}
+                <div className="flex items-center gap-2">
+                  <Info className="size-3.5 text-fg-muted shrink-0" aria-hidden />
+                  <p className="text-xs text-fg-muted italic">{t('integrity.timelineHint')}</p>
+                </div>
+                <Pagination
+                  page={checkpointPagination.page}
+                  totalPages={checkpointPagination.totalPages}
+                  totalElements={checkpointPagination.totalElements}
+                  isFirst={checkpointPagination.isFirst}
+                  isLast={checkpointPagination.isLast}
+                  onFirstPage={checkpointPagination.firstPage}
+                  onLastPage={checkpointPagination.lastPage}
+                  onPrevPage={checkpointPagination.prevPage}
+                  onNextPage={checkpointPagination.nextPage}
+                  pageSize={checkpointPagination.size}
+                  onPageSizeChange={checkpointPagination.setPageSize}
+                  position="top"
+                />
+                <CheckpointTimelineTable
+                  rows={checkpointTimelineRows}
+                  isLoading={checkpointLoading}
+                  currentSort={checkpointPagination.sort}
+                  onSort={checkpointPagination.setSort}
+                  focusGap={focusedGap}
+                  focusCheckpointId={focusCheckpointId}
+                  expandedQuietIds={expandedQuietIds}
+                  onToggleQuietSummary={toggleQuietSummary}
+                />
+                <Pagination
+                  page={checkpointPagination.page}
+                  totalPages={checkpointPagination.totalPages}
+                  totalElements={checkpointPagination.totalElements}
+                  isFirst={checkpointPagination.isFirst}
+                  isLast={checkpointPagination.isLast}
+                  onFirstPage={checkpointPagination.firstPage}
+                  onLastPage={checkpointPagination.lastPage}
+                  onPrevPage={checkpointPagination.prevPage}
+                  onNextPage={checkpointPagination.nextPage}
+                  pageSize={checkpointPagination.size}
+                  onPageSizeChange={checkpointPagination.setPageSize}
+                />
+              </div>
+            )}
+          </div>
+          </div>
+          )}
+
+          {/* ── Remediate: maintenance, incidents, gaps ── */}
+          {activeMode === 'remediate' && (
+          <div className="space-y-3" data-testid="integrity-mode-panel-remediate">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="flex items-center gap-2 text-left hover:bg-fg/5 p-1 -m-1 transition-colors"
+                  onClick={() => setMaintenanceExpanded((v) => !v)}
+                  aria-expanded={maintenanceExpanded}
+                  data-testid="integrity-maintenance-toggle"
+                >
+                  <p className="font-bold text-xs uppercase tracking-wider text-fg-muted">{t('integrity.exceptionalMaintenance')}</p>
+                  {awaitingConfirmTranche && (
+                    <Badge variant="warning">{t('integrity.confirmationRequired')}</Badge>
+                  )}
+                  {maintenanceExpanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+                </button>
+                <span onClick={(e) => e.stopPropagation()}>
+                  <ContextHelp
+                    title={t('integrity.exceptionalMaintenance')}
+                    content={
+                      <Trans
+                        i18nKey={
+                          monitoringOffCopy
+                            ? 'audit-logs:help.exceptionalMaintenance.contentMonitoringOff'
+                            : 'audit-logs:help.exceptionalMaintenance.content'
+                        }
+                        components={{ strong: <strong /> }}
+                      />
+                    }
+                    ariaLabel={t('common:help.ariaLabel', { title: t('integrity.exceptionalMaintenance') })}
+                  />
+                </span>
+              </div>
+              {maintenanceExpanded && (
+              <div className="flex gap-3 flex-wrap items-center" data-testid="integrity-maintenance-body">
+              <Button size="sm" variant="secondary" onClick={() => { resetSealForm(); setSealOpen(true); }} className="gap-1.5">
+                <Archive className="size-3.5" />
+                {t('integrity.sealArchive')}
+              </Button>
+              <span onClick={(e) => e.stopPropagation()}>
+                <ContextHelp title={t('integrity.sealArchive')} content={<Trans i18nKey="audit-logs:help.sealArchive.content" components={{ strong: <strong /> }} />} ariaLabel={t('common:help.ariaLabel', { title: t('integrity.sealArchive') })} />
+              </span>
+              {awaitingConfirmTranche && (
+                <>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={openConfirmArchivedDialog}
+                    className="gap-1.5"
+                    title={t('integrity.confirmArchivedHint')}
+                  >
+                    <CheckCircle className="size-3.5" />
+                    {t('integrity.confirmArchived')}
+                  </Button>
+                  <span onClick={(e) => e.stopPropagation()}>
+                    <ContextHelp
+                      title={t('integrity.confirmArchived')}
+                      content={t('integrity.confirmArchivedHint')}
+                      ariaLabel={t('common:help.ariaLabel', { title: t('integrity.confirmArchived') })}
+                    />
+                  </span>
+                </>
+              )}
+              {canReconcileOnIntegrity && (
+                <>
+                  <Button
+                    size="sm"
+                    onClick={() => setReconcileOpen(true)}
+                    className="gap-1.5"
+                    title={t('integrity.reconcileRuptureHint')}
+                  >
+                    <ShieldAlert className="size-3.5" />
+                    {t('integrity.reconcileRupture')}
+                  </Button>
+                </>
+              )}
+              <span className="text-xs text-fg-muted italic">{t('integrity.declareGapHint')}</span>
+              <span onClick={(e) => e.stopPropagation()}>
+                <ContextHelp title={t('integrity.declareGap')} content={<Trans i18nKey="audit-logs:help.declareGap.content" components={{ strong: <strong /> }} />} ariaLabel={t('common:help.ariaLabel', { title: t('integrity.declareGap') })} />
+              </span>
+            </div>
+              )}
+            </div>
+
+            {/* Operational heartbeat incidents (distinct from cryptographic gap declarations) */}
+            <div className="border-2 border-fg/10 bg-bg p-3 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 text-left hover:bg-fg/5 p-1 -m-1 transition-colors"
+                    onClick={() => setIncidentsExpanded((v) => !v)}
+                    aria-expanded={incidentsExpanded}
+                    data-testid="integrity-incidents-toggle"
+                  >
+                    <span className="font-bold text-xs uppercase tracking-wider text-fg-muted">{t('integrity.incidents.title')}</span>
+                    {hasActionableIncident && (
+                      <Badge variant="warning">{t('integrity.disclosure.attention')}</Badge>
+                    )}
+                    {incidentsExpanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+                  </button>
+                  <span onClick={(e) => e.stopPropagation()}>
+                    <ContextHelp
+                      title={t('integrity.incidents.title')}
+                      content={<Trans i18nKey="audit-logs:help.incidents.content" components={{ strong: <strong /> }} />}
+                      ariaLabel={t('common:help.ariaLabel', { title: t('integrity.incidents.title') })}
+                    />
+                  </span>
+                </div>
+                {incidentsExpanded && (
+                <Button type="button" size="sm" variant="secondary" className="gap-1.5" onClick={() => void refetchIncidents()}>
+                  {incidentsLoading ? t('integrity.incidents.refreshing') : t('integrity.incidents.refresh')}
+                </Button>
+                )}
+              </div>
+              {incidentsExpanded && (
+              <div data-testid="integrity-incidents-body" className="space-y-3">
+              {incidentsLoading && (
+                <p className="text-xs text-fg-muted">{t('integrity.incidents.loading')}</p>
+              )}
+              {incidentsError && !incidentsLoading && (
+                <div className="space-y-2" data-testid="integrity-incidents-error">
+                  <p className="text-xs text-error">{t('integrity.incidents.loadError')}</p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => void refetchIncidents()}
+                  >
+                    {t('integrity.incidents.retry')}
+                  </Button>
+                </div>
+              )}
+              {!incidentsLoading && !incidentsError && incidents.length === 0 && (
+                <p className="text-xs text-fg-muted">{t('integrity.incidents.empty')}</p>
+              )}
+              {!incidentsLoading && !incidentsError && incidents.length > 0 && (
+                <>
+                <Pagination
+                  page={incidentsPagination.page}
+                  totalPages={incidentsPagination.totalPages}
+                  totalElements={incidentsPagination.totalElements}
+                  isFirst={incidentsPagination.isFirst}
+                  isLast={incidentsPagination.isLast}
+                  onFirstPage={incidentsPagination.firstPage}
+                  onLastPage={incidentsPagination.lastPage}
+                  onPrevPage={incidentsPagination.prevPage}
+                  onNextPage={incidentsPagination.nextPage}
+                  pageSize={incidentsPagination.size}
+                  onPageSizeChange={incidentsPagination.setPageSize}
+                  position="top"
+                />
+                <ul className="space-y-2 pl-0 list-none">
+                  {incidents.map((row) => (
+                    <li
+                      key={row.incidentId ?? `${row.createdAt ?? 'incident'}-${row.status ?? 'unknown'}`}
+                      className="border-2 border-fg/15 p-2 text-xs space-y-1"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-mono font-bold">#{row.incidentId}</span>
+                        {row.status && (
+                        <Badge
+                          variant={
+                            row.status === 'IN_PROGRESS'
+                              ? 'warning'
+                              : row.status === 'RECOVERED_PENDING_DECLARATION'
+                                ? 'warning'
+                                : 'default'
+                          }
+                        >
+                          {t(`integrity.incidents.status.${row.status}`)}
+                        </Badge>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-fg-muted">
+                        {row.anchorCheckpointId != null && (
+                          <span>{t('integrity.incidents.anchorCheckpoint', { id: row.anchorCheckpointId })}</span>
+                        )}
+                        {row.staleSince && (
+                          <span>{t('integrity.incidents.staleSince', { ts: formatDateWithTimezone(row.staleSince) })}</span>
+                        )}
+                        {row.degradedSince && (
+                          <span>{t('integrity.incidents.degradedSince', { ts: formatDateWithTimezone(row.degradedSince) })}</span>
+                        )}
+                        {row.recoveredAt && (
+                          <span>{t('integrity.incidents.recoveredAt', { ts: formatDateWithTimezone(row.recoveredAt) })}</span>
+                        )}
+                      </div>
+                      {row.status === 'CLOSED' && row.justification && (
+                        <p className="text-xs text-fg pt-1 border-t border-fg/10">{row.justification}</p>
+                      )}
+                      {row.status === 'RECOVERED_PENDING_DECLARATION' && row.incidentId != null && (
+                        <div className="flex justify-end pt-1">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => {
+                              setIncidentActive(row);
+                              setIncidentJustification('');
+                              setIncidentRootCause('UNKNOWN');
+                              setIncidentDeclareOpen(true);
+                            }}
+                          >
+                            {t('integrity.incidents.declare')}
+                          </Button>
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                <Pagination
+                  page={incidentsPagination.page}
+                  totalPages={incidentsPagination.totalPages}
+                  totalElements={incidentsPagination.totalElements}
+                  isFirst={incidentsPagination.isFirst}
+                  isLast={incidentsPagination.isLast}
+                  onFirstPage={incidentsPagination.firstPage}
+                  onLastPage={incidentsPagination.lastPage}
+                  onPrevPage={incidentsPagination.prevPage}
+                  onNextPage={incidentsPagination.nextPage}
+                  pageSize={incidentsPagination.size}
+                  onPageSizeChange={incidentsPagination.setPageSize}
+                />
+                </>
+              )}
+              </div>
+              )}
+            </div>
+
+            {/* Undeclared gaps for consultation (from last chain verification) */}
+            {chainReport && (((chainReport as { undeclaredGaps?: unknown[] }).undeclaredGaps?.length ?? 0) === 0 ? (
+              <div className="border-2 border-fg/10 bg-bg p-3">
+                <div className="flex items-center gap-2 text-success">
+                  <CheckCircle className="size-4" />
+                  <span className="text-xs font-bold uppercase tracking-wider">{t('integrity.noUndeclaredGaps')}</span>
+                </div>
+                <p className="text-xs text-fg-muted mt-1">{t('integrity.noUndeclaredGapsHint')}</p>
+              </div>
+            ) : (
+              <div className="border-2 border-fg/10 bg-bg p-3 space-y-2">
+                <button
+                  type="button"
+                  className="flex items-center gap-2 w-full text-left hover:bg-fg/5 p-1 -m-1 transition-colors"
+                  onClick={() => setGapsListExpanded((v) => !v)}
+                  aria-expanded={gapsListExpanded}
+                  data-testid="integrity-gaps-toggle"
+                >
+                  <span className="font-bold text-xs uppercase tracking-wider text-fg-muted">{t('integrity.undeclaredGapsForConsultation')}</span>
+                  <Badge variant="warning">{(chainReport as { undeclaredGaps?: unknown[] }).undeclaredGaps?.length ?? 0}</Badge>
+                  {gapsListExpanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+                </button>
+                {chainReportRange && (
+                  <p className="text-xs text-fg-muted">
+                    {t('integrity.fromVerificationPeriod', {
+                      from: formatDateOnly(chainReportRange.from),
+                      to: formatDateOnly(chainReportRange.to),
+                    })}
+                  </p>
+                )}
+                {gapsListExpanded && (
+                  <ul className="space-y-2 pl-0 list-none">
+                    {((chainReport as { undeclaredGaps?: Array<{ gapStart: string; gapEnd: string; gapMinutes: number }> }).undeclaredGaps ?? []).map((g, idx) => {
+                      const isFocused = focusedGap !== null && focusedGap.gapStart === g.gapStart && focusedGap.gapEnd === g.gapEnd;
+                      return (
+                        <li
+                          key={`${g.gapStart}-${g.gapEnd}`}
+                          className={cn(
+                            'p-2 border-2 transition-colors',
+                            isFocused ? 'border-warning bg-warning/10' : 'border-fg/20',
+                          )}
+                        >
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="text-xs">
+                              <span className="text-fg-muted">{t('integrity.gapLabel', { n: idx + 1 })}</span>{' '}
+                              <span className={isFocused ? 'font-bold' : ''}>
+                                {formatDateWithTimezone(g.gapStart)} → {formatDateWithTimezone(g.gapEnd)}
+                              </span>
+                              <span className="text-fg-muted ml-2">(~{Number(g.gapMinutes).toLocaleString()} min)</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="text-xs h-7 gap-1.5"
+                                onClick={() => (isFocused ? setFocusedGap(null) : focusGapAndNavigate(g))}
+                              >
+                                <ListOrdered className="size-3.5" />
+                                {isFocused
+                                  ? t('integrity.gapAction.clearFocus')
+                                  : t('integrity.gapAction.locate')}
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                className="text-xs h-7 gap-1.5"
+                                onClick={() => openDeclareDialogFor(g)}
+                              >
+                                <AlertTriangle className="size-3.5" />
+                                {t('integrity.gapAction.declare')}
+                              </Button>
+                            </div>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            ))}
+          </div>
+          )}
+
+      {/* ── Seal Archive Dialog ── */}
+      <Dialog open={sealOpen} onClose={() => setSealOpen(false)} title={t('sealDialog.title')} size="lg" dismissible={false}>
+        {sealResult ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-success">
+              <CheckCircle className="size-5" />
+              <span className="font-bold">{t('sealDialog.successTitle')}</span>
+            </div>
+            <dl className="space-y-1.5 text-sm">
+              <InfoPair label={t('sealDialog.resultPeriod')} value={`${sealResult.periodStart ?? '—'} → ${sealResult.periodEnd ?? '—'}`} />
+              <InfoPair label={t('sealDialog.resultCheckpointsSealed')} value={String(sealResult.checkpointsSealed ?? 0)} />
+              <InfoPair label={t('sealDialog.resultSealHmac')} value={sealResult.sealChainHmac ?? '—'} mono />
+              <InfoPair label={t('sealDialog.resultAuditLogId')} value={String(sealResult.auditLogId ?? '—')} />
+            </dl>
+            <div className="flex justify-end pt-2">
+              <Button onClick={() => setSealOpen(false)}>{t('sealDialog.done')}</Button>
+            </div>
+          </div>
+        ) : (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              sealMutation.mutate({
+                data: {
+                  periodStart: sealPeriodStart ? new Date(sealPeriodStart).toISOString() : undefined,
+                  periodEnd: sealPeriodEnd ? new Date(sealPeriodEnd).toISOString() : undefined,
+                  checkpointIdFrom: sealCheckpointFrom ? Number(sealCheckpointFrom) : undefined,
+                  checkpointIdTo: sealCheckpointTo ? Number(sealCheckpointTo) : undefined,
+                  justification: sealJustification.trim(),
+                },
+              });
+            }}
+            className="space-y-4"
+          >
+            <p className="text-xs text-fg-muted">
+              {t('sealDialog.intro')}
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="seal-start" className="text-xs">{t('sealDialog.periodStart')}</Label>
+                <Input id="seal-start" type="datetime-local" value={sealPeriodStart} onChange={(e) => setSealPeriodStart(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="seal-end" className="text-xs">{t('sealDialog.periodEnd')}</Label>
+                <Input id="seal-end" type="datetime-local" value={sealPeriodEnd} onChange={(e) => setSealPeriodEnd(e.target.value)} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="seal-cp-from" className="text-xs">{t('sealDialog.checkpointIdFrom')}</Label>
+                <Input id="seal-cp-from" type="number" placeholder={t('sealDialog.optionalPlaceholder')} value={sealCheckpointFrom} onChange={(e) => setSealCheckpointFrom(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="seal-cp-to" className="text-xs">{t('sealDialog.checkpointIdTo')}</Label>
+                <Input id="seal-cp-to" type="number" placeholder={t('sealDialog.optionalPlaceholder')} value={sealCheckpointTo} onChange={(e) => setSealCheckpointTo(e.target.value)} />
+              </div>
+            </div>
+            <ReasonFieldRow
+              presetGroup="audit_chain_justification"
+              idPrefix="audit-seal"
+              inputId="seal-just"
+              value={sealJustification}
+              onChange={setSealJustification}
+              label={
+                <>
+                  {t('sealDialog.justification')}{' '}
+                  <span className="text-fg-muted font-normal">{t('sealDialog.justificationHint')}</span>
+                </>
+              }
+              placeholder={t('sealDialog.justificationPlaceholder')}
+              showMinLengthError={
+                sealJustification.trim().length > 0 && sealJustification.trim().length < 10
+              }
+              minLengthErrorTone="justification"
+            />
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="secondary" onClick={() => setSealOpen(false)}>{t('sealDialog.cancel')}</Button>
+              <Button type="submit" disabled={sealMutation.isPending || sealJustification.trim().length < 10}>
+                {sealMutation.isPending ? t('sealDialog.submitting') : t('sealDialog.submit')}
+              </Button>
+            </div>
+          </form>
+        )}
+      </Dialog>
+
+      {/* ── Confirm Archived Dialog ── */}
+      <Dialog
+        open={confirmArchivedOpen}
+        onClose={() => setConfirmArchivedOpen(false)}
+        title={t('confirmArchivedDialog.title')}
+        size="lg"
+        dismissible={false}
+      >
+        {confirmArchivedResult ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-success">
+              <CheckCircle className="size-5" />
+              <span className="font-bold">{t('confirmArchivedDialog.successTitle')}</span>
+            </div>
+            <dl className="space-y-1.5 text-sm">
+              <InfoPair
+                label={t('confirmArchivedDialog.resultPeriod')}
+                value={
+                  confirmArchivedResult.periodStart && confirmArchivedResult.periodEnd
+                    ? `${confirmArchivedResult.periodStart} → ${confirmArchivedResult.periodEnd}`
+                    : '—'
+                }
+              />
+              <InfoPair
+                label={t('confirmArchivedDialog.resultCheckpointsExported')}
+                value={String(confirmArchivedResult.checkpointsExported ?? 0)}
+              />
+              <InfoPair
+                label={t('confirmArchivedDialog.resultDigest')}
+                value={confirmArchivedResult.exportBundleDigest ?? '—'}
+                mono
+              />
+              <InfoPair
+                label={t('confirmArchivedDialog.resultExportedAt')}
+                value={
+                  confirmArchivedResult.exportedAt
+                    ? formatDateWithTimezone(confirmArchivedResult.exportedAt)
+                    : '—'
+                }
+              />
+              <InfoPair
+                label={t('confirmArchivedDialog.resultAuditLogId')}
+                value={String(confirmArchivedResult.auditLogId ?? '—')}
+              />
+            </dl>
+            <div className="flex justify-end pt-2">
+              <Button onClick={() => setConfirmArchivedOpen(false)}>
+                {t('confirmArchivedDialog.done')}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!archiveEligibility?.checkpointIdFrom || !archiveEligibility.checkpointIdTo) {
+                return;
+              }
+              const digest = confirmDigest.trim();
+              if (digest.length < 16) {
+                toast(t('confirmArchivedDialog.digestTooShort'), 'error');
+                return;
+              }
+              confirmArchivedMutation.mutate({
+                data: {
+                  checkpointIdFrom: archiveEligibility.checkpointIdFrom,
+                  checkpointIdTo: archiveEligibility.checkpointIdTo,
+                  exportBundleDigest: digest,
+                  archivedAt: confirmArchivedAt
+                    ? new Date(confirmArchivedAt).toISOString()
+                    : undefined,
+                },
+              });
+            }}
+            className="space-y-4"
+          >
+            <p className="text-xs text-fg-muted">{t('confirmArchivedDialog.intro')}</p>
+            {archiveEligibility && (
+              <div className="border-2 border-fg/15 bg-bg p-3 space-y-1 text-xs">
+                <p className="text-[10px] uppercase tracking-wider text-fg-muted font-bold">
+                  {t('confirmArchivedDialog.trancheHeading')}
+                </p>
+                <p className="font-bold">
+                  {archiveEligibility.oldestSealedWindowStart
+                    && archiveEligibility.newestSealedWindowEnd
+                    ? t('integrity.lifecycleWindowFromTo', {
+                        from: formatDateWithTimezone(archiveEligibility.oldestSealedWindowStart),
+                        to: formatDateWithTimezone(archiveEligibility.newestSealedWindowEnd),
+                      })
+                    : t('integrity.noLifecycleWindow')}
+                </p>
+                <p className="font-mono text-fg-muted">
+                  {archiveEligibility.checkpointIdFrom != null
+                    && archiveEligibility.checkpointIdTo != null
+                    ? t('integrity.lifecycleCheckpointRange', {
+                        from: archiveEligibility.checkpointIdFrom,
+                        to: archiveEligibility.checkpointIdTo,
+                      })
+                    : '—'}
+                </p>
+              </div>
+            )}
+            <div className="space-y-1">
+              <Label htmlFor="confirm-digest" className="text-xs">
+                {t('confirmArchivedDialog.exportBundleDigest')}{' '}
+                <span className="text-fg-muted font-normal">
+                  {t('confirmArchivedDialog.exportBundleDigestHint')}
+                </span>
+              </Label>
+              <Input
+                id="confirm-digest"
+                value={confirmDigest}
+                onChange={(e) => setConfirmDigest(e.target.value)}
+                maxLength={88}
+                placeholder={t('confirmArchivedDialog.exportBundleDigestPlaceholder')}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="confirm-archived-at" className="text-xs">
+                {t('confirmArchivedDialog.archivedAt')}
+              </Label>
+              <Input
+                id="confirm-archived-at"
+                type="datetime-local"
+                value={confirmArchivedAt}
+                onChange={(e) => setConfirmArchivedAt(e.target.value)}
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setConfirmArchivedOpen(false)}
+              >
+                {t('confirmArchivedDialog.cancel')}
+              </Button>
+              <Button
+                type="submit"
+                disabled={confirmArchivedMutation.isPending || confirmDigest.trim().length < 16}
+              >
+                {confirmArchivedMutation.isPending
+                  ? t('confirmArchivedDialog.submitting')
+                  : t('confirmArchivedDialog.submit')}
+              </Button>
+            </div>
+          </form>
+        )}
+      </Dialog>
+
+      {canReconcileOnIntegrity
+        && reconcileAlertId != null
+        && reconcileFailBoundary
+        && reconcileResumeBoundary && (
+        <IntegrityReconcileDialog
+          open={reconcileOpen}
+          onClose={() => setReconcileOpen(false)}
+          alertId={reconcileAlertId}
+          failBoundary={reconcileFailBoundary}
+          resumeBoundary={reconcileResumeBoundary}
+        />
+      )}
+
+      {/* ── Gap Declaration Dialog ── */}
+      <Dialog open={gapOpen} onClose={closeGapDialog} title={t('gapDialog.title')} size="md" dismissible={false}>
+        {gapResult ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-success">
+              <CheckCircle className="size-5" />
+              <span className="font-bold">{t('gapDialog.successTitle')}</span>
+            </div>
+            <dl className="space-y-1.5 text-sm">
+              <InfoPair label={t('gapDialog.resultGapPeriod')} value={gapResult.gapStart && gapResult.gapEnd ? `${formatDateWithTimezone(gapResult.gapStart)} → ${formatDateWithTimezone(gapResult.gapEnd)}` : '—'} />
+              <InfoPair label={t('gapDialog.resultGapCheckpoint')} value={String(gapResult.gapCheckpointId ?? '—')} />
+              <InfoPair label={t('gapDialog.resultGapHmac')} value={gapResult.gapChainHmac ?? '—'} mono />
+              <InfoPair label={t('gapDialog.resultAuditLogId')} value={String(gapResult.auditLogId ?? '—')} />
+            </dl>
+            <div className="flex justify-end pt-2">
+              <Button onClick={closeGapDialog}>{t('gapDialog.done')}</Button>
+            </div>
+          </div>
+        ) : selectedGapForDeclaration ? (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!selectedGapForDeclaration) return;
+              gapMutation.mutate({
+                data: {
+                  gapStart: selectedGapForDeclaration.gapStart,
+                  gapEnd: selectedGapForDeclaration.gapEnd,
+                  justification: gapJustification.trim(),
+                },
+              });
+            }}
+            className="space-y-4"
+          >
+            <p className="text-xs text-fg-muted">{t('gapDialog.intro')}</p>
+            <div className="border-2 border-warning/40 bg-warning/5 p-3 space-y-1">
+              <p className="text-[10px] uppercase tracking-wider text-fg-muted font-bold">
+                {t('gapDialog.detectedPeriod')}
+              </p>
+              <p className="text-sm font-bold">
+                {formatDateWithTimezone(selectedGapForDeclaration.gapStart)} →{' '}
+                {formatDateWithTimezone(selectedGapForDeclaration.gapEnd)}
+              </p>
+              <p className="text-xs text-fg-muted">
+                {t('gapDialog.detectedDuration', {
+                  minutes: Number(selectedGapForDeclaration.gapMinutes).toLocaleString(),
+                })}
+              </p>
+            </div>
+            <ReasonFieldRow
+              presetGroup="audit_chain_justification"
+              idPrefix="audit-gap"
+              inputId="gap-just"
+              value={gapJustification}
+              onChange={setGapJustification}
+              label={
+                <>
+                  {t('gapDialog.justification')}{' '}
+                  <span className="text-fg-muted font-normal">{t('gapDialog.justificationHint')}</span>
+                </>
+              }
+              placeholder={t('gapDialog.justificationPlaceholder')}
+              showMinLengthError={
+                gapJustification.trim().length > 0 && gapJustification.trim().length < 10
+              }
+              minLengthErrorTone="justification"
+            />
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="secondary" onClick={closeGapDialog}>{t('gapDialog.cancel')}</Button>
+              <Button type="submit" disabled={gapMutation.isPending || gapJustification.trim().length < 10}>
+                {gapMutation.isPending ? t('gapDialog.submitting') : t('gapDialog.submit')}
+              </Button>
+            </div>
+          </form>
+        ) : null}
+      </Dialog>
+
+      <Dialog
+        open={incidentDeclareOpen}
+        onClose={() => {
+          setIncidentDeclareOpen(false);
+          setIncidentActive(null);
+        }}
+        title={t('integrity.incidents.declareTitle')}
+        size="md"
+        dismissible={false}
+      >
+        {incidentActive ? (
+          <form
+            className="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!incidentActive?.incidentId) return;
+              declareIncidentMutation.mutate({
+                incidentId: incidentActive.incidentId,
+                justification: incidentJustification.trim(),
+                rootCause: incidentRootCause,
+              });
+            }}
+          >
+            <p className="text-xs text-fg-muted">{t('integrity.incidents.declareIntro')}</p>
+            <div className="space-y-1">
+              <Label htmlFor="incident-root-cause" className="text-xs">{t('integrity.incidents.rootCause')}</Label>
+              <Select
+                id="incident-root-cause"
+                value={incidentRootCause}
+                onChange={(e) =>
+                  setIncidentRootCause(e.target.value as (typeof AUDIT_CHAIN_INCIDENT_ROOT_CAUSES)[number])
+                }
+              >
+                {AUDIT_CHAIN_INCIDENT_ROOT_CAUSES.map((rc) => (
+                  <option key={rc} value={rc}>{t(`integrity.incidents.rootCauses.${rc}`)}</option>
+                ))}
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="incident-justification" className="text-xs">{t('integrity.incidents.justification')}</Label>
+              <Textarea
+                id="incident-justification"
+                value={incidentJustification}
+                onChange={(e) => setIncidentJustification(e.target.value)}
+                rows={4}
+                placeholder={t('integrity.incidents.justificationPlaceholder')}
+              />
+              <p className="text-[10px] text-fg-muted">{t('integrity.incidents.justificationHint')}</p>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setIncidentDeclareOpen(false);
+                  setIncidentActive(null);
+                }}
+              >
+                {t('integrity.incidents.cancel')}
+              </Button>
+              <Button
+                type="submit"
+                disabled={
+                  declareIncidentMutation.isPending || incidentJustification.trim().length < 10 || incidentJustification.trim().length > 500
+                }
+              >
+                {declareIncidentMutation.isPending ? t('integrity.incidents.submitting') : t('integrity.incidents.submit')}
+              </Button>
+            </div>
+          </form>
+        ) : null}
+      </Dialog>
+    </div>
+  );
+}
+
+function Stat({ label, value, ok, bad }: { label: string; value?: number; ok?: boolean; bad?: boolean }) {
+  const color = bad && value ? 'text-error font-bold' : ok ? 'text-success' : 'text-fg';
+  return (
+    <div>
+      <p className="text-[10px] uppercase tracking-wider text-fg-muted">{label}</p>
+      <p className={`font-mono font-bold ${color}`}>{value ?? 0}</p>
+    </div>
+  );
+}
+
+function InfoPair({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="flex gap-3">
+      <dt className="w-36 font-black uppercase text-[10px] tracking-wider text-fg-muted shrink-0">{label}</dt>
+      <dd className={`text-sm break-all ${mono ? 'font-mono text-xs' : ''}`}>{value}</dd>
+    </div>
+  );
+}
+
+// ── Integrity page (GLOBAL_ADMIN only) ────────────────────────────────────────
+
+function parseAlertPayload(raw?: string | null): unknown {
+  if (!raw) {
+    return null;
+  }
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+function extractRuptureBoundariesFromAlertPayload(
+  payload: unknown,
+): { failBoundary: string; resumeBoundary: string } | null {
+  if (typeof payload !== 'object' || payload === null) {
+    return null;
+  }
+  const record = payload as Record<string, unknown>;
+  const fail =
+    (typeof record.failBoundary === 'string' && record.failBoundary)
+    || (typeof record.windowStart === 'string' && record.windowStart)
+    || null;
+  const resume =
+    (typeof record.resumeBoundary === 'string' && record.resumeBoundary)
+    || (typeof record.windowEnd === 'string' && record.windowEnd)
+    || null;
+  if (!fail || !resume) {
+    return null;
+  }
+  return { failBoundary: fail, resumeBoundary: resume };
+}
+
+export default function IntegrityPage() {
+  const { t } = useTranslation('audit-logs');
+  const { session } = useAuth();
+  const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const { data: integrityBootstrap } = useQuery({
+    queryKey: getGetIntegrityBootstrapQueryKey(),
+    queryFn: () =>
+      getIntegrityBootstrap() as Promise<IntegrityBootstrapResponseDto>,
+    enabled: isGlobalAdmin,
+  });
+  const monitoringTruth = useMemo(
+    () => resolveIntegrityMonitoringTruth(integrityBootstrap),
+    [integrityBootstrap],
+  );
+  const showMonitoringInactiveBadge =
+    monitoringTruth.runtimeProfile === 'base' || isScheduledDetectionInactive(monitoringTruth);
+
+  const focusCheckpointIdParam = useMemo(() => {
+    const raw = searchParams.get('focusCheckpointId');
+    if (!raw) {
+      return null;
+    }
+    const parsed = Number.parseInt(raw, 10);
+    return Number.isFinite(parsed) ? parsed : null;
+  }, [searchParams]);
+
+  const reconcileAlertIdParam = useMemo(() => {
+    const raw = searchParams.get('alertId');
+    if (!raw) {
+      return null;
+    }
+    const parsed = Number.parseInt(raw, 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  }, [searchParams]);
+
+  const autoOpenReconcile = searchParams.get('action') === 'reconcile';
+
+  const { data: reconcileAlert } = useGetAlert<AlertResponseDto>(
+    reconcileAlertIdParam ?? 0,
+    {
+      query: {
+        enabled:
+          isGlobalAdmin
+          && autoOpenReconcile
+          && reconcileAlertIdParam != null
+          && reconcileAlertIdParam > 0,
+      },
+    },
+  );
+
+  const reconcileBoundaries = useMemo(() => {
+    if (!autoOpenReconcile || !reconcileAlertIdParam) {
+      return null;
+    }
+    if (reconcileAlert?.alertType !== 'AUDIT_INTEGRITY_RUPTURE') {
+      return null;
+    }
+    return extractRuptureBoundariesFromAlertPayload(parseAlertPayload(reconcileAlert.payload));
+  }, [autoOpenReconcile, reconcileAlertIdParam, reconcileAlert]);
+
+  const initialCheckRange = useMemo(() => {
+    const createdAfter = searchParams.get('createdAfter');
+    const createdBefore = searchParams.get('createdBefore');
+    if (createdAfter && createdBefore) {
+      return { createdAfter, createdBefore };
+    }
+    // Frozen reconcile deep-link has no window params — seed the check range from the alert.
+    if (reconcileBoundaries) {
+      return {
+        createdAfter: reconcileBoundaries.failBoundary,
+        createdBefore: reconcileBoundaries.resumeBoundary,
+      };
+    }
+    return null;
+  }, [searchParams, reconcileBoundaries]);
+
+  const [integritySession, setIntegritySession] = useState<IntegrityInvestigationSession | null>(
+    () => loadIntegrityInvestigationSession(),
+  );
+  const [showAffectedOnly, setShowAffectedOnly] = useState(false);
+
+  useEffect(() => {
+    setIntegritySession(loadIntegrityInvestigationSession());
+  }, [searchParams]);
+
+  const isIntegrityAlertContext =
+    searchParams.get('source') === 'integrity-alert'
+    || (autoOpenReconcile && reconcileAlertIdParam != null);
+
+  const clearIntegrityInvestigationContext = useCallback(() => {
+    setShowAffectedOnly(false);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('source');
+      next.delete('highlightAuditLogIds');
+      next.delete('focusCheckpointId');
+      next.delete('alertId');
+      next.delete('action');
+      next.delete('ruptureId');
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  if (!isGlobalAdmin) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return (
+    <AppShell title={t('integrity.pageTitle')}>
+      <div className="space-y-4">
+        {showMonitoringInactiveBadge && (
+          <div
+            className="border-2 border-fg/20 bg-fg/[0.03] px-3 py-2 text-sm flex flex-wrap items-center gap-2"
+            data-testid="integrity-monitoring-inactive-badge"
+            role="status"
+          >
+            <Badge variant="muted">
+              {monitoringTruth.runtimeProfile === 'base'
+                ? t('integrity.monitoringInactiveBadge.base')
+                : t('integrity.monitoringInactiveBadge.generic')}
+            </Badge>
+          </div>
+        )}
+        {isIntegrityAlertContext && (
+          <div className="border-2 border-fg/20 bg-fg/[0.03] px-3 py-2 text-sm flex flex-wrap items-center gap-2">
+            <span>{t('integrity.investigation.contextBanner')}</span>
+            <button
+              type="button"
+              className="ml-auto text-xs font-medium text-accent underline hover:text-accent/80"
+              onClick={clearIntegrityInvestigationContext}
+            >
+              {t('integrity.investigation.exitContext')}
+            </button>
+          </div>
+        )}
+        {showAffectedOnly && integritySession ? (
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-bold">{t('integrity.investigation.affectedOnlyTitle')}</span>
+              <Button type="button" size="sm" variant="secondary" onClick={() => setShowAffectedOnly(false)}>
+                {t('integrity.investigation.backToPanel')}
+              </Button>
+            </div>
+            <DataTable
+              columns={[
+                {
+                  header: t('list.columns.id'),
+                  key: 'auditLogId',
+                  render: (v) => <span className="font-mono text-xs">#{v.auditLogId}</span>,
+                },
+                {
+                  header: t('list.columns.event'),
+                  key: 'eventType',
+                  render: (v) => <span className="font-mono text-xs">{v.eventType ?? '—'}</span>,
+                },
+                {
+                  header: t('integrity.investigation.reasonColumn'),
+                  key: 'reason',
+                  render: (v) => <span className="text-xs">{v.reason ?? '—'}</span>,
+                },
+                {
+                  header: '',
+                  key: 'action',
+                  render: (v) =>
+                    v.auditLogId != null ? (
+                      <Link
+                        to={`/audit-logs?anchorAuditLogId=${v.auditLogId}&beforeCount=10&afterCount=10&source=audit-log-context`}
+                        className="text-xs font-bold text-accent underline"
+                      >
+                        {t('integrity.investigation.viewAround')}
+                      </Link>
+                    ) : null,
+                },
+              ]}
+              data={integritySession.entryViolations}
+              isLoading={false}
+              keyExtractor={(v, i) => v.auditLogId ?? i}
+              emptyMessage={t('integrity.investigation.noAffectedEntries')}
+            />
+          </div>
+        ) : (
+          <>
+            {isIntegrityAlertContext && integritySession && integritySession.entryViolations.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <Button type="button" size="sm" variant="secondary" onClick={() => setShowAffectedOnly(true)}>
+                  {t('integrity.investigation.showAffectedOnly')}
+                </Button>
+              </div>
+            )}
+            <IntegrityPanel
+              focusCheckpointId={focusCheckpointIdParam}
+              investigationSource={searchParams.get('source')}
+              reconcileAction={autoOpenReconcile}
+              initialCheckRange={initialCheckRange}
+              reconcileAlertId={autoOpenReconcile ? reconcileAlertIdParam : null}
+              reconcileFailBoundary={reconcileBoundaries?.failBoundary ?? null}
+              reconcileResumeBoundary={reconcileBoundaries?.resumeBoundary ?? null}
+              autoOpenReconcile={autoOpenReconcile}
+              monitoringTruth={monitoringTruth}
+            />
+          </>
+        )}
+      </div>
+    </AppShell>
+  );
+}

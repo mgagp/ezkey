@@ -1,0 +1,27 @@
+meta {
+  name: abandon integrity async job slot
+  type: http
+  seq: 22
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/audit-logs/integrity/jobs/current/abandon
+  body: none
+  auth: inherit
+}
+
+script:post-response {
+  test("Status is 200 or 409", function () {
+      expect([200, 409]).to.include(res.getStatus());
+  });
+
+  test("409 when RUNNING; 200 when abandonable", function () {
+      var status = res.getStatus();
+      var body = res.getBody();
+      if (status === 409) {
+          expect(body.type).to.include('integrity-async-job-abandon-not-allowed');
+      } else {
+          expect(body).to.have.property('abandonedAt');
+      }
+  });
+}

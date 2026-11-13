@@ -15,7 +15,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="ezkey-cli",
-    version="1.0.0",
+    version="0.2.0.dev0",
     author="Ezkey contributors",
     description="Command line interface for Ezkey - Open Source MFA/Passkey Alternative",
     long_description=long_description,
@@ -28,19 +28,18 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
-        "Programming Language :: Python :: 3.10",
-        "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
+        "Programming Language :: Python :: 3.14",
     ],
-    python_requires=">=3.8",
+    python_requires=">=3.12",
+    # Version floors are tested minimums (install these pins and run tests/unit).
     install_requires=[
-        "click>=8.0.0",
-        "requests>=2.25.0",
-        "colorama>=0.4.4",
-        "pyyaml>=6.0",
-        "textual>=0.30.0",
+        "click>=8.5.0",
+        "requests>=2.34.2",
+        "colorama>=0.4.6",
+        "pyperclip>=1.11.0",
+        "textual>=8.2.8",
     ],
     entry_points={
         "console_scripts": [

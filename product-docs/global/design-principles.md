@@ -52,6 +52,8 @@ Every product concept has one canonical home in the documentation. When a concep
 
 The Admin UI is a sober, pragmatic operator tool. It avoids decorative clutter and respects the clear role split: **Global Admin** handles IT-level concerns; **Tenant Admin** handles business-level concerns. Visual identity supports that intent; it does not compete with it.
 
+A creation ends on the object's canonical record; a confirmation dialog does not repeat the record's actions. A second copy is justified only when it saves the operator a real step, and it is re-checked whenever the flow changes. Example: once the record could send the enrollment QR by email (#1206 step 5), the create dialog's QR and challenge became a detour, so creating an enrollment now opens its record.
+
 ### 11. Lifecycle without surprise
 
 Lifecycle rules prefer reversible actions first. Irreversible actions (revoke, retire, delete) require a reason and strong guards. No persistent downstream cascade; reactivation restores healthy state cleanly. See [ADR-0004](architecture-decisions.md#adr-0004-lifecycle-without-persistent-cascade) and [`lifecycle-model.md`](lifecycle-model.md).
@@ -88,7 +90,7 @@ The fast path must remain genuinely fast.
 
 Core function never depends on a specific external vendor. Optional capabilities that require a
 third party — SMS, email, immutable archival storage — arrive through a **Service Provider
-Interface (SPI)** implemented by **separate peripheral projects** (for example an SMS adapter, an
+Interface (SPI)** implemented by **connectors outside the core**, in this repository or their own (for example an SMS adapter, an
 S3 / object-lock adapter, a Cloudflare R2 adapter). Ezkey must remain **fully operational,
 self-contained**, with none of them configured; an operator who declines an SPI simply accepts the
 documented limit of doing without it.
@@ -101,8 +103,11 @@ peripheral implementation — not core code that imports a vendor SDK.
 This principle pairs with **#4** (explicit trust boundaries), **#7** (stay within the chosen
 stack), and **#13** (open-source transparency). Applied instances:
 [`V-2026-0007`](vision/V-2026-0007-sms-integration-spi.md) (SMS),
-[`V-2026-0005`](vision/V-2026-0005-email-integration-strategy.md) (email), and
-[`V-2026-06-28`](vision/V-2026-06-28-audit-archive-export-spi.md) (audit archive export). The
+[`V-2026-0005`](vision/V-2026-0005-email-integration-strategy.md) (email),
+[`V-2026-06-28`](vision/V-2026-06-28-audit-archive-export-spi.md) (audit archive export), and
+[`V-2026-11-04-connector-spi`](vision/V-2026-11-04-connector-spi.md) with
+[ADR-0018](architecture-decisions.md#adr-0018--connector-spi-for-external-services) (the common
+connector approach, including directories). The
 trade-off discussion that distilled this principle is recorded in
 [`integrity-assurance-honest-line.md`](integrity-assurance-honest-line.md) and method log
 [`backlog/method-logs/ML-2026-06-28-integrity-honesty-and-export-spi.md`](backlog/method-logs/ML-2026-06-28-integrity-honesty-and-export-spi.md).

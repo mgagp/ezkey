@@ -1,0 +1,9 @@
+# Layout standard for ezkey-pam.
+# Analog of google-java-format: one community preset, almost no local taste.
+# BasedOnStyle Google is the preset (2-space indent, 80 columns, K&R braces,
+# pointer on the left). SortIncludes stays Never because feature-test macros
+# and the system-vs-local include split in this module are order-sensitive.
+---
+Language: Cpp
+BasedOnStyle: Google
+SortIncludes: Never

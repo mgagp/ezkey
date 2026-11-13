@@ -294,8 +294,9 @@ public interface EzkeyAdminRepository extends JpaRepository<EzkeyAdmin, Integer>
    * for system integrations (administrator enrollments).
    *
    * @param enrollmentId the enrollment ID
-   * @return Object[] with [tenantId, tenantName, tenantDescription], or empty if admin has no
-   *     tenant
+   * @return one row {@code [tenantId, tenantName, tenantDescription]}, or empty if the admin has no
+   *     tenant. Uses {@code List} rather than {@code Optional<Object[]>} so a native three-column
+   *     row is not unwrapped to the first scalar only.
    */
   @Query(
       value =
@@ -304,7 +305,7 @@ public interface EzkeyAdminRepository extends JpaRepository<EzkeyAdmin, Integer>
               + " JOIN ezkey_enrollment e ON e.enrollment_id = a.enrollment_id"
               + " WHERE e.enrollment_id = :enrollmentId",
       nativeQuery = true)
-  Optional<Object[]> findTenantInfoByAdminEnrollmentId(@Param("enrollmentId") Integer enrollmentId);
+  List<Object[]> findTenantInfoByAdminEnrollmentId(@Param("enrollmentId") Integer enrollmentId);
 
   /**
    * Returns the tenant ID of the admin whose enrollment is the given enrollment.

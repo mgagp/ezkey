@@ -63,6 +63,30 @@ if [[ ! -d "${BRUNO_DIR}/node_modules/@usebruno/cli" ]]; then
   exit 1
 fi
 
+# local.bru is gitignored; seed from the example when missing so --env local still works.
+ENV_FILE="${BRUNO_DIR}/environments/${ENV_NAME}.bru"
+ENV_EXAMPLE="${ENV_FILE}.example"
+GENERATED_ENV=0
+if [[ ! -f "${ENV_FILE}" && -f "${ENV_EXAMPLE}" ]]; then
+  echo "Missing environments/${ENV_NAME}.bru — copying from ${ENV_NAME}.bru.example" >&2
+  cp "${ENV_EXAMPLE}" "${ENV_FILE}"
+  GENERATED_ENV=1
+fi
+if [[ ! -f "${ENV_FILE}" ]]; then
+  echo "Bruno environment not found: environments/${ENV_NAME}.bru" >&2
+  exit 1
+fi
+# Example values are empty; inject documented direct-port defaults for a freshly seeded local env.
+if [[ "${GENERATED_ENV}" -eq 1 && "${ENV_NAME}" == "local" ]]; then
+  EXTRA_ARGS+=(
+    --env-var "base_url=http://localhost:8080"
+    --env-var "base_url_crypto_api=http://localhost:9090"
+    --env-var "base_url_admin_api=http://localhost:9080"
+    --env-var "base_url_integration_api=http://localhost:7080"
+    --env-var "base_url_integration_api_mgmt=http://localhost:7081"
+  )
+fi
+
 mkdir -p "${REPORT_DIR}"
 
 TARGETS=()

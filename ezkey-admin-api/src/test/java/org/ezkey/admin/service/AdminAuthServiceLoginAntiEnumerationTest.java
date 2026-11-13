@@ -38,7 +38,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class AdminAuthServiceLoginAntiEnumerationTest {
 
-  private static final String GENERIC_LOGIN_FAILURE = "Invalid username or password";
+  private static final String GENERIC_LOGIN_FAILURE = "Invalid username";
 
   @Mock private EzkeyAdminRepository adminRepository;
   @Mock private AdminTokenRepository tokenRepository;

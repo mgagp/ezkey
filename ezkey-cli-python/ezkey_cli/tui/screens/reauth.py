@@ -192,9 +192,10 @@ class ReAuthScreen(ModalScreen):
     try:
       from ezkey_cli.auth.auth_manager import AuthManager
 
+      # Thread the same TLS verify setting the main TUI API client uses (#802).
       self.auth_manager = AuthManager(
           self.admin_url,
-          verify_ssl=False
+          verify_ssl=self.api_client.verify_ssl
       )
 
       # Determine login mode from config

@@ -1,7 +1,8 @@
 {
   "help": {
     "integrityLifecycle": {
-      "content": "Les checkpoints de chaîne scellent des lots d'entrées d'audit toutes les 5 minutes. Utilisez <strong>Vérifier la chaîne</strong> et <strong>Vérifier le HMAC entrée</strong> pour des contrôles forensiques en lecture seule (sans effet sur les alertes). Utilisez <strong>Lancer la validation</strong> pour le chemin detective (même sémantique que le job nocturne) — peut créer ou mettre à jour une alerte <strong>AUDIT_INTEGRITY_RUPTURE</strong> si des violations alert-eligible subsistent. Utilisez <strong>Vue lifecycle</strong> pour comprendre ce qui est scellé, en attente de confirmation d'archive, ou proche de l'éligibilité à la purge. Les actions manuelles restent des chemins de maintenance exceptionnels."
+      "content": "Les checkpoints de chaîne scellent des lots d'entrées d'audit toutes les 5 minutes. Utilisez <strong>Vérifier la chaîne</strong> et <strong>Vérifier le HMAC entrée</strong> pour des contrôles forensiques en lecture seule (sans effet sur les alertes). Utilisez <strong>Lancer la validation</strong> pour le chemin detective (même sémantique que le job nocturne) — peut créer ou mettre à jour une alerte <strong>AUDIT_INTEGRITY_RUPTURE</strong> si des violations alert-eligible subsistent. Utilisez <strong>Vue lifecycle</strong> pour comprendre ce qui est scellé, en attente de confirmation d'archive, ou proche de l'éligibilité à la purge. Les actions manuelles restent des chemins de maintenance exceptionnels.",
+      "contentMonitoringOff": "La détection planifiée n'est pas active sur cette instance. Lorsque le monitoring est activé, les checkpoints de chaîne scellent selon un calendrier et un job nocturne exécute le même chemin detective que <strong>Lancer la validation</strong>. Utilisez <strong>Vérifier la chaîne</strong> et <strong>Vérifier le HMAC entrée</strong> pour des contrôles forensiques à la demande (sans effet sur les alertes). <strong>Lancer la validation</strong> reste visible mais inactif tant que la détection nocturne est éteinte, pour qu'un clic accidentel n'écrive pas un audit de completion. Les actions manuelles restent des chemins de maintenance exceptionnels."
     },
     "sealArchive": {
       "content": "Scelle une plage de checkpoints pour archivage (ex. avant suppression d'une partition BDD). Vous pouvez indiquer la période par horodatages ou par ID de checkpoints. Une vérification d'intégrité préalable s'exécute automatiquement."
@@ -10,13 +11,14 @@
       "content": "Lorsque le système a été indisponible plus longtemps que la fenêtre du planificateur (ex. 60 min), déclarez chaque lacune détectée dans la liste ci-dessous afin de rendre la continuité lifecycle explicite. Utilisez <strong>Localiser dans la chronologie</strong> pour situer la lacune, puis <strong>Déclarer</strong> pour la clôturer formellement avec une justification. C'est une action de récupération, pas un workflow opérateur normal."
     },
     "exceptionalMaintenance": {
-      "content": "Utilisez ces actions uniquement pour une maintenance exceptionnelle ou une récupération. La progression normale du lifecycle est pilotée par policy et exécutée par le système ; la posture principale de l'UI doit rester l'observabilité."
+      "content": "Utilisez ces actions uniquement pour une maintenance exceptionnelle ou une récupération. La progression normale du lifecycle est pilotée par policy et exécutée par le système ; la posture principale de l'UI doit rester l'observabilité.",
+      "contentMonitoringOff": "Utilisez ces actions uniquement pour une maintenance exceptionnelle ou une récupération. La progression normale du lifecycle est pilotée par policy et exécutée par le système lorsque le monitoring planifié est activé ; avec le monitoring inactif, cet atelier reste disponible pour des contrôles pilotés par l'opérateur. La posture principale de l'UI reste l'observabilité."
     },
     "incidents": {
       "content": "Les incidents opérationnels enregistrent des checkpoints Admin API jugés bloqués par la supervision périphérique (battement). En configuration Docker par défaut, les périphériques refusent seulement les <strong>nouveaux travaux MFA</strong> (routes HTTP étroites — voir <strong>docs/AUDIT_LOG_INTEGRITY.md</strong>) après environ <strong>9 minutes au-delà du dernier <code>window_end</code> de checkpoint</strong> ; d'autres écritures d'audit peuvent continuer. Utilisez <strong>Déclarer une lacune</strong> pour les trous temporels <em>cryptographiques</em> non déclarés — un autre lifecycle. Après rétablissement, déclarez la clôture ici lorsqu'une justification est encore requise."
     },
     "checkpointTimeline": {
-      "content": "Affiche les checkpoints de chaîne ; triez par <strong>Début de fenêtre</strong> pour voir les lignes de lacune (trous non déclarés entre checkpoints). Les autres tris n'affichent que les checkpoints. Utilisez ce tableau pour inspecter le type de checkpoint, l'état lifecycle et les limites d'anomalie."
+      "content": "Affiche les checkpoints de chaîne pour la fenêtre récente (plus récents d'abord par défaut). Les plages <strong>Régulier</strong> calmes se regroupent en une ligne grise développable — elles ne sont pas masquées. Les lignes orange <strong>Lacune</strong> sont de vrais trous non déclarés. Triez par <strong>Début de fenêtre</strong> pour les lacunes en ligne ; inspectez type, lifecycle et badges d'écriture en retard ici."
     }
   },
   "list": {
@@ -108,6 +110,7 @@
     "ENROLLMENT_REACTIVATED": "Enrôlement réactivé",
     "ENROLLMENT_AUTH_ATTEMPT_BLOCKED": "Tentative d'auth bloquée (enrôlement)",
     "ENROLLMENT_EXPIRED": "Enrôlement expiré",
+    "ENROLLMENT_QR_DELIVERY": "Envoi du QR d'enrôlement",
     "AUTH_ATTEMPT_CREATED": "Tentative d'auth créée",
     "AUTH_ATTEMPT_PENDING": "Tentative d'auth en attente",
     "AUTH_ATTEMPT_RESPOND": "Réponse tentative d'auth",
@@ -144,7 +147,10 @@
     "AUDIT_CHAIN_GAP_DECLARED": "Lacune chaîne d'audit déclarée",
     "AUDIT_INTEGRITY_RUPTURE_CONCILIATED": "Rupture d'intégrité conciliée",
     "AUDIT_CHAIN_GAP_PENDING": "Trou de chaîne d'audit en attente",
-    "NIGHTLY_INTEGRITY_VALIDATION_COMPLETED": "Validation d'intégrité nocturne terminée"
+    "NIGHTLY_INTEGRITY_VALIDATION_COMPLETED": "Validation d'intégrité nocturne terminée",
+    "INTEGRITY_ASYNC_JOB_STARTED": "Job d'intégrité asynchrone démarré",
+    "INTEGRITY_ASYNC_JOB_COMPLETED": "Job d'intégrité asynchrone terminé",
+    "INTEGRITY_ASYNC_JOB_ABANDONED": "Job d'intégrité asynchrone abandonné"
   },
   "eventAction": {
     "login_success": "Connexion réussie",
@@ -259,15 +265,99 @@
     "labelInstance": "Instance"
   },
   "integrity": {
-    "title": "Intégrité et cycle de vie",
-    "globalAdmin": "Admin global",
+    "pageTitle": "Intégrité",
+    "subtitle": "Vérifier la chaîne HMAC du journal d'audit et gérer le cycle de vie exceptionnel des archives.",
+    "modes": {
+      "ariaLabel": "Modes de l'atelier Intégrité",
+      "observe": "Observer",
+      "verify": "Vérifier",
+      "remediate": "Remédier",
+      "observeHint": "Passez à Vérifier pour lancer les contrôles chaîne ou entrée, ou à Remédier lorsque la maintenance est nécessaire."
+    },
     "verification": "Vérification",
     "dateRangeSelect": "Choisir une période",
     "selectDateRangeToRun": "Sélectionnez une plage de dates pour lancer la vérification",
     "verifyChain": "Vérifier la chaîne",
     "verifyEntry": "Vérifier le HMAC entrée",
     "runValidation": "Lancer la validation et alerter si nécessaire",
+    "runValidationInactiveHint": "Inactive sur cette instance",
+    "runValidationInactiveTooltip": "La validation d'intégrité nocturne est inactive sur cette instance.",
     "verifyVsRunHint": "Vérifier recalcule le HMAC et les liens de chaîne sans ouvrir ni mettre à jour d'alerte. Lancer la validation utilise le chemin detective et peut créer ou mettre à jour une alerte de rupture d'intégrité. Les deux actions portent sur la même plage affichée ci-dessus — vérifiez d'abord, puis lancez la validation sur cette plage lorsque vous êtes prêt à détecter et alerter.",
+    "verifyVsRunHintInactive": "Vérifier recalcule le HMAC et les liens de chaîne sans ouvrir ni mettre à jour d'alerte. Lancer la validation (le lot detective qui peut créer des alertes et écrire un audit de completion) est inactif sur cette instance.",
+    "asyncJob": {
+      "type": {
+        "verifyChain": "Vérifier la chaîne",
+        "verifyEntry": "Vérifier le HMAC entrée",
+        "runValidation": "Lancer la validation",
+        "unknown": "Job d'intégrité"
+      },
+      "banner": {
+        "running": "En cours — {{jobTypeLabel}} · depuis {{since}} · démarré par {{who}}",
+        "succeeded": "Dernier résultat — réussi · {{jobTypeLabel}} · {{when}} · {{who}} · {{summary}}",
+        "failed": "Dernier résultat — échec · {{jobTypeLabel}} · {{when}} · {{who}} · {{reason}}",
+        "expired": "Job expiré — plus de heartbeat · {{jobTypeLabel}} · {{who}} · relançable",
+        "interrupted": "Job interrompu — {{jobTypeLabel}} · {{summary}}"
+      },
+      "startsDisabledTooltip": "Un job d'intégrité est déjà en cours. Attendez la fin, ou utilisez Abandonner seulement si le job a expiré ou a été annulé.",
+      "startsDisabledEscapeTooltip": "Abandonnez le job d'intégrité expiré ou annulé avant d'en démarrer un autre.",
+      "abandon": "Abandonner",
+      "cancel": "Annuler",
+      "abandoning": "Abandon…",
+      "abandonConfirmTitle": "Abandonner le job d'intégrité ?",
+      "abandonConfirmBody": "Cela efface le job expiré ou annulé pour pouvoir démarrer une autre vérification. Cela n'arrête pas un job en cours sain.",
+      "abandonError": "Impossible d'abandonner le job d'intégrité.",
+      "busyToast": "Job d'intégrité déjà en cours : {{resume}}",
+      "hydrateChainError": "Impossible de charger le résultat de vérification de la chaîne.",
+      "hydrateEntryError": "Impossible de charger le résultat de vérification HMAC des entrées.",
+      "hydrateBusyHint": "La vérification d'intégrité est occupée. Patientez un instant, puis utilisez « Recharger le rapport ». Le rapport détaillé apparaîtra une fois chargé.",
+      "hydrateOverCapHint": "Cette vérification couvre plus de {{maxSyncDays}} jours. Son résumé est affiché ci-dessus, mais le rapport détaillé (lacunes, violations) n'est disponible que pour {{maxSyncDays}} jours ou moins. Pour voir le détail, vérifiez une période de {{maxSyncDays}} jours ou moins.",
+      "verifyWindowOverCap": "La vérification est limitée à {{maxSyncDays}} jours pour que son rapport détaillé puisse s'afficher. Choisissez une période de {{maxSyncDays}} jours ou moins.",
+      "verifyAsyncWindowOverCap": "La vérification asynchrone est limitée à {{maxWindowDays}} jours. Choisissez une période plus courte, ou découpez la fenêtre.",
+      "validationWindowOverCap": "La validation est limitée à {{maxWindowDays}} jours. Choisissez une période de {{maxWindowDays}} jours ou moins.",
+      "validationSyncWindowOverCap": "La validation synchrone est limitée à {{maxSyncDays}} jours. Choisissez une période plus courte, ou utilisez un job asynchrone.",
+      "reloadReport": "Recharger le rapport"
+    },
+    "microDashboard": {
+      "verdict": {
+        "intact": "Chaîne intacte",
+        "gaps": "Gaps non déclarés ({{count}})",
+        "violation": "Violation d'intégrité ({{count}})",
+        "stale": "Dernier verdict : {{when}} (périmé)",
+        "running": "Vérification en cours…",
+        "nightlyRunning": "Vérification nocturne en cours…",
+        "didNotComplete": "Vérification non aboutie",
+        "nothingToVerify": "Rien à vérifier",
+        "idle": "Aucun verdict pour l'instant"
+      },
+      "stat": {
+        "checkpoints": "Checkpoints",
+        "invalid": "Invalides",
+        "undeclaredGaps": "Gaps non déclarés"
+      },
+      "checked": "Vérifié",
+      "started": "Démarré",
+      "finished": "Terminé",
+      "reverify": "Revérifier",
+      "openRemediate": "Ouvrir Remédier",
+      "scope": {
+        "period": "Période : {{from}} → {{to}}"
+      },
+      "source": {
+        "auto": "auto à l'ouverture",
+        "manual": "manuel",
+        "nightly": "nocturne",
+        "unknown": "source inconnue"
+      },
+      "byAdmin": "par {{who}}",
+      "systemActor": "système",
+      "scopeMismatch": "Le verdict porte sur une autre période que le filtre affiché.",
+      "whatIsVerified": "Qu'est-ce qui est vérifié ?",
+      "whatIsVerifiedHelp": "Vérifie l'enchaînement des checkpoints, les empreintes d'entrées et la continuité temporelle sur la période. L'algorithme cryptographique n'est pas affiché à l'écran.",
+      "ariaResultAvailable": "Résultat de vérification disponible : {{verdict}}",
+      "rangeOverCapWarning": "Cette période dépasse la limite asynchrone de {{maxWindowDays}} jours et ne peut pas être démarrée.",
+      "pollErrorTransient": "Échec du rafraîchissement du statut — nouvel essai avec backoff…",
+      "pollErrorHalted": "Échecs répétés du rafraîchissement. La vérification peut encore tourner ; rechargez la page ou abandonnez le job s’il est bloqué."
+    },
     "chainIntegrity": "Intégrité de la chaîne",
     "entryIntegrity": "Intégrité des entrées",
     "checking": "Vérification…",
@@ -306,6 +396,7 @@
       "showAffectedOnly": "Afficher seulement les entrées affectées",
       "affectedOnlyTitle": "Entrées affectées (selon vérification)",
       "backToList": "Retour à la liste complète",
+      "backToPanel": "Retour au panneau Intégrité",
       "reasonColumn": "Raison",
       "viewAround": "Voir autour de l'événement",
       "noAffectedEntries": "Aucune entrée affectée en session"
@@ -339,6 +430,11 @@
     "lifecycleOverview": "Vue lifecycle",
     "lifecyclePolicyTitle": "Lifecycle piloté par policy",
     "lifecyclePolicyHint": "Le système fait progresser automatiquement les états lifecycle des checkpoints. Ce panneau sert d'abord à la visibilité opérateur.",
+    "lifecyclePolicyHintMonitoringOff": "La détection planifiée est inactive — les états lifecycle des checkpoints ne progressent pas automatiquement sur cette instance. Ce panneau sert d'abord à la visibilité opérateur ; utilisez les actions de l'atelier pour des contrôles à la demande.",
+    "monitoringInactiveBadge": {
+      "base": "Profil base — détection planifiée inactive",
+      "generic": "Détection planifiée inactive"
+    },
     "policyDriven": "Policy-driven",
     "loadingLifecycleOverview": "Chargement de la vue lifecycle…",
     "noLifecycleOverview": "Aucune vue lifecycle n'est actuellement disponible.",
@@ -355,13 +451,65 @@
     "statusYes": "Oui",
     "statusNo": "Non",
     "exceptionalMaintenance": "Maintenance exceptionnelle",
+    "disclosure": {
+      "attention": "À traiter"
+    },
     "sealArchive": "Sceller l'archive",
+    "confirmArchived": "Confirmer l'archivage",
+    "confirmArchivedHint": "Enregistrer que la tranche scellée a été archivée en externe (marque les checkpoints EXPORTED).",
     "declareGap": "Déclarer une lacune",
     "declareGapHint": "Les lacunes détectées apparaissent ci-dessous — utilisez les actions par lacune pour les déclarer.",
+    "reconcileRupture": "Concilier la rupture d'intégrité",
+    "reconcileRuptureHint": "Ouvrir l'atelier Integrity pour concilier l'alerte de rupture liée.",
+    "reconcileDialog": {
+      "title": "Concilier la rupture d'intégrité",
+      "intro": "Confirmez les frontières de rupture, classifiez l'incident et fournissez une justification. Cochez ci-dessous chaque violation HMAC entrée encore ouverte. Cette action est irréversible pour cette alerte.",
+      "boundariesHeading": "Frontières de rupture",
+      "alertRef": "Alerte #{{id}}",
+      "entryAckHeading": "Violations entrée (vérif. en direct)",
+      "entryAckHint": "Cochez chaque violation ouverte que vous reconnaissez. Les entrées déjà conciliées sont affichées à titre informatif sans case à cocher.",
+      "entryAckNone": "Aucune violation HMAC entrée dans la fenêtre de rupture.",
+      "entryAckExplainedNote": "Déjà conciliée — exclue de la liste obligatoire.",
+      "entryAckValidation": "Cochez toutes les violations ouvertes avant de concilier.",
+      "liveLoading": "Vérification HMAC entrée…",
+      "liveVerifyFailed": "Échec de la vérification entrée en direct.",
+      "categoryLabel": "Catégorie",
+      "category": {
+        "ACCIDENTAL_DBA_EDIT": "Modification DBA accidentelle",
+        "CORRUPTION": "Corruption stockage (investiguée)",
+        "INVESTIGATED_BENIGN": "Investigué — bénin",
+        "OTHER": "Autre"
+      },
+      "ticketLabel": "Ticket externe",
+      "ticketOptional": "(optionnel)",
+      "ticketPlaceholder": "p. ex. INC-12345",
+      "justification": "Justification",
+      "justificationHint": "(min. 10 caractères)",
+      "justificationPlaceholder": "Décrivez l'investigation et pourquoi la conciliation est appropriée…",
+      "cancel": "Annuler",
+      "submit": "Concilier",
+      "submitting": "Conciliation…",
+      "done": "Terminé",
+      "successTitle": "Rupture d'intégrité conciliée",
+      "resultBoundaries": "Frontières",
+      "resultCheckpointId": "Checkpoint de conciliation",
+      "resultChainHmac": "HMAC chaîne",
+      "resultAuditLogId": "Id journal d'audit",
+      "resultEntryConciliationCount": "Conciliations entrée",
+      "resultConciliatedEntries": "Ids journaux conciliés",
+      "toastSuccess": "Rupture d'intégrité conciliée.",
+      "errorFailed": "Échec de la conciliation.",
+      "conciliationStatus": {
+        "ACKNOWLEDGED": "Reconnue (état invalide connu)",
+        "RE_TAMPER_SUSPECTED": "Modifiée depuis la reconnaissance"
+      }
+    },
     "incidents": {
       "title": "Incidents opérationnels",
       "loading": "Chargement des incidents…",
       "empty": "Aucun incident de battement enregistré.",
+      "loadError": "Impossible de charger les incidents opérationnels.",
+      "retry": "Réessayer",
       "refresh": "Actualiser",
       "refreshing": "Actualisation…",
       "declare": "Déclarer la clôture",
@@ -407,13 +555,16 @@
     "focus": "Focus",
     "clearFocus": "Effacer le focus",
     "checkpointTimeline": "Chronologie des checkpoints",
-    "timelineHint": "Triez par Début de fenêtre pour afficher les lignes de lacune entre checkpoints ; les autres tris n'affichent que les checkpoints. Utilisez le rapport de Vérification pour la liste complète des lacunes non déclarées.",
+    "timelineHint": "Les plages calmes se regroupent en une ligne grise (développez pour inspecter chaque lien). Les lignes orange Lacune sont de vrais trous non déclarés — pas des fenêtres calmes. Triez par Début de fenêtre pour les lacunes en ligne ; utilisez le rapport de Vérification pour la liste complète.",
     "allTypes": "Tous les types",
     "typeRegular": "Régulier",
     "typeArchiveSeal": "Scellement archive",
     "typeGapDeclaration": "Déclaration de lacune",
     "typeManipulationConciliation": "Conciliation manipulation",
-    "hideEmptyWindows": "Masquer les fenêtres vides",
+    "compressQuietWindows": "Regrouper les fenêtres calmes",
+    "quietSummary": "Calme · {{from}} → {{to}} · {{count}} fenêtres · {{entries}} entrée",
+    "lateWrittenBadge": "Écrit en retard",
+    "lateWrittenHelp": "Cette fenêtre a été enregistrée nettement après sa fin (rattrapage, décalage d'horloge ou pause d'écriture). Ce n'est pas une lacune non déclarée.",
     "selection": "Sélection",
     "sealRangeLabel": "Période à sceller",
     "sealRangeFrom": "De",
@@ -434,6 +585,7 @@
     "checkpointTypeRegular": "Régulier",
     "checkpointTypeSealed": "Scellé",
     "checkpointTypeGap": "Lacune",
+    "checkpointTypeGapDeclaration": "Lacune déclarée",
     "checkpointTypeConciliation": "Conciliation",
     "lifecycleStateActive": "Actif",
     "lifecycleStateSealed": "Scellé",
@@ -471,6 +623,28 @@
     "resultSealHmac": "HMAC du scellement",
     "resultAuditLogId": "ID journal d'audit",
     "optionalPlaceholder": "optionnel"
+  },
+  "confirmArchivedDialog": {
+    "title": "Confirmer l'archivage externe",
+    "successTitle": "Confirmation d'archivage enregistrée",
+    "done": "Terminé",
+    "intro": "Enregistrez que la tranche scellée a été archivée en externe. Cela marque les checkpoints EXPORTED — cela n'effectue pas l'export. Fournissez le digest du lot d'export issu de votre workflow d'archivage.",
+    "trancheHeading": "Tranche scellée en attente de confirmation",
+    "exportBundleDigest": "Digest du lot d'export",
+    "exportBundleDigestHint": "(16–88 caractères, obligatoire)",
+    "exportBundleDigestPlaceholder": "Digest ou checksum du lot d'archive externe",
+    "archivedAt": "Archivé le (optionnel)",
+    "cancel": "Annuler",
+    "submit": "Confirmer l'archivage",
+    "submitting": "Confirmation…",
+    "resultPeriod": "Période",
+    "resultCheckpointsExported": "Checkpoints exportés",
+    "resultDigest": "Digest du lot d'export",
+    "resultExportedAt": "Exporté le",
+    "resultAuditLogId": "ID journal d'audit",
+    "toastSuccess": "Archivage externe confirmé ({{count}} checkpoint(s) marqué(s) EXPORTED).",
+    "errorFailed": "Échec de la confirmation d'archivage.",
+    "digestTooShort": "Le digest doit contenir au moins 16 caractères."
   },
   "gapDialog": {
     "title": "Déclarer la lacune détectée",

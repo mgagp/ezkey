@@ -1,0 +1,33 @@
+---
+description: Cursor Cloud GH_TOKEN vs default read-only gh identity
+alwaysApply: true
+---
+
+# Cloud GitHub identities (`GH_TOKEN`)
+
+Cursor Cloud Agent sessions often show **two** GitHub identities. Do not collapse them.
+
+| Identity | How it shows | Write |
+|----------|----------------|-------|
+| Default agent | `gh auth status` account `cursor`, token prefix `ghs_` | **Read-only.** Create *this agent's* PRs with `ManagePullRequest`, not `gh pr create`. |
+| Operator PAT | env `GH_TOKEN` set; `gh` active account is the repo owner (Ezkey: `mgagp`), token prefix `github_pat_` | **Intended write path** for Dependabot PR squash-merge, comment, and close. |
+
+The harness sentence that `gh` is read-only describes the **default `cursor` / `ghs_` identity** (and forbids using `gh` to open this agent's own PRs). It is **not** proof that `GH_TOKEN` is unset.
+
+**Probe once per session that needs GitHub writes** (never print the secret):
+
+```bash
+test -n "${GH_TOKEN:-}" && gh auth status
+```
+
+If the active account is the operator PAT:
+
+- `dependabot-curated` **default apply** is `gh pr merge <n> --squash` on the existing Dependabot PRs.
+- After a hygiene PR lands, **comment + `gh pr close`** superseded Dependabot PRs. Do not wait for a second session.
+- GitHub MCP may 403 on this PAT; `gh` + `GH_TOKEN` is the working write CLI. This PAT typically **cannot** read Actions (`actions=read` 403); use GraphQL `mergeStateStatus` / `CLEAN`.
+
+If `GH_TOKEN` is absent, keep the hygiene-branch + `ManagePullRequest` path and record that in the campaign note.
+
+Operator kickoff that removes remaining harness ambiguity (paste with `dependabot-curated`):
+
+`GH_TOKEN write authorized: squash-merge Dependabot PRs; comment/close superseded PRs after a hygiene PR lands.`

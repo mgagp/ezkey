@@ -14,6 +14,8 @@ from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta, timezone
 import time
 
+from ezkey_cli.utils.tls import SslVerify, requests_delete, requests_get, requests_post
+
 log = logging.getLogger(__name__)
 
 
@@ -24,7 +26,7 @@ class ApiClient:
       self,
       admin_url: str,
       bearer_token: str,
-      verify_ssl: bool = True,
+      verify_ssl: SslVerify = True,
       admin_health_url: Optional[str] = None
   ):
     """
@@ -33,7 +35,8 @@ class ApiClient:
     Args:
         admin_url: Base URL for Admin API (e.g., http://localhost:9080)
         bearer_token: Bearer token for authentication
-        verify_ssl: Whether to verify SSL certificates
+        verify_ssl: Value for requests ``verify=`` (True, CA bundle path, or
+            False only after explicit loopback-only insecure opt-in).
         admin_health_url: Base URL for Admin API Actuator (e.g., http://localhost:9081)
     """
     self.admin_url = admin_url.rstrip('/')
@@ -112,7 +115,7 @@ class ApiClient:
         )
         log.debug(f"Bearer token: {token_preview} (length: {len(self.bearer_token)})")
 
-      response = requests.get(
+      response = requests_get(
           url,
           headers=self.headers,
           params=params,
@@ -161,7 +164,7 @@ class ApiClient:
       log.info(f"POST {url}")
       log.debug(f"Payload: {data}")
 
-      response = requests.post(
+      response = requests_post(
           url,
           headers=self.headers,
           json=data,
@@ -223,7 +226,7 @@ class ApiClient:
       url = f"{self.admin_url}{endpoint}"
       log.info(f"DELETE {url}")
 
-      response = requests.delete(
+      response = requests_delete(
           url,
           headers=self.headers,
           timeout=10,
@@ -256,7 +259,7 @@ class ApiClient:
       url = f"{self.admin_url}/api/v1/admin/auth/logout"
       log.info(f"POST {url}")
 
-      response = requests.post(
+      response = requests_post(
           url,
           headers=self.headers,
           timeout=10,
@@ -581,7 +584,7 @@ class ApiClient:
     url = f"{base_url}/actuator/health"
     start = time.perf_counter()
     try:
-      response = requests.get(
+      response = requests_get(
           url,
           headers=self.headers,
           timeout=5,
@@ -1062,7 +1065,7 @@ class ApiClient:
       url = f"{self.admin_url}/api/v1/integrations?page=0&size=1"
       log.debug(f"Validating token via GET {url}")
 
-      response = requests.get(
+      response = requests_get(
           url,
           headers=self.headers,
           timeout=5,

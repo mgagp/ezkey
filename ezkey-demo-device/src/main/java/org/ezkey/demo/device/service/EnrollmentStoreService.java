@@ -99,15 +99,14 @@ public class EnrollmentStoreService {
       }
       Files.list(rootDir)
           .filter(p -> p.getFileName().toString().endsWith(".json"))
-          .forEach(
-              p -> {
-                try {
-                  byte[] json = Files.readAllBytes(p);
-                  items.add(objectMapper.readValue(json, Record.class));
-                } catch (IOException ex) {
-                  logger.warn("Skipping unreadable enrollment file {}", p);
-                }
-              });
+          .forEach(p -> {
+            try {
+              byte[] json = Files.readAllBytes(p);
+              items.add(objectMapper.readValue(json, Record.class));
+            } catch (IOException ex) {
+              logger.warn("Skipping unreadable enrollment file {}", p);
+            }
+          });
     } catch (IOException e) {
       logger.error("Error listing enrollments", e);
     }

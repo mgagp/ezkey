@@ -3,10 +3,11 @@
 ## Metadata
 
 - **ID:** `I-2026-07-10-admin-recovery-codes-exhausted-label-ux`
-- **Status:** `captured`
+- **Status:** `done`
 - **Priority:** `P3`
 - **Created at:** `2026-07-09`
-- **Updated at:** `2026-07-09`
+- **Updated at:** `2026-11-06`
+- **GitHub issue:** `#1244`
 - **Last reviewed at:** `2026-07-09`
 - **Phase tags:** `P3-polish`
 - **Component tags:** `admin-ui`, `admin-api`, `docs`
@@ -80,7 +81,7 @@ Cases 1 and 3 share the same API surface and UI branch; only case 3 is confusing
 
 ## Promotion notes
 
-Move to `ready` when fix approach is chosen (UI-only vs API flag vs endpoint unify) and audit/copy implications are agreed. Priority `P3` — polish lane; no release blocker.
+- **Delivered (#1244):** API flag, not UI-only. A `lastLoginAt` proxy cannot separate case 1 from case 3 because `issue-initial` already requires `lastLoginAt`. The stored set is `NULL` until first issuance and an empty array once exhausted, so `AdminResponseDto.recoveryCodesExhausted` exposes that difference. The Admin UI uses it for "Issue new recovery codes" copy (EN/FR), and the `issue-initial` response `message` no longer claims no previous codes existed. Endpoints, eligibility, and audit event types are unchanged.
 
 ## Links
 

@@ -37,11 +37,16 @@ import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
  * @param enrollmentProofToken The enrollment proof token to be signed by the device
  * @param integrationName The display name of the integration
  * @param integrationDescription The description of the integration
- * @param enrollmentName The human-readable name for the enrollment
+ * @param enrollmentName Person-facing enrollment label shown on the device (admin MFA uses
+ *     first+last; do not encode Global/Tenant Admin here — see
+ *     I-2026-09-15-mobile-admin-enrollment-account-label)
  * @param tenantId The tenant ID of the integration associated with this enrollment
  * @param tenantName The tenant display name of the integration associated with this enrollment
  * @param tenantDescription The tenant description of the integration associated with this
  *     enrollment
+ * @param isSystemIntegration Whether this enrollment is admin MFA on the system integration
+ * @param adminType {@code GLOBAL_ADMIN} or {@code TENANT_ADMIN} when linked to an administrator;
+ *     absent for regular enrollments
  * @param enrollmentBindPayloadSignedByIntegration Ed25519 signature over the canonical bind payload
  * @author Ezkey contributors
  * @since 2025
@@ -84,8 +89,10 @@ public record EnrollmentBindResponseDto(
             requiredMode = RequiredMode.NOT_REQUIRED)
         String integrationDescription,
     @Schema(
-            description = "Human-readable name for the enrollment",
-            example = "John's iPhone",
+            description =
+                "Person-facing enrollment label shown on the device (for admin MFA: first and last"
+                    + " name; not a role or username blob)",
+            example = "Marie Dupont",
             requiredMode = RequiredMode.NOT_REQUIRED)
         String enrollmentName,
     @Schema(
@@ -105,9 +112,70 @@ public record EnrollmentBindResponseDto(
         String tenantDescription,
     @Schema(
             description =
+                "True when this enrollment is administrator MFA on the system integration",
+            example = "false",
+            requiredMode = RequiredMode.REQUIRED)
+        Boolean isSystemIntegration,
+    @Schema(
+            description =
+                "Administrator type when this enrollment is admin MFA (GLOBAL_ADMIN or"
+                    + " TENANT_ADMIN); absent for regular enrollments",
+            example = "TENANT_ADMIN",
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        String adminType,
+    @Schema(
+            description =
                 "Ed25519 signature (Base64URL, no padding, raw 64 bytes) over the canonical bind"
                     + " payload (see docs/ENROLLMENT_SIGNATURE_PAYLOAD.md)",
             example =
                 "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
             requiredMode = RequiredMode.REQUIRED)
-        String enrollmentBindPayloadSignedByIntegration) {}
+        String enrollmentBindPayloadSignedByIntegration) {
+
+  /**
+   * Returns a string representation with proof tokens and signatures masked.
+   *
+   * <p>Public keys are left visible; they are not secrets.
+   *
+   * @return string representation safe for logs
+   */
+  @Override
+  public String toString() {
+    return "EnrollmentBindResponseDto{"
+        + "enrollmentId="
+        + enrollmentId
+        + ", integrationPublicKey='"
+        + integrationPublicKey
+        + '\''
+        + ", integrationKeyAlgorithm='"
+        + integrationKeyAlgorithm
+        + '\''
+        + ", enrollmentProofToken="
+        + (enrollmentProofToken != null ? "[PROTECTED]" : "null")
+        + ", integrationName='"
+        + integrationName
+        + '\''
+        + ", integrationDescription='"
+        + integrationDescription
+        + '\''
+        + ", enrollmentName='"
+        + enrollmentName
+        + '\''
+        + ", tenantId="
+        + tenantId
+        + ", tenantName='"
+        + tenantName
+        + '\''
+        + ", tenantDescription='"
+        + tenantDescription
+        + '\''
+        + ", isSystemIntegration="
+        + isSystemIntegration
+        + ", adminType='"
+        + adminType
+        + '\''
+        + ", enrollmentBindPayloadSignedByIntegration="
+        + (enrollmentBindPayloadSignedByIntegration != null ? "[PROTECTED]" : "null")
+        + '}';
+  }
+}

@@ -67,9 +67,48 @@ Ezkey’s cryptographic-device posture.
 | Product / docs | This document — Android 12+ / API 31 |
 | Gradle `minSdkVersion` | **31** (aligned with policy) |
 | `targetSdkVersion` / `compileSdkVersion` | **36** (Play publish requirements) |
+| NDK | **28.1.13356709** (r28+; 16 KB ELF / RELRO defaults) |
 
 Debug, sideload, and Play builds from this tree refuse install on API &lt; 31. **Play device-catalog
 filtering for end users applies after a published AAB that declares `minSdk` 31.**
+
+---
+
+## 16 KB page-size gate (Play + Pixel)
+
+Play requires 16 KB page-size support for 64-bit devices when targeting Android 15+ (`targetSdk`
+36 here). Official reference:
+[Support 16 KB page sizes](https://developer.android.com/guide/practices/page-sizes).
+
+**Rules for this repo:**
+
+1. ABIs are **arm64-v8a** and **x86_64** only (no 32-bit).
+2. `ndkVersion` is **r28+**, and all CMake native builds get
+   `-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384` (NDK r28 alone pads LOAD to 16 KB
+   but LLD still pads `GNU_RELRO` with 4 KB `common-page-size` unless raised).
+3. Force **`androidx.datastore*` → 1.2.1**; pin **`conscrypt-android` → 2.7.0** (both fix RELRO
+   vs their previous pins).
+4. Do **not** set `packagingOptions.jniLibs.useLegacyPackaging = true` — it does not fix RELRO.
+5. After every release APK/AAB: run `./scripts/check-16kb-alignment.sh <artifact>`.
+   - Fails on `PT_LOAD p_align < 0x4000` or `GNU_RELRO` end not 16 KB aligned.
+   - APK also runs `zipalign -c -P 16 -v 4`.
+   - Wired into `yarn android:bundle:release`, `build-install-release-clean.sh`, and CI.
+6. **Allowlisted residuals (#659)** — keep tiny; exact basename match only; do not expand casually:
+   - **Decision A:** RN **0.87.1** Maven prebuilts (`libhermestooling`, `libhermesvm`, `libjsi`,
+     `libreactnative`, `libfbjni`, `libc++_shared`). No `libhermes` (RN 0.87.1 ships
+     `libhermesvm`). Reopen RN bump if Play rejects on these alone.
+   - **Third-party AAR prebuilts** (not rebuilt by our NDK): Fresco `libimagepipeline` /
+     `libnative-imagetranscoder` / `libnative-filters`, CameraX `libsurface_util_jni`,
+     ML Kit `libbarhopper_v3` (x86_64).
+   - Locally built libs (gesture-handler, VisionCamera, `libappmodules`, …) must **pass**.
+   - Gate summary splits `ALLOW (RN …)` vs `ALLOW (third-party AAR …)` (plus `ALLOW total`).
+   - On Windows (Git Bash), the gate resolves `llvm-readelf.exe` from PATH or
+     `ndk/*/toolchains/llvm/prebuilt/windows-x86_64/bin` (no shim required).
+
+Clean rebuild after NDK / linker-flag bumps: delete `android/app/build`, `android/build`,
+`android/app/.cxx`, and each autolinked module’s `.cxx` under `node_modules/*/android/.cxx` if
+present, then `assembleRelease` / `bundleRelease` (see `scripts/build-install-release-clean.sh`
+and `scripts/bundle-release.sh`).
 
 ---
 

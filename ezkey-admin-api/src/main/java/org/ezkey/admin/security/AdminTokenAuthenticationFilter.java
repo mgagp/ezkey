@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.ezkey.admin.config.AdminBrowserSessionCookieProperties;
+import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.security.AdminAuthRequestAttributes.AuthSource;
 import org.ezkey.admin.service.AdminTokenValidationService;
 import org.ezkey.integration.domain.entity.AdminToken;
@@ -115,6 +116,13 @@ public class AdminTokenAuthenticationFilter extends OncePerRequestFilter {
 
   private void tryAuthenticateWithPlainToken(
       String token, AuthSource authSource, HttpServletRequest request) {
+    // #1122: activation codes are consumed only by the public activation endpoint (request body).
+    if (token.startsWith(AdminAuditConstants.ACTIVATION_TOKEN_PREFIX)) {
+      logger.warn("❌ Activation code presented as {} credential; not authenticated", authSource);
+      // Do not leave a prior principal in place (would surface as 403 instead of 401).
+      SecurityContextHolder.clearContext();
+      return;
+    }
     try {
       Optional<AdminToken> tokenOptional = tokenValidationService.validateTokenWithRelations(token);
 
@@ -122,15 +130,23 @@ public class AdminTokenAuthenticationFilter extends OncePerRequestFilter {
         AdminToken adminToken = tokenOptional.get();
         var admin = adminToken.getAdmin();
 
+        // Tenant scope for TENANT_ADMIN and INTEGRATION_ADMIN (null for GLOBAL_ADMIN).
         Integer tenantId = null;
-        if (admin.getAdminType() == AdminType.TENANT_ADMIN) {
-          tenantId = adminToken.getTenant() != null ? adminToken.getTenant().getTenantId() : null;
+        String tenantName = null;
+        if (admin.getAdminType() != AdminType.GLOBAL_ADMIN && adminToken.getTenant() != null) {
+          tenantId = adminToken.getTenant().getTenantId();
+          tenantName = adminToken.getTenant().getTenantName();
         }
         Integer integrationId =
             adminToken.getIntegration() != null ? adminToken.getIntegration().getId() : null;
 
         AdminPrincipal principal =
-            new AdminPrincipal(admin.getAdminId(), admin.getAdminType(), tenantId, integrationId);
+            new AdminPrincipal(
+                admin.getAdminId(),
+                admin.getAdminType(),
+                tenantId,
+                integrationId,
+                adminToken.getTokenPurpose());
 
         List<SimpleGrantedAuthority> authorities = new ArrayList<>();
         authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
@@ -147,12 +163,19 @@ public class AdminTokenAuthenticationFilter extends OncePerRequestFilter {
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
+        // A1 / JM-001: reuse the already-loaded token for a conditional last-used UPDATE
+        // (no second find; never merge the entity — that can revive a revoked token).
         OffsetDateTime updatedExpiresAt =
-            tokenValidationService.updateTokenLastUsed(token).orElse(adminToken.getExpiresAt());
+            tokenValidationService
+                .updateTokenLastUsed(adminToken)
+                .orElse(adminToken.getExpiresAt());
         request.setAttribute(AdminAuthRequestAttributes.AUTH_SOURCE, authSource);
         request.setAttribute(AdminAuthRequestAttributes.PLAIN_TOKEN, token);
         request.setAttribute(AdminAuthRequestAttributes.EXPIRES_AT, updatedExpiresAt);
         request.setAttribute(AdminAuthRequestAttributes.USERNAME, admin.getUsername());
+        if (tenantName != null) {
+          request.setAttribute(AdminAuthRequestAttributes.TENANT_NAME, tenantName);
+        }
 
         logger.debug(
             "✅ Token validated successfully for admin: {} (type: {}, tenant: {}, integration:"

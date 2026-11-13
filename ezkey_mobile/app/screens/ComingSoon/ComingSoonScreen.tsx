@@ -6,10 +6,11 @@
  */
 
 import React from 'react';
-import {ScrollView, StyleSheet, Text, View} from 'react-native';
+import {ScrollView, Text, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTranslation} from 'react-i18next';
-import {borderRadius, colors, spacing, typography} from '../../config/theme';
+import {borderRadius, spacing, typography} from '../../config/theme';
+import {createThemedStyles} from '../../theme';
 
 const roadmapSectionKeys = ['auth', 'pinning'] as const;
 
@@ -19,6 +20,7 @@ const roadmapSectionKeys = ['auth', 'pinning'] as const;
  * @since 2025
  */
 export const ComingSoonScreen: React.FC = () => {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const {t} = useTranslation();
 
@@ -39,15 +41,11 @@ export const ComingSoonScreen: React.FC = () => {
           <Text style={styles.sectionBody}>{t(`comingSoon.${key}.body`)}</Text>
         </View>
       ))}
-
-      <View style={styles.footerCard}>
-        <Text style={styles.footerText}>{t('comingSoon.footer')}</Text>
-      </View>
     </ScrollView>
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(colors => ({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -99,16 +97,4 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     lineHeight: 22,
   },
-  footerCard: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-  },
-  footerText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textMuted,
-    lineHeight: 20,
-  },
-});
+}));

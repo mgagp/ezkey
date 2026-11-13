@@ -103,4 +103,30 @@ public record AuthAttemptPendingResponseDto(
                     + " Example: \"Authorize payment batch #1497 to Acme Corp for $1,400\"",
             example = "Authorize payment batch #1497 to Acme Corp for $1,400",
             requiredMode = RequiredMode.NOT_REQUIRED)
-        String contextMessage) {}
+        String contextMessage) {
+
+  /**
+   * Returns a string representation with proof tokens and signatures masked.
+   *
+   * @return string representation safe for logs
+   */
+  @Override
+  public String toString() {
+    return "AuthAttemptPendingResponseDto{"
+        + "authAttemptId="
+        + authAttemptId
+        + ", authAttemptProofToken="
+        + (authAttemptProofToken != null ? "[PROTECTED]" : "null")
+        + ", authAttemptProofTokenSignedByIntegration="
+        + (authAttemptProofTokenSignedByIntegration != null ? "[PROTECTED]" : "null")
+        + ", authAttemptChallengeRequired="
+        + authAttemptChallengeRequired
+        + ", contextTitle='"
+        + contextTitle
+        + '\''
+        + ", contextMessage='"
+        + contextMessage
+        + '\''
+        + '}';
+  }
+}

@@ -164,14 +164,14 @@ Compose passes `TZ: ${TZ:-UTC}` into services; if `TZ` is unset, behavior stays 
 - **Port**: `9090`
 - **Purpose**: Cryptographic services for testing (key generation, signing, validation)
 - **Depends on**: PostgreSQL (healthy), Migration (completed)
-- **Health Check**: http://localhost:9090/actuator/health
+- **Health Check (liveness)**: http://localhost:9091/actuator/health/liveness (encryption readiness: `/actuator/health/encryption`; business port remains `9090`)
 - **Note**: No database required, but included in stack for consistency
 
 ### Demo Device (demo-device)
 - **Port**: `8083`
 - **Purpose**: Simulated mobile device for testing enrollment and authentication flows
 - **Depends on**: Auth API (healthy)
-- **Health Check**: http://localhost:8083/actuator/health
+- **Health Check**: http://localhost:8084/actuator/health (management port; business port remains `8083`)
 - **Bootstrap**: Pre-seeded with global admin enrollment on first startup
 
 The Python CLI is a **host-side** optional tool, not a stack service. Clean-start does not start
@@ -185,7 +185,8 @@ ports after the stack is up.
 - **Depends on**: Admin API, Auth API, Crypto API, Demo Device (all healthy)
 - **Runs**: After all services are healthy
 - **Output**: Creates bootstrap artifacts and demo-device enrollment file
-- **Skip**: Set `EZKEY_BOOTSTRAP_INIT_ENABLED=false` when Admin API uses `recovery_primary` bootstrap (no `bootstrap-credentials.json`).
+- **Skip**: Set `EZKEY_BOOTSTRAP_INIT_ENABLED=false` when Admin API uses `recovery_primary` bootstrap (credentials file has no proof token for unattended bind).
+- **Artifact modes**: `umask 077`; `device-credentials.json` and demo-device enrollment JSON are `0600`; enrollments directory is `0700` (same `spring` UID as demo-device — code-scanning Lot C 2026-10-13).
 - **Note**: This service makes Docker stack fully self-contained (no Maven/JDK required)
 
 ## Bootstrap and Initialization
@@ -198,9 +199,9 @@ The Docker stack automatically initializes the global admin enrollment and seeds
 
 ### Credentials output mode (full vs recovery-primary)
 
-- **Default (`full`)** — Admin API logs enrollment material (proof token, challenge, ASCII QR, recovery codes) and writes `bootstrap-credentials.json` when export is enabled. **`bootstrap-init` requires this file** for unattended bind+verify (clean-start / demo).
-- **Production-style (`recovery_primary`)** — Set `EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE=recovery_primary` on **admin-api**. Logs contain **recovery codes and operator instructions only**; enrollment secrets are not printed; **JSON export is skipped**, so `bootstrap-credentials.json` is **not** created.
-- When using `recovery_primary`, set **`EZKEY_BOOTSTRAP_INIT_ENABLED=false`** on the **bootstrap-init** service (or omit `bootstrap-init` from the compose stack) so the init container does not wait for a missing file. Operators enroll the global admin via **Admin UI → account recovery** (recover → reset enrollment → bind).
+- **Default (`full`)** — Admin API logs enrollment bind material (proof token, challenge, ASCII QR) by design and writes `bootstrap-credentials.json` (`0600`) with bind material **and recovery codes**. **`bootstrap-init` requires this file** for unattended bind+verify (clean-start / demo).
+- **Production-style (`recovery_primary`)** — Set `EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE=recovery_primary` on **admin-api**. Logs omit enrollment secrets; recovery codes are written only to `bootstrap-credentials.json` (`0600`) without proof token/challenge. Set **`EZKEY_BOOTSTRAP_INIT_ENABLED=false`** on **bootstrap-init** (or omit it) so init does not wait for bind material. Operators enroll via **Admin UI → account recovery** (recover → reset enrollment → bind).
+- **Bootstrap enrollment TTL** — `EZKEY_ADMIN_MFA_BOOTSTRAP_ENROLLMENT_EXPIRATION_HOURS` (default **24**). Bind before expiry; re-issue with a recovery code from the credentials file → recover → reset enrollment.
 
 **No manual steps required** (with default `full`)! After `docker/start.sh` completes:
 - Demo-device is pre-seeded and ready
@@ -211,14 +212,16 @@ The Docker stack automatically initializes the global admin enrollment and seeds
 Bootstrap artifacts are stored in the `bootstrap-artifacts` Docker volume:
 
 ```bash
-# View bootstrap credentials
+# View bootstrap credentials (includes recovery codes; file mode 0600 inside the volume)
 docker run --rm -v ezkey_bootstrap-artifacts:/data alpine cat /data/bootstrap-credentials.json
 
-# View device credentials
+# View device credentials (mode 0600; private key material)
 docker run --rm -v ezkey_bootstrap-artifacts:/data alpine cat /data/device-credentials.json
 ```
 
-**Note**: Recovery codes are NOT exported to files (logs only for security).
+**Note**: Recovery codes are **only** in `bootstrap-credentials.json` (`0600`), never in container logs.
+`device-credentials.json` and demo-device enrollment files under the shared data volume are also
+`0600`, with the enrollments directory `0700` (owner `spring`; readable by demo-device).
 
 ## Management Commands
 
@@ -325,6 +328,36 @@ export POSTGRES_PASSWORD=mysecurepassword
 All services use the `docker` Spring profile by default, which loads configuration from:
 - `application-docker.properties` files in each module's `config/` directory
 
+#### Runtime profiles (product language)
+
+Operators select a **runtime profile** with `--runtime=integrity|base` on
+`ezkey-tests/clean-start.sh`, or env `EZKEY_RUNTIME_PROFILE` (also usable on Lightsail `.env`).
+
+| Product key | Default? | Meaning |
+|-------------|----------|---------|
+| `integrity` (or unset) | **Yes** | Current Docker posture: MFA crypto + audit-chain checkpoints + peripheral heartbeat supervision. Tamper-evident claims apply here. |
+| `base` | Opt-in only | MFA crypto on; audit-integrity **monitoring** off (checkpoints, heartbeat, nightly validation, archive seal/purge, key rotation/re-encryption jobs, enrollment/token cleanup). HMAC audit *write* stays on — legitimate ops posture with limited claims; do **not** call base tamper-evident. |
+
+Spring profile `docker-base` is the **mechanism** under the preset (property files
+`application-docker-base.properties`). Do not treat Spring profile names as the ops language
+(V-2026-0010). Verify statically with `./docker/verify-runtime-profile.sh`.
+
+```bash
+./ezkey-tests/clean-start.sh --runtime=base
+EZKEY_RUNTIME_PROFILE=base ./docker/start.sh
+```
+
+**Lightsail `.env`:** set `EZKEY_RUNTIME_PROFILE=base` and ensure
+`SPRING_PROFILES_ACTIVE` includes `docker-base` last (e.g. `docker,docker-base`), or use a start
+path that sources `docker/runtime-profile.sh`. Orthogonal flags
+(`EZKEY_EVALUATOR_SELF_REGISTRATION_ENABLED`, demo-device, Caddy, HA, JMX, JavaMelody) are unchanged.
+For local QA of self-registration + temporary console explore, use
+[`docker-compose.evaluator-self-reg.yml`](docker-compose.evaluator-self-reg.yml) as an overlay
+(default clean-start remains OFF).
+
+Admin UI Integrity / Alerts surfaces may still be visible under base; monitoring jobs behind them
+are inactive — UI badge/mask is a separate track.
+
 #### Available Profiles
 
 **Default: `docker` (Production Mode)**
@@ -343,6 +376,11 @@ All services use the `docker` Spring profile by default, which loads configurati
 - Peripheral audit-chain heartbeat supervision stays enabled on Auth API and Integration API unless explicitly overridden — stack integrity semantics match production docker profiles for checkpoint staleness gates (default thresholds align with **`latest.window_end + 9 minutes`** for five-minute checkpoints; see **`docs/AUDIT_LOG_INTEGRITY.md`**).
 - Allows unrestricted churn testing without 429 noise from rate limits
 - Useful for development and debugging
+
+**Optional: `docker-base` (Base runtime mechanism — activate via product key above)**
+- Loaded only when `EZKEY_RUNTIME_PROFILE=base` / `--runtime=base`
+- Turns off audit-chain checkpoints + heartbeat together (★ hard coupling — never leave heartbeat on if checkpoints off)
+- Keeps encryption required / HMAC write / auth-attempt expiry scheduler
 
 #### Using Test Mode
 
@@ -406,12 +444,20 @@ container. There is no Caddy hop.
 ./ezkey-tests/clean-start.sh --ha --with-java-melody
 ```
 
-**Collector UI:** http://localhost:8088 (shared host port for baseline and HA collectors;
-`clean-start` releases the previous collector when switching stacks)
+**Collector UI:** http://127.0.0.1:8088 (loopback bind; shared host port for baseline and HA
+collectors; `clean-start` releases the previous collector when switching stacks). Collector WAR
+version matches the API starter (**2.9.0**). Init parameters disable system actions, enable CSRF,
+disable update checks, keep `log=false`, and normalize URL ids
+(`[0-9a-fA-F]{8}-[0-9a-fA-F-]{27}|\d+`).
 
 After functional-test traffic, the collector should list `admin-api`, `auth-api`, and
 `integration-api`. In HA mode each application shows **two nodes**. Default clean-start
 without the flag leaves JavaMelody disabled.
+
+**Community host (`ezkey.online`):** separate Lightsail overlay
+[`experimental-hybrid/lightsail/docker-compose.javamelody.yml`](../experimental-hybrid/lightsail/docker-compose.javamelody.yml)
+with SSH-tunnel access only — see [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md)
+§ Observability (#846) and memory limits (#749).
 
 See also [`README-HA.md`](README-HA.md) and [`docs/LOCAL_STACK_PORTS.md`](../docs/LOCAL_STACK_PORTS.md).
 
@@ -423,6 +469,8 @@ PostgreSQL data is persisted in a Docker volume named `postgres-data`. This mean
 - Data persists across container restarts
 - Data persists when containers are stopped
 - Data is removed only when using `clean` command or `docker-compose down -v`
+
+First boot (empty volume) runs [`postgres/init/01-create-roles.sh`](postgres/init/01-create-roles.sh). That file **must be executable**. If a fresh clone left it `644`, Postgres logs `/bin/sh: bad interpreter: Permission denied`, application roles are missing, and dependent services stay `Created`. Fix: `chmod +x docker/postgres/init/01-create-roles.sh`, then `./ezkey-tests/clean-start.sh` (or `down -v` + `./docker/start.sh`) so init runs on a new volume.
 
 ### Viewing Volume Data
 

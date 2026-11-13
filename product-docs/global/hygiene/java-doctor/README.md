@@ -13,6 +13,9 @@ finding.
 |------|------|
 | [`TEMPLATE.md`](TEMPLATE.md) | Copy for each new campaign / lot |
 | `YYYY-MM-DD-pass-N.md` | Dated instance (decisions table + short rationale) |
+| [`2026-10-21-pass-1.md`](2026-10-21-pass-1.md) | Biweekly Java rotation triage (docs-only; dispositions, no code) |
+| [`2026-08-09-illegalcatch-p2.md`](2026-08-09-illegalcatch-p2.md) | IllegalCatch P2 follow-up |
+| [`2026-07-11-pass-1.md`](2026-07-11-pass-1.md) | First curated pass (fix / suppress lot) |
 
 ## Related
 

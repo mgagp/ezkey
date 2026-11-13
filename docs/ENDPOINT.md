@@ -111,11 +111,48 @@ yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'
 
 ### Error responses (RFC 9457)
 
-HTTP **4xx** and **5xx** responses from the Auth API use **RFC 9457** Problem Details (`Content-Type: application/problem+json`). The JSON body includes `type` (URI identifying the problem category), `title`, `status`, `detail` (operator-safe text; do not rely on it for security-sensitive branching), and extension properties `path` and `timestamp`. Clients should branch on **`type`** and HTTP status.
+HTTP **4xx** and **5xx** responses from the Auth API use **RFC 9457** Problem Details (`Content-Type: application/problem+json`). The JSON body includes `type` (URI identifying the problem category), `title`, `status`, `detail` (operator-safe catalog text for logs/diagnostics only), and extension properties `path` and `timestamp`. RFC 9457 `instance` is the request path (a URI-reference, not an absolute URI). **Authenticator / device clients MUST branch on `type` and HTTP status and MUST NOT display `detail` (or `title`) verbatim to end users** — map `type` to local copy ([`CLIENT_BEHAVIOUR_CONTRACT.md`](CLIENT_BEHAVIOUR_CONTRACT.md) §7; full type table in [`MOBILE_DEVELOPER_GUIDE.md`](MOBILE_DEVELOPER_GUIDE.md) § Auth API problem types).
+
+Unauthenticated public operations (`GET /api/v1/public/instance-info`) declare no HTTP security requirement in OpenAPI (`security: []`). Device POSTs authenticate with signatures in the JSON body, not a Bearer header.
+
+Rate-limit **429** on `bind` / `verify` / enrolled `instance-info` / `pending` / `respond` is emitted by the servlet filter: **empty body**, `Retry-After` in seconds. It is not a Problem Details document.
+
+Unsupported HTTP methods on a mapped path return **405** Problem Details (`type` `https://ezkey.io/problems/auth/method-not-allowed`) with an `Allow` header listing the supported methods. They are not mapped as **500**.
+
+IP-keyed enrollment surfaces (`verify`, `bind`, enrolled `instance-info`) also have a **process-wide** rate-limit backstop (unkeyed Bucket4j, per Auth instance). A distributed rotation of client IPs can still receive **429** after that instance budget. The cap is not aggregated across replicas (ADR-0010).
 
 **204 No Content** on `POST /api/v1/auth-attempts/pending` when there is no pending attempt is a **success** (no body), not an error.
 
-**200 OK** on `POST /api/v1/auth-attempts/respond` returns a business-level `FAILED` result in the JSON body when validation or cryptographic checks fail in a way modeled as `AuthAttemptRequestFailedException` in the respond service (integration-signed; see `docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`). A raw `IllegalArgumentException` or other uncaught exception from that flow is not converted to `FAILED` and is handled like other Auth API errors (typically Problem Details **400** for `IllegalArgumentException`). HTTP-level failures for state conflicts (e.g. superseded or expired attempt) use **409** Problem Details as above.
+**200 OK** on `POST /api/v1/auth-attempts/respond` returns a business-level result in the JSON body (`APPROVED` / `DENIED` / `FAILED`) **only when the body is integration-signed** (see `docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`). Legitimate `FAILED` covers **challenge validation errors after ownership** (valid device signature). Invalid device signature and missing device public key are **not** FAILED — they are generic **409** `auth-attempt-state-conflict` with **no** attempt status transition (#912). The server **never** emits an unsigned HTTP 200 on this path (#844).
+
+HTTP-level outcomes for respond (RFC 9457 Problem Details unless noted):
+
+| Condition | Status | `type` (suffix under `https://ezkey.io/problems/auth/`) |
+| --- | --- | --- |
+| Attempt or enrollment not found, still `PENDING`, or terminal (`ACCEPTED`, `REJECTED`, `EXPIRED`, `INVALID`) / cancel-win / superseded | **409** | `auth-attempt-state-conflict` (unified client surface; distinction only in server logs — #844 Marc m1) |
+| Invalid device signature or missing device public key (before proof of possession) | **409** | `auth-attempt-state-conflict` (no status transition; audit `AUTH_ATTEMPT_RESPOND_SIGNATURE_REJECTED` for invalid signature — #912) |
+| Wall-clock expiry after ownership proof (`expiresAt` reached; conditional UPDATE refused) | **409** | `auth-attempt-expired` (#895; only after device-signature verification — Christophe) |
+| Per-enrollment integration private key missing/blank when signing is required (runtime; transaction rolls back — except FAILED on a wrong challenge: INVALID is already committed, a retry gets a 409; no JVM startup gate) | **503** | `integration-signing-unavailable` |
+
+A raw `IllegalArgumentException` or other uncaught exception from that flow is not converted to `FAILED` and is handled like other Auth API errors (typically Problem Details **400** for `IllegalArgumentException`).
+
+**Decision (#834 Question 8 + #844 Marc m1 / #833; amended #895):** Keep a **single** problem type
+`https://ezkey.io/problems/auth/auth-attempt-state-conflict` for respond not-found, still
+`PENDING`, and terminal / cancelled / superseded — do not split those causes (anti-enumeration of
+sequential ids; server logs keep the distinction). **Exception (#895):** wall-clock expiry after
+`expiresAt` uses `https://ezkey.io/problems/auth/auth-attempt-expired` so Demo Device / PAM /
+mobile can show an expired message; respond UPDATE is fail-closed (`status = READ AND expires_at >
+now`). **Ordering (#895 Christophe + Patrick M1/M2):** typed `auth-attempt-expired` is raised after
+enrollment load and device-signature (ownership) verification, and **before** challenge validation
+(so a wrong challenge on an expired attempt does not flip `INVALID`). A non-owner signature or a
+missing device public key (expired or not) or an invalid device signature keeps generic
+`auth-attempt-state-conflict` (no INVALID flip — #912). The official mobile app may still map both
+409 types to one sentence until the typed-expiry UI slice lands. A lost approve/deny response after the HTTP call was sent (timeout /
+transport), where a session may already exist, is a separate mobile case (orientation Question 10 /
+`UncertainDecision`), not a new problem type. Missing integration signing key remains **503**
+`integration-signing-unavailable` (**retryable**; a retry may then return terminal **409**, for
+example when a wrong challenge already committed `INVALID` before signing failed — see
+`AuthAttemptRespondService` FAILED-response notes).
 
 ### Public instance metadata (unauthenticated)
 
@@ -218,14 +255,23 @@ Content-Type: application/json
 - `contextTitle`: Short heading displayed as the card header on the mobile device. Null when no context was attached.
 - `contextMessage`: Descriptive body explaining what the approver is authorizing. Null when no context was attached.
 
+**Mobile pending expiry (decided, #834 Questions 1 and 14):** The pending **200** body above does
+**not** include `expiresAt`, `expiresInSeconds`, or `serverNow`, and it stays that way. Do not add
+those fields as unsigned display values, and do not put them inside the signed pending payload.
+Attempt expiry still exists server-side (`ezkey.core.auth-attempt.ttl-seconds`). The countdown a
+person watches is on the integrating application, from create/wait `expiresAt` — not on the phone.
+Reason and interaction model:
+[`ezkey_mobile/docs/MOBILE_APP_STRATEGIC_ORIENTATION.md`](../ezkey_mobile/docs/MOBILE_APP_STRATEGIC_ORIENTATION.md)
+§ Decision — Question 1 and Question 14.
+
 ### b) Submit response to request
 
 **POST /api/v1/auth-attempts/respond**
 
 - **Description**: The mobile device submits the user's response (approved, denied, signature, etc.) for the received authentication request.
-- **Rate limiting**: When rate limiting is enabled (`ezkey.rate-limit.enabled=true`), this endpoint is limited **per auth attempt** (by `authAttemptId` from the request body). Default: 1 request per 5 minutes per `authAttemptId`. If the body is missing or invalid, the limit is applied per client IP. When exceeded, the API returns **429 Too Many Requests** with a `Retry-After` header.
-- **One attempt per auth request**: The backend invalidates the authentication attempt on **first failed validation** (invalid signature, wrong challenge, or missing device key). There is no retry: after one failure the attempt is marked INVALID and the user must start a new authentication flow from the integrating application (e.g. log in again and receive a new pending request).
-- **Deny vs challenge:** When `authAttemptAccepted` is `false`, challenge response is not required after a valid device signature — the attempt is stored as `REJECTED`. Wrong or missing challenge on **accept** still marks the attempt `INVALID`.
+- **Rate limiting**: When rate limiting is enabled (`ezkey.rate-limit.enabled=true`), the filter applies an **IP ceiling on every respond request** (default 30 / 1 min — not failures-only). The strict per-`authAttemptId` budget (default 1 / 5 min) is consumed **only after** a valid device signature (#912 C1), so a third-party invalid respond cannot starve the owner. When exceeded, the API returns **429 Too Many Requests** with a positive `Retry-After` (seconds from Bucket4j refill; same refill-based `Retry-After` applies to pending / verify / bind keyed denials).
+- **Ownership before state change (#912 / #844):** Invalid device signature or missing device public key → generic **409** `auth-attempt-state-conflict`, attempt stays in its prior status (typically `READ`), and an audit event `AUTH_ATTEMPT_RESPOND_SIGNATURE_REJECTED` is recorded (attempt id, enrollment id, sanitized IP/UA — **never** the signature). Wrong challenge on **accept** after a valid device signature still marks the attempt `INVALID` (conditional on status still `READ`).
+- **Deny vs challenge:** When `authAttemptAccepted` is `false`, challenge response is not required after a valid device signature — the attempt is stored as `REJECTED`.
 
 **Request**
 ```http
@@ -241,8 +287,8 @@ Content-Type: application/json
 ```
 
 **Response**
-- **200 OK** + validation result (integration-signed; verify `authAttemptProofTokenResultSignedByIntegration` with the integration public key)
-- **429 Too Many Requests** when rate limit is exceeded (same `authAttemptId` or same client IP when body cannot be parsed); response includes a `Retry-After` header (seconds).
+- **200 OK** + validation result — always integration-signed (`authAttemptProofTokenResultSignedByIntegration`); verify with the integration public key. The server **never** returns an unsigned 200 on this path (#844). If the per-enrollment integration private key is missing/blank, the API returns **503** `integration-signing-unavailable` (transaction rolls back) instead of a null signature — see the status table under § Error responses above.
+- **429 Too Many Requests** when rate limit is exceeded (same `authAttemptId` or same client IP when body cannot be parsed); **empty body** plus a `Retry-After` header (seconds).
 ```json
 {
   "authAttemptId": 123,
@@ -258,7 +304,7 @@ Canonical signed payload format: see `docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md` (R
 
 **POST /api/v1/enrollments/bind**
 
-- **Description**: Initiates the process of binding an enrollment to a mobile device using secure enrollment proof token. The device retrieves the necessary information to start enrollment.
+- **Description**: Initiates the process of binding an enrollment to a mobile device using the enrollment proof token. The server resolves the row from the token hash and returns `enrollmentId` (ADR-0019). The device stores that id for verify and later signed calls.
 
 **Request**
 ```http
@@ -266,7 +312,6 @@ POST /api/v1/enrollments/bind
 Content-Type: application/json
 
 {
-  "enrollmentId": 456,
   "enrollmentProofToken": "abc123-def456-ghi789"
 }
 ```
@@ -285,11 +330,17 @@ Content-Type: application/json
   "tenantId": 1,
   "tenantName": "Acme Corporation",
   "tenantDescription": "Acme Corp primary tenant",
+  "isSystemIntegration": false,
+  "adminType": null,
   "enrollmentBindPayloadSignedByIntegration": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 }
 ```
 
+**429 Too Many Requests** when the bind (or shared instance-info) rate-limit or per-instance backstop is exceeded: empty body, `Retry-After` in seconds.
+
 `tenantId`, `tenantName`, and `tenantDescription` come from the enrollment’s integration tenant (nullable if unset). Clients may persist them for multi-tenant enrollment lists (e.g. Demo Device groups by tenant on the home screen).
+
+`isSystemIntegration` is `true` when the enrollment belongs to the system integration (admin MFA). `adminType` is `GLOBAL_ADMIN` or `TENANT_ADMIN` when the enrollment is linked to an `EzkeyAdmin`; omit or null for regular enrollments. Both segments are part of the signed bind payload. Mobile persists them and shows a localized Purpose / Role; it does not parse role out of `enrollmentName`.
 
 `integrationPublicKey` is the **raw 32-byte** Ed25519 public key, **Base64URL without padding** (43 characters). `integrationKeyAlgorithm` is a **required** JSON field in the Auth API contract (OpenAPI); for phase 1 it is always the literal string `ed25519` (lowercase). **Clients should treat it as part of the cryptographic contract:** validate that the value is exactly `ed25519` before decoding `integrationPublicKey` or verifying `enrollmentBindPayloadSignedByIntegration`. If the field is missing or any other string is received, **fail closed** (abort enrollment)—do not assume Ed25519 wire format. `enrollmentBindPayloadSignedByIntegration` is an Ed25519 signature over the canonical bind payload; clients must verify it before trusting the integration key (see `docs/ENROLLMENT_SIGNATURE_PAYLOAD.md`). Device keys in verify requests remain **EC P-256** SPKI (standard Base64).
 
@@ -329,7 +380,7 @@ Canonical verify-result format: `docs/ENROLLMENT_SIGNATURE_PAYLOAD.md`.
 
 **Error responses**
 
-See **Error responses (RFC 9457)** above. Verification failures return **400** or **409** with stable `type` URIs under `https://ezkey.io/problems/auth/`. Wrong `challengeResponse` invalidates the enrollment; a subsequent verify call for the same enrollment may return **409**.
+See **Error responses (RFC 9457)** above. Verification failures return **400** or **409** with stable `type` URIs under `https://ezkey.io/problems/auth/`. Wrong `challengeResponse` invalidates the enrollment; a subsequent verify call for the same enrollment may return **409**. Rate-limit **429** is an empty body plus `Retry-After` (per client IP and per-instance backstop).
 
 **Uniqueness:** Verify is rejected when **any** `VERIFIED` enrollment already exists for the same `(integrationId, enrollmentName)`, including an inactive one. Partial unique index + application checks; no automatic supersession — see `docs/LIFECYCLE_GOVERNANCE.md` §3.3.
 
@@ -337,7 +388,9 @@ See **Error responses (RFC 9457)** above. Verification failures return **400** o
 
 ## 2. Admin API Endpoints (internal)
 
-**Error responses (RFC 9457):** HTTP **4xx** and **5xx** responses from the Admin API use **RFC 9457** Problem Details (`Content-Type: application/problem+json`) with `type`, `title`, `status`, `detail`, and extension property `path`. Some problems include an optional extension property **`parameters`** (JSON object of scalar values, **camelCase** keys) for client-side localization when `detail` contains dynamic fragments; clients should still branch on **`type`** and HTTP status.
+**Error responses (RFC 9457):** HTTP **4xx** and **5xx** responses from the Admin API use **RFC 9457** Problem Details (`Content-Type: application/problem+json`) with `type`, `title`, `status`, `detail`, and extension property `path`. RFC 9457 `instance` is the request path (a URI-reference, not an absolute URI). Some problems include an optional extension property **`parameters`** (JSON object of scalar values, **camelCase** keys) for client-side localization when `detail` contains dynamic fragments; clients should still branch on **`type`** and HTTP status. Unsupported HTTP methods on a mapped path return **405** (`type` `https://ezkey.io/problems/admin/method-not-allowed`) with an `Allow` header; they are not mapped as **500**. Missing or invalid session credentials on protected operations return **401** with an empty body (Spring `HttpStatusEntryPoint`). Login-family **400 / 401 / 408 / 500** remain Problem Details. Login and passwordless-wait **429** from the rate-limit filter are an **empty body** plus `Retry-After`.
+
+Public operations (`GET /api/v1/public/instance-info`, `POST /api/v1/public/evaluator-signup`) declare no HTTP security requirement in OpenAPI (`security: []`).
 
 ### Public instance metadata (unauthenticated)
 
@@ -373,11 +426,11 @@ See also: enrollment QR JSON and `authUrl` (same property as `ezkey.qr.auth-base
 
 **Base path:** `POST http://localhost:9080/api/v1/public/evaluator-signup` (no `Authorization` header).
 
-Available only when `ezkey.evaluator.self-registration.enabled=true` (intended for EXP1 preview). When disabled, returns **404 Not Found** (no response body enumeration).
+Available only when `ezkey.evaluator.self-registration.enabled=true` (intended for the community alpha preview). When disabled, returns **404 Not Found** (no response body enumeration).
 
-Creates an **empty tenant** and a **pending Tenant Admin** with **`ACTIVATION_CODE`** onboarding. Does **not** create integrations, API keys, or enrollments — evaluators follow the [Exp1 guided tour](https://ezkey.org/exp1-guided-tour.html) from step 1.
+Creates an **empty tenant** and a **pending Tenant Admin** with **`ACTIVATION_CODE`** onboarding. Does **not** create integrations, API keys, or enrollments — evaluators follow the [community guided tour](https://ezkey.org/community-guided-tour.html) from step 1.
 
-**Rate limits (defaults):** global **5 successful signups per UTC day**; **1 successful signup per client IP per 24h**. Failures return **429** with a generic capacity message.
+**Rate limits (defaults):** global **5 successful signups per UTC day**; **3 successful signups per client IP per 24h**. Failures return **429** with a generic capacity message.
 
 **Request body (optional JSON):**
 
@@ -397,8 +450,8 @@ Creates an **empty tenant** and a **pending Tenant Admin** with **`ACTIVATION_CO
 {
   "activationCode": "ABCD-1234",
   "activationCodeExpiresAt": "2026-05-30T12:00:00Z",
-  "adminUiUrl": "https://exp1-admin-ui.ezkey.org",
-  "guidedTourUrl": "https://ezkey.org/exp1-guided-tour.html",
+  "adminUiUrl": "https://admin-ui.ezkey.online",
+  "guidedTourUrl": "https://ezkey.org/community-guided-tour.html",
   "tenantLabel": "eval-a1b2c3d4"
 }
 ```
@@ -504,10 +557,9 @@ Content-Type: application/json
 ```http
 HTTP/1.1 429 Too Many Requests
 Retry-After: 300
-Content-Type: text/plain
-
-Too many login attempts. Please try again later.
 ```
+
+Empty body (servlet filter). `Retry-After` is seconds until the per-IP or per-instance backstop budget refills.
 
 **Rate Limiting:**
 - 5 requests per minute per IP address
@@ -536,6 +588,14 @@ Too many login attempts. Please try again later.
 **Query parameters (all optional):** `windowStartAfter`, `windowStartBefore` (ISO-8601), `entryCountMin`, `entryCountMax`, `checkpointType` (REGULAR, ARCHIVE_SEAL, GAP_DECLARATION), `createdAfter`, `createdBefore` (ISO-8601), plus `page`, `size`, `sort` (e.g. `sort=windowStart,asc`). Default: `size=20`, `sort=windowStart,asc`.
 
 **Response (200 OK):** Paginated response with `content` (array of checkpoint objects: `checkpointId`, `windowStart`, `windowEnd`, `entryCount`, `firstEntryId`, `lastEntryId`, `entriesDigest`, `prevChainHmac`, `chainHmac`, `createdAt`, `checkpointType`, `lifecycleState`, `notes`), `totalElements`, `totalPages`, etc.
+
+**GET /api/v1/audit-logs/integrity/bootstrap** — Thin Global Admin Integrity atelier bootstrap for Admin UI honesty chrome. Returns product `runtimeProfile` (`base`|`integrity`, from Spring `docker-base`) plus live `chainCheckpointsEnabled` / `nightlyValidationEnabled` config flags, plus effective window caps `maxWindowDays` (async, default 92), `maxSyncWindowDays` (sync report GETs, default 8), and `nightlyWindowHours` (default 24). Dual source: profile name is not derived from flags; flags are not derived from the profile name. Not a job matrix or second journal.
+
+**POST /api/v1/audit-logs/integrity-validation/run** — Global Admin detective-layer validation over `[from, to)`. Same orchestration as the nightly batch (may raise/touch `AUDIT_INTEGRITY_RUPTURE`; emits `NIGHTLY_INTEGRITY_VALIDATION_COMPLETED` with `triggerSource=OPERATOR`). Distinct from GET `integrity-check` / `chain-integrity` (read-only verify). **Sync** cap `max-sync-window-days` (default **8**; over-cap → **400** `capKind=SYNC` + `asyncAlternative`). Longer windows: async `RUN_VALIDATION`. When `ezkey.audit.integrity.nightly.enabled=false` (typical on opt-in `--runtime=base`): **409 Conflict** RFC 9457 type `https://ezkey.io/problems/domain/integrity-validation-disabled`. HMAC inactive while the flag is on still returns 200 skipped. Full contract: [AUDIT_LOG_INTEGRITY.md](AUDIT_LOG_INTEGRITY.md).
+
+**Integrity async jobs (preferred for long Ops):** Global Admin single global slot — `POST /api/v1/audit-logs/integrity/jobs` body `{ type, from, to, raiseAlert?, trigger? }` → **202** `{ jobId }` (`trigger` = `MANUAL`|`AUTO`, default `MANUAL`; `NIGHTLY` rejected). Occupied → **409** with `currentJob` / `resumeOneLiner` / additive `busyHolder`. Types: `VERIFY_CHAIN_RANGE`, `VERIFY_ENTRY_HMAC_RANGE`, `RUN_VALIDATION`. `GET …/integrity/jobs/current` (200 or 204) — operator slot only; when ShedLock holds nightly and no operator RUNNING job, returns synthetic RUNNING with `busyHolder=NIGHTLY`. `GET …/integrity/jobs/last-verdict` (200 or 204) — latest verdict-bearing row (SUCCEEDED ∧ VERIFY_CHAIN_RANGE|RUN_VALIDATION ∧ `chainStatus` ≠ `NOT_VERIFIED`), including nightly terminals. `GET …/integrity/jobs/{jobId}`, `POST …/integrity/jobs/current/abandon` (only when status ∈ {EXPIRED, CANCELLED}). TTL default 60m (`ezkey.audit.integrity.async-job.ttl`). Counters on DTO: `chainStatus`, `totalCheckpoints`, `validCheckpoints`, `invalidCheckpoints`, `archivedCheckpoints`, `undeclaredGaps`, `entryHmacViolations` (null for VERIFY_ENTRY / legacy). Sync `GET …/{id}/integrity-check` (single entry) stays outside the slot. Does **not** use `ezkey_scheduled_job_last_run` for in-flight state. Lifecycle audits `INTEGRITY_ASYNC_JOB_STARTED` / `COMPLETED` / `ABANDONED` carry `eventAction=integrity-async-job` (nightly terminals do not emit these — nightly already emits `NIGHTLY_INTEGRITY_VALIDATION_COMPLETED`).
+
+**GET `/api/v1/audit-logs/integrity-check` and `GET …/chain-integrity` (range reports); POST `…/integrity-validation/run`:** Global Admin paths under `IntegrityHeavyCryptoGate` (busy → **409** `integrity-async-job-busy` + `Retry-After`). **All synchronous HTTP paths** (including seal-archive pre-verify) use `ezkey.audit.integrity.max-sync-window-days` (default **8** — Instant span = days×24h+1h → **400** `integrity-window-over-cap` + `maxWindowDays` + `capKind=SYNC` + fixed `asyncAlternative` = `POST /api/v1/audit-logs/integrity/jobs`). Longer windows: async VERIFY / `RUN_VALIDATION` under `max-window-days` (default **92**; over-cap has `maxWindowDays` + `capKind=ASYNC` only). See [AUDIT_LOG_INTEGRITY.md](AUDIT_LOG_INTEGRITY.md).
 
 **GET /api/v1/audit-logs/lifecycle/archive-eligibility** — Read lifecycle archive observability state. Returns whether external archival is enabled, whether confirmation is required, and the sealed checkpoint tranche currently awaiting confirmation.
 
@@ -618,6 +678,7 @@ Errors use `Content-Type: application/problem+json` (or JSON with the same field
 ```
 
 The client should use `detail` (then `title`) for user-facing messages, not assume a transport failure.
+(**Admin / Integration API only; device clients: contract section 7.**)
 
 **Audit:** Each call to `/passwordless-wait` that reaches a terminal outcome writes an `ADMIN_LOGIN` audit row with a distinct `event_action` (for example `login_mfa_session_issued`, `login_mfa_expired`, `login_mfa_rejected`). See [AUDIT_ADMIN_LOGIN_ACTIONS.md](AUDIT_ADMIN_LOGIN_ACTIONS.md) for the full list and SIEM notes.
 
@@ -625,7 +686,7 @@ The client should use `detail` (then `title`) for user-facing messages, not assu
 - `waiterSecret` capability token prevents replay and session hijacking by requiring the unguessable CSPRNG secret returned only to the initial `/login` caller.
 - Atomic CAS guarantees a session is issued at most once per authentication attempt; replays after session issuance are rejected with generic 401 and cannot trigger token rotation or mint survivor tokens.
 - `challengeCode` prevents enumeration attacks (proof of legitimate login initiation)
-- Blocking HTTP call: the server waits up to the minimum of 300 seconds and (remaining attempt lifetime + small slack). If `ezkey.core.auth-attempt.ttl-seconds` is set above 300 (max 600), the wait may return HTTP 408 while the attempt row is still valid in the database.
+- Blocking HTTP call: the server waits up to the minimum of 300 seconds and (remaining attempt lifetime + small slack). **Applied** create TTL: per-request floor **15**, hard ceiling **120** (`min(request|default, 120)` since #895). Property `ezkey.core.auth-attempt.ttl-seconds` default **120** (Bean Validation **30–600**; startup clamp **>120 → 120**, so effective configured default **30–120**). On Cloudflare Free (`ezkey.org`, `ezkey.online`, including the community instance) the origin is cut at **100 seconds** (HTTP **524**, not raisable; see `product-docs/global/product-intent.md`). A blocking wait can therefore end at the proxy while a default 120-second attempt is still valid. Noted for that deployment (#834 Question 12); the default is not changed here.
 - Device must enter matching challenge code before approval
 - Invalid challenge on device marks attempt as INVALID
 
@@ -637,6 +698,10 @@ Unauthenticated consume of a one-time onboarding activation code (`onboardingMod
 Creates the first enrollment and returns bind credentials. This is **not**
 `POST /api/v1/admins/{id}/activate` (operator reactivation of a deactivated admin). It is also
 **not** recovery (`POST /recover`).
+
+The activation code is accepted **only** in this request body. Presented as
+`Authorization: Bearer` (or as the session cookie) on any Admin API route it never
+authenticates (HTTP 401), and its expiry never slides (#1122).
 
 **Request:**
 ```http
@@ -666,6 +731,34 @@ flow (`POST /api/v1/admins/{id}/recovery-codes/regenerate`). See [LIFECYCLE_GOVE
 
 **Failure:** **403** for invalid, expired, or unusable codes (neutral client-safe message). **400**
 when activation cannot proceed in the current state.
+
+---
+
+#### POST /evaluator-temp (temporary evaluator console)
+
+Available only when `ezkey.evaluator.self-registration.enabled=true` (same gate as anonymous
+evaluator signup). After activation, the Admin UI may offer temporary console explore without a
+device bind. Mints a one-shot `EVALUATOR_TEMP` session (absolute TTL, default 8h). Cookie/bearer
+loss cannot re-mint. After the TEMP identity’s MFA enrollment is **VERIFIED**, admin-api
+invalidates TEMP on the next bearer validation (and again when minting a fresh `SESSION`).
+Auth-api does not update `ezkey_admin_tokens`. Expiry applies a soft-tenant predicate — see vision
+`V-2026-09-26-temporary-evaluator-console-access`.
+
+**Request:**
+```http
+POST /api/v1/admin/auth/evaluator-temp
+Content-Type: application/json
+
+{
+  "enrollmentId": 123,
+  "enrollmentProofToken": "ezkey_proof_…"
+}
+```
+
+**Success Response (200 OK):** bearer or HttpOnly cookie (same delivery as login) plus
+`tokenPurpose: "EVALUATOR_TEMP"`. Never logs the token or proof.
+
+**Failure:** **403** when the flag is off, capability is invalid, already minted, or not eligible.
 
 ---
 
@@ -813,6 +906,8 @@ Bearer clients may also call this endpoint with `Authorization: Bearer ...`.
 }
 ```
 
+For tenant- or integration-scoped administrators, `tenantId` and `tenantName` are populated (display name from `ezkey_tenant.tenant_name`). Global administrators omit both (`null` / absent with `NON_NULL` serialization).
+
 `csrfToken` is present in browser cookie mode and must be sent as `X-CSRF-TOKEN` on unsafe cookie-authenticated requests (`POST`, `PUT`, `PATCH`, `DELETE`). The opaque session token is never returned by `/me`.
 
 **Unauthorized Response:**
@@ -836,6 +931,10 @@ Creates an integration in the caller's tenant: Tenant Admin → that tenant; Glo
 system tenant. There is no `tenantId` on the create body. `code` is required: 2–100 characters,
 slug `^[a-zA-Z0-9_-]+$`, unique per tenant. `name` is required; `description` is optional. There is
 no API to change `code` after create. Same `code` in a different tenant is allowed.
+Optional `pendingAttemptPolicy` is `REPLACE` (default) or `REFUSE`. Omit it to keep REPLACE.
+`POST /api/v1/integrations/{id}/pending-attempt-policy` changes it later (`{"pendingAttemptPolicy":"REFUSE"}`).
+The system integration stays REPLACE. Changing it returns **403** `system-integration-lifecycle`.
+REPLACE expires a live attempt and creates the new one. REFUSE returns **409** while a live attempt remains.
 
 **Request:**
 ```http
@@ -1216,6 +1315,16 @@ This endpoint only applies after the administrator already has a first enrollmen
 created with `onboardingMode = ACTIVATION_CODE` remain in `PENDING_ACTIVATION` with no
 `enrollmentId`, so this endpoint is not applicable until the activation code has been consumed.
 
+**Availability ([#1266](https://github.com/mgagp/ezkey/issues/1266)):** an operator can obtain the material only while it is needed to complete enrollment. The response stays 200 with null fields otherwise.
+
+| Enrollment status | `enrollmentProofToken` | `enrollmentChallenge` |
+| ----------------- | ---------------------- | --------------------- |
+| `CREATED` | Value | Value |
+| `BOUND` | `null` | Value (confirm who you are speaking to before giving it) |
+| Any other status | `null` | `null` |
+
+An admin who lost their device uses the reset flow, not this GET. `GET /api/v1/admins/{id}` exposes `enrollmentStatus`.
+
 **Permissions:**
 - **GlobalAdmin**: Can retrieve onboarding credentials for any admin
 - **TenantAdmin**: Can only retrieve onboarding credentials for admins in their tenant
@@ -1276,7 +1385,7 @@ Authorization: Bearer ezkey_admin_token...
 The QR code contains enrollment credentials as a JSON payload:
 
 ```json
-{"enrollmentId":"123","enrollmentProofToken":"abc...","authUrl":"https://ezkey.acme.com:8080"}
+{"enrollmentProofToken":"abc...","authUrl":"https://ezkey.acme.com:8080"}
 ```
 
 The `authUrl` field is included only when `ezkey.qr.auth-base-url` is configured. When absent, the mobile app falls back to its default base URL.
@@ -1289,6 +1398,7 @@ This allows the mobile app to automatically populate enrollment credentials and 
 - 401: Unauthorized - admin token required
 - 403: Forbidden - not authorized to access this admin's credentials
 - 404: Administrator or enrollment not found
+- 409: Enrollment is not `CREATED`; the QR encodes the proof token, so it follows the same rule as the JSON GET (#1266)
 - 500: Internal server error
 
 ---
@@ -1434,6 +1544,7 @@ Authorization: Bearer ezkey_admin_token...
       "createdAt": "2025-12-26T10:00:00Z",
       "lastLoginAt": "2025-12-28T09:15:00Z",
       "hasRecoveryCodes": true,
+      "recoveryCodesExhausted": false,
       "operational": true
     }
   ],
@@ -1446,7 +1557,7 @@ Authorization: Bearer ezkey_admin_token...
 }
 ```
 
-**Response fields:** `tenantName` is the display name of the tenant (`ezkey_tenant.tenant_name`) when `tenantId` is set; it is `null` for global administrators. `enrollmentId` is the MFA enrollment linked to this administrator (passwordless identity); null if not linked. `lastLoginAt` is the timestamp of the administrator's last successful login (null if never logged in). `operational` summarizes whether the admin account and (for tenant-scoped admins) the tenant are in an operable state for login. Useful for access reviews.
+**Response fields:** `tenantName` is the display name of the tenant (`ezkey_tenant.tenant_name`) when `tenantId` is set; it is `null` for global administrators. `enrollmentId` is the MFA enrollment linked to this administrator (passwordless identity); null if not linked. `lastLoginAt` is the timestamp of the administrator's last successful login (null if never logged in). `hasRecoveryCodes` is true while at least one unused recovery code remains. `recoveryCodesExhausted` is true when a set was issued and every code has since been used; it lets clients word the next `issue-initial` call as a replacement set rather than a first issuance (#1244). `operational` summarizes whether the admin account and (for tenant-scoped admins) the tenant are in an operable state for login. Useful for access reviews.
 
 **Status Codes:**
 - 200: List of administrators retrieved successfully
@@ -1470,7 +1581,7 @@ GET /api/v1/admins/2
 Authorization: Bearer ezkey_admin_token...
 ```
 
-**Success Response (200 OK):** Same fields as a list item: `adminId`, `version`, `username`, `email`, `phoneNumber`, `firstName`, `lastName`, `adminType`, `tenantId`, `tenantName`, `enrollmentId`, `active`, `lifecycleStatus`, `createdAt`, `lastLoginAt`, `hasRecoveryCodes`, `operational`.
+**Success Response (200 OK):** Same fields as a list item: `adminId`, `version`, `username`, `email`, `phoneNumber`, `firstName`, `lastName`, `adminType`, `tenantId`, `tenantName`, `enrollmentId`, `active`, `lifecycleStatus`, `createdAt`, `lastLoginAt`, `hasRecoveryCodes`, `recoveryCodesExhausted`, `operational`.
 
 **Status Codes:**
 - 200: Administrator retrieved successfully
@@ -1619,11 +1730,13 @@ GET /api/v1/enrollments/123
 Authorization: Bearer ezkey_admin_token...
 ```
 
-**Response (high level):** Returns the full enrollment record including integration display fields where applicable (`integrationName`, `isSystemIntegration`), cryptographic material references (`integrationPublicKey`, `devicePublicKey`), client-reported `devicePrivateKeyStorageTier` when set at verify (`NONE`, `STANDARD`, `STRONG`; not independently verified by the server — see `docs/MOBILE_DEVELOPER_GUIDE.md`), and lifecycle audit timestamps such as `createdAt`, `createdByAdminId`, `deactivatedAt`, `deactivatedByAdminId`, `revokedAt`, and `revokedByAdminId` when set.
+**Response (high level):** Returns the full enrollment record including integration display fields where applicable (`integrationName`, `isSystemIntegration`), client-reported `devicePrivateKeyStorageTier` when set at verify (`NONE`, `STANDARD`, `STRONG`; not independently verified by the server — see `docs/MOBILE_DEVELOPER_GUIDE.md`), and lifecycle audit timestamps such as `createdAt`, `createdByAdminId`, `deactivatedAt`, `deactivatedByAdminId`, `revokedAt`, and `revokedByAdminId` when set.
+
+**Bind material (#1180):** `enrollmentProofToken` is returned only while `CREATED`, and `enrollmentChallenge` only while `CREATED` or `BOUND` (verify follows bind, and the operator may still have to give the code); both are null otherwise. Integration and device public keys are never returned: protocol actors get them from Auth API bind and verify, and the server verifies device signatures from the stored entity. `GET` and search share this rule.
 
 #### **GET /api/v1/enrollments/{id}/qrcode** (Enrollment bind-handle QR)
 
-Returns a PNG QR encoding the bind handle (`enrollmentId` + `enrollmentProofToken`, plus optional `authUrl`). Same tenant gate as JSON GET (`canAccessEnrollment`). Cross-tenant and unknown ids return **404** (hide-existence), not 403. Auth API bind stays token-gated and is not tenant-filtered.
+Returns a PNG QR encoding the bind invitation (`enrollmentProofToken`, plus optional `authUrl`). The enrollment id is not in the QR; bind returns it (ADR-0019). Same tenant gate as JSON GET (`canAccessEnrollment`). Cross-tenant and unknown ids return **404** (hide-existence), not 403. Auth API bind stays token-gated and is not tenant-filtered.
 
 **Request:**
 ```http
@@ -1635,11 +1748,50 @@ Authorization: Bearer ezkey_admin_token...
 - 200: PNG QR generated
 - 400: Enrollment missing proof token
 - 404: Enrollment not found or not visible to this admin
+- 409: Enrollment is not `CREATED`: the QR holds the proof token, so it follows the same rule as the JSON GET (#1180)
 - 500: Internal server error
+
+#### **POST /api/v1/enrollments/{id}/qr-delivery** (Send the QR through a delivery connector)
+
+Sends the QR of a `CREATED` enrollment to its `contactEmail`, as one attempt, through the optional delivery connector ([ADR-0018](../product-docs/global/architecture-decisions.md#adr-0018--connector-spi-for-external-services)). The challenge is never sent, and the QR stays available on screen whatever the outcome. Same tenant gate as `GET /qrcode`. Denied to evaluator temporary sessions.
+
+```http
+POST /api/v1/enrollments/123/qr-delivery
+Authorization: Bearer ezkey_admin_token...
+Content-Type: application/json
+
+{ "locale": "fr" }
+```
+
+**200:** the connector was called. `outcome` says what happened: `accepted` (the provider took the message, not proof of receipt), `rejected` (it did not leave) or `unknown` (it may have left: check with the person before retrying).
+
+```json
+{ "outcome": "accepted", "sendId": "3f0e2f6a-...", "recipient": "person@example.com", "code": null, "testMode": false }
+```
+
+**Refused before any call:** an RFC 9457 problem with a typed `code`.
+
+| Status | `code` | Meaning |
+|--------|--------|---------|
+| 404 | | Enrollment not found or not visible to this admin |
+| 409 | `enrollment-not-created`, `enrollment-expired`, `admin-enrollment`, `self-registered-tenant`, `parent-not-operational` | This enrollment cannot be sent. `self-registered-tenant`: its tenant came from anonymous evaluator signup and keeps integrated delivery |
+| 422 | `contact-email-missing`, `contact-email-invalid`, `expected-server-missing`, `locale-not-offered` | Sending data is missing or invalid |
+| 429 | `daily-cap-reached` | Tenant or instance daily cap reached |
+| 503 | `connector-unavailable` | No connector, or it is unreachable, `degraded` or on another contract version |
+
+#### **GET /api/v1/enrollments/qr-delivery/capability** (QR delivery capability)
+
+Says whether the send action can be offered to the caller. Reads the connector's health with a short cache, and never contacts a provider. An admin scoped to a self-registered tenant reads `available: false`. Denied to evaluator temporary sessions.
+
+```json
+{ "available": true, "testMode": false, "locales": ["en", "fr"] }
+```
 
 #### **PATCH /api/v1/enrollments/{id}** (Partial Update of Enrollment Metadata)
 
 Partially updates enrollment metadata. Only non-null fields in the request body are applied. Supports `enrollmentName`, `contactEmail`, `expiresAt`, `authAttemptChallengeRequired`, `userIdentifier`, `clearContactEmail`, and `clearExpiresAt`. Only active, non-revoked VERIFIED enrollments can be updated. Include `version` from the GET response for optimistic locking.
+
+**Which enrollments:** an active `VERIFIED` enrollment accepts every field. A `CREATED` enrollment, which stays inactive until verify, accepts **`contactEmail` or `clearContactEmail` only**, so an invitation can get an address before a send (#1206 step 5). Any other field at `CREATED` returns **400**, and every other status returns **400**. If an invitation already went to a wrong address, revoke the enrollment and create a new one.
 
 Omitted fields are left unchanged. Sending `null` for optional fields does **not** clear them. To clear optional `contactEmail` or `expiresAt`, set **`clearContactEmail`: true** or **`clearExpiresAt`: true** respectively (or send an empty `contactEmail` after trim to clear email). When `clearContactEmail` is true, any `contactEmail` value in the same request is ignored for the stored value. If `expiresAt` is non-null in the same request, it wins and **`clearExpiresAt` is ignored**.
 
@@ -1822,6 +1974,7 @@ Content-Type: application/json
 - Lost secret keys cannot be recovered - create new key instead
 - Expiration date optional but recommended (enforces rotation)
 - IP whitelist optional but recommended for production
+- Response includes `Cache-Control: no-store` (controller + Spring Security defaults) so intermediaries do not cache the one-time secret
 
 ---
 
@@ -1990,15 +2143,46 @@ Content-Type: application/json
 
 {
   "enrollmentId": 456,
-  "challengeRequested": false
+  "challengeRequested": false,
+  "ttlSeconds": 75
 }
 ```
+
+**Optional `ttlSeconds` (Integration API, #895):** Initiator-requested attempt lifetime in seconds.
+**Effective applied TTL:** `min(ttlSeconds ?? configuredDefault, 120)` where `configuredDefault` is
+`ezkey.core.auth-attempt.ttl-seconds` (property range 30–600; at startup a configured default above
+120 is clamped to 120 with a WARN). Values below 15, explicit JSON `null`, floats (e.g. `20.5`),
+strings (e.g. `"20"`), or non-integers → **400** Problem Details type
+`https://ezkey.io/problems/validation/request-invalid` (title `Invalid Request`, detail `One or
+more fields are invalid.`) before enrollment/user lookup — same body for the explicit TTL floor
+gate, `@Valid`, and unreadable/strict-deserialization JSON, whether or not the user exists. Values
+above 120 are clamped to 120. Absent field → server default (after the min/120 rule). Response
+`timeoutSeconds` is the **applied** TTL (field name unchanged for PAM); `expiresAt` is computed from
+it. Prefer `timeoutSeconds` over comparing wall clocks (PAM / Demo Device).
+
+**Pending attempt and cooldown (#992):** When the integration policy is `REFUSE` and a live
+`PENDING` or `READ` attempt remains, create returns **409** Problem Details type
+`https://ezkey.io/problems/domain/auth-attempt-pending-exists` with `Retry-After` set to the
+remaining lifetime of that attempt (seconds). A time-elapsed pending row is marked `EXPIRED` and
+does not block. Independently, 3 device-signed `REJECTED` or `INVALID` (wrong challenge digits)
+attempts in 10 minutes on the same enrollment suspend further creates for 5 minutes (**409** type
+`https://ezkey.io/problems/domain/auth-attempt-creation-cooldown`, `Retry-After` remaining
+suspension). This set is the same for every integration. `EXPIRED` (supersession, cancel, or
+timeout) does not arm the cooldown. Those defaults are `ezkey.core.auth-attempt.cooldown-*`. **429** stays the per-API-key
+bucket; its limit and window come from `ezkey.api-key.rate-limit`, and `Retry-After` is that window.
+
+**`challengeRequested` (required, unchanged):** `@NotNull` / OpenAPI required since before #895 —
+omission fails `@Valid` with the same generic 400. Not a contract break from this PR (Patrick M3).
+
+**Ownership on wait/cancel:** Integration API `@PreAuthorize` requires the auth attempt’s enrollment
+to belong to the API key’s integration (`AccessControlService.canAccessAuthAttempt`). Foreign
+attempts → **403**. Cancel marks the row `EXPIRED` (no separate `CANCELLED` status).
 
 **Rate Limiting (Integration API):**
 - Create auth attempt: 100 requests per minute per API key (default)
 - Wait: 200 requests per minute per API key (default)
 - Limits are per instance (no distributed coordination)
-- Returns 429 Too Many Requests when limit exceeded
+- Returns 429 Too Many Requests when limit exceeded (Problem Details from the Integration API rate-limit service). Missing API-key credentials return **401** with an empty body (`HttpStatusEntryPoint`).
 
 ---
 
@@ -2065,9 +2249,10 @@ Content-Type: application/json
 - `enrollmentId`: Enrollment to authenticate (use this OR `userIdentifier`)
 - `userIdentifier`: User identifier for lookup within integration scope (use this OR `enrollmentId`)
 - `integrationId`: Required when `userIdentifier` is used on Admin API; Integration API ignores it (scope is the API key's integration)
-- `challengeRequested` (**required**): Whether a challenge code is requested
+- `challengeRequested` (**required**, `@NotNull` since before #895): Whether a challenge code is requested; omission → same generic 400 as other `@Valid` failures (Patrick M3 — no contract break)
 - `contextTitle` (optional): Short heading displayed as card header on mobile, max 200 chars
 - `contextMessage` (optional): Descriptive body explaining what the approver is authorizing, max 2 000 chars
+- `ttlSeconds` (optional, **Integration API only**, #895): Per-request TTL; JSON integer only; min 15; `effective = min(request|default, 120)`; see Integration create example above
 
 **Response (201 Created):**
 ```json
@@ -2084,7 +2269,7 @@ Content-Type: application/json
 **Response Fields:**
 - `authAttemptId`: Unique identifier of the created authentication attempt
 - `authAttemptChallenge`: Optional challenge code (2 digits) if challenge was requested. Null if no challenge was requested.
-- `timeoutSeconds`: Maximum time in seconds the user has to respond to the authentication request (currently 120 seconds)
+- `timeoutSeconds`: Applied attempt lifetime in seconds (per-request floor 15, hard ceiling 120; when omitted, the clamped configured default — typically **120**)
 - `expiresAt`: Absolute expiration timestamp when the authentication attempt will expire (UTC format)
 - `contextTitle`, `contextMessage`: Context fields echoed back for confirmation (null if not provided)
 
@@ -2132,8 +2317,9 @@ Authorization: Bearer ezkey_admin_token...
 
 **Notes:**
 - Only attempts in `PENDING` or `READ` status can be cancelled
+- Cancel sets status to **`EXPIRED`** (there is no separate `CANCELLED` status — #895)
 - Attempts that are already in a final state (`ACCEPTED`, `REJECTED`, `INVALID`, `EXPIRED`) cannot be cancelled
-- Admin API: Bearer token or browser session. Integration API: API-key HTTP Basic.
+- Admin API: Bearer token or browser session. Integration API: API-key HTTP Basic (ownership enforced per integration)
 - All cancellation operations are audited for security monitoring
 - **Automatic TTL expiry (no HTTP call):** When `expires_at` passes without a response, a scheduled job in the Admin API process (default interval `ezkey.auth-attempt.expiry-scheduler.fixed-delay-ms`, often 60s) persists `EXPIRED` for eligible `PENDING`/`READ` rows and writes an `AUTH_ATTEMPT_EXPIRED` audit row with `event_action` `auth_attempt_expired_scheduler`. This is distinct from explicit cancel (`AUTH_ATTEMPT_CANCELLED`).
 
@@ -2175,6 +2361,7 @@ Authorization: Bearer ezkey_admin_token...
 
 **Notes:**
 - **Wait `status` vs clock expiry:** The wait `status` field reports a calculated outcome. Persisted final statuses (`ACCEPTED`, `REJECTED`, `INVALID`) take precedence over `expiresAt` — a deny (or accept / invalid) after the TTL clock has passed still returns that final status, not `EXPIRED`. Clock expiry applies only to `PENDING`/`READ`. Wait may also report `EXPIRED` for explicit cancel or supersession. Implementation: `AuthAttemptWaitService`.
+- **2026-10-14 (#727):** Supersession lookup (`findNewerAttemptByEnrollmentId`) always returns at most one row (latest `createdAt`, then highest `authAttemptId`). Reason: several auth attempts created on the same enrollment within ~1 s made Hibernate raise `NonUniqueResultException` and Integration API wait returned HTTP 500.
 
 **Status Codes:**
 - 200: Authentication completed (or timeout reached)
@@ -2195,12 +2382,29 @@ Ezkey uses encryption at rest with Tink cryptographic library. Encryption keys a
 ### Encryption Key Endpoints
 
 **GET    /api/v1/encryption-keys**                    // List encryption keys (paginated) — Global Admin
+**GET    /api/v1/encryption-keys/lifecycle-config**  // Rotation / re-encryption enable flags — Global Admin
 **GET    /api/v1/encryption-keys/primary**           // Get current primary key — Global Admin
 **GET    /api/v1/encryption-keys/{keyId}**           // Get key details — Global Admin
 **POST   /api/v1/encryption-keys/rotate**            // Manually trigger key rotation — Global Admin
 **GET    /api/v1/encryption-keys/reencryption-batches** // List re-encryption batches (paginated, optional filters) — Global Admin
 **POST   /api/v1/encryption-keys/reencryption-batches/{batchId}/resume** // Resume failed batch — Global Admin
 **POST   /api/v1/encryption-keys/reencrypt/create-batches** // Create re-encryption batches without processing — Global Admin
+
+#### Lifecycle enable flags
+
+**GET /api/v1/encryption-keys/lifecycle-config**
+
+Thin honesty chrome for the Admin UI. Returns whether manual (and scheduled) key rotation and re-encryption are enabled.
+
+**Response (200 OK):**
+```json
+{
+  "rotationEnabled": false,
+  "reencryptionEnabled": false
+}
+```
+
+Flags come from `ezkey.encryption.rotation.enabled` and `ezkey.encryption.reencryption.enabled`, not from the product runtime profile name. Typical on opt-in `--runtime=base`: both `false`. Encryption at rest stays on.
 
 #### Manual key rotation
 
@@ -2210,7 +2414,7 @@ Optional query parameter: `reason` (10–500 characters) for audit.
 
 **Responses:**
 - **200 OK:** Body includes `newPrimaryKeyId` (the newly introduced key's ID) and a message describing the current state. The key is `PENDING`, not yet primary; a scheduled job promotes it to `PRIMARY` automatically once the sync window elapses. Re-encrypting existing records to the new key is a separate step (scheduled job or manual trigger).
-- **409 Conflict:** RFC 9457 `ProblemDetail` (`type`, `title`, `status`, `detail`, `path`) when a `PENDING` key already exists and another introduction is not allowed yet.
+- **409 Conflict:** RFC 9457 `ProblemDetail` (`type`, `title`, `status`, `detail`, `path`) when a `PENDING` key already exists and another introduction is not allowed yet; when key rotation is inactive (`ezkey.encryption.rotation.enabled=false`; typical on opt-in `--runtime=base`); or when another writer won the keyset CAS race (HA multi-admin `POST /rotate`). Concurrent-CAS losses use type `https://ezkey.io/problems/admin/state-conflict` with detail that the keyset was modified concurrently, no key was added by this request, and retry is safe (no stack trace). Other problem types: `https://ezkey.io/problems/domain/pending-encryption-key-exists` or `https://ezkey.io/problems/domain/encryption-rotation-disabled`. The gate uses the config flag, not the product runtime profile name. A lost CAS race is **not** audited as `REENCRYPTION_FAILED`/`ERROR`.
 - **500 Internal Server Error:** Unexpected failure; body may include a legacy error payload for this endpoint.
 
 #### List encryption keys
@@ -2310,7 +2514,8 @@ Authorization: Bearer ezkey_admin_token...
 **Semantics note (QA):** `batchesCreated` is the **size of the batch set processed in this request** (pending and resumable batches after `createBatchesForOldKeys()` runs), not necessarily “only rows inserted in this call.” See `ReencryptionService.triggerFullReencryption()` and [REENCRYPTION_OPERATIONS.md](./REENCRYPTION_OPERATIONS.md).
 
 **Error Responses:**
-- **400 Bad Request**: Encryption not available or re-encryption disabled
+- **400 Bad Request**: Encryption not available or other rejected state
+- **409 Conflict**: Re-encryption is inactive (`ezkey.encryption.reencryption.enabled=false`; typical on opt-in `--runtime=base`). Problem type: `https://ezkey.io/problems/domain/encryption-reencryption-disabled`. Same 409 on create-batches, per-key re-encrypt, and batch resume. The gate uses the config flag, not the product runtime profile name.
 - **500 Internal Server Error**: Re-encryption processing failed
 
 **Security Considerations:**

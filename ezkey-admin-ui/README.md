@@ -31,8 +31,11 @@ Use this module README for frontend setup, local development, and UI-specific im
 
 ```bash
 npm install
+npm run generate:api
 npm run dev
 ```
+
+`src/generated/` is gitignored (Orval). A fresh clone must run `npm run generate:api` before `npm run dev` or Playwright. The committed `openapi-spec.json` is the input; do not hand-edit it. After an Admin API contract change (e.g. #833 rate-limit / OpenAPI refresh), run `npm run generate:api` again before starting the UI so the Orval client matches the updated spec.
 
 The dev server starts on `http://localhost:5173`. API calls are proxied to `http://localhost:9080` via the Vite proxy config (see `vite.config.ts`).
 
@@ -48,14 +51,15 @@ Set `VITE_API_BASE_URL` in `.env.production` to the Admin API base URL if the UI
 
 ### Cloudflare Pages (split UI / API)
 
-For a static deploy where the Admin API is a separate HTTPS origin (e.g. `https://exp1-admin-api.ezkey.org`):
+For a static deploy where the Admin API is a separate HTTPS origin (set `VITE_API_BASE_URL` explicitly — e.g. community `https://admin-api.ezkey.online`):
 
 ```bash
 npm ci
+# export VITE_API_BASE_URL=https://admin-api.ezkey.online   # required; no product default
 npm run build:cloudflare
 ```
 
-This uses [`.env.cloudflare`](.env.cloudflare) (`vite --mode cloudflare`) to embed the API base URL at build time. Output is still `dist/`, including [`public/_redirects`](public/_redirects) for SPA routing on Pages.
+This uses [`.env.cloudflare`](.env.cloudflare) (`vite --mode cloudflare`) plus any exported `VITE_API_BASE_URL`. The committed `.env.cloudflare` has **commented** surface examples only — uncomment one, use `.env.cloudflare.local`, or export the variable. Output is still `dist/`, including [`public/_redirects`](public/_redirects) for SPA routing on Pages.
 
 Operator runbook (CORS on the API VM, Wrangler deploy, edge CSP): [`../docs/cloudflare/admin-ui-pages.md`](../docs/cloudflare/admin-ui-pages.md).
 
@@ -104,7 +108,7 @@ Default URLs:
 
 Optional Playwright env:
 
-- `EZKEY_DEMO_DEVICE_TEST_ENROLLMENT_ID` — select a specific Demo Device enrollment row (matches `data-enrollment-id` on the home list). Use when multiple enrollments exist and `.first()` would be non-deterministic.
+- `EZKEY_DEMO_DEVICE_TEST_ENROLLMENT_ID` — pin one Demo Device enrollment row (matches `data-enrollment-id` on the home list). Optional: without it, the login helper watches every row and uses the one that receives the request, since specs may bind more enrollments to the shared Demo Device (#1321).
 
 ### Docker-only QA path
 

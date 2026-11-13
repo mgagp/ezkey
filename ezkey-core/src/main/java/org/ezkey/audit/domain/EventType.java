@@ -60,11 +60,18 @@ public enum EventType {
   ENROLLMENT_REACTIVATED, // Admin reactivated a previously deactivated enrollment
   ENROLLMENT_AUTH_ATTEMPT_BLOCKED, // Auth attempt rejected because enrollment is inactive/revoked
   ENROLLMENT_EXPIRED, // Pending enrollment expired (expires_at passed); status set to EXPIRED
+  ENROLLMENT_QR_DELIVERY, // Enrollment QR send through a delivery connector, whatever the outcome
 
   // Authentication attempt events
   AUTH_ATTEMPT_CREATED,
   AUTH_ATTEMPT_PENDING,
   AUTH_ATTEMPT_RESPOND,
+  /**
+   * Respond rejected because the device signature failed ownership verification (#912). No attempt
+   * status transition; client sees generic {@code auth-attempt-state-conflict}. Never logs the
+   * signature bytes.
+   */
+  AUTH_ATTEMPT_RESPOND_SIGNATURE_REJECTED,
   AUTH_ATTEMPT_CANCELLED,
   /** Auth attempt TTL elapsed; status set to EXPIRED by scheduled job (past {@code expires_at}). */
   AUTH_ATTEMPT_EXPIRED,
@@ -108,8 +115,11 @@ public enum EventType {
   TENANT_DEACTIVATED, // Tenant deactivated (+ reason when provided)
   TENANT_ACTIVATED, // Tenant reactivated (+ reason when provided)
   /**
-   * Anonymous evaluator self-registration completed (EXP1 preview signup; empty tenant + activation
+   * Anonymous evaluator self-registration completed (preview signup; empty tenant + activation
    * code).
+   *
+   * <p>Persisted as {@code EnumType.STRING} on {@code audit_log.event_type}. Do not rename this
+   * constant — historical rows store the literal {@code EVALUATOR_SELF_REGISTRATION}.
    */
   EVALUATOR_SELF_REGISTRATION,
 
@@ -127,6 +137,9 @@ public enum EventType {
 
   // Scheduled integrity validation
   NIGHTLY_INTEGRITY_VALIDATION_COMPLETED, // Nightly retroactive integrity batch finished
+  INTEGRITY_ASYNC_JOB_STARTED, // Operator Integrity async job accepted
+  INTEGRITY_ASYNC_JOB_COMPLETED, // Operator Integrity async job finished (success or fail)
+  INTEGRITY_ASYNC_JOB_ABANDONED, // Operator freed expired/interrupted/cancelled slot
 
   // Alert subsystem lifecycle events (raised/resolved by org.ezkey.alert.service.AlertService)
   ALERT_RAISED, // A new operator-facing alert row was created in ezkey_alert

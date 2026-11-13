@@ -132,7 +132,7 @@ export interface AuthAttemptRespondResponseDto {
      * @type {string}
      * @memberof AuthAttemptRespondResponseDto
      */
-    authAttemptProofTokenResultSignedByIntegration?: string;
+    authAttemptProofTokenResultSignedByIntegration?: string | null;
 }
 /**
  * @export
@@ -206,7 +206,7 @@ export interface EnrollmentBindResponseDto {
      */
     integrationDescription?: string;
     /**
-     * Human-readable name for the enrollment
+     * Person-facing enrollment label shown on the device (for admin MFA: first and last name; not a role or username blob)
      * @type {string}
      * @memberof EnrollmentBindResponseDto
      */
@@ -229,6 +229,18 @@ export interface EnrollmentBindResponseDto {
      * @memberof EnrollmentBindResponseDto
      */
     tenantDescription?: string;
+    /**
+     * True when this enrollment is administrator MFA on the system integration
+     * @type {boolean}
+     * @memberof EnrollmentBindResponseDto
+     */
+    isSystemIntegration: boolean;
+    /**
+     * Administrator type when this enrollment is admin MFA (GLOBAL_ADMIN or TENANT_ADMIN); absent for regular enrollments
+     * @type {string}
+     * @memberof EnrollmentBindResponseDto
+     */
+    adminType?: string;
     /**
      * Ed25519 signature (Base64URL, no padding, raw 64 bytes) over the canonical bind payload (see docs/ENROLLMENT_SIGNATURE_PAYLOAD.md)
      * @type {string}
@@ -394,7 +406,7 @@ export interface ProblemDetail {
      */
     detail?: string;
     /**
-     *
+     * URI-reference of the occurrence. Ezkey uses the request path (relative), matching RFC 9457; it is not an absolute URI.
      * @type {string}
      * @memberof ProblemDetail
      */
@@ -438,5 +450,11 @@ export interface PublicInstanceInfoResponseDto {
      * @memberof PublicInstanceInfoResponseDto
      */
     aboutUrl?: string | null;
+    /**
+     * When true, evaluator self-registration and temporary console explore are available on this Admin API (community/lab). False or omitted when disabled.
+     * @type {boolean}
+     * @memberof PublicInstanceInfoResponseDto
+     */
+    evaluatorSelfRegistrationEnabled?: boolean | null;
 }
 //# sourceMappingURL=index.d.ts.map

@@ -1,7 +1,7 @@
 ---
 # Copy to run.yaml (gitignored convention: keep secrets out of git).
 # Bearer token via: export EZKEY_ADMIN_TOKEN='...'
-scenario_label: protocol-lab-cleanstart-accept
+scenario_label: protocol-lab-cleanstart-access-login-accept
 
 base_urls:
   admin: "http://localhost:9080"

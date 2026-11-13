@@ -77,7 +77,7 @@ Audit chain checkpoints row currently `draft` / columns *TBD*.
 ## Test posture
 
 - **Automated:** Admin UI build
-- **Manual exploratory (clean-start or EXP1):** scan timeline after scheduler run; filter by conciliation if present; toggle hide-empty
+- **Manual exploratory (clean-start or community host):** scan timeline after scheduler run; filter by conciliation if present; toggle hide-empty
 - **Browser tests:** optional — low-risk embedded-table polish
 
 ## Suggested branch

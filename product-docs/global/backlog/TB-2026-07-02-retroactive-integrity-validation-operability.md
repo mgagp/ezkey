@@ -23,7 +23,7 @@ orchestration used by (1) the scheduled batch and (2) **operator-initiated** run
 producing the **same** alert, audit completion event, and registry semantics as nightly — without
 waiting for the next off-peak pass.
 
-Improve **operability** for labs, EXP1 soak, development with `nightly.enabled=false`, and functional
+Improve **operability** for labs, community soak, development with `nightly.enabled=false`, and functional
 validation of detect → alert → investigate → reconcile — while preserving the honest two-layer model
 (rolling attach vs retroactive detect).
 
@@ -59,7 +59,7 @@ This TB materializes that discussion so it is not lost when B2.6 entry conciliat
 
 - Global Admin can **close the loop** on integrity in minutes after induced or real tamper.
 - Installations with nightly disabled retain **punctual compliance passes** without enabling cron.
-- EXP1 / clean-start maintainers avoid calendar coupling for Wave B validation.
+- community host / clean-start maintainers avoid calendar coupling for Wave B validation.
 
 ### Security / honesty unchanged
 

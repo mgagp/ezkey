@@ -23,6 +23,7 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import org.ezkey.admin.constants.AdminAuditConstants;
+import org.ezkey.admin.dto.response.EncryptionLifecycleConfigDto;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.service.AdminProvisioningService;
 import org.ezkey.admin.util.AuditHelper;
@@ -40,6 +41,8 @@ import org.ezkey.security.domain.entity.ReencryptionBatch;
 import org.ezkey.security.domain.entity.ReencryptionBatch.BatchStatus;
 import org.ezkey.security.domain.repository.EncryptionKeyRepository;
 import org.ezkey.security.domain.repository.ReencryptionBatchRepository;
+import org.ezkey.security.exception.EncryptionLifecycleDisabledException;
+import org.ezkey.security.exception.KeysetCasConflictException;
 import org.ezkey.security.exception.PendingEncryptionKeyExistsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,6 +76,7 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <ul>
  *   <li><b>GET /api/v1/encryption-keys:</b> List all encryption keys
+ *   <li><b>GET /api/v1/encryption-keys/lifecycle-config:</b> Rotation / re-encryption enable flags
  *   <li><b>GET /api/v1/encryption-keys/primary:</b> Get current primary key
  *   <li><b>POST /api/v1/encryption-keys/rotate:</b> Manually trigger key rotation
  *   <li><b>GET /api/v1/encryption-keys/{keyId}:</b> Get key details
@@ -187,6 +191,28 @@ public class EncryptionKeyController {
   }
 
   /**
+   * Thin lifecycle enable flags for Admin UI honesty chrome (disable Rotate / re-encrypt).
+   *
+   * @return rotation and re-encryption enable flags from live config
+   */
+  @Operation(
+      summary = "Encryption lifecycle config",
+      description =
+          "Returns whether key rotation and re-encryption are enabled. Flags come from config, not"
+              + " from the product runtime profile name. Global Admin only.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Lifecycle enable flags"),
+    @ApiResponse(responseCode = "401", description = "Not authenticated"),
+    @ApiResponse(responseCode = "403", description = "Forbidden (not a Global Admin)")
+  })
+  @GetMapping("/lifecycle-config")
+  public ResponseEntity<EncryptionLifecycleConfigDto> getLifecycleConfig() {
+    return ResponseEntity.ok(
+        new EncryptionLifecycleConfigDto(
+            rotationService.isRotationEnabled(), reencryptionService.isReencryptionEnabled()));
+  }
+
+  /**
    * Get current primary encryption key.
    *
    * @return the primary encryption key
@@ -262,8 +288,8 @@ public class EncryptionKeyController {
     @ApiResponse(
         responseCode = "409",
         description =
-            "A PENDING encryption key already exists; wait for promotion or use immediate"
-                + " promotion",
+            "A PENDING encryption key already exists, key rotation is inactive on this instance,"
+                + " or the keyset was modified concurrently (CAS loss — retry is safe)",
         content =
             @io.swagger.v3.oas.annotations.media.Content(
                 schema =
@@ -298,6 +324,8 @@ public class EncryptionKeyController {
               newPrimaryKeyId,
               "New key introduced with PENDING status; it will be promoted to primary"
                   + " automatically once the synchronization window elapses"));
+    } catch (EncryptionLifecycleDisabledException e) {
+      throw e;
     } catch (PendingEncryptionKeyExistsException e) {
       auditLogService.log(
           AuditHelper.createAdminAudit(
@@ -318,6 +346,16 @@ public class EncryptionKeyController {
                       .toJson())
               .build());
       throw e;
+    } catch (KeysetCasConflictException e) {
+      // HA multi-admin race: loser must surface as 409 via ValidationExceptionHandler
+      // (IllegalStateException → state-conflict). No REENCRYPTION_FAILED/ERROR audit — ordinary
+      // lost race, not an operational failure (#961 Lot 3). No fitting low-severity EventType.
+      logger.warn(
+          "Manual key rotation lost keyset CAS race (adminId={}): {}", adminId, e.getMessage());
+      throw new KeysetCasConflictException(
+          "The encryption keyset was modified concurrently; no key was added by this request."
+              + " Retry is safe.",
+          e);
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Manual key rotation failed", e);
       auditLogService.log(
@@ -465,46 +503,46 @@ public class EncryptionKeyController {
     Integer adminId = resolveAdminId(auth);
     return batchRepository
         .findById(batchId)
-        .map(
-            batch -> {
-              try {
-                reencryptionService.enqueueBatchProcessing(List.of(batch));
-                auditLogService.log(
-                    AuditHelper.createAdminAudit(
-                            context,
-                            EventType.REENCRYPTION_STARTED,
-                            AdminAuditConstants.ENCRYPTION_BATCH_RESUME)
-                        .eventStatus(EventStatus.SUCCESS)
-                        .adminId(adminId)
-                        .eventDetails(
-                            AuditDetailsBuilder.builder().custom("batch_id", batchId).toJson())
-                        .build());
-                return ResponseEntity.status(HttpStatus.ACCEPTED)
-                    .body(
-                        new BatchResumeResponse(
-                            batchId, "Batch resume accepted; progress in batches table"));
-              } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
-                logger.error("Failed to enqueue resume for batch {}", batchId, e);
-                auditLogService.log(
-                    AuditHelper.createAdminAudit(
-                            context,
-                            EventType.REENCRYPTION_FAILED,
-                            AdminAuditConstants.ENCRYPTION_BATCH_RESUME)
-                        .eventStatus(EventStatus.ERROR)
-                        .adminId(adminId)
-                        .errorMessage(e.getMessage())
-                        .eventDetails(
-                            AuditDetailsBuilder.builder()
-                                .custom("batch_id", batchId)
-                                .errorSummary("Failed to resume batch: " + e.getMessage())
-                                .toJson())
-                        .build());
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(
-                        new BatchResumeResponse(
-                            batchId, "Failed to resume batch: " + e.getMessage()));
-              }
-            })
+        .map(batch -> {
+          try {
+            reencryptionService.enqueueBatchProcessing(List.of(batch));
+            auditLogService.log(
+                AuditHelper.createAdminAudit(
+                        context,
+                        EventType.REENCRYPTION_STARTED,
+                        AdminAuditConstants.ENCRYPTION_BATCH_RESUME)
+                    .eventStatus(EventStatus.SUCCESS)
+                    .adminId(adminId)
+                    .eventDetails(
+                        AuditDetailsBuilder.builder().custom("batch_id", batchId).toJson())
+                    .build());
+            return ResponseEntity.status(HttpStatus.ACCEPTED)
+                .body(
+                    new BatchResumeResponse(
+                        batchId, "Batch resume accepted; progress in batches table"));
+          } catch (EncryptionLifecycleDisabledException e) {
+            throw e;
+          } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
+            logger.error("Failed to enqueue resume for batch {}", batchId, e);
+            auditLogService.log(
+                AuditHelper.createAdminAudit(
+                        context,
+                        EventType.REENCRYPTION_FAILED,
+                        AdminAuditConstants.ENCRYPTION_BATCH_RESUME)
+                    .eventStatus(EventStatus.ERROR)
+                    .adminId(adminId)
+                    .errorMessage(e.getMessage())
+                    .eventDetails(
+                        AuditDetailsBuilder.builder()
+                            .custom("batch_id", batchId)
+                            .errorSummary("Failed to resume batch: " + e.getMessage())
+                            .toJson())
+                    .build());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(
+                    new BatchResumeResponse(batchId, "Failed to resume batch: " + e.getMessage()));
+          }
+        })
         .orElse(ResponseEntity.notFound().build());
   }
 
@@ -572,6 +610,8 @@ public class EncryptionKeyController {
           .body(
               new ReencryptionTriggerResponse(
                   0, List.of(), "Re-encryption failed: " + e.getMessage()));
+    } catch (EncryptionLifecycleDisabledException e) {
+      throw e;
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Full re-encryption enqueue failed", e);
       auditLogService.log(
@@ -672,6 +712,8 @@ public class EncryptionKeyController {
           .body(
               new ReencryptionKeyResponse(
                   keyId, 0, List.of(), "Re-encryption failed: " + e.getMessage()));
+    } catch (EncryptionLifecycleDisabledException e) {
+      throw e;
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Re-encryption for key {} enqueue failed", keyId, e);
       auditLogService.log(
@@ -750,6 +792,8 @@ public class EncryptionKeyController {
       return ResponseEntity.ok(
           new BatchCreationResponse(
               batchesCreated, "Created " + batchesCreated + " re-encryption batches"));
+    } catch (EncryptionLifecycleDisabledException e) {
+      throw e;
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Batch creation failed", e);
       auditLogService.log(

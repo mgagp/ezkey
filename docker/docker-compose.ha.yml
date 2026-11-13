@@ -25,11 +25,12 @@ services:
       EZKEY_DB_ADMIN_PASSWORD: ${EZKEY_DB_ADMIN_PASSWORD:-ezkey_admin}
       EZKEY_DB_AUTH_PASSWORD: ${EZKEY_DB_AUTH_PASSWORD:-ezkey_auth}
       EZKEY_DB_INTEGRATION_PASSWORD: ${EZKEY_DB_INTEGRATION_PASSWORD:-ezkey_integration}
+      EZKEY_DB_CRYPTO_PASSWORD: ${EZKEY_DB_CRYPTO_PASSWORD:-ezkey_crypto}
     volumes:
       - postgres-data-ha:/var/lib/postgresql/data
       - ./postgres/init:/docker-entrypoint-initdb.d:ro
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -67,22 +68,13 @@ services:
     environment:
       <<: *container-tz
       PGPASSWORD: ${POSTGRES_PASSWORD:-ezkey}
+      PGHOST: postgres
+      PGDATABASE: ezkey_db
+      PGUSER: postgres
+      EZKEY_DB_CRYPTO_PASSWORD: ${EZKEY_DB_CRYPTO_PASSWORD:-ezkey_crypto}
     volumes:
       - ../scripts/db:/scripts:ro
-    entrypoint:
-      [
-        "psql",
-        "-h",
-        "postgres",
-        "-U",
-        "postgres",
-        "-d",
-        "ezkey_db",
-        "-v",
-        "ON_ERROR_STOP=1",
-        "-f",
-        "/scripts/apply-grants.sql",
-      ]
+    entrypoint: ["/bin/sh", "/scripts/apply-grants.sh", "--in-container"]
     networks:
       - ezkey-network-ha
     restart: "no"
@@ -112,11 +104,20 @@ services:
       EZKEY_ADMIN_INITIAL_FIRST_NAME: Admin
       EZKEY_ADMIN_INITIAL_LAST_NAME: Docker
       MANAGEMENT_SERVER_PORT: 9081
+      # Env required beyond application-docker.properties: docker-dev alone does not
+      # activate the docker profile, so IDE 127.0.0.1 would stick (#905 Patrick M1).
+      MANAGEMENT_SERVER_ADDRESS: "0.0.0.0"
       EZKEY_INSTANCE_ID: admin-api-1
       EZKEY_DATABASE_PARTITION_SCHEDULER_CRON: "0 */20 * * * ?"
       EZKEY_QR_AUTH_BASE_URL: ${EZKEY_QR_AUTH_BASE_URL:-}
+      EZKEY_ORGANIZATION_NAME: ${EZKEY_ORGANIZATION_NAME:-Ezkey System}
+      EZKEY_ORGANIZATION_DESCRIPTION: ${EZKEY_ORGANIZATION_DESCRIPTION:-Ezkey MFA instance for your organization}
       EZKEY_ORGANIZATION_ABOUT_URL: ${EZKEY_ORGANIZATION_ABOUT_URL:-}
       EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE: ${EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE:-full}
+      # Trust only pinned HAProxy LB addresses (#1141); HAProxy rewrites XFF (#1140).
+      # Demo/app peers on 172.28.0.0/24 must NOT be trusted proxies.
+      EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.28.0.250/32,172.28.0.251/32,172.28.0.252/32}
+      EZKEY_TRUSTED_PROXIES_REQUIRED: ${EZKEY_TRUSTED_PROXIES_REQUIRED:-true}
     volumes:
       - encryption-secrets-ha:/etc/ezkey
       - bootstrap-artifacts-ha:/var/lib/ezkey/bootstrap
@@ -159,11 +160,16 @@ services:
       EZKEY_ADMIN_INITIAL_FIRST_NAME: Admin
       EZKEY_ADMIN_INITIAL_LAST_NAME: Docker
       MANAGEMENT_SERVER_PORT: 9081
+      MANAGEMENT_SERVER_ADDRESS: "0.0.0.0"
       EZKEY_INSTANCE_ID: admin-api-2
       EZKEY_DATABASE_PARTITION_SCHEDULER_CRON: "0 */20 * * * ?"
       EZKEY_QR_AUTH_BASE_URL: ${EZKEY_QR_AUTH_BASE_URL:-}
+      EZKEY_ORGANIZATION_NAME: ${EZKEY_ORGANIZATION_NAME:-Ezkey System}
+      EZKEY_ORGANIZATION_DESCRIPTION: ${EZKEY_ORGANIZATION_DESCRIPTION:-Ezkey MFA instance for your organization}
       EZKEY_ORGANIZATION_ABOUT_URL: ${EZKEY_ORGANIZATION_ABOUT_URL:-}
       EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE: ${EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE:-full}
+      EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.28.0.250/32,172.28.0.251/32,172.28.0.252/32}
+      EZKEY_TRUSTED_PROXIES_REQUIRED: ${EZKEY_TRUSTED_PROXIES_REQUIRED:-true}
     volumes:
       - encryption-secrets-ha:/etc/ezkey
       - bootstrap-artifacts-ha:/var/lib/ezkey/bootstrap
@@ -182,7 +188,8 @@ services:
 
   # HAProxy for Admin API
   haproxy-admin:
-    image: haproxy:2.9-alpine
+    # Pin tag + digest (Christophe #1134); 3.4 LTS, image 3.4.7 as of 2026-11-02
+    image: haproxy:3.4-alpine@sha256:5312d37032c079c4937d45ef63758852434351f3b425a3703521fd999837abcf
     container_name: ezkey-haproxy-admin
     depends_on:
       admin-api-1:
@@ -193,9 +200,11 @@ services:
       - ./haproxy/haproxy-admin.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
     ports:
       - "9080:9080"
-      - "9081:9081"  # Stats page
+      - "127.0.0.1:9081:9081"  # Stats page (loopback-only; #905)
     networks:
-      - ezkey-network-ha
+      ezkey-network-ha:
+        # Pinned outside ip_range so dynamic peers cannot claim it (#1141).
+        ipv4_address: 172.28.0.250
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "haproxy -c -f /usr/local/etc/haproxy/haproxy.cfg || exit 1"]
@@ -224,9 +233,14 @@ services:
       SPRING_DATASOURCE_USERNAME: ezkey_auth
       SPRING_DATASOURCE_PASSWORD: ${EZKEY_DB_AUTH_PASSWORD:-ezkey_auth}
       MANAGEMENT_SERVER_PORT: 8085
+      MANAGEMENT_SERVER_ADDRESS: "0.0.0.0"
       EZKEY_INSTANCE_ID: auth-api-1
       EZKEY_QR_AUTH_BASE_URL: ${EZKEY_QR_AUTH_BASE_URL:-}
+      EZKEY_ORGANIZATION_NAME: ${EZKEY_ORGANIZATION_NAME:-Ezkey System}
+      EZKEY_ORGANIZATION_DESCRIPTION: ${EZKEY_ORGANIZATION_DESCRIPTION:-Ezkey MFA instance for your organization}
       EZKEY_ORGANIZATION_ABOUT_URL: ${EZKEY_ORGANIZATION_ABOUT_URL:-}
+      EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.28.0.250/32,172.28.0.251/32,172.28.0.252/32}
+      EZKEY_TRUSTED_PROXIES_REQUIRED: ${EZKEY_TRUSTED_PROXIES_REQUIRED:-true}
     volumes:
       - encryption-secrets-ha:/etc/ezkey
     expose:
@@ -263,9 +277,14 @@ services:
       SPRING_DATASOURCE_USERNAME: ezkey_auth
       SPRING_DATASOURCE_PASSWORD: ${EZKEY_DB_AUTH_PASSWORD:-ezkey_auth}
       MANAGEMENT_SERVER_PORT: 8085
+      MANAGEMENT_SERVER_ADDRESS: "0.0.0.0"
       EZKEY_INSTANCE_ID: auth-api-2
       EZKEY_QR_AUTH_BASE_URL: ${EZKEY_QR_AUTH_BASE_URL:-}
+      EZKEY_ORGANIZATION_NAME: ${EZKEY_ORGANIZATION_NAME:-Ezkey System}
+      EZKEY_ORGANIZATION_DESCRIPTION: ${EZKEY_ORGANIZATION_DESCRIPTION:-Ezkey MFA instance for your organization}
       EZKEY_ORGANIZATION_ABOUT_URL: ${EZKEY_ORGANIZATION_ABOUT_URL:-}
+      EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.28.0.250/32,172.28.0.251/32,172.28.0.252/32}
+      EZKEY_TRUSTED_PROXIES_REQUIRED: ${EZKEY_TRUSTED_PROXIES_REQUIRED:-true}
     volumes:
       - encryption-secrets-ha:/etc/ezkey
     expose:
@@ -283,7 +302,8 @@ services:
 
   # HAProxy for Auth API
   haproxy-auth:
-    image: haproxy:2.9-alpine
+    # Pin tag + digest (Christophe #1134); 3.4 LTS, image 3.4.7 as of 2026-11-02
+    image: haproxy:3.4-alpine@sha256:5312d37032c079c4937d45ef63758852434351f3b425a3703521fd999837abcf
     container_name: ezkey-haproxy-auth
     depends_on:
       auth-api-1:
@@ -294,9 +314,11 @@ services:
       - ./haproxy/haproxy-auth.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
     ports:
       - "8080:8080"
-      - "8085:8085"  # Stats page
+      - "127.0.0.1:8085:8085"  # Stats page (loopback-only; #905)
     networks:
-      - ezkey-network-ha
+      ezkey-network-ha:
+        # Pinned outside ip_range so dynamic peers cannot claim it (#1141).
+        ipv4_address: 172.28.0.251
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "haproxy -c -f /usr/local/etc/haproxy/haproxy.cfg || exit 1"]
@@ -327,7 +349,10 @@ services:
       SPRING_DATASOURCE_USERNAME: ezkey_integration
       SPRING_DATASOURCE_PASSWORD: ${EZKEY_DB_INTEGRATION_PASSWORD:-ezkey_integration}
       MANAGEMENT_SERVER_PORT: 7081
+      MANAGEMENT_SERVER_ADDRESS: "0.0.0.0"
       EZKEY_INSTANCE_ID: integration-api-1
+      EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.28.0.250/32,172.28.0.251/32,172.28.0.252/32}
+      EZKEY_TRUSTED_PROXIES_REQUIRED: ${EZKEY_TRUSTED_PROXIES_REQUIRED:-true}
     volumes:
       - encryption-secrets-ha:/etc/ezkey
     expose:
@@ -366,7 +391,10 @@ services:
       SPRING_DATASOURCE_USERNAME: ezkey_integration
       SPRING_DATASOURCE_PASSWORD: ${EZKEY_DB_INTEGRATION_PASSWORD:-ezkey_integration}
       MANAGEMENT_SERVER_PORT: 7081
+      MANAGEMENT_SERVER_ADDRESS: "0.0.0.0"
       EZKEY_INSTANCE_ID: integration-api-2
+      EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.28.0.250/32,172.28.0.251/32,172.28.0.252/32}
+      EZKEY_TRUSTED_PROXIES_REQUIRED: ${EZKEY_TRUSTED_PROXIES_REQUIRED:-true}
     volumes:
       - encryption-secrets-ha:/etc/ezkey
     expose:
@@ -384,7 +412,8 @@ services:
 
   # HAProxy for Integration API
   haproxy-integration:
-    image: haproxy:2.9-alpine
+    # Pin tag + digest (Christophe #1134); 3.4 LTS, image 3.4.7 as of 2026-11-02
+    image: haproxy:3.4-alpine@sha256:5312d37032c079c4937d45ef63758852434351f3b425a3703521fd999837abcf
     container_name: ezkey-haproxy-integration
     depends_on:
       integration-api-1:
@@ -395,9 +424,11 @@ services:
       - ./haproxy/haproxy-integration.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
     ports:
       - "7080:7080"
-      - "7081:7081"  # Stats page
+      - "127.0.0.1:7081:7081"  # Stats page (loopback-only; #905)
     networks:
-      - ezkey-network-ha
+      ezkey-network-ha:
+        # Pinned outside ip_range so dynamic peers cannot claim it (#1141).
+        ipv4_address: 172.28.0.252
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "haproxy -c -f /usr/local/etc/haproxy/haproxy.cfg || exit 1"]
@@ -405,7 +436,7 @@ services:
       timeout: 3s
       retries: 3
 
-  # Crypto API
+  # Crypto API (local HA lab only — SELECT-only DataSource on ezkey_keyset_blob)
   crypto-api:
     build:
       context: ..
@@ -417,20 +448,29 @@ services:
         condition: service_healthy
       migration:
         condition: service_completed_successfully
+      db-grants:
+        condition: service_completed_successfully
       haproxy-admin:
         condition: service_healthy
     environment:
       <<: *container-tz
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ezkey_db
+      SPRING_DATASOURCE_USERNAME: ezkey_crypto
+      SPRING_DATASOURCE_PASSWORD: ${EZKEY_DB_CRYPTO_PASSWORD:-ezkey_crypto}
+      MANAGEMENT_SERVER_PORT: 9091
+      MANAGEMENT_SERVER_ADDRESS: "0.0.0.0"
     volumes:
       - encryption-secrets-ha:/etc/ezkey
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"
+      - "127.0.0.1:9091:9091"
     networks:
       - ezkey-network-ha
     restart: on-failure:3
+    # Liveness only — encryption readiness is a separate actuator group (ADR-0016 Q1).
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9090/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:9091/actuator/health/liveness || exit 1"]
       interval: 30s
       timeout: 3s
       start_period: 40s
@@ -451,15 +491,18 @@ services:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       # Point to HAProxy for Auth API (internal network name)
       EZKEY_AUTH_API_URL: http://haproxy-auth:8080
+      MANAGEMENT_SERVER_PORT: 8084
+      MANAGEMENT_SERVER_ADDRESS: "0.0.0.0"
     volumes:
       - demo-device-data-ha:/app/data
     ports:
       - "8083:8083"
+      - "127.0.0.1:8084:8084"
     networks:
       - ezkey-network-ha
     restart: on-failure:3
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8083/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8084/actuator/health || exit 1"]
       interval: 30s
       timeout: 3s
       start_period: 40s
@@ -490,7 +533,7 @@ services:
       - ezkey-network-ha
     restart: on-failure:3
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8082/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8086/actuator/health || exit 1"]
       interval: 30s
       timeout: 3s
       start_period: 40s
@@ -530,6 +573,14 @@ services:
 networks:
   ezkey-network-ha:
     driver: bridge
+    # Fixed subnet; trust only HAProxy LB /32s (.250–.252), not demos (#1141).
+    # ip_range keeps dynamic allocation in .2–.127 so LB static IPs cannot collide.
+    # Never use 0.0.0.0/0. Override via compose project network settings if needed.
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
+          gateway: 172.28.0.1
+          ip_range: 172.28.0.0/25
 
 volumes:
   postgres-data-ha:

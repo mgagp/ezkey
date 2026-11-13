@@ -65,13 +65,12 @@ public final class EnrollmentTenantGrouper {
 
     return grouped.entrySet().stream()
         .sorted(Map.Entry.comparingByKey(tenantComparator))
-        .map(
-            e ->
-                new TenantGroupViewModel(
-                    e.getKey().tenantId(),
-                    e.getKey().tenantName(),
-                    e.getKey().tenantDescription(),
-                    e.getValue()))
+        .map(e ->
+            new TenantGroupViewModel(
+                e.getKey().tenantId(),
+                e.getKey().tenantName(),
+                e.getKey().tenantDescription(),
+                e.getValue()))
         .toList();
   }
 

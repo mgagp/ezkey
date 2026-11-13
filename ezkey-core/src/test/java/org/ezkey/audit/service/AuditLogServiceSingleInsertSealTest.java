@@ -69,18 +69,17 @@ class AuditLogServiceSingleInsertSealTest {
     when(auditLogRepository.save(any(AuditLog.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
     when(auditHmacService.computeHmac(any(AuditLog.class)))
-        .thenAnswer(
-            invocation -> {
-              AuditLog entity = invocation.getArgument(0);
-              assertNotNull(entity.getAuditLogId(), "audit_log_id must be set before HMAC");
-              assertEquals(42L, entity.getAuditLogId());
-              assertNotNull(entity.getCreatedAt(), "created_at must be set before HMAC");
-              assertEquals(
-                  entity.getCreatedAt().truncatedTo(ChronoUnit.MICROS),
-                  entity.getCreatedAt(),
-                  "created_at must already be truncated to microseconds");
-              return "test-hmac";
-            });
+        .thenAnswer(invocation -> {
+          AuditLog entity = invocation.getArgument(0);
+          assertNotNull(entity.getAuditLogId(), "audit_log_id must be set before HMAC");
+          assertEquals(42L, entity.getAuditLogId());
+          assertNotNull(entity.getCreatedAt(), "created_at must be set before HMAC");
+          assertEquals(
+              entity.getCreatedAt().truncatedTo(ChronoUnit.MICROS),
+              entity.getCreatedAt(),
+              "created_at must already be truncated to microseconds");
+          return "test-hmac";
+        });
 
     // Sub-microsecond nanos to prove the service truncates before signing.
     OffsetDateTime subMicroNow = OffsetDateTime.parse("2026-07-18T12:34:56.789123456Z");

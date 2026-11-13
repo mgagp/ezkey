@@ -13,8 +13,11 @@
 package org.ezkey.mobile
 
 import android.app.Application
+import org.ezkey.mobile.appearance.EzkeyAppearancePackage
 import org.ezkey.mobile.crypto.EzkeyCryptoPackage
+import org.ezkey.mobile.locale.EzkeyLocalePackage
 import org.ezkey.mobile.play.EzkeyPlayUpdatePackage
+import org.ezkey.mobile.security.EzkeyWindowSecurityPackage
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
@@ -38,11 +41,14 @@ class MainApplication : Application(), ReactApplication {
    * @since 2025
    */
   override val reactNativeHost: ReactNativeHost =
-      object : DefaultReactNativeHost(this) {
+      object : DefaultReactNativeHost(this@MainApplication) {
         override fun getPackages(): List<ReactPackage> =
-            PackageList(this).packages.apply {
+            PackageList(this@MainApplication).packages.apply {
               add(EzkeyCryptoPackage())
               add(EzkeyPlayUpdatePackage())
+              add(EzkeyWindowSecurityPackage())
+              add(EzkeyAppearancePackage())
+              add(EzkeyLocalePackage())
             }
 
         override fun getJSMainModuleName(): String = "index"

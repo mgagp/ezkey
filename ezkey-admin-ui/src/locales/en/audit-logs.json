@@ -1,7 +1,8 @@
 {
   "help": {
     "integrityLifecycle": {
-      "content": "Chain checkpoints seal batches of audit entries every 5 minutes. Use <strong>Verify chain</strong> and <strong>Verify entry HMAC</strong> for read-only forensic checks (no alert side effects). Use <strong>Run validation</strong> for the detective batch path — same semantics as the nightly job — which may raise or touch an <strong>AUDIT_INTEGRITY_RUPTURE</strong> alert when alert-eligible violations remain. Use <strong>Lifecycle overview</strong> to understand what is currently sealed, awaiting archive confirmation, or approaching purge eligibility. Manual lifecycle actions remain exceptional maintenance paths, not the normal operator workflow."
+      "content": "Chain checkpoints seal batches of audit entries every 5 minutes. Use <strong>Verify chain</strong> and <strong>Verify entry HMAC</strong> for read-only forensic checks (no alert side effects). Use <strong>Run validation</strong> for the detective batch path — same semantics as the nightly job — which may raise or touch an <strong>AUDIT_INTEGRITY_RUPTURE</strong> alert when alert-eligible violations remain. Use <strong>Lifecycle overview</strong> to understand what is currently sealed, awaiting archive confirmation, or approaching purge eligibility. Manual lifecycle actions remain exceptional maintenance paths, not the normal operator workflow.",
+      "contentMonitoringOff": "Scheduled detection is not active on this instance. When monitoring is enabled, chain checkpoints seal on a schedule and a nightly job runs the same detective path as <strong>Run validation</strong>. Use <strong>Verify chain</strong> and <strong>Verify entry HMAC</strong> for on-demand read-only forensic checks (no alert side effects). <strong>Run validation</strong> stays visible but inactive while nightly detection is off, so an accidental click cannot write a completion audit. Manual lifecycle actions remain exceptional maintenance paths."
     },
     "sealArchive": {
       "content": "Seals a range of checkpoints for archival (e.g. before dropping a DB partition). You can specify a period by timestamps or by checkpoint IDs. A pre-flight integrity check runs automatically."
@@ -10,13 +11,14 @@
       "content": "When the system was offline longer than the scheduler lookback (e.g. 60 min), declare each detected gap from the list below to keep lifecycle continuity explicit. Use <strong>Locate in timeline</strong> to see the gap in context, then <strong>Declare</strong> to formally close it with a justification. This is a recovery action, not a normal operator workflow."
     },
     "exceptionalMaintenance": {
-      "content": "Use these actions only for exceptional maintenance or recovery. Normal lifecycle progression is policy-driven and system-executed; the primary UI posture is observability, not manual lifecycle orchestration."
+      "content": "Use these actions only for exceptional maintenance or recovery. Normal lifecycle progression is policy-driven and system-executed; the primary UI posture is observability, not manual lifecycle orchestration.",
+      "contentMonitoringOff": "Use these actions only for exceptional maintenance or recovery. Normal lifecycle progression is policy-driven and system-executed when scheduled monitoring is enabled; with monitoring inactive, this atelier stays available for operator-driven checks. The primary UI posture remains observability, not manual lifecycle orchestration."
     },
     "incidents": {
       "content": "Operational incidents record stalled Admin API checkpoints as seen by peripheral supervision (heartbeat). With default Docker settings, peripherals refuse only <strong>new MFA work</strong> (narrow HTTP routes — see <strong>docs/AUDIT_LOG_INTEGRITY.md</strong>) after about <strong>9 minutes beyond the latest checkpoint <code>window_end</code></strong>; audit rows elsewhere may continue. Use <strong>Declare gap</strong> for undeclared <em>cryptographic</em> time holes — a different lifecycle. After recovery, declare closure here whenever an incident still awaits justification."
     },
     "checkpointTimeline": {
-      "content": "Lists chain checkpoints; sort by <strong>Window start</strong> to see inline gap rows (undeclared holes between checkpoints). Other sorts show checkpoints only. Use this table to inspect checkpoint type, lifecycle state, and anomaly boundaries."
+      "content": "Lists chain checkpoints for the recent window (newest first by default). Quiet empty <strong>Regular</strong> stretches collapse into a grey summary you can expand — they are not hidden. Orange <strong>Gap</strong> rows are real undeclared holes. Sort by <strong>Window start</strong> for inline gaps; inspect type, lifecycle, and late-written badges here."
     }
   },
   "list": {
@@ -108,6 +110,7 @@
     "ENROLLMENT_REACTIVATED": "Enrollment Reactivated",
     "ENROLLMENT_AUTH_ATTEMPT_BLOCKED": "Enrollment Auth Attempt Blocked",
     "ENROLLMENT_EXPIRED": "Enrollment Expired",
+    "ENROLLMENT_QR_DELIVERY": "Enrollment QR Delivery",
     "AUTH_ATTEMPT_CREATED": "Auth Attempt Created",
     "AUTH_ATTEMPT_PENDING": "Auth Attempt Pending",
     "AUTH_ATTEMPT_RESPOND": "Auth Attempt Respond",
@@ -144,7 +147,10 @@
     "AUDIT_CHAIN_GAP_DECLARED": "Audit Chain Gap Declared",
     "AUDIT_INTEGRITY_RUPTURE_CONCILIATED": "Audit Integrity Rupture Conciliated",
     "AUDIT_CHAIN_GAP_PENDING": "Audit Chain Gap Pending",
-    "NIGHTLY_INTEGRITY_VALIDATION_COMPLETED": "Nightly Integrity Validation Completed"
+    "NIGHTLY_INTEGRITY_VALIDATION_COMPLETED": "Nightly Integrity Validation Completed",
+    "INTEGRITY_ASYNC_JOB_STARTED": "Integrity Async Job Started",
+    "INTEGRITY_ASYNC_JOB_COMPLETED": "Integrity Async Job Completed",
+    "INTEGRITY_ASYNC_JOB_ABANDONED": "Integrity Async Job Abandoned"
   },
   "eventAction": {
     "login_success": "Login success",
@@ -259,15 +265,99 @@
     "labelInstance": "Instance"
   },
   "integrity": {
-    "title": "Integrity & Lifecycle",
-    "globalAdmin": "Global Admin",
+    "pageTitle": "Integrity",
+    "subtitle": "Verify the audit journal HMAC chain and manage exceptional archive lifecycle.",
+    "modes": {
+      "ariaLabel": "Integrity atelier modes",
+      "observe": "Observe",
+      "verify": "Verify",
+      "remediate": "Remediate",
+      "observeHint": "Switch to Verify to run chain or entry checks, or to Remediate when maintenance is needed."
+    },
     "verification": "Verification",
     "dateRangeSelect": "Select a range",
     "selectDateRangeToRun": "Select a date range to run verification",
     "verifyChain": "Verify chain",
     "verifyEntry": "Verify entry HMAC",
     "runValidation": "Run validation and raise alert if needed",
+    "runValidationInactiveHint": "Inactive on this instance",
+    "runValidationInactiveTooltip": "Nightly integrity validation is inactive on this instance.",
     "verifyVsRunHint": "Verify recomputes HMAC and chain links without opening or updating alerts. Run validation uses the detective batch path and may raise or touch an integrity rupture alert. Both actions scan the same date range shown above — verify first, then run validation on that range when you are ready to detect and alert.",
+    "verifyVsRunHintInactive": "Verify recomputes HMAC and chain links without opening or updating alerts. Run validation (the detective batch that may raise alerts and write a completion audit) is inactive on this instance.",
+    "asyncJob": {
+      "type": {
+        "verifyChain": "Verify chain",
+        "verifyEntry": "Verify entry HMAC",
+        "runValidation": "Run validation",
+        "unknown": "Integrity job"
+      },
+      "banner": {
+        "running": "Running — {{jobTypeLabel}} · since {{since}} · started by {{who}}",
+        "succeeded": "Last result — succeeded · {{jobTypeLabel}} · {{when}} · {{who}} · {{summary}}",
+        "failed": "Last result — failed · {{jobTypeLabel}} · {{when}} · {{who}} · {{reason}}",
+        "expired": "Job expired — no heartbeat · {{jobTypeLabel}} · {{who}} · can restart",
+        "interrupted": "Job interrupted — {{jobTypeLabel}} · {{summary}}"
+      },
+      "startsDisabledTooltip": "An Integrity job is already running. Wait for it to finish, or use Abandon only if the job expired or was cancelled.",
+      "startsDisabledEscapeTooltip": "Abandon the expired or cancelled Integrity job before starting another.",
+      "abandon": "Abandon",
+      "cancel": "Cancel",
+      "abandoning": "Abandoning…",
+      "abandonConfirmTitle": "Abandon Integrity job?",
+      "abandonConfirmBody": "This clears the expired or cancelled job so you can start another verification. It does not cancel a healthy running job.",
+      "abandonError": "Could not abandon the Integrity job.",
+      "busyToast": "Integrity job already running: {{resume}}",
+      "hydrateChainError": "Could not load the chain verification result.",
+      "hydrateEntryError": "Could not load the entry HMAC verification result.",
+      "hydrateBusyHint": "Integrity verification is busy. Wait a moment, then use \"Reload report\". The detailed report will appear once it loads.",
+      "hydrateOverCapHint": "This verification covers more than {{maxSyncDays}} days. Its summary is shown above, but the detailed report (gaps, violations) is only available for {{maxSyncDays}} days or less. To see details, verify a range of {{maxSyncDays}} days or less.",
+      "verifyWindowOverCap": "Verification is limited to {{maxSyncDays}} days so its detailed report can be shown. Choose a range of {{maxSyncDays}} days or less.",
+      "verifyAsyncWindowOverCap": "Async verification is limited to {{maxWindowDays}} days. Choose a shorter range, or split the window.",
+      "validationWindowOverCap": "Validation is limited to {{maxWindowDays}} days. Choose a range of {{maxWindowDays}} days or less.",
+      "validationSyncWindowOverCap": "Synchronous validation is limited to {{maxSyncDays}} days. Choose a shorter range, or use an async job.",
+      "reloadReport": "Reload report"
+    },
+    "microDashboard": {
+      "verdict": {
+        "intact": "Chain intact",
+        "gaps": "Undeclared gaps ({{count}})",
+        "violation": "Integrity violation ({{count}})",
+        "stale": "Last verdict {{when}} (stale)",
+        "running": "Check running…",
+        "nightlyRunning": "Nightly check running…",
+        "didNotComplete": "Check did not complete",
+        "nothingToVerify": "Nothing to verify",
+        "idle": "No verdict yet"
+      },
+      "stat": {
+        "checkpoints": "Checkpoints",
+        "invalid": "Invalid",
+        "undeclaredGaps": "Undeclared gaps"
+      },
+      "checked": "Checked",
+      "started": "Started",
+      "finished": "Finished",
+      "reverify": "Re-verify",
+      "openRemediate": "Open Remediate",
+      "scope": {
+        "period": "Period: {{from}} → {{to}}"
+      },
+      "source": {
+        "auto": "auto on open",
+        "manual": "manual",
+        "nightly": "nightly",
+        "unknown": "unknown source"
+      },
+      "byAdmin": "by {{who}}",
+      "systemActor": "system",
+      "scopeMismatch": "The verdict covers a different period than the filter shown.",
+      "whatIsVerified": "What is verified?",
+      "whatIsVerifiedHelp": "Verifies checkpoint chaining, entry fingerprints, and time continuity for the period. It does not show the full cryptographic algorithm on screen.",
+      "ariaResultAvailable": "Verification result available: {{verdict}}",
+      "rangeOverCapWarning": "This range exceeds the {{maxWindowDays}}-day async limit and cannot be started.",
+      "pollErrorTransient": "Status refresh failed — retrying with backoff…",
+      "pollErrorHalted": "Status refresh failed repeatedly. The check may still be running; reload the page or abandon the job if stuck."
+    },
     "chainIntegrity": "Chain Integrity",
     "entryIntegrity": "Entry Integrity",
     "checking": "Checking…",
@@ -306,6 +396,7 @@
       "showAffectedOnly": "Show only affected entries",
       "affectedOnlyTitle": "Affected entries (from verification)",
       "backToList": "Back to full list",
+      "backToPanel": "Back to Integrity panel",
       "reasonColumn": "Reason",
       "viewAround": "View around event",
       "noAffectedEntries": "No affected entries in session"
@@ -339,6 +430,11 @@
     "lifecycleOverview": "Lifecycle Overview",
     "lifecyclePolicyTitle": "Policy-driven lifecycle",
     "lifecyclePolicyHint": "The system progresses checkpoint lifecycle states automatically. This panel is primarily for operator visibility.",
+    "lifecyclePolicyHintMonitoringOff": "Scheduled detection is inactive — checkpoint lifecycle does not progress automatically on this instance. This panel is primarily for operator visibility; use atelier actions for on-demand checks.",
+    "monitoringInactiveBadge": {
+      "base": "Base profile — scheduled detection inactive",
+      "generic": "Scheduled detection inactive"
+    },
     "policyDriven": "Policy-driven",
     "loadingLifecycleOverview": "Loading lifecycle overview…",
     "noLifecycleOverview": "No lifecycle overview is currently available.",
@@ -355,13 +451,65 @@
     "statusYes": "Yes",
     "statusNo": "No",
     "exceptionalMaintenance": "Exceptional Maintenance",
+    "disclosure": {
+      "attention": "Needs attention"
+    },
     "sealArchive": "Seal Archive",
+    "confirmArchived": "Confirm archived",
+    "confirmArchivedHint": "Record that the sealed tranche was archived externally (marks checkpoints EXPORTED).",
     "declareGap": "Declare Gap",
     "declareGapHint": "Detected gaps appear below — use the per-gap actions to declare them.",
+    "reconcileRupture": "Reconcile integrity rupture",
+    "reconcileRuptureHint": "Open the Integrity atelier to reconcile the linked rupture alert.",
+    "reconcileDialog": {
+      "title": "Reconcile integrity rupture",
+      "intro": "Confirm the rupture boundaries from the alert payload, classify the incident, and provide a justification. Entry HMAC violations that still require acknowledgement must be checked below. This action is irreversible for this alert.",
+      "boundariesHeading": "Rupture boundaries",
+      "alertRef": "Alert #{{id}}",
+      "entryAckHeading": "Entry violations (live verify)",
+      "entryAckHint": "Check every open entry violation you are acknowledging. Explained entries are shown for context but do not require a checkbox.",
+      "entryAckNone": "No entry HMAC violations in the rupture window.",
+      "entryAckExplainedNote": "Already acknowledged — excluded from required checklist.",
+      "entryAckValidation": "Check every open entry violation before reconciling.",
+      "liveLoading": "Verifying entry HMAC…",
+      "liveVerifyFailed": "Live entry verification failed.",
+      "categoryLabel": "Category",
+      "category": {
+        "ACCIDENTAL_DBA_EDIT": "Accidental DBA edit",
+        "CORRUPTION": "Storage corruption (investigated)",
+        "INVESTIGATED_BENIGN": "Investigated — benign",
+        "OTHER": "Other"
+      },
+      "ticketLabel": "External ticket",
+      "ticketOptional": "(optional)",
+      "ticketPlaceholder": "e.g. INC-12345",
+      "justification": "Justification",
+      "justificationHint": "(min. 10 characters)",
+      "justificationPlaceholder": "Describe investigation outcome and why conciliation is appropriate…",
+      "cancel": "Cancel",
+      "submit": "Reconcile",
+      "submitting": "Reconciling…",
+      "done": "Done",
+      "successTitle": "Integrity rupture reconciled",
+      "resultBoundaries": "Boundaries",
+      "resultCheckpointId": "Conciliation checkpoint",
+      "resultChainHmac": "Chain HMAC",
+      "resultAuditLogId": "Audit log id",
+      "resultEntryConciliationCount": "Entry conciliations",
+      "resultConciliatedEntries": "Conciliated audit log ids",
+      "toastSuccess": "Integrity rupture reconciled.",
+      "errorFailed": "Reconciliation failed.",
+      "conciliationStatus": {
+        "ACKNOWLEDGED": "Acknowledged (known invalid)",
+        "RE_TAMPER_SUSPECTED": "Changed since acknowledgement"
+      }
+    },
     "incidents": {
       "title": "Operational incidents",
       "loading": "Loading incidents…",
       "empty": "No heartbeat incidents recorded.",
+      "loadError": "Could not load operational incidents.",
+      "retry": "Retry",
       "refresh": "Refresh",
       "refreshing": "Refreshing…",
       "declare": "Declare closure",
@@ -407,13 +555,16 @@
     "focus": "Focus",
     "clearFocus": "Clear focus",
     "checkpointTimeline": "Checkpoint timeline",
-    "timelineHint": "Sort by Window start to see inline gap rows between checkpoints; other sorts show checkpoints only. Use the Verification report for the full list of undeclared gaps.",
+    "timelineHint": "Quiet stretches collapse into a grey summary (expand to inspect each link). Orange Gap rows are real undeclared holes — not quiet windows. Sort by Window start for inline gaps; use the Verification report for the full undeclared-gap list.",
     "allTypes": "All types",
     "typeRegular": "Regular",
     "typeArchiveSeal": "Archive seal",
     "typeGapDeclaration": "Gap declaration",
     "typeManipulationConciliation": "Manipulation conciliation",
-    "hideEmptyWindows": "Hide empty windows",
+    "compressQuietWindows": "Collapse quiet windows",
+    "quietSummary": "Quiet · {{from}} → {{to}} · {{count}} windows · {{entries}} entries",
+    "lateWrittenBadge": "Late-written",
+    "lateWrittenHelp": "This window was recorded clearly after its end time (catch-up, clock skew, or a logging pause). Not the same as an undeclared gap.",
     "selection": "Selection",
     "sealRangeLabel": "Seal range",
     "sealRangeFrom": "From",
@@ -434,6 +585,7 @@
     "checkpointTypeRegular": "Regular",
     "checkpointTypeSealed": "Sealed",
     "checkpointTypeGap": "Gap",
+    "checkpointTypeGapDeclaration": "Declared gap",
     "checkpointTypeConciliation": "Conciliation",
     "lifecycleStateActive": "Active",
     "lifecycleStateSealed": "Sealed",
@@ -471,6 +623,28 @@
     "resultSealHmac": "Seal HMAC",
     "resultAuditLogId": "Audit log ID",
     "optionalPlaceholder": "optional"
+  },
+  "confirmArchivedDialog": {
+    "title": "Confirm external archive",
+    "successTitle": "Archive confirmation recorded",
+    "done": "Done",
+    "intro": "Record that the sealed tranche was archived externally. This marks checkpoints EXPORTED — it does not perform the export itself. Provide the export bundle digest from your archival workflow.",
+    "trancheHeading": "Sealed tranche awaiting confirmation",
+    "exportBundleDigest": "Export bundle digest",
+    "exportBundleDigestHint": "(16–88 characters, required)",
+    "exportBundleDigestPlaceholder": "Digest or checksum of the external archive bundle",
+    "archivedAt": "Archived at (optional)",
+    "cancel": "Cancel",
+    "submit": "Confirm archived",
+    "submitting": "Confirming…",
+    "resultPeriod": "Period",
+    "resultCheckpointsExported": "Checkpoints exported",
+    "resultDigest": "Export bundle digest",
+    "resultExportedAt": "Exported at",
+    "resultAuditLogId": "Audit log ID",
+    "toastSuccess": "External archive confirmed ({{count}} checkpoint(s) marked EXPORTED).",
+    "errorFailed": "Archive confirmation failed.",
+    "digestTooShort": "Digest must be at least 16 characters."
   },
   "gapDialog": {
     "title": "Declare detected gap",

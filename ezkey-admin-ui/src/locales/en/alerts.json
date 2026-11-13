@@ -60,7 +60,7 @@
       "estimatedGapEnd": "Estimated gap end",
       "estimatedGapMinutes": "Estimated duration (min)",
       "message": "Message",
-      "viewAuditLogs": "Open in audit logs"
+      "viewAuditLogs": "Open in Integrity"
     },
     "auditIntegrityRupture": {
       "windowStart": "Window start",
@@ -82,7 +82,7 @@
       "livePending": "Waiting for live verification…",
       "liveVerifyFailed": "Live verification failed",
       "truncatedList": "Showing {{returned}} of {{total}} (truncated in alert snapshot)",
-      "investigateCta": "Investigate in Audit Logs",
+      "investigateCta": "Investigate in Integrity",
       "viewCheckpoint": "View checkpoint",
       "conciliationStatus": {
         "ACKNOWLEDGED": "Acknowledged (known invalid)",
@@ -91,44 +91,8 @@
     }
   },
   "reconcileDialog": {
-    "openAction": "Reconcile integrity rupture",
-    "openHint": "Creates a signed MANIPULATION_CONCILIATION checkpoint and resolves this alert.",
-    "title": "Reconcile integrity rupture",
-    "intro": "Confirm the rupture boundaries from the alert payload, classify the incident, and provide a justification. Entry HMAC violations that still require acknowledgement must be checked below. This action is irreversible for this alert.",
-    "boundariesHeading": "Rupture boundaries",
-    "entryAckHeading": "Entry violations (live verify)",
-    "entryAckHint": "Check every open entry violation you are acknowledging. Explained entries are shown for context but do not require a checkbox.",
-    "entryAckNone": "No entry HMAC violations in the rupture window.",
-    "entryAckExplainedNote": "Already acknowledged — excluded from required checklist.",
-    "entryAckValidation": "Check every open entry violation before reconciling.",
-    "liveLoading": "Verifying entry HMAC…",
-    "liveVerifyFailed": "Live entry verification failed.",
-    "categoryLabel": "Category",
-    "category": {
-      "ACCIDENTAL_DBA_EDIT": "Accidental DBA edit",
-      "CORRUPTION": "Storage corruption (investigated)",
-      "INVESTIGATED_BENIGN": "Investigated — benign",
-      "OTHER": "Other"
-    },
-    "ticketLabel": "External ticket",
-    "ticketOptional": "(optional)",
-    "ticketPlaceholder": "e.g. INC-12345",
-    "justification": "Justification",
-    "justificationHint": "(min. 10 characters)",
-    "justificationPlaceholder": "Describe investigation outcome and why conciliation is appropriate…",
-    "cancel": "Cancel",
-    "submit": "Reconcile",
-    "submitting": "Reconciling…",
-    "done": "Done",
-    "successTitle": "Integrity rupture reconciled",
-    "resultBoundaries": "Boundaries",
-    "resultCheckpointId": "Conciliation checkpoint",
-    "resultChainHmac": "Chain HMAC",
-    "resultAuditLogId": "Audit log id",
-    "resultEntryConciliationCount": "Entry conciliations",
-    "resultConciliatedEntries": "Conciliated audit log ids",
-    "toastSuccess": "Integrity rupture reconciled.",
-    "errorFailed": "Reconciliation failed."
+    "openAction": "Resolve in Integrity",
+    "openHint": "Alerts are signals only. Remediation (reconcile integrity rupture) lives on the Integrity atelier."
   },
   "severity": {
     "INFO": "Info",
@@ -154,6 +118,7 @@
   "type": {
     "AUDIT_CHAIN_GAP_PENDING": "Audit chain — undeclared gap",
     "AUDIT_CHAIN_HEARTBEAT_STALE": "Audit chain — heartbeat stale",
-    "AUDIT_INTEGRITY_RUPTURE": "Audit integrity — rupture detected"
+    "AUDIT_INTEGRITY_RUPTURE": "Audit integrity — rupture detected",
+    "AUTH_ATTEMPT_REJECTED": "Authentication attempt rejected by the device"
   }
 }

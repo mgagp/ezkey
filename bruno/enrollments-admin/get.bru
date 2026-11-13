@@ -26,8 +26,13 @@ script:post-response {
       if (jsonData.version !== undefined && jsonData.version !== null) {
           bru.setEnvVar("enrollmentVersion", jsonData.version);
       }
-      bru.setEnvVar("enrollmentChallenge", jsonData.enrollmentChallenge);
-      bru.setEnvVar("enrollmentProofToken", jsonData.enrollmentProofToken);
+      // Null outside the bind steps (#1180): keep what the bind chain already saved.
+      if (jsonData.enrollmentChallenge != null) {
+          bru.setEnvVar("enrollmentChallenge", jsonData.enrollmentChallenge);
+      }
+      if (jsonData.enrollmentProofToken != null) {
+          bru.setEnvVar("enrollmentProofToken", jsonData.enrollmentProofToken);
+      }
       
       test("Response contains required fields", function () {
           expect(jsonData).to.have.property('enrollmentId');
@@ -69,11 +74,9 @@ docs {
   - `enrollmentName`: Human-readable name for the enrollment
   - `enrollmentStatus`: Enrollment lifecycle status (CREATED, BOUND, VERIFIED, INVALID, REVOKED, EXPIRED)
   - `enrollmentActive`: Flag indicating if the enrollment is currently active
-  - `enrollmentChallenge`: Challenge value for enrollment verification
-  - `enrollmentProofToken`: Unique code for enrollment verification
+  - `enrollmentChallenge`: Challenge value for enrollment verification (null unless CREATED or BOUND)
+  - `enrollmentProofToken`: Bind secret (null unless CREATED)
   - `authAttemptChallengeRequired`: Flag indicating if authentication attempts require challenge
-  - `integrationPublicKey`: Public key for integration communication
-  - `devicePublicKey`: Public key for the device (null if not bound)
   - `devicePrivateKeyStorageTier`: Client-reported device private key storage tier at verify: `NONE`, `STANDARD`, or `STRONG` (null if unknown or legacy)
   - `verifiedAt`: When enrollment was verified (null if not yet verified)
   - `createdByAdminId`: Admin who created (null when via API key)

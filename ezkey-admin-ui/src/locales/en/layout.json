@@ -12,6 +12,7 @@
     "enrollments": "Enrollments",
     "authAttempts": "Auth Attempts",
     "auditLogs": "Audit Logs",
+    "integrity": "Integrity",
     "alerts": "Alerts",
     "admins": "Admins",
     "apiKeys": "API Keys",
@@ -35,7 +36,8 @@
   },
   "sidebar": {
     "demoModeTitle": "Ctrl+click to toggle demo mode",
-    "about": "About"
+    "about": "About",
+    "buildIdentity": "Public alpha · {{sha}}"
   },
   "about": {
     "title": "About EZKey",
@@ -44,6 +46,10 @@
     "productIntroGlobal": "Instance-level administration for IT: tenant provisioning, encryption keys, and oversight across the organization. You also manage integrations, enrollments, and authentication the same way tenant administrators do.",
     "learnMore": "Learn more",
     "learnMoreDefaultUrl": "https://github.com/your-org/ezkey"
+  },
+  "temporarySession": {
+    "banner": "Bounded temporary evaluator access — expires {{expiresAt}}. One-shot: if you lose this session, it cannot be recovered. Enroll a device when ready.",
+    "bindLink": "Enroll a device"
   },
   "demoQuickReason": "Quick reason (demo):"
 }

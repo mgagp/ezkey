@@ -32,6 +32,7 @@ Define a lightweight, repeatable dependency-update routine that keeps momentum w
    - `yarn typecheck`
    - `yarn test --runInBand`
    - Android debug install path (`./scripts/build-install-debug-clean.sh`)
+   - **Toolchain lot** (React, React Native, Gradle wrapper, Android Gradle Plugin, or Kotlin): also the cold release gate below. A warm debug or release APK does not satisfy it.
 
 4. **Decide fast**
    - If green: commit and push.
@@ -55,6 +56,20 @@ Use deferred mode for majors blocked by current RN ecosystem alignment.
 - Jest 30: wait for RN jest preset/runtime compatibility gate.
 
 Reference: `MOBILE_ESLINT10_JEST30_UNBLOCK_MEMO.md`.
+
+## Cold release gate (React / toolchain lots)
+
+Trigger: any lot that changes React, React Native, the Gradle wrapper, Android Gradle Plugin, or the Kotlin pin. JS tests and a debug install are not enough.
+
+`scripts/build-install-release-clean.sh` deletes `android/app/build`, `android/build`, and `.cxx`, then runs `assembleRelease`. It does **not** delete the included React Native Gradle plugin build under `node_modules/@react-native/gradle-plugin`. A previous successful compile stays `UP-TO-DATE`. That cache hid a real break on 2026-09-22: Pixel 7 Pro got `versionName` 1.0.0 / `versionCode` 2 from a warm `assembleRelease` (PR #601, React Native 0.87.1, Gradle 9.4.1, AGP 9.2.1), while a later cold `bundleRelease` failed. The plugin compiles with Kotlin 2.1.20; Gradle 9.4.1 ships Kotlin 2.3 stdlib metadata, which that compiler rejects. AGP 9.2.1 refuses Gradle older than 9.4.1, so the wrapper cannot simply be rolled back.
+
+Before calling the lot green:
+
+1. Delete `node_modules/@react-native/gradle-plugin/**/build` (the included plugin), then run `assembleRelease` and `bundleRelease` with `--no-daemon` and `--rerun-tasks` on that plugin compile if it still reports `UP-TO-DATE`.
+2. Confirm both artifacts exist: release APK and `android/app/build/outputs/bundle/release/app-release.aab`.
+3. Record `versionName`, `versionCode`, and the device install time in the PR. CI (`ezkey-mobile-unit-tests`) does not build either artifact.
+
+Do not paper over the Kotlin metadata error with a Gradle init script that configures every task. That path finalizes the Android DSL too early and breaks library plugins (`finalizeDsl` on `react-native-config`, `react-native-gesture-handler`).
 
 ## Operational notes
 

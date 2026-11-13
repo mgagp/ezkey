@@ -11,7 +11,7 @@ Description: HTTP client for Crypto API operations
 import logging
 from typing import Optional, Dict, Any
 
-import requests
+from ezkey_cli.utils.tls import SslVerify, requests_get, requests_post
 
 log = logging.getLogger(__name__)
 
@@ -19,13 +19,14 @@ log = logging.getLogger(__name__)
 class CryptoApiClient:
   """HTTP client for Ezkey Crypto API (no authentication)."""
 
-  def __init__(self, crypto_url: str, verify_ssl: bool = True):
+  def __init__(self, crypto_url: str, verify_ssl: SslVerify = True):
     """
     Initialize crypto API client.
 
     Args:
         crypto_url: Base URL for Crypto API (e.g., http://localhost:9090)
-        verify_ssl: Whether to verify SSL certificates
+        verify_ssl: Value for requests ``verify=`` (True, CA bundle path, or
+            False only after explicit loopback-only insecure opt-in).
     """
     self.crypto_url = crypto_url.rstrip('/')
     self.verify_ssl = verify_ssl
@@ -40,7 +41,7 @@ class CryptoApiClient:
       url = f"{self.crypto_url}{endpoint}"
       log.info(f"GET {url}")
 
-      response = requests.get(url, timeout=10, verify=self.verify_ssl)
+      response = requests_get(url, timeout=10, verify=self.verify_ssl)
       self.last_status_code = response.status_code
 
       response.raise_for_status()
@@ -59,7 +60,7 @@ class CryptoApiClient:
       url = f"{self.crypto_url}{endpoint}"
       log.info(f"POST {url}")
 
-      response = requests.post(url, json=data, timeout=10, verify=self.verify_ssl)
+      response = requests_post(url, json=data, timeout=10, verify=self.verify_ssl)
       self.last_status_code = response.status_code
 
       response.raise_for_status()

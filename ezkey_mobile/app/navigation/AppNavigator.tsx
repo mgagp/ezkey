@@ -1,5 +1,7 @@
 import React from 'react';
-import {createStackNavigator} from '@react-navigation/stack';
+import {StyleSheet} from 'react-native';
+import {HeaderBackButton} from '@react-navigation/elements';
+import {createStackNavigator, StackNavigationOptions} from '@react-navigation/stack';
 import {EnrollmentDetailScreen} from '../screens/EnrollmentDetail';
 import {HomeScreen} from '../screens/Home';
 import {PendingAuthScreen} from '../screens/PendingAuth';
@@ -9,28 +11,41 @@ import {DangerZoneScreen} from '../screens/DangerZone';
 import {SettingsScreen} from '../screens/Settings';
 import {AboutScreen} from '../screens/About';
 import {ReleaseNotesScreen} from '../screens/ReleaseNotes';
-import {LicensesScreen} from '../screens/Licenses';
+import {LicenseDetailScreen, LicensesScreen} from '../screens/Licenses';
 import {LanguageScreen} from '../screens/Language';
+import {AppearanceScreen} from '../screens/Appearance';
 import {SecurityScreen} from '../screens/Security';
 import {ComingSoonScreen} from '../screens/ComingSoon';
-import {colors} from '../config/theme';
+import {useTheme} from '../theme';
 import {HeaderSettingsButton} from '../components/HeaderSettingsButton';
 import {useTranslation} from 'react-i18next';
 
 const Stack = createStackNavigator<RootStackParamList>();
 
-const stackScreenOptions = {
-  headerStyle: {backgroundColor: colors.surface},
-  headerTintColor: colors.textPrimary,
-  headerTitleStyle: {fontWeight: '600' as const, fontSize: 18, color: colors.textPrimary},
-  cardStyle: {backgroundColor: colors.background},
-};
+type HeaderLeftProps = Parameters<NonNullable<StackNavigationOptions['headerLeft']>>[0];
+
+/** Default back button with a 48 dp touch and accessibility target (#1155). */
+const renderHeaderBack = (props: HeaderLeftProps) =>
+  props.canGoBack ? <HeaderBackButton {...props} style={styles.headerBack} /> : null;
 
 export const AppNavigator: React.FC = () => {
   const {t} = useTranslation();
+  const {colors} = useTheme();
+  const screenOptions = React.useMemo(
+    () => ({
+      headerStyle: {backgroundColor: colors.surface},
+      headerTintColor: colors.textPrimary,
+      headerTitleStyle: {fontWeight: '600' as const, fontSize: 18, color: colors.textPrimary},
+      cardStyle: {backgroundColor: colors.background},
+      headerLeft: renderHeaderBack,
+      headerBackAccessibilityLabel: t('common.back'),
+      headerBackTruncatedTitle: t('common.back'),
+    }),
+    [colors, t],
+  );
 
   return (
-    <Stack.Navigator screenOptions={stackScreenOptions}>
+    <Stack.Navigator screenOptions={screenOptions}>
       <Stack.Screen
         name="Home"
         component={HomeScreen}
@@ -81,6 +96,11 @@ export const AppNavigator: React.FC = () => {
         options={{title: t('navigation.licenses')}}
       />
       <Stack.Screen
+        name="LicenseDetail"
+        component={LicenseDetailScreen}
+        options={{title: t('navigation.licenseDetail')}}
+      />
+      <Stack.Screen
         name="DangerZone"
         component={DangerZoneScreen}
         options={{title: t('navigation.dangerZone')}}
@@ -91,6 +111,11 @@ export const AppNavigator: React.FC = () => {
         options={{title: t('navigation.language')}}
       />
       <Stack.Screen
+        name="Appearance"
+        component={AppearanceScreen}
+        options={{title: t('navigation.appearance')}}
+      />
+      <Stack.Screen
         name="Security"
         component={SecurityScreen}
         options={{title: t('navigation.security')}}
@@ -98,3 +123,13 @@ export const AppNavigator: React.FC = () => {
     </Stack.Navigator>
   );
 };
+
+const styles = StyleSheet.create({
+  headerBack: {
+    minWidth: 48,
+    minHeight: 48,
+    justifyContent: 'center',
+    marginHorizontal: 4,
+    marginVertical: 0,
+  },
+});

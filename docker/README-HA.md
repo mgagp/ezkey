@@ -4,7 +4,7 @@ This directory contains Docker configuration files and scripts to run the Ezkey 
 
 ## Overview
 
-The HA stack runs **2 instances** of each API (**admin-api**, **auth-api**, and **integration-api**) behind **HAProxy load balancers**, plus **Crypto API**, **Demo Device**, and **Demo App ACME**. This setup allows testing ShedLock distributed locking and multi-instance request routing.
+The HA stack runs **2 instances** of each API (**admin-api**, **auth-api**, and **integration-api**) behind **HAProxy load balancers**, plus **Crypto API**, **Demo Device**, and **Demo App ACME**. This setup allows testing ShedLock distributed locking and multi-instance request routing. Management Actuator binds `0.0.0.0` inside containers (`MANAGEMENT_SERVER_ADDRESS` / `application-docker.properties`) so HAProxy healthchecks reach `:9081` / `:8085` / `:7081`; API replicas use `expose` only. HAProxy **stats** host publishes are `127.0.0.1:9081|8085|7081` only (#905).
 
 ## Architecture
 
@@ -20,8 +20,8 @@ The HA stack runs **2 instances** of each API (**admin-api**, **auth-api**, and 
 │                      ──► Demo Device :8083               │
 │                      ──► Demo App ACME :8082             │
 │                                                          │
-│  HAProxy stats: Admin :9081 | Auth :8085 | Integ :7081   │
-│  docker-dev override publishes per-instance Actuator:    │
+│  HAProxy stats (127.0.0.1 only): :9081 / :8085 / :7081   │
+│  docker-dev override (127.0.0.1 only) per-instance Actuator: │
 │    Admin 19081/29081, Auth 18085/28085, Integ 17081/27081│
 └─────────────────────────────────────────────────────────┘
 ```
@@ -145,7 +145,7 @@ replicas. Crypto API is excluded. See [`README.md`](README.md) § JavaMelody col
 - **Port**: `9090` (exposed to host)
 - **Purpose**: Cryptographic operations service
 - **Depends on**: PostgreSQL (healthy), Migration (completed)
-- **Health Check**: http://localhost:9090/actuator/health
+- **Health Check (liveness)**: http://localhost:9091/actuator/health/liveness (encryption readiness: `/actuator/health/encryption`; business port remains `9090`)
 
 ### Demo Device (demo-device)
 - **Container**: `ezkey-demo-device-ha`
@@ -154,7 +154,7 @@ replicas. Crypto API is excluded. See [`README.md`](README.md) § JavaMelody col
 - **Depends on**: HAProxy Auth (healthy)
 - **Auth API URL**: Points to HAProxy Auth (`http://haproxy-auth:8080`) for load-balanced access
 - **Volume**: `demo-device-data-ha` (persistent data storage)
-- **Health Check**: http://localhost:8083/actuator/health
+- **Health Check**: http://localhost:8084/actuator/health (management port; business port remains `8083`)
 
 ## Management Commands
 

@@ -12,6 +12,7 @@ package org.ezkey.enrollment.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
+import jakarta.validation.constraints.NotNull;
 import org.ezkey.enrollment.domain.DevicePrivateKeyStorageTier;
 
 /**
@@ -48,7 +49,8 @@ import org.ezkey.enrollment.domain.DevicePrivateKeyStorageTier;
  */
 @Schema(description = "Request DTO for enrollment verification completion")
 public record EnrollmentVerifyRequestDto(
-    @Schema(
+    @NotNull
+        @Schema(
             description = "Enrollment ID being verified",
             example = "123",
             requiredMode = RequiredMode.REQUIRED)
@@ -58,12 +60,14 @@ public record EnrollmentVerifyRequestDto(
             example = "123456",
             requiredMode = RequiredMode.REQUIRED)
         Integer challengeResponse,
-    @Schema(
+    @NotNull
+        @Schema(
             description = "Mobile device's generated public key",
             example = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...",
             requiredMode = RequiredMode.REQUIRED)
         String devicePublicKey,
-    @Schema(
+    @NotNull
+        @Schema(
             description = "Device-signed enrollment proof token",
             example = "eyJhbGciOiJSUzI1NiJ9...",
             requiredMode = RequiredMode.REQUIRED)
@@ -75,4 +79,29 @@ public record EnrollmentVerifyRequestDto(
             example = "STANDARD",
             allowableValues = {"NONE", "STANDARD", "STRONG"},
             requiredMode = RequiredMode.NOT_REQUIRED)
-        DevicePrivateKeyStorageTier devicePrivateKeyStorageTier) {}
+        DevicePrivateKeyStorageTier devicePrivateKeyStorageTier) {
+
+  /**
+   * Returns a string representation with challenge and signed proof token masked.
+   *
+   * <p>Public keys and storage-tier enums are left visible; they are not secrets.
+   *
+   * @return string representation safe for logs
+   */
+  @Override
+  public String toString() {
+    return "EnrollmentVerifyRequestDto{"
+        + "enrollmentId="
+        + enrollmentId
+        + ", challengeResponse="
+        + (challengeResponse != null ? "[PROTECTED]" : "null")
+        + ", devicePublicKey='"
+        + devicePublicKey
+        + '\''
+        + ", enrollmentProofTokenSigned="
+        + (enrollmentProofTokenSigned != null ? "[PROTECTED]" : "null")
+        + ", devicePrivateKeyStorageTier="
+        + devicePrivateKeyStorageTier
+        + '}';
+  }
+}

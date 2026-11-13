@@ -21,8 +21,9 @@ package org.ezkey.enrollment.domain;
  * this domain object for business logic processing.
  *
  * <p><b>Enrollment Flow:</b> This request typically occurs after enrollment creation and before
- * verification, allowing devices to display appropriate integration context and user-friendly
- * information about the enrollment they are about to complete.
+ * verification. The proof token is the invitation secret. The enrollment id is not part of the
+ * request; the service resolves the row from the token hash and returns the id in the response
+ * (ADR-0019).
  *
  * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *
@@ -37,15 +38,6 @@ package org.ezkey.enrollment.domain;
 public class EnrollmentBindRequest {
 
   /**
-   * Unique identifier of the enrollment to retrieve binding information for.
-   *
-   * <p>Must reference an existing enrollment. This ID is used to locate the specific enrollment and
-   * gather related integration and application context for display to the user during the
-   * enrollment process.
-   */
-  private Integer enrollmentId;
-
-  /**
    * The enrollment proof token for authentication.
    *
    * <p>Unique cryptographic token generated during enrollment creation that must be provided to
@@ -54,24 +46,6 @@ public class EnrollmentBindRequest {
    * generated during enrollment creation.
    */
   private String enrollmentProofToken;
-
-  /**
-   * Gets the unique identifier of the enrollment.
-   *
-   * @return the enrollment ID
-   */
-  public Integer getEnrollmentId() {
-    return enrollmentId;
-  }
-
-  /**
-   * Sets the unique identifier of the enrollment.
-   *
-   * @param enrollmentId the enrollment ID to set
-   */
-  public void setEnrollmentId(Integer enrollmentId) {
-    this.enrollmentId = enrollmentId;
-  }
 
   /**
    * Gets the enrollment proof token for authentication.

@@ -16,6 +16,8 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
+import io.github.bucket4j.ConsumptionProbe;
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -29,6 +31,8 @@ import java.util.List;
 import org.ezkey.audit.util.ClientIpResolver;
 import org.ezkey.auth.controller.AuthAttemptController;
 import org.ezkey.auth.controller.EnrollmentController;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -55,7 +59,8 @@ import tools.jackson.databind.ObjectMapper;
  * <ul>
  *   <li>Pending: By enrollment ID from request body or client IP (configurable via
  *       enrollment-id/client-ip)
- *   <li>Respond: By authAttemptId from request body (configurable), fallback to client IP
+ *   <li>Respond: With {@code auth-attempt-id} strategy, filter applies the fail-IP ceiling only;
+ *       per-{@code authAttemptId} budget is consumed after a valid device signature (#912 C1)
  *   <li>Verify: By client IP only
  *   <li>Bind: By client IP only
  * </ul>
@@ -79,11 +84,19 @@ import tools.jackson.databind.ObjectMapper;
  */
 public class RateLimitFilter implements Filter {
 
+  private static final Logger LOG = LoggerFactory.getLogger(RateLimitFilter.class);
+
+  private static final String BACKSTOP_METRIC = "ezkey.rate_limit.backstop.rejected";
+
   private final RateLimitProperties properties;
 
   private final TrustedProxyProperties trustedProxyProperties;
 
   private final ObjectMapper objectMapper;
+
+  private final MeterRegistry meterRegistry;
+
+  private final AuthRespondRateLimitService authRespondRateLimitService;
 
   private final Cache<String, Bucket> bucketCache;
 
@@ -101,9 +114,48 @@ public class RateLimitFilter implements Filter {
       RateLimitProperties properties,
       TrustedProxyProperties trustedProxyProperties,
       ObjectMapper objectMapper) {
+    this(properties, trustedProxyProperties, objectMapper, null, null);
+  }
+
+  /**
+   * Constructs the filter with an optional metrics registry for backstop rejections.
+   *
+   * @param properties the rate limiting configuration properties
+   * @param trustedProxyProperties the trusted proxy CIDR list (for client IP resolution); may be
+   *     null
+   * @param objectMapper the Jackson ObjectMapper for extracting ids from request bodies
+   * @param meterRegistry optional Micrometer registry; null skips backstop counters
+   */
+  public RateLimitFilter(
+      RateLimitProperties properties,
+      TrustedProxyProperties trustedProxyProperties,
+      ObjectMapper objectMapper,
+      MeterRegistry meterRegistry) {
+    this(properties, trustedProxyProperties, objectMapper, meterRegistry, null);
+  }
+
+  /**
+   * Constructs the filter with respond rate-limit service (fail-IP + post-ownership id budgets).
+   *
+   * @param properties the rate limiting configuration properties
+   * @param trustedProxyProperties the trusted proxy CIDR list (for client IP resolution); may be
+   *     null
+   * @param objectMapper the Jackson ObjectMapper for extracting ids from request bodies
+   * @param meterRegistry optional Micrometer registry; null skips backstop counters
+   * @param authRespondRateLimitService respond budgets; null falls back to legacy per-id filter
+   *     debit (tests without the bean)
+   */
+  public RateLimitFilter(
+      RateLimitProperties properties,
+      TrustedProxyProperties trustedProxyProperties,
+      ObjectMapper objectMapper,
+      MeterRegistry meterRegistry,
+      AuthRespondRateLimitService authRespondRateLimitService) {
     this.properties = properties;
     this.trustedProxyProperties = trustedProxyProperties;
     this.objectMapper = objectMapper;
+    this.meterRegistry = meterRegistry;
+    this.authRespondRateLimitService = authRespondRateLimitService;
 
     // Cache buckets for 1 hour with maximum 1000 entries
     this.bucketCache =
@@ -194,18 +246,101 @@ public class RateLimitFilter implements Filter {
    */
   private RateLimitResult checkRateLimit(
       String requestUri, String requestMethod, HttpServletRequest request) {
+    // Respond + auth-attempt-id: filter only applies fail-IP ceiling (#912 C1).
+    if (requestUri.contains(AuthAttemptController.FULL_PATH_RESPOND)
+        && "auth-attempt-id".equals(properties.getRespond().getKeyStrategy())
+        && authRespondRateLimitService != null) {
+      List<String> cidrs =
+          trustedProxyProperties != null ? trustedProxyProperties.getCidrs() : null;
+      boolean trustCf =
+          trustedProxyProperties != null && trustedProxyProperties.isTrustCloudflareConnectingIp();
+      String clientIp = ClientIpResolver.resolve(request, cidrs, trustCf);
+      AuthRespondRateLimitService.RateLimitDecision decision =
+          authRespondRateLimitService.tryConsumeFailIp(clientIp);
+      if (!decision.allowed()) {
+        return new RateLimitResult(false, decision.retryAfterSeconds());
+      }
+      return new RateLimitResult(true, 0);
+    }
+
     String clientId = extractClientId(requestUri, request);
     String bucketKey = requestUri + ":" + clientId;
 
     Bucket bucket = bucketCache.get(bucketKey, this::createBucket);
+    RateLimitResult keyed = probe(bucket);
+    if (!keyed.isAllowed()) {
+      return keyed;
+    }
 
+    RateLimitResult backstop = checkBackstop(requestUri);
+    if (!backstop.isAllowed()) {
+      return backstop;
+    }
+    return new RateLimitResult(true, 0);
+  }
+
+  private static RateLimitResult probe(Bucket bucket) {
+    ConsumptionProbe consumption = bucket.tryConsumeAndReturnRemaining(1);
+    if (consumption.isConsumed()) {
+      return new RateLimitResult(true, 0);
+    }
+    long retryAfterSeconds =
+        Math.max(1L, Duration.ofNanos(consumption.getNanosToWaitForRefill()).toSeconds());
+    return new RateLimitResult(false, retryAfterSeconds);
+  }
+
+  /**
+   * Unkeyed per-process cap on client-IP-keyed enrollment surfaces. {@code pending} and {@code
+   * respond} are target-id keyed and are not subject to this backstop.
+   */
+  private RateLimitResult checkBackstop(String requestUri) {
+    RateLimitProperties.BackstopConfig backstop = properties.getBackstop();
+    if (backstop == null || !backstop.isEnabled()) {
+      return new RateLimitResult(true, 0);
+    }
+    RateLimitProperties.EndpointConfig config = backstopConfigFor(requestUri);
+    if (config == null) {
+      return new RateLimitResult(true, 0);
+    }
+    String family = backstopFamily(requestUri);
+    Bucket bucket = bucketCache.get("backstop:" + family, _ -> createBackstopBucket(config));
     if (bucket.tryConsume(1)) {
       return new RateLimitResult(true, 0);
-    } else {
-      // Calculate retry after based on bucket refill time
-      long retryAfter = bucket.getAvailableTokens();
-      return new RateLimitResult(false, retryAfter);
     }
+    LOG.warn("Rate-limit backstop exceeded for {} (per-instance, unkeyed)", family);
+    if (meterRegistry != null) {
+      meterRegistry.counter(BACKSTOP_METRIC, "endpoint", family).increment();
+    }
+    long retryAfter = Math.max(1L, config.getWindowMinutes() * 60L);
+    return new RateLimitResult(false, retryAfter);
+  }
+
+  private RateLimitProperties.EndpointConfig backstopConfigFor(String requestUri) {
+    RateLimitProperties.BackstopConfig backstop = properties.getBackstop();
+    if (requestUri.contains(EnrollmentController.FULL_PATH_VERIFY)) {
+      return backstop.getVerify();
+    }
+    if (requestUri.contains(EnrollmentController.FULL_PATH_BIND)
+        || requestUri.contains(EnrollmentController.FULL_PATH_INSTANCE_INFO)) {
+      return backstop.getBind();
+    }
+    return null;
+  }
+
+  private static String backstopFamily(String requestUri) {
+    if (requestUri.contains(EnrollmentController.FULL_PATH_VERIFY)) {
+      return "verify";
+    }
+    return "bind";
+  }
+
+  private static Bucket createBackstopBucket(RateLimitProperties.EndpointConfig config) {
+    Bandwidth limit =
+        Bandwidth.builder()
+            .capacity(config.getRequests())
+            .refillIntervally(config.getRequests(), Duration.ofMinutes(config.getWindowMinutes()))
+            .build();
+    return Bucket.builder().addLimit(limit).build();
   }
 
   /**
@@ -240,7 +375,9 @@ public class RateLimitFilter implements Filter {
 
     // Default: use client IP (with trusted-proxy list when configured)
     List<String> cidrs = trustedProxyProperties != null ? trustedProxyProperties.getCidrs() : null;
-    return ClientIpResolver.resolve(request, cidrs);
+    boolean trustCf =
+        trustedProxyProperties != null && trustedProxyProperties.isTrustCloudflareConnectingIp();
+    return ClientIpResolver.resolve(request, cidrs, trustCf);
   }
 
   /**

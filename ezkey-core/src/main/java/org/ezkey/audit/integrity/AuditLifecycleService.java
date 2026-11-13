@@ -15,6 +15,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.function.Supplier;
 import org.ezkey.alert.domain.AlertResolutionReason;
 import org.ezkey.alert.domain.AlertStatus;
 import org.ezkey.alert.domain.AlertType;
@@ -36,6 +37,7 @@ import org.ezkey.audit.dto.GapDeclarationResult;
 import org.ezkey.audit.dto.IntegrityRuptureReconciliationRequest;
 import org.ezkey.audit.dto.IntegrityRuptureReconciliationResult;
 import org.ezkey.audit.exception.AuditLifecycleConflictException;
+import org.ezkey.audit.exception.IntegrityAsyncJobBusyException;
 import org.ezkey.audit.service.AuditLogService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -96,6 +98,8 @@ public class AuditLifecycleService {
   private final AlertService alertService;
   private final EntryIntegrityViolationClassifier entryIntegrityViolationClassifier;
   private final AuditEntryIntegrityConciliationService entryIntegrityConciliationService;
+  private final IntegrityHeavyCryptoGate heavyCryptoGate;
+  private final IntegrityWindowCapProperties windowCapProperties;
 
   /**
    * Constructs the lifecycle service with required dependencies.
@@ -110,6 +114,8 @@ public class AuditLifecycleService {
    * @param alertService alert subsystem entry point for auto-resolving matching gap alerts
    * @param entryIntegrityViolationClassifier per-entry HMAC violation classifier
    * @param entryIntegrityConciliationService per-entry conciliation registry
+   * @param heavyCryptoGate process-local gate for seal-archive pre-verification (#781)
+   * @param windowCapProperties window caps for seal-archive pre-verification (#781)
    */
   public AuditLifecycleService(
       AuditChainCheckpointRepository checkpointRepository,
@@ -121,7 +127,9 @@ public class AuditLifecycleService {
       AuditArchiveProperties archiveProperties,
       AlertService alertService,
       EntryIntegrityViolationClassifier entryIntegrityViolationClassifier,
-      AuditEntryIntegrityConciliationService entryIntegrityConciliationService) {
+      AuditEntryIntegrityConciliationService entryIntegrityConciliationService,
+      IntegrityHeavyCryptoGate heavyCryptoGate,
+      IntegrityWindowCapProperties windowCapProperties) {
     this.checkpointRepository = checkpointRepository;
     this.auditLogRepository = auditLogRepository;
     this.auditHmacService = auditHmacService;
@@ -132,6 +140,8 @@ public class AuditLifecycleService {
     this.alertService = alertService;
     this.entryIntegrityViolationClassifier = entryIntegrityViolationClassifier;
     this.entryIntegrityConciliationService = entryIntegrityConciliationService;
+    this.heavyCryptoGate = heavyCryptoGate;
+    this.windowCapProperties = windowCapProperties;
   }
 
   /**
@@ -242,9 +252,12 @@ public class AuditLifecycleService {
 
     validateSealableCheckpoints(checkpoints);
 
-    // Pre-flight: verify chain integrity for the derived period before sealing
+    // Pre-flight: verify chain integrity for the derived period before sealing.
+    // #781 / Christophe m1: sync HTTP path — sync window cap (8-day default), not async 92-day.
+    // Lifecycle scheduler auto-seal does not call verifyChain (see autoSealEligibleCheckpoints).
+    windowCapProperties.validateSyncWindow(periodStart, periodEnd);
     AuditChainVerificationService.ChainVerificationReport verificationReport =
-        chainVerificationService.verifyChain(periodStart, periodEnd);
+        withHeavyCryptoGate(() -> chainVerificationService.verifyChain(periodStart, periodEnd));
 
     if (!verificationReport.intact()) {
       throw new IllegalStateException(
@@ -479,13 +492,12 @@ public class AuditLifecycleService {
       anchor =
           checkpointRepository
               .findById(request.anchorCheckpointId())
-              .orElseThrow(
-                  () ->
-                      new IllegalArgumentException(
-                          "anchorCheckpointId "
-                              + request.anchorCheckpointId()
-                              + " not found. Provide the checkpoint_id of the last checkpoint "
-                              + "recorded before the downtime."));
+              .orElseThrow(() ->
+                  new IllegalArgumentException(
+                      "anchorCheckpointId "
+                          + request.anchorCheckpointId()
+                          + " not found. Provide the checkpoint_id of the last checkpoint "
+                          + "recorded before the downtime."));
       gapStart = anchor.getWindowEnd();
       logger.info(
           "Anchor checkpoint id={} resolved: gapStart derived as {}",
@@ -863,10 +875,9 @@ public class AuditLifecycleService {
       AuditLog entry =
           auditLogRepository
               .findById(auditLogId)
-              .orElseThrow(
-                  () ->
-                      new IllegalArgumentException(
-                          "Audit log id " + auditLogId + " not found for entry conciliation."));
+              .orElseThrow(() ->
+                  new IllegalArgumentException(
+                      "Audit log id " + auditLogId + " not found for entry conciliation."));
       String violationReason =
           entry.getEntryHmac() == null
               ? EntryHmacViolationCollector.REASON_MISSING_ENTRY_HMAC
@@ -919,10 +930,8 @@ public class AuditLifecycleService {
       Alert alert =
           alertService
               .findById(request.alertId())
-              .orElseThrow(
-                  () ->
-                      new IllegalArgumentException(
-                          "Alert id " + request.alertId() + " not found."));
+              .orElseThrow(() ->
+                  new IllegalArgumentException("Alert id " + request.alertId() + " not found."));
       if (alert.getStatus() != AlertStatus.OPEN) {
         throw new IllegalArgumentException(
             "Alert id " + request.alertId() + " is not OPEN (status=" + alert.getStatus() + ").");
@@ -931,10 +940,9 @@ public class AuditLifecycleService {
     }
     return alertService
         .findOpenByDedupeKey(request.dedupeKey())
-        .orElseThrow(
-            () ->
-                new IllegalArgumentException(
-                    "No OPEN alert found for dedupeKey " + request.dedupeKey() + "."));
+        .orElseThrow(() ->
+            new IllegalArgumentException(
+                "No OPEN alert found for dedupeKey " + request.dedupeKey() + "."));
   }
 
   private void validateIntegrityRuptureAlert(
@@ -1109,10 +1117,9 @@ public class AuditLifecycleService {
     return checkpointRepository
         .findFirstAfter(anchorWindowEnd)
         .map(AuditChainCheckpoint::getWindowStart)
-        .orElseGet(
-            () ->
-                AuditChainScheduler.roundDownToWindow(
-                    OffsetDateTime.now(ZoneOffset.UTC), chainProperties.getWindowMinutes()));
+        .orElseGet(() ->
+            AuditChainScheduler.roundDownToWindow(
+                OffsetDateTime.now(ZoneOffset.UTC), chainProperties.getWindowMinutes()));
   }
 
   /** Counts audit log entries whose createdAt falls within the given range. */
@@ -1123,6 +1130,29 @@ public class AuditLifecycleService {
                 cb.greaterThanOrEqualTo(root.get("createdAt"), from),
                 cb.lessThan(root.get("createdAt"), to));
     return auditLogRepository.count(spec);
+  }
+
+  /**
+   * Runs seal-archive pre-verification under the process-local heavy crypto gate (#781).
+   *
+   * <p>Uses {@link IntegrityHeavyCryptoGate.Holder#SEAL_ARCHIVE} (not {@code REPORT_GET}) so busy
+   * responses identify this sync HTTP path. The lifecycle scheduler ({@link
+   * #autoSealEligibleCheckpoints}) does not enter this gate and does not call {@code verifyChain}.
+   *
+   * @param <T> result type
+   * @param action verify work
+   * @return action result
+   * @throws IntegrityAsyncJobBusyException when the gate is already held (HTTP 409)
+   */
+  private <T> T withHeavyCryptoGate(Supplier<T> action) {
+    if (!heavyCryptoGate.tryEnter(IntegrityHeavyCryptoGate.Holder.SEAL_ARCHIVE)) {
+      throw IntegrityAsyncJobBusyException.forHeavyCryptoBusy(heavyCryptoGate.holder());
+    }
+    try {
+      return action.get();
+    } finally {
+      heavyCryptoGate.exit(IntegrityHeavyCryptoGate.Holder.SEAL_ARCHIVE);
+    }
   }
 
   /**

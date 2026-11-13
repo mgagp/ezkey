@@ -13,6 +13,8 @@ The mobile app verifies **integration** signatures with **Ed25519** (`Integratio
 
 **Decision record:** [ADR-0006](../product-docs/global/architecture-decisions.md#adr-0006-dual-signing-algorithms-device-ec-p256-integration-ed25519) (why device and integration use different algorithms).
 
+**Post-quantum posture:** both device EC P-256 and integration Ed25519 are pre-quantum (Shor). Do not read this guide as a post-quantum resistance claim; honest-claims canon lives in [`SECURITY_POSTURE.md`](SECURITY_POSTURE.md); evolution map and watch list in [`V-2026-09-15-post-quantum-crypto-posture`](../product-docs/global/vision/V-2026-09-15-post-quantum-crypto-posture.md).
+
 ## Device: EC P-256 (secp256r1)
 
 ### Key generation
@@ -21,7 +23,7 @@ The mobile app verifies **integration** signatures with **Ed25519** (`Integratio
 - **Private key**: PKCS#8 DER, standard Base64.
 - **Public key**: X.509 SubjectPublicKeyInfo (SPKI), standard Base64.
 - **Signature**: `SHA256withECDSA`, ASN.1 DER, standard Base64.
-- **Mobile**: In the current Android implementation, keys live in Android Keystore with StrongBox requested when available. Private key material is not exposed to application code. iOS secure-hardware integration should be documented conservatively until the native path reaches feature parity.
+- **Mobile**: In the current Android implementation, keys live in Android Keystore with StrongBox requested when available. Private key material is not exposed to application code. On iOS, `EzkeyCryptoModule` (Swift, CryptoKit) uses the same wire formats and requests a Secure Enclave key on devices (software key, tier `NONE`, on the simulator); Secure Enclave behaviour on a physical iPhone is not yet verified, so describe iOS hardware protection conservatively.
 
 **`devicePrivateKeyStorageTier` (enrollment verify):** The wire value `NONE` / `STANDARD` / `STRONG` is **client-reported metadata**. The Auth API does **not** validate Android Key Attestation or any hardware attestation chain; the backend stores what the app sends. A well-behaved Android client derives the tier from `KeyInfo` (and requested StrongBox at generation time) per `docs/MOBILE_DEVELOPER_GUIDE.md` — but that remains **trust in the client**, not a server-proven property. Do not describe Admin-visible tier as “verified StrongBox” unless a future protocol adds attestation or equivalent verification.
 

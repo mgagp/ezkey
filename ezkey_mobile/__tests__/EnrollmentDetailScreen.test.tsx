@@ -8,7 +8,7 @@
  */
 
 import React from 'react';
-import {Text} from 'react-native';
+import {AccessibilityInfo, Text} from 'react-native';
 import renderer from 'react-test-renderer';
 import {EnrollmentDetailScreen} from '../app/screens/EnrollmentDetail';
 import {
@@ -17,6 +17,8 @@ import {
   useMarkEnrollmentPendingChecked,
 } from '../app/hooks/useEnrollments';
 import {claimPendingAttempt} from '../app/services/pendingAuth/claimPendingAttempt';
+import {useEnrollmentStore} from '../app/state/enrollmentStore';
+import {getByRole} from '../test-utils/a11yQueries';
 
 jest.mock('../app/hooks/useEnrollments', () => ({
   useEnrollments: jest.fn(),
@@ -78,7 +80,32 @@ function renderDetail() {
   return {navigation, route};
 }
 
+const mountedTrees: renderer.ReactTestRenderer[] = [];
+
+async function renderScreen(
+  navigation: ReturnType<typeof renderDetail>['navigation'],
+  route: ReturnType<typeof renderDetail>['route'],
+): Promise<renderer.ReactTestRenderer> {
+  let tree!: renderer.ReactTestRenderer;
+  await renderer.act(async () => {
+    tree = renderer.create(
+      <EnrollmentDetailScreen navigation={navigation as never} route={route as never} />,
+    );
+  });
+  mountedTrees.push(tree);
+  return tree;
+}
+
 describe('EnrollmentDetailScreen', () => {
+  afterEach(() => {
+    renderer.act(() => {
+      while (mountedTrees.length > 0) {
+        mountedTrees.pop()?.unmount();
+      }
+      useEnrollmentStore.getState().clear();
+    });
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockUseDeleteEnrollment.mockReturnValue({isPending: false, mutate: jest.fn()} as never);
@@ -94,12 +121,7 @@ describe('EnrollmentDetailScreen', () => {
 
   it('shows Check pending for a healthy enrollment', async () => {
     const {navigation, route} = renderDetail();
-    let tree: renderer.ReactTestRenderer;
-    await renderer.act(async () => {
-      tree = renderer.create(
-        <EnrollmentDetailScreen navigation={navigation as never} route={route as never} />,
-      );
-    });
+    const tree = await renderScreen(navigation, route);
 
     expect(
       tree!.root.findAll(node => node.props.testID === 'ezkey.e2e.enrollmentDetail.checkPending')
@@ -107,15 +129,100 @@ describe('EnrollmentDetailScreen', () => {
     ).toBeGreaterThan(0);
   });
 
+  it('shows enrollment as hero and omits URL, created date, and host hint when branded', async () => {
+    const {navigation, route} = renderDetail();
+    const tree = await renderScreen(navigation, route);
+
+    expect(
+      tree!.root.find(node => node.props.testID === 'ezkey.e2e.enrollmentDetail.hero').props
+        .children,
+    ).toBe('Pixel 7 Pro');
+    expect(
+      tree!.root.findAll(node => node.props.testID === 'ezkey.e2e.enrollmentDetail.hostHint')
+        .length,
+    ).toBe(0);
+
+    const textContent = tree!.root
+      .findAllByType(Text)
+      .map(node => node.props.children)
+      .flat()
+      .join(' ');
+    expect(textContent).toContain('Admin Console');
+    expect(textContent).toContain('Tenant Red');
+    expect(textContent).toContain('Acme EU');
+    expect(textContent).not.toContain('https://auth.acme.example');
+    expect(textContent).not.toContain('Created');
+  });
+
+  it('shows a host hint when installation branding fell back to the host', async () => {
+    mockUseEnrollments.mockReturnValue({
+      data: {
+        enrollments: [
+          {
+            ...healthyEnrollment,
+            integrationName: 'auth-api.ezkey.online',
+            tenantName: 'auth-api.ezkey.online',
+            installation: {
+              id: 'https://auth-api.ezkey.online',
+              authUrl: 'https://auth-api.ezkey.online',
+              name: 'auth-api.ezkey.online',
+              host: 'auth-api.ezkey.online',
+            },
+          },
+        ],
+        broken: [],
+        collectionError: false,
+      },
+      isLoading: false,
+      refetch: jest.fn(),
+    } as never);
+
+    const {navigation, route} = renderDetail();
+    const tree = await renderScreen(navigation, route);
+
+    expect(
+      tree!.root.findAll(node => node.props.testID === 'ezkey.e2e.enrollmentDetail.hostHint')
+        .length,
+    ).toBeGreaterThan(0);
+    const textContent = tree!.root
+      .findAllByType(Text)
+      .map(node => node.props.children)
+      .flat()
+      .join(' ');
+    expect(textContent).toContain('auth-api.ezkey.online');
+    expect(textContent).not.toContain('https://auth-api.ezkey.online');
+  });
+
+  it('shows latest response as status, not the stored title', async () => {
+    await renderer.act(async () => {
+      useEnrollmentStore.getState().setRecentAuthResult(enrollmentId, {
+        status: 'approved',
+        title: 'Unicorn Farm',
+        message: 'Auth attempt completed',
+        completedAt: '2026-09-15T12:00:00.000Z',
+      });
+    });
+
+    const {navigation, route} = renderDetail();
+    const tree = await renderScreen(navigation, route);
+
+    expect(
+      tree!.root.find(node => node.props.testID === 'ezkey.e2e.enrollmentDetail.recentActionStatus')
+        .props.children,
+    ).toBe('Approved');
+    const textContent = tree!.root
+      .findAllByType(Text)
+      .map(node => node.props.children)
+      .flat()
+      .join(' ');
+    expect(textContent).not.toContain('Unicorn Farm');
+    expect(textContent).not.toContain('Auth attempt completed');
+  });
+
   it('navigates to PendingAuth when claim returns an attempt', async () => {
     mockClaimPendingAttempt.mockResolvedValue({kind: 'attempt', attempt: pendingAttempt});
     const {navigation, route} = renderDetail();
-    let tree: renderer.ReactTestRenderer;
-    await renderer.act(async () => {
-      tree = renderer.create(
-        <EnrollmentDetailScreen navigation={navigation as never} route={route as never} />,
-      );
-    });
+    const tree = await renderScreen(navigation, route);
 
     const checkPending = tree!.root.find(
       node => node.props.testID === 'ezkey.e2e.enrollmentDetail.checkPending',
@@ -134,12 +241,7 @@ describe('EnrollmentDetailScreen', () => {
   it('stays on Detail with feedback when there is no pending attempt', async () => {
     mockClaimPendingAttempt.mockResolvedValue({kind: 'none'});
     const {navigation, route} = renderDetail();
-    let tree: renderer.ReactTestRenderer;
-    await renderer.act(async () => {
-      tree = renderer.create(
-        <EnrollmentDetailScreen navigation={navigation as never} route={route as never} />,
-      );
-    });
+    const tree = await renderScreen(navigation, route);
 
     const checkPending = tree!.root.find(
       node => node.props.testID === 'ezkey.e2e.enrollmentDetail.checkPending',
@@ -158,18 +260,56 @@ describe('EnrollmentDetailScreen', () => {
     expect(textContent).toContain('No pending requests');
   });
 
+  it('exposes Check pending as a button and announces the no-pending feedback', async () => {
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    mockClaimPendingAttempt.mockResolvedValue({kind: 'none'});
+    const {navigation, route} = renderDetail();
+    const tree = await renderScreen(navigation, route);
+
+    expect(getByRole(tree.root, 'button', 'Check pending')).toBeDefined();
+    expect(announce).not.toHaveBeenCalled();
+
+    const checkPending = tree.root.find(
+      node => node.props.testID === 'ezkey.e2e.enrollmentDetail.checkPending',
+    );
+    await renderer.act(async () => {
+      await checkPending.props.onPress();
+    });
+
+    expect(announce).toHaveBeenCalledWith('No pending requests');
+    announce.mockRestore();
+  });
+
+  it('announces a new response result but not the one present on open', async () => {
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    renderer.act(() => {
+      useEnrollmentStore.getState().setRecentAuthResult(enrollmentId, {
+        status: 'approved',
+        completedAt: '2026-11-02T10:00:00.000Z',
+      } as never);
+    });
+    const {navigation, route} = renderDetail();
+    await renderScreen(navigation, route);
+    expect(announce).not.toHaveBeenCalled();
+
+    await renderer.act(async () => {
+      useEnrollmentStore.getState().setRecentAuthResult(enrollmentId, {
+        status: 'rejected',
+        completedAt: '2026-11-02T10:05:00.000Z',
+      } as never);
+    });
+
+    expect(announce).toHaveBeenCalledWith('Rejected');
+    announce.mockRestore();
+  });
+
   it('stays on Detail with feedback when claim fails closed', async () => {
     mockClaimPendingAttempt.mockResolvedValue({
       kind: 'fail_closed',
       reason: 'invalid_pending_signature',
     });
     const {navigation, route} = renderDetail();
-    let tree: renderer.ReactTestRenderer;
-    await renderer.act(async () => {
-      tree = renderer.create(
-        <EnrollmentDetailScreen navigation={navigation as never} route={route as never} />,
-      );
-    });
+    const tree = await renderScreen(navigation, route);
 
     const checkPending = tree!.root.find(
       node => node.props.testID === 'ezkey.e2e.enrollmentDetail.checkPending',
@@ -206,12 +346,7 @@ describe('EnrollmentDetailScreen', () => {
     } as never);
 
     const {navigation, route} = renderDetail();
-    let tree: renderer.ReactTestRenderer;
-    await renderer.act(async () => {
-      tree = renderer.create(
-        <EnrollmentDetailScreen navigation={navigation as never} route={route as never} />,
-      );
-    });
+    const tree = await renderScreen(navigation, route);
 
     expect(
       tree!.root.findAll(node => node.props.testID === 'ezkey.e2e.enrollmentDetail.unusable').length,

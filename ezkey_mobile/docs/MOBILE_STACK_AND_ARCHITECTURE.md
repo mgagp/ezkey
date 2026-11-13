@@ -14,7 +14,8 @@ screen-by-screen behavior already covered by the flow and mapping documents.
 
 | Concern | Technology | Why it is used | Notes |
 | --- | --- | --- | --- |
-| Runtime UI | React Native 0.86.2 | Shared iOS/Android UI codebase | Current Active 0.86 patch. 0.87 is a later program (Node 22, AGP 9, Strict TS API), not this baseline. |
+| Android JDK | **JDK 17** (Temurin in CI; `scripts/resolve-android-jdk.sh` locally) | Matches the RN/Android community baseline most developers still use | RN/AGP also allow 21; **project migration to JDK 21 is a separate decision**. No Gradle daemon JVM Foojay auto-download (`gradle-daemon-jvm.properties` must stay absent — CI `assert-no-gradle-daemon-jvm.sh`; `org.gradle.java.installations.auto-download=false`). Override: `EZKEY_ANDROID_JAVA_HOME`. |
+| Runtime UI | React Native 0.87.1 | Shared iOS/Android UI codebase | Current workspace baseline (Gradle 9.4.1 / AGP 9.2.1 / NDK 28). |
 | React runtime | React 19.2.7 | Rendering model used by the current workspace manifest | Keep React and React Native versions aligned with `package.json` and the RN-renderer constraint. |
 | Language | TypeScript | Typed mobile domain and service layer | Thin wrapper types sit above generated DTOs. |
 | Navigation | React Navigation stack | Simple screen-to-screen mobile flow control | Current stack includes Home, Enrollment, Pending, and supporting screens. |
@@ -25,7 +26,7 @@ screen-by-screen behavior already covered by the flow and mapping documents.
 | Durable metadata storage | AsyncStorage-backed enrollment metadata collection and preferences | Persist local enrollment metadata, installation metadata, and language preference | Wrapped by `enrollmentStorage` and preference-specific storage facades. |
 | Secure item storage | `react-native-keychain` wrapper | Device-local secure storage for small secret values such as enrollment proof tokens | Used by `enrollmentStorage` as the secure delegate; private key path remains native. |
 | Device crypto | Native bridge (`EzkeyCryptoModule`) | Key generation, signing, public key retrieval, proof token generation | Android path is the current reference-strength implementation. |
-| QR capture | Vision Camera 5 + `react-native-vision-camera-barcode-scanner` (ML Kit) | QR-first enrollment via `useBarcodeScannerOutput` | Android-first reference; iOS uses same ML Kit path. |
+| QR capture | Vision Camera 5 (Android: `react-native-vision-camera-barcode-scanner` / ML Kit; iOS: native `useObjectOutput` / AVFoundation) | QR-first enrollment via platform hook `useEnrollmentCodeOutput` | ML Kit is not linked on iOS (no arm64 simulator slice); see `IOS_SETUP.md`. |
 | Testing | Jest; Maestro for real-device pilot | Unit/component coverage plus optional device flows | Layer contract: [`MOBILE_TEST_STRATEGY.md`](MOBILE_TEST_STRATEGY.md). Native instrumented crypto tests are separate (`yarn android:test:instrumented:crypto`). |
 
 ## Stack modernization program (2026-05-29)
@@ -48,9 +49,9 @@ holds the S01–S23 session inventory.
 Async Storage 3.x, Vision Camera 5 + `react-native-vision-camera-barcode-scanner`, ESLint 9 flat config.
 Device smoke PASS (Pixel 7 Pro). Maestro deferred on this branch.
 
-**Current workspace baseline (2026-08):** React Native `0.86.2` + aligned `@react-native/*` `0.86.2`,
-React `19.2.7`, CLI `20.2.0`. The 0.85.x program above is historical. Stay on the 0.86 Active line
-until a dedicated 0.87 program is opened.
+**Current workspace baseline (2026-10):** React Native `0.87.1` + aligned `@react-native/*`,
+React `19.3.0`, Gradle 9.4.1 / AGP 9.2.1 / NDK 28, Android JDK **17** (project standard). The 0.85.x /
+0.86.x notes above are historical.
 
 ## Runtime Architecture at a Glance
 
@@ -100,7 +101,7 @@ does **not** use the enrollment private key itself to unwrap all other local sec
 | `app/services/crypto` | Native crypto abstraction and payload helpers | Owns device signing, verification, and payload construction. |
 | `app/utils` | Focused derivation logic and formatting helpers | Installation metadata normalization, tenant grouping, proof token generation, URL validation. |
 | `android` | Android native project | Current reference-strength native crypto path (`org.ezkey.mobile.crypto`). QR enrollment uses Vision Camera + ML Kit from JS. |
-| `ios` | iOS native project | Native parity is in progress and documented conservatively. |
+| `ios` | iOS native project | Clean RN 0.88.1 scaffold (ADR-MOB-0005), iOS 15.5+; native parity in progress — see `IOS_SETUP.md`. |
 | `docs` | Mobile-specific documentation | Primary conceptual corpus plus supporting technical and operational notes. |
 
 ## Data Flow Across UI, Hooks, API, Storage, and Native Crypto
@@ -143,7 +144,7 @@ it is responsible for, but the backend remains authoritative for state transitio
 
 | Step | Source | Artifact | Owner rule |
 | --- | --- | --- | --- |
-| Auth API contract refresh | Root scripts `scripts/update-specs.*` | `ezkey_mobile/openapi-spec.json` | Never hand-edit the local spec copy. |
+| Auth API contract refresh | Root scripts `scripts/update-specs.*` | `specs/auth-api/openapi-spec.json` (Orval reads this path; no local copy — #833) | Never hand-edit the canonical spec. |
 | Client regeneration | Local mobile command `yarn generate:api` | Generated client and generated models | Run after spec refresh only. |
 | Mobile wrapper typing | `app/services/api/types.ts` | Thin local types | Keep thin; do not build a second hand-maintained contract universe. |
 | API facade layer | `app/services/api/*.ts` | Mobile-friendly bind/verify/pending/respond helpers | Owns serialization details and optional per-enrollment base URL routing. |
@@ -151,7 +152,7 @@ it is responsible for, but the backend remains authoritative for state transitio
 Warnings:
 
 - The generated models are the DTO source of truth for Auth API request and response shapes.
-- The local `openapi-spec.json` is versioned for reproducibility, but it is still refreshed only through the root workflow.
+- The Auth OpenAPI contract is the monorepo `specs/auth-api/openapi-spec.json`, refreshed only through the root workflow (#833).
 - Mobile conceptual docs should map the contract, not restate the entire contract canonically.
 
 ## Architecture Decisions and Non-Goals

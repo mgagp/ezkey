@@ -19,18 +19,23 @@ From the repository root in **Git Bash** (Windows, Linux, macOS):
 
 Diagnostics only: `./scripts/build.sh --diagnose-only`
 
+On a **fresh clone** (empty `~/.m2`), that is also the first command — not a bare `mvn checkstyle:check`.
+The plugin depends on unpublished `org.ezkey:checkstyle-config`; the script installs it first.
+Canonical human/agent notes: [`docs/DEVELOPMENT.md`](../../docs/DEVELOPMENT.md) § *First clone on a new workstation*.
+
 [`scripts/build.sh`](../../scripts/build.sh) runs the full baseline:
 
 1. `mvn spotless:apply`
-2. `mvn checkstyle:check`
-3. `mvn clean`
-4. `mvn install -DskipTests`
-5. `mvn test -pl '!ezkey-tests'`
+2. `mvn -pl checkstyle-config install -DskipTests` (fresh `~/.m2` bootstrap)
+3. `mvn checkstyle:check`
+4. `mvn clean`
+5. `mvn install -DskipTests`
+6. `mvn test -pl '!ezkey-tests'`
 
 It auto-detects the canonical JDK 25 path on the maintainer Windows workstation when `JAVA_HOME` is
-unset. On Linux and macOS, set `JAVA_HOME` to JDK 25 or ensure `java` and `mvn` on `PATH` match
-the repo requirement (see [`jdk-25-windows-workstation.mdc`](jdk-25-windows-workstation.mdc) for
-the Windows canonical install path).
+unset, and SDKMAN's `~/.sdkman/candidates/java/current` on macOS/Linux. On Linux and macOS, set
+`JAVA_HOME` to JDK 25 or ensure `java` and `mvn` on `PATH` match the repo requirement (see
+[`jdk-25-windows-workstation.mdc`](jdk-25-windows-workstation.mdc) for the Windows canonical install path).
 
 **Do not** add or rely on `.cmd` / `.bat` build wrappers — Bash is the portable contract.
 

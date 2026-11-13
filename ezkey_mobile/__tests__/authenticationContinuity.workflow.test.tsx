@@ -73,6 +73,7 @@ import React from 'react';
 import renderer from 'react-test-renderer';
 import {EnrollmentDetailScreen} from '../app/screens/EnrollmentDetail';
 import {PendingAuthScreen} from '../app/screens/PendingAuth';
+import {getByRole} from '../test-utils/a11yQueries';
 import {
   useDeleteEnrollment,
   useEnrollmentById,
@@ -215,6 +216,10 @@ describe('authentication continuity (pending linked to respond)', () => {
       navigate: jest.fn(),
       goBack: jest.fn(),
       canGoBack: jest.fn().mockReturnValue(true),
+      // PendingAuthScreen registers beforeRemove → Auth API deny on leave (#831).
+      isFocused: jest.fn(() => true),
+      addListener: jest.fn(() => jest.fn()),
+      dispatch: jest.fn(),
     };
     const pendingRoute = {
       key: 'PendingAuth-key',
@@ -231,6 +236,10 @@ describe('authentication continuity (pending linked to respond)', () => {
     await renderer.act(async () => {
       pendingTree = renderer.create(<PendingAuthScreen {...pendingProps} />);
     });
+
+    // TalkBack must hear "Approve, button" / "Deny, button" (#1155).
+    expect(getByRole(pendingTree!.root, 'button', 'Approve')).toBeDefined();
+    expect(getByRole(pendingTree!.root, 'button', 'Deny')).toBeDefined();
 
     const approve = pendingTree!.root.find(
       node => node.props.testID === 'ezkey.e2e.pendingAuth.approve',
@@ -255,12 +264,167 @@ describe('authentication continuity (pending linked to respond)', () => {
     expect(pendingNavigation.goBack).toHaveBeenCalledTimes(1);
   });
 
+  it('does not send leave-deny while approve respond is in flight (#833 m2)', async () => {
+    let resolveRespond!: (value: {
+      authAttemptId: number;
+      authAttemptResult: 'APPROVED';
+      authAttemptMessage: string;
+      authAttemptProofTokenResultSignedByIntegration: string;
+    }) => void;
+    mockAuthAttemptsApi.respond.mockImplementation(
+      () =>
+        new Promise(resolve => {
+          resolveRespond = resolve as typeof resolveRespond;
+        }),
+    );
+
+    const beforeRemoveHandlers: Array<(e: {preventDefault: () => void; data: {action: unknown}}) => void> =
+      [];
+    const pendingNavigation = {
+      navigate: jest.fn(),
+      goBack: jest.fn(),
+      canGoBack: jest.fn().mockReturnValue(true),
+      isFocused: jest.fn(() => true),
+      addListener: jest.fn((event: string, handler: (e: never) => void) => {
+        if (event === 'beforeRemove') {
+          beforeRemoveHandlers.push(handler as never);
+        }
+        return jest.fn();
+      }),
+      dispatch: jest.fn(),
+    };
+    const pendingRoute = {
+      key: 'PendingAuth-key',
+      name: 'PendingAuth' as const,
+      params: {enrollmentId, initialAttempt: pendingAttempt},
+    };
+
+    let pendingTree: renderer.ReactTestRenderer;
+    await renderer.act(async () => {
+      pendingTree = renderer.create(
+        <PendingAuthScreen
+          navigation={pendingNavigation as never}
+          route={pendingRoute as never}
+        />,
+      );
+    });
+
+    const approve = pendingTree!.root.find(
+      node => node.props.testID === 'ezkey.e2e.pendingAuth.approve',
+    );
+    // Start approve but leave respond hanging (in-flight).
+    await renderer.act(async () => {
+      // Fire-and-forget: respond() is intentionally left unresolved below.
+      approve.props.onPress();
+    });
+    // Allow microtasks up to the hung respond() call.
+    await renderer.act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mockAuthAttemptsApi.respond).toHaveBeenCalledTimes(1);
+    expect(beforeRemoveHandlers.length).toBeGreaterThan(0);
+
+    const preventDefault = jest.fn();
+    await renderer.act(async () => {
+      beforeRemoveHandlers[0]!({
+        preventDefault,
+        data: {action: {type: 'GO_BACK'}},
+      });
+      await Promise.resolve();
+    });
+
+    // Leave must not start a second respond(false) while approve is in flight.
+    expect(preventDefault).not.toHaveBeenCalled();
+    expect(mockAuthAttemptsApi.respond).toHaveBeenCalledTimes(1);
+    expect(mockAuthAttemptsApi.respond).toHaveBeenCalledWith(
+      expect.objectContaining({authAttemptAccepted: true, authAttemptId: '42'}),
+      'https://auth.example.com',
+    );
+
+    await renderer.act(async () => {
+      resolveRespond({
+        authAttemptId: 42,
+        authAttemptResult: 'APPROVED',
+        authAttemptMessage: 'Approved',
+        authAttemptProofTokenResultSignedByIntegration: 'respond-result-sig',
+      });
+      await Promise.resolve();
+    });
+  });
+
+  it('keeps Approve disabled until the 2-digit challenge is complete, then approves in one press (#1082)', async () => {
+    const challengeAttempt = {...pendingAttempt, challengeRequired: true};
+    const pendingNavigation = {
+      navigate: jest.fn(),
+      goBack: jest.fn(),
+      canGoBack: jest.fn().mockReturnValue(true),
+      isFocused: jest.fn(() => true),
+      addListener: jest.fn(() => jest.fn()),
+      dispatch: jest.fn(),
+    };
+    const pendingRoute = {
+      key: 'PendingAuth-key',
+      name: 'PendingAuth' as const,
+      params: {enrollmentId, initialAttempt: challengeAttempt},
+    };
+
+    let pendingTree: renderer.ReactTestRenderer;
+    await renderer.act(async () => {
+      pendingTree = renderer.create(
+        <PendingAuthScreen
+          navigation={pendingNavigation as never}
+          route={pendingRoute as never}
+        />,
+      );
+    });
+
+    const findApprove = () =>
+      pendingTree!.root.find(node => node.props.testID === 'ezkey.e2e.pendingAuth.approve');
+    const findDeny = () =>
+      pendingTree!.root.find(node => node.props.testID === 'ezkey.e2e.pendingAuth.deny');
+    const typeChallenge = async (text: string) => {
+      const input = pendingTree!.root.find(
+        node => node.props.keyboardType === 'number-pad' && node.props.onChangeText != null,
+      );
+      await renderer.act(async () => {
+        input.props.onChangeText(text);
+      });
+    };
+
+    expect(findApprove().props.disabled).toBe(true);
+    expect(findDeny().props.disabled).toBe(false);
+
+    await typeChallenge('4');
+    expect(findApprove().props.disabled).toBe(true);
+
+    await typeChallenge('42');
+    expect(findApprove().props.disabled).toBe(false);
+
+    await renderer.act(async () => {
+      await findApprove().props.onPress();
+    });
+
+    expect(mockAuthAttemptsApi.respond).toHaveBeenCalledTimes(1);
+    expect(mockAuthAttemptsApi.respond).toHaveBeenCalledWith(
+      expect.objectContaining({
+        authAttemptAccepted: true,
+        authAttemptChallengeResponse: '42',
+      }),
+      'https://auth.example.com',
+    );
+  });
+
   it('does not record a trusted outcome when the respond-result signature is invalid', async () => {
     mockCryptoService.verify.mockResolvedValue(false);
     const pendingNavigation = {
       navigate: jest.fn(),
       goBack: jest.fn(),
       canGoBack: jest.fn().mockReturnValue(true),
+      isFocused: jest.fn(() => true),
+      addListener: jest.fn(() => jest.fn()),
+      dispatch: jest.fn(),
     };
     const pendingRoute = {
       key: 'PendingAuth-key',

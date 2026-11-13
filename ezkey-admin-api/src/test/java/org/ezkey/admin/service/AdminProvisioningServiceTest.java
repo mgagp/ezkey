@@ -10,9 +10,11 @@
 
 package org.ezkey.admin.service;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -28,6 +30,9 @@ import org.ezkey.admin.dto.request.AdminUpdateRequestDto;
 import org.ezkey.admin.exception.AdminLimitException;
 import org.ezkey.admin.exception.AdminNotAllowedException;
 import org.ezkey.admin.security.AdminPrincipal;
+import org.ezkey.admin.service.AdminProvisioningService.OnboardingCredentialsResult;
+import org.ezkey.enrollment.domain.EnrollmentStatus;
+import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
@@ -43,6 +48,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -694,11 +701,34 @@ class AdminProvisioningServiceTest {
           service.issueInitialRecoveryCodes(2, principal);
 
       assertEquals(0, result.previousCodesCount());
+      assertFalse(result.previousSetExhausted());
       assertEquals(tenantAdmin1, result.admin());
       assertEquals(recoveryCodes.getPlainCodes(), result.recoveryCodes());
       verify(adminRepository).findById(2);
       verify(adminRepository).save(tenantAdmin1);
       verify(recoveryService).generateRecoveryCodes();
+    }
+
+    @Test
+    @DisplayName("Issuing codes after every previous code was used reports an exhausted set")
+    void issueRecoveryCodesAfterExhaustedSetReportsPreviousSetExhausted() {
+      AdminPrincipal principal = new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null);
+      tenantAdmin1.setRecoveryCodes(new String[0]);
+      tenantAdmin1.setLastLoginAt(java.time.OffsetDateTime.now());
+
+      AdminRecoveryService.RecoveryCodesResult recoveryCodes =
+          new AdminRecoveryService.RecoveryCodesResult(
+              List.of("1111-2222-3333-4444-5555-6666-7777-8888"), List.of("$2a$10$newHash"));
+
+      when(adminRepository.findById(2)).thenReturn(java.util.Optional.of(tenantAdmin1));
+      when(recoveryService.generateRecoveryCodes()).thenReturn(recoveryCodes);
+
+      AdminProvisioningService.RecoveryCodesRegenerationResult result =
+          service.issueInitialRecoveryCodes(2, principal);
+
+      assertEquals(0, result.previousCodesCount());
+      assertTrue(result.previousSetExhausted());
+      assertArrayEquals(new String[] {"$2a$10$newHash"}, tenantAdmin1.getRecoveryCodes());
     }
 
     @Test
@@ -763,6 +793,59 @@ class AdminProvisioningServiceTest {
           "No recovery codes exist yet for this administrator; use initial issuance instead",
           exception.getMessage());
       verify(recoveryService, org.mockito.Mockito.never()).rotateRecoveryCodes(any());
+    }
+  }
+
+  @Nested
+  @DisplayName("Get Admin Onboarding Tests (#1266)")
+  class GetAdminOnboardingTests {
+
+    private OnboardingCredentialsResult onboardingAt(EnrollmentStatus status) {
+      Enrollment enrollment = new Enrollment();
+      enrollment.setEnrollmentId(40);
+      enrollment.setEnrollmentProofToken("proof-token");
+      enrollment.setEnrollmentChallenge(654321);
+      enrollment.setStatus(status);
+      tenantAdmin1.setEnrollment(enrollment);
+      when(adminRepository.findById(2)).thenReturn(java.util.Optional.of(tenantAdmin1));
+      when(enrollmentRepository.findById(40)).thenReturn(java.util.Optional.of(enrollment));
+      return service.getAdminOnboarding(
+          2, new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null));
+    }
+
+    @Test
+    @DisplayName("CREATED returns the proof token and the challenge")
+    void createdReturnsBoth() {
+      OnboardingCredentialsResult result = onboardingAt(EnrollmentStatus.CREATED);
+
+      assertEquals(40, result.enrollmentId());
+      assertEquals("proof-token", result.enrollmentProofToken());
+      assertEquals(654321, result.enrollmentChallenge());
+    }
+
+    @Test
+    @DisplayName("BOUND returns only the challenge")
+    void boundReturnsChallengeOnly() {
+      OnboardingCredentialsResult result = onboardingAt(EnrollmentStatus.BOUND);
+
+      assertEquals(40, result.enrollmentId());
+      assertNull(result.enrollmentProofToken());
+      assertEquals(654321, result.enrollmentChallenge());
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(
+        value = EnrollmentStatus.class,
+        names = {"CREATED", "BOUND"},
+        mode = EnumSource.Mode.EXCLUDE)
+    @DisplayName("Any other status returns no bind material")
+    void otherStatusReturnsNothing(EnrollmentStatus status) {
+      OnboardingCredentialsResult result = onboardingAt(status);
+
+      assertEquals(40, result.enrollmentId());
+      assertEquals(status, result.enrollmentStatus());
+      assertNull(result.enrollmentProofToken());
+      assertNull(result.enrollmentChallenge());
     }
   }
 }

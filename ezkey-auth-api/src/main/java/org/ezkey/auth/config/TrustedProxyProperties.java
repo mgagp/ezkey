@@ -21,26 +21,22 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * Configuration properties for trusted proxy CIDR list.
  *
  * <p>When the application is behind a reverse proxy (e.g. Nginx, Caddy, Cloudflare), client IP
- * extraction for rate limiting and audit uses headers (X-Forwarded-For, X-Real-IP,
- * CF-Connecting-IP). These headers are only trusted when the direct connection to the app comes
- * from an IP in this list. This prevents clients from spoofing the header to bypass rate limits.
+ * extraction for rate limiting and audit trusts headers only when the direct connection comes from
+ * an IP in this list. Resolution walks {@code X-Forwarded-For} right-to-left (skipping trusted
+ * hops). {@code X-Real-IP} is never used. {@code CF-Connecting-IP} is used only when {@link
+ * #trustCloudflareConnectingIp} is true (OFF by default).
  *
  * <p><b>Configuration Prefix:</b> ezkey.trusted-proxies
- *
- * <p><b>Example (application.properties):</b>
- *
- * <pre>
- * ezkey.trusted-proxies[0]=10.0.0.0/8
- * ezkey.trusted-proxies[1]=172.16.0.0/12
- * </pre>
  *
  * <p><b>Example (YAML):</b>
  *
  * <pre>
  * ezkey:
  *   trusted-proxies:
- *     - 10.0.0.0/8
- *     - 172.16.0.0/12
+ *     cidrs:
+ *       - 10.0.0.0/8
+ *       - 172.16.0.0/12
+ *     trust-cloudflare-connecting-ip: false
  * </pre>
  *
  * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
@@ -61,10 +57,17 @@ public class TrustedProxyProperties {
 
   /**
    * List of CIDR blocks or single IP addresses. Connections from these IPs are considered trusted
-   * proxies; only then are X-Forwarded-For / X-Real-IP / CF-Connecting-IP used for client IP. Empty
-   * or unset means only the direct remote address is used (no header trust).
+   * proxies; only then is X-Forwarded-For walked for client IP. Empty or unset means only the
+   * direct remote address is used (no header trust).
    */
   private List<String> cidrs = new ArrayList<>();
+
+  /**
+   * When {@code true} and {@code remoteAddr} is a trusted proxy, prefer a valid {@code
+   * CF-Connecting-IP} before walking X-Forwarded-For. Default {@code false}: only enable when the
+   * immediate hop is a declared Cloudflare edge (or an edge that rewrites that header).
+   */
+  private boolean trustCloudflareConnectingIp = false;
 
   public boolean isRequired() {
     return required;
@@ -86,5 +89,13 @@ public class TrustedProxyProperties {
    */
   public void setCidrs(List<String> cidrs) {
     this.cidrs = cidrs == null ? new ArrayList<>() : new ArrayList<>(cidrs);
+  }
+
+  public boolean isTrustCloudflareConnectingIp() {
+    return trustCloudflareConnectingIp;
+  }
+
+  public void setTrustCloudflareConnectingIp(boolean trustCloudflareConnectingIp) {
+    this.trustCloudflareConnectingIp = trustCloudflareConnectingIp;
   }
 }

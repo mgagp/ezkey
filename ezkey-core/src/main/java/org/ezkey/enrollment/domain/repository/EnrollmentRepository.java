@@ -214,6 +214,20 @@ public interface EnrollmentRepository
       Integer enrollmentId, String enrollmentProofTokenHash);
 
   /**
+   * Find an enrollment by its proof-token hash.
+   *
+   * <p>Bind uses this lookup. The hash column is unique ({@code uq_enrollment_proof_token_hash}),
+   * so the token is a sufficient invitation handle. The enrollment id stays a primary key returned
+   * after the row is found (ADR-0019). Callers that need an operational enrollment should use
+   * {@link #findByEnrollmentProofTokenHashAndActive(String, Boolean)} instead.
+   *
+   * @param enrollmentProofTokenHash SHA-256 hex of the enrollment proof token
+   * @return the enrollment when the hash matches
+   * @since 2026
+   */
+  Optional<Enrollment> findByEnrollmentProofTokenHash(String enrollmentProofTokenHash);
+
+  /**
    * Find active enrollment by proof token. Used for secure enrollment identification in PENDING
    * requests.
    *

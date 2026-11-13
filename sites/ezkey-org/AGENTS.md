@@ -9,20 +9,22 @@ For repo-wide rules (Maven, Java, etc.), see **[../../AGENTS.md](../../AGENTS.md
 ## What this folder is
 
 - **Source of truth in git:** static HTML/CSS under this directory — no bundler. **English** default locale; **French** under `fr/`.
-- **API portal (first cut):** public API portal under [`api-docs.html`](api-docs.html) / [`fr/api-docs.html`](fr/api-docs.html) with per-API pages [`admin-api-reference.html`](admin-api-reference.html), [`auth-api-reference.html`](auth-api-reference.html), [`integration-api-reference.html`](integration-api-reference.html) and their French mirrors under `fr/`. Static OpenAPI JSON assets live under [`api-specs/`](api-specs/).
+- **API portal (first cut):** public API portal under [`api-docs.html`](api-docs.html) / [`fr/api-docs.html`](fr/api-docs.html) with per-API pages [`admin-api-reference.html`](admin-api-reference.html), [`auth-api-reference.html`](auth-api-reference.html), [`integration-api-reference.html`](integration-api-reference.html) and their French mirrors under `fr/`. Static OpenAPI JSON assets live under [`api-specs/`](api-specs/) as **committed physical copies** of `specs/` (refresh with `./scripts/sync-ezkey-org-api-specs.sh`; CI drift gate `./scripts/check-ezkey-org-api-specs.sh` — see [#977](https://github.com/mgagp/ezkey/issues/977)).
 - **ReDoc CE dependency posture:** use the official Redocly standalone bundle with an **explicit pinned version**, not the floating `latest` alias. Current pinned version: **`v2.5.2`**.
 - **ReDoc CE re-evaluation rule:** do **not** rotate versions on a calendar just to stay “current”. Re-evaluate only on one of three triggers: (1) security / availability / CDN-trust issue, (2) rendering or compatibility problem that affects the portal, or (3) explicit decision to revisit renderer posture (for example self-hosting or replacement). When triggered: pin explicit version -> preview -> human visual validation -> production.
 - **French API portal posture:** localize the **portal shell** (navigation, summary, guidance) in French. Do **not** hand-translate generated OpenAPI annotation text in the site pages; the detailed spec content may remain in the source-language generated artifacts unless a dedicated contract-localization effort is explicitly approved.
 - **Landing pages (compact):** [`index.html`](index.html) (en), [`fr/index.html`](fr/index.html) (fr) — hero, pillars, primary navigation, evaluation CTAs (run locally, docs, trust), and secondary links into product writing. They are **not** the archive for updates or articles.
-- **Trust / diligence (short):** [`trust.html`](trust.html) / [`fr/trust.html`](fr/trust.html) — plain-language trust model, disclosure posture, security reporting (`security@ezkey.org`), and **on-site** pointers (no public GitHub URLs while the repository stays private).
-- **Source & evaluation hub:** [`source-and-evaluation.html`](source-and-evaluation.html) / [`fr/source-and-evaluation.html`](fr/source-and-evaluation.html) — explains that Ezkey is **planned** as MIT open source but the **main repository is private** until the scheduled public opening; anchors `#documentation` and `#run-locally` are the nav targets for **Docs** / **Run locally**.
+- **Trust / diligence (short):** [`trust.html`](trust.html) / [`fr/trust.html`](fr/trust.html) — plain-language trust model, disclosure posture, security reporting (`security@ezkey.org`), and pointers to the **public** GitHub repository plus on-site evaluation pages.
+- **Source & evaluation hub:** [`source-and-evaluation.html`](source-and-evaluation.html) / [`fr/source-and-evaluation.html`](fr/source-and-evaluation.html) — public MIT repo (`https://github.com/mgagp/ezkey`), alpha status, docs and **Run locally** (clean-start); anchors `#documentation` and `#run-locally` are the nav targets for **Docs** / **Run locally**.
 - **Monthly digests (reverse chronological):** [`monthly-digest.html`](monthly-digest.html) / [`fr/monthly-digest.html`](fr/monthly-digest.html) — distilled month-by-month activity from Git history; optional type pill on legacy index-only entries. Full months link to detail pages (`monthly-digest-YYYY-MM.html`). Cross-links to the changelog for future versioned release notes.
-- **Guides & walkthroughs hub:** [`guides.html`](guides.html) / [`fr/guides.html`](fr/guides.html) — dedicated hub for evaluator-oriented step-by-step content (exp1 guided tour, upcoming guides). Linked from the primary nav as **Guides**.
-- **Articles & notes index:** [`articles.html`](articles.html) / [`fr/articles.html`](fr/articles.html) — two labeled sections: **About Ezkey** (product-explaining content, newest first) and **Craft & engineering** (independent essays, newest first). No longer contains a guides lane.
+- **Guides & walkthroughs hub:** [`guides.html`](guides.html) / [`fr/guides.html`](fr/guides.html) — dedicated hub for evaluator-oriented step-by-step content (community guided tour, upcoming guides). Linked from the primary nav as **Guides**.
+- **Articles & notes index:** [`articles.html`](articles.html) / [`fr/articles.html`](fr/articles.html) — three labeled sections: **About Ezkey** (product-explaining content, newest first), **Craft & engineering** (independent essays, newest first), and **Lab papers** (pointer card into `/lab.html` / `/fr/labo.html`). No longer contains a guides lane.
 - **Changelog placeholder (technical release notes later):** [`changelog.html`](changelog.html) / [`fr/changelog.html`](fr/changelog.html) — reserved for versioned technical notes. **Not** listed on the primary navigation of the landing page or content hubs so an empty section does not dilute IA integrity; the changelog page itself repeats full nav **plus** a contextual “Changelog” / “Notes de version” item with `aria-current="page"`. Discoverable by URL and from copy on **Monthly digests**.
 - **Discovery & sharing (static):** [`sitemap.xml`](sitemap.xml) and [`robots.txt`](robots.txt) at the site root; [`monthly-digest.rss`](monthly-digest.rss) / [`fr/monthly-digest.rss`](fr/monthly-digest.rss) mirror the monthly digest entries (newest items first in the feed). All published `*.html` pages include **Open Graph** and **Twitter Card** meta tags (`og:*`, `twitter:*`), using `https://ezkey.org/logo.svg` as the share image unless you introduce a dedicated social image later.
 - **Logo / hero signature:** landing and inner hub pages reuse the same gradient, floating logo treatment, and particle background as before (`<img src="/logo.svg">` on published pages).
 - **Public hostname:** **`ezkey.org`** (canonical production URL for this site).
+- **Community runtime hostname:** **`ezkey.online`** (alpha community instance; service hosts such as `admin-ui.ezkey.online`, `admin-api.ezkey.online`, `demo-acme.ezkey.online`). Spelling is always **ezkey.online** (never “easykey”). Public posture is **product in alpha**; Ezkey remains a lab project (experiments documented under `/lab.html`).
+- **Lab Papers collection:** [`lab.html`](lab.html) / [`fr/labo.html`](fr/labo.html) — accounts of experimental sub-projects (what happened / what was measured). Page title **Lab Papers** / **Cahiers du labo**; nav label when promoted **Lab** / **Labo**. **Do not** add a primary-nav tab until roughly three published papers. Method canon and templates live under [`../ezkey-org-editorial/LAB-PAPERS.md`](../ezkey-org-editorial/LAB-PAPERS.md) (not deployed). Sample layout only: [`lab-paper-template-example.html`](lab-paper-template-example.html).
 - **Cloudflare:** The live site is deployed via **Cloudflare Pages** (project `ezkey-org`, domain `ezkey.org`). **Always use the dedicated scripts** — never invoke Wrangler ad hoc:
   - Preview: `scripts/cloudflare/deploy-ezkey-org-preview.sh` (sources `.env`, no git push required)
   - Production: `scripts/cloudflare/deploy-ezkey-org-production.sh` (same credentials, `--branch=main`)
@@ -49,9 +51,16 @@ Hub pages (`index`, `monthly-digest`, `articles`, `trust`) share a consistent **
 
 **Changelog** is intentionally **omitted** from that primary strip until the page carries real versioned notes. **Methodology** (`/methodology.html` / `/fr/methodologie.html`) is a short hand-written pointer to the canonical explorer at **`https://methodology.ezkey.org`** (v2.0.0+ after the 2026-08 ablation). Do **not** regenerate a rich view or revive `scripts/publish-methodology-view.ps1` — that pipeline was retired with the ablation. Update the explorer via `product-docs/site` and `scripts/cloudflare/deploy-methodology-*.sh`. On **changelog** pages only, append the changelog item with `aria-current="page"`.
 
-**Public site and private repository:** Do **not** link from **ezkey.org** to GitHub (or any authenticated-only host) for Ezkey source, docs, or `SECURITY.md` while the repository remains **private**. The intended public URL and onboarding copy will be wired when the repository opens (planned alongside the first public release — see **Monthly digests**). Internal package metadata or future **`SECURITY.md`** in git may still name a future canonical repo URL for maintainers; that does not override this public-site rule.
+**Public site and public repository:** The main monorepo is **public** under MIT at
+[`https://github.com/mgagp/ezkey`](https://github.com/mgagp/ezkey). Hub pages (**Docs** /
+**Run locally** / **Trust**) may link to that repository, the README Quick Start
+(`./ezkey-tests/clean-start.sh`), in-repo `docs/`, and `SECURITY.md`. Keep product copy
+**alpha-honest**: no published release packages yet; never claim Duo/Okta/Keycloak parity or
+production-ready status.
 
-When the repository is **public**, replace **Docs** / **Run locally** nav targets and homepage CTAs with the canonical README and docs index URLs in **one** coordinated edit (and trim redundant wording on [`source-and-evaluation.html`](source-and-evaluation.html) if appropriate).
+When editing evaluation CTAs, keep **Source & evaluation** as the on-site hub and point
+evaluators at the public README / clean-start path rather than inventing parallel setup docs
+on ezkey.org.
 
 ---
 
@@ -159,11 +168,11 @@ When generating HTML from a draft, **omit** the YAML front matter and **omit** e
 
 ---
 
-## Guides & experimenter content (Exp1)
+## Guides & community evaluator content (alpha)
 
 - **Purpose:** Step-by-step evaluator flows (e.g. mobile preview) live in the **Guides & walkthroughs** lane on [`articles.html`](articles.html) / [`fr/articles.html`](fr/articles.html), not mixed with generic essay cards without labeling.
-- **Published (bilingual):** [`exp1-guided-tour.html`](exp1-guided-tour.html) and [`fr/exp1-guided-tour.html`](fr/exp1-guided-tour.html) — canonical `hreflang` pair with `x-default` on the English URL. Screenshots and other assets: **ASCII kebab-case** filenames under [`exp1-guided-tour/`](exp1-guided-tour/) (e.g. `exp1-tour-04-enrollment-qr-challenge.webp`); both locale pages reference the same paths.
-- **Working drafts (French, not linked from indexes):** e.g. [`fr/draft-exp1-guided-tour.md`](fr/draft-exp1-guided-tour.md) (source notes), [`fr/draft-exp1-admin-ui-overview.md`](fr/draft-exp1-admin-ui-overview.md) (not yet a published page). Do **not** link `draft-*.md` from live navigation or the article index.
+- **Published (bilingual):** [`community-guided-tour.html`](community-guided-tour.html) and [`fr/community-guided-tour.html`](fr/community-guided-tour.html) — canonical `hreflang` pair with `x-default` on the English URL. Screenshots and other assets: **ASCII kebab-case** filenames under [`community-guided-tour/`](community-guided-tour/) (e.g. `community-tour-04-enrollment-qr-challenge.webp`); both locale pages reference the same paths. Public titles use **community / alpha**. Retired lab URL paths 301 via [`_redirects`](_redirects).
+- **Working drafts (French, not linked from indexes):** drafts live under `sites/ezkey-org-editorial/fr/`. Do **not** link `draft-*.md` from live navigation or the article index.
 - **Checklist when adding or changing a guide page:** update the `guides.html` / `fr/guides.html` hub, add or bump URLs in [`sitemap.xml`](sitemap.xml), and mirror Open Graph / Twitter / `hreflang` like other standalone articles.
 
 ---
@@ -173,17 +182,21 @@ When generating HTML from a draft, **omit** the YAML front matter and **omit** e
 | English path | French path | Purpose |
 | ------------ | ----------- | ------- |
 | `/` → `index.html` | `/fr/` → `fr/index.html` | Compact landing; evaluation CTAs |
-| `/source-and-evaluation.html` | `/fr/source-and-evaluation.html` | Private-repo posture; docs/run-local explanation |
+| `/source-and-evaluation.html` | `/fr/source-and-evaluation.html` | Public MIT repo; docs/run-local explanation |
 | `/api-docs.html` | `/fr/api-docs.html` | API portal landing page |
 | `/trust.html` | `/fr/trust.html` | Trust, reporting, on-site pointers |
 | `/monthly-digest.html` | `/fr/monthly-digest.html` | Monthly digests index (newest first) |
 | `/monthly-digest-YYYY-MM.html` | `/fr/monthly-digest-YYYY-MM.html` | Full monthly digest detail (when published) |
 | `/guides.html` | `/fr/guides.html` | Evaluator guides & walkthroughs hub |
-| `/articles.html` | `/fr/articles.html` | Guides lane + article index |
+| `/articles.html` | `/fr/articles.html` | About Ezkey + Craft & engineering + Lab papers pointer |
+| `/lab.html` | `/fr/labo.html` | Lab Papers / Cahiers du labo hub (no primary-nav tab yet) |
+| `/lab-paper-template-example.html` | `/fr/lab-paper-template-example.html` | Lab Paper reading-layout sample (template/example only) |
 | `/admin-api-reference.html` | `/fr/admin-api-reference.html` | Admin API public reference |
 | `/auth-api-reference.html` | `/fr/auth-api-reference.html` | Auth API public reference |
 | `/integration-api-reference.html` | `/fr/integration-api-reference.html` | Integration API public reference |
-| `/exp1-guided-tour.html` | `/fr/exp1-guided-tour.html` | Exp1 evaluator walkthrough (bilingual) |
+| `/community-guided-tour.html` | `/fr/community-guided-tour.html` | Community guided tour (bilingual)
+| `/community-instance.html` | `/fr/community-instance.html` | Alpha community instance overview (ezkey.online)
+| `/community-signup.html` | `/fr/community-signup.html` | Instant community signup (bilingual); `?api=` / `adminUiUrl` / `guidedTourUrl` honor only allowlisted hosts via [`js/community-signup-urls.mjs`](js/community-signup-urls.mjs) (Lot B code-scanning 2026-10-13; reject `javascript:` and foreign hosts) |
 | `/changelog.html` | `/fr/changelog.html` | Technical changelog (placeholder) |
 
 **Rules:**
@@ -203,7 +216,7 @@ When generating HTML from a draft, **omit** the YAML front matter and **omit** e
 - **Experimental does not mean casual:** when copy mentions that the project is opinionated, AI-first, or exploratory, pair that with signals of discipline, seriousness, and care.
 - **Keep the homepage short:** the landing page may contain a compact positioning block, but longer arguments belong in standalone article pages linked from the home or `articles.html`.
 - **Use the founder article as the canonical long explanation:** the current anchor text is [`why-ezkey-exists.html`](why-ezkey-exists.html) / [`fr/why-ezkey-exists.html`](fr/why-ezkey-exists.html); reuse and refine that narrative instead of re-explaining it differently on every page.
-- **Distinguish content lanes clearly:** month-over-month activity belongs on `monthly-digest.html`; evaluator walkthroughs belong on `guides.html`; product-explaining writing belongs in the **About Ezkey** section on `articles.html`; engineering craft essays belong in the **Craft & engineering** section on `articles.html`.
+- **Distinguish content lanes clearly:** month-over-month activity belongs on `monthly-digest.html`; evaluator walkthroughs belong on `guides.html`; product-explaining writing belongs in the **About Ezkey** section on `articles.html`; engineering craft essays belong in the **Craft & engineering** section on `articles.html`; experimental sub-project accounts (what happened / what was measured) belong on `lab.html` / `fr/labo.html` (Lab Papers), with a pointer group on Articles.
 - **Write for a serious technical audience:** sober tone, concrete claims, explicit constraints, and no inflated startup-style language.
 - **Avoid defensive wording:** do not over-explain that the project is solo, AI-assisted, or unconventional; present those facts plainly and move quickly to architecture, trust boundaries, APIs, and operator value.
 - **Do not overstate security assurance:** describe Ezkey as a pragmatic, opinionated middle ground that aims to be stronger than passwords and classic TOTP for some backend-oriented contexts; do not imply formal attestation chains, standards equivalence, complete certificate validation, or full-strength certificate pinning unless those capabilities truly exist.
@@ -234,14 +247,75 @@ replaces the former separate Updates and Field notes lanes.
 | Lane | Role |
 | ---- | ---- |
 | **Monthly digests** | Month-over-month activity signal (index + detail when published) |
-| **Articles** | Long-form essays and craft writing |
+| **Articles** | Long-form essays and craft writing (reflection / meaning) |
+| **Lab Papers** | Experimental sub-project accounts (what happened / what was measured) |
 | **Changelog** | Versioned technical release notes (future) |
+
+---
+
+## Lab Papers
+
+Lab Papers are a third publication type. Full method: [`../ezkey-org-editorial/LAB-PAPERS.md`](../ezkey-org-editorial/LAB-PAPERS.md).
+
+**Agent rules:**
+
+- English first; French only after Marc’s explicit go.
+- Drafts and templates stay under `sites/ezkey-org-editorial/` (never in the Wrangler deploy folder).
+- Use [`templates/lab-paper.en.template.md`](../ezkey-org-editorial/templates/lab-paper.en.template.md) then the FR template; pass [`templates/lab-paper-review-checklist.md`](../ezkey-org-editorial/templates/lab-paper-review-checklist.md) before publish.
+- Sharing rule: Lab Paper = what happened and what was measured; Article / experience report = what it taught and what it means. Keep reciprocal **Distinct from…** sentences on both hubs.
+- Do **not** add **Lab** / **Labo** to the primary nav until roughly three real papers are published (promotion threshold). Hub remains discoverable via Articles, sitemap, and direct URL.
+- Reading layout: Key findings before abstract; side TOC (collapsible on mobile); horizontally scrollable tables; no appendix by default; **no PDF export**. Light format, 1,500–2,500 words (see `LAB-PAPERS.md`, reframe of 2026-11-01).
+- Co-authors: only names from [`product-docs/global/team-roles.md`](../../product-docs/global/team-roles.md) with evidence; “K” is excluded. Affiliation is **Ezkey Lab**. Disclose AI co-authors; Marc holds editorial responsibility.
+- Security: no secrets, tokens, internal hosts, real IPs, or exploitable configuration. Nothing here is a security guarantee — Trust page states Lab Papers sit outside its claims perimeter.
+- Do **not** invent the first real paper (e.g. PAM) under this method setup; that is a separate issue.
+- On publish: card on `lab.html` / `fr/labo.html`, monthly-digest mention for that month, sitemap bump, draft front matter update.
 
 ---
 
 ## Visual design identity and patterns
 
 This section records the design decisions made during active development, in reverse chronological order. Use it as a reference when evolving the site to ensure new work stays coherent with established patterns.
+
+### November 2026 — Entry pages vs document pages (`community-instance.html`)
+
+**Decision ([#1115](https://github.com/mgagp/ezkey/issues/1115), 2026-11-01, Marc):** `community-instance.html` /
+`fr/community-instance.html` (target of the home **Alpha · Community instance** badge) moved from a
+Markdown-style dump to an **entry-page** layout: static amber badge, lede, one primary CTA, access
+paths as cards, services as tiles, one "Before you start" box, three numbered next steps.
+
+**Editorial principles (apply when creating or challenging any page):**
+
+1. **Name the page's job first.** A *document page* is read (articles, digests, Lab Papers). An *entry
+   page* is acted on (community instance, signup, guides hub). Entry pages lead with what the visitor
+   can do; document pages lead with what there is to read.
+2. **One primary action per entry page** (gradient button), at most one secondary (outlined button);
+   everything else stays an inline link. If two actions look equally primary, the page has two jobs.
+3. **Match the shape to the content:** choices → cards; inventories (hosts, services) → tiles;
+   sequences → numbered steps; caveats → one scope box, said **once** (same rule as Lab Papers).
+4. **Markdown-dump smell test:** a page that is only `h2` + `p` + `ul` *and* asks the reader to act is
+   under-using HTML. Prose stays prose on document pages; do not card-ify essays.
+5. **Bold is a signal, not a texture.** A handful of bold phrases per page at most (the old community
+   page had 38, which cancels emphasis).
+6. **Honest up front, detailed once.** Keep a one-line honesty note near the CTA (e.g. "Alpha, no
+   production SLA"); the full limits live in the scope box, not repeated across sections.
+7. **Reuse before inventing.** Amber badge vocabulary for alpha status (static off the home page:
+   motion stays on the home hero), brand gradient for primary buttons and step numbers, existing
+   `.callout` amber for caveats. No new hue, no library.
+8. **Language links live in `nav-top`**, not repeated in the body.
+
+**Pass 2 ([#1119](https://github.com/mgagp/ezkey/issues/1119), 2026-11-01):** applied to
+`source-and-evaluation.html` (entry page: two sibling evaluation cards, numbered run-locally steps,
+documentation tiles) and `community-guided-tour.html` (sequence page: "Before you begin" checklist,
+linked overview stepper, numbered step headings). Four more principles:
+
+9. **First screen answers three questions:** what is this, what do I need, what do I do next. On a
+   guide, "what do I need" is a short checklist before the first step.
+10. **In guides, bold means "find this on screen"** (a button, field, menu label, matching the Admin UI
+    locale) plus at most one critical warning. The tour went from 87 bold phrases to 8.
+11. **Evaluation paths are siblings.** Run locally and the community instance point to each other with
+    the same card pattern, so a visitor who picks the wrong door finds the other in one click.
+12. **Overview once, and linked.** A sequence page has a single overview that links to its steps; no
+    closing recap table repeating it.
 
 ### May 2026 — Amber pill section dividers on `articles.html`
 
@@ -253,9 +327,9 @@ This section records the design decisions made during active development, in rev
 - Pill (`span`): `font-size: 0.78rem`, `font-weight: 700`, `letter-spacing: 0.14em`, `text-transform: uppercase`, `color: #fef3c7` (warm cream), `padding: 5px 15px`, `border-radius: 20px`, `background: rgba(251,191,36,0.13)`, `border: 1px solid rgba(251,191,36,0.48)`, `box-shadow: 0 0 14px rgba(251,191,36,0.2)`.
 - HTML pattern: `<p class="page-subheading"><span>Section title</span></p>`.
 
-**Rationale:** The pill is immediately recognisable during fast scroll; it creates a visual pause without being aggressive. It borrows directly from the EXP1 badge color vocabulary on the homepage, creating site-wide coherence without introducing a new palette.
+**Rationale:** The pill is immediately recognisable during fast scroll; it creates a visual pause without being aggressive. It borrows directly from the amber Alpha / community badge color vocabulary on the homepage, creating site-wide coherence without introducing a new palette.
 
-**Sections using this pattern:** "About Ezkey" / "À propos d'Ezkey" and "Craft & engineering" / "Craft & ingénierie" on `articles.html` / `fr/articles.html`.
+**Sections using this pattern:** "About Ezkey" / "À propos d'Ezkey", "Craft & engineering" / "Craft & ingénierie", and "Lab papers" on `articles.html` / `fr/articles.html`.
 
 ---
 
@@ -280,7 +354,7 @@ The site uses a **single coherent palette** derived from the background gradient
 | Role | Color / value | Usage |
 | ---- | ------------- | ----- |
 | Background gradient | `#667eea → #764ba2` (135°) | `body` on all pages |
-| Brand amber (primary accent) | `#f59e0b` / `#ea580c` / `#fde68a` gradient | EXP1 badge, pill dividers, amber glow effects |
+| Brand amber (primary accent) | `#f59e0b` / `#ea580c` / `#fde68a` gradient | Alpha / community badge, pill dividers, amber glow effects |
 | Pill accent | `rgba(251, 191, 36, …)` at various opacities | Section divider pills, divider lines |
 | Warm cream text | `#fef3c7` | Pill label text, accent headings |
 | White primary | `#ffffff` | Card titles, nav links |
@@ -299,13 +373,18 @@ The site uses a **single coherent palette** derived from the background gradient
 | [../../sites/ezkey-org-editorial/fr/](../../sites/ezkey-org-editorial/fr/) | Editorial drafts — NOT deployed by Wrangler |
 | [index.html](index.html) | English landing page |
 | [fr/index.html](fr/index.html) | French landing page |
-| [source-and-evaluation.html](source-and-evaluation.html) / [fr/source-and-evaluation.html](fr/source-and-evaluation.html) | Private repo; docs/run-local framing |
+| [source-and-evaluation.html](source-and-evaluation.html) / [fr/source-and-evaluation.html](fr/source-and-evaluation.html) | Public MIT repo; docs/run-local framing |
 | [trust.html](trust.html) / [fr/trust.html](fr/trust.html) | Trust & security diligence |
 | [monthly-digest.html](monthly-digest.html) / [fr/monthly-digest.html](fr/monthly-digest.html) | Monthly digests index |
 | [monthly-digest-YYYY-MM.html](monthly-digest-2026-06.html) / [fr/monthly-digest-YYYY-MM.html](fr/monthly-digest-2026-06.html) | Full monthly digest detail pages |
 | [guides.html](guides.html) / [fr/guides.html](fr/guides.html) | Evaluator guides & walkthroughs hub |
-| [articles.html](articles.html) / [fr/articles.html](fr/articles.html) | About Ezkey + Craft & engineering sections |
-| [exp1-guided-tour.html](exp1-guided-tour.html) / [fr/exp1-guided-tour.html](fr/exp1-guided-tour.html) | Exp1 guided tour (EN/FR) |
+| [articles.html](articles.html) / [fr/articles.html](fr/articles.html) | About Ezkey + Craft & engineering + Lab papers pointer |
+| [lab.html](lab.html) / [fr/labo.html](fr/labo.html) | Lab Papers / Cahiers du labo hub |
+| [lab-paper-template-example.html](lab-paper-template-example.html) / [fr/lab-paper-template-example.html](fr/lab-paper-template-example.html) | Lab Paper layout sample |
+| [../ezkey-org-editorial/LAB-PAPERS.md](../ezkey-org-editorial/LAB-PAPERS.md) | Lab Papers method canon (not deployed) |
+| [community-guided-tour.html](community-guided-tour.html) / [fr/community-guided-tour.html](fr/community-guided-tour.html) | Community guided tour (EN/FR)
+| [community-instance.html](community-instance.html) / [fr/community-instance.html](fr/community-instance.html) | Alpha community instance (EN/FR)
+| [community-signup.html](community-signup.html) / [fr/community-signup.html](fr/community-signup.html) | Community signup (EN/FR) |
 | [changelog.html](changelog.html) / [fr/changelog.html](fr/changelog.html) | Changelog placeholder |
 | [sitemap.xml](sitemap.xml) | Sitemap for crawlers |
 | [robots.txt](robots.txt) | Robots + sitemap URL |

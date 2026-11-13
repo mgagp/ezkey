@@ -49,9 +49,18 @@ if contains_profile "${SPRING_PROFILES_ACTIVE:-}" "docker-test" && ! contains_pr
     export SPRING_PROFILES_ACTIVE="docker,${SPRING_PROFILES_ACTIVE}"
 fi
 
+# Product runtime profile (integrity default / base opt-in). See docker/runtime-profile.sh.
+# shellcheck source=runtime-profile.sh
+source "${SCRIPT_DIR}/runtime-profile.sh"
+resolve_ezkey_runtime_profile || exit 1
+
 BASE_COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.yml"
+ENV_FILE="${SCRIPT_DIR}/.env"
 
 COMPOSE_ARGS="-f ${BASE_COMPOSE_FILE}"
+if [ -f "${ENV_FILE}" ]; then
+  COMPOSE_ARGS="--env-file ${ENV_FILE} ${COMPOSE_ARGS}"
+fi
 
 # If docker-dev profile is active, auto-include the local diagnostics override to publish management ports.
 if contains_profile "${SPRING_PROFILES_ACTIVE:-}" "docker-dev"; then
@@ -63,6 +72,12 @@ if contains_profile "${SPRING_PROFILES_ACTIVE:-}" "docker-dev"; then
     else
         echo "⚠️  Warning: docker-dev profile is active but override file not found: ${DEV_OVERRIDE_FILE}"
     fi
+fi
+
+# Optional base compose marker (labels). Property matrix lives in application-docker-base.properties.
+if [ "${EZKEY_RUNTIME_PROFILE:-}" = "base" ] && [ -f "${SCRIPT_DIR}/docker-compose.base.yml" ]; then
+    COMPOSE_ARGS="${COMPOSE_ARGS} -f ${SCRIPT_DIR}/docker-compose.base.yml"
+    echo "🔧 Base runtime overlay enabled: docker-compose.base.yml"
 fi
 
 # Optional: Caddy reverse proxy for trusted-proxy E2E (client IP from X-Forwarded-For).
@@ -283,7 +298,7 @@ echo "  ✅ Auth API is healthy"
 echo "  - Waiting for Crypto API..."
 timeout=120
 elapsed=0
-while ! curl -sf http://localhost:9090/actuator/health > /dev/null 2>&1; do
+while ! curl -sf http://localhost:9091/actuator/health/liveness > /dev/null 2>&1; do
     if [ $elapsed -ge $timeout ]; then
         echo "❌ Error: Crypto API did not become healthy within ${timeout} seconds"
         ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" logs crypto-api
@@ -345,6 +360,12 @@ echo ""
 echo "🔧 Test Mode (permissive rate limiting):"
 echo "  - Start in test mode: SPRING_PROFILES_ACTIVE=docker,docker-test ./docker/start.sh"
 echo "  - Default mode (production): ./docker/start.sh"
+echo ""
+echo "🧭 Runtime profile (product key; default integrity):"
+echo "  - Base (opt-in): EZKEY_RUNTIME_PROFILE=base ./docker/start.sh"
+echo "  - Or: ./ezkey-tests/clean-start.sh --runtime=base"
+echo "  - Claim boundary: MFA crypto on; audit-integrity monitoring off (not tamper-evident)"
+echo "  - Verify: ./docker/verify-runtime-profile.sh"
 echo ""
 echo "🎉 Bootstrap Complete:"
 echo "  - Demo-device is pre-seeded and ready for use"

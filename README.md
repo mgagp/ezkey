@@ -1,5 +1,13 @@
 # Ezkey
 
+[![CI](https://github.com/mgagp/ezkey/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/mgagp/ezkey/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/mgagp/ezkey/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/mgagp/ezkey/actions/workflows/codeql.yml)
+[![License: MIT](https://img.shields.io/github/license/mgagp/ezkey)](LICENSE)
+[![Security Policy](https://img.shields.io/badge/security-policy-blue)](SECURITY.md)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/mgagp/ezkey/badge)](https://scorecard.dev/viewer/?uri=github.com/mgagp/ezkey)
+[![Java](https://img.shields.io/badge/Java-25-orange?logo=openjdk)](pom.xml)
+[![Dependabot](https://img.shields.io/badge/dependabot-enabled-brightgreen?logo=dependabot)](.github/dependabot.yml)
+
 <img src="logo.svg" alt="Ezkey Logo" width="200">
 
 Ezkey is an open-source cryptographic MFA platform built as a distinct alternative to browser-centric authentication models.
@@ -9,6 +17,14 @@ It does not implement FIDO2 or WebAuthn, and it should not be understood as a si
 Ezkey is designed for developers, especially backend developers, who want a self-hosted MFA system with strong cryptographic guarantees, explicit trust boundaries, and APIs that stay practical to integrate.
 
 It also includes an Admin UI for human administration, giving operators a direct surface for platform and tenant workflows without changing Ezkey's backend-first trust model.
+
+## Status
+
+Ezkey is in **public alpha**. This repository is the product source; there are **no published release packages** yet (no GitHub Releases / installable binaries to consume). Product SemVer is **one version for the whole monorepo** (starts at `0.2.0`; first `v*` tag not cut yet) — live deploy identity remains the **git SHA**. See [`docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md`](docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md) and [ADR-0017](product-docs/global/architecture-decisions.md#adr-0017-product-versioning-one-semver-for-the-monorepo) ([#1211](https://github.com/mgagp/ezkey/issues/1211)). Pull-request and `main` feedback from GitHub Actions is described in [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) § Continuous Integration (required-check candidate: `ci-gate`).
+
+**Try the live stack** via the community path on [ezkey.org](https://ezkey.org/) — [community instance](https://ezkey.org/community-instance.html) and [community guided tour](https://ezkey.org/community-guided-tour.html) (French under `/fr/`).
+
+**Mobile app:** still in **internal testing** — not on app stores. For the community walkthrough, build and sideload the Android app from this monorepo in developer mode, or use the separate [Ezkey Demo Device](https://github.com/mgagp/ezkey-demo-device) (simulated phone for demos only; not a store client).
 
 ## What Exists Today
 
@@ -36,11 +52,20 @@ This is what makes Ezkey a distinct backend-to-mobile security model rather than
 
 ## Quick Start
 
-The supported local quick-start path is the Bash clean start from `ezkey-tests`:
+The supported local **stack** path is the Bash clean start from `ezkey-tests`:
 
 ```bash
 ./ezkey-tests/clean-start.sh
 ```
+
+Default product **runtime profile** is **integrity** (audit-chain + heartbeat on). For an opt-in
+**base** stack (MFA crypto on; audit-integrity monitoring off — limited claims, not “eval-only lab”):
+
+```bash
+./ezkey-tests/clean-start.sh --runtime=base
+```
+
+See [`docker/README.md`](docker/README.md) § Runtime profiles.
 
 On Windows, use Bash as well, for example through Git Bash.
 
@@ -49,6 +74,17 @@ For stack details, modes, and test-oriented workflow:
 - [`ezkey-tests/README.md`](ezkey-tests/README.md)
 - [`docker/README.md`](docker/README.md)
 - [`docs/LOCAL_STACK_PORTS.md`](docs/LOCAL_STACK_PORTS.md)
+
+### Host Java reactor (fresh clone)
+
+To compile and unit-test the Java modules on the host (Windows, macOS, or Linux), install **JDK 25** and **Maven 3.9+**, then from the repository root:
+
+```bash
+./scripts/build.sh --diagnose-only
+./scripts/build.sh
+```
+
+Use Git Bash on Windows. Do not start with a bare `mvn checkstyle:check` on an empty `~/.m2`: Checkstyle depends on an unpublished in-repo module, and `build.sh` installs it first. Full notes: [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) § *First clone on a new workstation*.
 
 ## Documentation
 
@@ -72,6 +108,12 @@ For stack details, modes, and test-oriented workflow:
 ## Security and Compliance
 
 Ezkey is developed with strong cryptographic validation and self-hosted operational control in mind. The project also aims to move in a direction that is favorable to operator-visible operational discipline, without claiming certification or standards equivalence. See [`product-docs/global/normative-posture.md`](product-docs/global/normative-posture.md).
+
+## Feedback and Contributing
+
+- **Bugs and requests:** open a [GitHub issue](https://github.com/mgagp/ezkey/issues).
+- **Vulnerabilities:** report them privately, as described in [`SECURITY.md`](SECURITY.md). Do not open a public issue.
+- **Contributions:** see [`CONTRIBUTING.md`](CONTRIBUTING.md) for the workflow and what a change must include.
 
 ## License
 

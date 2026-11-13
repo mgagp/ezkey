@@ -76,6 +76,12 @@ public class RateLimitProperties {
    */
   private EndpointConfig respond = defaultRespondConfig();
 
+  /**
+   * Process-wide (no key) budgets on client-IP-keyed device surfaces. Per-instance, not distributed
+   * — N replicas imply N times this headroom (ADR-0010).
+   */
+  private BackstopConfig backstop = new BackstopConfig();
+
   private static EndpointConfig defaultRespondConfig() {
     EndpointConfig config = new EndpointConfig();
     config.setRequests(1);
@@ -96,8 +102,22 @@ public class RateLimitProperties {
     /**
      * Strategy for identifying clients for rate limiting. Options: "client-ip", "enrollment-id", or
      * "auth-attempt-id" (respond endpoint only). Default: "client-ip"
+     *
+     * <p>For respond + {@code auth-attempt-id}: the filter applies the {@link #failIpRequests} /
+     * {@link #failIpWindowMinutes} IP ceiling only. The per-{@code authAttemptId} budget ({@link
+     * #requests} / {@link #windowMinutes}) is consumed <em>after</em> a valid device signature
+     * (#912 C1).
      */
     private String keyStrategy = "client-ip";
+
+    /**
+     * Respond-only: max respond requests per client IP in the window (every respond, not
+     * failures-only). Default: 30.
+     */
+    private int failIpRequests = 30;
+
+    /** Respond-only: IP-ceiling window in minutes. Default: 1. */
+    private int failIpWindowMinutes = 1;
 
     // Getters and Setters for EndpointConfig
     public int getRequests() {
@@ -122,6 +142,22 @@ public class RateLimitProperties {
 
     public void setKeyStrategy(String keyStrategy) {
       this.keyStrategy = keyStrategy;
+    }
+
+    public int getFailIpRequests() {
+      return failIpRequests;
+    }
+
+    public void setFailIpRequests(int failIpRequests) {
+      this.failIpRequests = failIpRequests;
+    }
+
+    public int getFailIpWindowMinutes() {
+      return failIpWindowMinutes;
+    }
+
+    public void setFailIpWindowMinutes(int failIpWindowMinutes) {
+      this.failIpWindowMinutes = failIpWindowMinutes;
     }
   }
 
@@ -164,5 +200,60 @@ public class RateLimitProperties {
 
   public void setRespond(EndpointConfig respond) {
     this.respond = respond;
+  }
+
+  public BackstopConfig getBackstop() {
+    return backstop;
+  }
+
+  public void setBackstop(BackstopConfig backstop) {
+    this.backstop = backstop;
+  }
+
+  /**
+   * Unkeyed per-process caps for IP-keyed enrollment surfaces ({@code verify}, {@code bind}, {@code
+   * instance-info}).
+   */
+  public static class BackstopConfig {
+
+    /** When false, only the keyed buckets apply. Default true. */
+    private boolean enabled = true;
+
+    /** Process-wide verify budget. Default: 100 / 1 minute. */
+    private EndpointConfig verify = defaultBackstop(100, 1);
+
+    /** Process-wide bind + enrolled instance-info budget. Default: 60 / 1 minute. */
+    private EndpointConfig bind = defaultBackstop(60, 1);
+
+    private static EndpointConfig defaultBackstop(int requests, int windowMinutes) {
+      EndpointConfig config = new EndpointConfig();
+      config.setRequests(requests);
+      config.setWindowMinutes(windowMinutes);
+      return config;
+    }
+
+    public boolean isEnabled() {
+      return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+      this.enabled = enabled;
+    }
+
+    public EndpointConfig getVerify() {
+      return verify;
+    }
+
+    public void setVerify(EndpointConfig verify) {
+      this.verify = verify;
+    }
+
+    public EndpointConfig getBind() {
+      return bind;
+    }
+
+    public void setBind(EndpointConfig bind) {
+      this.bind = bind;
+    }
   }
 }

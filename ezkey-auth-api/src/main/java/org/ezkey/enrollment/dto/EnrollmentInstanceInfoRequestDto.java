@@ -25,4 +25,18 @@ public record EnrollmentInstanceInfoRequestDto(
             description = "Enrollment proof token for authentication",
             example = "abc123-def456-ghi789",
             requiredMode = RequiredMode.REQUIRED)
-        String enrollmentProofToken) {}
+        String enrollmentProofToken) {
+
+  /**
+   * Returns a string representation with the proof token masked.
+   *
+   * @return string representation safe for logs
+   */
+  @Override
+  public String toString() {
+    return "EnrollmentInstanceInfoRequestDto{"
+        + "enrollmentProofToken="
+        + (enrollmentProofToken != null ? "[PROTECTED]" : "null")
+        + '}';
+  }
+}

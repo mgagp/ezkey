@@ -7,19 +7,71 @@ name: ezkey-experimental-lightsail
 x-container-tz: &container-tz
   TZ: ${TZ:-UTC}
 
+# Bound container log growth (json-file) for next install on a small Lightsail VM
+# (~4 GB RAM / ~40 GB disk). Ceiling ≈ 8 services × 20m × 3 files ≈ 480 MiB.
+# Applies only when containers are (re)created — does not resize live log config.
+# See docs/OPERATIONAL.md § Log rotation and hygiene.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "3"
+
+# JVM heap ceilings for the ~4 GiB Lightsail community host (#749).
+# memswap_limit = mem_limit: containers cannot use host swap for growth beyond the
+# cgroup (host swap only helps non-cgroup pressure / the OS). Prefer a host 1 GiB
+# swapfile (swappiness=10) — see docs/lightsail/community-host.md (do not
+# auto-create swap from deploy scripts).
+# restart: unless-stopped (not on-failure:3) so a single OOM/crash does not leave
+# an API permanently down after three failures on a lab host with no pager.
+# Each anchor includes TZ so services use a single YAML merge key (Compose rejects
+# duplicate << keys in one mapping).
+x-env-jvm-serial: &env-jvm-serial
+  TZ: ${TZ:-UTC}
+  JAVA_TOOL_OPTIONS: >-
+    -XX:MaxRAMPercentage=60
+    -XX:+UseSerialGC
+    -XX:+ExitOnOutOfMemoryError
+
+x-env-jvm-admin: &env-jvm-admin
+  TZ: ${TZ:-UTC}
+  JAVA_TOOL_OPTIONS: >-
+    -XX:MaxRAMPercentage=65
+    -XX:+UseSerialGC
+    -XX:+ExitOnOutOfMemoryError
+
+x-env-jvm-demo: &env-jvm-demo
+  TZ: ${TZ:-UTC}
+  JAVA_TOOL_OPTIONS: >-
+    -XX:MaxRAMPercentage=55
+    -XX:+UseSerialGC
+    -XX:+ExitOnOutOfMemoryError
+
 services:
   postgres:
     image: postgres:18-alpine
     container_name: ezkey-exp-postgres
+    logging: *default-logging
+    mem_limit: 384m
+    memswap_limit: 384m
     environment:
       <<: *container-tz
       POSTGRES_DB: ${POSTGRES_DB:-ezkey_db}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ezkey}
+      # PG18 docker image default PGDATA layout; keep classic path for named volume mounts.
+      PGDATA: /var/lib/postgresql/data
       EZKEY_DB_MIGRATE_PASSWORD: ${EZKEY_DB_MIGRATE_PASSWORD:-ezkey_migrate}
       EZKEY_DB_ADMIN_PASSWORD: ${EZKEY_DB_ADMIN_PASSWORD:-ezkey_admin}
       EZKEY_DB_AUTH_PASSWORD: ${EZKEY_DB_AUTH_PASSWORD:-ezkey_auth}
       EZKEY_DB_INTEGRATION_PASSWORD: ${EZKEY_DB_INTEGRATION_PASSWORD:-ezkey_integration}
+      # Patrick m3 / #961: no default — refuse compose start if unset (init would otherwise
+      # create ezkey_crypto with the lab default password). Set in Lightsail .env only.
+      # No crypto-api service on Lightsail by design: db-grants still creates the
+      # ezkey_crypto read-only role, but it is unused on this deployment (the crypto-api
+      # read-only DataSource applies to local clean-start lab stacks). See
+      # docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md.
+      EZKEY_DB_CRYPTO_PASSWORD: ${EZKEY_DB_CRYPTO_PASSWORD:?EZKEY_DB_CRYPTO_PASSWORD must be set in Lightsail .env — no default}
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ../../docker/postgres/init:/docker-entrypoint-initdb.d:ro
@@ -37,11 +89,14 @@ services:
   migration:
     image: ezkey-migration:latest
     container_name: ezkey-exp-migration
+    logging: *default-logging
+    mem_limit: 512m
+    memswap_limit: 512m
     depends_on:
       postgres:
         condition: service_healthy
     environment:
-      <<: *container-tz
+      <<: *env-jvm-serial
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-ezkey_db}
       SPRING_DATASOURCE_USERNAME: ezkey_migrate
@@ -53,28 +108,20 @@ services:
   db-grants:
     image: postgres:18-alpine
     container_name: ezkey-exp-db-grants
+    logging: *default-logging
     depends_on:
       migration:
         condition: service_completed_successfully
     environment:
       <<: *container-tz
       PGPASSWORD: ${POSTGRES_PASSWORD:-ezkey}
+      PGHOST: postgres
+      PGDATABASE: ${POSTGRES_DB:-ezkey_db}
+      PGUSER: postgres
+      EZKEY_DB_CRYPTO_PASSWORD: ${EZKEY_DB_CRYPTO_PASSWORD:?EZKEY_DB_CRYPTO_PASSWORD must be set in Lightsail .env — no default}
     volumes:
       - ../../scripts/db:/scripts:ro
-    entrypoint:
-      [
-        "psql",
-        "-h",
-        "postgres",
-        "-U",
-        "postgres",
-        "-d",
-        "${POSTGRES_DB:-ezkey_db}",
-        "-v",
-        "ON_ERROR_STOP=1",
-        "-f",
-        "/scripts/apply-grants.sql",
-      ]
+    entrypoint: ["/bin/sh", "/scripts/apply-grants.sh", "--in-container"]
     networks:
       - ezkey-exp-net
     restart: "no"
@@ -82,6 +129,9 @@ services:
   admin-api:
     image: ezkey-admin-api:latest
     container_name: ezkey-exp-admin-api
+    logging: *default-logging
+    mem_limit: 1152m
+    memswap_limit: 1152m
     # Loads every key from .env into the container (Compose does not do this by default).
     # Ensures EZKEY_* (e.g. CORS) reach Spring even if an older compose file omitted them under environment:.
     env_file:
@@ -94,7 +144,7 @@ services:
       db-grants:
         condition: service_completed_successfully
     environment:
-      <<: *container-tz
+      <<: *env-jvm-admin
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-ezkey_db}
       SPRING_DATASOURCE_USERNAME: ezkey_admin
@@ -104,12 +154,17 @@ services:
       EZKEY_ADMIN_INITIAL_FIRST_NAME: ${EZKEY_ADMIN_INITIAL_FIRST_NAME:-Admin}
       EZKEY_ADMIN_INITIAL_LAST_NAME: ${EZKEY_ADMIN_INITIAL_LAST_NAME:-Docker}
       MANAGEMENT_SERVER_PORT: 9081
+      # Loopback inside the container — Docker healthchecks use 127.0.0.1. JM overlay reopens 0.0.0.0.
+      MANAGEMENT_SERVER_ADDRESS: 127.0.0.1
       EZKEY_DATABASE_PARTITION_SCHEDULER_CRON: ${EZKEY_DATABASE_PARTITION_SCHEDULER_CRON:-0 */20 * * * ?}
-      EZKEY_QR_AUTH_BASE_URL: ${EZKEY_QR_AUTH_BASE_URL:-https://exp1-auth-api.ezkey.org}
+      # No product default hostname — set EZKEY_QR_AUTH_BASE_URL in .env (community overlay).
+      EZKEY_QR_AUTH_BASE_URL: ${EZKEY_QR_AUTH_BASE_URL:-}
+      EZKEY_ORGANIZATION_NAME: ${EZKEY_ORGANIZATION_NAME:-Ezkey System}
+      EZKEY_ORGANIZATION_DESCRIPTION: ${EZKEY_ORGANIZATION_DESCRIPTION:-Ezkey MFA instance for your organization}
       EZKEY_ORGANIZATION_ABOUT_URL: ${EZKEY_ORGANIZATION_ABOUT_URL:-}
       EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE: ${EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE:-full}
       EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.16.0.0/12,10.0.0.0/8,172.17.0.0/16}
-      # Fail-fast when CIDRs missing (SEC-011). EXP1 always sits behind Caddy.
+      # Fail-fast when CIDRs missing (SEC-011). Community always sits behind Caddy.
       EZKEY_TRUSTED_PROXIES_REQUIRED: ${EZKEY_TRUSTED_PROXIES_REQUIRED:-true}
       # Required when Admin UI is on another origin (e.g. Cloudflare Pages). Comma-separated origins.
       EZKEY_ADMIN_CORS_ALLOWED_ORIGINS: ${EZKEY_ADMIN_CORS_ALLOWED_ORIGINS:-}
@@ -122,9 +177,9 @@ services:
       - bootstrap-artifacts:/var/lib/ezkey/bootstrap
     networks:
       - ezkey-exp-net
-    restart: on-failure:3
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9081/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:9081/actuator/health || exit 1"]
       interval: 30s
       timeout: 5s
       start_period: 90s
@@ -133,6 +188,9 @@ services:
   auth-api:
     image: ezkey-auth-api:latest
     container_name: ezkey-exp-auth-api
+    logging: *default-logging
+    mem_limit: 768m
+    memswap_limit: 768m
     depends_on:
       postgres:
         condition: service_healthy
@@ -141,23 +199,28 @@ services:
       db-grants:
         condition: service_completed_successfully
     environment:
-      <<: *container-tz
+      <<: *env-jvm-serial
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-ezkey_db}
       SPRING_DATASOURCE_USERNAME: ezkey_auth
       SPRING_DATASOURCE_PASSWORD: ${EZKEY_DB_AUTH_PASSWORD:-ezkey_auth}
       MANAGEMENT_SERVER_PORT: 8085
-      EZKEY_QR_AUTH_BASE_URL: ${EZKEY_QR_AUTH_BASE_URL:-https://exp1-auth-api.ezkey.org}
+      MANAGEMENT_SERVER_ADDRESS: 127.0.0.1
+      # No product default hostname — set EZKEY_QR_AUTH_BASE_URL in .env (community overlay).
+      EZKEY_QR_AUTH_BASE_URL: ${EZKEY_QR_AUTH_BASE_URL:-}
+      EZKEY_ORGANIZATION_NAME: ${EZKEY_ORGANIZATION_NAME:-Ezkey System}
+      EZKEY_ORGANIZATION_DESCRIPTION: ${EZKEY_ORGANIZATION_DESCRIPTION:-Ezkey MFA instance for your organization}
       EZKEY_ORGANIZATION_ABOUT_URL: ${EZKEY_ORGANIZATION_ABOUT_URL:-}
       EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.16.0.0/12,10.0.0.0/8,172.17.0.0/16}
       EZKEY_TRUSTED_PROXIES_REQUIRED: ${EZKEY_TRUSTED_PROXIES_REQUIRED:-true}
     volumes:
+      # Auth API is Internet-facing — do not mount bootstrap-artifacts (Global Admin secrets).
       - encryption-secrets:/etc/ezkey
     networks:
       - ezkey-exp-net
-    restart: on-failure:3
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8085/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:8085/actuator/health || exit 1"]
       interval: 30s
       timeout: 5s
       start_period: 90s
@@ -166,6 +229,9 @@ services:
   integration-api:
     image: ezkey-integration-api:latest
     container_name: ezkey-exp-integration-api
+    logging: *default-logging
+    mem_limit: 576m
+    memswap_limit: 576m
     depends_on:
       postgres:
         condition: service_healthy
@@ -176,21 +242,22 @@ services:
       admin-api:
         condition: service_healthy
     environment:
-      <<: *container-tz
+      <<: *env-jvm-serial
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-ezkey_db}
       SPRING_DATASOURCE_USERNAME: ezkey_integration
       SPRING_DATASOURCE_PASSWORD: ${EZKEY_DB_INTEGRATION_PASSWORD:-ezkey_integration}
       MANAGEMENT_SERVER_PORT: 7081
+      MANAGEMENT_SERVER_ADDRESS: 127.0.0.1
       EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.16.0.0/12,10.0.0.0/8,172.17.0.0/16}
       EZKEY_TRUSTED_PROXIES_REQUIRED: ${EZKEY_TRUSTED_PROXIES_REQUIRED:-true}
     volumes:
       - encryption-secrets:/etc/ezkey
     networks:
       - ezkey-exp-net
-    restart: on-failure:3
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:7081/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:7081/actuator/health || exit 1"]
       interval: 30s
       timeout: 5s
       start_period: 90s
@@ -199,27 +266,35 @@ services:
   demo-app-acme:
     image: ezkey-demo-app-acme:latest
     container_name: ezkey-exp-demo-app-acme
+    logging: *default-logging
+    mem_limit: 384m
+    memswap_limit: 384m
     depends_on:
       admin-api:
         condition: service_healthy
       integration-api:
         condition: service_healthy
     environment:
-      <<: *container-tz
+      <<: *env-jvm-demo
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       SPRING_CONFIG_ADDITIONAL_LOCATION: optional:file:/app/config/,optional:file:./config/
       EZKEY_ADMIN_API_URL: http://integration-api:7080
       EZKEY_DEMO_APP_SESSION_COOKIE_SECURE: "true"
+      # So redirect:/login keeps https when Caddy terminates TLS (X-Forwarded-Proto).
+      SERVER_FORWARD_HEADERS_STRATEGY: ${SERVER_FORWARD_HEADERS_STRATEGY:-framework}
       # Same CIDRs as other APIs: trust Caddy on the Docker network for CF-Connecting-IP / X-Forwarded-For.
       EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.16.0.0/12,10.0.0.0/8,172.17.0.0/16}
+      # Management port (Actuator) — must ship with an image that listens on 8086.
+      MANAGEMENT_SERVER_PORT: 8086
+      MANAGEMENT_SERVER_ADDRESS: 127.0.0.1
     volumes:
       - demo-app-acme-data:/app/data
       - demo-app-acme-config:/app/config
     networks:
       - ezkey-exp-net
-    restart: on-failure:3
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8082/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:8086/actuator/health || exit 1"]
       interval: 30s
       timeout: 3s
       start_period: 40s
@@ -228,11 +303,15 @@ services:
   caddy:
     image: caddy:2-alpine
     container_name: ezkey-exp-caddy
+    logging: *default-logging
+    mem_limit: 128m
+    memswap_limit: 128m
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Canonical source in repo is Caddyfile.ezkey-online; container path stays /etc/caddy/Caddyfile.
+      - ./Caddyfile.ezkey-online:/etc/caddy/Caddyfile:ro
       # Cloudflare Origin CA PEMs (origin.pem, origin-key.pem) — created in dashboard, not in git.
       - ./caddy-certs:/etc/caddy/certs:ro
       - caddy-data:/data
@@ -248,7 +327,7 @@ services:
         condition: service_healthy
     networks:
       - ezkey-exp-net
-    restart: on-failure:3
+    restart: unless-stopped
 
 networks:
   ezkey-exp-net:

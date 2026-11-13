@@ -20,4 +20,17 @@ package org.ezkey.signature;
  * @param base64UrlPublicKey raw 32-byte public key, Base64URL without padding
  * @since 2025
  */
-public record Ed25519KeyPair(String base64PrivateKey, String base64UrlPublicKey) {}
+public record Ed25519KeyPair(String base64PrivateKey, String base64UrlPublicKey) {
+
+  /**
+   * Returns a string representation with the private key masked.
+   *
+   * @return string representation safe for logs
+   */
+  @Override
+  public String toString() {
+    return "Ed25519KeyPair{base64PrivateKey=[PROTECTED], base64UrlPublicKey='"
+        + base64UrlPublicKey
+        + "'}";
+  }
+}

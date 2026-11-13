@@ -1,6 +1,6 @@
 # Local stack — ports (direct vs Caddy)
 
-This page frames the **two host-level ways** the same APIs are reachable after a typical `ezkey-tests/clean-start.sh` run: **direct published ports** (Spring Boot inside Docker) and **Caddy reverse proxy** ports on the host. Both are intentional; they do not replace each other.
+This page frames the **two host-level ways** the same APIs are reachable after a typical `ezkey-tests/clean-start.sh` run: **direct published ports** (Spring Boot inside Docker) and **Caddy reverse proxy** ports on the host. Both are intentional; they do not replace each other. On **Rootbeer** (Windows local test host), the single clean-start stack keeps these fixed ports by design — see root [`AGENTS.md`](../AGENTS.md) § *Working conventions*.
 
 For **what to test** on each URL (headers, Bruno, `curl`), see **[admin-ui-security-validation.md](admin-ui-security-validation.md)**.
 
@@ -13,9 +13,31 @@ For **what to test** on each URL (headers, Bruno, `curl`), see **[admin-ui-secur
 | Admin API                    | `9080`                             | `19080` → forwards to `admin-api:9080`                    |
 | Integration API              | `7080`                             | `17080` → forwards to `integration-api:7080`              |
 | Crypto API                   | `9090`                             | **No Caddy hop in the current compose file** — use `9090` |
-| Integration API (management) | `7081`                             | **Not exposed through this Caddy file** — use `7081`      |
+| Admin API (management)       | `127.0.0.1:9081`                   | **Not exposed through this Caddy file** — use `9081`      |
+| Auth API (management)        | `127.0.0.1:8085`                   | **Not exposed through this Caddy file** — use `8085`      |
+| Integration API (management) | `127.0.0.1:7081`                   | **Not exposed through this Caddy file** — use `7081`      |
+| Crypto API (management)      | `127.0.0.1:9091`                   | **Not exposed through Caddy** — use `9091`                 |
+| Demo Device (management)     | `127.0.0.1:8084`                   | **Not exposed through Caddy** — use `8084`                 |
+| Demo App ACME                | `8082`                             | Via proxy hostname when configured — Actuator is **not** on `8082` |
+| Demo App ACME (management)   | `127.0.0.1:8086`                   | Health/Actuator only — never routed by Caddy |
 | JavaMelody collector (opt-in `--with-java-melody`) | `8088` | **No Caddy hop** — collector UI only |
 
+**Management host publish:** local `docker-compose.yml` maps management ports as
+`127.0.0.1:<port>:<port>` only. Inside the container the JVM listens on `0.0.0.0`
+(`management.server.address=0.0.0.0` in each `application-docker.properties`, #905) so
+Docker peers and HAProxy healthchecks (e.g. `ezkey-pam/test/test_pam.sh` →
+`integration-api:7081`, HA `check port 8085`) keep working. Do **not** set
+`MANAGEMENT_SERVER_ADDRESS=127.0.0.1` on the local compose (that binding is community-only).
+IDE defaults keep `127.0.0.1`.
+
+**Reserved management ports:** `8084` (demo-device), `8086` (acme), `8087` (crypto IDE default),
+`9091` (crypto Docker). Confirm they stay free of other services before reassigning.
+
+**IDE defaults** (`config/application.properties` / demo-device JAR defaults): management port +
+`management.server.address=127.0.0.1` on Admin/Auth/Integration/Crypto/Demo Device (E5).
+
+
+**Servlet session cookies on localhost:** each Spring servlet app sets a distinct `server.servlet.session.cookie.name` (Acme `EZKEY_ACME_SESSION`, demo-device `EZKEY_DEVICE_SESSION`, plus `EZKEY_*_API_SESSION` on the APIs) so browsers do not overwrite sessions across ports — shared default `JSESSIONID` caused Acme “session expired” after using the demo device (#799). APIs keep the property in `config/application.properties` (external config shipped with the image); demos keep it in the JAR `src/main/resources/application.properties`. Redeploying Acme or the demo device drops any in-memory sessions that still used the old cookie name. Cross-cutting guard: `node --test scripts/lib/session-cookie-names.test.mjs` (RED fixtures under `scripts/lib/fixtures/session-cookie-names/`; tolerates `=` / `:` with spaces; last assignment within a file; each `application-*.properties` profile checked separately as base+that-profile — #807).
 
 **Default for day-to-day manual testing (Bruno, curl, OpenAPI links):** use **direct** URLs (`8080`, `9080`, `7080`, …). Same semantics as the services; minimal moving parts.
 
@@ -51,8 +73,9 @@ same as the daily Caddy overlay — do not mix HA and single-stack assumptions.
 |------|-----------|--------|
 | Admin API (via HAProxy) | `9080` | Round-robin to `admin-api-1` / `admin-api-2` |
 | Auth API (via HAProxy) | `8080` | Round-robin to `auth-api-1` / `auth-api-2` |
-| HAProxy Admin stats | `9081` | `http://localhost:9081/stats` |
-| HAProxy Auth stats | `8085` | `http://localhost:8085/stats` |
+| HAProxy Admin stats | `127.0.0.1:9081` | `http://localhost:9081/stats` (loopback-only host publish, #905) |
+| HAProxy Auth stats | `127.0.0.1:8085` | `http://localhost:8085/stats` (loopback-only) |
+| HAProxy Integration stats | `127.0.0.1:7081` | `http://localhost:7081/stats` (loopback-only) |
 | JavaMelody collector (opt-in) | `8088` | `./clean-start.sh --ha --with-java-melody` — both replicas per API |
 
 Entrypoints: `./docker/start-ha.sh`, `./ezkey-tests/clean-start.sh --ha`. Full runbook:

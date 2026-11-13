@@ -42,7 +42,11 @@
       "authFailed": "Échec de l'authentification. Veuillez réessayer.",
       "connectionLost": "Connexion perdue. Vérifiez votre réseau et réessayez.",
       "loginFailed": "Échec de la connexion. Vérifiez votre nom d'utilisateur.",
-      "serverUnreachable": "Impossible de joindre le serveur. L'API Admin est-elle démarrée ?"
+      "serverUnreachable": "Impossible de joindre le serveur. L'API Admin est-elle démarrée ?",
+      "cooldownTitle": "Connexion suspendue",
+      "cooldown": "La connexion est suspendue après plusieurs demandes refusées ou codes erronés. Réessayez dans quelques minutes.",
+      "cooldownMinutes_one": "La connexion est suspendue encore {{count}} minute après plusieurs demandes refusées ou codes erronés. Réessayez ensuite.",
+      "cooldownMinutes_other": "La connexion est suspendue encore {{count}} minutes après plusieurs demandes refusées ou codes erronés. Réessayez ensuite."
     }
   },
   "footer": "Propulsé par {{brand}} — Auto-hébergé · Visibilité complète",
@@ -117,6 +121,11 @@
     "copied": "Copié",
     "thenPasswordless": "Après la liaison de l'appareil, revenez ici et utilisez « Connexion avec EZKey » comme d'habitude.",
     "backToLogin": "Retour à la connexion",
+    "forkIntro": "Choisissez comment continuer. Vous pouvez explorer la console pendant quelques heures sans appareil, ou enrôler un appareil maintenant.",
+    "exploreTemporary": "Explorer la console — accès temporaire (~8 h)",
+    "enrollDevice": "Enrôler un appareil",
+    "exploreFailed": "Impossible de démarrer une session console temporaire. Réessayez ou enrôlez un appareil.",
+    "backToFork": "Retour aux choix",
     "validation": {
       "codeRequired": "Saisissez un code d'activation",
       "codeFormat": "Utilisez un code d'activation au format ezkey_activation_..."

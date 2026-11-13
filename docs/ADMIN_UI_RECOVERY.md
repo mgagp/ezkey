@@ -12,7 +12,7 @@ The Admin UI implements this as a **recovery funnel** on the login page, not as 
 ### After reset (bind step)
 
 - The operator is **not** authenticated with a normal admin token on the login page, so the UI cannot call `GET /api/v1/admins/{id}/onboarding/qrcode` after reset.
-- The success step therefore builds the **same JSON payload** as the Admin API QR generator (`enrollmentId`, `enrollmentProofToken`, optional `authUrl`) and renders a **QR image in the browser** (PNG data URL). Set `VITE_QR_AUTH_BASE_URL` to the same value as the Admin API’s `ezkey.qr.auth-base-url` (and the `authApiPublicBaseUrl` field from `GET /api/v1/public/instance-info`) so browser-generated QR matches server-generated QR and the mobile app receives a consistent `authUrl`.
+- The success step therefore builds the **same JSON payload** as the Admin API QR generator (`enrollmentProofToken`, optional `authUrl`) and renders a **QR image in the browser** (PNG data URL). Set `VITE_QR_AUTH_BASE_URL` to the same value as the Admin API’s `ezkey.qr.auth-base-url` (and the `authApiPublicBaseUrl` field from `GET /api/v1/public/instance-info`) so browser-generated QR matches server-generated QR and the mobile app receives a consistent `authUrl`.
 - The **binding challenge** stays visible for manual verification flows. The **enrollment proof token** remains available under a collapsed “Manual entry” section for operators who cannot scan.
 
 ## Provisioning
@@ -26,6 +26,9 @@ The Admin UI implements this as a **recovery funnel** on the login page, not as 
 - After an enrollment exists, operators obtain a **replacement set** through
   `POST /api/v1/admins/{id}/recovery-codes/regenerate`; the previous unused set is invalidated
   immediately.
+- When every code of a set has been used (`recoveryCodesExhausted = true`), the next set still
+  goes through `POST /api/v1/admins/{id}/recovery-codes/issue-initial`, but the admin detail
+  action and dialog read "Issue new recovery codes", not a first issuance (#1244).
 - `GET /api/v1/admins/{id}/onboarding` does **not** return plaintext recovery codes (hashed at rest).
 
 Canon: [LIFECYCLE_GOVERNANCE.md](LIFECYCLE_GOVERNANCE.md) §3.5 (activation ≠ recovery).

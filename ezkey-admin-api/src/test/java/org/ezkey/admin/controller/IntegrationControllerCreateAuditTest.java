@@ -99,22 +99,21 @@ class IntegrationControllerCreateAuditTest {
 
     verify(auditLogService)
         .log(
-            argThat(
-                (AuditLog auditLog) ->
-                    auditLog.getEventStatus() == EventStatus.FAILURE
-                        && "integration_creation_failed".equals(auditLog.getEventAction())
-                        && Integer.valueOf(tenantAdmin.getAdminId()).equals(auditLog.getAdminId())
-                        && Integer.valueOf(42).equals(auditLog.getTenantId())
-                        && auditLog.getErrorMessage().contains("already exists")
-                        && auditLog
-                            .getEventDetails()
-                            .contains("\"requested_integration_code\":\"portal\"")
-                        && auditLog
-                            .getEventDetails()
-                            .contains("\"requested_integration_name\":\"Portal\"")
-                        && auditLog
-                            .getEventDetails()
-                            .contains("\"conflicting_tenant_name\":\"Acme\"")));
+            argThat((AuditLog auditLog) ->
+                auditLog.getEventStatus() == EventStatus.FAILURE
+                    && "integration_creation_failed".equals(auditLog.getEventAction())
+                    && Integer.valueOf(tenantAdmin.getAdminId()).equals(auditLog.getAdminId())
+                    && Integer.valueOf(42).equals(auditLog.getTenantId())
+                    && auditLog.getErrorMessage().contains("already exists")
+                    && auditLog
+                        .getEventDetails()
+                        .contains("\"requested_integration_code\":\"portal\"")
+                    && auditLog
+                        .getEventDetails()
+                        .contains("\"requested_integration_name\":\"Portal\"")
+                    && auditLog
+                        .getEventDetails()
+                        .contains("\"conflicting_tenant_name\":\"Acme\"")));
   }
 
   @Test
@@ -141,23 +140,20 @@ class IntegrationControllerCreateAuditTest {
 
     verify(auditLogService)
         .log(
-            argThat(
-                (AuditLog auditLog) ->
-                    auditLog.getEventStatus() == EventStatus.ERROR
-                        && "integration_creation_error".equals(auditLog.getEventAction())
-                        && Integer.valueOf(globalAdmin.getAdminId()).equals(auditLog.getAdminId())
-                        && auditLog.getTenantId() == null
-                        && auditLog
-                            .getErrorMessage()
-                            .contains(
-                                "System tenant not found. Database may not be properly"
-                                    + " initialized.")
-                        && auditLog
-                            .getEventDetails()
-                            .contains("\"requested_scope\":\"system_tenant\"")
-                        && auditLog
-                            .getEventDetails()
-                            .contains("\"error_type\":\"SystemTenantNotConfiguredException\"")));
+            argThat((AuditLog auditLog) ->
+                auditLog.getEventStatus() == EventStatus.ERROR
+                    && "integration_creation_error".equals(auditLog.getEventAction())
+                    && Integer.valueOf(globalAdmin.getAdminId()).equals(auditLog.getAdminId())
+                    && auditLog.getTenantId() == null
+                    && auditLog
+                        .getErrorMessage()
+                        .contains(
+                            "System tenant not found. Database may not be properly"
+                                + " initialized.")
+                    && auditLog.getEventDetails().contains("\"requested_scope\":\"system_tenant\"")
+                    && auditLog
+                        .getEventDetails()
+                        .contains("\"error_type\":\"SystemTenantNotConfiguredException\"")));
   }
 
   private EzkeyAdmin tenantAdmin() {

@@ -4,7 +4,7 @@
 
 This document catalogs the representative backend workflows that the Admin API orchestrates. Each workflow describes the nominal path, decision points, exception paths, and boundaries crossed. Exhaustive endpoint-by-endpoint behavior remains in [`../../../docs/ENDPOINT.md`](../../../docs/ENDPOINT.md); this document focuses on **flows**, not **endpoints**.
 
-Phase 1 seeds three representative flows. Additional flows will be added using the [functional workflow template](../../templates/functional-workflow.template.md).
+Phase 1 seeds three representative flows. Additional flows are added as entries in this file (see [`../../templates/README.md`](../../templates/README.md)).
 
 ## Workflow Index
 

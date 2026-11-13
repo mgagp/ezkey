@@ -31,7 +31,7 @@ This module can be used as a dependency in other projects:
 <dependency>
     <groupId>org.ezkey</groupId>
     <artifactId>ezkey-core</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.2.0-SNAPSHOT</version>
 </dependency>
 ```
 

@@ -12,9 +12,10 @@ This file is intended for coding agents working in `ezkey-auth-api/`.
 - **Errors:** HTTP **4xx/5xx** use **RFC 9457** `ProblemDetail` (`application/problem+json`). Map named
   exceptions in `GlobalExceptionHandler` with **safe** `detail`/`title` strings from
   `AuthApiProblemCatalog` — never copy `Throwable#getMessage()` to the client for security-sensitive
-  flows. OpenAPI references `ProblemDetail`; generated specs under `specs/` are produced by
-  `scripts/update-specs.sh` after a clean start. Agents may run that script only when explicitly
-  authorized for the current task; never hand-edit generated spec files.
+  flows. OpenAPI references `ProblemDetail`; generated specs under `specs/` (and dispatched
+  copies) are produced by `scripts/update-specs.sh` after a clean start. When this task changes
+  the Auth API contract, run that refresh as part of close-out (see
+  `.cursor/rules/openapi-specs.mdc` and root `AGENTS.md`); never hand-edit generated spec files.
 
 ## Module responsibilities
 
@@ -71,6 +72,10 @@ caught, logged, and re-thrown — the audit log is the primary observability mec
 
 ## Security invariants
 
+- Challenge-code direction / MFA fatigue / number matching →
+  [`docs/SECURITY_POSTURE.md`](../docs/SECURITY_POSTURE.md) § Challenge-code direction
+  (Decision #960); inverted mode parked:
+  [`I-2026-10-21-inverted-challenge-code-mode`](../product-docs/global/backlog/ideas/I-2026-10-21-inverted-challenge-code-mode.md).
 - Enrollment bind has a **read-once guarantee**: once bound, the proof token cannot be reused.
   The `findAndLockUnreadById` native query enforces this with `SELECT FOR NO KEY UPDATE`.
 - Device public keys are uniqueness-checked by SHA-256 hash (`Enrollment.devicePublicKeyHash`)
@@ -79,10 +84,11 @@ caught, logged, and re-thrown — the audit log is the primary observability mec
   device proof token is **persisted only when a pending attempt is claimed** (200). On **204** (no
   pending), nothing is stored—the same signed token may be reused on later polls until a claim
   occurs; see `AuthAttemptPendingService` Javadoc and `docs/ENDPOINT.md`.
-- **Respond endpoint**: One failed validation (invalid signature, wrong challenge, or missing device
-  key) marks the auth attempt as **INVALID** immediately. There is no failure counter or N-attempts
-  retry; this is intentional (strict security posture). Rate limiting on `POST /api/v1/auth-attempts/respond`
-  is per `authAttemptId` (from request body), default 1 request per 5 minutes.
+- **Respond endpoint**: Invalid device signature or missing device key → generic **409**
+  `auth-attempt-state-conflict` with **no** status transition (#912); wrong challenge after a valid
+  device signature still marks **INVALID** (conditional on `READ`). Rate limiting on
+  `POST /api/v1/auth-attempts/respond` is per `authAttemptId` (from request body), default 1 request
+  per 5 minutes.
 - **Device UX for auth attempts:** Approve and Deny only (`POST /respond`). There is **no**
   device-initiated cancel. Closing or ignoring the prompt leaves `PENDING`/`READ` until TTL; the
   **Admin API** `AuthAttemptExpiryScheduler` persists `EXPIRED` (see `docs/ENDPOINT.md` cancel /

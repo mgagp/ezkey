@@ -6,13 +6,14 @@
  */
 
 import React from 'react';
-import {View, Text, StyleSheet, Pressable, ScrollView} from 'react-native';
+import {View, Text, Pressable, ScrollView} from 'react-native';
 import {StackScreenProps} from '@react-navigation/stack';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTranslation} from 'react-i18next';
 import {RootStackParamList} from '../../navigation/types';
-import {borderRadius, colors, spacing, typography} from '../../config/theme';
-import {APP_DISPLAY_NAME, APP_VERSION} from '../../config/appInfo';
+import {borderRadius, spacing, typography} from '../../config/theme';
+import {createThemedStyles} from '../../theme';
+import {APP_DISPLAY_NAME} from '../../config/appInfo';
 import {
   DEFAULT_SECURITY_LEVEL,
   normalizeSecurityLevel,
@@ -29,6 +30,7 @@ type SettingsScreenName =
   | 'DangerZone'
   | 'Licenses'
   | 'Language'
+  | 'Appearance'
   | 'Security';
 
 type SettingsItem = {
@@ -43,6 +45,7 @@ type SettingsItem = {
  * @since 2025
  */
 export const SettingsScreen: React.FC<Props> = ({navigation}) => {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const {t} = useTranslation();
   const [securityLevel, setSecurityLevel] = React.useState<SecurityLevel>(
@@ -85,6 +88,11 @@ export const SettingsScreen: React.FC<Props> = ({navigation}) => {
       subtitle: t('settings.languageSubtitle'),
     },
     {
+      key: 'Appearance',
+      label: t('settings.appearanceLabel'),
+      subtitle: t('settings.appearanceSubtitle'),
+    },
+    {
       key: 'Security',
       label: t('settings.securityLabel'),
       subtitle:
@@ -119,10 +127,16 @@ export const SettingsScreen: React.FC<Props> = ({navigation}) => {
                 index === settingsItems.length - 1 && styles.itemLast,
                 pressed && styles.itemPressed,
               ]}
-              onPress={() => navigation.navigate(item.key)}>
+              onPress={() => navigation.navigate(item.key)}
+              accessibilityRole="button"
+              accessibilityLabel={
+                item.subtitle != null ? `${item.label}, ${item.subtitle}` : item.label
+              }>
               <Text style={styles.itemLabel}>{item.label}</Text>
               {item.subtitle != null && <Text style={styles.itemSubtitle}>{item.subtitle}</Text>}
-              <Text style={styles.chevron}>›</Text>
+              <Text style={styles.chevron} importantForAccessibility="no" accessibilityElementsHidden>
+                ›
+              </Text>
             </Pressable>
           ))}
         </View>
@@ -130,14 +144,14 @@ export const SettingsScreen: React.FC<Props> = ({navigation}) => {
       <Text
         style={styles.versionFooter}
         accessibilityRole="text"
-        accessibilityLabel={`${APP_DISPLAY_NAME} version ${APP_VERSION}`}>
-        {APP_DISPLAY_NAME} v{APP_VERSION}
+        accessibilityLabel={`${APP_DISPLAY_NAME} ${t('settings.publicAlpha')}`}>
+        {APP_DISPLAY_NAME} · {t('settings.publicAlpha')}
       </Text>
     </ScrollView>
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(colors => ({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -203,4 +217,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     opacity: 0.7,
   },
-});
+}));

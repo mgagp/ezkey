@@ -24,7 +24,10 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties(prefix = "ezkey.audit.integrity.nightly")
 public class NightlyIntegrityProperties {
 
-  /** Enable or disable the nightly retroactive integrity validation job. */
+  /**
+   * Enable or disable the nightly job <em>and</em> operator {@code POST
+   * …/integrity-validation/run}. When false, the POST fail-closes with HTTP 409.
+   */
   private boolean enabled = true;
 
   /** Cron expression for the nightly job (default: 02:00 UTC daily). */

@@ -52,6 +52,15 @@ done
 export BUILD_MODE
 export ADMIN_UI_PORT
 
+# Stamp Public alpha chrome with the current short SHA when not already set.
+if [ -z "${VITE_GIT_SHA:-}" ]; then
+  if VITE_GIT_SHA="$(git -C "$SCRIPT_DIR/.." rev-parse --short=7 HEAD 2>/dev/null)"; then
+    export VITE_GIT_SHA
+  else
+    export VITE_GIT_SHA=unknown
+  fi
+fi
+
 COMPOSE_FILE="-f docker-compose.admin-ui.yml"
 if [ -n "$NO_CACHE" ]; then
   DOCKER_BUILDKIT=1 docker compose $COMPOSE_FILE build --no-cache

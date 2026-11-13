@@ -28,6 +28,7 @@ import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.signature.SignatureService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -61,6 +62,10 @@ class AuthAttemptServiceSupersededTest {
   @Mock private AuthAttemptRespondService respondService;
 
   @Mock private AuthAttemptWaitService waitService;
+
+  @Mock private IntegrationRepository integrationRepository;
+
+  @Mock private AuthAttemptCreateLock createLock;
 
   @InjectMocks private AuthAttemptService authAttemptService;
 
@@ -120,13 +125,13 @@ class AuthAttemptServiceSupersededTest {
     request.setAuthAttemptProofTokenSignedByDevice("signed-token");
 
     // When
-    AuthAttemptRespondResponse response = authAttemptService.respond(request);
+    AuthAttemptRespondResponse response = authAttemptService.respond(request, null);
 
     // Then
     assertNotNull(response);
     assertEquals(AuthenticationResult.EXPIRED, response.getResult());
     assertEquals("Authentication attempt superseded by newer request", response.getMessage());
-    verify(respondService).respond(request);
+    verify(respondService).respond(request, null);
   }
 
   @Test
@@ -140,13 +145,13 @@ class AuthAttemptServiceSupersededTest {
     request.setAuthAttemptProofTokenSignedByDevice("signed-token");
 
     // When
-    AuthAttemptRespondResponse response = authAttemptService.respond(request);
+    AuthAttemptRespondResponse response = authAttemptService.respond(request, null);
 
     // Then
     assertNotNull(response);
     assertEquals(AuthenticationResult.APPROVED, response.getResult());
     assertEquals("Auth attempt completed", response.getMessage());
-    verify(respondService).respond(request);
+    verify(respondService).respond(request, null);
   }
 
   @Test
@@ -198,13 +203,13 @@ class AuthAttemptServiceSupersededTest {
     request.setAuthAttemptProofTokenSignedByDevice("signed-token");
 
     // When
-    AuthAttemptRespondResponse response = authAttemptService.respond(request);
+    AuthAttemptRespondResponse response = authAttemptService.respond(request, null);
 
     // Then - Should return superseded, not expired
     assertNotNull(response);
     assertEquals(AuthenticationResult.EXPIRED, response.getResult());
     assertEquals("Authentication attempt superseded by newer request", response.getMessage());
-    verify(respondService).respond(request);
+    verify(respondService).respond(request, null);
   }
 
   /**
@@ -222,7 +227,8 @@ class AuthAttemptServiceSupersededTest {
     defaultResponse.setResult(AuthenticationResult.APPROVED);
     defaultResponse.setMessage("Auth attempt completed");
 
-    when(respondService.respond(any(AuthAttemptRespondRequest.class))).thenReturn(defaultResponse);
+    when(respondService.respond(any(AuthAttemptRespondRequest.class), any()))
+        .thenReturn(defaultResponse);
   }
 
   private void setupDefaultWaitServiceMock() {
@@ -241,7 +247,7 @@ class AuthAttemptServiceSupersededTest {
     supersededResponse.setResult(AuthenticationResult.EXPIRED);
     supersededResponse.setMessage("Authentication attempt superseded by newer request");
 
-    when(respondService.respond(any(AuthAttemptRespondRequest.class)))
+    when(respondService.respond(any(AuthAttemptRespondRequest.class), any()))
         .thenReturn(supersededResponse);
   }
 

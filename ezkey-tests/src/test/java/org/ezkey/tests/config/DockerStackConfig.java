@@ -45,6 +45,11 @@ import org.slf4j.LoggerFactory;
  * {@code docker-compose.ha.docker-dev.yml}, then falls back to public {@code /api/v1/public/
  * instance-info} on the load-balanced API ports.
  *
+ * <p>On Windows, Java {@code HttpClient} resolves {@code localhost} to IPv4 first. A more specific
+ * {@code 127.0.0.1} listener (IDE network inspection) can intercept that path while Docker remains
+ * reachable on {@code [::1]}. {@link LoopbackHostSelector} rewrites loopback URLs onto IPv6 when
+ * that happens.
+ *
  * @since 2025
  */
 public class DockerStackConfig {
@@ -86,12 +91,22 @@ public class DockerStackConfig {
    * #verifyServicesHealthy()}.
    */
   public DockerStackConfig() {
-    this.adminApiUrl = System.getenv().getOrDefault("EZKEY_ADMIN_API_URL", DEFAULT_ADMIN_API_URL);
+    String adminActuatorBase =
+        System.getenv().getOrDefault("EZKEY_ADMIN_ACTUATOR_URL", DEFAULT_ADMIN_ACTUATOR_URL);
+    LoopbackHostSelector.resolveAgainst(adminActuatorBase + "/actuator/health");
+
+    this.adminApiUrl =
+        LoopbackHostSelector.rewriteLoopback(
+            System.getenv().getOrDefault("EZKEY_ADMIN_API_URL", DEFAULT_ADMIN_API_URL));
     this.integrationApiUrl =
-        System.getenv().getOrDefault("EZKEY_INTEGRATION_API_URL", DEFAULT_INTEGRATION_API_URL);
-    this.authApiUrl = System.getenv().getOrDefault("EZKEY_AUTH_API_URL", DEFAULT_AUTH_API_URL);
+        LoopbackHostSelector.rewriteLoopback(
+            System.getenv().getOrDefault("EZKEY_INTEGRATION_API_URL", DEFAULT_INTEGRATION_API_URL));
+    this.authApiUrl =
+        LoopbackHostSelector.rewriteLoopback(
+            System.getenv().getOrDefault("EZKEY_AUTH_API_URL", DEFAULT_AUTH_API_URL));
     this.cryptoApiUrl =
-        System.getenv().getOrDefault("EZKEY_CRYPTO_API_URL", DEFAULT_CRYPTO_API_URL);
+        LoopbackHostSelector.rewriteLoopback(
+            System.getenv().getOrDefault("EZKEY_CRYPTO_API_URL", DEFAULT_CRYPTO_API_URL));
 
     ResolvedHealth adminHealth =
         resolveAdminOrAuthHealth(
@@ -194,22 +209,26 @@ public class DockerStackConfig {
       String envKey, String standardActuatorUrl, List<String> haActuatorUrls, String apiBaseUrl) {
     String fromEnv = System.getenv(envKey);
     if (fromEnv != null && !fromEnv.isBlank()) {
-      String healthUrl = fromEnv + "/actuator/health";
-      return new ResolvedHealth(fromEnv, healthUrl);
+      String rewritten = LoopbackHostSelector.rewriteLoopback(fromEnv);
+      String healthUrl = rewritten + "/actuator/health";
+      return new ResolvedHealth(rewritten, healthUrl);
     }
 
+    String rewrittenStandard = LoopbackHostSelector.rewriteLoopback(standardActuatorUrl);
     List<String> actuatorCandidates = new ArrayList<>();
-    actuatorCandidates.add(standardActuatorUrl);
-    actuatorCandidates.addAll(haActuatorUrls);
+    actuatorCandidates.add(rewrittenStandard);
+    for (String haUrl : haActuatorUrls) {
+      actuatorCandidates.add(LoopbackHostSelector.rewriteLoopback(haUrl));
+    }
 
     for (String base : actuatorCandidates) {
       String healthUrl = base + "/actuator/health";
       if (isHttpOk(healthUrl)) {
-        if (!base.equals(standardActuatorUrl)) {
+        if (!base.equals(rewrittenStandard)) {
           log.info(
               "Using HA-compatible Actuator health at {} (standard {} is not Actuator)",
               healthUrl,
-              standardActuatorUrl + "/actuator/health");
+              rewrittenStandard + "/actuator/health");
         }
         return new ResolvedHealth(base, healthUrl);
       }
@@ -221,11 +240,11 @@ public class DockerStackConfig {
           "Using public instance-info health probe at {} (Actuator not reachable on host"
               + " management ports)",
           publicProbe);
-      return new ResolvedHealth(standardActuatorUrl, publicProbe);
+      return new ResolvedHealth(rewrittenStandard, publicProbe);
     }
 
     // Keep standard URL so verifyServicesHealthy() reports the primary expected probe.
-    return new ResolvedHealth(standardActuatorUrl, standardActuatorUrl + "/actuator/health");
+    return new ResolvedHealth(rewrittenStandard, rewrittenStandard + "/actuator/health");
   }
 
   /**

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { playwrightArtifactPath } from './support/artifact-path';
 import { loginViaDemoDevice } from './support/auth-flow';
 
 test('@smoke public shell supports language switch and contextual help', async ({ page }) => {
@@ -33,6 +34,7 @@ test('@smoke @device-backed real login through Demo Device reaches the authentic
   await expect(page.getByTestId('sidebar-link-dashboard')).toBeVisible();
   await expect(page.getByTestId('sidebar-link-tenants')).toBeVisible();
   await expect(page.getByTestId('sidebar-link-encryptionKeys')).toBeVisible();
+  await expect(page.getByTestId('sidebar-link-integrity')).toBeVisible();
 
   await demoPage.close();
 });
@@ -50,6 +52,35 @@ test('@smoke @device-backed representative authenticated workflow loads admins a
   await page.getByTestId('app-logout-button').click();
   await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByTestId('login-page')).toBeVisible();
+
+  await demoPage.close();
+});
+
+test('@smoke @device-backed Integrity cut 3 micro-dashboard is the glance strip', async ({
+  page,
+  context,
+}, testInfo) => {
+  const demoPage = await loginViaDemoDevice(page, context, 'approve');
+
+  await page.getByTestId('sidebar-link-integrity').click();
+  await expect(page).toHaveURL(/\/integrity$/);
+
+  // After D1 settles (fresh verdict or AUTO job), the micro-dashboard owns the strip.
+  const dashboard = page.getByTestId('integrity-micro-dashboard');
+  await expect(dashboard).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByTestId('integrity-async-job-banner')).toHaveCount(0);
+  // Do not screenshot mid-flight RUNNING — wait for a terminal glance tone.
+  await expect
+    .poll(async () => dashboard.getAttribute('data-tone'), { timeout: 60_000 })
+    .not.toMatch(/^(running|nightly-running)$/);
+  await expect(page.getByTestId('integrity-micro-dashboard-verdict')).toBeVisible();
+  await expect(page.getByTestId('integrity-micro-dashboard-scope')).toBeVisible();
+  await expect(page.getByTestId('integrity-micro-dashboard-reverify')).toBeVisible();
+
+  await page.screenshot({
+    path: playwrightArtifactPath(testInfo, 'integrity-micro-dashboard-smoke.png'),
+    fullPage: true,
+  });
 
   await demoPage.close();
 });

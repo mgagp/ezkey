@@ -4,9 +4,11 @@
 
 - **Date:** `2026-07-09` (investigation); corpus capture `2026-07-10`
 - **Program:** Wave B follow-on — Lane D post-delivery (`I-2026-07-10-nightly-integrity-boundary-false-positives`)
-- **Environment:** EXP1 production-like instance (SSH tunnel `localhost:6432` → Postgres)
+- **Environment:** Former experimental lab (then labeled EXP1; retired 2026-10) production-like instance (SSH tunnel `localhost:6432` → Postgres)
 - **Symptom:** Daily CRITICAL `AUDIT_INTEGRITY_RUPTURE` alerts at 22:00 local (EDT) /
   **02:00:01 UTC**, summary “0 entry + 0 chain violations”, all OPEN, occurrence_count=1 each
+
+> **Decommissioned lab label (2026-10):** Historical decision record for the former experimental lab → **ezkey.online** community cutover. Live ops use the community host only.
 
 ## Observation
 
@@ -64,7 +66,7 @@ shift with each night’s window → new OPEN row instead of `raiseOrTouch` on o
 
 ### 4. Scheduler race (secondary)
 
-Checkpoint cron is `1 */5 * * * ?` (second 1). Nightly cron is `0 0 2 * * ?` (second 0). On EXP1,
+Checkpoint cron is `1 */5 * * * ?` (second 1). Nightly cron is `0 0 2 * * ?` (second 0). On that lab host,
 batch completion (~`02:00:01.9`) preceded creation of the `01:55–02:00` checkpoint (~`02:00:02.2`).
 `verifyChain` already suppresses **trailing** gaps when the last checkpoint in range is the global
 latest (`lastInRangeIsLatest`), so the race alone does not explain the alert; the **leading**

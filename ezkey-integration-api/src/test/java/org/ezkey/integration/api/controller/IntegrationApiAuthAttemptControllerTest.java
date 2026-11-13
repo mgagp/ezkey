@@ -30,7 +30,11 @@ import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.EnrollmentInactiveException;
+import org.ezkey.exception.RateLimitExceededException;
 import org.ezkey.exception.auth.AuthAttemptCreateValidationException;
+import org.ezkey.exception.auth.AuthAttemptPendingExistsException;
+import org.ezkey.exception.auth.AuthAttemptRequestInvalidException;
+import org.ezkey.integration.api.config.ApiKeyRateLimitProperties;
 import org.ezkey.integration.api.security.AccessControlService;
 import org.ezkey.integration.api.security.RateLimitService;
 import org.ezkey.integration.domain.entity.Integration;
@@ -75,7 +79,8 @@ class IntegrationApiAuthAttemptControllerTest {
             rateLimitService,
             enrollmentRepository,
             integrationRepository,
-            auditEntityFkResolver);
+            auditEntityFkResolver,
+            new ApiKeyRateLimitProperties());
   }
 
   @AfterEach
@@ -91,7 +96,7 @@ class IntegrationApiAuthAttemptControllerTest {
 
     HttpServletRequest request = new MockHttpServletRequest();
     AuthAttemptCreateRequestDto dto =
-        new AuthAttemptCreateRequestDto(null, null, false, null, null);
+        new AuthAttemptCreateRequestDto(null, null, false, null, null, null);
 
     AuthAttemptCreateValidationException exception =
         assertThrows(
@@ -122,7 +127,8 @@ class IntegrationApiAuthAttemptControllerTest {
                 "No verified enrollment found for userIdentifier 'alice'."));
 
     HttpServletRequest request = new MockHttpServletRequest();
-    AuthAttemptCreateRequestDto dto = new AuthAttemptCreateRequestDto(123, null, false, null, null);
+    AuthAttemptCreateRequestDto dto =
+        new AuthAttemptCreateRequestDto(123, null, false, null, null, null);
 
     AuthAttemptCreateValidationException exception =
         assertThrows(
@@ -130,6 +136,44 @@ class IntegrationApiAuthAttemptControllerTest {
 
     assertEquals(
         "No verified enrollment found for userIdentifier 'alice'.", exception.getMessage());
+  }
+
+  @Test
+  @DisplayName("create() - ttlSeconds=14 rejects before enrollment lookup (known user)")
+  void create_ttlBelowFloor_rejectsBeforeLookup_knownUser() {
+    setupApiKeyAuthentication(77);
+    when(rateLimitService.canCreateAuthAttempt(any())).thenReturn(true);
+
+    HttpServletRequest request = new MockHttpServletRequest();
+    AuthAttemptCreateRequestDto dto =
+        new AuthAttemptCreateRequestDto(123, null, false, null, null, 14);
+
+    AuthAttemptRequestInvalidException exception =
+        assertThrows(
+            AuthAttemptRequestInvalidException.class, () -> controller.create(dto, request));
+
+    assertEquals("ttlSeconds must be at least 15", exception.getMessage());
+    verify(enrollmentRepository, org.mockito.Mockito.never()).findById(any());
+  }
+
+  @Test
+  @DisplayName(
+      "create() - ttlSeconds=14 same rejection for unknown userIdentifier (non-enumerating)")
+  void create_ttlBelowFloor_rejectsBeforeLookup_unknownUser() {
+    setupApiKeyAuthentication(77);
+    when(rateLimitService.canCreateAuthAttempt(any())).thenReturn(true);
+
+    HttpServletRequest request = new MockHttpServletRequest();
+    AuthAttemptCreateRequestDto dto =
+        new AuthAttemptCreateRequestDto(null, "nobody@example.com", false, null, null, 14);
+
+    AuthAttemptRequestInvalidException exception =
+        assertThrows(
+            AuthAttemptRequestInvalidException.class, () -> controller.create(dto, request));
+
+    assertEquals("ttlSeconds must be at least 15", exception.getMessage());
+    verify(enrollmentRepository, org.mockito.Mockito.never())
+        .findByIntegrationIdAndUserIdentifierAndStatusAndActive(any(), any(), any(), any());
   }
 
   @Test
@@ -149,7 +193,8 @@ class IntegrationApiAuthAttemptControllerTest {
     when(enrollmentRepository.findById(123)).thenReturn(Optional.of(enrollment));
     when(integrationRepository.findById(77)).thenReturn(Optional.of(integration));
     HttpServletRequest request = new MockHttpServletRequest();
-    AuthAttemptCreateRequestDto dto = new AuthAttemptCreateRequestDto(123, null, false, null, null);
+    AuthAttemptCreateRequestDto dto =
+        new AuthAttemptCreateRequestDto(123, null, false, null, null, null);
 
     EnrollmentInactiveException exception =
         assertThrows(EnrollmentInactiveException.class, () -> controller.create(dto, request));
@@ -158,14 +203,85 @@ class IntegrationApiAuthAttemptControllerTest {
         "Enrollment is not active for authentication. Enrollment ID: 123", exception.getMessage());
     verify(auditLogService)
         .log(
-            argThat(
-                (AuditLog auditLog) ->
-                    auditLog.getEventStatus() == EventStatus.FAILURE
-                        && "auth_attempt_creation_failed".equals(auditLog.getEventAction())
-                        && "Enrollment is not active for authentication. Enrollment ID: 123"
-                            .equals(auditLog.getErrorMessage())
-                        && Integer.valueOf(123).equals(auditLog.getEnrollmentId())
-                        && Integer.valueOf(77).equals(auditLog.getIntegrationId())));
+            argThat((AuditLog auditLog) ->
+                auditLog.getEventStatus() == EventStatus.FAILURE
+                    && "auth_attempt_creation_failed".equals(auditLog.getEventAction())
+                    && "Enrollment is not active for authentication. Enrollment ID: 123"
+                        .equals(auditLog.getErrorMessage())
+                    && Integer.valueOf(123).equals(auditLog.getEnrollmentId())
+                    && Integer.valueOf(77).equals(auditLog.getIntegrationId())));
+  }
+
+  @Test
+  @DisplayName("create rethrows a pending-attempt refusal instead of HTTP 500")
+  void create_rethrowsPendingExists() {
+    setupApiKeyAuthentication(77);
+    when(rateLimitService.canCreateAuthAttempt(any())).thenReturn(true);
+    Enrollment enrollment = new Enrollment();
+    enrollment.setEnrollmentId(123);
+    enrollment.setIntegrationId(77);
+    enrollment.setActive(true);
+    enrollment.setStatus(EnrollmentStatus.VERIFIED);
+    Integration integration = new Integration();
+    integration.setId(77);
+    when(enrollmentRepository.findById(123)).thenReturn(Optional.of(enrollment));
+    when(integrationRepository.findById(77)).thenReturn(Optional.of(integration));
+    when(authAttemptService.create(any(AuthAttemptCreateRequest.class)))
+        .thenThrow(new AuthAttemptPendingExistsException(15));
+    HttpServletRequest request = new MockHttpServletRequest();
+    AuthAttemptCreateRequestDto dto =
+        new AuthAttemptCreateRequestDto(123, null, false, null, null, null);
+
+    AuthAttemptPendingExistsException ex =
+        assertThrows(
+            AuthAttemptPendingExistsException.class, () -> controller.create(dto, request));
+    assertEquals(15L, ex.getRetryAfterSeconds());
+  }
+
+  @Test
+  @DisplayName("429 limit and window come from configuration, including wait and cancel")
+  void rateLimit_usesConfiguredLimitAndWindow() {
+    ApiKeyRateLimitProperties properties = new ApiKeyRateLimitProperties();
+    properties.getCreateAuthAttempt().setRequests(7);
+    properties.getCreateAuthAttempt().setWindowMinutes(4);
+    properties.getWaitAuthAttempt().setRequests(9);
+    properties.getWaitAuthAttempt().setWindowMinutes(6);
+    IntegrationApiAuthAttemptController configured =
+        new IntegrationApiAuthAttemptController(
+            authAttemptService,
+            authAttemptMapper,
+            auditLogService,
+            rateLimitService,
+            enrollmentRepository,
+            integrationRepository,
+            new AuditEntityFkResolver(integrationRepository, enrollmentRepository),
+            properties);
+    setupApiKeyAuthentication(77);
+    when(rateLimitService.canCreateAuthAttempt(any())).thenReturn(false);
+    when(rateLimitService.canWaitAuthAttempt(any())).thenReturn(false);
+    HttpServletRequest request = new MockHttpServletRequest();
+    AuthAttemptCreateRequestDto dto =
+        new AuthAttemptCreateRequestDto(123, null, false, null, null, null);
+
+    RateLimitExceededException createLimit =
+        assertThrows(RateLimitExceededException.class, () -> configured.create(dto, request));
+    assertEquals("CREATE_AUTH_ATTEMPT", createLimit.getOperation());
+    assertEquals(7, createLimit.getLimit());
+    assertEquals(0, createLimit.getCurrent());
+    assertEquals(4, createLimit.getWindowSizeMinutes());
+
+    RateLimitExceededException waitLimit =
+        assertThrows(
+            RateLimitExceededException.class, () -> configured.waitForResponse(1, 30, 2, request));
+    assertEquals("WAIT_AUTH_ATTEMPT", waitLimit.getOperation());
+    assertEquals(9, waitLimit.getLimit());
+    assertEquals(6, waitLimit.getWindowSizeMinutes());
+
+    RateLimitExceededException cancelLimit =
+        assertThrows(RateLimitExceededException.class, () -> configured.cancel(1, request));
+    assertEquals("CANCEL_AUTH_ATTEMPT", cancelLimit.getOperation());
+    assertEquals(9, cancelLimit.getLimit());
+    assertEquals(6, cancelLimit.getWindowSizeMinutes());
   }
 
   private void setupApiKeyAuthentication(Integer integrationId) {

@@ -111,7 +111,7 @@ about compatibility as the sole gate for a hard block.
 - The September 2026 operability compass
   ([`operational-readiness-prioritization-2026-09.md`](../operational-readiness-prioritization-2026-09.md))
   explicitly **defers mobile feature work** in favor of the backend integrity/alerting cluster and
-  EXP1 soak. The official Play release track described here is a **parallel, independent** track,
+  community soak. The official Play release track described here is a **parallel, independent** track,
   not a claim on the September milestone's scope — this must stay explicit wherever the two are
   referenced together so a future session does not conflate them.
 - Certificate pinning (`I-2026-07-25`), local-auth (`I-2026-0001`), and iOS (`I-2026-0027`) are

@@ -12,8 +12,15 @@ export const EZKEY_PROBLEM_TYPE_BASE = 'https://ezkey.io/problems';
  * For dynamic {@code detail} (duplicate names, limits with counts, etc.), the server message must win when present.
  */
 const PREFER_I18N_OVER_DETAIL_RELS = new Set<string>([
+  'domain.auth-attempt-pending-exists',
+  'domain.auth-attempt-creation-cooldown',
   'domain.integration-has-enrollments',
   'domain.pending-encryption-key-exists',
+  'domain.encryption-rotation-disabled',
+  'domain.encryption-reencryption-disabled',
+  'domain.integrity-validation-disabled',
+  'domain.integrity-async-job-busy',
+  'domain.integrity-window-over-cap',
   'enrollment.system-integration-create-not-allowed',
   'enrollment.active-verified-enrollment-exists',
   'enrollment.cannot-delete-with-history',
@@ -70,12 +77,28 @@ export function problemTypeToTranslationKey(type: string | undefined): string | 
  * when non-empty (so business-specific messages are not replaced by generic titles), then locale by
  * {@code type}, then {@link getApiErrorMessage}.
  */
+/**
+ * Softens deny-list 403 copy from temporary evaluator console sessions into locale strings.
+ *
+ * @param detail RFC 9457 problem detail text
+ */
+export function isTemporarySessionRestrictionDetail(detail: string): boolean {
+  const lower = detail.toLowerCase();
+  return lower.includes('temporary console session') || lower.includes('temporary evaluator');
+}
+
 export function getTranslatedApiError(error: unknown, t: TFunction, fallback: string): string {
   if (!(error instanceof ApiError)) return fallback;
   const rel = problemTypeToTranslationKey(error.problemDetail?.type);
   const detail =
     typeof error.problemDetail?.detail === 'string' ? error.problemDetail.detail.trim() : '';
   const params = parseProblemParameters(error.problemDetail);
+
+  if (detail && isTemporarySessionRestrictionDetail(detail)) {
+    if (i18n.exists('authorization.temporary-session-restricted', { ns: 'errors' })) {
+      return t('authorization.temporary-session-restricted', { ns: 'errors' });
+    }
+  }
 
   if (
     rel != null &&

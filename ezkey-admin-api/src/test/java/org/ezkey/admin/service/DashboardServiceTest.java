@@ -99,14 +99,14 @@ class DashboardServiceTest {
 
     var overview = service.buildOverview(principal);
 
-    assertThat(overview.getIntegrations()).isNotNull();
-    assertThat(overview.getIntegrations().getTotal()).isEqualTo(5);
-    assertThat(overview.getIntegrations().getActive()).isEqualTo(3);
-    assertThat(overview.getIntegrations().getRetired()).isEqualTo(2);
-    assertThat(overview.getOpenAlertCount()).isNull();
-    assertThat(overview.getIntegrityJobs()).isNull();
-    assertThat(overview.getOperationalJobs()).isNull();
-    assertThat(overview.getIntegrityConfigSummary()).isNull();
+    assertThat(overview.integrations()).isNotNull();
+    assertThat(overview.integrations().total()).isEqualTo(5);
+    assertThat(overview.integrations().active()).isEqualTo(3);
+    assertThat(overview.integrations().retired()).isEqualTo(2);
+    assertThat(overview.openAlertCount()).isNull();
+    assertThat(overview.integrityJobs()).isNull();
+    assertThat(overview.operationalJobs()).isNull();
+    assertThat(overview.integrityConfigSummary()).isNull();
   }
 
   @Test
@@ -132,18 +132,18 @@ class DashboardServiceTest {
 
     var overview = service.buildOverview(principal);
 
-    assertThat(overview.getOpenAlertCount()).isEqualTo(3L);
-    assertThat(overview.getAlerts()).hasSize(1);
-    assertThat(overview.getIntegrityJobs()).hasSize(2);
-    assertThat(overview.getIntegrityJobs().get(0).getJobKey()).isEqualTo("AUDIT_CHAIN_CHECKPOINT");
-    assertThat(overview.getIntegrityJobs().get(0).getLastStatus()).isEqualTo("SUCCESS");
-    assertThat(overview.getOperationalJobs()).hasSize(1);
-    assertThat(overview.getOperationalJobs().get(0).getLastStatus()).isEqualTo("NEVER_RUN");
-    assertThat(overview.getIntegrityConfigSummary()).isNotNull();
-    assertThat(overview.getIntegrityConfigSummary().getChainLookbackMinutes()).isEqualTo(60);
-    assertThat(overview.getIntegrityConfigSummary().getNightlyWindowHours()).isEqualTo(24);
-    assertThat(overview.getIntegrityConfigSummary().isChainCheckpointsEnabled()).isTrue();
-    assertThat(overview.getIntegrityConfigSummary().isNightlyValidationEnabled()).isTrue();
+    assertThat(overview.openAlertCount()).isEqualTo(3L);
+    assertThat(overview.alerts()).hasSize(1);
+    assertThat(overview.integrityJobs()).hasSize(2);
+    assertThat(overview.integrityJobs().get(0).jobKey()).isEqualTo("AUDIT_CHAIN_CHECKPOINT");
+    assertThat(overview.integrityJobs().get(0).lastStatus()).isEqualTo("SUCCESS");
+    assertThat(overview.operationalJobs()).hasSize(1);
+    assertThat(overview.operationalJobs().get(0).lastStatus()).isEqualTo("NEVER_RUN");
+    assertThat(overview.integrityConfigSummary()).isNotNull();
+    assertThat(overview.integrityConfigSummary().chainLookbackMinutes()).isEqualTo(60);
+    assertThat(overview.integrityConfigSummary().nightlyWindowHours()).isEqualTo(24);
+    assertThat(overview.integrityConfigSummary().chainCheckpointsEnabled()).isTrue();
+    assertThat(overview.integrityConfigSummary().nightlyValidationEnabled()).isTrue();
   }
 
   private void stubCommonTenantStats(Integer tenantId) {

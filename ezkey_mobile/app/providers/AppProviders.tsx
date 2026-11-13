@@ -1,12 +1,13 @@
-import React, {useEffect, useState} from 'react';
-import {ActivityIndicator, StyleSheet, View} from 'react-native';
-import {NavigationContainer} from '@react-navigation/native';
+import React, {useEffect, useMemo, useState} from 'react';
+import {ActivityIndicator, AppState, StyleSheet, View} from 'react-native';
+import {DarkTheme, DefaultTheme, NavigationContainer} from '@react-navigation/native';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {AppNavigator} from '../navigation';
 import {AppErrorBoundary} from '../components/AppErrorBoundary';
 import {UnsupportedOsScreen} from '../screens/UnsupportedOs';
-import {colors} from '../config/theme';
-import {initializeI18n} from '../i18n';
+import {initializeI18n, syncAppLanguage} from '../i18n';
+import {initializeAppearance} from '../services/appearance/appearance';
+import {useTheme} from '../theme';
 import {isAndroidOsSupported} from '../utils/androidOsSupport';
 
 const createQueryClient = () =>
@@ -23,24 +24,57 @@ export const AppProviders: React.FC = () => {
   const [queryClient] = useState(createQueryClient);
   const [ready, setReady] = useState(false);
   const osSupported = isAndroidOsSupported();
+  const {scheme, colors} = useTheme();
+  const navigationTheme = useMemo(() => {
+    const base = scheme === 'light' ? DefaultTheme : DarkTheme;
+    return {
+      ...base,
+      colors: {
+        ...base.colors,
+        primary: colors.primaryLight,
+        background: colors.background,
+        card: colors.surface,
+        text: colors.textPrimary,
+        border: colors.border,
+      },
+    };
+  }, [scheme, colors]);
 
   useEffect(() => {
     let active = true;
 
-    initializeI18n()
-      .catch(error => {
+    Promise.all([
+      initializeI18n().catch(error => {
         console.warn('[i18n] Failed to initialize, using fallback locale:', error);
-      })
-      .finally(() => {
-        if (active) {
-          setReady(true);
-        }
-      });
+      }),
+      initializeAppearance().catch(error => {
+        console.warn('[appearance] Failed to initialize, following the system theme:', error);
+      }),
+    ]).finally(() => {
+      if (active) {
+        setReady(true);
+      }
+    });
 
     return () => {
       active = false;
     };
   }, []);
+
+  // The per-app language in system settings can change while the app is in the background (#1157).
+  useEffect(() => {
+    if (!ready) {
+      return undefined;
+    }
+    const subscription = AppState.addEventListener('change', state => {
+      if (state === 'active') {
+        syncAppLanguage().catch(error => {
+          console.warn('[i18n] Failed to sync the app language:', error);
+        });
+      }
+    });
+    return () => subscription.remove();
+  }, [ready]);
 
   return (
     <AppErrorBoundary>
@@ -54,7 +88,7 @@ export const AppProviders: React.FC = () => {
         ) : !osSupported ? (
           <UnsupportedOsScreen />
         ) : (
-          <NavigationContainer>
+          <NavigationContainer theme={navigationTheme}>
             <AppNavigator />
           </NavigationContainer>
         )}

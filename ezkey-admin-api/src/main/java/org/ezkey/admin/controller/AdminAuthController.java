@@ -27,12 +27,15 @@ import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.dto.AdminAuthAuditContext;
 import org.ezkey.admin.dto.request.AdminActivationRequestDto;
 import org.ezkey.admin.dto.request.AdminLoginRequestDto;
+import org.ezkey.admin.dto.request.AdminPasswordlessCancelRequestDto;
 import org.ezkey.admin.dto.request.AdminPasswordlessWaitRequestDto;
 import org.ezkey.admin.dto.request.AdminRecoveryRequestDto;
+import org.ezkey.admin.dto.request.EvaluatorTempSessionRequestDto;
 import org.ezkey.admin.dto.response.AdminActivationResponseDto;
 import org.ezkey.admin.dto.response.AdminLoginResponseDto;
 import org.ezkey.admin.dto.response.AdminRecoveryResponseDto;
 import org.ezkey.admin.dto.response.AdminSessionResponseDto;
+import org.ezkey.admin.dto.response.EvaluatorTempSessionResponseDto;
 import org.ezkey.admin.exception.AdminAuthenticationException;
 import org.ezkey.admin.exception.AdminAuthenticationExpiredException;
 import org.ezkey.admin.exception.AdminAuthenticationRejectedException;
@@ -46,6 +49,7 @@ import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.security.AdminSessionCookieService;
 import org.ezkey.admin.service.AdminAuthService;
 import org.ezkey.admin.service.AdminProvisioningService;
+import org.ezkey.admin.service.EvaluatorTempSessionService;
 import org.ezkey.admin.util.AuditHelper;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
@@ -53,6 +57,7 @@ import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.audit.util.ClientContext;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
+import org.ezkey.util.LogSanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -109,6 +114,8 @@ public class AdminAuthController {
 
   private final AdminCsrfTokenService csrfTokenService;
 
+  private final EvaluatorTempSessionService evaluatorTempSessionService;
+
   public AdminAuthController(
       AdminAuthService authService,
       AdminProvisioningService provisioningService,
@@ -119,7 +126,8 @@ public class AdminAuthController {
       EzkeyAdminRepository adminRepository,
       AdminBrowserSessionCookieProperties browserSessionCookieProperties,
       AdminSessionCookieService sessionCookieService,
-      AdminCsrfTokenService csrfTokenService) {
+      AdminCsrfTokenService csrfTokenService,
+      EvaluatorTempSessionService evaluatorTempSessionService) {
     this.authService = authService;
     this.provisioningService = provisioningService;
     this.recoveryService = recoveryService;
@@ -130,6 +138,7 @@ public class AdminAuthController {
     this.browserSessionCookieProperties = browserSessionCookieProperties;
     this.sessionCookieService = sessionCookieService;
     this.csrfTokenService = csrfTokenService;
+    this.evaluatorTempSessionService = evaluatorTempSessionService;
   }
 
   /**
@@ -238,6 +247,93 @@ public class AdminAuthController {
               .build());
       return ResponseEntity.status(500)
           .body(AdminActivationResponseDto.error("An error occurred during activation"));
+    }
+  }
+
+  /**
+   * Mints a one-shot temporary evaluator console session after activation (Mode C).
+   *
+   * <p>Gated by the same flag as evaluator self-registration. Capability is the enrollment proof
+   * from activation — not a session cookie. Never logs the bearer or proof token.
+   *
+   * @param request enrollment id + proof token from activation
+   * @param httpRequest servlet request for audit / rate limit
+   * @param httpResponse servlet response for optional session cookie
+   * @return temporary session metadata (and bearer unless cookie mode)
+   */
+  @Operation(
+      summary = "Mint temporary evaluator console session",
+      description =
+          "Available only when ezkey.evaluator.self-registration.enabled=true. Issues a one-shot"
+              + " EVALUATOR_TEMP session for navigable tenant-admin exploration without a device"
+              + " bind. Cookie loss cannot re-mint. Bind VERIFIED supersedes TEMP and requires a"
+              + " fresh SESSION login.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "200", description = "Temporary session minted"),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Flag off, invalid capability, already issued, or not eligible"),
+        @ApiResponse(responseCode = "400", description = "Validation error")
+      })
+  @PostMapping("/evaluator-temp")
+  public ResponseEntity<EvaluatorTempSessionResponseDto> mintEvaluatorTempSession(
+      @Valid @RequestBody EvaluatorTempSessionRequestDto request,
+      HttpServletRequest httpRequest,
+      HttpServletResponse httpResponse) {
+
+    ClientContext context = ClientContext.from(httpRequest);
+    try {
+      EvaluatorTempSessionService.MintResult mint =
+          evaluatorTempSessionService.mint(request.enrollmentId(), request.enrollmentProofToken());
+
+      EzkeyAdmin admin = mint.admin();
+      Integer tenantId = admin.getTenant() != null ? admin.getTenant().getTenantId() : null;
+      String tenantName = admin.getTenant() != null ? admin.getTenant().getTenantName() : null;
+
+      EvaluatorTempSessionResponseDto response =
+          EvaluatorTempSessionResponseDto.success(
+              mint.plainToken(),
+              admin.getAdminType().name(),
+              admin.getUsername(),
+              mint.expiresAt(),
+              admin.getAdminId(),
+              tenantId,
+              tenantName);
+
+      if (browserSessionCookieProperties.isBrowserSessionCookieEnabled()) {
+        sessionCookieService.addSessionCookie(httpResponse, mint.plainToken(), mint.expiresAt());
+        String csrfToken =
+            issueCsrfTokenIfPossible(httpResponse, mint.plainToken(), mint.expiresAt());
+        response = response.withCsrfToken(csrfToken).withoutSecretToken();
+      }
+
+      rateLimitFilter.recordSuccessfulAttempt(context.clientIp());
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context, EventType.ADMIN_LOGIN, "evaluator_temp_session_minted", tenantId)
+              .eventStatus(EventStatus.SUCCESS)
+              .adminId(admin.getAdminId())
+              .eventDetails(
+                  "{\"tokenPurpose\":\"EVALUATOR_TEMP\",\"adminId\":" + admin.getAdminId() + "}")
+              .build());
+
+      return ResponseEntity.ok(response);
+    } catch (AuthenticationException e) {
+      rateLimitFilter.recordFailedAttempt(context.clientIp());
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context, EventType.ADMIN_LOGIN, "evaluator_temp_session_mint_failed", null)
+              .eventStatus(EventStatus.FAILURE)
+              .errorMessage(e.getMessage())
+              .eventDetails("Temporary session mint rejected")
+              .build());
+      return ResponseEntity.status(HttpStatus.FORBIDDEN)
+          .body(EvaluatorTempSessionResponseDto.error(e.getMessage()));
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
+      logger.error("Evaluator temp session mint error: {}", e.getClass().getSimpleName());
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+          .body(EvaluatorTempSessionResponseDto.error("An error occurred"));
     }
   }
 
@@ -383,7 +479,9 @@ public class AdminAuthController {
       HttpServletRequest httpRequest,
       HttpServletResponse httpResponse) {
 
-    logger.info("🌐 Login request received for username: {}", request.username());
+    logger.info(
+        "🌐 Login request received for username: {}",
+        LogSanitizer.sanitizeForLog(request.username()));
 
     // Extract client context for audit logging
     ClientContext context = ClientContext.from(httpRequest);
@@ -399,8 +497,8 @@ public class AdminAuthController {
     if (response.success()) {
       logger.info(
           "✅ Login successful for username: {} from IP: {}",
-          request.username(),
-          context.clientIp());
+          LogSanitizer.sanitizeForLog(request.username()),
+          LogSanitizer.sanitizeForLog(context.clientIp()));
 
       // Record successful attempt for rate limiting
       rateLimitFilter.recordSuccessfulAttempt(context.clientIp());
@@ -417,8 +515,8 @@ public class AdminAuthController {
     } else if ("pending".equals(response.status())) {
       logger.info(
           "⏳ Login pending (challenge required) for username: {} from IP: {}",
-          request.username(),
-          context.clientIp());
+          LogSanitizer.sanitizeForLog(request.username()),
+          LogSanitizer.sanitizeForLog(context.clientIp()));
 
       rateLimitFilter.recordSuccessfulAttempt(context.clientIp());
 
@@ -437,8 +535,8 @@ public class AdminAuthController {
     } else {
       logger.error(
           "❌ Unexpected login response status: {} for username: {}",
-          response.status(),
-          request.username());
+          LogSanitizer.sanitizeForLog(response.status()),
+          LogSanitizer.sanitizeForLog(request.username()));
 
       rateLimitFilter.recordFailedAttempt(context.clientIp());
 
@@ -487,6 +585,7 @@ public class AdminAuthController {
     OffsetDateTime expiresAt =
         (OffsetDateTime) httpRequest.getAttribute(AdminAuthRequestAttributes.EXPIRES_AT);
     String plainToken = (String) httpRequest.getAttribute(AdminAuthRequestAttributes.PLAIN_TOKEN);
+    String tenantName = (String) httpRequest.getAttribute(AdminAuthRequestAttributes.TENANT_NAME);
     String csrfToken =
         httpRequest.getAttribute(AdminAuthRequestAttributes.AUTH_SOURCE)
                 == AdminAuthRequestAttributes.AuthSource.COOKIE
@@ -500,7 +599,9 @@ public class AdminAuthController {
             expiresAt,
             principal.adminId(),
             principal.tenantId(),
-            csrfToken));
+            tenantName,
+            csrfToken,
+            principal.tokenPurpose() != null ? principal.tokenPurpose().name() : null));
   }
 
   /**
@@ -665,18 +766,17 @@ public class AdminAuthController {
           authService.waitForPasswordlessAuth(
               request.authAttemptId(), request.challengeCode(), request.waiterSecret());
 
-      auditCtx.ifPresent(
-          ctx ->
-              auditLogService.log(
-                  AuditHelper.createAdminAudit(
-                          context,
-                          EventType.ADMIN_LOGIN,
-                          AdminAuditConstants.LOGIN_MFA_SESSION_ISSUED,
-                          ctx.tenantId())
-                      .eventStatus(EventStatus.SUCCESS)
-                      .adminId(ctx.adminId())
-                      .eventDetails("Username: " + ctx.username())
-                      .build()));
+      auditCtx.ifPresent(ctx ->
+          auditLogService.log(
+              AuditHelper.createAdminAudit(
+                      context,
+                      EventType.ADMIN_LOGIN,
+                      AdminAuditConstants.LOGIN_MFA_SESSION_ISSUED,
+                      ctx.tenantId())
+                  .eventStatus(EventStatus.SUCCESS)
+                  .adminId(ctx.adminId())
+                  .eventDetails("Username: " + ctx.username())
+                  .build()));
 
       logger.info("✅ Passwordless authentication successful");
       return ResponseEntity.ok(wrapWithSessionCookie(response, httpResponse));
@@ -710,6 +810,41 @@ public class AdminAuthController {
           auditCtx, context, AdminAuditConstants.LOGIN_MFA_ERROR, e.getMessage());
       throw e;
     }
+  }
+
+  /**
+   * Cancels a pending passwordless login attempt using the waiter secret from {@code /login}.
+   *
+   * <p>Marks the attempt expired so in-flight {@code passwordless-wait} unblocks and an immediate
+   * retry is not blocked by a dangling PENDING attempt (#831).
+   *
+   * @param request cancel request with authAttemptId and waiterSecret
+   * @return empty 204 on success
+   * @throws AdminAuthenticationException if the waiter secret is missing or invalid
+   * @since 2026
+   */
+  @Operation(
+      summary = "Cancel pending passwordless authentication",
+      description =
+          "Cancels a pending passwordless login attempt using the waiter secret issued at login."
+              + " Marks the attempt expired so wait unblocks and retry is not blocked (#831).")
+  @ApiResponses(
+      value = {
+        @ApiResponse(
+            responseCode = "204",
+            description = "Auth attempt cancelled (or already final)"),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Missing or invalid waiter secret capability"),
+        @ApiResponse(responseCode = "500", description = "Internal Server Error")
+      })
+  @PostMapping("/passwordless-cancel")
+  public ResponseEntity<Void> passwordlessCancel(
+      @Valid @RequestBody AdminPasswordlessCancelRequestDto request) {
+
+    logger.info("🔐 Passwordless cancel request for authAttemptId: {}", request.authAttemptId());
+    authService.cancelPasswordlessAuth(request.authAttemptId(), request.waiterSecret());
+    return ResponseEntity.noContent().build();
   }
 
   private void logPasswordlessMfaFailure(
@@ -801,7 +936,9 @@ public class AdminAuthController {
 
     try {
       logger.warn(
-          "🔑 Recovery attempt for admin: {} from IP: {}", request.username(), context.clientIp());
+          "🔑 Recovery attempt for admin: {} from IP: {}",
+          LogSanitizer.sanitizeForLog(request.username()),
+          LogSanitizer.sanitizeForLog(context.clientIp()));
 
       String recoveryToken =
           recoveryService.validateRecoveryCode(request.username(), request.recoveryCode());
@@ -827,7 +964,7 @@ public class AdminAuthController {
 
       logger.warn(
           "✅ Recovery successful for admin: {} ({} codes remaining)",
-          request.username(),
+          LogSanitizer.sanitizeForLog(request.username()),
           codesRemaining);
 
       // Record successful attempt for rate limiting
@@ -863,9 +1000,9 @@ public class AdminAuthController {
       String internalDetail = e.getInternalDetail();
       logger.warn(
           "❌ Recovery failed for admin: {} from IP: {} - Reason: {}",
-          request.username(),
-          context.clientIp(),
-          internalDetail);
+          LogSanitizer.sanitizeForLog(request.username()),
+          LogSanitizer.sanitizeForLog(context.clientIp()),
+          LogSanitizer.sanitizeForLog(internalDetail));
 
       rateLimitFilter.recordFailedAttempt(context.clientIp());
 
@@ -894,7 +1031,11 @@ public class AdminAuthController {
                   org.ezkey.admin.service.AdminRecoveryService.GENERIC_RECOVERY_FAILURE_MESSAGE));
 
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
-      logger.error("❌ Recovery error for admin: {} - {}", request.username(), e.getMessage(), e);
+      logger.error(
+          "❌ Recovery error for admin: {} - {}",
+          LogSanitizer.sanitizeForLog(request.username()),
+          LogSanitizer.sanitizeForLog(e.getMessage()),
+          e);
 
       Integer errorTenantId = resolveAdminTenantId(request.username());
       Integer errorAdminId = resolveAdminId(request.username());

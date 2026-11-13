@@ -98,4 +98,24 @@ public record AuthAttemptRespondRequestDto(
             description = "User's decision: true to approve, false to deny",
             example = "true",
             requiredMode = RequiredMode.REQUIRED)
-        Boolean authAttemptAccepted) {}
+        Boolean authAttemptAccepted) {
+
+  /**
+   * Returns a string representation with proof tokens, signatures, and challenge masked.
+   *
+   * @return string representation safe for logs
+   */
+  @Override
+  public String toString() {
+    return "AuthAttemptRespondRequestDto{"
+        + "authAttemptId="
+        + authAttemptId
+        + ", authAttemptProofTokenSignedByDevice="
+        + (authAttemptProofTokenSignedByDevice != null ? "[PROTECTED]" : "null")
+        + ", authAttemptChallengeResponse="
+        + (authAttemptChallengeResponse != null ? "[PROTECTED]" : "null")
+        + ", authAttemptAccepted="
+        + authAttemptAccepted
+        + '}';
+  }
+}

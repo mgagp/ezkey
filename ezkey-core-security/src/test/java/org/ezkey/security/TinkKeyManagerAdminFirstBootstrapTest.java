@@ -120,7 +120,7 @@ class TinkKeyManagerAdminFirstBootstrapTest {
     try {
       manager.initialize();
       assertTrue(manager.isInitialized());
-      assertTrue(Files.exists(keysetPath));
+      assertFalse(Files.exists(keysetPath), "blob-only writer must not materialize a keyset file");
       verify(repository, times(1)).insertSingletonIfAbsent(any(), any(), any());
       verify(repository, never()).save(any(KeysetBlob.class));
     } finally {
@@ -138,9 +138,10 @@ class TinkKeyManagerAdminFirstBootstrapTest {
 
     AtomicInteger finds = new AtomicInteger();
     KeysetBlobRepository repository = Mockito.mock(KeysetBlobRepository.class);
+    // find #1: empty during initial load; find #2+: peer available after lost claim.
     when(repository.findKeyset())
         .thenAnswer(
-            _ -> finds.incrementAndGet() >= 3 ? Optional.of(peer.blob()) : Optional.empty());
+            _ -> finds.incrementAndGet() >= 2 ? Optional.of(peer.blob()) : Optional.empty());
     when(repository.keysetExists()).thenReturn(false);
     when(repository.insertSingletonIfAbsent(any(), any(), any())).thenReturn(0);
 
@@ -158,8 +159,8 @@ class TinkKeyManagerAdminFirstBootstrapTest {
   }
 
   @Test
-  @DisplayName("non-writer FILE boot does not generate a missing keyset file")
-  void initialize_nonWriterFileMissing_doesNotGenerate(@TempDir Path tempDir) throws Exception {
+  @DisplayName("enabled encryption without KeysetBlobRepository fails when required=true")
+  void initialize_requiredWithoutRepository_throws(@TempDir Path tempDir) throws Exception {
     Path masterKeyPath = tempDir.resolve("master.key");
     Path keysetPath = tempDir.resolve("keyset.json.encrypted");
     writeMasterKey(masterKeyPath);
@@ -169,14 +170,14 @@ class TinkKeyManagerAdminFirstBootstrapTest {
     properties.setRequired(true);
     properties.setMasterKeyFile(masterKeyPath.toString());
     properties.setKeysetFile(keysetPath.toString());
-    properties.getKeyset().setStorageMode(TinkProperties.Keyset.StorageMode.FILE);
+    properties.getKeyset().setStorageMode(TinkProperties.Keyset.StorageMode.DATABASE);
     properties.getKeyset().setWriter(false);
 
     TinkKeyManager manager = new TinkKeyManager(properties, fixedProvider(null));
     try {
       assertThrows(IllegalStateException.class, manager::initialize);
       assertFalse(manager.isInitialized());
-      assertFalse(Files.exists(keysetPath), "non-writer FILE mode must not generate a keyset");
+      assertFalse(Files.exists(keysetPath), "must not generate a keyset file without repository");
     } finally {
       manager.shutdownKeysetCheckExecutor();
     }

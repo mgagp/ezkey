@@ -36,6 +36,14 @@ integrationId|enrollmentId|tenantId|eventDetails|errorMessage|createdAt|instance
 
 `GET /api/v1/audit-logs/integrity-check` (Global Admin only) recomputes the HMAC for each entry in a date range and compares it to the stored value. Any mismatch is reported as a potential integrity violation. **Query parameters `from` and `to` (ISO-8601, inclusive start / exclusive end) are required;** omitting either returns 400 Bad Request. The response includes `entryViolations` (`items`, `totalCount`, `returnedCount`, `truncated`) with structured rows (`auditLogId`, `eventType`, `createdAt`, `reason`) — uncapped for the requested window.
 
+**Gate + window cap (#692 / #730 D2):** range report GETs (`integrity-check` and `chain-integrity`), async VERIFY starts, async `RUN_VALIDATION`, and operator `POST …/integrity-validation/run` run under the process-local `IntegrityHeavyCryptoGate` shared with nightly validation. When the gate is busy → **HTTP 409** RFC 9457 type `https://ezkey.io/problems/domain/integrity-async-job-busy` with **`Retry-After: 60`** (same contract as async job start) and additive **`busyHolder`**. **Two window caps** (cut 3 PR 0, amended Christophe M1 / option A + B1): **all synchronous HTTP paths** (report GETs + operator `POST …/integrity-validation/run` + seal-archive pre-verify) use **`ezkey.audit.integrity.max-sync-window-days`** (default **8**); async VERIFY / `RUN_VALIDATION` use **`ezkey.audit.integrity.max-window-days`** (default **92**). Effective Instant span = **days × 24 h + 1 h** (DST fall-back tolerant). Over either cap → **HTTP 400** RFC 9457 type `https://ezkey.io/problems/domain/integrity-window-over-cap` with extensions **`maxWindowDays`** (value of the cap that was exceeded) and **`capKind`** (`SYNC` | `ASYNC`; no silent truncation; no property opt-out; `@Min(1)` `@Max(366)`; startup requires async >= sync). **Sync over-cap only** also includes fixed extension **`asyncAlternative`**: `POST /api/v1/audit-logs/integrity/jobs` (never derived from request input). **Rationale:** Cloudflare Free on ezkey.org / ezkey.online has a non-raisable **100 s** origin timeout (524); a long sync GET can outlive the client while the busy gate stays held — longer windows must use the async job. The provisional #743 hour keys (`verify-report.max-window-hours`, `retroactive.operator-max-window-hours`) are **removed** — if either is still set (any relaxed form), startup **fails fast** naming the replacement key. Long-term retirement of sync GETs: **#784**. Nightly cron when the gate is busy fail-closes with one WARN + job-registry `recordFailure` (no sleep/retry; non-blocking retry tracked in **#745**). Single-entry `GET …/{id}/integrity-check` stays outside the gate and cap. **2026-10-14 (#781 / Christophe m1):** seal-archive pre-verification (`POST …/lifecycle/seal-archive`) is a **synchronous HTTP** path: `IntegrityHeavyCryptoGate` (`busyHolder=SEAL_ARCHIVE`) + `IntegrityWindowCapProperties.validateSyncWindow` (`max-sync-window-days`, default **8**) — busy → same 409 contract; over-cap → `integrity-window-over-cap` with `capKind=SYNC`. Reason: ungated verifyChain could stampede nightly/operator Integrity crypto (found in #780 review), and a blocking API must not risk the Cloudflare 100 s timeout. The lifecycle scheduler (`progressLifecyclePolicy` → `autoSealEligibleCheckpoints`) does **not** call `verifyChain` and does not enter this gate; if a future scheduler path ever needed a 92-day window, keep it separate from the sync HTTP seal-archive path. Job-backed report read is cut 3 D3 — see [`product-docs/global/admin-ui-integrity-cut3.md`](../product-docs/global/admin-ui-integrity-cut3.md) / GitHub **#730**.
+
+**Last verdict + busy holder (cut 3 PR 1 / OQ4 A′):** `GET …/integrity/jobs/last-verdict` returns the latest verdict-bearing row (SUCCEEDED ∧ VERIFY_CHAIN_RANGE|RUN_VALIDATION ∧ `chainStatus` ≠ `NOT_VERIFIED`), including nightly terminals (`trigger=NIGHTLY`, `startedByAdminId=null`, username `system`). Counters: `totalCheckpoints`, `validCheckpoints`, `invalidCheckpoints`, `archivedCheckpoints`, `undeclaredGaps`, `entryHmacViolations` (P1). `GET …/integrity/jobs/current` is job-state only (operator rows); additive `busyHolder` (`NIGHTLY`|`REPORT_GET`|`SEAL_ARCHIVE`|`OPERATOR_JOB`). `NIGHTLY` is read from `ezkey_shedlock` (PK `NIGHTLY_INTEGRITY_VALIDATION`, DB time) — cross-replica; after a crash, stale “running” ≤ 2 h is fail-closed. When ShedLock holds nightly and no operator RUNNING job exists, `/current` returns a synthetic RUNNING job with `busyHolder=NIGHTLY` (pre-PR 2 banner may poll every 3 s while the Integrity page is open — accepted). **HA asymmetry:** nightly yields to an operator RUNNING job globally (DB read); the operator yields to nightly only via local gate + ShedLock-derived `busyHolder` (PR 2 must not auto-run when `busyHolder=NIGHTLY`). Sync `GET /chain-integrity` remains bounded by the Cloudflare 100 s edge — use the async job for long windows. Both `/jobs/current` and `/jobs/last-verdict` send explicit `Cache-Control: no-store`. Nightly terminal row writes (`IntegrityNightlyTerminalService#tryInsert*`) use a programmatic `TransactionTemplate` with `PROPAGATION_REQUIRES_NEW` so the WARN-only catch stays outside the TX (commit-time failures are swallowed; do not put `@Transactional` on `tryInsert*`). Public `insert*` keep declarative `@Transactional(REQUIRES_NEW)` for external proxy callers.
+
+**Async job heartbeat / TTL (fail-closed):** Operator jobs heartbeats via `IntegrityAsyncJobStateService#heartbeat` (`REQUIRES_NEW`) from the worker — entry HMAC scan (per page) and chain verify (every 10 checkpoints + last). If a heartbeat write fails, the worker marks the job **FAILED** (fail-closed; no silent continue). If heartbeats stop past `ezkey.audit.integrity.async-job.ttl` (default 60m), the next read/start expires the row to **EXPIRED** (Escape-sticky). ShedLock probe DB failures answer **idle** (fail-open for the banner) so a probe outage cannot stick `/current` on synthetic NIGHTLY.
+
+**Flyway V25 rollback (manual):** there is no down script. If you must reverse a lab DB after V25: drop the new CHECKs (`chk_integrity_async_job_trigger`, `_nightly_terminal`, `_nightly_admin`, `_chain_status`), drop columns `trigger`, `chain_status`, `total_checkpoints`, `valid_checkpoints`, `invalid_checkpoints`, `archived_checkpoints`, `undeclared_gaps`, `entry_hmac_violations`, restore `started_by_admin_id SET NOT NULL` only when no nulls remain, delete or rework any `trigger=NIGHTLY` rows first, then delete the `flyway_schema_history` row for version `25`. Prefer forward-fix on shared environments.
+
 `GET /api/v1/audit-logs/chain-integrity` returns `chainViolations` with the same list metadata shape plus checkpoint fields (`checkpointId`, `windowStart`, `windowEnd`, `violationType`, `detail`). Legacy string `violations` remains for backward compatibility.
 
 ### Instance Tracking
@@ -65,9 +73,19 @@ openssl rand -base64 32 > /etc/ezkey/secrets/audit-hmac.key
 chmod 600 /etc/ezkey/secrets/audit-hmac.key
 ```
 
-**Option B -- Automatic (convenience for first startup):**
+POSIX mode **600** is mandatory (same bar as `master.key`; ADR-0016 §2.9). On Windows, apply an
+ACL equivalent (owner-only read/write); the runtime skips the POSIX permission check there.
 
-If the configured key file does not exist at startup, `AuditHmacService` auto-generates a 256-bit key using `java.security.SecureRandom` and writes it to the configured path. This mirrors the Tink master key auto-generation behavior.
+**Option B -- Docker keygen script:**
+
+`./docker/generate-encryption-keys.sh` creates `audit-hmac.key` next to `master.key` at mode **600**
+when missing (and re-applies `chmod 600` when the file already exists).
+
+**Option C -- Automatic (convenience for first startup):**
+
+If the configured key file does not exist at startup, `AuditHmacService` auto-generates a 256-bit
+key using `java.security.SecureRandom`, writes it to the configured path, and sets POSIX mode
+**600** when supported. This mirrors the Tink master key auto-generation behavior.
 
 ### Key Sharing in HA Deployments
 
@@ -319,7 +337,7 @@ not the normal operator workflow. Real external export remains `I-2026-06-28`.
 
 Both verification endpoints **require** `from` and `to` query parameters (ISO-8601). Omitting either returns 400 Bad Request with a message that a date range is required.
 
-**Retroactive validation (detect path)** (`POST /api/v1/audit-logs/integrity-validation/run`): Global Admin only. Request body: `from` (inclusive), `to` (exclusive), optional `raiseAlert` (default `true`). Same orchestration as the nightly batch — may raise or touch `AUDIT_INTEGRITY_RUPTURE` when violations remain alert-eligible. Emits `NIGHTLY_INTEGRITY_VALIDATION_COMPLETED` with `event_details.triggerSource=OPERATOR`. Does **not** update the nightly job registry (operator runs are traced via HTTP response + completion audit). Operator POST accepts the **same** `[from, to)` bounds as GET verify; optional `ezkey.audit.integrity.retroactive.operator-max-window-hours` enforces a hard cap only when explicitly configured. Use GET verify endpoints for read-only forensic examine; use POST for detect → alert → reconcile lab flows.
+**Retroactive validation (detect path)** (`POST /api/v1/audit-logs/integrity-validation/run`): Global Admin only. Request body: `from` (inclusive), `to` (exclusive), optional `raiseAlert` (default `true`). Same orchestration as the nightly batch — may raise or touch `AUDIT_INTEGRITY_RUPTURE` when violations remain alert-eligible. Emits `NIGHTLY_INTEGRITY_VALIDATION_COMPLETED` with `event_details.triggerSource=OPERATOR`. Does **not** update the nightly job registry (operator runs are traced via HTTP response + completion audit). This **synchronous** POST uses **`ezkey.audit.integrity.max-sync-window-days`** (default **8**, same Instant-span rule as report GETs — Christophe B1) and runs under `IntegrityHeavyCryptoGate`. Over-cap → **400** `integrity-window-over-cap` with `capKind=SYNC` + fixed `asyncAlternative` = `POST /api/v1/audit-logs/integrity/jobs`. Longer windows: async `RUN_VALIDATION` under **`max-window-days`** (default **92**). When `ezkey.audit.integrity.nightly.enabled=false` (typical on opt-in `--runtime=base`), the POST fail-closes with HTTP 409 (`https://ezkey.io/problems/domain/integrity-validation-disabled`) and writes no completion audit — same flag as the scheduler, not the product profile name. HMAC inactive while the flag is on still returns 200 skipped. Use GET verify endpoints for read-only forensic examine; use POST for detect → alert → reconcile lab flows.
 
 **Declare gap** (`POST /api/v1/audit-logs/lifecycle/declare-gap`): Closes an undeclared gap by writing a `GAP_DECLARATION` checkpoint covering `[gapStart, gapEnd)` with a mandatory `justification` (min 10 chars). The endpoint accepts two equivalent modes:
 
@@ -328,17 +346,29 @@ Both verification endpoints **require** `from` and `to` query parameters (ISO-86
 
 ### Operator workflow (Admin UI)
 
-The Integrity panel (Global Admin only) drives gap declaration from detection, not from manual input:
+The Integrity page (`/integrity`, Global Admin only) drives gap declaration from detection, not from manual input:
 
-1. Expand the Integrity panel. Chain integrity **auto-runs** over the selected date
-   range, or a 7-day UI default when none is set. Use **Chain integrity** to re-run
-   after changing the range.
+1. Open **Integrity**. The page shows the **last known chain verdict** on a
+   compact micro-dashboard (job-backed counters — not a fresh heavy recompute).
+   When that verdict finished **less than 24 hours ago**, opening the page starts
+   **no** automatic job and **no** `GET /chain-integrity`. When there is no such
+   fresh verdict, chain integrity **auto-runs** over the **last 24 hours**
+   (aligned with the nightly window). Use **Re-verify** / **Verify chain** to
+   re-run after changing the range (explicit click never silently reuses a stale
+   result). The Vérifier date picker aligns to the verdict’s scope; if the filter
+   differs, the micro-dashboard says so. Deep-links that pass exclusive
+   `createdAfter` / `createdBefore` Instant bounds render inclusive end dates in
+   the effective display timezone (not the browser local zone — #693). After a
+   reload with a finished job, the picker matches that job’s range (#696).
 2. Review the **Undeclared gaps for consultation** list. For each row:
-   - **Locate in timeline** focuses the audit-log table on the gap window for context (toggle off with **Clear focus**).
+   - **Locate in timeline** focuses the checkpoint timeline on the gap window for context (toggle off with **Clear focus**).
    - **Declare** opens a dialog prefilled with the detected period and duration; the operator only enters a justification.
+   - Filtering the timeline by checkpoint type (e.g. Gap declaration) does **not**
+     invent orange undeclared-gap rows between the filtered neighbors (#695) —
+     those holes are usually filled by REGULAR checkpoints the filter hid.
 3. On success the dialog reports the new `GAP_DECLARATION` checkpoint and the chain check is automatically re-run, removing the row from the list.
 
-When no undeclared gaps remain for the selected range the panel shows an explicit "no undeclared gaps detected" confirmation rather than an empty list, so operators can distinguish "nothing to do" from "not yet checked".
+When no undeclared gaps remain for the selected range the page shows an explicit "no undeclared gaps detected" confirmation rather than an empty list, so operators can distinguish "nothing to do" from "not yet checked".
 
 ### Operator alerts (`AUDIT_CHAIN_GAP_PENDING`)
 
@@ -347,7 +377,7 @@ When the audit-chain scheduler detects an undeclared gap during one of its perio
 The alert payload carries the anchor checkpoint id, the detected gap window, and an estimated duration.
 While the gap remains undeclared, repeated detections **touch** the same open alert (incrementing
 `occurrenceCount` and `lastSeenAt`) instead of producing duplicates. As soon as a Global Admin runs
-**Declare gap** for that anchor (either from the Integrity panel or via `POST /api/v1/audit-logs/lifecycle/declare-gap`),
+**Declare gap** for that anchor (either from `/integrity` or via `POST /api/v1/audit-logs/lifecycle/declare-gap`),
 the matching open alert is automatically resolved with reason `GAP_DECLARED`. This is the canonical
 operator signal for chain-continuity issues; the dashboard surfaces the most recent open alerts for Global Admins.
 
@@ -382,7 +412,22 @@ designed for purge-surviving reference semantics; see
 
 ---
 
-## 5. What This Does NOT Cover (Accepted Limitations)
+## 5. Lab exploratory QA (Integrity cut-3)
+
+Warm clean-start stacks usually have **no** open `AUDIT_INTEGRITY_RUPTURE` and
+**no** sealed tranche with `confirmationRequired=true` (external archival defaults
+off). For Admin UI cut-3 walks (Alerts deep-link → real reconcile; Confirm archived),
+use the lab-only seed and operator steps in
+[`docs/lab/INTEGRITY_CUT3_EXPLORATORY_QA.md`](lab/INTEGRITY_CUT3_EXPLORATORY_QA.md)
+(`scripts/lab/seed-integrity-cut3-qa.sh`). **Prefer path A (rupture/reconcile) before
+path B (seal/confirm)** on one warm stack — or separate stacks / full
+`cleanup-integrity-cut3-qa.sh` between them. Leftover `ARCHIVE_SEAL` in a rupture
+window correctly blocks reconcile. Do not use `seed-alerts-ui-review` for
+reconcile — that seed is Alerts list polish only.
+
+---
+
+## 6. What This Does NOT Cover (Accepted Limitations)
 
 - **Real-time hash chain per entry:** rejected due to HA write-contention complexity; the 5-minute batch approach provides equivalent normative value
 - **Automatic HMAC key rotation:** not implemented; rotation only needed if key is compromised

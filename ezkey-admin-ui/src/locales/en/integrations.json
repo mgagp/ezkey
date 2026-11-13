@@ -37,6 +37,15 @@
     "submit": "Create Integration",
     "errorCreate": "Failed to create integration."
   },
+  "pendingAttemptPolicy": {
+    "label": "When a request is already waiting",
+    "replace": "Replace the waiting request with the new one (default)",
+    "refuse": "Keep the waiting request; refuse the new one",
+    "help": "Replace suits most applications: if the person starts signing in again, the new request replaces the waiting one. Refuse suits cases where several sessions can ask the same person to sign in at once, and a new request must not interrupt the one in progress. Saving this does not change a request that is already waiting: it applies from the next request.",
+    "saved": "Waiting-request setting updated.",
+    "saveFailed": "Could not update the waiting-request setting. Try again.",
+    "systemLocked": "Fixed to Replace for administrator sign-in: a new sign-in replaces the one that is waiting."
+  },
   "validation": {
     "codeMin": "Code must be at least {{n}} characters",
     "codeMax": "Code must be at most {{n}} characters",

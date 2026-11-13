@@ -4,7 +4,7 @@
 
 This document catalogs the primary user-facing workflows in the Admin UI. Each workflow describes the nominal path, decision points, exception paths, and boundaries crossed. Detailed Admin API semantics live in [`../admin-api/functional-flows.md`](../admin-api/functional-flows.md); this document is about what the operator sees and does.
 
-Phase 1 seeds two representative workflows. Additional workflows will be added using the [functional workflow template](../../templates/functional-workflow.template.md).
+Phase 1 seeds two representative workflows. Additional workflows are added as entries in this file (see [`../../templates/README.md`](../../templates/README.md)).
 
 ## Workflow Index
 

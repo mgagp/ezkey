@@ -8,7 +8,7 @@
     <parent>
         <groupId>org.ezkey</groupId>
         <artifactId>ezkey-parent</artifactId>
-        <version>${revision}${buildQualifier}${changelist}</version>
+        <version>${revision}${changelist}</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -17,6 +17,11 @@
     <description>Demo application showcasing EZKey passwordless login integration</description>
 
     <packaging>jar</packaging>
+
+    <properties>
+        <!-- Ship committed root THIRD-PARTY.txt under META-INF/licenses/ in the JAR. -->
+        <ezkey.skip.third-party.licenses.copy>false</ezkey.skip.third-party.licenses.copy>
+    </properties>
 
     <dependencies>
         <!-- Spring Boot Web -->
@@ -72,6 +77,12 @@
         </dependency>
 
         <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
@@ -93,8 +104,16 @@
                 <configuration combine.self="override"/>
                 <executions>
                     <execution>
+                        <id>repackage</id>
                         <goals>
                             <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                    <!-- Product SemVer into META-INF/build-info.properties (actuator /info). -->
+                    <execution>
+                        <id>build-info</id>
+                        <goals>
+                            <goal>build-info</goal>
                         </goals>
                     </execution>
                 </executions>

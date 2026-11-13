@@ -27,6 +27,8 @@ export type BindEnrollmentResponseLike = {
   tenantId?: number | null;
   tenantName?: string | null;
   tenantDescription?: string | null;
+  isSystemIntegration?: boolean | null;
+  adminType?: string | null;
 };
 
 /**
@@ -44,6 +46,8 @@ export function buildBindPayload(response: BindEnrollmentResponseLike): string {
     response.tenantId !== undefined && response.tenantId !== null
       ? String(response.tenantId)
       : '';
+  const systemFlag = response.isSystemIntegration === true ? 'true' : 'false';
+  const adminType = response.adminType ?? '';
   return [
     pt,
     idStr,
@@ -55,6 +59,8 @@ export function buildBindPayload(response: BindEnrollmentResponseLike): string {
     tenantIdStr,
     nfcOrEmpty(response.tenantName),
     nfcOrEmpty(response.tenantDescription),
+    systemFlag,
+    adminType,
   ].join(SEP);
 }
 

@@ -7,9 +7,10 @@ its internal data model, and its relationship to the Auth API without reopening 
 ## Current Scope Note
 
 The current mobile implementation and security posture should be read as **Android-first**.
-iOS remains a **later planned milestone** and is **not** a short-term parity or release target.
-Reviewers should not treat missing iOS parity as a current defect unless a document explicitly claims
-that parity already exists.
+The **iOS rebuild is in progress** (issue #152, ADR-MOB-0005); see [IOS_SETUP.md](IOS_SETUP.md) for
+the baseline and known gaps, and [IOS_ANDROID_PARITY.md](IOS_ANDROID_PARITY.md) for the
+area-by-area parity checklist. Reviewers should not treat missing iOS parity as a current defect unless
+a document explicitly claims that parity already exists.
 
 Root-level documents remain canonical for shared Ezkey product identity, protocol semantics, cryptographic wire
 formats, and signed payload definitions. The documents in this directory interpret those shared truths for the
@@ -19,10 +20,13 @@ reference mobile app.
 
 1. [MOBILE_API_MAPPINGS.md](MOBILE_API_MAPPINGS.md)
 2. [MOBILE_FUNCTIONAL_FLOWS.md](MOBILE_FUNCTIONAL_FLOWS.md)
-3. [MOBILE_DATA_MODEL.md](MOBILE_DATA_MODEL.md)
-4. [MOBILE_SCREENS_AND_WIREFLOWS.md](MOBILE_SCREENS_AND_WIREFLOWS.md)
-5. [MOBILE_STACK_AND_ARCHITECTURE.md](MOBILE_STACK_AND_ARCHITECTURE.md)
-6. [MOBILE_POSITIONING.md](MOBILE_POSITIONING.md)
+3. [MOBILE_APP_STATE_MACHINE.md](MOBILE_APP_STATE_MACHINE.md) — canonical FSM (states, guards, leave-as-deny)
+4. [../../docs/CLIENT_BEHAVIOUR_CONTRACT.md](../../docs/CLIENT_BEHAVIOUR_CONTRACT.md) — application-independent MUST/SHOULD/MAY client behaviour
+5. [MOBILE_APP_STRATEGIC_ORIENTATION.md](MOBILE_APP_STRATEGIC_ORIENTATION.md) — intent from FSM open questions (phased backlog)
+6. [MOBILE_DATA_MODEL.md](MOBILE_DATA_MODEL.md)
+7. [MOBILE_SCREENS_AND_WIREFLOWS.md](MOBILE_SCREENS_AND_WIREFLOWS.md)
+8. [MOBILE_STACK_AND_ARCHITECTURE.md](MOBILE_STACK_AND_ARCHITECTURE.md)
+9. [MOBILE_POSITIONING.md](MOBILE_POSITIONING.md)
 
 ## Which Document Answers Which Question
 
@@ -30,10 +34,14 @@ reference mobile app.
 | --- | --- | --- |
 | Which Auth API fields does the mobile app send, store, or display? | [MOBILE_API_MAPPINGS.md](MOBILE_API_MAPPINGS.md) | Primary mapping reference for `bind`, `verify`, `pending`, and `respond`. |
 | How do enrollment and authentication run end to end? | [MOBILE_FUNCTIONAL_FLOWS.md](MOBILE_FUNCTIONAL_FLOWS.md) | Includes nominal and exception paths plus trust checks. |
+| What are the explicit states, events, guards, TTL, and leave/deny rules? | [MOBILE_APP_STATE_MACHINE.md](MOBILE_APP_STATE_MACHINE.md) | Canonical FSM from code; Mermaid + optional [HTML](mobile-app-state-machine.html). Leave-as-deny on `main` (#833 merged 2026-10-16). |
+| What MUST/SHOULD/MAY rules apply to any authenticator client? | [../../docs/CLIENT_BEHAVIOUR_CONTRACT.md](../../docs/CLIENT_BEHAVIOUR_CONTRACT.md) | RFC 2119 contract citing FSM + #834 Q-numbers. |
+| What product/UX/security intent do the FSM open questions imply, and what phased backlog? | [MOBILE_APP_STRATEGIC_ORIENTATION.md](MOBILE_APP_STRATEGIC_ORIENTATION.md) | Orientation from the eight FSM findings; phased proposals; Questions pour Marc; collaborator review slots. |
 | What internal concepts and persisted structures exist in the app? | [MOBILE_DATA_MODEL.md](MOBILE_DATA_MODEL.md) | Start at **Cornerstone** (installation trust zone + Keystore/seal split); then local entities and source-of-truth rules. |
 | What does each primary screen show and do? | [MOBILE_SCREENS_AND_WIREFLOWS.md](MOBILE_SCREENS_AND_WIREFLOWS.md) | Screen-level responsibilities and navigation model. |
 | How is the mobile app assembled technically? | [MOBILE_STACK_AND_ARCHITECTURE.md](MOBILE_STACK_AND_ARCHITECTURE.md) | Stack, module structure, boundaries, and generation workflow. |
 | How should Ezkey Mobile be positioned conceptually? | [MOBILE_POSITIONING.md](MOBILE_POSITIONING.md) | Product-facing positioning and scope boundaries. |
+| How should Home, Wizard, Detail, and Pending name an enrollment? | [MOBILE_POSITIONING.md](MOBILE_POSITIONING.md) § Enrollment identity vocabulary | Installation / Purpose / Account / Role / Device. Field mapping: [MOBILE_API_MAPPINGS.md](MOBILE_API_MAPPINGS.md). |
 | How does the app handle unusable local enrollment data (broken secrets, corrupt collection, unusable enrollment UX)? | [MOBILE_DATA_MODEL.md](MOBILE_DATA_MODEL.md) § Enrollment Rehydration Outcomes, [MOBILE_SCREENS_AND_WIREFLOWS.md](MOBILE_SCREENS_AND_WIREFLOWS.md) § Home local-failure honesty | MOB-015 locked contract: fail-open visibility, fail-closed auth, clear-all true reset. |
 
 ## Canonical Root-Level References
@@ -46,6 +54,7 @@ reference mobile app.
 | [../../docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md](../../docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md) | Canonical pending/respond signed payload formats | Exact signature rules are shared protocol truth. |
 | [../../docs/ENROLLMENT_SIGNATURE_PAYLOAD.md](../../docs/ENROLLMENT_SIGNATURE_PAYLOAD.md) | Canonical bind/verify signed payload formats | Exact signature rules are shared protocol truth. |
 | [../../docs/MOBILE_DEVELOPER_GUIDE.md](../../docs/MOBILE_DEVELOPER_GUIDE.md) | Third-party mobile protocol implementation guidance | Broader than the reference app and intentionally rooted at the repository level. |
+| [../../docs/CLIENT_BEHAVIOUR_CONTRACT.md](../../docs/CLIENT_BEHAVIOUR_CONTRACT.md) | Application-independent client behaviour (MUST/SHOULD/MAY) | Shared by Flutter SDK, RN reference app, and other authenticators. |
 
 ## Quality and Continuous Improvement
 
@@ -53,16 +62,18 @@ reference mobile app.
 | --- | --- | --- |
 | [../../docs/security/mobile-protocol-crypto-assessment-2026-07.md](../../docs/security/mobile-protocol-crypto-assessment-2026-07.md) | Security assessment — protocol / crypto / Keystore | Formal Android-first white-box assessment (2026-07); MOB-* register + claim verdict. Lot A closed — [`../../product-docs/global/hygiene/mobile-protocol-security/2026-07-16-pass-1.md`](../../product-docs/global/hygiene/mobile-protocol-security/2026-07-16-pass-1.md). Pass-2 open (2026-07-19, §14) — HITL: [`../../product-docs/global/hygiene/mobile-protocol-security/2026-07-19-pass-2.md`](../../product-docs/global/hygiene/mobile-protocol-security/2026-07-19-pass-2.md). |
 | [../../docs/security/mobile-security-assessment-2026-05.md](../../docs/security/mobile-security-assessment-2026-05.md) | Security assessment — prior | May 2026 mobile posture assessment; reconcile before re-opening storage/pinning topics. |
-| [MOBILE_DEPENDENCY_HYGIENE_CEREMONY.md](MOBILE_DEPENDENCY_HYGIENE_CEREMONY.md) | Maintenance workflow | Lightweight and repeatable dependency-update routine (monitor, isolate, validate, decide, trace). |
+| [MOBILE_DEPENDENCY_HYGIENE_CEREMONY.md](MOBILE_DEPENDENCY_HYGIENE_CEREMONY.md) | Maintenance workflow | Lightweight and repeatable dependency-update routine (monitor, isolate, validate, decide, trace). § *Cold release gate* is mandatory for React / React Native / Gradle / AGP / Kotlin lots. |
 
 ## Supporting and Operational Docs
 
 | Document | Category | When to read it |
 | --- | --- | --- |
+| [IOS_SETUP.md](IOS_SETUP.md) | iOS setup and baseline | When setting up the iOS toolchain, running the simulator, or checking the iOS floor and known gaps. |
 | [NATIVE_MODULES.md](NATIVE_MODULES.md) | Supporting technical detail | When the primary architecture doc is not deep enough on Android/iOS bridges. |
 | [MOBILE_STRONGBOX_MANUAL_CHECKLIST.md](MOBILE_STRONGBOX_MANUAL_CHECKLIST.md) | Physical-device StrongBox evidence | When recording STRONG tier / StrongBox fallback on a phone (MOB-006); not CI. |
 | [MOBILE_CRYPTO_REFERENCE.md](MOBILE_CRYPTO_REFERENCE.md) | Supporting security detail | When reviewing mobile-specific crypto wording and storage caveats. |
 | [MOBILE_SECURITY_INVESTIGATION_TECHNIQUES.md](MOBILE_SECURITY_INVESTIGATION_TECHNIQUES.md) | Supporting security practice | When validating local secret handling, sandbox artifacts, log hygiene, and debug-only instrumentation choices. |
+| [../../docs/analysis/1082-mobile-code-entry-keyboard-ux.md](../../docs/analysis/1082-mobile-code-entry-keyboard-ux.md) | UX analysis — code-entry keyboard | When changing how enrollment (6-digit) and auth (2-digit) challenge screens behave with the virtual keyboard (#1082). §0 records the shipped decision and its non-goals. |
 | [MOBILE_TEST_STRATEGY.md](MOBILE_TEST_STRATEGY.md) | Test strategy | Layer contract (Jest, JVM, instrumented, Maestro) and what each layer is allowed to prove. |
 | [MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md](MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md) | Test automation / release posture | When adding Maestro, F2a bypass, or other test-only surfaces — mechanical gates and scrutiny resistance. |
 | [MOBILE_LOCAL_AUTH_POLICY_AND_AUDIT_FUTURE_WORK.md](MOBILE_LOCAL_AUTH_POLICY_AND_AUDIT_FUTURE_WORK.md) | Supporting future design note | When revisiting local-auth integrity, future enrollment policy, or audit/protocol extensions around `respond`. |
@@ -71,7 +82,7 @@ reference mobile app.
 | [MOBILE_PLAY_PUBLISHING.md](MOBILE_PLAY_PUBLISHING.md) | Operational | When preparing Google Play submission. |
 | [MOBILE_PLAY_STORE_LISTING.md](MOBILE_PLAY_STORE_LISTING.md) | Operational | Play listing copy, What's new, screenshot shot list. |
 | [MOBILE_PLAY_DATA_SAFETY.md](MOBILE_PLAY_DATA_SAFETY.md) | Operational | Play Data Safety answers from current app behavior. |
-| [MOBILE_ANDROID_PLATFORM_SUPPORT.md](MOBILE_ANDROID_PLATFORM_SUPPORT.md) | Product policy — Android OS floor | Supported floor (API 31 / Android 12+), Gradle `minSdk` 31, Play minSdk lifecycle, annual review (next due 2027-07). |
+| [MOBILE_ANDROID_PLATFORM_SUPPORT.md](MOBILE_ANDROID_PLATFORM_SUPPORT.md) | Product policy — Android OS floor | Supported floor (API 31 / Android 12+), Gradle `minSdk` 31, Play minSdk lifecycle, 16 KB page-size gate, annual review (next due 2027-07). |
 | [MOBILE_PLAY_RELEASE_READINESS_AUDIT.md](MOBILE_PLAY_RELEASE_READINESS_AUDIT.md) | Operational decision support | When deciding whether the current workspace is close enough to a Play release candidate. |
 | [MOBILE_RELEASE_DECISION_MEMO.md](MOBILE_RELEASE_DECISION_MEMO.md) | Product and engineering decision support | When deciding whether to release first on the current stack or upgrade before first publication. |
 | [MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md](MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md) | Real-device test harness | When running or extending Maestro + churn orchestration on a physical Android device (`TB-2026-0002`, F1/F2a). |

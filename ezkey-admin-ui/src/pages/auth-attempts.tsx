@@ -28,7 +28,7 @@ import {
   getRolling24HoursWindowIso,
 } from '@/lib/dashboard-drilldown-links';
 import { search2 } from '@/generated/admin-api/auth-attempts/auth-attempts';
-import type { AuthAttemptDto, PagedModelAuthAttemptDto, Search2Params } from '@/generated/admin-api/model';
+import type { AuthAttemptDto, Search2Params } from '@/generated/admin-api/model';
 
 const AUTH_STATUSES = ['PENDING', 'READ', 'ACCEPTED', 'REJECTED', 'EXPIRED', 'INVALID'] as const;
 
@@ -162,11 +162,6 @@ function AttemptDetailDialog({
         </DetailInfoRow>
         <DetailInfoRow label={t('detail.labelCreated')}><span className="text-fg-muted">{formatDate(attempt.createdAt)}</span></DetailInfoRow>
         <DetailInfoRow label={t('detail.labelExpires')}><span className="text-fg-muted">{formatDate(attempt.expiresAt)}</span></DetailInfoRow>
-        {attempt.authAttemptProofToken && (
-          <DetailInfoRow label={t('detail.labelProofToken')}>
-            <span className="font-mono text-xs break-all text-success">{attempt.authAttemptProofToken}</span>
-          </DetailInfoRow>
-        )}
         </dl>
         <div className="flex justify-end pt-4">
           <Button onClick={onClose}>{t('detail.close')}</Button>
@@ -238,9 +233,9 @@ export default function AuthAttemptsPage() {
           ...p,
           createdAfter: w.createdAfter,
           createdBefore: w.createdBefore,
-        }) as Promise<PagedModelAuthAttemptDto>;
+        });
       }
-      return search2(p) as Promise<PagedModelAuthAttemptDto>;
+      return search2(p);
     },
   });
 

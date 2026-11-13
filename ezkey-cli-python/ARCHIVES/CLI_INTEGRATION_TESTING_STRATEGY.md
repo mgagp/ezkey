@@ -89,6 +89,7 @@ def _wait_for_services():
     services = [
         ("http://localhost:9080/actuator/health", "admin-api"),
         ("http://localhost:8080/actuator/health", "auth-api"),
+        # Historical: pre dual-port separation; live probes use :9091 (see tests/integration/conftest.py).
         ("http://localhost:9090/actuator/health", "crypto-api"),
     ]
     

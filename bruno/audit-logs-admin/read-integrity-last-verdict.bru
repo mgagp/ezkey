@@ -1,0 +1,42 @@
+meta {
+  name: read integrity last verdict
+  type: http
+  seq: 22
+}
+
+get {
+  url: {{base_url_admin_api}}/api/v1/audit-logs/integrity/jobs/last-verdict
+  body: none
+  auth: inherit
+}
+
+script:post-response {
+  test("Status is 200 or 204", function () {
+      expect([200, 204]).to.include(res.getStatus());
+  });
+
+  test("200 body is verdict-bearing with counters and no secrets", function () {
+      if (res.getStatus() !== 200) {
+          return;
+      }
+      var body = res.getBody();
+      expect(body).to.have.property('jobId');
+      expect(body).to.have.property('status', 'SUCCEEDED');
+      expect(['VERIFY_CHAIN_RANGE', 'RUN_VALIDATION']).to.include(body.type);
+      expect(body).to.have.property('chainStatus');
+      expect(body.chainStatus).to.not.equal('NOT_VERIFIED');
+      expect(body).to.have.property('finishedAt');
+      expect(body).to.have.property('trigger');
+      expect(JSON.stringify(body)).to.not.match(/hmacSecret|rawKey|privateKey/i);
+  });
+}
+
+docs {
+  Latest verdict-bearing Integrity job (operator or nightly).
+
+  **Verdict-bearing** = SUCCEEDED ∧ type ∈ {VERIFY_CHAIN_RANGE, RUN_VALIDATION} ∧ chainStatus present and ≠ NOT_VERIFIED.
+
+  **Access:** Global Admin only.
+
+  **Status Codes:** 200 OK · 204 No Content · 401 Unauthorized · 403 Forbidden
+}

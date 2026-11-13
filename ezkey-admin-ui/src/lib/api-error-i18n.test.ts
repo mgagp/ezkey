@@ -5,6 +5,7 @@ import { ApiError, type ProblemDetail } from './api-client';
 import {
   EZKEY_PROBLEM_TYPE_BASE,
   getTranslatedApiError,
+  isTemporarySessionRestrictionDetail,
   parseProblemParameters,
   problemTypeToTranslationKey,
 } from './api-error-i18n';
@@ -51,7 +52,7 @@ describe('getTranslatedApiError', () => {
       },
     );
     const t = i18n.t.bind(i18n);
-    expect(getTranslatedApiError(err, t, 'fallback')).toBe('Invalid username or password.');
+    expect(getTranslatedApiError(err, t, 'fallback')).toBe('Invalid username.');
   });
 
   it('prefers curated i18n over English detail for domain.integration-has-enrollments (quick win)', async () => {
@@ -109,6 +110,26 @@ describe('getTranslatedApiError', () => {
     expect(getTranslatedApiError(new Error('x'), t, 'fb')).toBe('fb');
   });
 
+  it('softens temporary console deny-list 403 into locale copy', async () => {
+    await i18n.changeLanguage('fr');
+    expect(
+      isTemporarySessionRestrictionDetail(
+        'This action is not available during a temporary console session.',
+      ),
+    ).toBe(true);
+    const err = new ApiError(
+      403,
+      {},
+      'This action is not available during a temporary console session.',
+      {
+        type: `${EZKEY_PROBLEM_TYPE_BASE}/authorization/access-denied`,
+        detail: 'This action is not available during a temporary console session.',
+      },
+    );
+    const t = i18n.t.bind(i18n);
+    expect(getTranslatedApiError(err, t, 'fallback')).toContain('accès console temporaire');
+  });
+
   it('interpolates RFC 9457 parameters when translation exists (en)', async () => {
     await i18n.changeLanguage('en');
     const err = new ApiError(
@@ -143,6 +164,39 @@ describe('getTranslatedApiError', () => {
     expect(getTranslatedApiError(err, t, 'fallback')).toBe(
       "Nombre maximal d'administrateurs globaux atteint (3). Impossible d'en créer davantage.",
     );
+  });
+
+  it('uses the French pending-attempt problem copy instead of a generic error', async () => {
+    await i18n.changeLanguage('fr');
+    const t = i18n.t.bind(i18n);
+    const pending = new ApiError(409, {}, 'fallback detail', {
+      type: `${EZKEY_PROBLEM_TYPE_BASE}/domain/auth-attempt-pending-exists`,
+      detail: 'A pending authentication attempt already exists for this enrollment.',
+    });
+    const cooldown = new ApiError(409, {}, 'fallback detail', {
+      type: `${EZKEY_PROBLEM_TYPE_BASE}/domain/auth-attempt-creation-cooldown`,
+      detail: 'Authentication attempt creation is temporarily suspended for this enrollment.',
+    });
+    expect(getTranslatedApiError(pending, t, 'generic')).toBe(
+      "Une demande attend déjà sur l'appareil. Acceptez-la ou refusez-la sur l'appareil, ou attendez qu'elle expire, puis réessayez.",
+    );
+    expect(getTranslatedApiError(cooldown, t, 'generic')).toBe(
+      'Les nouvelles demandes sont suspendues quelques minutes après plusieurs demandes refusées ou codes erronés. Réessayez plus tard.',
+    );
+    const locked =
+      'Fixé à Remplacer pour la connexion des administrateurs : une nouvelle connexion remplace celle qui attend.';
+    const retire = new ApiError(403, {}, 'fallback detail', {
+      type: `${EZKEY_PROBLEM_TYPE_BASE}/domain/system-integration-lifecycle`,
+      detail: 'System integration cannot be retired because it is reserved for administrator MFA.',
+    });
+    const deleted = new ApiError(403, {}, 'fallback detail', {
+      type: `${EZKEY_PROBLEM_TYPE_BASE}/domain/system-integration-lifecycle`,
+      detail: 'System integration cannot be deleted because it is reserved for administrator MFA.',
+    });
+    expect(getTranslatedApiError(retire, t, 'generic')).toBe(retire.problemDetail?.detail);
+    expect(getTranslatedApiError(retire, t, 'generic')).not.toBe(locked);
+    expect(getTranslatedApiError(deleted, t, 'generic')).toBe(deleted.problemDetail?.detail);
+    expect(getTranslatedApiError(deleted, t, 'generic')).not.toContain('Fixé à Remplacer');
   });
 });
 

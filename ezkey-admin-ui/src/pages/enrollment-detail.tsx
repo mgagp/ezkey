@@ -10,6 +10,7 @@ import { DevicePrivateKeyTierBadge } from '@/components/feature/device-private-k
 import { EnrollmentStatusBadge } from '@/components/feature/enrollment-status-badge';
 import { AdminFkLink } from '@/components/feature/fk-detail-links';
 import { IntegratedDeliveryNotice } from '@/components/feature/integrated-delivery-notice';
+import { QrEmailDelivery } from '@/components/feature/qr-email-delivery';
 import { OperationalWarning } from '@/components/feature/operational-warning';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +32,8 @@ import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { authContextDemoPresets, isDemoMode } from '@/lib/demo-mode';
 import { isPhoneNumberInputValid, normalizePhoneNumberInput } from '@/lib/phone-number';
 import { formatChallengeCode, formatCountdown, formatDate } from '@/lib/utils';
+import { enrollmentEditScope } from '@/lib/enrollment-edit-scope';
+import { enrollmentActiveToggle } from '@/lib/enrollment-active-toggle';
 import { useCancel, useCreate2, useGetById2 } from '@/generated/admin-api/auth-attempts/auth-attempts';
 import {
   getGetByIdQueryKey,
@@ -529,8 +532,25 @@ export default function EnrollmentDetailPage() {
     setEditOpen(true);
   };
 
+  const editScope = enrollmentEditScope(enrollment);
+  const activeToggle = enrollmentActiveToggle(enrollment);
+  const canEditMetadata = editScope !== 'none';
+  const editContactEmailOnly = editScope === 'contactEmail';
+
   const handleSaveMetadata = () => {
     if (!enrollment?.enrollmentId) return;
+    if (editContactEmailOnly) {
+      // Before bind, the API accepts the contact email alone (#1206 step 5).
+      const email = editEmail.trim();
+      const emailData: EnrollmentUpdateRequestDto = { version: enrollment.version };
+      if (editClearEmail || email === '') {
+        emailData.clearContactEmail = true;
+      } else {
+        emailData.contactEmail = email;
+      }
+      updateMutation.mutate({ id: enrollment.enrollmentId, data: emailData });
+      return;
+    }
     const name = editName.trim();
     if (!name) return;
     const data: EnrollmentUpdateRequestDto = {
@@ -564,11 +584,6 @@ export default function EnrollmentDetailPage() {
     }
     updateMutation.mutate({ id: enrollment.enrollmentId, data });
   };
-
-  const canEditMetadata =
-    enrollment != null &&
-    enrollment.enrollmentStatus === 'VERIFIED' &&
-    enrollment.enrollmentActive === true;
 
   // Revoke blob URL on unmount or when QR is hidden
   useEffect(() => {
@@ -714,9 +729,10 @@ export default function EnrollmentDetailPage() {
                       size="sm"
                       onClick={openEditMetadata}
                       className="gap-1.5"
+                      data-testid="enrollment-edit-metadata"
                     >
                       <Pencil className="size-3.5" />
-                      {t('detail.editMetadata')}
+                      {editContactEmailOnly ? t('detail.editContactEmailOnly') : t('detail.editMetadata')}
                     </Button>
                   )}
                 </div>
@@ -852,128 +868,123 @@ export default function EnrollmentDetailPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>{t('detail.cryptoCardTitle')}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <InfoRow label={t('detail.infoIntegrationPublicKey')}>
-                  <span className="font-mono text-xs break-all text-fg-muted max-h-28 overflow-y-auto block">
-                    {enrollment.integrationPublicKey ?? '—'}
-                  </span>
-                </InfoRow>
-                <InfoRow label={t('detail.infoDevicePublicKey')}>
-                  <span className="font-mono text-xs break-all text-fg-muted max-h-28 overflow-y-auto block">
-                    {enrollment.devicePublicKey ?? '—'}
-                  </span>
-                </InfoRow>
-              </CardContent>
-            </Card>
             </div>
 
             {/* Token + QR + Danger */}
             <div className="space-y-4">
-              {(
-                (enrollment.enrollmentProofToken != null && enrollment.enrollmentProofToken !== '') ||
-                enrollment.enrollmentStatus === 'CREATED' ||
-                enrollment.enrollmentStatus === 'BOUND'
-              ) && (
+              {(enrollment.enrollmentStatus === 'CREATED' || enrollment.enrollmentStatus === 'BOUND') && (
                 <IntegratedDeliveryNotice summary={t('common:integratedDelivery.summary')}>
                   {t('detail.credentialsPreviewNotice')}
                 </IntegratedDeliveryNotice>
               )}
 
-              {/* Proof Token */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>
-                    <Tooltip content={t('detail.help.proofToken')}>
-                      <span>{t('detail.enrollmentToken')}</span>
-                    </Tooltip>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <p className="text-xs text-fg-muted">
-                    {t('detail.tokenHint')}
-                  </p>
-                  {enrollment.enrollmentProofToken ? (
-                    <>
-                      <div className="border-2 border-fg p-3 font-mono text-xs break-all bg-bg leading-relaxed">
-                        {tokenVisible ? enrollment.enrollmentProofToken : '•'.repeat(20) + ' …'}
-                      </div>
-                      <div className="flex gap-2 flex-wrap">
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => setTokenVisible(!tokenVisible)}
-                          className="gap-1.5"
-                        >
-                          {tokenVisible ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-                          {tokenVisible ? t('detail.hide') : t('detail.reveal')}
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={handleCopyToken}
-                          className="gap-1.5"
-                        >
-                          {tokenCopied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
-                          {tokenCopied ? t('detail.copied') : t('detail.copy')}
-                        </Button>
-                      </div>
-                      {enrollment.enrollmentChallenge != null && (
-                        <div className="border-2 border-fg/30 p-3 bg-bg">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted mb-1">
-                            <Tooltip content={t('detail.help.bindingChallengeCode')}>
-                              <span>{t('create.bindingChallengeCode')}</span>
-                            </Tooltip>
-                          </p>
-                          <p className="font-mono text-2xl font-black tracking-widest">
-                            {enrollment.enrollmentChallenge}
-                          </p>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <Alert variant="info">{t('detail.tokenNotAvailable')}</Alert>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* QR Code */}
-              <Card>
-                <CardHeader><CardTitle>{t('detail.qrCode')}</CardTitle></CardHeader>
-                <CardContent className="space-y-3">
-                  <p className="text-xs text-fg-muted">
-                    {t('detail.qrCodeHint')}
-                  </p>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    isLoading={qrLoading}
-                    onClick={handleToggleQr}
-                    className="gap-1.5"
-                  >
-                    <QrCode className="size-3.5" />
-                    {qrCodeUrl ? t('create.hideQrCode') : t('create.showQrCode')}
-                  </Button>
-                  {qrCodeUrl && (
-                    <div className="border-2 border-fg p-3 inline-block">
-                      <img src={qrCodeUrl} alt="Enrollment QR Code" className="size-48" />
+              {/* Proof token: API returns it only while CREATED (#1180) */}
+              {enrollment.enrollmentProofToken && (
+                <Card data-testid="enrollment-token-card">
+                  <CardHeader>
+                    <CardTitle>
+                      <Tooltip content={t('detail.help.proofToken')}>
+                        <span>{t('detail.enrollmentToken')}</span>
+                      </Tooltip>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-xs text-fg-muted">
+                      {t('detail.tokenHint')}
+                    </p>
+                    <div className="border-2 border-fg p-3 font-mono text-xs break-all bg-bg leading-relaxed">
+                      {tokenVisible ? enrollment.enrollmentProofToken : '•'.repeat(20) + ' …'}
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+                    <div className="flex gap-2 flex-wrap">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setTokenVisible(!tokenVisible)}
+                        className="gap-1.5"
+                      >
+                        {tokenVisible ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                        {tokenVisible ? t('detail.hide') : t('detail.reveal')}
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={handleCopyToken}
+                        className="gap-1.5"
+                      >
+                        {tokenCopied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
+                        {tokenCopied ? t('detail.copied') : t('detail.copy')}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Binding code: API returns it while CREATED or BOUND (#1180) */}
+              {enrollment.enrollmentChallenge != null && (
+                <Card data-testid="enrollment-challenge-card">
+                  <CardHeader>
+                    <CardTitle>
+                      <Tooltip content={t('detail.help.bindingChallengeCode')}>
+                        <span>{t('create.bindingChallengeCode')}</span>
+                      </Tooltip>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {enrollment.enrollmentStatus === 'BOUND' && (
+                      <Alert variant="warning" data-testid="enrollment-bound-warning">
+                        {t('detail.boundChallengeWarning')}
+                      </Alert>
+                    )}
+                    <p className="font-mono text-2xl font-black tracking-widest" data-testid="enrollment-challenge-code">
+                      {enrollment.enrollmentChallenge}
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* QR holds the proof token, so it follows the same rule (#1180) */}
+              {enrollment.enrollmentStatus === 'CREATED' && (
+                <Card data-testid="enrollment-qr-card">
+                  <CardHeader><CardTitle>{t('detail.qrCode')}</CardTitle></CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-xs text-fg-muted">
+                      {t('detail.qrCodeHint')}
+                    </p>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      isLoading={qrLoading}
+                      onClick={handleToggleQr}
+                      className="gap-1.5"
+                    >
+                      <QrCode className="size-3.5" />
+                      {qrCodeUrl ? t('create.hideQrCode') : t('create.showQrCode')}
+                    </Button>
+                    {qrCodeUrl && (
+                      <div className="border-2 border-fg p-3 inline-block">
+                        <img src={qrCodeUrl} alt="Enrollment QR Code" className="size-48" />
+                      </div>
+                    )}
+                    {!enrollment.isSystemIntegration && enrollment.enrollmentId != null && (
+                      <QrEmailDelivery
+                        enrollmentId={enrollment.enrollmentId}
+                        contactEmail={enrollment.contactEmail}
+                        onEditContactEmail={openEditMetadata}
+                      />
+                    )}
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Danger Zone */}
               <Card className="border-error">
                 <CardHeader><CardTitle>{t('detail.dangerZone')}</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
 
-                  {/* Deactivate / Reactivate */}
-                  {enrollment.enrollmentStatus !== 'REVOKED' && (
+                  {/* Deactivate / Reactivate: VERIFIED only (#1277) */}
+                  {activeToggle !== null && (
                     <div className="space-y-2">
-                      {enrollment.enrollmentActive ? (
+                      {activeToggle === 'deactivate' ? (
                         <>
                           <div className="flex items-start gap-2">
                             <p className="text-xs text-fg-muted">
@@ -1026,7 +1037,7 @@ export default function EnrollmentDetailPage() {
                   )}
 
                   {/* Divider */}
-                  {enrollment.enrollmentStatus !== 'REVOKED' && (
+                  {activeToggle !== null && (
                     <div className="border-t-2 border-error/20" />
                   )}
 
@@ -1275,11 +1286,17 @@ export default function EnrollmentDetailPage() {
         onClose={() => {
           if (!updateMutation.isPending) setEditOpen(false);
         }}
-        title={t('detail.editDialogTitle')}
+        title={editContactEmailOnly ? t('detail.editContactEmailOnly') : t('detail.editDialogTitle')}
         size="md"
         dismissible={false}
       >
         <div className="space-y-4">
+          {editContactEmailOnly && (
+            <p className="text-sm text-fg-muted" data-testid="enrollment-edit-email-only-hint">
+              {t('detail.editContactEmailOnlyHint')}
+            </p>
+          )}
+          {!editContactEmailOnly && (
           <div className="space-y-1.5">
             <Label htmlFor="edit-name">{t('detail.editName')}</Label>
             <Input
@@ -1291,6 +1308,7 @@ export default function EnrollmentDetailPage() {
               autoComplete="off"
             />
           </div>
+          )}
           <div className="space-y-1.5">
             <Label htmlFor="edit-email">{t('detail.editContactEmail')}</Label>
             <Input
@@ -1316,6 +1334,8 @@ export default function EnrollmentDetailPage() {
               <span className="text-xs text-fg-muted">{t('detail.editClearContactEmail')}</span>
             </label>
           </div>
+          {!editContactEmailOnly && (
+          <>
           <div className="space-y-1.5">
             <Label htmlFor="edit-phone">{t('detail.editContactPhone')}</Label>
             <Input
@@ -1374,6 +1394,8 @@ export default function EnrollmentDetailPage() {
               <span className="text-xs text-fg-muted">{t('detail.editClearExpiresAt')}</span>
             </label>
           </div>
+          </>
+          )}
           {updateMutation.isError && (
             <Alert variant="error">
               {getTranslatedApiError(
@@ -1398,7 +1420,10 @@ export default function EnrollmentDetailPage() {
               type="button"
               onClick={handleSaveMetadata}
               isLoading={updateMutation.isPending}
-              disabled={!editName.trim() || (editPhone.trim() !== '' && !isPhoneNumberInputValid(editPhone))}
+              disabled={
+                !editContactEmailOnly
+                && (!editName.trim() || (editPhone.trim() !== '' && !isPhoneNumberInputValid(editPhone)))
+              }
             >
               {t('detail.editSave')}
             </Button>

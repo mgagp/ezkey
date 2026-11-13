@@ -636,14 +636,13 @@ public class EnrollmentRevocationService {
   private void assertNotSelfRevocation(AdminPrincipal principal, Enrollment enrollment) {
     adminRepository
         .findByEnrollmentId(enrollment.getEnrollmentId())
-        .ifPresent(
-            ownerAdmin -> {
-              if (ownerAdmin.getAdminId().equals(principal.adminId())) {
-                throw new SelfRevocationNotAllowedException(
-                    "Cannot revoke or deactivate your own enrollment. Use the recovery flow to"
-                        + " reset it.");
-              }
-            });
+        .ifPresent(ownerAdmin -> {
+          if (ownerAdmin.getAdminId().equals(principal.adminId())) {
+            throw new SelfRevocationNotAllowedException(
+                "Cannot revoke or deactivate your own enrollment. Use the recovery flow to"
+                    + " reset it.");
+          }
+        });
   }
 
   /**
@@ -660,13 +659,12 @@ public class EnrollmentRevocationService {
   public void assertNotSelfDeletion(AdminPrincipal principal, Integer enrollmentId) {
     adminRepository
         .findByEnrollmentId(enrollmentId)
-        .ifPresent(
-            ownerAdmin -> {
-              if (ownerAdmin.getAdminId().equals(principal.adminId())) {
-                throw new SelfRevocationNotAllowedException(
-                    "Cannot delete your own enrollment. Use the recovery flow to reset it.");
-              }
-            });
+        .ifPresent(ownerAdmin -> {
+          if (ownerAdmin.getAdminId().equals(principal.adminId())) {
+            throw new SelfRevocationNotAllowedException(
+                "Cannot delete your own enrollment. Use the recovery flow to reset it.");
+          }
+        });
   }
 
   /**
@@ -747,18 +745,17 @@ public class EnrollmentRevocationService {
   private void invalidateAdminTokensIfAdminEnrollment(Enrollment enrollment) {
     adminRepository
         .findByEnrollmentId(enrollment.getEnrollmentId())
-        .ifPresent(
-            ownerAdmin -> {
-              int revokedTokenCount =
-                  adminTokenRepository.deactivateAllTokensForAdmin(ownerAdmin.getAdminId());
-              if (revokedTokenCount > 0) {
-                logger.info(
-                    "Invalidated {} active bearer token(s) for admin {} (enrollment {} revoked"
-                        + " or deactivated)",
-                    revokedTokenCount,
-                    ownerAdmin.getAdminId(),
-                    enrollment.getEnrollmentId());
-              }
-            });
+        .ifPresent(ownerAdmin -> {
+          int revokedTokenCount =
+              adminTokenRepository.deactivateAllTokensForAdmin(ownerAdmin.getAdminId());
+          if (revokedTokenCount > 0) {
+            logger.info(
+                "Invalidated {} active bearer token(s) for admin {} (enrollment {} revoked"
+                    + " or deactivated)",
+                revokedTokenCount,
+                ownerAdmin.getAdminId(),
+                enrollment.getEnrollmentId());
+          }
+        });
   }
 }

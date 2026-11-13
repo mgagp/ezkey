@@ -11,14 +11,21 @@
 package org.ezkey.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.ezkey.audit.dto.IntegrityAsyncJobResponse;
+import org.ezkey.audit.exception.IntegrityAsyncJobAbandonNotAllowedException;
+import org.ezkey.audit.exception.IntegrityAsyncJobBusyException;
+import org.ezkey.audit.exception.IntegrityValidationDisabledException;
+import org.ezkey.audit.exception.IntegrityWindowOverCapException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.integration.exception.ApiKeyLimitExceededException;
 import org.ezkey.integration.exception.IntegrationCodeAlreadyExistsException;
 import org.ezkey.integration.exception.IntegrationHasEnrollmentsException;
 import org.ezkey.integration.exception.IntegrationLifecycleStateException;
 import org.ezkey.integration.exception.SystemIntegrationLifecycleException;
+import org.ezkey.security.exception.EncryptionLifecycleDisabledException;
 import org.ezkey.security.exception.PendingEncryptionKeyExistsException;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -226,5 +233,149 @@ public class DomainExceptionHandler extends ExceptionHandlerBase {
         "https://ezkey.io/problems/domain/auth-attempt-state-conflict",
         "Auth Attempt State Conflict",
         request);
+  }
+
+  /**
+   * Handles EncryptionLifecycleDisabledException and returns HTTP 409 Conflict.
+   *
+   * <p>Triggered when rotation or re-encryption is requested while that lifecycle flag is off
+   * (typical on the opt-in base runtime).
+   *
+   * @param ex the EncryptionLifecycleDisabledException that was thrown
+   * @param request the HTTP servlet request for path extraction
+   * @return ResponseEntity containing ProblemDetail and HTTP 409 status
+   */
+  @ExceptionHandler(EncryptionLifecycleDisabledException.class)
+  public ResponseEntity<ProblemDetail> handleEncryptionLifecycleDisabledException(
+      EncryptionLifecycleDisabledException ex, HttpServletRequest request) {
+    boolean rotation = ex.getOperation() == EncryptionLifecycleDisabledException.Operation.ROTATION;
+    return buildProblemDetail(
+        ex,
+        HttpStatus.CONFLICT,
+        rotation
+            ? "https://ezkey.io/problems/domain/encryption-rotation-disabled"
+            : "https://ezkey.io/problems/domain/encryption-reencryption-disabled",
+        rotation ? "Encryption rotation inactive" : "Re-encryption inactive",
+        request);
+  }
+
+  /**
+   * Handles IntegrityValidationDisabledException and returns HTTP 409 Conflict.
+   *
+   * <p>Triggered when operator (or any) retroactive validation is requested while nightly integrity
+   * is off (typical on the opt-in base runtime).
+   *
+   * @param ex the IntegrityValidationDisabledException that was thrown
+   * @param request the HTTP servlet request for path extraction
+   * @return ResponseEntity containing ProblemDetail and HTTP 409 status
+   */
+  @ExceptionHandler(IntegrityValidationDisabledException.class)
+  public ResponseEntity<ProblemDetail> handleIntegrityValidationDisabledException(
+      IntegrityValidationDisabledException ex, HttpServletRequest request) {
+    return buildProblemDetail(
+        ex,
+        HttpStatus.CONFLICT,
+        "https://ezkey.io/problems/domain/integrity-validation-disabled",
+        "Integrity validation inactive",
+        request);
+  }
+
+  /**
+   * Suggested wait before retrying when the Integrity heavy-crypto path / async slot is busy.
+   *
+   * <p>Matches non-blocking {@code tryEnter} refusals — clients should not spin; Admin UI shows an
+   * inline busy hint and Reload.
+   */
+  static final String INTEGRITY_BUSY_RETRY_AFTER_SECONDS = "60";
+
+  /**
+   * Handles IntegrityWindowOverCapException and returns HTTP 400 with a stable problem type.
+   *
+   * <p>Always sets {@code maxWindowDays} and {@code capKind} ({@link
+   * IntegrityWindowOverCapException#CAP_KIND_SYNC} or {@link
+   * IntegrityWindowOverCapException#CAP_KIND_ASYNC}). For synchronous-path over-cap only (report
+   * GETs and operator {@code POST …/integrity-validation/run}), also sets {@code asyncAlternative}
+   * to the fixed {@link IntegrityWindowOverCapException#ASYNC_ALTERNATIVE} (never derived from the
+   * request).
+   *
+   * @param ex the over-cap exception
+   * @param request the HTTP servlet request
+   * @return ProblemDetail type {@link IntegrityWindowOverCapException#TYPE_URI}
+   */
+  @ExceptionHandler(IntegrityWindowOverCapException.class)
+  public ResponseEntity<ProblemDetail> handleIntegrityWindowOverCapException(
+      IntegrityWindowOverCapException ex, HttpServletRequest request) {
+    ResponseEntity<ProblemDetail> response =
+        buildProblemDetail(
+            ex,
+            HttpStatus.BAD_REQUEST,
+            IntegrityWindowOverCapException.TYPE_URI,
+            "Integrity window exceeds maximum",
+            request);
+    ProblemDetail body = response.getBody();
+    if (body != null) {
+      body.setProperty("maxWindowDays", ex.getMaxWindowDays());
+      body.setProperty("capKind", ex.getCapKind());
+      if (ex.getAsyncAlternative() != null) {
+        body.setProperty("asyncAlternative", ex.getAsyncAlternative());
+      }
+    }
+    return response;
+  }
+
+  /**
+   * Handles IntegrityAsyncJobBusyException and returns HTTP 409 with current job resume summary.
+   *
+   * @param ex the busy exception
+   * @param request the HTTP servlet request
+   * @return ProblemDetail with {@code currentJob} extension and {@code Retry-After}
+   */
+  @ExceptionHandler(IntegrityAsyncJobBusyException.class)
+  public ResponseEntity<ProblemDetail> handleIntegrityAsyncJobBusyException(
+      IntegrityAsyncJobBusyException ex, HttpServletRequest request) {
+    ResponseEntity<ProblemDetail> response =
+        buildProblemDetail(
+            ex,
+            HttpStatus.CONFLICT,
+            "https://ezkey.io/problems/domain/integrity-async-job-busy",
+            "Integrity async slot busy",
+            request);
+    ProblemDetail problem = response.getBody();
+    if (problem != null && ex.getCurrentJob() != null) {
+      IntegrityAsyncJobResponse current =
+          IntegrityAsyncJobResponse.from(ex.getCurrentJob(), ex.getBusyHolder());
+      problem.setProperty("currentJob", current);
+      problem.setProperty("resumeOneLiner", current.resumeOneLiner());
+      if (ex.getBusyHolder() != null) {
+        problem.setProperty("busyHolder", ex.getBusyHolder().name());
+      }
+    }
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .header(HttpHeaders.RETRY_AFTER, INTEGRITY_BUSY_RETRY_AFTER_SECONDS)
+        .body(problem);
+  }
+
+  /**
+   * Handles IntegrityAsyncJobAbandonNotAllowedException and returns HTTP 409.
+   *
+   * @param ex the abandon refusal
+   * @param request the HTTP servlet request
+   * @return ProblemDetail
+   */
+  @ExceptionHandler(IntegrityAsyncJobAbandonNotAllowedException.class)
+  public ResponseEntity<ProblemDetail> handleIntegrityAsyncJobAbandonNotAllowedException(
+      IntegrityAsyncJobAbandonNotAllowedException ex, HttpServletRequest request) {
+    ResponseEntity<ProblemDetail> response =
+        buildProblemDetail(
+            ex,
+            HttpStatus.CONFLICT,
+            "https://ezkey.io/problems/domain/integrity-async-job-abandon-not-allowed",
+            "Integrity async job abandon not allowed",
+            request);
+    ProblemDetail problem = response.getBody();
+    if (problem != null && ex.getStatus() != null) {
+      problem.setProperty("status", ex.getStatus().name());
+    }
+    return response;
   }
 }

@@ -17,7 +17,7 @@
 | Topic | Outcome |
 |-------|---------|
 | Admin UI dependency hygiene #220 / PR #221 | Merged; local branch deleted |
-| Demo Device bind failure (standalone :3080 vs clean-start :8083) | Root cause: config (`exp1-auth-api`) + client did not POST `authApiBaseUrl` despite banner |
+| Demo Device bind failure (standalone :3080 vs clean-start :8083) | Root cause: config (community Auth API host) + client did not POST `authApiBaseUrl` despite banner |
 | QR `authUrl` parity scope | `I-*`, Grill Me, `TB-*` promoted; dual-repo delivery in `case-study-ezkey.md` |
 | Implementation | **Done** — monorepo + standalone sync; maintainer `:3080` sign-off 2026-06-18 |
 

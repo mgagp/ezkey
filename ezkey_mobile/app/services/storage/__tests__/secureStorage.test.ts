@@ -14,6 +14,7 @@ jest.mock('react-native-keychain', () => ({
   setGenericPassword: jest.fn(),
   getGenericPassword: jest.fn(),
   resetGenericPassword: jest.fn(),
+  getAllGenericPasswordServices: jest.fn(),
 }));
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -140,6 +141,37 @@ describe('secureStorage', () => {
     expect(mockAsyncStorage.setItem).not.toHaveBeenCalled();
     expect(mockKeychain.resetGenericPassword).toHaveBeenCalledWith({
       service: 'org.ezkey.mobile.secure.secret-key',
+    });
+  });
+
+  it('removes every Keychain item under the given key prefixes, orphans included (ADR-MOB-0007)', async () => {
+    mockKeychain.getAllGenericPasswordServices.mockResolvedValue([
+      'org.ezkey.mobile.secure.ezkey-mobile/enrollment-proof-token.orphan-1',
+      'org.ezkey.mobile.secure.ezkey-mobile/integration-public-key.orphan-1',
+      'org.ezkey.mobile.secure.ezkey-mobile/locale',
+      'org.ezkey.mobile.enrollment-key',
+    ]);
+    const storage = createSecureStorage({
+      metadata: AsyncStorage,
+      keychain: Keychain,
+      crypto: {sealSecret: jest.fn(), unsealSecret: jest.fn()},
+      platformOs: 'ios',
+      nativeCryptoLinked: true,
+    });
+
+    await expect(
+      storage.removeAllWithKeyPrefixes([
+        'ezkey-mobile/enrollment-proof-token.',
+        'ezkey-mobile/integration-public-key.',
+      ]),
+    ).resolves.toBe(2);
+
+    expect(mockKeychain.resetGenericPassword).toHaveBeenCalledTimes(2);
+    expect(mockKeychain.resetGenericPassword).toHaveBeenCalledWith({
+      service: 'org.ezkey.mobile.secure.ezkey-mobile/enrollment-proof-token.orphan-1',
+    });
+    expect(mockKeychain.resetGenericPassword).toHaveBeenCalledWith({
+      service: 'org.ezkey.mobile.secure.ezkey-mobile/integration-public-key.orphan-1',
     });
   });
 });

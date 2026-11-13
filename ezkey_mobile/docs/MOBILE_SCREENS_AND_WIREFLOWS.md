@@ -7,7 +7,10 @@ which actions it owns, and how navigation moves across enrollment and authentica
 screen implementations rather than an idealized future UX.
 
 It focuses on Home, Enrollment Wizard, Enrollment Detail, and Pending Authentication first, then captures the
-secondary Settings, What's new, About, Danger Zone, and Licenses screens.
+secondary Settings, What's new, About, Danger Zone, and Licenses screens. Decision limits and state transitions
+are canonical in [MOBILE_APP_STATE_MACHINE.md](MOBILE_APP_STATE_MACHINE.md) (leave-as-deny on `main`
+since #833 merged 2026-10-16). Application-independent rules:
+[`docs/CLIENT_BEHAVIOUR_CONTRACT.md`](../../docs/CLIENT_BEHAVIOUR_CONTRACT.md).
 
 ## Navigation Model Overview
 
@@ -21,6 +24,7 @@ flowchart TD
   Settings --> ReleaseNotes
   Settings --> About
   Settings --> Language
+  Settings --> Appearance
   Settings --> DangerZone
   Settings --> Licenses
   PendingAuth --> EnrollmentDetail
@@ -37,12 +41,14 @@ server context, and Pending Authentication owns polling plus approve/deny. The a
 | Enrollment Wizard | Bind and verify a new enrollment from QR payload | Scan QR, bind, enter challenge, complete enrollment | `enrollmentsApi`, `instanceInfoApi`, `cryptoService`, save mutation | Yes |
 | Enrollment Detail | Show selected enrollment identity, own auth polling entry, and surface the latest local response summary | Check pending | `useEnrollments`, navigation store, volatile recent-auth summary state | Yes |
 | Pending Authentication | Poll for pending auth, verify context, approve or deny | Check again, approve, deny | `authAttemptsApi`, `cryptoService`, payload builders | Yes |
-| Settings | Secondary navigation hub | Open What's new, About, Language, Security, Danger Zone, or Licenses | Navigation only | No |
+| Settings | Secondary navigation hub | Open What's new, About, Language, Appearance, Security, Danger Zone, or Licenses | Navigation only | No |
+| Appearance | Choose Light, Dark, or System default theme (#1156) | Pick a theme; applies immediately, no restart | `appearanceStorage`, `app/services/appearance`, `EzkeyAppearanceModule` (Android per-app night mode; iOS `UserDefaults` applied by `SceneDelegate`, #1188) | No |
 | What's new | Current experimental-release notes (bundled copy) | Open ezkey.org | i18n `releaseNotes.*` | No |
 | Security | Manage the local approval-confirmation preference | Switch between Standard and Confirm before approvals | `securityPreferenceStorage`, native device confirmation for downgrade protection | No |
 | About | Show app metadata and project link | Open `ezkey.org` | Native build timestamp, app info constants | No |
 | Danger Zone | Perform destructive local actions | Delete one enrollment, clear all local data | `useEnrollments`, delete mutation, storage clear-all | No |
-| Licenses | Show generated third-party dependency list | Scroll/read only | `thirdPartyLicenses.json` snapshot | No |
+| Licenses | Third-party components shipped on this platform: app libraries (JS), native libraries, vendor components | Tap a row to open its license | `thirdPartyLicenses.json` snapshot | No |
+| License detail | One component: version, license, project link, full license text (offline); vendor components link to their terms | Read; open project or terms link | `thirdPartyLicenses.json` snapshot | No |
 
 ## Home Screen
 
@@ -57,8 +63,8 @@ Its structure emphasizes installation and tenant grouping so the user understand
 | Content block | What it shows/collects | Data source |
 | --- | --- | --- |
 | Installation shell | Installation name, description, host hint, expand/collapse control | Derived installation metadata from persisted enrollments |
-| Tenant section | Tenant name and optional description | Persisted enrollment tenant fields |
-| Enrollment card | Integration name, optional enrollment/device name, optional integration description | `StoredEnrollment` |
+| Tenant section | Eyebrow `Tenant`, tenant name, optional description — only when the tenant is a distinct business org (not the installation name, not an admin-MFA-only system-tenant group) | Persisted enrollment tenant fields; `shouldShowHomeTenantSection` |
+| Enrollment card | Purpose (Administration or integration name), Account subtitle, Role line for admin MFA. No tenant line on the card. | `StoredEnrollment` via `enrollmentDisplay` |
 | Empty state | Welcome message, one-line value proposition, QR hint card | Static copy |
 | Release banner | Always-on experimental-release card (eyebrow, title, body, Learn more) | Bundled i18n `home.releaseBanner*` — not dismissible |
 | Floating action button | Entry point to enrollment wizard | Static action |
@@ -102,16 +108,16 @@ in memory, collects the six-digit challenge, then persists the record only after
 | Content block | What it shows/collects | Data source |
 | --- | --- | --- |
 | Scan stage | CTA to open scanner, camera-permission guidance, bind errors; hidden after a successful bind | Local wizard state |
-| Enrollment info card | Integration name, description, organization, device label, optional server URL | Trusted bind response draft |
+| Enrollment info card | Purpose title, Account row (never Device), Role for admin MFA; hide tenant/integration when they equal the installation | Trusted bind response draft via `enrollmentDisplay` |
 | Challenge stage | Six-box challenge input | User input |
-| Primary/secondary actions | Open scanner, complete enrollment, cancel, learn more | Local wizard state |
+| Primary/secondary actions | Open scanner, complete enrollment, cancel, learn more. Before a draft exists they sit in the bottom footer. Once a draft exists, **Cancel** and **Complete enrollment** sit directly under the six boxes, so they stay above the number pad (#1082). | Local wizard state |
 
 | User action | Effect | Next state/navigation |
 | --- | --- | --- |
 | Open scanner | Requests camera access and opens QR modal | Remains in wizard |
 | Successful scan/bind | Draft becomes available | Wizard hides scan guidance and switches focus to the challenge stage |
-| Enter 6-digit challenge | Enables verify path | Remains in wizard |
-| Complete enrollment | Runs verify and save flow | On success, returns to Home |
+| Enter 6-digit challenge | Enables **Complete enrollment** (disabled until the sixth digit). The number pad stays open | Remains in wizard |
+| Complete enrollment | Runs verify and save flow. One press, pad open or closed | On success, returns to Home |
 | Cancel after draft exists | Clears draft and challenge state | Stays in wizard reset state or returns |
 
 | State type | How it appears | User consequence |
@@ -124,8 +130,9 @@ in memory, collects the six-digit challenge, then persists the record only after
 
 ## Enrollment Detail
 
-Enrollment Detail is a narrow identity and routing screen. It confirms which installation, tenant, integration, and
-device the user is about to use, and exposes the single primary action `Check pending`.
+Enrollment Detail is a narrow identity and routing screen. It confirms Account, Purpose, and Role (admin MFA), and
+exposes the single primary action `Check pending`. Vocabulary:
+[MOBILE_POSITIONING.md § Enrollment identity vocabulary](MOBILE_POSITIONING.md#enrollment-identity-vocabulary).
 
 | Entry condition | Description |
 | --- | --- |
@@ -134,7 +141,7 @@ device the user is about to use, and exposes the single primary action `Check pe
 
 | Content block | What it shows/collects | Data source |
 | --- | --- | --- |
-| Identity zone | Installation name, tenant name, integration name, enrollment/device name, installation description | Persisted enrollment record |
+| Identity zone | Account hero, Purpose, Role (admin MFA), installation only when distinct; host hint when branding equals host | Persisted enrollment via `enrollmentDisplay` |
 | Meta lines | Created and last verification timestamps | Persisted enrollment timestamps |
 | Server zone | Custom Auth API URL when present | Persisted `authUrl` |
 | Primary button | `Check pending` | Static action |
@@ -164,19 +171,20 @@ for request context and respond submission, then returns control to Enrollment D
 
 | Content block | What it shows/collects | Data source |
 | --- | --- | --- |
-| Enrollment identity box | Integration name and optional tenant fallback | Persisted enrollment |
+| Enrollment identity box | Account / Purpose / Role from `enrollmentDisplay`; pending card uses `contextTitle` then Account | Persisted enrollment + trusted pending response |
 | Request context block | `contextTitle`, `contextMessage`, challenge requirement | Trusted pending response |
 | Two-digit challenge input | Challenge entry when required | User input |
-| Action buttons | Approve, deny, retry/check again | Screen state |
+| Action buttons | Approve, deny, and a permanent line that leaving this screen declines the request. They sit directly under the challenge boxes, above the number pad. When a challenge is required, Approve is disabled (outlined, not filled) until both digits are entered. One press acts while the pad is open (#1082). | Screen state |
 | Debug panel | Optional diagnostics when `pendingAuthDebugPanel` is enabled | Screen debug snapshot |
 
 | User action | Effect | Next state/navigation |
 | --- | --- | --- |
 | Wait for initial load | Screen may use a preloaded verified pending request or call `pending` when entered directly | Remains on screen |
 | Tap `Check again` | Repeats `pending` load cycle | Remains on screen |
-| Enter challenge | Satisfies local precondition for approve | Remains on screen |
-| Tap approve | Signs and submits respond payload with accepted decision | Returns to Enrollment Detail with latest response summary |
-| Tap deny | Signs and submits respond payload with denied decision | Returns to Enrollment Detail with latest response summary |
+| Enter challenge | Satisfies local precondition for approve and enables Approve | Remains on screen |
+| Tap approve | In protected mode, biometric or device credential, then signs and submits an accepted respond | Returns to Enrollment Detail with latest response summary |
+| Tap deny | Signs and submits a denied respond. **Q11 decided:** no biometric prompt (approve-only). Reference app code may still prompt on Deny until the code follow-up ships | Returns to Enrollment Detail with latest response summary |
+| Leave with loaded attempt (back / gesture) | Same as Deny via `respond(accepted=false)`. A permanent line under the buttons says so before the gesture (Question 5). | Returns to Enrollment Detail when deny succeeds; on deny failure still allows leave |
 
 | State type | How it appears | User consequence |
 | --- | --- | --- |
@@ -190,9 +198,10 @@ for request context and respond submission, then returns control to Enrollment D
 
 | Screen | Purpose | Why secondary | Notes |
 | --- | --- | --- | --- |
-| Settings | Single hub for app-adjacent actions | Does not participate in enrollment/auth protocol flow directly | Routes to About, Language, Security, Danger Zone, and Licenses. |
+| Settings | Single hub for app-adjacent actions | Does not participate in enrollment/auth protocol flow directly | Routes to About, Language, Appearance, Security, Danger Zone, and Licenses. |
 | Security | Local security preference for this phone | Secondary preference surface, but security-sensitive when lowering protection | The app requires device confirmation before saving a downgrade from protected mode to standard. |
-| Language | Manual language selection | Secondary preference only | Persists English/French selection and applies it immediately via i18next (no app restart). |
+| Language | Manual language selection | Secondary preference only | System default (follows the phone when it is English or French, else English), English, or French; applied immediately via i18next (no app restart). On Android 13+ the choice is the system per-app language (Settings → App languages), synced both ways; Android 12 keeps it in AsyncStorage (#1157). Dates use the app language. |
+| Appearance | Light / Dark / System default theme | Secondary preference only | Persists the choice (default System default) and applies it immediately; System default follows the phone's dark theme live. Both palettes meet WCAG AA text contrast (`__tests__/themeContrast.test.ts`). |
 | About | App metadata and project context | Informational only | Shows version, native build timestamp, MIT/open-source note, and link to `ezkey.org`. |
 | Danger Zone | Destructive local maintenance | Explicitly separated to avoid accidental deletion in the main flow | Supports deleting one enrollment or clearing all local enrollment data. |
 | Licenses | Third-party package inventory | Compliance/information surface only | Reads generated JSON snapshot from `yarn license:app-data`. |
@@ -203,7 +212,8 @@ for request context and respond submission, then returns control to Enrollment D
 | --- | --- | --- | --- | --- | --- |
 | `installation.name` | Shown in installation headers | Not primary, but derived server shown optionally | Shown | Not normally shown except fallback identity context | No |
 | `installation.host` | Optional host hint in installation header | Optional server URL in info card | Optional host hint | No | No |
-| `tenantName` | Shown in grouping headers | Shown in info card after bind | Shown | Shown as fallback identity | Danger Zone shows a minimal tenant line |
+| `tenantName` | Shown in grouping headers when distinct from the installation and the group is not admin-MFA-only | Shown in info card after bind when distinct | Shown when distinct | Shown as fallback identity when distinct | Danger Zone shows a minimal tenant line |
+| `tenantDescription` | Shown under the tenant section name when the section is visible | Shown under the tenant name after bind | Shown under the tenant name when the tenant is shown | No | No |
 | `integrationName` | Shown on enrollment cards | Shown in info card after bind | Shown | Shown in enrollment box | Danger Zone context line; title fallback if no enrollment/device name |
 | `integrationDescription` | Shown on enrollment cards when present | Shown in info card | Not shown directly | No | No |
 | `enrollmentName` | Shown on cards when present | Shown in info card | Shown | No | Danger Zone title (fallback: `deviceLabel`, then `integrationName`) |
@@ -236,6 +246,7 @@ flowchart TD
   Settings --> ReleaseNotes
   Settings --> About
   Settings --> Language
+  Settings --> Appearance
   Settings --> DangerZone
   Settings --> Licenses
 ```

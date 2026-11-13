@@ -1,0 +1,8 @@
+# Local demo secrets and generated artifacts — never commit.
+.env
+runtime/
+logs/
+workspace/
+build/
+artifacts/
+*.so
