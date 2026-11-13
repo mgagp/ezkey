@@ -57,6 +57,8 @@ Dependabot alone cannot prove current:
 | Python CLI | `pip` at `/ezkey-cli-python` (weekly) | — |
 | Delivery connectors | Reactor modules since #1278, so `maven` at `/` covers them; their Dockerfiles in the `docker` entry | Same **Java BOM pulse** as the core; licences in root `THIRD-PARTY.txt` |
 
+The Gradle wrapper (ignored by Dependabot in the `/ezkey_mobile/android` entry, with its `distributionSha256Sum`) and the PyYAML pin in `scripts/requirements-endoflife.txt` (no pip entry for `/scripts`) are updated by hand, with their checksums. Forgetting either fails the build loudly, never silently.
+
 **Alerts (enabled 2026-11-06, Marc's decision).** Version updates and alerts are complementary:
 transitive dependencies rarely move through version-update PRs, so lockfiles also need a refresh.
 Triage by **what ships**, not by GitHub's `runtime` / `development` label, which is unreliable on
@@ -415,13 +417,12 @@ The Monday full pass reads this table even when no Boot bump landed: drop a row 
 has caught up, and flag a row with no expiry or a past expiry. A CI warning for a missing
 expiry, a past expiry, or a cap breach is a follow-up. It is not implemented here.
 
-**Cap check (2026-11-13, Marc).** The cap stays **5** per manifest and **10** in the repo.
-Pins that are not security pins sit outside it. The six Admin UI overrides are obsolete. A
-cleanup PR removes all of them; after it, that manifest has **0** active overrides. SEC-019
-(logback, Jackson 3, Jackson 2) was removed on 2026-11-13: Boot 4.1.2 covers the original CVEs,
+**Cap check (2026-11-13, Marc; Admin UI count updated in #1348).** The cap stays **5** per
+manifest and **10** in the repo. Pins that are not security pins sit outside it. The Admin UI
+manifest has **0** active overrides: #1348 removed the six obsolete pins. SEC-019 (logback,
+Jackson 3, Jackson 2) was removed on 2026-11-13 (#1349): Boot 4.1.2 covers the original CVEs,
 and no active GHSA or OSV advisory applies to the Boot-managed versions. `caffeine.version`
 stays, as a compatibility pin.
-Neither PR number is assigned here. Do not add an Admin UI override while the cleanup is open.
 
 Dismissal lines use this shape (also in the posture doc):
 
@@ -429,19 +430,25 @@ Dismissal lines use this shape (also in the posture doc):
 <Reason>: <fact path:line>; <why not exploitable or not deployed>; ref <triage YYYY-MM-DD / #NNN>
 ```
 
-Versions below are the manifests on `02f683b99`. GHSA ids are from the GitHub Advisory Database
-(`gh api /advisories`, 2026-11-13). **none** means no current advisory for that pin.
+GHSA ids are from the GitHub Advisory Database (`gh api /advisories`, 2026-11-13). **none**
+means no current advisory for that pin. Boot and caffeine versions below are the manifests on
+`02f683b99`.
 
 ### Admin UI npm (`ezkey-admin-ui/package.json` `overrides`)
 
+**0 active overrides.** #1348 (2026-11-13) removed the block. This file has no removed-overrides
+history, so the six rows stay here with status **Removed**. They are not live pins and they do
+not count toward the cap. `npm install` left `package-lock.json` unchanged; each resolved
+version stayed at or above its advisory floor (`linkify-it` was already absent).
+
 | Pin | GHSA | Blocking parent | Removal condition | Expiry | Status | Owner |
 |---|---|---|---|---|---|---|
-| `brace-expansion` 5.0.12 | [GHSA-q2hr-2g5m-vwhr](https://github.com/advisories/GHSA-q2hr-2g5m-vwhr) (`>= 4.0.0, < 5.0.12`) | `minimatch` `^5.0.8` already allows 5.0.12 | Parent range already includes the fix. | none | Removal planned (cleanup PR) | Marc, `9f641bfba` (2026-08-10) |
-| `fast-uri` 3.1.9 | [GHSA-333x-w4r6-6crp](https://github.com/advisories/GHSA-333x-w4r6-6crp) (`>= 3.0.0, < 3.1.9`) | `ajv` `^3.0.1` (production path). The range resolves to 3.1.9 | The parent range already resolves to the patched release. | none | Removal planned (cleanup PR) | Marc, `9f641bfba` (2026-08-10) |
-| `js-yaml` 4.3.2 | [GHSA-2883-xcg3-v3hh](https://github.com/advisories/GHSA-2883-xcg3-v3hh) (`>= 4.0.0, < 4.3.2`) | `orval` already depends on `js-yaml` 4.3.2 exactly | Override has no effect. First added as 4.2.0 in `470ccbf28` (2026-06-16, closes #220). | none | Removal planned (cleanup PR) | Marc, `470ccbf28` |
-| `linkify-it` 5.0.2 | [GHSA-v245-v573-v5vm](https://github.com/advisories/GHSA-v245-v573-v5vm) (`<= 5.0.1`). The package is no longer in the lockfile. | none — no `linkify-it` entry in `ezkey-admin-ui/package-lock.json` | Dead override. | none | Removal planned (cleanup PR) | Marc, `9f641bfba` (2026-08-10) |
-| `browserslist` 4.28.9 | none | `@babel/helper-compilation-targets` `^4.24.0` | Exact pin, not a security pin. | none | Removal planned (cleanup PR) | Marc, `c5baf0d11` (2026-09-14) |
-| `baseline-browser-mapping` 2.11.23 | [GHSA-w5vr-8v7q-w6rv](https://github.com/advisories/GHSA-w5vr-8v7q-w6rv) (`>= 2.0.0, < 2.11.0`) | `browserslist` `^2.11.20` already allows a patched release | Parent range already includes the fix. | none | Removal planned (cleanup PR) | Marc, `c5baf0d11` (2026-09-14) |
+| `brace-expansion` 5.0.12 | [GHSA-q2hr-2g5m-vwhr](https://github.com/advisories/GHSA-q2hr-2g5m-vwhr) (`>= 4.0.0, < 5.0.12`) | `minimatch` `^5.0.8` already allows 5.0.12 | Parent range already includes the fix. | none | Removed (#1348) | Marc, `9f641bfba` (2026-08-10) |
+| `fast-uri` 3.1.9 | [GHSA-333x-w4r6-6crp](https://github.com/advisories/GHSA-333x-w4r6-6crp) (`>= 3.0.0, < 3.1.9`) | `ajv` `^3.0.1` (production path). The range resolves to 3.1.9 | The parent range already resolves to the patched release. | none | Removed (#1348) | Marc, `9f641bfba` (2026-08-10) |
+| `js-yaml` 4.3.2 | [GHSA-2883-xcg3-v3hh](https://github.com/advisories/GHSA-2883-xcg3-v3hh) (`>= 4.0.0, < 4.3.2`) | `orval` already depends on `js-yaml` 4.3.2 exactly | Override has no effect. First added as 4.2.0 in `470ccbf28` (2026-06-16, closes #220). | none | Removed (#1348) | Marc, `470ccbf28` |
+| `linkify-it` 5.0.2 | [GHSA-v245-v573-v5vm](https://github.com/advisories/GHSA-v245-v573-v5vm) (`<= 5.0.1`). The package is no longer in the lockfile. | none — no `linkify-it` entry in `ezkey-admin-ui/package-lock.json` | Dead override. | none | Removed (#1348) | Marc, `9f641bfba` (2026-08-10) |
+| `browserslist` 4.28.9 | none | `@babel/helper-compilation-targets` `^4.24.0` | Exact pin, not a security pin. | none | Removed (#1348) | Marc, `c5baf0d11` (2026-09-14) |
+| `baseline-browser-mapping` 2.11.23 | [GHSA-w5vr-8v7q-w6rv](https://github.com/advisories/GHSA-w5vr-8v7q-w6rv) (`>= 2.0.0, < 2.11.0`) | `browserslist` `^2.11.20` already allows a patched release | Parent range already includes the fix. | none | Removed (#1348) | Marc, `c5baf0d11` (2026-09-14) |
 
 ### Pins ahead of Boot / compatibility (outside the cap)
 

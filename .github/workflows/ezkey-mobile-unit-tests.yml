@@ -102,6 +102,10 @@ jobs:
         with:
           persist-credentials: false
 
+      # Reject a substituted gradle-wrapper.jar before this job runs Gradle.
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+
       # Project JDK posture: Temurin 17 only. Do not add gradle-daemon-jvm.properties /
       # Foojay toolchain download — Gradle must use this JAVA_HOME (see android/gradle.properties).
       - name: Set up JDK 17
@@ -212,6 +216,10 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      # Reject a substituted gradle-wrapper.jar before this job runs Gradle.
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
 
       # Project JDK posture: Temurin 17 only (same as android-jvm-unit-tests). No Foojay download.
       - name: Set up JDK 17

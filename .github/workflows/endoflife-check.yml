@@ -65,7 +65,7 @@ jobs:
 
       - name: Install PyYAML
         if: steps.gate.outputs.run == 'true'
-        run: pip install --disable-pip-version-check -q "pyyaml==6.0.2"
+        run: pip install --disable-pip-version-check --require-hashes -r scripts/requirements-endoflife.txt
 
       - name: Run endoflife check (update standing hygiene issue)
         if: steps.gate.outputs.run == 'true'
