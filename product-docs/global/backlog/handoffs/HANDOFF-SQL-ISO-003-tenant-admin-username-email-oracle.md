@@ -6,6 +6,8 @@
 **Campaign:** `product-docs/global/hygiene/java-tenant-sql-isolation/2026-09-15-pass-1.md`  
 **Assessment:** `docs/java-tenant-sql-isolation-assessment-2026-09.md` § SQL-ISO-003
 
+> **Update 2026-11-13:** reproduced on current `main` (username, email, PATCH of own profile). **Do not implement yet:** back to the operator, agent recommends `suppress` (a generic 400 still differs from 201). See the register §11.
+
 Use this prompt to start a **new Cursor session**. Default: do **not** implement unless the
 operator also says implement now. Delete this file on PR/closeout after consolidating into the
 campaign note — and, if the session locked a durable UX contract or product posture, only after

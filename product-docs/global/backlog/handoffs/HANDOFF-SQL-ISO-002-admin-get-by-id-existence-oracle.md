@@ -6,6 +6,8 @@
 **Campaign:** `product-docs/global/hygiene/java-tenant-sql-isolation/2026-09-15-pass-1.md`  
 **Assessment:** `docs/java-tenant-sql-isolation-assessment-2026-09.md` § SQL-ISO-002
 
+> **Update 2026-11-13:** reproduced on current `main`. Scope widened by the operator-approved grouping: `GET /admins/{id}/onboarding` (400 vs 404) and SQL-ISO-006 `GET /api-keys/{id}` (403 vs 404) ship in the same Admin API PR. The Global Admin row has `tenant_id = 1` (system tenant) on a bootstrapped stack, not null; test both. See the register §11.
+
 Use this prompt to start a **new Cursor session**. Default: do **not** implement unless the
 operator also says implement now. Delete this file on PR/closeout after consolidating into the
 campaign note — and, if the session locked a durable UX contract or product posture, only after

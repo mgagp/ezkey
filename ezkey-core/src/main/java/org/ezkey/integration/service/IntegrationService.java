@@ -92,6 +92,9 @@ public class IntegrationService {
   /**
    * Retrieves an Integration by its unique identifier.
    *
+   * <p><b>Tenant scope:</b> unscoped. Loads by primary key whatever the tenant. The caller must
+   * authorize first (see {@code ezkey-core/AGENTS.md}, tenant scope of service loaders).
+   *
    * @param id the unique identifier of the Integration
    * @return an Optional containing the Integration if found, or empty if not found
    */
@@ -101,6 +104,9 @@ public class IntegrationService {
 
   /**
    * Retrieves all Integration entities.
+   *
+   * <p><b>Tenant scope:</b> unscoped. Returns rows of every tenant. No production HTTP caller;
+   * do not expose without a principal-scoped query (see {@code ezkey-core/AGENTS.md}).
    *
    * @return a list of all Integration entities
    */

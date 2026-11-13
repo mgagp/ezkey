@@ -32,6 +32,9 @@ way as a missing `canAccess*` (enrollment QR) or a missing `GLOBAL_ADMIN` gate
   `tenantId`) on get-by-id and mutations of tenant-owned resources. Required even
   when the annotation names both type roles. A Tenant Admin has `TENANT_ADMIN`;
   `hasAnyRole('GLOBAL_ADMIN','TENANT_ADMIN')` still admits her to enrollment routes.
+  The `ezkey-core` loaders (`getById`, `getApiKey`, `revokeApiKey`, `getAll`, `findAll`)
+  are **not** that check: they are tenant-blind. Calling one without the object check
+  first is a regression (`ezkey-core/AGENTS.md` § Tenant scope of service loaders).
 - **Greenfield note:** if assigning authorities from scratch, issue only the two type
   roles (no umbrella). Isolation still is not a Spring role.
 - **Cross-tenant deny (hide existence):** get-by-id style reads (JSON, PNG QR,

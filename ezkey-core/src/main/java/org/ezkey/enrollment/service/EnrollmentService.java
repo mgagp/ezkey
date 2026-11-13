@@ -181,6 +181,9 @@ public class EnrollmentService {
    * <p>This method searches for an enrollment using its primary key and returns the enrollment
    * entity for internal use.
    *
+   * <p><b>Tenant scope:</b> unscoped. Loads by primary key whatever the tenant. The caller must
+   * authorize first (see {@code ezkey-core/AGENTS.md}, tenant scope of service loaders).
+   *
    * @param id the enrollment ID to search for
    * @return the enrollment entity
    * @throws ResourceNotFoundException if the enrollment is not found
@@ -198,6 +201,9 @@ public class EnrollmentService {
    * Retrieves all enrollments.
    *
    * <p>This method returns all enrollments in the system as a list of entities.
+   *
+   * <p><b>Tenant scope:</b> unscoped. Returns rows of every tenant. No production HTTP caller;
+   * do not expose without a principal-scoped query (see {@code ezkey-core/AGENTS.md}).
    *
    * @return list of all enrollment entities
    */

@@ -8,6 +8,7 @@ repositories there).
 **Method:** White-box review of repositories, service query builders, and the service context
 that calls them; live clean-start stack probes for the oracles in the HITL lot. No hostile
 exploitation of a production deployment.
+**Re-verified:** 2026-11-13 on current `main` — see §11 (live evidence, corrections, execution plan).
 **Operator HITL lane:**
 [`product-docs/global/hygiene/java-tenant-sql-isolation/`](../product-docs/global/hygiene/java-tenant-sql-isolation/)
 **Sibling (do not reopen closed controller HITL):**
@@ -127,7 +128,7 @@ dynamic evidence.
 | SQL-ISO-002 | Admin `getAdminById` unscoped `findById` then 404 vs 403 (Global Admin existence) | P2 | Confirmed | **fix authorized** 2026-09-15 — [`HANDOFF-SQL-ISO-002-admin-get-by-id-existence-oracle.md`](../product-docs/global/backlog/handoffs/HANDOFF-SQL-ISO-002-admin-get-by-id-existence-oracle.md) |
 | SQL-ISO-003 | `existsByUsername` / `existsByEmail` instance-global; Tenant Admin peer-create identity oracle | P2 | Confirmed | **fix authorized** 2026-09-15 — [`HANDOFF-SQL-ISO-003-tenant-admin-username-email-oracle.md`](../product-docs/global/backlog/handoffs/HANDOFF-SQL-ISO-003-tenant-admin-username-email-oracle.md) |
 | SQL-ISO-004 | Admin auth-attempt create Path 2/3 looks up `userIdentifier` by **request** `integrationId` before ACS | P2 | Confirmed (static) | **fix authorized** 2026-09-15 — [`HANDOFF-SQL-ISO-004-admin-auth-attempt-useridentifier-oracle.md`](../product-docs/global/backlog/handoffs/HANDOFF-SQL-ISO-004-admin-auth-attempt-useridentifier-oracle.md) |
-| SQL-ISO-005 | Core `findById` / `findAll` / `revokeKey` remain unscoped; isolation is caller discipline | P2 | Confirmed residual | **fix authorized** 2026-09-15 — [`HANDOFF-SQL-ISO-005-unscoped-service-loaders.md`](../product-docs/global/backlog/handoffs/HANDOFF-SQL-ISO-005-unscoped-service-loaders.md) |
+| SQL-ISO-005 | Core `findById` / `findAll` / `revokeKey` remain unscoped; isolation is caller discipline | P2 | Confirmed residual | **closed** 2026-11-13 — contract in `ezkey-core/AGENTS.md` § Tenant scope of service loaders, pointer in `ezkey-admin-api/AGENTS.md`, Javadoc on the loaders |
 
 ### Category 2 — noted, not in this HITL lot
 
@@ -233,7 +234,9 @@ authorized.
 foreign-tenant admin) row exists: 403 if present and out of tenant, 404 if absent.
 
 **SQL:** `EzkeyAdminRepository.findById` then compare `admin.tenant.tenantId` to
-`principal.tenantId()`. Global Admin `tenant` is null → mismatch → `IllegalArgumentException`.
+`principal.tenantId()`. The Global Admin row never matches a business tenant (bootstrap
+`admin.docker` has `tenant_id = 1`, the system tenant; a null tenant is also handled) → mismatch
+→ `IllegalArgumentException`.
 
 ```907:923:ezkey-admin-api/src/main/java/org/ezkey/admin/service/AdminProvisioningService.java
     EzkeyAdmin admin =
@@ -353,10 +356,10 @@ follow-up: `requireAccessible*(principal, id)` helpers. Do **not** add Hibernate
 GO (Auth proof-token paths would fight them). Out of GO: deleting `findAll` without a caller
 audit.
 
-**HITL 2026-09-15:** operator **GO** (`fix`). Implementation not started. Handoff:
-[`HANDOFF-SQL-ISO-005-unscoped-service-loaders.md`](../product-docs/global/backlog/handoffs/HANDOFF-SQL-ISO-005-unscoped-service-loaders.md).
-Authorized default: AGENTS.md + Javadoc contract. Helpers optional, not required. Last item
-of pass-1 HITL lot.
+**HITL 2026-09-15:** operator **GO** (`fix`). **Closed 2026-11-13:** contract written in
+`ezkey-core/AGENTS.md` § Tenant scope of service loaders, pointer under Admin API `AGENTS.md`
+§ Authorization (object split), Javadoc on the listed loaders. No helpers added. Handoff
+deleted.
 
 ## 8. Runtime evidence
 
@@ -382,6 +385,8 @@ enrollment GET 403/404; own API keys only) — **3 tests, 0 failures**.
 
 ## 9. Related assessments (avoid duplicate HITL)
 
+(Re-verification and execution plan: §11.)
+
 | ID | Relation |
 | --- | --- |
 | CTRL-ROLE-001 | QR object check; closed. Auth bind still token-gated. |
@@ -396,3 +401,48 @@ enrollment GET 403/404; own API keys only) — **3 tests, 0 failures**.
 This assessment does **not** assert that adding Hibernate `@Filter` is required, that Global
 Admin cross-tenant **operator** reads are a defect (they are the platform role), or that
 proof-token lookups should grow a tenant predicate (that would break Auth API).
+
+## 11. Re-verification 2026-11-13 and execution plan
+
+Two months and 564 commits after pass-1, every HTTP finding was replayed on current `main`
+(clean-start stack). None had been fixed in between. Caller: Tenant Admin A bearer token, or
+Tenant A API key for SQL-ISO-001.
+
+| Finding | Row exists elsewhere | Row does not exist | Status |
+| --- | --- | --- | --- |
+| SQL-ISO-001 Integration API Path 1 | 400 `Enrollment does not belong to this integration.` | 400 `Enrollment not found for ID: …` | Reproduced |
+| SQL-ISO-002 `GET /admins/{id}` (Global Admin id 1, Tenant B admin) | 403 empty | 404 | Reproduced |
+| SQL-ISO-002 `PATCH /admins/{id}` | 400 `Tenant administrators can only access admins in their tenant` | 404 | Reproduced |
+| SQL-ISO-002 `GET /admins/{id}/onboarding` | 400 `…onboarding credentials for admins in their tenant` | 404 | Reproduced (was out of the handoff) |
+| SQL-ISO-003 `POST /admins/tenant`, taken username or email | 400 `Username already exists: …` / `Email already exists: …` | 201 | Reproduced |
+| SQL-ISO-003 `PATCH /admins/{own id}` with a taken email | 400 `Email already exists: …` | 200 | Reproduced |
+| SQL-ISO-004 Admin create, `userIdentifier` + Tenant B `integrationId` (Paths 2 and 3) | 403 empty | 400 `No verified enrollment found…` (also for an unknown integration id) | Reproduced — first live evidence |
+| SQL-ISO-006 `GET /api-keys/{id}` | 403 empty | 404 | Reproduced |
+
+Controls that hold: `GET /integrations/{id}` and `GET /enrollments/{id}` answer 403 for both
+foreign and missing ids; Admin create Path 1 answers 403 for both.
+
+**Corrections to pass-1:**
+
+- The Global Admin row is not `tenant = null` on a bootstrapped stack: `admin.docker` has
+  `tenant_id = 1` (system tenant). Outcome is unchanged. Tests must cover the system-tenant
+  case, not only null.
+- SQL-ISO-003 is wider than the Global Admin username: email too, any tenant's admin, and the
+  PATCH of one's own profile.
+- SQL-ISO-004 needs a `VERIFIED` and active enrollment carrying the `userIdentifier` on the
+  foreign integration. The 2026-11-13 probe set that state by SQL on the lab stack, then
+  reverted it.
+- The probe test records dialects without locking them, and skips its three cases (green
+  build) when admin bootstrap fails. Each fix PR tightens its own case.
+
+**Execution plan (operator-approved grouping, 2026-11-13):**
+
+1. This PR: register, campaign note, probe test, SQL-ISO-005 (docs and Javadoc).
+2. One Admin API PR: SQL-ISO-002 (GET, PATCH, onboarding), SQL-ISO-004, SQL-ISO-006. Same
+   module, same target (HTTP 404 `admin/resource-not-found`), one Bruno / ENDPOINT / OpenAPI
+   refresh.
+3. One Integration API PR: SQL-ISO-001 (public integrator contract).
+
+SQL-ISO-003 is **back to the operator** before any code. Agent recommendation: `suppress`.
+Usernames and emails are instance-global because login is; a generic 400 still differs from
+201, so the oracle survives the fix while the operator loses a useful message.

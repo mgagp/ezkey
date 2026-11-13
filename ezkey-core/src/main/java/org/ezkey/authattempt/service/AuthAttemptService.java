@@ -242,6 +242,9 @@ public class AuthAttemptService {
   /**
    * Retrieves an authentication attempt by its ID.
    *
+   * <p><b>Tenant scope:</b> unscoped. Loads by primary key whatever the tenant. The caller must
+   * authorize first (see {@code ezkey-core/AGENTS.md}, tenant scope of service loaders).
+   *
    * @param id the authentication attempt ID
    * @return the authentication attempt entity
    * @throws ResourceNotFoundException if the authentication attempt is not found
@@ -255,6 +258,9 @@ public class AuthAttemptService {
 
   /**
    * Retrieves all authentication attempts.
+   *
+   * <p><b>Tenant scope:</b> unscoped. Returns rows of every tenant. No production HTTP caller;
+   * do not expose without a principal-scoped query (see {@code ezkey-core/AGENTS.md}).
    *
    * @return list of all authentication attempts
    */

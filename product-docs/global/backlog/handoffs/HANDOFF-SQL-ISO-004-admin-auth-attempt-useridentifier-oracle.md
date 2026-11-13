@@ -6,6 +6,8 @@
 **Campaign:** `product-docs/global/hygiene/java-tenant-sql-isolation/2026-09-15-pass-1.md`  
 **Assessment:** `docs/java-tenant-sql-isolation-assessment-2026-09.md` § SQL-ISO-004
 
+> **Update 2026-11-13:** confirmed live (403 on a hit, 400 on a miss or an unknown integration id). Ships in the Admin API PR with SQL-ISO-002 and SQL-ISO-006. See the register §11.
+
 Use this prompt to start a **new Cursor session**. Default: do **not** implement unless the
 operator also says implement now. Delete this file on PR/closeout after consolidating into the
 campaign note — and, if the session locked a durable UX contract or product posture, only after
