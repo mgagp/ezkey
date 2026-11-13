@@ -27,7 +27,10 @@ from typing import Any
 try:
     import yaml
 except ImportError:  # pragma: no cover - runner installs PyYAML
-    print("FAIL: PyYAML required (pip install pyyaml)", file=sys.stderr)
+    print(
+        "FAIL: PyYAML required (pip install --require-hashes -r scripts/requirements-endoflife.txt)",
+        file=sys.stderr,
+    )
     sys.exit(2)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
