@@ -28,23 +28,30 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * Fail-closed deny-list for {@code EVALUATOR_TEMP} authentications.
  *
  * <p>Mode C is navigable {@code TENANT_ADMIN} ACL pass-through plus a deny-list seed — not Path B
- * allowlist growth into “finish enrollment only.” Never GLOBAL; QR/onboarding self-only; no
- * passwordless {@code SESSION} mint while TEMP. Dashboard and lab list/CRUD stay open unless
- * explicitly denied.
+ * allowlist growth into “finish enrollment only.” Never GLOBAL; own profile and onboarding
+ * (including QR) self-only; no passwordless {@code SESSION} mint while TEMP. Dashboard and lab
+ * list/CRUD stay open unless explicitly denied.
+ *
+ * <p>Admin-by-id routes are the exception: anything other than the caller's own profile and
+ * onboarding is denied, including recovery codes, activation-code reissue, and deactivate/activate.
+ * That subtree is deny-by-default so a new admin credential route is closed until someone adds it
+ * to the self-only set. The rest of the API stays deny-list, because a full allowlist would empty
+ * the navigable console.
  */
 @Component
 public class EvaluatorTempAccessFilter extends OncePerRequestFilter {
 
-  private static final Pattern ADMIN_ONBOARDING =
-      Pattern.compile("^/api/v1/admins/(\\d+)(/onboarding(/qrcode)?)?$");
+  /** Admin-by-id path. Group 2 is the suffix after the id, or null when the path is the profile. */
+  private static final Pattern ADMIN_BY_ID = Pattern.compile("^/api/v1/admins/(\\d+)(?:/(.*))?$");
 
   private static final Pattern QR_DELIVERY =
       Pattern.compile("^/api/v1/enrollments/(qr-delivery/.*|\\d+/qr-delivery)$");
 
   /**
    * Deny-list seed (Patrick craft steer): GLOBAL/cross-tenant; mint SESSION without bind; integrity
-   * raise/async write; cross-admin QR/onboarding (self-only rule below); dangerous export/bootstrap
-   * admin; destructive durable outside lab soft. Dashboard/lists/lab CRUD stay open unless listed.
+   * raise/async write; dangerous export/bootstrap admin; destructive durable outside lab soft. Peer
+   * admin credentials live under {@link #ADMIN_BY_ID} (deny-by-default there). Dashboard, lists,
+   * and lab CRUD stay open unless listed.
    */
   private static final String[] DENIED_PREFIXES = {
     "/api/v1/tenants",
@@ -109,12 +116,43 @@ public class EvaluatorTempAccessFilter extends OncePerRequestFilter {
       return true;
     }
 
-    Matcher matcher = ADMIN_ONBOARDING.matcher(path);
-    if (matcher.matches()) {
-      Integer targetAdminId = Integer.valueOf(matcher.group(1));
-      return principal.adminId() == null || !principal.adminId().equals(targetAdminId);
-    }
+    return isDeniedAdminResource(path, principal);
+  }
 
-    return false;
+  /**
+   * Deny-by-default for admin-by-id routes.
+   *
+   * <p>Own profile (GET/PATCH) and own onboarding, including the QR, stay reachable so the
+   * evaluator can finish binding their device. Recovery-code regeneration and initial issuance,
+   * activation-code reissue, deactivate/activate, and any future suffix are denied for every id,
+   * including the caller's own: those responses are long-lived credentials or session revocation,
+   * not bind material.
+   *
+   * @param path request path
+   * @param principal temporary evaluator principal
+   * @return true when the path must be rejected
+   */
+  private boolean isDeniedAdminResource(String path, AdminPrincipal principal) {
+    Matcher matcher = ADMIN_BY_ID.matcher(path);
+    if (!matcher.matches()) {
+      return false;
+    }
+    if (isSelfOnlyAdminSuffix(matcher.group(2))) {
+      Integer targetAdminId = parseAdminId(matcher.group(1));
+      return targetAdminId == null || !targetAdminId.equals(principal.adminId());
+    }
+    return true;
+  }
+
+  private static boolean isSelfOnlyAdminSuffix(String suffix) {
+    return suffix == null || "onboarding".equals(suffix) || "onboarding/qrcode".equals(suffix);
+  }
+
+  private static Integer parseAdminId(String raw) {
+    try {
+      return Integer.valueOf(raw);
+    } catch (NumberFormatException _) {
+      return null;
+    }
   }
 }

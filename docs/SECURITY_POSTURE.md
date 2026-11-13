@@ -270,6 +270,16 @@ See [`../product-docs/global/normative-posture.md`](../product-docs/global/norma
   that admin. Flyway V26 converts unused active legacy codes to `ACTIVATION` and revokes codes
   already presented as a bearer; its header documents the manual rollback and an
   `ezkey_audit_log` query to review what each revoked code was used for.
+- **2026-11-13 (#1123):** An `EVALUATOR_TEMP` session cannot call administrator credential
+  sub-resources. Reason: the Mode C deny-list matched onboarding and QR only, so
+  `POST /api/v1/admins/{id}/recovery-codes/regenerate` and `…/issue-initial` stayed open. In a
+  multi-admin tenant a temporary session could replace a peer's unused recovery codes with a
+  plaintext set and then take over that peer through `/auth/recover`. Fix: under
+  `/api/v1/admins/{id}`, only the caller's own profile and onboarding (including QR) stay
+  reachable; every other suffix is denied, including activation-code reissue and
+  deactivate/activate. The rest of the console stays a deny-list so the evaluator can still
+  navigate. Encryption keys, enrollment reset, recover, and passwordless session mint were
+  already denied.
 
 ## Traceability
 
