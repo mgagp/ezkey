@@ -3,11 +3,11 @@
 ## Metadata
 
 - **ID:** `I-2026-11-03-assurance-ladder`
-- **Status:** `captured`
+- **Status:** `triaged`
 - **Priority:** `P3`
 - **Created at:** `2026-11-03`
-- **Updated at:** `2026-11-07`
-- **Last reviewed at:** `2026-11-03`
+- **Updated at:** `2026-11-13`
+- **Last reviewed at:** `2026-11-13`
 - **Component tags:** `docs`, `security`, `mobile`, `lab:experimental`
 - **Captured by:** Marc
 - **GitHub issue:** [#1260](https://github.com/mgagp/ezkey/issues/1260) (mobile encryption export and import position, one slice of this idea)
@@ -87,9 +87,9 @@ P1/P2/P3 findings routed into the **existing** hygiene lanes. No parallel compli
   - This framing (adopter = audited party; three surfaces; ladder).
   - Periodic, read-only signal passes using free tools.
   - Lot-by-lot facilitator deliverables, each through a normal docs or hygiene PR.
-  - A **private** working repository (`mgagp/ezkey-assurance`, created on Marc's go) for sensitive
-    working material only: self-assessments, raw gap analysis, untriaged signals. Gap details stay
-    out of the public corpus until fixed or accepted.
+  - A **private** working repository (`mgagp/ezkey-assurance`, created 2026-11-13 on Marc's go) for
+    sensitive working material only: self-assessments, raw gap analysis, untriaged signals. Gap
+    details stay out of the public corpus until fixed or accepted.
 - **Out of scope:**
   - Any SOC 2 Type I/II, ISO 27001 certification, or attestation-equivalence claim for the project.
   - "Working towards SOC 2" or "compliant" language in public or operator-facing material.
@@ -118,10 +118,32 @@ P1/P2/P3 findings routed into the **existing** hygiene lanes. No parallel compli
 - **Tool longevity:** strongdm/comply, the 2025 primary tool choice, has seen no activity since
   2022-07; any tool choice is re-evaluated at the sponsor rung.
 
+## Decision trace (2026-11-13)
+
+First review triaged with Marc (OpenSSF Scorecard 6.4, Best Practices badge at 36% of passing,
+repository inventory). Decisions:
+
+- **SOC 2 stays vocabulary, not a process for the project.** A SOC 2 report attests an organization
+  that operates a service; without an auditor it would be a self-assessment that adopters do not
+  accept as SOC 2. The formal, auditor-free references for the project are the OpenSSF Best
+  Practices badge (passing, then silver), the OSPS Baseline and Scorecard.
+- **Private working space created:** `mgagp/ezkey-assurance` holds the gap register, the roadmap
+  along this ladder and the badge answers. It links to the public canon and never restates it.
+- **No GRC tool before the sponsor rung.** Markdown and issues suffice while the evidence lives in
+  this repository. CISO Assistant Community is the first candidate if a sponsor arrives; Probo and
+  Comp AI are built around an auditor engagement that the project does not have.
+- **English is the canonical documentation language**, in the private space as in this repository.
+- **Next:** the necessary rung, starting with the Best Practices passing level (its one blocker,
+  `release_notes`, waits on [#1211](https://github.com/mgagp/ezkey/issues/1211)). An EU Cyber
+  Resilience Act readiness note for adopters joins the facilitator rung.
+
+Reason: give a credible, near-zero-cost formal path without an auditor, and keep a sponsor-funded
+penetration test or SOC 2 for an operating entity as a later, separate decision.
+
 ## Promotion notes
 
-Stay `captured` until the first signal pass is triaged with Marc. Promote to `incubating` when the
-first facilitator lot (likely the adopter compliance guide skeleton) is chosen.
+Promote to `incubating` when the first facilitator lot (likely the adopter compliance guide
+skeleton) is chosen.
 
 ## Links
 
