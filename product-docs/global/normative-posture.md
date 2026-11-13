@@ -63,6 +63,11 @@ framed around the adopter as audited party and a proportionate ladder, without r
 "what we do not do" list below. Reason: give adopters a facilitator path and the maintainer a
 cheap signal source for continuous improvement.
 
+**Decision trace (2026-11-13):** SOC 2 stays reference vocabulary, not a process for the project;
+the auditor-free formal path is the OpenSSF Best Practices badge, the OSPS Baseline and Scorecard.
+A private working space (`mgagp/ezkey-assurance`) holds the gap register; no GRC tool before the
+sponsor rung. Details: the idea's 2026-11-13 decision trace.
+
 ## What we do not do
 
 - No SOC 2 Type I or Type II, no ISO 27001, no attestation-equivalence claim.
