@@ -31,6 +31,7 @@ import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.EnrollmentInactiveException;
 import org.ezkey.exception.RateLimitExceededException;
+import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.exception.auth.AuthAttemptCreateValidationException;
 import org.ezkey.exception.auth.AuthAttemptPendingExistsException;
 import org.ezkey.exception.auth.AuthAttemptRequestInvalidException;
@@ -103,6 +104,46 @@ class IntegrationApiAuthAttemptControllerTest {
             AuthAttemptCreateValidationException.class, () -> controller.create(dto, request));
 
     assertEquals("Either enrollmentId or userIdentifier is required.", exception.getMessage());
+  }
+
+  @Test
+  @DisplayName(
+      "create() - enrollmentId of another integration answers exactly like an unknown id"
+          + " (SQL-ISO-001)")
+  void create_foreignEnrollmentAnswersLikeMissingEnrollment() {
+    setupApiKeyAuthentication(77);
+    when(rateLimitService.canCreateAuthAttempt(any())).thenReturn(true);
+
+    Enrollment foreign = new Enrollment();
+    foreign.setEnrollmentId(500);
+    foreign.setIntegrationId(88);
+    foreign.setActive(true);
+    foreign.setStatus(EnrollmentStatus.VERIFIED);
+    when(enrollmentRepository.findById(500)).thenReturn(Optional.of(foreign));
+    when(enrollmentRepository.findById(999)).thenReturn(Optional.empty());
+
+    HttpServletRequest request = new MockHttpServletRequest();
+    ResourceNotFoundException foreignFailure =
+        assertThrows(
+            ResourceNotFoundException.class,
+            () ->
+                controller.create(
+                    new AuthAttemptCreateRequestDto(500, null, false, null, null, null), request));
+    ResourceNotFoundException missingFailure =
+        assertThrows(
+            ResourceNotFoundException.class,
+            () ->
+                controller.create(
+                    new AuthAttemptCreateRequestDto(999, null, false, null, null, null), request));
+
+    // Same exception type and wording (-> 404 resource/not-found); only the caller's id differs
+    assertEquals(
+        new ResourceNotFoundException("Enrollment", 500).getMessage(), foreignFailure.getMessage());
+    assertEquals(
+        new ResourceNotFoundException("Enrollment", 999).getMessage(), missingFailure.getMessage());
+    // Both failures are audited the same way
+    verify(auditLogService, org.mockito.Mockito.times(2)).log(any());
+    verify(authAttemptService, org.mockito.Mockito.never()).create(any());
   }
 
   @Test

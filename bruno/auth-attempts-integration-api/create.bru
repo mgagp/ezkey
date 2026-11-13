@@ -91,9 +91,10 @@ docs {
   
   **Status Codes:**
   - 201: Auth attempt created successfully
-  - 400: Validation error (missing fields, enrollment not found, enrollment not in ACTIVE status, multiple enrollments for userIdentifier)
+  - 400: Validation error (missing fields, unknown userIdentifier, multiple enrollments for userIdentifier)
   - 401: Invalid or missing API key
-  - 403: Enrollment does not belong to this API key's integration
+  - 403: Enrollment of this integration is not active for authentication (revoked, deactivated or not verified)
+  - 404: `enrollmentId` does not exist or belongs to another integration (hide-existence: same answer in both cases)
   - 429: Rate limit exceeded (100 requests per minute per integration key)
   - 500: Internal server error
 }

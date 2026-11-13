@@ -124,7 +124,7 @@ dynamic evidence.
 
 | ID | Title | Severity | Confidence | Quick win |
 | --- | --- | --- | --- | --- |
-| SQL-ISO-001 | Integration API unscoped `enrollmentRepository.findById` + distinct Problem details (missing vs other-integration) | P2 | Confirmed | **fix authorized** 2026-09-15 — [`HANDOFF-SQL-ISO-001-integration-api-enrollment-oracle.md`](../product-docs/global/backlog/handoffs/HANDOFF-SQL-ISO-001-integration-api-enrollment-oracle.md) |
+| SQL-ISO-001 | Integration API unscoped `enrollmentRepository.findById` + distinct Problem details (missing vs other-integration) | P2 | Confirmed | **closed** 2026-11-13 — missing and other-integration share HTTP 404 `resource/not-found` |
 | SQL-ISO-002 | Admin `getAdminById` unscoped `findById` then 404 vs 403 (Global Admin existence) | P2 | Confirmed | **closed** 2026-11-13 — every `/admins/{id}` route answers 404 for missing and out-of-tenant alike (`AdminProvisioningService.loadAdminVisibleTo`) |
 | SQL-ISO-003 | `existsByUsername` / `existsByEmail` instance-global; Tenant Admin peer-create identity oracle | P2 | Confirmed | **fix authorized** 2026-09-15 — [`HANDOFF-SQL-ISO-003-tenant-admin-username-email-oracle.md`](../product-docs/global/backlog/handoffs/HANDOFF-SQL-ISO-003-tenant-admin-username-email-oracle.md) |
 | SQL-ISO-004 | Admin auth-attempt create Path 2/3 looks up `userIdentifier` by **request** `integrationId` before ACS | P2 | Confirmed (static) | **closed** 2026-11-13 — `canAccessIntegration` runs before the `userIdentifier` lookup; missing and foreign integration share 404 |
@@ -221,8 +221,7 @@ numeric id in `detail`. Keep WARN logs server-side. Add a functional test that b
 status + type (or `detail`). Out of GO: Hibernate tenant filters; changing API-key principal
 shape.
 
-**HITL 2026-09-15:** operator **GO** (`fix`). Implementation not started. Handoff:
-[`HANDOFF-SQL-ISO-001-integration-api-enrollment-oracle.md`](../product-docs/global/backlog/handoffs/HANDOFF-SQL-ISO-001-integration-api-enrollment-oracle.md).
+**HITL 2026-09-15:** operator **GO** (`fix`). **Closed 2026-11-13** with HTTP 404 `resource/not-found` (the other authorized shape; see §11, closure). Scope at HITL:
 Authorized default: keep HTTP 400 + one generic `detail`; 404 `resource-not-found` also
 authorized.
 
@@ -478,3 +477,12 @@ Left as is: `GET` / `PATCH /enrollments/{id}`, `GET /integrations/{id}` and its 
 create enrollment / API key on a foreign integration, and auth-attempt get / wait / cancel still
 answer 403 for missing and foreign alike. No oracle; 404 is the target status (CTRL-ROLE-003
 peel).
+
+### Closure 2026-11-13 — Integration API (SQL-ISO-001)
+
+`POST /api/v1/auth-attempts` with an `enrollmentId`: a missing id and an id owned by another
+integration both answer HTTP 404, type `https://ezkey.io/problems/resource/not-found`. The
+cross-integration attempt keeps its server WARN. The first cut kept HTTP 400 with a generic detail
+to spare integrators; under the alpha posture above it was moved to 404, the same hide-existence
+answer as the Admin API. The failure audit row carries no tenant, so no tenant can read it: no
+second channel here. 403 `enrollment-inactive` stays reserved for the caller's own integration.

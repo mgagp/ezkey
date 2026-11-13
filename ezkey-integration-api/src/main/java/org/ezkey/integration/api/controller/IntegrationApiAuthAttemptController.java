@@ -58,6 +58,7 @@ import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -187,7 +188,15 @@ public class IntegrationApiAuthAttemptController {
         @ApiResponse(responseCode = "400", description = "Invalid request parameters"),
         @ApiResponse(
             responseCode = "403",
-            description = "Enrollment does not belong to this integration"),
+            description =
+                "Enrollment of this integration is not active for authentication (revoked,"
+                    + " deactivated or not verified)"),
+        @ApiResponse(
+            responseCode = "404",
+            description =
+                "enrollmentId does not exist or belongs to another integration (hide-existence:"
+                    + " same answer in both cases)",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
         @ApiResponse(
             responseCode = "409",
             description =
@@ -240,7 +249,7 @@ public class IntegrationApiAuthAttemptController {
               .errorMessage(e.getMessage())
               .build());
       throw e;
-    } catch (AuthAttemptCreateValidationException e) {
+    } catch (AuthAttemptCreateValidationException | ResourceNotFoundException e) {
       auditLogService.log(
           AuditHelper.createIntegrationApiAudit(
                   context,
@@ -669,12 +678,19 @@ public class IntegrationApiAuthAttemptController {
         throw new AuthAttemptCreateValidationException(
             "Unable to determine integration from API key. Contact support.");
       }
+      // Hide existence: findById is tenant-blind, so a missing id and an id owned by another
+      // integration share one answer, HTTP 404 resource/not-found. The reason stays in the log.
       Enrollment enrollmentForPath1 =
           enrollmentRepository
               .findById(enrollmentId)
-              .orElseThrow(() ->
-                  new AuthAttemptCreateValidationException(
-                      "Enrollment not found for ID: " + enrollmentId));
+              .orElseThrow(() -> {
+                logger.warn(
+                    "Integration API auth attempt rejected: enrollment {} not found"
+                        + " (integration {})",
+                    enrollmentId,
+                    integrationIdForPath1);
+                return new ResourceNotFoundException("Enrollment", enrollmentId);
+              });
       if (!integrationIdForPath1.equals(enrollmentForPath1.getIntegrationId())) {
         logger.warn(
             "Integration API cross-integration access attempt: API key from integration {} tried to"
@@ -682,8 +698,7 @@ public class IntegrationApiAuthAttemptController {
             integrationIdForPath1,
             enrollmentId,
             enrollmentForPath1.getIntegrationId());
-        throw new AuthAttemptCreateValidationException(
-            "Enrollment does not belong to this integration.");
+        throw new ResourceNotFoundException("Enrollment", enrollmentId);
       }
       if (!Boolean.TRUE.equals(enrollmentForPath1.getActive())
           || !EnrollmentStatus.VERIFIED.equals(enrollmentForPath1.getStatus())) {

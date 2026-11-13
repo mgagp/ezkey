@@ -1,0 +1,42 @@
+meta {
+  name: create - unknown or foreign enrollment id
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{base_url_integration_api}}/api/v1/auth-attempts
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{integrationKey}}
+  password: {{secretKey}}
+}
+
+body:json {
+  {
+      "enrollmentId": 2000000000,
+      "challengeRequested": false
+  }
+}
+
+script:post-response {
+  test("Status code is 404", function () {
+      expect(res.getStatus()).to.equal(404);
+  });
+  test("Problem type is resource/not-found", function () {
+      expect(res.getBody().type).to.equal("https://ezkey.io/problems/resource/not-found");
+  });
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  `enrollmentId` that does not exist. Expects 404, Problem type `resource/not-found`.
+
+  An `enrollmentId` that exists but belongs to another integration returns the **same** status and type (hide-existence): an API key cannot tell the two cases apart.
+}
