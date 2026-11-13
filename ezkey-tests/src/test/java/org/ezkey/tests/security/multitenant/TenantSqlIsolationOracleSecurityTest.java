@@ -40,7 +40,7 @@ import org.junit.jupiter.api.TestMethodOrder;
  * without locking those dialects into CI. When a finding is remediated, keep the rejection
  * assertions; expect the two details/status pairs to converge.
  *
- * Register: {@code docs/java-tenant-sql-isolation-assessment-2026-09.md}.
+ * <p>Register: {@code docs/java-tenant-sql-isolation-assessment-2026-09.md}.
  *
  * @since 2026
  */
