@@ -1,7 +1,8 @@
 # Bootstrap Init Container
 # Performs automatic enrollment bind+verify and seeds demo-device for Docker demos
+# Base is tag@sha256 of the multi-arch index so Dependabot can bump tag and digest.
 
-FROM alpine:3.24
+FROM alpine:3.24@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf
 
 # Install curl and jq, create non-root user matching demo-device spring user (UID 100/GID 101)
 # Pre-create shared volume directories with correct ownership at build time
