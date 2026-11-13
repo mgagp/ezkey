@@ -347,8 +347,8 @@ public class ApiKeyService {
    * <p>Intended for a Global Admin view of all API keys in the system. Should be used with caution
    * in production due to potential large result sets.
    *
-   * <p><b>Tenant scope:</b> unscoped. Returns rows of every tenant. No production HTTP caller;
-   * do not expose without a principal-scoped query (see {@code ezkey-core/AGENTS.md}).
+   * <p><b>Tenant scope:</b> unscoped. Returns rows of every tenant. No production HTTP caller; do
+   * not expose without a principal-scoped query (see {@code ezkey-core/AGENTS.md}).
    *
    * @return List of all API keys in the system
    */

@@ -105,8 +105,8 @@ public class IntegrationService {
   /**
    * Retrieves all Integration entities.
    *
-   * <p><b>Tenant scope:</b> unscoped. Returns rows of every tenant. No production HTTP caller;
-   * do not expose without a principal-scoped query (see {@code ezkey-core/AGENTS.md}).
+   * <p><b>Tenant scope:</b> unscoped. Returns rows of every tenant. No production HTTP caller; do
+   * not expose without a principal-scoped query (see {@code ezkey-core/AGENTS.md}).
    *
    * @return a list of all Integration entities
    */

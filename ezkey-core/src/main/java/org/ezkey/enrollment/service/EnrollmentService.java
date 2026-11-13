@@ -202,8 +202,8 @@ public class EnrollmentService {
    *
    * <p>This method returns all enrollments in the system as a list of entities.
    *
-   * <p><b>Tenant scope:</b> unscoped. Returns rows of every tenant. No production HTTP caller;
-   * do not expose without a principal-scoped query (see {@code ezkey-core/AGENTS.md}).
+   * <p><b>Tenant scope:</b> unscoped. Returns rows of every tenant. No production HTTP caller; do
+   * not expose without a principal-scoped query (see {@code ezkey-core/AGENTS.md}).
    *
    * @return list of all enrollment entities
    */
