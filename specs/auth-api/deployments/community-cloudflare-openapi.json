@@ -87,7 +87,7 @@
             }
           },
           "400": {
-            "description": "Invalid enrollment ID, proof token, or enrollment expired",
+            "description": "Invalid proof token, or enrollment expired",
             "content": {
               "*/*": {
                 "schema": {
@@ -161,7 +161,7 @@
             }
           },
           "400": {
-            "description": "Invalid verification data or cryptographic validation failed",
+            "description": "Proof accepted, but challenge, device-key uniqueness, or invitation expiry failed",
             "content": {
               "*/*": {
                 "schema": {
@@ -171,7 +171,7 @@
             }
           },
           "409": {
-            "description": "Enrollment state conflict or already verified",
+            "description": "Refused before proof of the stored enrollment proof token, or enrollment state conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -572,12 +572,6 @@
         "type": "object",
         "description": "Request DTO for enrollment binding initiation with proof token",
         "properties": {
-          "enrollmentId": {
-            "type": "integer",
-            "format": "int32",
-            "description": "Enrollment ID to bind to the mobile device",
-            "example": 123
-          },
           "enrollmentProofToken": {
             "type": "string",
             "description": "Enrollment proof token for authentication",
@@ -585,7 +579,6 @@
           }
         },
         "required": [
-          "enrollmentId",
           "enrollmentProofToken"
         ]
       },

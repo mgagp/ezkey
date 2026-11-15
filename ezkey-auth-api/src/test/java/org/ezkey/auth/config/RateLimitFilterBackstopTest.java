@@ -71,22 +71,31 @@ class RateLimitFilterBackstopTest {
   }
 
   @Test
-  @DisplayName("Rotating IPs on verify trip the unkeyed backstop after the process budget")
-  void rotatingIpsOnVerify_tripBackstop() throws Exception {
+  @DisplayName("Rotating IPs cannot exhaust verify for a client that has not spent its own budget")
+  void rotatingIpsOnVerify_doNotExhaustOtherClients() throws Exception {
+    properties.getVerify().setRequests(2);
+    properties.getVerify().setWindowMinutes(5);
+    // Old shared cap: two successful verifies would have filled it and blocked the next IP.
+    properties.getBackstop().getVerify().setRequests(2);
+    properties.getBackstop().getVerify().setWindowMinutes(5);
+    filter =
+        new RateLimitFilter(
+            properties, new TrustedProxyProperties(), new ObjectMapper(), meterRegistry);
+
     assertThat(postFromIp(VERIFY_PATH, "198.51.100.1").getStatus()).isEqualTo(200);
+    assertThat(postFromIp(VERIFY_PATH, "198.51.100.1").getStatus()).isEqualTo(200);
+    MockHttpServletResponse ownBucket = postFromIp(VERIFY_PATH, "198.51.100.1");
+    assertThat(ownBucket.getStatus()).isEqualTo(429);
+    assertThat(ownBucket.getHeader("Retry-After")).isNotBlank();
+
     assertThat(postFromIp(VERIFY_PATH, "198.51.100.2").getStatus()).isEqualTo(200);
     assertThat(postFromIp(VERIFY_PATH, "198.51.100.3").getStatus()).isEqualTo(200);
-
-    MockHttpServletResponse blocked = postFromIp(VERIFY_PATH, "198.51.100.4");
-    assertThat(blocked.getStatus()).isEqualTo(429);
-    assertThat(blocked.getHeader("Retry-After")).isEqualTo("300");
+    assertThat(postFromIp(VERIFY_PATH, "198.51.100.10").getStatus()).isEqualTo(200);
     assertThat(
             meterRegistry
                 .counter("ezkey.rate_limit.backstop.rejected", "endpoint", "verify")
                 .count())
-        .isEqualTo(1);
-    verify(filterChain, times(3))
-        .doFilter(any(HttpServletRequest.class), any(HttpServletResponse.class));
+        .isZero();
   }
 
   @Test
@@ -103,8 +112,15 @@ class RateLimitFilterBackstopTest {
   }
 
   @Test
-  @DisplayName("Pending (target-id keyed) does not consume the verify backstop")
-  void pending_doesNotConsumeVerifyBackstop() throws Exception {
+  @DisplayName(
+      "Verify traffic does not fill a shared bucket that would block pending or another IP")
+  void verifyTraffic_doesNotBlockPendingOrAnotherIp() throws Exception {
+    properties.getVerify().setRequests(5);
+    properties.getBackstop().getVerify().setRequests(3);
+    filter =
+        new RateLimitFilter(
+            properties, new TrustedProxyProperties(), new ObjectMapper(), meterRegistry);
+
     assertThat(postFromIp(VERIFY_PATH, "192.0.2.1").getStatus()).isEqualTo(200);
     assertThat(postFromIp(VERIFY_PATH, "192.0.2.2").getStatus()).isEqualTo(200);
     assertThat(postFromIp(VERIFY_PATH, "192.0.2.3").getStatus()).isEqualTo(200);
@@ -112,8 +128,13 @@ class RateLimitFilterBackstopTest {
     MockHttpServletResponse pending = postFromIp(PENDING_PATH, "192.0.2.4");
     assertThat(pending.getStatus()).isEqualTo(200);
 
-    MockHttpServletResponse blocked = postFromIp(VERIFY_PATH, "192.0.2.5");
-    assertThat(blocked.getStatus()).isEqualTo(429);
+    MockHttpServletResponse anotherIp = postFromIp(VERIFY_PATH, "192.0.2.5");
+    assertThat(anotherIp.getStatus()).isEqualTo(200);
+    assertThat(
+            meterRegistry
+                .counter("ezkey.rate_limit.backstop.rejected", "endpoint", "verify")
+                .count())
+        .isZero();
   }
 
   @Test

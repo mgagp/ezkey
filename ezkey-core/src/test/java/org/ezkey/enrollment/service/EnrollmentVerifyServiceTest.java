@@ -10,6 +10,7 @@
 
 package org.ezkey.enrollment.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -90,8 +91,9 @@ class EnrollmentVerifyServiceTest {
   }
 
   @Test
-  @DisplayName("verify() - When enrollment is CREATED should throw with must be bound message")
-  void verify_WhenEnrollmentCreated_ShouldThrowMustBeBoundMessage() {
+  @DisplayName(
+      "verify() - CREATED stays usable: unauthenticated verify does not invalidate (#1024)")
+  void verify_WhenEnrollmentCreated_ShouldRefuseWithoutInvalidating() {
     Enrollment enrollment = new Enrollment();
     enrollment.setEnrollmentId(100);
     enrollment.setStatus(EnrollmentStatus.CREATED);
@@ -107,14 +109,16 @@ class EnrollmentVerifyServiceTest {
             () -> enrollmentVerifyService.verify(verifyRequest));
 
     assertTrue(
-        exception.getMessage().contains("Enrollment must be bound before verification"),
-        "Message should indicate enrollment must be bound: " + exception.getMessage());
-    verify(enrollmentTxHelper).markInvalidAndClear(100);
+        exception.getMessage().contains("Enrollment verification failed"),
+        "Pre-proof refusal is generic: " + exception.getMessage());
+    assertEquals(EnrollmentStatus.CREATED, enrollment.getStatus());
+    verify(enrollmentTxHelper, never()).markInvalidAndClear(any());
+    verify(signatureService, never()).validateSignature(any(), any(), any());
   }
 
   @Test
-  @DisplayName("verify() - When enrollment is INVALID should throw with invalidated message")
-  void verify_WhenEnrollmentInvalid_ShouldThrowWithInvalidatedMessage() {
+  @DisplayName("verify() - INVALID enrollment is refused without another invalidation")
+  void verify_WhenEnrollmentInvalid_ShouldRefuseWithoutInvalidating() {
     Enrollment enrollment = new Enrollment();
     enrollment.setEnrollmentId(100);
     enrollment.setStatus(EnrollmentStatus.INVALID);
@@ -130,17 +134,14 @@ class EnrollmentVerifyServiceTest {
             () -> enrollmentVerifyService.verify(verifyRequest));
 
     assertTrue(
-        exception.getMessage().contains("invalidated"),
-        "Message should mention invalidated: " + exception.getMessage());
-    assertTrue(
-        exception.getMessage().contains("previous failed verification"),
-        "Message should mention previous failed verification: " + exception.getMessage());
-    verify(enrollmentTxHelper).markInvalidAndClear(100);
+        exception.getMessage().contains("Enrollment verification failed"),
+        "Pre-proof refusal is generic: " + exception.getMessage());
+    verify(enrollmentTxHelper, never()).markInvalidAndClear(any());
   }
 
   @Test
-  @DisplayName("verify() - When enrollment is REVOKED should throw with revoked message")
-  void verify_WhenEnrollmentRevoked_ShouldThrowWithRevokedMessage() {
+  @DisplayName("verify() - REVOKED enrollment is refused without invalidation")
+  void verify_WhenEnrollmentRevoked_ShouldRefuseWithoutInvalidating() {
     Enrollment enrollment = new Enrollment();
     enrollment.setEnrollmentId(100);
     enrollment.setStatus(EnrollmentStatus.REVOKED);
@@ -156,9 +157,9 @@ class EnrollmentVerifyServiceTest {
             () -> enrollmentVerifyService.verify(verifyRequest));
 
     assertTrue(
-        exception.getMessage().contains("revoked"),
-        "Message should mention revoked: " + exception.getMessage());
-    verify(enrollmentTxHelper).markInvalidAndClear(100);
+        exception.getMessage().contains("Enrollment verification failed"),
+        "Pre-proof refusal is generic: " + exception.getMessage());
+    verify(enrollmentTxHelper, never()).markInvalidAndClear(any());
   }
 
   @Test
@@ -175,6 +176,7 @@ class EnrollmentVerifyServiceTest {
     enrollment.setExpiresAt(expiresAt);
 
     when(enrollmentRepository.findById(100)).thenReturn(Optional.of(enrollment));
+    when(signatureService.validateSignature(any(), any(), any())).thenReturn(true);
     doThrow(new DataAccessResourceFailureException("repository unavailable"))
         .when(enrollmentTxHelper)
         .markExpiredAndEmitAudit(100, 7, expiresAt, "enrollment_expired_verify_rejected");
@@ -189,10 +191,32 @@ class EnrollmentVerifyServiceTest {
         "Message should preserve expired-invitation contract: " + exception.getMessage());
     verify(enrollmentTxHelper)
         .markExpiredAndEmitAudit(100, 7, expiresAt, "enrollment_expired_verify_rejected");
-    verify(signatureService, never())
-        .validateSignature(
-            org.mockito.ArgumentMatchers.any(),
-            org.mockito.ArgumentMatchers.any(),
-            org.mockito.ArgumentMatchers.any());
+    verify(enrollmentTxHelper, never()).markInvalidAndClear(any());
+    verify(signatureService).validateSignature(any(), any(), any());
+  }
+
+  @Test
+  @DisplayName(
+      "verify() - expired BOUND is not marked EXPIRED before the signature proves the token")
+  void verify_WhenExpiredAndSignatureInvalid_ShouldNotMarkExpired() {
+    Enrollment enrollment = new Enrollment();
+    enrollment.setEnrollmentId(100);
+    enrollment.setIntegrationId(7);
+    enrollment.setStatus(EnrollmentStatus.BOUND);
+    enrollment.setEnrollmentProofToken("token");
+    enrollment.setEnrollmentChallenge(123456);
+    enrollment.setCreatedAt(OffsetDateTime.now().minusHours(1));
+    enrollment.setExpiresAt(OffsetDateTime.now().minusMinutes(1));
+
+    when(enrollmentRepository.findById(100)).thenReturn(Optional.of(enrollment));
+    when(signatureService.validateSignature(any(), any(), any())).thenReturn(false);
+
+    assertThrows(
+        EnrollmentVerifyStateConflictException.class,
+        () -> enrollmentVerifyService.verify(verifyRequest));
+
+    verify(enrollmentTxHelper, never()).markExpiredAndEmitAudit(any(), any(), any(), any());
+    verify(enrollmentTxHelper, never()).markInvalidAndClear(any());
+    assertEquals(EnrollmentStatus.BOUND, enrollment.getStatus());
   }
 }

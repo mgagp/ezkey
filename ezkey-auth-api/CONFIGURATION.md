@@ -26,7 +26,6 @@ serves them to enrolled mobile devices, and processes responses. It runs **no sc
 | `ezkey.rate-limit.respond.fail-ip-window-minutes` | — | `1` | optionnel |
 | `ezkey.rate-limit.verify.requests` | — | `10` | optionnel |
 | `ezkey.rate-limit.bind.requests` | — | `10` | optionnel |
-| `ezkey.rate-limit.backstop.verify.requests` | — | `100` | optionnel |
 | `ezkey.trusted-proxies.required` | — | `false` | optionnel [prod] |
 | `ezkey.trusted-proxies.cidrs` | — | *(empty list)* | optionnel |
 | `ezkey.qr.auth-base-url` | `EZKEY_QR_AUTH_BASE_URL` | *(null)* | requis [docker] |
@@ -64,15 +63,15 @@ inventory: [rate-limit-baseline-policy.md](../product-docs/global/rate-limit-bas
 | `ezkey.rate-limit.respond.key-strategy` | `String` | `auth-attempt-id` | optionnel | Default `auth-attempt-id`. Filter uses fail-IP; id budget is post-signature. |
 | `ezkey.rate-limit.respond.fail-ip-requests` | `int` | `30` | optionnel | Filter IP ceiling for **all** respond requests (#912 C1). |
 | `ezkey.rate-limit.respond.fail-ip-window-minutes` | `int` | `1` | optionnel | Window for the respond fail-IP ceiling (minutes). |
-| `ezkey.rate-limit.verify.requests` | `int` | `10` | optionnel | Max enrollment-verify requests per window. |
+| `ezkey.rate-limit.verify.requests` | `int` | `10` | optionnel | Max enrollment-verify requests per client IP per window. No shared instance bucket (#1024). |
 | `ezkey.rate-limit.verify.window-minutes` | `int` | `1` | optionnel | Window for `verify` endpoint (minutes). |
 | `ezkey.rate-limit.verify.key-strategy` | `String` | `client-ip` | optionnel | Key strategy. Docker: `client-ip`. |
 | `ezkey.rate-limit.bind.requests` | `int` | `10` | optionnel | Max enrollment-bind requests per window. |
 | `ezkey.rate-limit.bind.window-minutes` | `int` | `1` | optionnel | Window for `bind` endpoint (minutes). |
 | `ezkey.rate-limit.bind.key-strategy` | `String` | `client-ip` | optionnel | Key strategy. Docker: `client-ip`. |
-| `ezkey.rate-limit.backstop.enabled` | `boolean` | `true` | optionnel | Unkeyed per-process cap on `verify` / `bind` / enrolled `instance-info`. Follows ADR-0010 (not distributed). |
-| `ezkey.rate-limit.backstop.verify.requests` | `int` | `100` | optionnel | Process-wide verify budget. Docker: `50` / 5 min. |
-| `ezkey.rate-limit.backstop.verify.window-minutes` | `int` | `1` | optionnel | Window for the verify backstop. |
+| `ezkey.rate-limit.backstop.enabled` | `boolean` | `true` | optionnel | Unkeyed per-process cap on `bind` and enrolled `instance-info`. Verify is not included (#1024). Follows ADR-0010 (not distributed). |
+| `ezkey.rate-limit.backstop.verify.requests` | `int` | `100` | optionnel | **Not applied.** Kept so older deployments still bind. Verify is per client IP only. |
+| `ezkey.rate-limit.backstop.verify.window-minutes` | `int` | `1` | optionnel | **Not applied.** See `backstop.verify.requests`. |
 | `ezkey.rate-limit.backstop.bind.requests` | `int` | `60` | optionnel | Process-wide bind + enrolled instance-info budget. Docker: `30` / 5 min. |
 | `ezkey.rate-limit.backstop.bind.window-minutes` | `int` | `1` | optionnel | Window for the bind backstop. |
 
@@ -102,9 +101,8 @@ ezkey.rate-limit.verify.key-strategy=client-ip
 ezkey.rate-limit.bind.requests=3
 ezkey.rate-limit.bind.window-minutes=5
 ezkey.rate-limit.bind.key-strategy=client-ip
+# Verify has no process-wide backstop (#1024). backstop.verify.* is not read.
 ezkey.rate-limit.backstop.enabled=true
-ezkey.rate-limit.backstop.verify.requests=50
-ezkey.rate-limit.backstop.verify.window-minutes=5
 ezkey.rate-limit.backstop.bind.requests=30
 ezkey.rate-limit.backstop.bind.window-minutes=5
 ```
