@@ -59,7 +59,8 @@ meant to be linked from trust-facing material without inflating the top-level pi
   never the signature). `markAsInvalid` remains only for post-ownership failures (e.g. wrong
   challenge) and is conditional on status still `READ` (atomic `updateStatusIfCurrent`). Sequential
   ids aggravate enumeration but are not required once an id is known.
-- **Decision (ADR-0019):** The enrollment invitation (QR, deep link, paste) carries `enrollmentProofToken` and optional `authUrl`. It does not carry `enrollmentId`. Bind resolves the row by the unique proof-token hash and returns the id. A leftover `enrollmentId` key in an already-printed QR is ignored. Read-once `CREATED` to `BOUND` still requires the token. Unauthenticated `POST /verify` that can mark a `CREATED` row `INVALID` from a guessed id is a separate follow-up, not fixed by this invitation change.
+- **Decision (ADR-0019):** The enrollment invitation (QR, deep link, paste) carries `enrollmentProofToken` and optional `authUrl`. It does not carry `enrollmentId`. Bind resolves the row by the unique proof-token hash and returns the id. A leftover `enrollmentId` key in an already-printed QR is ignored. Read-once `CREATED` to `BOUND` still requires the token.
+- **Decision (#1024):** `POST /api/v1/enrollments/verify` does not invalidate, expire, or otherwise change the enrollment until the device signature verifies over the server-built payload (`enrollmentProofToken|enrollmentId|challengeResponse|devicePublicKey`). Security rests on the secrecy of the proof token stored on the enrollment (encrypted at rest), not on the device public key. That key is still supplied in the request and is the verification key, because this call is where the device introduces it. A keypair the caller generates produces a verifying signature only when they already know the stored token, which is part of the server-built payload. Unknown id, a non-`BOUND` row, and a signature that does not verify share one refusal and leave the row unchanged. After that proof, a wrong challenge or a device key already used on a verified enrollment still invalidates (one-shot). Verify is rate-limited per client IP only. The previous unkeyed verify backstop (docker 50 requests / 5 minutes, beside 5 requests / 5 minutes per IP) could be filled by about ten source addresses and then reject every verify on the instance. Bind and enrolled instance-info keep their per-instance backstop.
 - **Decision (#912 C1):** The respond per-`authAttemptId` budget (default 1 / 5 min) is consumed
   **only after** a valid device signature. The filter applies an IP ceiling on **all** respond
   requests (not failures only); a third-party invalid respond must not starve the owner into HTTP
@@ -270,6 +271,21 @@ See [`../product-docs/global/normative-posture.md`](../product-docs/global/norma
   that admin. Flyway V26 converts unused active legacy codes to `ACTIVATION` and revokes codes
   already presented as a bearer; its header documents the manual rollback and an
   `ezkey_audit_log` query to review what each revoked code was used for.
+- **2026-11-13 (#1123):** An `EVALUATOR_TEMP` session cannot call administrator credential
+  sub-resources. Reason: the Mode C deny-list matched onboarding and QR only, so
+  `POST /api/v1/admins/{id}/recovery-codes/regenerate` and `…/issue-initial` stayed open. In a
+  multi-admin tenant a temporary session could replace a peer's unused recovery codes with a
+  plaintext set and then take over that peer through `/auth/recover`. A decimal-only match on the
+  raw URI also failed open: Spring binds `@PathVariable Integer` with `NumberUtils.parseNumber`,
+  which accepts hex (`0x63`) and a leading `+`. Fix, fail closed: an id segment is allowed only
+  when it is the canonical decimal form of the caller's own id (no sign, no hex, no leading
+  zeros, no trailing slash). That caller may open only their own profile and onboarding
+  (including QR). Every other suffix is denied, including activation-code reissue and
+  deactivate/activate, and any non-canonical spelling is denied even for profile and onboarding.
+  The same five mutations are refused again in `AdminProvisioningService`. The rest of the
+  console stays a deny-list so the evaluator can still navigate. Enrollment QR delivery is denied
+  for any id spelling. Encryption keys, enrollment reset, recover, and passwordless session mint
+  were already denied.
 
 ## Traceability
 

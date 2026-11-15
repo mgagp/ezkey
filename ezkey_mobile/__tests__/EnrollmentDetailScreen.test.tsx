@@ -8,7 +8,7 @@
  */
 
 import React from 'react';
-import {AccessibilityInfo, Text} from 'react-native';
+import {AccessibilityInfo, Alert, Text} from 'react-native';
 import renderer from 'react-test-renderer';
 import {EnrollmentDetailScreen} from '../app/screens/EnrollmentDetail';
 import {
@@ -356,5 +356,77 @@ describe('EnrollmentDetailScreen', () => {
         .length,
     ).toBe(0);
     expect(mockClaimPendingAttempt).not.toHaveBeenCalled();
+  });
+
+  describe('enrollment no longer active on the server (PR #565 constat)', () => {
+    const bindingFailed = Object.assign(new Error('Request failed with status code 400'), {
+      response: {
+        status: 400,
+        data: {
+          type: 'https://ezkey.io/problems/auth/auth-attempt-binding-failed',
+          title: 'Bad Request',
+          detail: 'Authentication request failed',
+        },
+      },
+    });
+
+    async function checkPendingWith(error: unknown) {
+      mockClaimPendingAttempt.mockRejectedValue(error);
+      const {navigation, route} = renderDetail();
+      const tree = await renderScreen(navigation, route);
+      const checkPending = tree.root.find(
+        node => node.props.testID === 'ezkey.e2e.enrollmentDetail.checkPending',
+      );
+      await renderer.act(async () => {
+        await checkPending.props.onPress();
+      });
+      return {navigation, tree};
+    }
+
+    const byTestId = (tree: renderer.ReactTestRenderer, testID: string) =>
+      tree.root.findAll(node => node.props.testID === testID);
+
+    it('explains the enrollment is no longer active instead of a generic failure', async () => {
+      const {tree} = await checkPendingWith(bindingFailed);
+
+      expect(byTestId(tree, 'ezkey.e2e.enrollmentDetail.noLongerActive').length).toBeGreaterThan(0);
+      const textContent = tree.root
+        .findAllByType(Text)
+        .map(node => node.props.children)
+        .flat()
+        .join(' ');
+      expect(textContent).toContain('This enrollment is no longer active');
+      expect(textContent).not.toContain('Request failed');
+    });
+
+    it('removes the local copy only after the person confirms', async () => {
+      const mutateAsync = jest.fn().mockResolvedValue(undefined);
+      mockUseDeleteEnrollment.mockReturnValue({isPending: false, mutateAsync} as never);
+      const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+      const {navigation, tree} = await checkPendingWith(bindingFailed);
+
+      const [remove] = byTestId(tree, 'ezkey.e2e.enrollmentDetail.removeNoLongerActive');
+      await renderer.act(async () => {
+        remove.props.onPress();
+      });
+      expect(mutateAsync).not.toHaveBeenCalled();
+
+      const buttons = alert.mock.calls[0][2] as Array<{style?: string; onPress?: () => unknown}>;
+      const destructive = buttons.find(button => button.style === 'destructive');
+      await renderer.act(async () => {
+        await destructive?.onPress?.();
+      });
+
+      expect(mutateAsync).toHaveBeenCalledWith(enrollmentId);
+      expect(navigation.popToTop).toHaveBeenCalled();
+      alert.mockRestore();
+    });
+
+    it('keeps the generic retryable message for a transport error', async () => {
+      const {tree} = await checkPendingWith(new Error('Network Error'));
+
+      expect(byTestId(tree, 'ezkey.e2e.enrollmentDetail.noLongerActive').length).toBe(0);
+      expect(byTestId(tree, 'ezkey.e2e.enrollmentDetail.removeNoLongerActive').length).toBe(0);
+    });
   });
 });

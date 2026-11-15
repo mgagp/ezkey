@@ -179,6 +179,23 @@ exposes JSON, key, or unsealing vocabulary and never uses breach/compromise lang
 model detail:
 [MOBILE_DATA_MODEL.md § Enrollment Rehydration Outcomes](MOBILE_DATA_MODEL.md#enrollment-rehydration-outcomes-and-local-failure-honesty-mob-015).
 
+## Enrollment No Longer Active on the Server
+
+The mirror case of MOB-015: the local copy is intact, but the server no longer accepts it. An
+administrator deleted, revoked or deactivated the enrollment, or the database was reset. The app
+is pull-only (ADR-0002, ADR-MOB-0001): the server cannot push a revocation or wipe the phone, so
+the old row stays until the person removes it. After a re-enroll, the old and new rows used to
+show as identical Home cards (constat and reproduction: closed PR #565).
+
+| Exception case | Where it occurs | Technical meaning | User-visible handling | Recovery path |
+| --- | --- | --- | --- | --- |
+| Enrollment no longer active | Enrollment Detail `Check pending` | `POST /auth-attempts/pending` returns `auth-attempt-binding-failed` (proof token no longer maps to an active enrollment, or the device proof does not match it) | "This enrollment is no longer active" banner with `Remove from this device` (confirmed) instead of the generic request failure | Remove the row; if still needed, re-enroll with a new QR from the administrator |
+| Identical cards | Home and Danger Zone | Two rows of one installation and tenant share Purpose, Account and Role | Those rows only show `Added <local date>`; the Danger Zone delete confirmation always shows it | Check pending on each, remove the inactive one |
+
+Not a heuristic on network errors: transport failures and other problem types keep the generic,
+retryable message. The state is not persisted; the next check re-evaluates it. Removal stays the
+person's decision (no silent delete).
+
 ## Screen Transition Tables
 
 | Event | Source screen | Destination screen | Condition |

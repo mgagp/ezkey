@@ -89,6 +89,11 @@ caught, logged, and re-thrown — the audit log is the primary observability mec
   device signature still marks **INVALID** (conditional on `READ`). The per-`authAttemptId` budget
   (default 1 / 5 min) is consumed only after a valid device signature. The IP ceiling counts
   unproven calls and is refunded once ownership is proven (#918).
+- **Verify endpoint**: No enrollment status change until the signature verifies over the
+  server-built payload that includes the stored proof token (#1024). A key supplied in the request
+  is not that proof. Unknown id, non-`BOUND`, and a bad signature leave the row unchanged. After
+  proof, a wrong challenge still invalidates (one-shot). Rate limit is per client IP only; there is
+  no shared verify bucket.
 - **Pending endpoint rate limit**: with `enrollment-id`, the per-enrollment budget is consumed only
   after a valid proof token and device signature, using the enrollment located by that proof token.
   The filter does not key on the body `enrollmentId` (#1124). Unproven calls use the IP ceiling.

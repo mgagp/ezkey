@@ -86,6 +86,11 @@ class EnrollmentVerifyServiceEligibilityTest {
 
     when(enrollmentRepository.findById(100)).thenReturn(Optional.of(enrollment));
     when(ezkeyAdminRepository.findByEnrollmentId(100)).thenReturn(Optional.of(admin));
+    when(signatureService.validateSignature(
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.any()))
+        .thenReturn(true);
 
     EnrollmentVerifyFailedException exception =
         assertThrows(
@@ -98,7 +103,8 @@ class EnrollmentVerifyServiceEligibilityTest {
         exception.getMessage());
 
     verify(ezkeyAdminRepository).findByEnrollmentId(100);
-    verify(signatureService, never())
+    verify(enrollmentTxHelper, never()).markInvalidAndClear(org.mockito.ArgumentMatchers.any());
+    verify(signatureService)
         .validateSignature(
             org.mockito.ArgumentMatchers.any(),
             org.mockito.ArgumentMatchers.any(),

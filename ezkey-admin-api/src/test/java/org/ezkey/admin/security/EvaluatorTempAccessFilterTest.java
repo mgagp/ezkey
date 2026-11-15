@@ -5,7 +5,7 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Test: EvaluatorTempAccessFilterTest
- * Description: Deny-list + navigable pass-through + self-only QR for EVALUATOR_TEMP.
+ * Description: Deny-list + navigable pass-through + self-only profile/QR for EVALUATOR_TEMP.
  */
 
 package org.ezkey.admin.security;
@@ -67,6 +67,8 @@ class EvaluatorTempAccessFilterTest {
     authenticateTemp(42);
     assertEquals(403, filterGet("/api/v1/enrollments/7/qr-delivery").getStatus());
     assertEquals(403, filterGet("/api/v1/enrollments/qr-delivery/capability").getStatus());
+    assertEquals(403, filterGet("/api/v1/enrollments/0x7/qr-delivery").getStatus());
+    assertEquals(403, filterGet("/api/v1/enrollments/7/qr-delivery/").getStatus());
     assertEquals(200, filterGet("/api/v1/enrollments/7/qrcode").getStatus());
   }
 
@@ -111,24 +113,76 @@ class EvaluatorTempAccessFilterTest {
   }
 
   @Test
+  @DisplayName("TEMP denies peer recovery-code regeneration (#1123)")
+  void temp_deniesPeerRecoveryCodeRegeneration() throws Exception {
+    authenticateTemp(42);
+    assertEquals(403, filterPost("/api/v1/admins/99/recovery-codes/regenerate").getStatus());
+  }
+
+  @Test
+  @DisplayName("TEMP denies non-canonical admin ids, including self-only suffixes")
+  void temp_deniesNonCanonicalAdminIds() throws Exception {
+    authenticateTemp(42);
+    assertEquals(403, filterPost("/api/v1/admins/0x63/recovery-codes/regenerate").getStatus());
+    assertEquals(403, filterPost("/api/v1/admins/+99/recovery-codes/regenerate").getStatus());
+    assertEquals(403, filterPost("/api/v1/admins/099/recovery-codes/regenerate").getStatus());
+    assertEquals(403, filterPost("/api/v1/admins/99/recovery-codes/regenerate/").getStatus());
+    assertEquals(403, filterGet("/api/v1/admins/0x2a/onboarding").getStatus());
+    assertEquals(403, filterGet("/api/v1/admins/0x2a/onboarding/qrcode").getStatus());
+    assertEquals(403, filterGet("/api/v1/admins/+42").getStatus());
+    assertEquals(403, filterGet("/api/v1/admins/042").getStatus());
+    assertEquals(403, filterGet("/api/v1/admins/42/").getStatus());
+    assertEquals(403, filterGet("/api/v1/admins/42/onboarding/").getStatus());
+  }
+
+  @Test
+  @DisplayName("TEMP denies own recovery-code regeneration and other admin credential suffixes")
+  void temp_deniesAdminCredentialSubtree() throws Exception {
+    authenticateTemp(42);
+    assertEquals(403, filterPost("/api/v1/admins/42/recovery-codes/regenerate").getStatus());
+    assertEquals(403, filterPost("/api/v1/admins/99/recovery-codes/issue-initial").getStatus());
+    assertEquals(403, filterPost("/api/v1/admins/42/recovery-codes/issue-initial").getStatus());
+    assertEquals(403, filterPost("/api/v1/admins/99/activation-code/regenerate").getStatus());
+    assertEquals(403, filterPost("/api/v1/admins/99/deactivate").getStatus());
+    assertEquals(403, filterPost("/api/v1/admins/99/activate").getStatus());
+    assertEquals(403, filterPost("/api/v1/admins/99/future-credential").getStatus());
+  }
+
+  @Test
+  @DisplayName("TEMP keeps self profile and onboarding, and still lists admins")
+  void temp_keepsSelfProfileAndOnboarding() throws Exception {
+    authenticateTemp(42);
+    assertEquals(200, filterGet("/api/v1/admins").getStatus());
+    assertEquals(200, filterGet("/api/v1/admins/42").getStatus());
+    assertEquals(403, filterGet("/api/v1/admins/99").getStatus());
+    assertEquals(200, filterGet("/api/v1/admins/42/onboarding").getStatus());
+    assertEquals(403, filterGet("/api/v1/admins/99/onboarding").getStatus());
+  }
+
+  @Test
   @DisplayName("SESSION purpose is not constrained by TEMP deny-list")
   void session_notConstrained() throws Exception {
-    SecurityContextHolder.getContext()
-        .setAuthentication(
-            new UsernamePasswordAuthenticationToken(
-                new AdminPrincipal(42, AdminType.TENANT_ADMIN, 3, null, AdminTokenPurpose.SESSION),
-                null));
-    MockHttpServletResponse response = filterGet("/api/v1/tenants");
-    assertEquals(200, response.getStatus());
+    authenticateSession(42);
+    assertEquals(200, filterGet("/api/v1/tenants").getStatus());
+    assertEquals(200, filterPost("/api/v1/admins/99/recovery-codes/regenerate").getStatus());
+    assertEquals(200, filterPost("/api/v1/admins/99/recovery-codes/issue-initial").getStatus());
+    assertEquals(200, filterPost("/api/v1/admins/99/activation-code/regenerate").getStatus());
+    assertEquals(200, filterGet("/api/v1/admins/99/onboarding/qrcode").getStatus());
   }
 
   private void authenticateTemp(int adminId) {
+    authenticate(adminId, AdminTokenPurpose.EVALUATOR_TEMP);
+  }
+
+  private void authenticateSession(int adminId) {
+    authenticate(adminId, AdminTokenPurpose.SESSION);
+  }
+
+  private void authenticate(int adminId, AdminTokenPurpose purpose) {
     SecurityContextHolder.getContext()
         .setAuthentication(
             new UsernamePasswordAuthenticationToken(
-                new AdminPrincipal(
-                    adminId, AdminType.TENANT_ADMIN, 3, null, AdminTokenPurpose.EVALUATOR_TEMP),
-                null));
+                new AdminPrincipal(adminId, AdminType.TENANT_ADMIN, 3, null, purpose), null));
   }
 
   private MockHttpServletResponse filterGet(String path) throws Exception {

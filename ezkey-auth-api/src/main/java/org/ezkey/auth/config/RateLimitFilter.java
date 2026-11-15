@@ -60,8 +60,10 @@ import org.springframework.http.HttpStatus;
  *   <li>Respond: With {@code auth-attempt-id}, filter applies the fail-IP ceiling only; per-{@code
  *       authAttemptId} budget is consumed after a valid device signature, and that proven call
  *       refunds the IP token (#912 C1, #918)
- *   <li>Verify: By client IP only
- *   <li>Bind: By client IP only
+ *   <li>Verify: By client IP only. No shared per-instance bucket (#1024): a single global budget
+ *       (docker 50 requests / 5 min, with 5 / IP) was exhausted by about ten IPs and then blocked
+ *       every verify on the instance. Each client spends only its own IP budget.
+ *   <li>Bind: By client IP, plus an unkeyed per-instance backstop
  * </ul>
  *
  * <p><b>Response Behavior:</b>
@@ -278,8 +280,9 @@ public class RateLimitFilter implements Filter {
   }
 
   /**
-   * Unkeyed per-process cap on client-IP-keyed enrollment surfaces. {@code pending} and {@code
-   * respond} are target-id keyed and are not subject to this backstop.
+   * Unkeyed per-process cap on bind and enrolled instance-info. {@code pending} and {@code respond}
+   * are target-id keyed. {@code verify} is per client IP only and is not subject to this backstop
+   * (#1024): a shared verify bucket let a few IPs exhaust every other client's budget.
    */
   private RateLimitResult checkBackstop(String requestUri) {
     RateLimitProperties.BackstopConfig backstop = properties.getBackstop();
@@ -290,7 +293,7 @@ public class RateLimitFilter implements Filter {
     if (config == null) {
       return new RateLimitResult(true, 0);
     }
-    String family = backstopFamily(requestUri);
+    String family = "bind";
     Bucket bucket = bucketCache.get("backstop:" + family, _ -> createBackstopBucket(config));
     if (bucket.tryConsume(1)) {
       return new RateLimitResult(true, 0);
@@ -305,21 +308,12 @@ public class RateLimitFilter implements Filter {
 
   private RateLimitProperties.EndpointConfig backstopConfigFor(String requestUri) {
     RateLimitProperties.BackstopConfig backstop = properties.getBackstop();
-    if (requestUri.contains(EnrollmentController.FULL_PATH_VERIFY)) {
-      return backstop.getVerify();
-    }
+    // Verify is intentionally absent (#1024). backstop.verify.* remains bindable and is not read.
     if (requestUri.contains(EnrollmentController.FULL_PATH_BIND)
         || requestUri.contains(EnrollmentController.FULL_PATH_INSTANCE_INFO)) {
       return backstop.getBind();
     }
     return null;
-  }
-
-  private static String backstopFamily(String requestUri) {
-    if (requestUri.contains(EnrollmentController.FULL_PATH_VERIFY)) {
-      return "verify";
-    }
-    return "bind";
   }
 
   private static Bucket createBackstopBucket(RateLimitProperties.EndpointConfig config) {

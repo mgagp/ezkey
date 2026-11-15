@@ -148,7 +148,7 @@ ezkey.rate-limit.pending.key-strategy=enrollment-id
 ezkey.rate-limit.pending.fail-ip-requests=60
 ezkey.rate-limit.pending.fail-ip-window-minutes=1
 
-# Auth Verify - User responses (restrictive for security)
+# Auth Verify - per client IP. No shared instance bucket (#1024).
 ezkey.rate-limit.verify.requests=5
 ezkey.rate-limit.verify.window-minutes=5
 ezkey.rate-limit.verify.key-strategy=client-ip

@@ -24,7 +24,10 @@ React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollme
   Licenses). Release announcements are a top-of-home card plus Settings → What's new — not a
   floating bottom-left badge. About stays static identity (version, site, support).
   Do not reintroduce a Diagnostics screen in production chrome. Delete-one and clear-all live only
-  in Danger Zone.   Home card title is Purpose (localized Administration for admin MFA, else
+  in Danger Zone, except the confirmed `Remove from this device` on a row that cannot work anymore:
+  unusable local data (MOB-015) or an enrollment the server no longer accepts
+  (`auth-attempt-binding-failed` on pending; see `docs/MOBILE_FUNCTIONAL_FLOWS.md`, closed PR #565).
+  Identical cards show their local `Added` date; do not add it to unique cards.   Home card title is Purpose (localized Administration for admin MFA, else
   `integrationName`); subtitle is Account (`enrollmentName`); Role line for every
   system-integration enrollment (FR Role: `Admin tenant`, not *locataire*). After a
   successful delete-one, `navigation.goBack()` —

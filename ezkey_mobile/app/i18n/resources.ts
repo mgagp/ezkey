@@ -374,6 +374,7 @@ export const resources = {
         brokenBadge: 'Unusable',
         brokenRowSubtitle:
           'This enrollment can no longer be used on this device. Remove it, then ask your administrator for a new enrollment QR code.',
+        addedAt: 'Added {{value}}',
         brokenRowRemove: 'Remove',
         brokenRemoveCancel: 'Cancel',
         brokenRemoveConfirmTitle: 'Remove enrollment',
@@ -404,6 +405,9 @@ export const resources = {
         unusableTitle: 'Unusable on this device',
         unusableBody:
           'The secure data for this enrollment can no longer be used on this device, so it cannot approve sign-ins anymore. Remove it, then ask your administrator for a new enrollment QR code.',
+        noLongerActiveTitle: 'This enrollment is no longer active',
+        noLongerActiveBody:
+          'The server no longer accepts it. Your administrator may have removed or revoked it. Remove it from this device. If you still need it, ask your administrator for a new enrollment QR code.',
         removeEnrollment: 'Remove from this device',
       },
     },
@@ -788,6 +792,7 @@ export const resources = {
         brokenBadge: 'Inutilisable',
         brokenRowSubtitle:
           'Cet enrôlement ne peut plus être utilisé sur cet appareil. Retirez-le, puis demandez un nouveau code QR d’enrôlement à votre administrateur.',
+        addedAt: 'Ajouté le {{value}}',
         brokenRowRemove: 'Retirer',
         brokenRemoveCancel: 'Annuler',
         brokenRemoveConfirmTitle: 'Retirer l’enrôlement',
@@ -819,6 +824,9 @@ export const resources = {
         unusableTitle: 'Inutilisable sur cet appareil',
         unusableBody:
           'Les données sécurisées de cet enrôlement ne peuvent plus être utilisées sur cet appareil ; il ne peut donc plus approuver de connexions. Retirez-le, puis demandez un nouveau code QR d’enrôlement à votre administrateur.',
+        noLongerActiveTitle: 'Cet enrôlement n’est plus actif',
+        noLongerActiveBody:
+          'Le serveur ne l’accepte plus. Votre administrateur l’a peut-être supprimé ou révoqué. Retirez-le de cet appareil. Si vous en avez encore besoin, demandez un nouveau code QR d’enrôlement à votre administrateur.',
         removeEnrollment: 'Retirer de cet appareil',
       },
     },

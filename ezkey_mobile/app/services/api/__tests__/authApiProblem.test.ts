@@ -12,6 +12,7 @@ import {
   AUTH_ATTEMPT_STATE_CONFLICT_TYPE,
   INTEGRATION_SIGNING_UNAVAILABLE_TYPE,
   catalogKeyForAuthApiProblemType,
+  isAuthAttemptBindingFailed,
   isAuthAttemptStateConflict,
   isEzkeyProblemType,
   parseAuthApiProblemDetail,
@@ -269,5 +270,28 @@ describe('resolveAuthApiUserFacingOutcome / isAuthAttemptStateConflict', () => {
       message: FALLBACK,
       retryable: true,
     });
+  });
+});
+
+describe('isAuthAttemptBindingFailed', () => {
+  it('detects the binding-failed problem type returned by pending for a dead enrollment', () => {
+    const error = {
+      response: {
+        status: 400,
+        data: {type: ' https://ezkey.io/problems/auth/auth-attempt-binding-failed ', title: 'Bad'},
+      },
+    };
+    expect(isAuthAttemptBindingFailed(error)).toBe(true);
+  });
+
+  it('is false for transport errors, other problem types, and non-problem bodies', () => {
+    expect(isAuthAttemptBindingFailed(new Error('Network Error'))).toBe(false);
+    expect(isAuthAttemptBindingFailed({response: undefined})).toBe(false);
+    expect(
+      isAuthAttemptBindingFailed({
+        response: {status: 409, data: {type: AUTH_ATTEMPT_STATE_CONFLICT_TYPE}},
+      }),
+    ).toBe(false);
+    expect(isAuthAttemptBindingFailed({response: {status: 400, data: 'oops'}})).toBe(false);
   });
 });
