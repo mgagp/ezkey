@@ -6,17 +6,176 @@
 #   ./scripts/db/verify-grants.sh
 #   ./scripts/db/verify-grants.sh --docker
 #
-# Credentials (never put password values on process argv):
+# Credentials (never put password values on process argv, and never `source` / `.` a .env):
 #   PGUSER / POSTGRES_USER, PGPASSWORD / POSTGRES_PASSWORD — admin/owner login
 #   EZKEY_DB_MIGRATE_PASSWORD, EZKEY_DB_ADMIN_PASSWORD, EZKEY_DB_AUTH_PASSWORD,
 #   EZKEY_DB_INTEGRATION_PASSWORD, EZKEY_DB_CRYPTO_PASSWORD — optional role logins
 #   EZKEY_POSTGRES_CONTAINER — docker container name (default: ezkey-postgres)
+#
+# Env file: when `./.env` exists (or `--env-file PATH` is set), only the keys above
+# plus PGHOST / PGPORT / PGDATABASE are read, as literal text. Unquoted spaces and
+# cron expressions are not executed. Variables already set in the environment win.
+# `--no-env-file` skips that read. Do not `. ./.env`.
 #
 # When all five EZKEY_DB_* role passwords are set, connects as each role (stronger
 # smoke: real SQL allow/deny). When any are absent, falls back to catalog checks
 # (has_table_privilege / information_schema.role_table_grants) as the admin/owner.
 
 set -euo pipefail
+
+# Keys this script may copy out of an env file. Anything else is ignored.
+ENV_FILE_KEYS=(
+  PGHOST
+  PGPORT
+  PGDATABASE
+  PGUSER
+  PGPASSWORD
+  POSTGRES_USER
+  POSTGRES_PASSWORD
+  EZKEY_DB_MIGRATE_PASSWORD
+  EZKEY_DB_ADMIN_PASSWORD
+  EZKEY_DB_AUTH_PASSWORD
+  EZKEY_DB_INTEGRATION_PASSWORD
+  EZKEY_DB_CRYPTO_PASSWORD
+  EZKEY_POSTGRES_CONTAINER
+)
+
+env_file_key_allowed() {
+  local key="$1"
+  local allowed
+  for allowed in "${ENV_FILE_KEYS[@]}"; do
+    if [[ "${allowed}" == "${key}" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+# Literal dotenv value: strip one pair of matching quotes. No eval, no globs,
+# no parameter expansion. Unquoted text keeps spaces. A trailing " # comment"
+# is dropped only when the value is unquoted.
+dotenv_unquote() {
+  local raw="$1"
+  raw="${raw#"${raw%%[![:space:]]*}"}"
+  local len=${#raw}
+  if [[ "${len}" -ge 2 && "${raw:0:1}" == '"' ]]; then
+    local i=1
+    local inner=""
+    local c
+    while [[ "${i}" -lt "${len}" ]]; do
+      c="${raw:i:1}"
+      if [[ "${c}" == '\' && $((i + 1)) -lt "${len}" ]]; then
+        local nxt="${raw:i+1:1}"
+        if [[ "${nxt}" == '"' || "${nxt}" == '\' ]]; then
+          inner+="${nxt}"
+          i=$((i + 2))
+          continue
+        fi
+      fi
+      if [[ "${c}" == '"' ]]; then
+        printf '%s' "${inner}"
+        return 0
+      fi
+      inner+="${c}"
+      i=$((i + 1))
+    done
+    printf '%s' "${raw}"
+    return 0
+  fi
+  if [[ "${len}" -ge 2 && "${raw:0:1}" == "'" ]]; then
+    local inner="${raw:1}"
+    local end="${inner%%\'*}"
+    if [[ "${inner}" == *"'"* ]]; then
+      printf '%s' "${end}"
+      return 0
+    fi
+  fi
+  local unquoted="${raw%%[[:space:]]#*}"
+  unquoted="${unquoted%"${unquoted##*[![:space:]]}"}"
+  printf '%s' "${unquoted}"
+}
+
+# Fill unset keys from PATH. Does not override the environment. Does not eval.
+apply_env_file() {
+  local file="$1"
+  if [[ ! -f "${file}" ]]; then
+    echo "error: env file not found: ${file}" >&2
+    exit 1
+  fi
+  if [[ ! -r "${file}" ]]; then
+    echo "error: env file is not readable: ${file}" >&2
+    exit 1
+  fi
+  local line key raw val
+  local first=1
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    if [[ "${first}" -eq 1 ]]; then
+      line="${line#$'\xef\xbb\xbf'}"
+      first=0
+    fi
+    line="${line%$'\r'}"
+    [[ "${line}" =~ ^[[:space:]]*$ ]] && continue
+    [[ "${line}" =~ ^[[:space:]]*# ]] && continue
+    if [[ ! "${line}" =~ ^[[:space:]]*(export[[:space:]]+)?([A-Za-z_][A-Za-z0-9_]*)[[:space:]]*=(.*)$ ]]; then
+      continue
+    fi
+    key="${BASH_REMATCH[2]}"
+    raw="${BASH_REMATCH[3]}"
+    if ! env_file_key_allowed "${key}"; then
+      continue
+    fi
+    if [[ -n "${!key+x}" ]]; then
+      continue
+    fi
+    val="$(dotenv_unquote "${raw}")"
+    printf -v "${key}" '%s' "${val}"
+  done <"${file}"
+}
+
+DOCKER_MODE=0
+ENV_FILE=""
+ENV_FILE_SET=0
+NO_ENV_FILE=0
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --docker)
+      DOCKER_MODE=1
+      shift
+      ;;
+    --env-file)
+      if [[ -z "${2:-}" || "${2}" == --* ]]; then
+        echo "error: --env-file requires a path" >&2
+        exit 2
+      fi
+      ENV_FILE="$2"
+      ENV_FILE_SET=1
+      shift 2
+      ;;
+    --no-env-file)
+      NO_ENV_FILE=1
+      shift
+      ;;
+    *)
+      echo "error: unknown argument: $1" >&2
+      exit 2
+      ;;
+  esac
+done
+
+if [[ "${NO_ENV_FILE}" -eq 1 && "${ENV_FILE_SET}" -eq 1 ]]; then
+  echo "error: --no-env-file cannot be combined with --env-file" >&2
+  exit 2
+fi
+
+if [[ "${NO_ENV_FILE}" -eq 0 ]]; then
+  if [[ "${ENV_FILE_SET}" -eq 0 && -f ./.env ]]; then
+    ENV_FILE="./.env"
+  fi
+  if [[ -n "${ENV_FILE}" ]]; then
+    apply_env_file "${ENV_FILE}"
+  fi
+fi
 
 export PGHOST="${PGHOST:-localhost}"
 export PGPORT="${PGPORT:-5432}"
@@ -34,15 +193,13 @@ AUTH_PASS="${EZKEY_DB_AUTH_PASSWORD:-}"
 INTEGRATION_PASS="${EZKEY_DB_INTEGRATION_PASSWORD:-}"
 CRYPTO_PASS="${EZKEY_DB_CRYPTO_PASSWORD:-}"
 
+if [[ "${DOCKER_MODE}" -eq 1 ]]; then
+  CONTAINER="${EZKEY_POSTGRES_CONTAINER:-ezkey-postgres}"
+fi
+
 VERIFY_OUT="$(mktemp "${TMPDIR:-/tmp}/ezkey-verify-grants.out.XXXXXX")"
 VERIFY_ERR="$(mktemp "${TMPDIR:-/tmp}/ezkey-verify-grants.err.XXXXXX")"
 trap 'rm -f "${VERIFY_OUT}" "${VERIFY_ERR}"' EXIT
-
-DOCKER_MODE=0
-if [[ "${1:-}" == "--docker" ]]; then
-  DOCKER_MODE=1
-  CONTAINER="${EZKEY_POSTGRES_CONTAINER:-ezkey-postgres}"
-fi
 
 # Pass credentials via environment only. For docker exec, use -e NAME (no =value)
 # so the password never appears on argv / process listings.

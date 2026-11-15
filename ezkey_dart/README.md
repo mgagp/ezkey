@@ -425,6 +425,12 @@ ezkey_dart/scripts/e2e.sh                   # stack already up
 ezkey_dart/scripts/e2e.sh -- --skip-expiry  # extra args go to bin/ezkey_e2e.dart
 ```
 
+On Git Bash (MSYS/MINGW) the script sets `MSYS_NO_PATHCONV=1` so Docker is not handed a
+rewritten `/secrets` or `/app/...` path, and it points `TMPDIR` at a Windows directory
+(`C:/...`, via `cygpath -m` of `%LOCALAPPDATA%\Temp`, else `TEMP` or `TMP`) before creating
+the enrollment-record mount. Docker Desktop cannot mount MSYS `/tmp`. Set `TMPDIR` yourself
+to a `C:/...` path when `cygpath` and those variables are absent.
+
 What it does:
 
 1. Optionally runs the repository's standard clean start (`ezkey-tests/clean-start.sh`). This

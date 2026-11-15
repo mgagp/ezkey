@@ -79,6 +79,12 @@ Env overrides:
 `EZKEY_INTEGRATION_CLOUDFLARE_SCHEMA`, `EZKEY_INTEGRATION_CLOUDFLARE_SCHEMA_NAME`,
 `EZKEY_INTEGRATION_CLOUDFLARE_SERVER_URL`, `CLOUDFLARE_ZONE_NAME`.
 
+**Zone:** this community artifact must be uploaded to **ezkey.online**. Set
+`CLOUDFLARE_ZONE_NAME=ezkey.online`. If the repo-root `.env` holds `CLOUDFLARE_ZONE_ID`
+for the **ezkey.org** zone, unset `CLOUDFLARE_ZONE_ID` for this upload (the id overrides
+the name and would publish the community schema on the wrong zone). The upload script
+refuses to continue when the resolved zone name is not `ezkey.online`.
+
 Do not couple this upload to Lightsail deploy. Do not use Wrangler.
 
 Dashboard remains valid for the first bind and for Set action. Labels move; look for

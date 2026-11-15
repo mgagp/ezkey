@@ -59,6 +59,10 @@ The role bootstrap recognizes:
 
 `verify-grants.sh` also accepts Compose-style `POSTGRES_USER` / `POSTGRES_PASSWORD` as
 fallbacks for the admin/owner login, and `EZKEY_POSTGRES_CONTAINER` in `--docker` mode.
+When `./.env` exists (or `--env-file PATH` is passed), the script copies only those
+Postgres keys out of the file as literal text. Do not `.` / `source` the live `.env`:
+unquoted spaces and cron expressions would run as commands. `--no-env-file` skips the
+file. Variables already set in the environment win.
 Role passwords are optional for verify: when all five `EZKEY_DB_*` passwords are present it
 connects as each role; otherwise it verifies via `has_table_privilege` /
 `information_schema.role_table_grants` (including `ezkey_keyset_blob`) as the admin/owner.

@@ -19,7 +19,7 @@ This directory holds **workflow notes, scope, and time-horizon planning** for us
 
 ## Repository root `.env`
 
-Wrangler deploy scripts source a gitignored **`.env`** at the **repository root** when present. Copy **[`.env.example`](../../.env.example)** to `.env` and set at least `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. Schema upload uses a **separate** `CLOUDFLARE_API_SHIELD_TOKEN` (and optional `CLOUDFLARE_ZONE_ID`) — do not reuse the Pages token. For Admin UI Cloudflare builds with `--build`, the same file must set **`VITE_API_BASE_URL`** explicitly (deploy scripts exit ≠ 0 if missing — no product default hostname). See [admin-ui-pages.md](admin-ui-pages.md).
+Wrangler deploy scripts source a gitignored **`.env`** at the **repository root** when present. Copy **[`.env.example`](../../.env.example)** to `.env` and set at least `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. Schema upload uses a **separate** `CLOUDFLARE_API_SHIELD_TOKEN` — do not reuse the Pages token. Community Auth and Integration schema uploads must target zone **ezkey.online** (`CLOUDFLARE_ZONE_NAME=ezkey.online`). Unset `CLOUDFLARE_ZONE_ID` when the repo-root `.env` holds the **ezkey.org** zone id; the upload scripts refuse any other zone name. For Admin UI Cloudflare builds with `--build`, the same file must set **`VITE_API_BASE_URL`** explicitly (deploy scripts exit ≠ 0 if missing — no product default hostname). See [admin-ui-pages.md](admin-ui-pages.md).
 
 ## Automation (`scripts/cloudflare/`)
 

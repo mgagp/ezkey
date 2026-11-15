@@ -46,8 +46,11 @@ Options:
 
 Requires repo-root .env:
   CLOUDFLARE_API_SHIELD_TOKEN   zone-scoped API Gateway token (not the Pages token)
-  CLOUDFLARE_ZONE_ID            optional; resolved from CLOUDFLARE_ZONE_NAME (ezkey.online)
+  CLOUDFLARE_ZONE_NAME          community zone; must be ezkey.online (the default)
+  CLOUDFLARE_ZONE_ID            optional uuid of that same zone. Unset it when the
+                                repo-root .env holds the ezkey.org zone id.
 
+Refuses to list, upload, or delete when the resolved zone name is not ezkey.online.
 Does not use CLOUDFLARE_API_TOKEN. Does not change Block / None mitigation.
 Does not delete the Auth schema (ezkey-auth-api-community).
 EOF
@@ -68,6 +71,10 @@ require_curl() {
 }
 
 source_env() {
+  # Tests set this so a workstation .env cannot point the guard at a live zone.
+  if [[ "${EZKEY_CLOUDFLARE_SKIP_ENV_FILE:-}" == 1 ]]; then
+    return 0
+  fi
   if [[ -f "$ROOT/.env" ]]; then
     set -a
     # shellcheck disable=SC1091
@@ -210,6 +217,44 @@ zone_label() {
   rm -f "$CF_BODY"
 }
 
+# Community artifact is for ezkey.online only. A repo-root .env often sets
+# CLOUDFLARE_ZONE_ID to the ezkey.org zone; that id would otherwise win over the name.
+require_community_zone_name() {
+  local expected="ezkey.online"
+  if [[ "$ZONE_NAME" == "$expected" ]]; then
+    return 0
+  fi
+  echo "error: community schema upload must target zone ${expected}" >&2
+  echo "       CLOUDFLARE_ZONE_NAME is '${ZONE_NAME}'." >&2
+  echo "       set CLOUDFLARE_ZONE_NAME=${expected} and unset CLOUDFLARE_ZONE_ID" >&2
+  echo "       when the repo-root .env holds the ezkey.org zone id." >&2
+  exit 1
+}
+
+require_community_zone() {
+  local zone_id=$1
+  local expected="ezkey.online"
+  cf_request GET "${CF_API}/zones/${zone_id}"
+  if [[ "$CF_HTTP" != "200" ]]; then
+    print_cf_errors
+    echo "error: could not confirm zone name for ${zone_id} (HTTP ${CF_HTTP})" >&2
+    echo "       unset CLOUDFLARE_ZONE_ID if the repo-root .env holds the ezkey.org zone id," >&2
+    echo "       and set CLOUDFLARE_ZONE_NAME=${expected}." >&2
+    rm -f "$CF_BODY"
+    exit 1
+  fi
+  local actual
+  actual="$(jq -r '.result.name // empty' "$CF_BODY")"
+  rm -f "$CF_BODY"
+  if [[ "$actual" != "$expected" ]]; then
+    echo "error: community schema upload must target zone ${expected}" >&2
+    echo "       resolved zone is '${actual}' (${zone_id})." >&2
+    echo "       unset CLOUDFLARE_ZONE_ID if the repo-root .env holds the ezkey.org zone id," >&2
+    echo "       and set CLOUDFLARE_ZONE_NAME=${expected}." >&2
+    exit 1
+  fi
+}
+
 is_schema_uuid() {
   [[ "$1" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]
 }
@@ -337,6 +382,9 @@ fi
 require_jq
 require_curl
 source_env
+if [[ -n "${CLOUDFLARE_ZONE_NAME:-}" ]]; then
+  ZONE_NAME="${CLOUDFLARE_ZONE_NAME}"
+fi
 require_shield_token
 
 cd "$ROOT"
@@ -350,7 +398,9 @@ if [[ "$DO_PACKAGE" == true ]]; then
 fi
 
 verify_token
+require_community_zone_name
 ZONE_ID="$(resolve_zone_id)"
+require_community_zone "$ZONE_ID"
 zone_label "$ZONE_ID"
 
 if [[ "$MODE" == "list" ]]; then

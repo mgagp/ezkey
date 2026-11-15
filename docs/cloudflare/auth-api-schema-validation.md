@@ -79,6 +79,12 @@ Env overrides:
 `EZKEY_AUTH_CLOUDFLARE_SCHEMA`, `EZKEY_AUTH_CLOUDFLARE_SCHEMA_NAME`,
 `EZKEY_AUTH_CLOUDFLARE_SERVER_URL`, `CLOUDFLARE_ZONE_NAME`.
 
+**Zone:** this community artifact must be uploaded to **ezkey.online**. Set
+`CLOUDFLARE_ZONE_NAME=ezkey.online`. If the repo-root `.env` holds `CLOUDFLARE_ZONE_ID`
+for the **ezkey.org** zone, unset `CLOUDFLARE_ZONE_ID` for this upload (the id overrides
+the name and would publish the community schema on the wrong zone). The upload script
+refuses to continue when the resolved zone name is not `ezkey.online`.
+
 Dashboard remains valid for the first bind and for Set action. Labels move; look for
 **API Shield** / **Schema validation** on the zone that fronts `auth-api.ezkey.online`.
 

@@ -84,7 +84,8 @@ probe_lb "crypto-mgmt" "http://127.0.0.1:9091/actuator/health/liveness" "200"
 probe_lb "demo-device-mgmt" "http://127.0.0.1:8084/actuator/health" "200"
 
 echo "==> verify-grants (ezkey_crypto SELECT-only on ezkey_keyset_blob; ADR-0016)"
+# Lab stack uses the compose defaults. Do not read a workstation ./.env here.
 EZKEY_POSTGRES_CONTAINER="${EZKEY_POSTGRES_CONTAINER:-ezkey-postgres-ha}" \
-  bash "${ROOT}/scripts/db/verify-grants.sh" --docker
+  bash "${ROOT}/scripts/db/verify-grants.sh" --docker --no-env-file
 
 echo "HA LB smoke PASSED"
