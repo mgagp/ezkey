@@ -393,6 +393,238 @@ assert_fail "upgrade --target legacy refused" bash "${UPGRADE}" --target legacy 
 assert_fail "bootstrap without target fails" bash "${BOOTSTRAP}" --dry-run
 assert_ok "bootstrap --target community --dry-run" bash "${BOOTSTRAP}" --target community --dry-run
 assert_stdout_contains "bootstrap community" "ezkey-online"
+assert_stdout_contains "bootstrap pq drop-in" "/etc/ssh/sshd_config.d/40-pq-kex.conf"
+assert_stdout_contains "bootstrap pq mlkem" "mlkem768x25519-sha256"
+assert_stdout_contains "bootstrap pq sntrup" "sntrup761x25519-sha512@openssh.com"
+assert_stdout_contains "bootstrap pq reload" "systemctl reload sshd"
+assert_stdout_contains "bootstrap pq order guard" "must start with mlkem"
+if grep -q 'systemctl restart' "${OUT}"; then
+  echo "FAIL: bootstrap must not restart sshd" >&2
+  fail=$((fail + 1))
+else
+  echo "PASS: bootstrap does not restart sshd"
+  pass=$((pass + 1))
+fi
+if grep -q 'KexAlgorithms \^' "${OUT}"; then
+  echo "FAIL: bootstrap KexAlgorithms list must not use ^" >&2
+  fail=$((fail + 1))
+else
+  echo "PASS: bootstrap KexAlgorithms list does not use ^"
+  pass=$((pass + 1))
+fi
+
+# List merge + order guard (pure functions) and a fake-root run of the remote script.
+# The fake ssh/sudo never contact a Lightsail host.
+(
+  set -euo pipefail
+  fn_file="${TMP}/pq-kex-fns.sh"
+  sed -n '/^# >>> pq-kex-functions$/,/^# <<< pq-kex-functions$/p' "${BOOTSTRAP}" >"${fn_file}"
+  # shellcheck source=/dev/null
+  source "${fn_file}"
+  classic="curve25519-sha256,curve25519-sha256@libssh.org,ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256,diffie-hellman-group14-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512"
+  expected="mlkem768x25519-sha256,sntrup761x25519-sha512@openssh.com,${classic}"
+  got="$(lightsail_pq_kex_desired "${classic}")"
+  [[ "${got}" == "${expected}" ]]
+  got_again="$(lightsail_pq_kex_desired "${got}")"
+  [[ "${got_again}" == "${got}" ]]
+  lightsail_pq_kex_order_ok "${got}"
+  spaced="$(lightsail_pq_kex_desired " curve25519-sha256 , sntrup761x25519-sha512@openssh.com , ecdh-sha2-nistp256 ")"
+  [[ "${spaced}" == "mlkem768x25519-sha256,sntrup761x25519-sha512@openssh.com,curve25519-sha256,ecdh-sha2-nistp256" ]]
+  if lightsail_pq_kex_order_ok "${classic}"; then
+    echo "order guard accepted a classical list" >&2
+    exit 1
+  fi
+  if lightsail_pq_kex_desired "mlkem768x25519-sha256,sntrup761x25519-sha512@openssh.com"; then
+    echo "merge accepted a PQ-only list" >&2
+    exit 1
+  fi
+  if lightsail_pq_kex_order_ok "mlkem768x25519-sha256,sntrup761x25519-sha512@openssh.com"; then
+    echo "order guard accepted a PQ-only list" >&2
+    exit 1
+  fi
+  if lightsail_pq_kex_order_ok "mlkem768x25519-sha256,curve25519-sha256"; then
+    echo "order guard accepted a list that does not keep sntrup second" >&2
+    exit 1
+  fi
+
+  remote_file="${TMP}/bootstrap-remote.sh"
+  awk '
+    $0 == "----- remote script -----" { capture = 1; next }
+    $0 == "----- end remote script -----" { capture = 0 }
+    capture { print }
+  ' "${OUT}" >"${remote_file}"
+  [[ -s "${remote_file}" ]]
+
+  fake_bin="${TMP}/pq-fake-bin"
+  mkdir -p "${fake_bin}"
+  cat >"${fake_bin}/sudo" <<'FAKE'
+#!/usr/bin/env bash
+exec "$@"
+FAKE
+  cat >"${fake_bin}/sshd" <<'FAKE'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ "${1:-}" == "-t" ]]; then
+  exit "${FAKE_SSHD_TEST_RC:-0}"
+fi
+if [[ "${1:-}" == "-T" ]]; then
+  dropin="${EZKEY_SSHD_PQ_DROPIN:?}"
+  if [[ "${FAKE_SSHD_IGNORE_DROPIN:-}" == "1" || ! -f "${dropin}" ]]; then
+    echo "kexalgorithms curve25519-sha256,curve25519-sha256@libssh.org,ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256,diffie-hellman-group14-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512"
+    exit 0
+  fi
+  alg="$(awk '/^KexAlgorithms / { print $2; exit }' "${dropin}")"
+  echo "kexalgorithms ${alg}"
+  exit 0
+fi
+echo "unexpected sshd args: $*" >&2
+exit 3
+FAKE
+  cat >"${fake_bin}/install" <<'FAKE'
+#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\n' "$*" >>"${FAKE_INSTALL_LOG:?}"
+src=""
+dest=""
+prev=""
+for arg in "$@"; do
+  if [[ -n "${prev}" ]]; then
+    prev=""
+    continue
+  fi
+  case "${arg}" in
+    -m|-o|-g) prev="${arg}" ;;
+    -*) ;;
+    *)
+      if [[ -z "${src}" ]]; then
+        src="${arg}"
+      else
+        dest="${arg}"
+      fi
+      ;;
+  esac
+done
+[[ -n "${src}" && -n "${dest}" ]]
+cp "${src}" "${dest}"
+chmod 600 "${dest}"
+FAKE
+  cat >"${fake_bin}/stat" <<'FAKE'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ "${1:-}" == "-c" ]]; then
+  echo "600 root:root"
+  exit 0
+fi
+echo "unexpected stat args: $*" >&2
+exit 2
+FAKE
+  cat >"${fake_bin}/systemctl" <<'FAKE'
+#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\n' "$*" >>"${FAKE_SYSTEMCTL_LOG:?}"
+case "$*" in
+  *restart*)
+    echo "fake systemctl refused restart" >&2
+    exit 99
+    ;;
+esac
+exit 0
+FAKE
+  cat >"${fake_bin}/docker" <<'FAKE'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ "${1:-}" == "info" ]]; then
+  exit 0
+fi
+if [[ "${1:-}" == "compose" && "${2:-}" == "version" ]]; then
+  echo "Docker Compose version v2.test"
+  exit 0
+fi
+echo "unexpected docker args: $*" >&2
+exit 4
+FAKE
+  cat >"${fake_bin}/id" <<'FAKE'
+#!/usr/bin/env bash
+echo "ec2-user docker"
+FAKE
+  cat >"${fake_bin}/dnf" <<'FAKE'
+#!/usr/bin/env bash
+echo "fake dnf refused: $*" >&2
+exit 5
+FAKE
+  chmod +x "${fake_bin}/"*
+
+  run_remote() {
+    local -a env_args=()
+    if [[ -n "${4:-}" ]]; then
+      env_args+=(FAKE_SSHD_IGNORE_DROPIN="${4}")
+    fi
+    if [[ -n "${5:-}" ]]; then
+      env_args+=(FAKE_SSHD_TEST_RC="${5}")
+    fi
+    env PATH="${fake_bin}:${PATH}" \
+      EZKEY_SSHD_PQ_DROPIN="${1}" \
+      FAKE_SYSTEMCTL_LOG="${2}" \
+      FAKE_INSTALL_LOG="${3}" \
+      "${env_args[@]}" \
+      bash "${remote_file}" >"${TMP}/pq-remote.out" 2>"${TMP}/pq-remote.err"
+  }
+
+  trap 'echo "--- pq-remote stdout ---" >&2; cat "${TMP}/pq-remote.out" >&2 || true; echo "--- pq-remote stderr ---" >&2; cat "${TMP}/pq-remote.err" >&2 || true' ERR
+  dropin_dir="${TMP}/sshd_config.d"
+  mkdir -p "${dropin_dir}"
+  dropin="${dropin_dir}/40-pq-kex.conf"
+  sys_log="${TMP}/systemctl.log"
+  inst_log="${TMP}/install.log"
+  : >"${sys_log}"
+  : >"${inst_log}"
+  run_remote "${dropin}" "${sys_log}" "${inst_log}"
+  [[ "$(stat -c '%a' "${dropin}")" == "600" ]]
+  grep -q '^-m 0600 -o root -g root ' "${inst_log}"
+  grep -qx '# #1177 — hybrid PQ key exchange on the operator SSH channel.' "${dropin}"
+  grep -qx '# Authentication (host and user keys) still classical.' "${dropin}"
+  grep -qx '# Explicit list (no ^). Classical fallback kept intact.' "${dropin}"
+  grep -qx "KexAlgorithms ${expected}" "${dropin}"
+  grep -qx 'reload sshd' "${sys_log}"
+  if grep -q 'restart' "${sys_log}"; then
+    echo "systemctl log contains restart" >&2
+    exit 1
+  fi
+  # Idempotent second run: same list, still no restart.
+  run_remote "${dropin}" "${sys_log}" "${inst_log}"
+  grep -qx "KexAlgorithms ${expected}" "${dropin}"
+
+  bad_dir="${TMP}/sshd-ignored"
+  mkdir -p "${bad_dir}"
+  bad_dropin="${bad_dir}/40-pq-kex.conf"
+  bad_log="${TMP}/systemctl-ignored.log"
+  : >"${bad_log}"
+  if run_remote "${bad_dropin}" "${bad_log}" "${inst_log}" 1; then
+    echo "order-guard failure should have exited non-zero" >&2
+    exit 1
+  fi
+  [[ ! -e "${bad_dropin}" ]]
+  if grep -q 'reload sshd' "${bad_log}"; then
+    echo "order-guard failure reloaded sshd" >&2
+    exit 1
+  fi
+
+  test_fail_dir="${TMP}/sshd-test-fail"
+  mkdir -p "${test_fail_dir}"
+  test_fail_dropin="${test_fail_dir}/40-pq-kex.conf"
+  test_fail_log="${TMP}/systemctl-test-fail.log"
+  : >"${test_fail_log}"
+  if run_remote "${test_fail_dropin}" "${test_fail_log}" "${inst_log}" "" 1; then
+    echo "sshd -t failure should have exited non-zero" >&2
+    exit 1
+  fi
+  [[ ! -e "${test_fail_dropin}" ]]
+  if grep -q 'reload sshd' "${test_fail_log}"; then
+    echo "sshd -t failure reloaded sshd" >&2
+    exit 1
+  fi
+  echo "PASS: pq kex drop-in merge, install, and order guard"
+) && pass=$((pass + 1)) || fail=$((fail + 1))
 
 # --- os-patch-check (read-only Host OS signal; #909) ---
 : >"${FAKE_SSH_LOG}"

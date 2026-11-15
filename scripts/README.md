@@ -193,7 +193,7 @@ Campaign notes: [`product-docs/global/hygiene/quality-gate/`](../product-docs/gl
 
 ## Lightsail (community / ezkey.online host)
 
-AWS CLI helpers under [`lightsail/`](lightsail/) to create and bootstrap a **NEW** all-in-one Lightsail VM for the community host (`ezkey-online` / `*.ezkey.online`). **VM lifecycle only** (create / ports / bootstrap / status / delete). Dry-run by default for create / delete / ports. Does **not** change DNS or certificates. Self-contained tree — may later extract to a private ops repo after e2e validation (see runbook). Runbook: [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md).
+AWS CLI helpers under [`lightsail/`](lightsail/) to create and bootstrap a **NEW** all-in-one Lightsail VM for the community host (`ezkey-online` / `*.ezkey.online`). **VM lifecycle only** (create / ports / bootstrap / status / delete). Dry-run by default for create / delete / ports. Does **not** change DNS or certificates. Bootstrap also installs `/etc/ssh/sshd_config.d/40-pq-kex.conf` (#1177): hybrid PQ key exchange on the operator SSH channel; authentication still classical. Self-contained tree — may later extract to a private ops repo after e2e validation (see runbook). Runbook: [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md).
 
 ```bash
 export AWS_PROFILE=ezkey-lightsail

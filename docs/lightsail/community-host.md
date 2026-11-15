@@ -73,7 +73,7 @@ aws lightsail get-static-ip \
 |--------|------|
 | [`create-instance.sh`](../../scripts/lightsail/create-instance.sh) | `create-instances`; dry-run default; `--apply` to create; waits until `running`; refuses existing name |
 | [`open-ports.sh`](../../scripts/lightsail/open-ports.sh) | SSH 22 + HTTPS 443 (`open-instance-public-ports` or `--mode put`); dry-run default |
-| [`bootstrap-host.sh`](../../scripts/lightsail/bootstrap-host.sh) | SSH Phase 0b/0c: Docker + Compose v2 + `docker` group; no clean-start / no image push |
+| [`bootstrap-host.sh`](../../scripts/lightsail/bootstrap-host.sh) | SSH Phase 0b/0c: Docker + Compose v2 + `docker` group; installs `/etc/ssh/sshd_config.d/40-pq-kex.conf` (#1177); no clean-start / no image push |
 | [`os-patch-check.sh`](../../scripts/lightsail/os-patch-check.sh) | Read-only Host OS signal over SSH (`--target community`); releasever / security updateinfo / reboot hint / `docker ps` (#909) |
 | [`delete-instance.sh`](../../scripts/lightsail/delete-instance.sh) | Delete by name; `--apply` requires explicit `--name`; community `ezkey-online` also needs `EZKEY_CONFIRM_DELETE=ezkey-online`; never releases static IPs |
 | [`status.sh`](../../scripts/lightsail/status.sh) | `get-instance` / `--list` → `get-instances` |
@@ -330,6 +330,10 @@ Scripts accept `LIGHTSAIL_SSH_HOST` when the Host alias differs from the `--targ
 
 Then open a **new** SSH session so the `docker` group applies.
 
+The same run installs the operator SSH drop-in (#1177). See **Operator SSH channel**.
+On a host that already has Docker it does not `dnf update`, and it does reload `sshd`
+after the order guard. Keep a control session open.
+
 ### 5. Image export path
 
 App compose stays under `experimental-hybrid/lightsail/`. Push images with the **existing** export script and a **declared** target (`--target community` → Host `ezkey-online`; no silent default — #812), then follow **Ordered path** steps 2–8 (Origin CA, DNS, `.env`, optional `--include-demo-acme`, clean-start, Pages).
@@ -346,6 +350,71 @@ Full Phase 0–3 detail: [`experimental-hybrid/DEPLOYMENT_PLAYBOOK.md`](../../ex
 ### 6. Origin CA / DNS / Pages (human OK)
 
 Covered in **Ordered path** steps 3–4 and 8. Do not automate production DNS or cert changes in `scripts/lightsail/`.
+
+---
+
+## Operator SSH channel (#1177)
+
+Hybrid PQ key exchange on the operator SSH channel; authentication still classical.
+Host and user keys stay on the algorithms already configured. The change is one drop-in.
+It does not require PQ: the classical `KexAlgorithms` list stays, in the same order, after
+the two hybrid names.
+
+Operators use Git Bash OpenSSH.
+
+Applied on ezkey.online on 2026-11-15. [`bootstrap-host.sh`](../../scripts/lightsail/bootstrap-host.sh)
+installs the same file on a new or rebuilt host so the channel does not regress.
+Re-running it is idempotent: the two hybrid names are prepended only when `sshd -T` does
+not already list them.
+
+`sshd` keeps the first `KexAlgorithms` value it reads. `sshd_config` includes
+`/etc/ssh/sshd_config.d/*.conf`, and `50-redhat.conf` pulls the crypto policy (`DEFAULT`).
+The file is named `40-pq-kex.conf` so it sorts first. The list is explicit (no `^`).
+
+### Prerequisites
+
+- A fresh Lightsail snapshot of the instance.
+- A validated recovery path: the Lightsail browser SSH console. Open it and confirm a
+  shell before changing `sshd`.
+- An open control SSH session. Leave it open until a new session is verified. The change
+  reloads `sshd` and never restarts it. Existing sessions survive a reload.
+
+### Sequence
+
+`./scripts/lightsail/bootstrap-host.sh --target community` does this after the Docker steps.
+What it runs on the host:
+
+1. Read `CUR` from `sshd -T` (`kexalgorithms`).
+2. Prepend `mlkem768x25519-sha256` and `sntrup761x25519-sha512@openssh.com` only if `CUR`
+   does not already contain them. Keep every classical name, in order.
+3. Write `/etc/ssh/sshd_config.d/40-pq-kex.conf` as `root:root` mode `0600`. On AL2023,
+   `restorecon` runs when that binary is present so the label matches the directory.
+4. `sshd -t`. If that fails, the script removes the drop-in, runs `sshd -t` again, and
+   stops. It does not reload.
+5. Order guard: `sshd -T` `kexalgorithms` must start with `mlkem` (the effective list must
+   start with `mlkem768x25519-sha256,sntrup761x25519-sha512@openssh.com` and still include
+   `curve25519-sha256`). Otherwise the script removes the drop-in, runs `sshd -t` again,
+   and stops. It does not reload.
+6. `systemctl reload sshd`. Never `restart`.
+
+### Client verification
+
+From a **new** session, with the control session still open. Operators use Git Bash OpenSSH.
+
+- Git Bash OpenSSH >= 10 negotiates `mlkem768x25519-sha256` (`ssh -v`; look for
+  `kex: algorithm:`).
+- Older clients, such as Windows OpenSSH 9.5, fall back to `curve25519-sha256`.
+
+### Rollback
+
+On the host, as root:
+
+```bash
+rm -f /etc/ssh/sshd_config.d/40-pq-kex.conf && sshd -t && systemctl reload sshd
+```
+
+`ec2-user` prefixes each command with `sudo`. From the control session and from a new
+session, `sshd -T` should show the classical list again.
 
 ---
 
@@ -381,7 +450,7 @@ After delete, static IP `ezkey-online-community` detaches and stays allocated (~
 - Creating the AWS instance from CI / cloud agents without credentials
 - Cloudflare DNS, Origin CA issuance, Pages project creation
 - Terraform / CloudFormation / ECR
-- ezkey-pam / host sshd MFA
+- ezkey-pam / host sshd MFA (the #1177 drop-in is key exchange only; authentication stays classical)
 
 ---
 

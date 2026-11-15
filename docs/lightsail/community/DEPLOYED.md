@@ -1,4 +1,4 @@
-﻿# Community deploy ledger (ezkey.online)
+# Community deploy ledger (ezkey.online)
 
 **Source of truth** for what is live on the **community** surface (deploy SHA / timing).
 Public product hostnames (served vs not served, DNS, expected `/` codes): see
@@ -35,13 +35,13 @@ Host OS hygiene lane: [`product-docs/global/hygiene/host-os/README.md`](../../..
 | Field | Value |
 |-------|-------|
 | **Blueprint / line** | Amazon Linux 2023 (`amazon_linux_2023`) |
-| **releasever (locked)** | _(record from first `os-patch-check` / H1)_ |
-| **Kernel (`uname -r`)** | _(record from first check)_ |
-| **Last H1 (security patch)** | never |
+| **releasever (locked)** | `2023.12.20261102` |
+| **Kernel (`uname -r`)** | `6.1.189` |
+| **Last H1 (security patch)** | 2026-11-02 |
 | **Last H2 (AL2023 minor + reboot)** | never |
 | **Last H3 (major / new instance)** | never |
-| **Last pre-intervention snapshot** | none (0 snapshots verified 2026-10-19; automatic snapshots off) |
-| **Host OS note** | Lane established 2026-10-19 (#909); no H1/H2 executed yet. |
+| **Last pre-intervention snapshot** | not named in this ledger (0 snapshots verified 2026-10-19, before this H1; automatic snapshots off) |
+| **Host OS note** | H1 done 2026-11-02: AL2023.12.20261102, kernel 6.1.189. 2026-11-15 #1177 applied: hybrid PQ key exchange on the operator SSH channel; authentication still classical. |
 
 ## Transport TLS (post-quantum key exchange)
 
@@ -60,7 +60,7 @@ Map: [`V-2026-09-15-post-quantum-crypto-posture`](../../../product-docs/global/v
 | **Cloudflare → origin (Cloudflare chooses)** | Not observable from outside. Cloudflare Automatic Key Exchange prefers X25519MLKEM768 toward origins that support it ([changelog 2026-07-21](https://developers.cloudflare.com/changelog/post/2026-07-21-automatic-origin-key-exchange/), [docs](https://developers.cloudflare.com/ssl/post-quantum-cryptography/pqc-to-origin/)). Documented behaviour + proven origin capability; not directly proven. |
 | **Caddy** | `v2.11.4`, image `caddy:2-alpine` (floating tag), digest `sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b`; community Caddyfile has no `curves` override (Caddy ≥ 2.10 defaults). |
 | **Not covered** | Local `docker-compose.with-proxy.yml` Caddy is plain HTTP (no TLS hop). Ezkey mobile and PIA/SDK client stacks decide their own hop. Admin SSH channel: see note. |
-| **Admin SSH note** | Operator SSH to the host negotiates classical `curve25519-sha256`: host `sshd` (OpenSSH 9.9p1, AL2023 crypto policy `DEFAULT`) does not offer `mlkem768x25519-sha256` / `sntrup761x25519-sha512`. Follow-up: #1177. |
+| **Admin SSH note** | 2026-11-15 #1177 applied. Hybrid PQ key exchange on the operator SSH channel; authentication still classical. Drop-in `/etc/ssh/sshd_config.d/40-pq-kex.conf` (`root:root` `0600`) on OpenSSH 9.9p1, crypto policy `DEFAULT`. `sshd -T` `kexalgorithms` starts with `mlkem768x25519-sha256`, then `sntrup761x25519-sha512@openssh.com`, then the previous classical list (including `curve25519-sha256`). Classic fallback stays. Rebuilds install the same file from `bootstrap-host.sh`. |
 
 ## Optional tag
 

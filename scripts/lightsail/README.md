@@ -2,7 +2,8 @@
 
 Self-contained AWS CLI helpers for **creating and bootstrapping** the Lightsail VM for the ezkey.online community host. Dry-run by default for create / ports / delete.
 
-**Owns:** instance create, firewall ports, Docker bootstrap, status, delete.  
+**Owns:** instance create, firewall ports, Docker bootstrap, the operator SSH key-exchange drop-in (#1177: hybrid PQ key exchange on the operator SSH channel; authentication still classical), status, delete.
+
 **Does not own:** Compose/Caddy/app images — reuse [`experimental-hybrid/lightsail/`](../../experimental-hybrid/lightsail/) and [`export-backend-images-to-lightsail.sh`](../../experimental-hybrid/scripts/export-backend-images-to-lightsail.sh) with **`--target community`** (or `LIGHTSAIL_SSH_HOST`). No silent SSH host default (#812). With **`EZKEY_ENABLE_JAVA_MELODY=true`**, that export script builds/ships `ezkey-javamelody-collector:<version>` and remote-up uses **`--no-build`** (Lightsail JM overlay is image-only). **`EZKEY_ENABLE_CONNECTOR_SMTP=true`** does the same for the SMTP delivery connector (#1206 step 7).
 
 **Runbook:** [`docs/lightsail/community-host.md`](../../docs/lightsail/community-host.md).

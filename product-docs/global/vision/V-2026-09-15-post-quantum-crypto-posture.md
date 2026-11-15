@@ -163,8 +163,11 @@ Consequences:
     Key Exchange), not directly proven.
   - Record: [`docs/lightsail/community/DEPLOYED.md`](../../../docs/lightsail/community/DEPLOYED.md)
     § Transport TLS. Re-probe: `scripts/lightsail/tls-pq-probe.sh`.
-- **Gap found by the probe session:** the operator SSH channel to the host (deploys, DB tunnel)
-  negotiates classical `curve25519-sha256`. Tracked in #1177.
+- **Operator SSH channel (#1177, applied 2026-11-15):** hybrid PQ key exchange on the
+  operator SSH channel; authentication still classical. Rebuilds install the same drop-in
+  via `scripts/lightsail/bootstrap-host.sh`. Record:
+  [`docs/lightsail/community/DEPLOYED.md`](../../../docs/lightsail/community/DEPLOYED.md)
+  § Admin SSH note.
 
 ## Decisions
 
