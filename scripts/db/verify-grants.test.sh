@@ -198,6 +198,8 @@ fail() {
 
 # Env assignments (KEY=value) then verify-grants.sh arguments.
 # Clears inherited Postgres credentials so the workstation environment cannot leak in.
+# Existing cases pass --no-env-file so a workstation ./.env cannot change them.
+# Pass --env-file (or --no-env-file) explicitly to opt out of that default.
 run_verify() {
   local out="$1"
   local err="$2"
@@ -207,6 +209,17 @@ run_verify() {
     env_kv+=("$1")
     shift
   done
+  local -a script_args=("$@")
+  local arg
+  local pin_no_env=1
+  for arg in "${script_args[@]}"; do
+    if [[ "${arg}" == "--env-file" || "${arg}" == "--no-env-file" ]]; then
+      pin_no_env=0
+    fi
+  done
+  if [[ "${pin_no_env}" -eq 1 ]]; then
+    script_args+=(--no-env-file)
+  fi
   set +e
   env -u PGHOST -u PGPORT -u PGDATABASE \
     -u PGUSER -u PGPASSWORD -u POSTGRES_USER -u POSTGRES_PASSWORD \
@@ -215,7 +228,7 @@ run_verify() {
     -u EZKEY_DB_CRYPTO_PASSWORD -u EZKEY_POSTGRES_CONTAINER \
     PATH="${BIN}:${PATH}" \
     "${env_kv[@]}" \
-    bash "${SCRIPT}" "$@" >"${out}" 2>"${err}"
+    bash "${SCRIPT}" "${script_args[@]}" >"${out}" 2>"${err}"
   local rc=$?
   set -e
   return "${rc}"
@@ -474,5 +487,123 @@ for secret in "${OWNER_PW}" "${MIGRATE_PW}" "${ADMIN_PW}" "${AUTH_PW}" "${INTEGR
   assert_file_lacks "${CASE_OUT}" "${secret}"
   assert_file_lacks "${CASE_ERR}" "${secret}"
 done
+
+echo "== env file is parsed literally and does not eval spaces, cron, or substitutions =="
+new_case env-file-literal
+ENV_DIR="${TMP}/env-file-literal"
+mkdir -p "${ENV_DIR}"
+SIDE="${ENV_DIR}/pwned"
+cat >"${ENV_DIR}/.env" <<EOF
+# comment
+export POSTGRES_USER="Ezkey Community"
+POSTGRES_PASSWORD='sek rit=with&meta;'
+DISPLAY_NAME=Ezkey Community
+SCHEDULE=*/20 * * * *
+PWNED=\$(touch ${SIDE})
+*/20 * * * * echo must-not-run
+EOF
+if ! run_verify "${CASE_OUT}" "${CASE_ERR}" \
+  FAKE_PSQL_LOG="${CASE_PSQL}" \
+  FAKE_DOCKER_LOG="${CASE_DOCKER}" \
+  --env-file "${ENV_DIR}/.env"; then
+  cat "${CASE_ERR}" >&2 || true
+  fail "literal env-file parse should pass catalog mode"
+fi
+assert_stdout_has "${CASE_OUT}" "Mode: catalog"
+assert_stdout_has "${CASE_OUT}" "All grant checks passed."
+assert_users_exact "${CASE_PSQL}" "USER=Ezkey Community"
+if ! grep -F -q -- "PW=sek rit=with&meta;" "${CASE_PSQL}"; then
+  fail "quoted password with spaces was not kept literal"
+fi
+if [[ -e "${SIDE}" ]]; then
+  fail "command substitution in the env file was executed"
+fi
+assert_file_lacks "${CASE_OUT}" "sek rit=with&meta;"
+assert_file_lacks "${CASE_ERR}" "sek rit=with&meta;"
+
+echo "== an env file value does not override a variable already set =="
+new_case env-file-env-wins
+if ! run_verify "${CASE_OUT}" "${CASE_ERR}" \
+  FAKE_PSQL_LOG="${CASE_PSQL}" \
+  FAKE_DOCKER_LOG="${CASE_DOCKER}" \
+  POSTGRES_USER="compose-owner" \
+  POSTGRES_PASSWORD="compose-sentinel-9f3a" \
+  --env-file "${ENV_DIR}/.env"; then
+  cat "${CASE_ERR}" >&2 || true
+  fail "pre-set credentials should win over the env file"
+fi
+assert_users_exact "${CASE_PSQL}" "USER=compose-owner"
+if ! grep -F -q -- "PW=compose-sentinel-9f3a" "${CASE_PSQL}"; then
+  fail "pre-set password was replaced by the env file"
+fi
+
+echo "== --no-env-file ignores ./.env =="
+new_case no-env-file
+if ! (
+  cd "${ENV_DIR}"
+  run_verify "${CASE_OUT}" "${CASE_ERR}" \
+    FAKE_PSQL_LOG="${CASE_PSQL}" \
+    FAKE_DOCKER_LOG="${CASE_DOCKER}" \
+    --no-env-file
+); then
+  cat "${CASE_ERR}" >&2 || true
+  fail "--no-env-file should ignore ./.env"
+fi
+assert_users_exact "${CASE_PSQL}" "USER=postgres"
+assert_file_lacks "${CASE_PSQL}" "Ezkey Community"
+
+echo "== ./.env is read when present and --no-env-file is not set =="
+new_case auto-env-file
+AUTO_OUT="${CASE_OUT}"
+AUTO_ERR="${CASE_ERR}"
+AUTO_PSQL="${CASE_PSQL}"
+if ! (
+  cd "${ENV_DIR}"
+  env -u PGHOST -u PGPORT -u PGDATABASE \
+    -u PGUSER -u PGPASSWORD -u POSTGRES_USER -u POSTGRES_PASSWORD \
+    -u EZKEY_DB_MIGRATE_PASSWORD -u EZKEY_DB_ADMIN_PASSWORD \
+    -u EZKEY_DB_AUTH_PASSWORD -u EZKEY_DB_INTEGRATION_PASSWORD \
+    -u EZKEY_DB_CRYPTO_PASSWORD -u EZKEY_POSTGRES_CONTAINER \
+    FAKE_PSQL_LOG="${AUTO_PSQL}" \
+    PATH="${BIN}:${PATH}" \
+    bash "${SCRIPT}" >"${AUTO_OUT}" 2>"${AUTO_ERR}"
+); then
+  cat "${AUTO_ERR}" >&2 || true
+  fail "auto-load of ./.env should pass"
+fi
+assert_stdout_has "${AUTO_OUT}" "Mode: catalog"
+assert_users_exact "${AUTO_PSQL}" "USER=Ezkey Community"
+if [[ -e "${SIDE}" ]]; then
+  fail "auto-load executed a command substitution"
+fi
+
+echo "== docker container name can come from the env file =="
+new_case env-file-container
+cat >"${ENV_DIR}/docker.env" <<'EOF'
+POSTGRES_USER=compose-owner
+POSTGRES_PASSWORD=compose-sentinel-9f3a
+EZKEY_POSTGRES_CONTAINER=ezkey-exp-postgres
+EZKEY_DB_MIGRATE_PASSWORD=migrate-sentinel-9f3a
+EZKEY_DB_ADMIN_PASSWORD=admin-sentinel-9f3a
+EZKEY_DB_AUTH_PASSWORD=auth-sentinel-9f3a
+EZKEY_DB_INTEGRATION_PASSWORD=integration-sentinel-9f3a
+EZKEY_DB_CRYPTO_PASSWORD=sek rit=with&meta;
+EOF
+if ! run_verify "${CASE_OUT}" "${CASE_ERR}" \
+  FAKE_PSQL_LOG="${CASE_PSQL}" \
+  FAKE_DOCKER_LOG="${CASE_DOCKER}" \
+  --env-file "${ENV_DIR}/docker.env" \
+  --docker; then
+  cat "${CASE_ERR}" >&2 || true
+  cat "${CASE_DOCKER}" >&2 || true
+  fail "env-file docker mode should pass"
+fi
+assert_stdout_has "${CASE_OUT}" "Mode: role-login"
+if ! grep -F -q -- "ezkey-exp-postgres" "${CASE_DOCKER}"; then
+  fail "EZKEY_POSTGRES_CONTAINER from the env file was not passed to docker exec"
+fi
+assert_docker_name_only "${CASE_DOCKER}" \
+  "compose-sentinel-9f3a" "migrate-sentinel-9f3a" "admin-sentinel-9f3a" \
+  "auth-sentinel-9f3a" "integration-sentinel-9f3a" "sek rit=with&meta;"
 
 echo "verify-grants credential and catalog locks passed."
