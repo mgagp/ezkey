@@ -18,5 +18,6 @@ package org.ezkey.audit.integrity;
 public enum ScheduledJobKey {
   AUDIT_CHAIN_CHECKPOINT,
   NIGHTLY_INTEGRITY_VALIDATION,
-  REENCRYPTION
+  REENCRYPTION,
+  PARTITION_CREATION
 }

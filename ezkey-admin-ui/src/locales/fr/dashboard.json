@@ -84,6 +84,9 @@
     "lastRun": "Dernière exécution",
     "scope": "Périmètre",
     "error": "Erreur",
+    "partitionScope": "Périmètre : {{from}} à {{to}} (mois courant + {{monthsAhead}})",
+    "partitionFailed": "Périmètre : {{from}} à {{to}} (mois courant + {{monthsAhead}}) · {{failed}} tables sur {{targets}} non créées",
+    "viewAlert": "Voir l'alerte →",
     "neverRun": "Jamais exécuté",
     "quietInactive": "Inactif",
     "status": {
@@ -94,7 +97,8 @@
     "jobs": {
       "AUDIT_CHAIN_CHECKPOINT": "Point de contrôle chaîne d'audit",
       "NIGHTLY_INTEGRITY_VALIDATION": "Validation d'intégrité nocturne",
-      "REENCRYPTION": "Re-chiffrement"
+      "REENCRYPTION": "Re-chiffrement",
+      "PARTITION_CREATION": "Partitions mensuelles"
     },
     "links": {
       "integrityPanel": "Ouvrir Intégrité →",

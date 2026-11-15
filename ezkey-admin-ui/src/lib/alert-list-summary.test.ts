@@ -80,6 +80,23 @@ describe('resolveAlertListSummary', () => {
     });
   });
 
+  it('summarizes PARTITION_CREATION_FAILED from the horizon payload', () => {
+    const result = resolveAlertListSummary(
+      'PARTITION_CREATION_FAILED',
+      JSON.stringify({
+        monthsAhead: 3,
+        from: '2026-11',
+        to: '2027-02',
+        failedTargets: 8,
+        error: 'PSQLException',
+      }),
+    );
+    expect(result).toEqual({
+      templateKey: 'list.summary.partitionCreationFailed',
+      params: { from: '2026-11', to: '2027-02', failedTargets: 8 },
+    });
+  });
+
   it('returns unavailable when payload JSON is invalid', () => {
     expect(
       resolveAlertListSummary('AUDIT_CHAIN_GAP_PENDING', '{not-json'),

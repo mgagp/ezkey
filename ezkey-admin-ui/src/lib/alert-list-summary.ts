@@ -4,6 +4,7 @@ export type AlertListSummaryTemplateKey =
   | 'list.summary.gapPending'
   | 'list.summary.heartbeatStale'
   | 'list.summary.integrityRupture'
+  | 'list.summary.partitionCreationFailed'
   | 'list.summary.unavailable';
 
 export interface AlertListSummary {
@@ -113,6 +114,23 @@ function resolveChainViolationCount(payload: AuditIntegrityRupturePayload): numb
   return payload.chainViolations?.totalCount ?? payload.violationCount ?? 0;
 }
 
+interface PartitionCreationPayload {
+  from?: string;
+  to?: string;
+  failedTargets?: number;
+}
+
+function asPartitionPayload(value: unknown): PartitionCreationPayload | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+  return {
+    from: typeof value.from === 'string' ? value.from : undefined,
+    to: typeof value.to === 'string' ? value.to : undefined,
+    failedTargets: readNumber(value.failedTargets),
+  };
+}
+
 /**
  * Derives a type-specific one-line summary from alert payload JSON for the list view.
  */
@@ -165,6 +183,21 @@ export function resolveAlertListSummary(
           entryCount: resolveEntryViolationCount(rupture),
           chainCount: resolveChainViolationCount(rupture),
           gapCount: rupture.undeclaredGapCount ?? 0,
+        },
+      };
+    }
+    return { templateKey: 'list.summary.unavailable', params: {} };
+  }
+
+  if (alertType === 'PARTITION_CREATION_FAILED') {
+    const partition = asPartitionPayload(parsed);
+    if (partition?.from && partition.to && partition.failedTargets != null) {
+      return {
+        templateKey: 'list.summary.partitionCreationFailed',
+        params: {
+          from: partition.from,
+          to: partition.to,
+          failedTargets: partition.failedTargets,
         },
       };
     }

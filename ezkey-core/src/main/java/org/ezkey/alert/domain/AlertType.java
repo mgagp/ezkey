@@ -48,5 +48,11 @@ public enum AlertType {
    * Payload is the enrollment id only. Resolved manually by a Global Admin; there is no automatic
    * resolution.
    */
-  AUTH_ATTEMPT_REJECTED
+  AUTH_ATTEMPT_REJECTED,
+
+  /**
+   * Monthly partition creation for {@code ezkey_auth_attempt} or {@code ezkey_audit_log} failed.
+   * One open alert for the instance. Resolved when a later run creates the horizon.
+   */
+  PARTITION_CREATION_FAILED
 }

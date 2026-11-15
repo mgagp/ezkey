@@ -235,6 +235,9 @@ export default function AlertsPage() {
               <option value="AUDIT_INTEGRITY_RUPTURE">
                 {t('alerts:type.AUDIT_INTEGRITY_RUPTURE')}
               </option>
+              <option value="PARTITION_CREATION_FAILED">
+                {t('alerts:type.PARTITION_CREATION_FAILED')}
+              </option>
             </Select>
           </div>
           <Button

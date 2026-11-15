@@ -15,6 +15,7 @@ re-using the immutable audit chain as an alert queue.
 - Alerts are **auto-resolved** by their natural resolution path. For example, `AUDIT_CHAIN_GAP_PENDING`
   resolves via gap declaration (`POST /api/v1/audit-logs/lifecycle/declare-gap`, reason **`GAP_DECLARED`**),
   and `AUDIT_CHAIN_HEARTBEAT_STALE` resolves automatically when checkpoints advance again (reason **`HEARTBEAT_RESTORED`**).
+  `PARTITION_CREATION_FAILED` resolves on the next clean partition run (reason **`PARTITION_HORIZON_RESTORED`**).
 - Alert lifecycle actions emit audit log entries (`ALERT_RAISED` on first creation, `ALERT_RESOLVED`
   on resolution) so the audit chain still records what happened — but the alert itself is **not** an
   audit row.
@@ -47,6 +48,16 @@ Producers include **automated lifecycle checks** (`AuditChainScheduler`) and **c
 | `AUDIT_CHAIN_HEARTBEAT_STALE` | `AuditChainHeartbeatGuardService` observes peripheral-ready fail-closing because Admin API checkpoints stalled past grace semantics | Stable singleton **`AUDIT_CHAIN_HEARTBEAT_STALE`** (see [`AuditChainHeartbeatGuardService`](../ezkey-core/src/main/java/org/ezkey/audit/integrity/AuditChainHeartbeatGuardService.java)) | `WARNING` | A fresh advancing checkpoint restores heartbeat; subsystem auto-resolves with reason `HEARTBEAT_RESTORED`. Operators subsequently close **`RECOVERED_PENDING_DECLARATION`** incidents via lifecycle APIs. |
 | `AUDIT_INTEGRITY_RUPTURE` | `RetroactiveIntegrityValidationService` (nightly scheduler or operator `POST …/integrity-validation/run`) detects per-entry HMAC or checkpoint chain rupture | Incident fingerprint via `IntegrityRuptureIncidentFingerprint` (not raw `windowStart` epoch) | `CRITICAL` | Global Admin reconciles via `POST /api/v1/audit-logs/lifecycle/reconcile-integrity-rupture` (reason **`INTEGRITY_RUPTURE_CONCILIATED`**). Blocked while `AUDIT_CHAIN_HEARTBEAT_STALE` is OPEN. |
 | `AUTH_ATTEMPT_REJECTED` | Device deny after a valid signature (`AuthAttemptRespondService`, conditional update returns 1 and status becomes `REJECTED`), and a challenge-mismatch `INVALID` (`AuthAttemptTxHelper.markAsInvalid` when the conditional update returns 1). Same dedupe key for both. Raised after the status transaction commits; a failure to record the alert does not roll the status back. Supersession and cancel do not raise it: they write `EXPIRED` only from `PENDING` or `READ`, so a superseded or cancelled attempt never carries a counted status and never arms this alert. | `AUTH_ATTEMPT_REJECTED:<enrollmentId>` | `WARNING` | Manual (`MANUAL`). No automatic resolution. Payload is `{"enrollmentId":N}` only. No challenge digits. |
+| `PARTITION_CREATION_FAILED` | `PartitionSchedulerService` (Admin API startup and the daily job) could not create or verify the monthly partition horizon for `ezkey_auth_attempt` and `ezkey_audit_log` | Stable singleton **`PARTITION_CREATION_FAILED`** | `CRITICAL` | The next clean run of the same horizon resolves it with reason `PARTITION_HORIZON_RESTORED`. |
+
+`PARTITION_CREATION_FAILED` payload (JSON string): `monthsAhead`, `from`, `to` (`yyyy-MM`), `failedTargets`, `error` (root exception class name only). The last-run row `PARTITION_CREATION` stores the same class name in `last_error_summary`. The dashboard does not show that class name: it reads `partitionHorizon` (`from`, `to`, `monthsAhead`, `failedTargets`, `targets`) parsed from the scope string.
+
+Operator copy for this alert (#1352):
+
+- C1: the detail page replaces the raw payload with the months, the not-created count, the exception class, and a short guidance paragraph. Reason: an operator should not have to read JSON (#1352). The guidance names only `ezkey_auth_attempt` and `ezkey_audit_log`, and says Ezkey retries at Admin API startup and every day. From the first month with no table, new sign-ins fail (`AuthAttemptService` does not catch the insert) and audit events for that period are not recorded (`AuditLogService` catches the insert and the entry is lost).
+- C2: the dashboard row shows “Scope: {from} to {to} (current month + {monthsAhead}) · {failed} of {targets} not created” and “View alert →”. Reason: the stored scope string and `PSQLException` are not an operator surface. The counts come from `partitionHorizon`, not from the alert payload (the payload has no target total) (#1352).
+- C3: the list summary is “{from} to {to} · {failedTargets} monthly table(s) not created”. Reason: “partition target” is an implementation word (#1352).
+- C4: the closure reason is “Monthly tables created (next run succeeded)”. Reason: the next fully successful run is what resolves the alert. A resolved alert with no admin id shows “Automatic” (#1352).
 
 `AUDIT_CHAIN_GAP_PENDING` payload (JSON string): `anchorCheckpointId`, `gapStart`, `estimatedGapEnd`, `estimatedGapMinutes`, `message`.
 

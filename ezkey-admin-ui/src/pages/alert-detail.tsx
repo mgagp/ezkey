@@ -125,6 +125,43 @@ function isAuditIntegrityRupturePayload(value: unknown): value is AuditIntegrity
   return typeof value === 'object' && value !== null;
 }
 
+interface PartitionCreationPayload {
+  from?: string;
+  to?: string;
+  failedTargets?: number;
+  error?: string;
+}
+
+function isPartitionCreationPayload(value: unknown): value is PartitionCreationPayload {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const record = value as PartitionCreationPayload;
+  return typeof record.from === 'string' && typeof record.to === 'string';
+}
+
+function PartitionCreationPayloadView({ payload }: { payload: PartitionCreationPayload }) {
+  const { t } = useTranslation(['alerts']);
+  return (
+    <div className="space-y-3">
+      <p className="text-sm font-medium text-fg">
+        {t('alerts:detail.partitionCreation.summary', {
+          from: payload.from,
+          to: payload.to,
+          failedTargets: payload.failedTargets ?? '—',
+          error: payload.error ?? '—',
+        })}
+      </p>
+      <p className="text-sm text-fg">
+        {t('alerts:detail.partitionCreation.guidance', {
+          from: payload.from,
+          to: payload.to,
+        })}
+      </p>
+    </div>
+  );
+}
+
 function AuditChainGapPayloadView({ payload }: { payload: AuditChainGapPayload }) {
   const { t } = useTranslation(['alerts']);
   return (
@@ -495,6 +532,8 @@ export default function AlertDetailPage() {
   const parsedPayload = useMemo(() => parsePayload(alert?.payload), [alert?.payload]);
   const isGapAlert = alert?.alertType === 'AUDIT_CHAIN_GAP_PENDING';
   const isIntegrityRuptureAlert = alert?.alertType === 'AUDIT_INTEGRITY_RUPTURE';
+  const isPartitionAlert = alert?.alertType === 'PARTITION_CREATION_FAILED';
+  const partitionPayload = isPartitionCreationPayload(parsedPayload) ? parsedPayload : null;
 
   const rupturePayload = useMemo(() => {
     if (!isIntegrityRuptureAlert || !isAuditIntegrityRupturePayload(parsedPayload)) {
@@ -594,9 +633,13 @@ export default function AlertDetailPage() {
                     </span>
                   </InfoRow>
                   <InfoRow label={t('alerts:detail.labelResolvedBy')}>
-                    <span className="font-mono text-xs">
-                      {alert.resolvedByAdminId != null ? `#${alert.resolvedByAdminId}` : '—'}
-                    </span>
+                    {alert.resolvedByAdminId != null ? (
+                      <span className="font-mono text-xs">#{alert.resolvedByAdminId}</span>
+                    ) : alert.status === 'RESOLVED' ? (
+                      <span className="text-xs">{t('alerts:detail.resolvedByAutomatic')}</span>
+                    ) : (
+                      <span className="text-xs">—</span>
+                    )}
                   </InfoRow>
                   <InfoRow label={t('alerts:detail.labelResolutionReason')}>
                     <span className="text-xs">
@@ -628,7 +671,11 @@ export default function AlertDetailPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>{t('alerts:detail.cardPayload')}</CardTitle>
+              <CardTitle>
+                {isPartitionAlert
+                  ? t('alerts:detail.cardWhatHappened')
+                  : t('alerts:detail.cardPayload')}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {!alert.payload && (
@@ -648,9 +695,13 @@ export default function AlertDetailPage() {
                   alertId={id}
                 />
               )}
+              {alert.payload && isPartitionAlert && partitionPayload && (
+                <PartitionCreationPayloadView payload={partitionPayload} />
+              )}
               {alert.payload
                 && (!isGapAlert || !isAuditChainGapPayload(parsedPayload))
-                && (!isIntegrityRuptureAlert || !isAuditIntegrityRupturePayload(parsedPayload)) && (
+                && (!isIntegrityRuptureAlert || !isAuditIntegrityRupturePayload(parsedPayload))
+                && !(isPartitionAlert && partitionPayload) && (
                 <div className="border-2 border-fg/10 bg-bg p-3 overflow-x-auto">
                   <pre className="text-xs font-mono whitespace-pre-wrap break-all">
                     {alert.payload}
