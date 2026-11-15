@@ -46,11 +46,8 @@ class RateLimitFilterRespondTest {
 
   private RateLimitFilter filter;
 
-  private ObjectMapper objectMapper;
-
   @BeforeEach
   void setUp() {
-    objectMapper = new ObjectMapper();
     properties = new RateLimitProperties();
     properties.setEnabled(true);
     // Respond: 1 request per 5 min after ownership; filter uses fail-IP (#912 C1)
@@ -64,11 +61,7 @@ class RateLimitFilterRespondTest {
     AuthRespondRateLimitService respondRateLimits = new AuthRespondRateLimitService(properties);
     filter =
         new RateLimitFilter(
-            properties,
-            new org.ezkey.auth.config.TrustedProxyProperties(),
-            objectMapper,
-            null,
-            respondRateLimits);
+            properties, new TrustedProxyProperties(), null, respondRateLimits, null);
   }
 
   @Test
@@ -125,11 +118,7 @@ class RateLimitFilterRespondTest {
     AuthRespondRateLimitService respondRateLimits = new AuthRespondRateLimitService(properties);
     filter =
         new RateLimitFilter(
-            properties,
-            new org.ezkey.auth.config.TrustedProxyProperties(),
-            objectMapper,
-            null,
-            respondRateLimits);
+            properties, new TrustedProxyProperties(), null, respondRateLimits, null);
 
     MockHttpServletRequest request1 = respondRequest(111, "sig1", true);
     MockHttpServletRequest request2 = respondRequest(222, "sig2", true);
@@ -179,10 +168,10 @@ class RateLimitFilterRespondTest {
     filter =
         new RateLimitFilter(
             properties,
-            new org.ezkey.auth.config.TrustedProxyProperties(),
-            objectMapper,
+            new TrustedProxyProperties(),
             null,
-            new AuthRespondRateLimitService(properties));
+            new AuthRespondRateLimitService(properties),
+            null);
 
     MockHttpServletRequest request = new MockHttpServletRequest("POST", RESPOND_PATH);
     request.setContentType("application/json");

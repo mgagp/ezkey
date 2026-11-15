@@ -784,7 +784,7 @@ API attempt expires server-side (`ezkey.core.auth-attempt.ttl-seconds` **120**).
 | `wait_polling` | sample `config/pam_ezkey.conf` `wait_polling=2` | Server-side cadence | Sample conf present (proven) |
 | Server attempt TTL | request `ttlSeconds`; response **`timeoutSeconds`** (PR-A #898) | Align down on applied ∈ `[1, planned]`; ignore grow / 0 / null | `applied_shrink` → applied; `applied_grow` 120 vs ask 45 → stay 45; `applied_zero` / `applied_null` → conf wait; legacy + reject/timeout (proven) |
 | `LoginGraceTime` | `sshd_config:20` → **120** (runbook ≥120) | sshd cuts session | Budget 105 documented; Enter-never-pressed → cut **without** attempt line (documented, not lab-proven) |
-| Auth `/pending` | `ezkey.rate-limit.pending` **10/min** | Device polling | Runbook note (Lightsail) |
+| Auth `/pending` | `ezkey.rate-limit.pending` **10/min after proof** | Device polling | Runbook note (Lightsail); unproven calls use the IP ceiling |
 
 ### `/wait` response signature — deferred ([#858](https://github.com/mgagp/ezkey/issues/858))
 

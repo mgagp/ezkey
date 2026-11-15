@@ -11,6 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -48,6 +49,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.ObjectProvider;
@@ -193,8 +195,33 @@ class AuthAttemptRespondServiceTest {
             assertThat(((AuthRespondRateLimitExceededException) ex).getRetryAfterSeconds())
                 .isEqualTo(300L));
     verify(limiter).tryConsumeAfterOwnership(42);
+    verify(limiter, never()).refundFailIpAfterOwnership(any());
     verify(authAttemptRepository, never()).updateStatusIfCurrent(any(), any(), any(), any());
     verify(signatureService, never()).signIntegrationPayload(any(), any());
+  }
+
+  @Test
+  @DisplayName("#918: valid signature refunds the IP ceiling before the per-id debit")
+  void respond_validSignature_refundsFailIpBeforeOwnershipDebit() {
+    AuthAttempt attempt = readAttempt();
+    Enrollment enrollment = enrollmentWithKeys();
+    AuthRespondOwnershipRateLimiter limiter = mock(AuthRespondOwnershipRateLimiter.class);
+    when(ownershipRateLimiter.getIfAvailable()).thenReturn(limiter);
+    when(limiter.tryConsumeAfterOwnership(42)).thenReturn(OptionalLong.of(300L));
+
+    when(authAttemptRepository.findById(42)).thenReturn(Optional.of(attempt));
+    when(enrollmentRepository.findById(7)).thenReturn(Optional.of(enrollment));
+    when(authAttemptRepository.findNewerAttemptByEnrollmentId(any(), any()))
+        .thenReturn(Optional.empty());
+    when(signatureService.validateSignature(any(), any(), eq(DEVICE_PUBLIC_KEY))).thenReturn(true);
+
+    ClientContext clientContext = new ClientContext("203.0.113.10", "EzkeyTestAgent/1.0");
+    assertThatThrownBy(() -> respondService.respond(approveRequest(), clientContext))
+        .isInstanceOf(AuthRespondRateLimitExceededException.class);
+
+    InOrder order = inOrder(limiter);
+    order.verify(limiter).refundFailIpAfterOwnership("203.0.113.10");
+    order.verify(limiter).tryConsumeAfterOwnership(42);
   }
 
   @Test

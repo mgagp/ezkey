@@ -14,6 +14,8 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.OffsetDateTime;
+import java.util.OptionalLong;
+import org.ezkey.audit.util.ClientContext;
 import org.ezkey.authattempt.domain.AuthAttemptPendingRequest;
 import org.ezkey.authattempt.domain.AuthAttemptPendingResponse;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
@@ -24,10 +26,12 @@ import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.NoPendingAuthAttemptException;
 import org.ezkey.exception.auth.AuthAttemptRequestFailedException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
+import org.ezkey.exception.auth.AuthPendingRateLimitExceededException;
 import org.ezkey.security.SensitiveDataHasher;
 import org.ezkey.signature.SignatureService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -76,6 +80,7 @@ public class AuthAttemptPendingService {
   private final AuthAttemptRepository authAttemptRepository;
   private final EnrollmentRepository enrollmentRepository;
   private final SignatureService signatureService;
+  private final ObjectProvider<AuthPendingOwnershipRateLimiter> ownershipRateLimiter;
 
   /**
    * Constructs the pending service with required dependencies.
@@ -83,14 +88,18 @@ public class AuthAttemptPendingService {
    * @param authAttemptRepository the JPA repository for authentication attempts
    * @param enrollmentRepository the JPA repository for enrollments
    * @param signatureService the signature service for cryptographic operations
+   * @param ownershipRateLimiter optional post-ownership per-enrollment budget (#1124); empty when
+   *     rate limiting is disabled
    */
   public AuthAttemptPendingService(
       AuthAttemptRepository authAttemptRepository,
       EnrollmentRepository enrollmentRepository,
-      SignatureService signatureService) {
+      SignatureService signatureService,
+      ObjectProvider<AuthPendingOwnershipRateLimiter> ownershipRateLimiter) {
     this.authAttemptRepository = authAttemptRepository;
     this.enrollmentRepository = enrollmentRepository;
     this.signatureService = signatureService;
+    this.ownershipRateLimiter = ownershipRateLimiter;
   }
 
   /**
@@ -111,17 +120,77 @@ public class AuthAttemptPendingService {
    * @throws NoPendingAuthAttemptException if no pending authentication attempt is found
    */
   public AuthAttemptPendingResponse pending(final AuthAttemptPendingRequest request) {
-    // Step 1: Validate enrollment
+    return pending(request, null);
+  }
+
+  /**
+   * Same as {@link #pending(AuthAttemptPendingRequest)} with the client IP used to refund the
+   * unproven IP ceiling once ownership is proven (#1124, #918).
+   *
+   * @param request the pending request with enrollment proof token
+   * @param clientContext optional resolved client IP; null skips the IP refund
+   * @return the pending authentication response with proof token
+   * @throws AuthAttemptRequestFailedException if enrollment proof token is invalid
+   * @throws AuthAttemptStateConflictException if the authentication attempt is already processed
+   * @throws NoPendingAuthAttemptException if no pending authentication attempt is found
+   * @throws AuthPendingRateLimitExceededException if the post-ownership enrollment budget is
+   *     exhausted
+   */
+  public AuthAttemptPendingResponse pending(
+      final AuthAttemptPendingRequest request, final ClientContext clientContext) {
+    // Step 1: Validate enrollment (proof token, not the raw body id)
     Enrollment enrollment = validateEnrollment(request);
 
     // Step 2: Validate device signature
     validateDeviceSignature(request, enrollment);
+
+    // Step 2b: proven poll does not keep the IP-ceiling token (#918)
+    refundFailIpAfterOwnership(clientContext);
+
+    // Step 2c: per-enrollment budget only after proof + signature, keyed by the validated
+    // enrollment (#1124)
+    consumeOwnershipRateLimit(enrollment.getEnrollmentId());
 
     // Step 3: Claim the pending attempt
     AuthAttempt authAttempt = claimPendingAttempt(request);
 
     // Step 4: Build and return response
     return buildPendingResponse(authAttempt, enrollment);
+  }
+
+  /**
+   * Returns the filter's IP-ceiling token after enrollment proof and device signature (#918).
+   *
+   * @param clientContext optional client IP; null skips the refund
+   */
+  private void refundFailIpAfterOwnership(ClientContext clientContext) {
+    if (clientContext == null
+        || clientContext.clientIp() == null
+        || clientContext.clientIp().isBlank()) {
+      return;
+    }
+    AuthPendingOwnershipRateLimiter limiter = ownershipRateLimiter.getIfAvailable();
+    if (limiter == null) {
+      return;
+    }
+    limiter.refundFailIpAfterOwnership(clientContext.clientIp());
+  }
+
+  /**
+   * Debits the optional post-ownership per-enrollment pending budget (#1124).
+   *
+   * @param enrollmentId id of the enrollment located by proof-token hash
+   * @throws AuthPendingRateLimitExceededException when the budget is exhausted
+   */
+  private void consumeOwnershipRateLimit(Integer enrollmentId) {
+    AuthPendingOwnershipRateLimiter limiter = ownershipRateLimiter.getIfAvailable();
+    if (limiter == null) {
+      return;
+    }
+    OptionalLong retryAfter = limiter.tryConsumeAfterOwnership(enrollmentId);
+    if (retryAfter.isPresent()) {
+      throw new AuthPendingRateLimitExceededException(retryAfter.getAsLong());
+    }
   }
 
   /**

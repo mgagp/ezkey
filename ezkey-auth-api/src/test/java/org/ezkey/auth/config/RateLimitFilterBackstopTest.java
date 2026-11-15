@@ -27,7 +27,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-import tools.jackson.databind.ObjectMapper;
 
 /**
  * Filter-chain coverage of the process-wide backstop: rotating client IPs still hit one unkeyed
@@ -65,9 +64,7 @@ class RateLimitFilterBackstopTest {
     properties.getBackstop().getBind().setRequests(2);
     properties.getBackstop().getBind().setWindowMinutes(5);
     meterRegistry = new SimpleMeterRegistry();
-    filter =
-        new RateLimitFilter(
-            properties, new TrustedProxyProperties(), new ObjectMapper(), meterRegistry);
+    filter = new RateLimitFilter(properties, new TrustedProxyProperties(), meterRegistry);
   }
 
   @Test
@@ -78,9 +75,7 @@ class RateLimitFilterBackstopTest {
     // Old shared cap: two successful verifies would have filled it and blocked the next IP.
     properties.getBackstop().getVerify().setRequests(2);
     properties.getBackstop().getVerify().setWindowMinutes(5);
-    filter =
-        new RateLimitFilter(
-            properties, new TrustedProxyProperties(), new ObjectMapper(), meterRegistry);
+    filter = new RateLimitFilter(properties, new TrustedProxyProperties(), meterRegistry);
 
     assertThat(postFromIp(VERIFY_PATH, "198.51.100.1").getStatus()).isEqualTo(200);
     assertThat(postFromIp(VERIFY_PATH, "198.51.100.1").getStatus()).isEqualTo(200);
@@ -117,9 +112,7 @@ class RateLimitFilterBackstopTest {
   void verifyTraffic_doesNotBlockPendingOrAnotherIp() throws Exception {
     properties.getVerify().setRequests(5);
     properties.getBackstop().getVerify().setRequests(3);
-    filter =
-        new RateLimitFilter(
-            properties, new TrustedProxyProperties(), new ObjectMapper(), meterRegistry);
+    filter = new RateLimitFilter(properties, new TrustedProxyProperties(), meterRegistry);
 
     assertThat(postFromIp(VERIFY_PATH, "192.0.2.1").getStatus()).isEqualTo(200);
     assertThat(postFromIp(VERIFY_PATH, "192.0.2.2").getStatus()).isEqualTo(200);
@@ -141,9 +134,7 @@ class RateLimitFilterBackstopTest {
   @DisplayName("Disabled backstop lets rotating IPs through when keyed budgets allow")
   void disabledBackstop_allowsRotatingIps() throws Exception {
     properties.getBackstop().setEnabled(false);
-    filter =
-        new RateLimitFilter(
-            properties, new TrustedProxyProperties(), new ObjectMapper(), meterRegistry);
+    filter = new RateLimitFilter(properties, new TrustedProxyProperties(), meterRegistry);
 
     for (int i = 1; i <= 4; i++) {
       assertThat(postFromIp(VERIFY_PATH, "198.51.100." + i).getStatus()).isEqualTo(200);

@@ -53,9 +53,11 @@ public class RateLimitProperties {
 
   /**
    * Rate limiting configuration for pending authentication endpoint. Controls how often mobile
-   * devices can check for pending authentication requests.
+   * devices can check for pending authentication requests. With {@code enrollment-id}, {@link
+   * #requests} applies only after proof; {@link EndpointConfig#getFailIpRequests()} is the unproven
+   * IP ceiling (#1124).
    */
-  private EndpointConfig pending = new EndpointConfig();
+  private EndpointConfig pending = defaultPendingConfig();
 
   /**
    * Rate limiting configuration for enrollment verification endpoint. Controls how often devices
@@ -82,6 +84,18 @@ public class RateLimitProperties {
    */
   private BackstopConfig backstop = new BackstopConfig();
 
+  private static EndpointConfig defaultPendingConfig() {
+    EndpointConfig config = new EndpointConfig();
+    config.setRequests(10);
+    config.setWindowMinutes(1);
+    config.setKeyStrategy("client-ip");
+    // Unproven pending flood ceiling. Higher than respond: one /64 may be a household, and proven
+    // polls refund this token (#1124, #918).
+    config.setFailIpRequests(60);
+    config.setFailIpWindowMinutes(1);
+    return config;
+  }
+
   private static EndpointConfig defaultRespondConfig() {
     EndpointConfig config = new EndpointConfig();
     config.setRequests(1);
@@ -104,19 +118,26 @@ public class RateLimitProperties {
      * "auth-attempt-id" (respond endpoint only). Default: "client-ip"
      *
      * <p>For respond + {@code auth-attempt-id}: the filter applies the {@link #failIpRequests} /
-     * {@link #failIpWindowMinutes} IP ceiling only. The per-{@code authAttemptId} budget ({@link
-     * #requests} / {@link #windowMinutes}) is consumed <em>after</em> a valid device signature
-     * (#912 C1).
+     * {@link #failIpWindowMinutes} IP ceiling on the way in. That token is refunded after a valid
+     * device signature, so proven calls do not fill the ceiling (#918). The per-{@code
+     * authAttemptId} budget ({@link #requests} / {@link #windowMinutes}) is consumed only after
+     * that signature (#912 C1). The attempt id is never taken from an unproven body.
+     *
+     * <p>For pending + {@code enrollment-id}: the filter applies the same IP ceiling and does not
+     * read {@code enrollmentId} from the body. {@link #requests} / {@link #windowMinutes} are
+     * consumed only after a valid enrollment proof token and device signature, keyed by the
+     * enrollment located from the proof token (#1124).
      */
     private String keyStrategy = "client-ip";
 
     /**
-     * Respond-only: max respond requests per client IP in the window (every respond, not
-     * failures-only). Default: 30.
+     * IP ceiling for pending ({@code enrollment-id}) and respond ({@code auth-attempt-id}). The
+     * filter consumes one token per request; a proven call refunds it. Default: 30 (respond).
+     * Pending's own default is 60.
      */
     private int failIpRequests = 30;
 
-    /** Respond-only: IP-ceiling window in minutes. Default: 1. */
+    /** IP-ceiling window in minutes for pending and respond. Default: 1. */
     private int failIpWindowMinutes = 1;
 
     // Getters and Setters for EndpointConfig

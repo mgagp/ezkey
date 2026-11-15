@@ -198,7 +198,7 @@ class AuthAttemptControllerTest {
     // Arrange
     when(authAttemptMapper.toAuthAttemptPendingRequest(any(AuthAttemptPendingRequestDto.class)))
         .thenReturn(pendingRequest);
-    when(authAttemptService.pending(any(AuthAttemptPendingRequest.class)))
+    when(authAttemptService.pending(any(AuthAttemptPendingRequest.class), any()))
         .thenReturn(pendingResponse);
     when(authAttemptMapper.toAuthAttemptPendingResponseDto(pendingResponse))
         .thenReturn(pendingResponseDto);
@@ -213,7 +213,7 @@ class AuthAttemptControllerTest {
     // Verify service interactions
     verify(authAttemptMapper, times(1))
         .toAuthAttemptPendingRequest(any(AuthAttemptPendingRequestDto.class));
-    verify(authAttemptService, times(1)).pending(any(AuthAttemptPendingRequest.class));
+    verify(authAttemptService, times(1)).pending(any(AuthAttemptPendingRequest.class), any());
     verify(authAttemptMapper, times(1)).toAuthAttemptPendingResponseDto(pendingResponse);
   }
 
@@ -223,7 +223,7 @@ class AuthAttemptControllerTest {
     // Arrange
     when(authAttemptMapper.toAuthAttemptPendingRequest(any(AuthAttemptPendingRequestDto.class)))
         .thenReturn(pendingRequest);
-    when(authAttemptService.pending(any(AuthAttemptPendingRequest.class)))
+    when(authAttemptService.pending(any(AuthAttemptPendingRequest.class), any()))
         .thenThrow(new NoPendingAuthAttemptException("No pending requests"));
 
     String json = objectMapper.writeValueAsString(pendingRequestDto);
@@ -234,7 +234,7 @@ class AuthAttemptControllerTest {
         .andExpect(status().isNoContent());
 
     // Verify service interactions
-    verify(authAttemptService, times(1)).pending(any(AuthAttemptPendingRequest.class));
+    verify(authAttemptService, times(1)).pending(any(AuthAttemptPendingRequest.class), any());
   }
 
   @Test
@@ -243,7 +243,7 @@ class AuthAttemptControllerTest {
     // Arrange
     when(authAttemptMapper.toAuthAttemptPendingRequest(any(AuthAttemptPendingRequestDto.class)))
         .thenReturn(pendingRequest);
-    when(authAttemptService.pending(any(AuthAttemptPendingRequest.class)))
+    when(authAttemptService.pending(any(AuthAttemptPendingRequest.class), any()))
         .thenThrow(new AuthAttemptRequestFailedException("Invalid enrollment or signature"));
 
     String json = objectMapper.writeValueAsString(pendingRequestDto);
@@ -258,7 +258,7 @@ class AuthAttemptControllerTest {
         .andExpect(jsonPath("$.detail").value(AuthApiProblemCatalog.DETAIL_AUTH_ATTEMPT_FAILED));
 
     // Verify service interactions
-    verify(authAttemptService, times(1)).pending(any(AuthAttemptPendingRequest.class));
+    verify(authAttemptService, times(1)).pending(any(AuthAttemptPendingRequest.class), any());
   }
 
   @Test
@@ -267,7 +267,7 @@ class AuthAttemptControllerTest {
     // Arrange
     when(authAttemptMapper.toAuthAttemptPendingRequest(any(AuthAttemptPendingRequestDto.class)))
         .thenReturn(pendingRequest);
-    when(authAttemptService.pending(any(AuthAttemptPendingRequest.class)))
+    when(authAttemptService.pending(any(AuthAttemptPendingRequest.class), any()))
         .thenThrow(new AuthAttemptStateConflictException("Auth attempt already read"));
 
     String json = objectMapper.writeValueAsString(pendingRequestDto);
@@ -283,7 +283,7 @@ class AuthAttemptControllerTest {
             jsonPath("$.detail").value(AuthApiProblemCatalog.DETAIL_AUTH_ATTEMPT_STATE_CONFLICT));
 
     // Verify service interactions
-    verify(authAttemptService, times(1)).pending(any(AuthAttemptPendingRequest.class));
+    verify(authAttemptService, times(1)).pending(any(AuthAttemptPendingRequest.class), any());
   }
 
   // ===== RESPOND ENDPOINT TESTS =====

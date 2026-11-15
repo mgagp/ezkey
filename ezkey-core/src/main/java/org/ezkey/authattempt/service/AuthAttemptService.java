@@ -761,6 +761,21 @@ public class AuthAttemptService {
   }
 
   /**
+   * Pending pull with the resolved client IP so a proven poll can refund the IP ceiling (#1124).
+   *
+   * @param request the pending request with enrollment proof token
+   * @param clientContext optional resolved client IP and user agent
+   * @return the pending authentication response with proof token
+   * @throws org.ezkey.exception.auth.AuthAttemptRequestFailedException if enrollment proof token is
+   *     invalid
+   * @throws NoPendingAuthAttemptException if no pending authentication attempt is found
+   */
+  public AuthAttemptPendingResponse pending(
+      AuthAttemptPendingRequest request, ClientContext clientContext) {
+    return pendingService.pending(request, clientContext);
+  }
+
+  /**
    * Processes an authentication response from a mobile device.
    *
    * <p>This method handles the completion of an authentication attempt when a mobile device submits

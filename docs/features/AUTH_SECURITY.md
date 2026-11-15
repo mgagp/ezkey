@@ -314,15 +314,19 @@ public ResponseEntity<AuthAttemptPendingResponseDto> pending(@Valid @RequestBody
 # Enable rate limiting for production
 ezkey.rate-limit.enabled=true
 
-# PENDING endpoint limits
+# PENDING: per enrollment after proof + device signature; IP ceiling for unproven calls
 ezkey.rate-limit.pending.requests=10
 ezkey.rate-limit.pending.window-minutes=1
 ezkey.rate-limit.pending.key-strategy=enrollment-id
+ezkey.rate-limit.pending.fail-ip-requests=60
+ezkey.rate-limit.pending.fail-ip-window-minutes=1
 
-# RESPOND endpoint limits  
-ezkey.rate-limit.respond.requests=5
-ezkey.rate-limit.respond.window-minutes=1
-ezkey.rate-limit.respond.key-strategy=client-ip
+# RESPOND: per auth attempt after device signature; IP ceiling for unproven calls
+ezkey.rate-limit.respond.requests=1
+ezkey.rate-limit.respond.window-minutes=5
+ezkey.rate-limit.respond.key-strategy=auth-attempt-id
+ezkey.rate-limit.respond.fail-ip-requests=30
+ezkey.rate-limit.respond.fail-ip-window-minutes=1
 ```
 
 **Impact**: Prevents DoS attacks in high-traffic scenarios (optional for current deployment)

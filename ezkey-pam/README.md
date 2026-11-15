@@ -622,9 +622,10 @@ Logs never include wait JSON bodies, proof tokens, secret keys, or Basic auth he
   with global `MaxAuthTries 6`.
 - **HTTP 429 during `/wait`:** fail-closed — PAM returns `UNAVAIL` and the SSH
   approval fails (no silent retry inside the wait loop).
-- **Auth API `/pending` rate limit: 10/min** (`ezkey.rate-limit.pending.requests=10`,
-  `window-minutes=1`). Rapid SSH retries plus Demo Device / mobile pending checks share that
-  budget — back off when testing EXPIRER / abandon loops.
+- **Auth API `/pending` rate limit: 10/min after proof** (`ezkey.rate-limit.pending.requests=10`,
+  `window-minutes=1`, charged only after a valid proof token and device signature). Rapid SSH
+  retries plus Demo Device / mobile pending checks share that enrollment budget — back off when
+  testing EXPIRER / abandon loops. Unproven calls use a separate IP ceiling and do not consume it.
 - **No client keepalive during authentication (H2).** Do **not** set
   `ServerAliveInterval` (or similar client keepalives) while the MFA prompt /
   `/wait` is in progress — on real-host dogfood a client keepalive has been

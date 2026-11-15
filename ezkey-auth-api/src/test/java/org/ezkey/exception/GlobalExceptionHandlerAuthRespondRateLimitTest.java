@@ -15,6 +15,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import org.ezkey.audit.integrity.AuditChainHeartbeatGuardService;
+import org.ezkey.exception.auth.AuthPendingRateLimitExceededException;
 import org.ezkey.exception.auth.AuthRespondRateLimitExceededException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -44,5 +45,21 @@ class GlobalExceptionHandlerAuthRespondRateLimitTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
     assertThat(response.getBody()).isNull();
     assertThat(response.getHeaders().getFirst(HttpHeaders.RETRY_AFTER)).isEqualTo("240");
+  }
+
+  @Test
+  @DisplayName("AuthPendingRateLimitExceededException → 429 empty body + Retry-After")
+  void handleAuthPendingRateLimitExceeded_mapsTo429WithRetryAfter() {
+    GlobalExceptionHandler handler =
+        new GlobalExceptionHandler(mock(AuditChainHeartbeatGuardService.class));
+    AuthPendingRateLimitExceededException ex = new AuthPendingRateLimitExceededException(45L);
+    WebRequest request = mock(WebRequest.class);
+    when(request.getDescription(false)).thenReturn("uri=/api/v1/auth-attempts/pending");
+
+    ResponseEntity<Void> response = handler.handleAuthPendingRateLimitExceeded(ex, request);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+    assertThat(response.getBody()).isNull();
+    assertThat(response.getHeaders().getFirst(HttpHeaders.RETRY_AFTER)).isEqualTo("45");
   }
 }
