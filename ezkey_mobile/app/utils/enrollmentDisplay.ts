@@ -296,6 +296,58 @@ export function buildHomeCardLabels(
   };
 }
 
+export type AmbiguityCandidate = EnrollmentIdentityFields & {
+  id: string;
+  installation?: (Pick<Installation, 'name' | 'host'> & {id?: string}) | null;
+};
+
+/**
+ * Local ids of enrollments whose card would look identical to another card in the same
+ * installation and tenant (same Purpose, Account and Role).
+ *
+ * Typical cause: an administrator deleted or revoked an enrollment and the person enrolled
+ * again; the phone keeps the old local copy (pull-only, no server push). Screens show the
+ * local enrollment date on these cards only, so the common case stays uncluttered.
+ *
+ * @param enrollments Enrollments shown on the same screen.
+ * @param fallbackTitle Used when no purpose or account is available.
+ * @param copy Localized Purpose and Role strings.
+ * @return Ids of enrollments that share their card labels with at least one other enrollment.
+ * @since 2026
+ */
+export function findAmbiguousEnrollmentIds(
+  enrollments: ReadonlyArray<AmbiguityCandidate>,
+  fallbackTitle: string,
+  copy: EnrollmentIdentityCopy,
+): Set<string> {
+  const idsByKey = new Map<string, string[]>();
+  for (const enrollment of enrollments) {
+    const card = buildHomeCardLabels(enrollment, fallbackTitle, copy);
+    const key = [
+      enrollment.installation?.id ?? '',
+      enrollment.isSystemIntegration ? '' : normalizeDisplayLabel(enrollment.tenantName) ?? '',
+      card.title,
+      card.subtitle ?? '',
+      card.roleLabel ?? '',
+    ]
+      .join('\u0000')
+      .toLowerCase();
+    const ids = idsByKey.get(key);
+    if (ids) {
+      ids.push(enrollment.id);
+    } else {
+      idsByKey.set(key, [enrollment.id]);
+    }
+  }
+  const ambiguous = new Set<string>();
+  for (const ids of idsByKey.values()) {
+    if (ids.length > 1) {
+      ids.forEach(id => ambiguous.add(id));
+    }
+  }
+  return ambiguous;
+}
+
 export type PendingRequestTitleFields = {
   contextTitle?: string | null;
   enrollmentName?: string | null;

@@ -2,7 +2,7 @@
 ---
 ## Full enrollment E2E flow: bind via runtime bypass + verify challenge + confirm enrolled.
 ## Variables required:
-##   ENROLLMENT_ID          - numeric enrollment ID
+##   ENROLLMENT_ID          - numeric enrollment ID (Home card ids, not the seed)
 ##   ENROLLMENT_PROOF_TOKEN - proof token string
 ##   ENROLLMENT_AUTH_URL    - auth server base URL
 ##   ENROLLMENT_CHALLENGE   - 6-digit challenge code shown in admin console
@@ -33,7 +33,8 @@
     retryTapIfNoChange: true
 - waitForAnimationToEnd:
     timeout: 1500
-- inputText: "${ENROLLMENT_ID}|${ENROLLMENT_PROOF_TOKEN}|${ENROLLMENT_AUTH_URL}"
+## Same JSON as the enrollment QR (#1301 removed the legacy id|token|url seed).
+- inputText: '{"enrollmentProofToken":"${ENROLLMENT_PROOF_TOKEN}","authUrl":"${ENROLLMENT_AUTH_URL}"}'
 - waitForAnimationToEnd:
     timeout: 1500
 # hideKeyboard fails on iOS (Maestro): Android keeps it, iOS taps a neutral header area (#1175).

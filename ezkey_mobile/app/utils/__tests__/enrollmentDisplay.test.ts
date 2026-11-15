@@ -10,6 +10,7 @@ import {
   buildHomeCardLabels,
   buildPendingRequestTitles,
   distinctDisplayLabel,
+  findAmbiguousEnrollmentIds,
   shouldShowHomeTenantSection,
 } from '../enrollmentDisplay';
 
@@ -321,5 +322,56 @@ describe('buildPendingRequestTitles', () => {
       primaryTitle: 'Jean',
       secondaryTitle: 'Ride Booking',
     });
+  });
+});
+
+describe('findAmbiguousEnrollmentIds', () => {
+  const installation = {id: 'http://127.0.0.1:8080', name: 'Ezkey System', host: '127.0.0.1:8080'};
+  const oscar = {
+    enrollmentName: 'Oscar Boulon',
+    integrationName: 'Portail client',
+    tenantName: 'Garage du coin',
+    installation,
+  };
+
+  it('flags both copies left by an admin delete or revoke followed by a re-enroll', () => {
+    const ids = findAmbiguousEnrollmentIds(
+      [
+        {...oscar, id: 'local_e2'},
+        {...oscar, id: 'local_e3'},
+        {...oscar, id: 'local_e4', enrollmentName: 'Julie'},
+      ],
+      'Ezkey installation',
+      copy,
+    );
+
+    expect([...ids].sort()).toEqual(['local_e2', 'local_e3']);
+  });
+
+  it('ignores case and surrounding spaces, like the card labels', () => {
+    const ids = findAmbiguousEnrollmentIds(
+      [
+        {...oscar, id: 'a'},
+        {...oscar, id: 'b', enrollmentName: ' oscar boulon '},
+      ],
+      'Ezkey installation',
+      copy,
+    );
+
+    expect(ids.size).toBe(2);
+  });
+
+  it('does not flag the same labels on different installations or tenants', () => {
+    const ids = findAmbiguousEnrollmentIds(
+      [
+        {...oscar, id: 'a'},
+        {...oscar, id: 'b', installation: {...installation, id: 'https://auth.other.example'}},
+        {...oscar, id: 'c', tenantName: 'Autre garage'},
+      ],
+      'Ezkey installation',
+      copy,
+    );
+
+    expect(ids.size).toBe(0);
   });
 });

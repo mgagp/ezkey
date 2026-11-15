@@ -32,9 +32,11 @@ import {
 import {resolveServerEnrollmentId} from '../../utils/localEnrollmentIdentity';
 import {
   buildHomeCardLabels,
+  findAmbiguousEnrollmentIds,
   identityDisplayCopy,
   shouldShowHomeTenantSection,
 } from '../../utils/enrollmentDisplay';
+import {formatDateTime} from '../../utils/formatDateTime';
 import {borderRadius, spacing, typography} from '../../config/theme';
 import {createThemedStyles, useTheme} from '../../theme';
 import {
@@ -97,14 +99,30 @@ export const HomeScreen: React.FC = () => {
     [expandedInstallations],
   );
 
-  const installationGroups = useMemo(() => {
-    const rows: EnrollmentMetadataRecord[] = [
+  const homeRows = useMemo<EnrollmentMetadataRecord[]>(
+    () => [
       ...(healthyEnrollments ?? []),
       ...(brokenEnrollments ?? []).map(item => item.metadata),
-    ];
-    if (rows.length === 0) return [];
-    return groupEnrollmentsByInstallation(sortEnrollments(rows));
-  }, [healthyEnrollments, brokenEnrollments]);
+    ],
+    [healthyEnrollments, brokenEnrollments],
+  );
+
+  const installationGroups = useMemo(() => {
+    if (homeRows.length === 0) return [];
+    return groupEnrollmentsByInstallation(sortEnrollments(homeRows));
+  }, [homeRows]);
+
+  // Identical cards (e.g. old local copy kept after an admin delete/revoke + re-enroll) get the
+  // local enrollment date so the person can tell them apart.
+  const ambiguousIds = useMemo(
+    () =>
+      findAmbiguousEnrollmentIds(
+        homeRows,
+        t('enrollmentWizard.integrationFallback'),
+        identityDisplayCopy(t),
+      ),
+    [homeRows, t],
+  );
 
   const showUnusableLocalNotice =
     collectionError || ((healthyEnrollments?.length ?? 0) === 0 && brokenIds.size > 0);
@@ -257,6 +275,7 @@ export const HomeScreen: React.FC = () => {
                 onToggle={toggleInstallation}
                 onSelectEnrollment={handleSelect}
                 brokenIds={brokenIds}
+                ambiguousIds={ambiguousIds}
                 onRemoveBroken={handleRemoveBroken}
               />
             ))
@@ -364,6 +383,7 @@ type InstallationSectionProps = {
   onToggle: (installationId: string) => void;
   onSelectEnrollment: (enrollment: EnrollmentMetadataRecord) => void;
   brokenIds: Set<string>;
+  ambiguousIds: Set<string>;
   onRemoveBroken: (enrollment: EnrollmentMetadataRecord) => void;
 };
 
@@ -373,6 +393,7 @@ const InstallationSection: React.FC<InstallationSectionProps> = ({
   onToggle,
   onSelectEnrollment,
   brokenIds,
+  ambiguousIds,
   onRemoveBroken,
 }) => {
   const styles = useStyles();
@@ -426,6 +447,7 @@ const InstallationSection: React.FC<InstallationSectionProps> = ({
                   enrollment={enrollment}
                   onPress={onSelectEnrollment}
                   broken={brokenIds.has(enrollment.id)}
+                  showAddedAt={ambiguousIds.has(enrollment.id)}
                   onRemove={onRemoveBroken}
                 />
               ))}
@@ -437,6 +459,7 @@ const InstallationSection: React.FC<InstallationSectionProps> = ({
               enrollment={enrollment}
               onPress={onSelectEnrollment}
               broken={brokenIds.has(enrollment.id)}
+              showAddedAt={ambiguousIds.has(enrollment.id)}
               onRemove={onRemoveBroken}
             />
           ))}
@@ -450,6 +473,8 @@ type EnrollmentListItemProps = {
   enrollment: EnrollmentMetadataRecord;
   onPress: (enrollment: EnrollmentMetadataRecord) => void;
   broken: boolean;
+  /** Show the local enrollment date: another card has the same labels. */
+  showAddedAt: boolean;
   onRemove: (enrollment: EnrollmentMetadataRecord) => void;
 };
 
@@ -462,6 +487,7 @@ type EnrollmentListItemProps = {
  * @param enrollment Enrollment to display.
  * @param onPress Callback invoked when the item is selected.
  * @param broken True when the enrollment's local secrets are unusable.
+ * @param showAddedAt True when another card has the same labels; shows the local enrollment date.
  * @param onRemove Callback invoked when the user removes a broken enrollment.
  * @since 2025
  */
@@ -469,18 +495,22 @@ const EnrollmentListItem: React.FC<EnrollmentListItemProps> = ({
   enrollment,
   onPress,
   broken,
+  showAddedAt,
   onRemove,
 }) => {
   const styles = useStyles();
-  const {t} = useTranslation();
+  const {t, i18n} = useTranslation();
   const card = buildHomeCardLabels(
     enrollment,
     t('enrollmentWizard.integrationFallback'),
     identityDisplayCopy(t),
   );
-  const accessibilityName = card.subtitle
+  const addedAt = showAddedAt ? formatDateTime(enrollment.createdAt, i18n.language) : undefined;
+  const addedAtLabel = addedAt ? t('home.addedAt', {value: addedAt}) : undefined;
+  const baseName = card.subtitle
     ? `${card.title}, ${card.subtitle}${card.roleLabel ? `, ${card.roleLabel}` : ''}`
     : card.title;
+  const accessibilityName = addedAtLabel ? `${baseName}, ${addedAtLabel}` : baseName;
 
   return (
     <TouchableOpacity
@@ -498,6 +528,11 @@ const EnrollmentListItem: React.FC<EnrollmentListItemProps> = ({
       </View>
       {card.subtitle ? <Text style={styles.cardSubtitle}>{card.subtitle}</Text> : null}
       {card.roleLabel ? <Text style={styles.cardSubtitle}>{card.roleLabel}</Text> : null}
+      {addedAtLabel ? (
+        <Text style={styles.cardAddedAt} testID={`ezkey.e2e.home.enrollment.${resolveServerEnrollmentId(enrollment)}.addedAt`}>
+          {addedAtLabel}
+        </Text>
+      ) : null}
       {broken ? (
         <>
           <Text style={styles.brokenSubtitle}>{t('home.brokenRowSubtitle')}</Text>
@@ -632,6 +667,11 @@ const useStyles = createThemedStyles(colors => ({
     fontSize: typography.fontSize.sm,
     color: colors.textMuted,
     lineHeight: 18,
+  },
+  cardAddedAt: {
+    fontSize: typography.fontSize.sm,
+    color: colors.textMuted,
+    marginBottom: 4,
   },
   unusableNotice: {
     backgroundColor: colors.cautionBg,

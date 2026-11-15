@@ -113,6 +113,40 @@ describe('HomeScreen', () => {
     expect(textContent).toContain('Tenant Red');
   });
 
+  it('shows the added date only on cards that would otherwise look identical', async () => {
+    const recreated = {
+      ...healthyEnrollment,
+      id: 'iaaaaaaaaaaaaaaaa_e2',
+      enrollmentId: '2',
+      enrollmentProofToken: 'token-2',
+      createdAt: '2026-04-22T10:00:00.000Z',
+    };
+    const other = {
+      ...healthyEnrollment,
+      id: 'iaaaaaaaaaaaaaaaa_e3',
+      enrollmentId: '3',
+      enrollmentName: 'Galaxy S30',
+    };
+    mockUseEnrollments.mockReturnValue({
+      data: {enrollments: [healthyEnrollment, recreated, other], broken: [], collectionError: false},
+      isLoading: false,
+      refetch: jest.fn(),
+    } as never);
+
+    let tree: renderer.ReactTestRenderer;
+    await renderer.act(async () => {
+      tree = renderer.create(<HomeScreen />);
+    });
+
+    const addedAt = (serverId: string) =>
+      tree!.root.findAll(
+        node => node.props.testID === `ezkey.e2e.home.enrollment.${serverId}.addedAt`,
+      );
+    expect(addedAt('1').length).toBeGreaterThan(0);
+    expect(addedAt('2').length).toBeGreaterThan(0);
+    expect(addedAt('3').length).toBe(0);
+  });
+
   it('navigates to EnrollmentDetail and records the selected enrollment', async () => {
     mockUseEnrollments.mockReturnValue({
       data: {enrollments: [healthyEnrollment], broken: [], collectionError: false},
