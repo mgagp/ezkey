@@ -20,11 +20,11 @@ actuator/health with no version string are **not** deploy identity.
 | Field | Value |
 |-------|-------|
 | **Surface** | community (ezkey.online) |
-| **Full git SHA** | `10264a0b778bc6c31c4a0469b2f22347ce126e2c` |
-| **Short SHA** | `10264a0b` |
-| **Deployed at (UTC)** | 2026-11-01T20:11:00Z |
+| **Full git SHA** | `c6d89274702f8f80007fb6149d9204b79ba89bdf` |
+| **Short SHA** | `c6d89274` |
+| **Deployed at (UTC)** | 2026-11-15T17:53:00Z |
 | **Operator** | Edgar |
-| **Note** | Backend upgrade 2026-11-01 ~15:11–15:14 ET / America/Toronto (20:11–20:14 UTC) to main `10264a0b` (#1114). Sequential recreate (~35 s each): admin-api, auth-api, integration-api, demo-app-acme; postgres, caddy, and collector untouched. Flyway schema version 25; no migration applied. Keyset unchanged. Image IDs: admin-api `ad2fcfde4ca1`, auth-api `824fb8ba6d80`, integration-api `5bf27c154c19`, demo-app-acme `8790d8556b3c`, migration `57dddf6727ea` (OCI revision `10264a0b`). Rollback tags: `:rollback-pre-10264a0b` (previous revision `92717a40a`, #961, 2026-10-25). Admin UI (Cloudflare Pages project `admin-ui-ezkey-online`, production branch `main`, API base `https://admin-api.ezkey.online`) published from `10264a0b` ~15:22 ET. Host: `<static-ip ezkey-online-community>`. |
+| **Note** | Backend upgrade 2026-11-15 ~12:53–12:56 ET / America/Toronto (17:53–17:56 UTC) to main `c6d89274` (from `10264a0b`). APIs recreated sequentially (~35 s each). Flyway V25 -> V29. V26 activation tokens: 2 converted, 0 revoked. V28: 4 of 13 tenants marked self-registered. V27: all integrations REPLACE. V29: partition job seeded. Keyset unchanged. JavaMelody collector not updated in this window (still previous image). API Shield schemas re-uploaded for Auth and Integration on the ezkey.online zone. Admin UI (Cloudflare Pages project `admin-ui-ezkey-online`, production branch `main`, API base `https://admin-api.ezkey.online`) published from `c6d8927`. Email delivery connector (SES) not enabled yet. Host: `<static-ip ezkey-online-community>`. |
 
 ## Host OS
 
