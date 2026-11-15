@@ -18,6 +18,7 @@ body:json {
 }
 
 docs {
-  Gated by `ezkey.evaluator.self-registration.enabled`. Use enrollment material from
+  Gated by `ezkey.evaluator.self-registration.enabled`. The tenant must be self-registered
+  (anonymous evaluator signup); other tenants are refused. Use enrollment material from
   POST /admin/auth/activate. One-shot EVALUATOR_TEMP session; do not log the token.
 }

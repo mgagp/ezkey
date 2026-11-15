@@ -27,6 +27,7 @@ import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminLifecycleStatus;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
+import org.ezkey.integration.domain.entity.Tenant;
 import org.ezkey.integration.domain.repository.AdminTokenRepository;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.security.SensitiveDataHasher;
@@ -39,11 +40,14 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Temporary evaluator console sessions ({@link AdminTokenPurpose#EVALUATOR_TEMP}).
  *
- * <p>Same gate as evaluator self-registration. One-shot mint, absolute TTL. Supersede after MFA
- * VERIFIED is admin-api owned (SESSION mint in {@link AdminAuthService} and TEMP validation gate in
- * {@link AdminTokenValidationService}). Auth-api does not write tokens, so expiry of a TEMP whose
- * identity is already VERIFIED is delayed supersede (revoke TEMP only). Unbound expiry uses soft
- * tenant deactivate when no other bound admin remains.
+ * <p>Same gate as evaluator self-registration. One-shot mint, absolute TTL, and only for a tenant
+ * created by anonymous evaluator signup ({@code selfRegistered}). Supersede after MFA VERIFIED is
+ * admin-api owned (SESSION mint in {@link AdminAuthService} and TEMP validation gate in {@link
+ * AdminTokenValidationService}). Auth-api does not write tokens, so expiry of a TEMP whose identity
+ * is already VERIFIED is delayed supersede (revoke TEMP only). Unbound expiry cleans up — TEMP
+ * identity deactivate, and soft tenant deactivate when no other bound admin remains — only for that
+ * same self-registered tenant. Any other tenant keeps its admin and stays active; the expired TEMP
+ * token is still revoked.
  */
 @Service
 public class EvaluatorTempSessionService {
@@ -101,7 +105,8 @@ public class EvaluatorTempSessionService {
    * @param enrollmentId enrollment id from activation
    * @param enrollmentProofToken plaintext proof from activation
    * @return minted token material
-   * @throws AuthenticationException when gated off, invalid capability, or already minted
+   * @throws AuthenticationException when gated off, invalid capability, already minted, or the
+   *     tenant was not created by evaluator self-registration
    */
   @Transactional
   public MintResult mint(Integer enrollmentId, String enrollmentProofToken) {
@@ -144,6 +149,12 @@ public class EvaluatorTempSessionService {
     }
     if (admin.getTenant() == null || !Boolean.TRUE.equals(admin.getTenant().getActive())) {
       throw new AuthenticationException("Tenant is inactive");
+    }
+    // Cleanup on expiry is limited to evaluator-signup tenants. Refuse the foothold here so an
+    // operator-provisioned tenant never enters that path (#923).
+    if (!isEvaluatorSignupTenant(admin.getTenant())) {
+      throw new AuthenticationException(
+          "Temporary console access is only available for evaluator signup tenants");
     }
 
     if (tokenRepository.existsByAdminAdminIdAndTokenPurpose(
@@ -224,9 +235,11 @@ public class EvaluatorTempSessionService {
    * this is delayed supersede (Auth API bind does not write tokens): revoke TEMP only, keep the
    * identity and tenant so the operator can mint a fresh {@code SESSION}.
    *
-   * <p>Otherwise, when the TEMP identity is still unbound: another ACTIVE tenant admin (≠ TEMP
-   * identity) with MFA enrollment VERIFIED → revoke TEMP + deactivate TEMP identity only. Else soft
-   * deactivateTenant + revoke + deactivate TEMP identity.
+   * <p>Otherwise, when the TEMP identity is still unbound, identity and tenant cleanup run only if
+   * the tenant is self-registered (anonymous evaluator signup). Any other tenant keeps its admin
+   * and stays active; the expired TEMP token is still revoked. For a self-registered tenant:
+   * another ACTIVE tenant admin (≠ TEMP identity) with MFA enrollment VERIFIED → revoke TEMP +
+   * deactivate TEMP identity only. Else soft deactivateTenant + revoke + deactivate TEMP identity.
    *
    * @return number of expired TEMP tokens processed
    */
@@ -273,6 +286,17 @@ public class EvaluatorTempSessionService {
       logger.info(
           "EVALUATOR_TEMP expired after TEMP identity bind (delayed supersede): adminId={}"
               + " tenantId={}",
+          adminId,
+          tenantId);
+      return;
+    }
+
+    // Only evaluator-signup tenants are cleaned up. An operator-provisioned tenant (PAM, lab,
+    // enterprise) keeps its admin and stays active when a temporary session expires unbound (#923).
+    if (!isEvaluatorSignupTenant(resolveTenant(token, tempAdmin))) {
+      logger.info(
+          "EVALUATOR_TEMP expired without bind on a non-self-registered tenant; skip identity"
+              + " and tenant cleanup: adminId={} tenantId={}",
           adminId,
           tenantId);
       return;
@@ -344,6 +368,33 @@ public class EvaluatorTempSessionService {
     return enrollment != null
         && EnrollmentStatus.VERIFIED.equals(enrollment.getStatus())
         && Boolean.TRUE.equals(enrollment.getActive());
+  }
+
+  /**
+   * Whether this tenant was created by anonymous evaluator self-registration.
+   *
+   * <p>Fail-closed: null, missing, or {@code false} is not an evaluator-signup tenant, so expiry
+   * must not deactivate the admin or the tenant.
+   *
+   * @param tenant tenant that owns the temporary session
+   * @return true only when {@code selfRegistered} is exactly true
+   */
+  private static boolean isEvaluatorSignupTenant(Tenant tenant) {
+    return tenant != null && Boolean.TRUE.equals(tenant.getSelfRegistered());
+  }
+
+  /**
+   * Tenant attached to the expired token, or the TEMP admin's tenant when the token row has none.
+   *
+   * @param token expired temporary session
+   * @param tempAdmin admin that held the session; may be null
+   * @return owning tenant, or null when neither side carries one
+   */
+  private static Tenant resolveTenant(AdminToken token, EzkeyAdmin tempAdmin) {
+    if (token.getTenant() != null) {
+      return token.getTenant();
+    }
+    return tempAdmin != null ? tempAdmin.getTenant() : null;
   }
 
   private void deactivateTempIdentity(EzkeyAdmin admin) {

@@ -741,8 +741,10 @@ evaluator signup). After activation, the Admin UI may offer temporary console ex
 device bind. Mints a one-shot `EVALUATOR_TEMP` session (absolute TTL, default 8h). Cookie/bearer
 loss cannot re-mint. After the TEMP identity’s MFA enrollment is **VERIFIED**, admin-api
 invalidates TEMP on the next bearer validation (and again when minting a fresh `SESSION`).
-Auth-api does not update `ezkey_admin_tokens`. Expiry applies a soft-tenant predicate — see vision
-`V-2026-09-26-temporary-evaluator-console-access`.
+Auth-api does not update `ezkey_admin_tokens`. Mint is refused unless the tenant is
+self-registered (anonymous evaluator signup). Expiry always revokes the TEMP token. Identity
+deactivation and the soft-tenant predicate run only for that same self-registered tenant — see
+vision `V-2026-09-26-temporary-evaluator-console-access` (amendment #923).
 
 **Request:**
 ```http
