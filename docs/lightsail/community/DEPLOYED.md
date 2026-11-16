@@ -24,7 +24,38 @@ actuator/health with no version string are **not** deploy identity.
 | **Short SHA** | `c6d89274` |
 | **Deployed at (UTC)** | 2026-11-15T17:53:00Z |
 | **Operator** | Edgar |
-| **Note** | Backend upgrade 2026-11-15 ~12:53–12:56 ET / America/Toronto (17:53–17:56 UTC) to main `c6d89274` (from `10264a0b`). APIs recreated sequentially (~35 s each). Flyway V25 -> V29. V26 activation tokens: 2 converted, 0 revoked. V28: 4 of 13 tenants marked self-registered. V27: all integrations REPLACE. V29: partition job seeded. Keyset unchanged. JavaMelody collector not updated in this window (still previous image). API Shield schemas re-uploaded for Auth and Integration on the ezkey.online zone. Admin UI (Cloudflare Pages project `admin-ui-ezkey-online`, production branch `main`, API base `https://admin-api.ezkey.online`) published from `c6d8927`. Email delivery connector (SES) not enabled yet. Host: `<static-ip ezkey-online-community>`. |
+| **Note** | Backend upgrade 2026-11-15 ~12:53–12:56 ET / America/Toronto (17:53–17:56 UTC) to main `c6d89274` (from `10264a0b`). APIs recreated sequentially (~35 s each). Flyway V25 -> V29. V26 activation tokens: 2 converted, 0 revoked. V28: 4 of 13 tenants marked self-registered. V27: all integrations REPLACE. V29: partition job seeded. Keyset unchanged. JavaMelody collector not updated in this window (still previous image). API Shield schemas re-uploaded for Auth and Integration on the ezkey.online zone. Admin UI (Cloudflare Pages project `admin-ui-ezkey-online`, production branch `main`, API base `https://admin-api.ezkey.online`) published from `c6d8927`. Opt-in SMTP email connector enabled the same day ~19:15 ET (see § Email delivery). Host: `<static-ip ezkey-online-community>`. |
+
+## Email delivery (opt-in SMTP connector)
+
+Enabled 2026-11-15 ~19:15 ET / America/Toronto (~2026-11-16T00:15Z), after the `c6d89274`
+API upgrade above. Opt-in
+([ADR-0018](../../../product-docs/global/architecture-decisions.md#adr-0018--connector-spi-for-external-services)):
+the on-screen QR stays the path when this connector is absent.
+Runbook: [`../community-host.md`](../community-host.md) § *Email delivery connector (Amazon SES)*.
+
+| Field | Value |
+|-------|-------|
+| **Overlay** | `docker-compose.connector-smtp.yml` |
+| **Service** | `ezkey-exp-connector-smtp` |
+| **Image** | `ezkey-connector-smtp`, built from `c6d89274702f8f80007fb6149d9204b79ba89bdf` (`c6d89274`) |
+| **Version** | `0.2.0-SNAPSHOT` |
+| **Contract** | v1 |
+| **Template** | `enrollment-qr` (en, fr) |
+| **Provider** | AWS SES, region `ca-central-1`, **sandbox** (verified recipients only) |
+| **Sender** | `no-reply@mail.ezkey.org` |
+| **Admin API** | Recreated with the connector overlay (~32 s). Stack SHA unchanged (`c6d89274`). |
+| **Proof** | Operator end-to-end test send from Admin UI succeeded. |
+
+**Compose on this VM.** Every `docker compose` command uses all three files:
+`docker-compose.yml` + `docker-compose.javamelody.yml` + `docker-compose.connector-smtp.yml`.
+Recreating admin-api without `docker-compose.connector-smtp.yml` drops email delivery with no error.
+
+**Secrets.** SMTP credentials stay in `connector-smtp.env` (mode 600) on the VM only. The delivery
+token stays in the VM `.env`. Neither file is in git.
+
+**Rollback.** Recreate admin-api with only `docker-compose.yml` and `docker-compose.javamelody.yml`,
+then remove the connector container. Integrated delivery resumes.
 
 ## Host OS
 
