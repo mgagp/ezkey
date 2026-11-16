@@ -681,6 +681,10 @@ exists is refused by the export guard.
 
 ## Email delivery connector (Amazon SES) — #1206 step 7
 
+**Community host (ezkey.online):** enabled 2026-11-15 ~19:15 ET. On that VM every compose command
+uses `docker-compose.yml` + `docker-compose.javamelody.yml` + `docker-compose.connector-smtp.yml`.
+Ledger: [`community/DEPLOYED.md`](community/DEPLOYED.md) § Email delivery.
+
 Optional. Without it the instance stays on **integrated delivery** (the QR on screen), which is
 complete on its own ([ADR-0018](../../product-docs/global/architecture-decisions.md#adr-0018--connector-spi-for-external-services)).
 With it, a Tenant Admin can send an enrollment QR to the person's `contactEmail`. Decisions and the
@@ -776,9 +780,11 @@ DKIM `PASS` (`mail.ezkey.org`), DMARC `PASS`.
 
 ### Rollback
 
-Connector only, data untouched: `$C` without the overlay, plus `--remove-orphans`, or
-`EZKEY_DISABLE_CONNECTOR_SMTP=true` with the export script. Admin API goes back to integrated delivery
-(capability `available: false`). Revoke the IAM access key if the credential may have leaked.
+Connector only, data untouched. On the live VM: recreate admin-api with only `docker-compose.yml`
+and `docker-compose.javamelody.yml`, then remove the connector container. The same outcome is
+`$C` without the connector overlay, plus `--remove-orphans`, or `EZKEY_DISABLE_CONNECTOR_SMTP=true`
+with the export script. Admin API goes back to integrated delivery (capability `available: false`).
+Revoke the IAM access key if the credential may have leaked.
 
 ### Leaving the sandbox (not now)
 
@@ -793,19 +799,19 @@ Controlled in-place upgrade for the **already commissioned** community instance 
 
 **Placeholders only in this section** — do not paste origin IPs, public hostnames, absolute VM paths, secret values, or `.env` contents into tickets, chat, or git. Use markers such as `<ssh-host>`, `<compose-dir>`, `<admin-api-public-base>`, `<encryption-secrets-volume>`, `<postgres-container>`.
 
-**Compose with JavaMelody overlay:** from `<compose-dir>`, always use both files so a recreated API keeps its JavaMelody configuration:
-
-```bash
-C="docker compose -f docker-compose.yml -f docker-compose.javamelody.yml"
-```
-
-Use `$C` for F, H, and any recreate (including the separate postgres window). A plain `docker compose` without the overlay drops `JAVAMELODY_*` on recreate.
-
-**Once the email connector is enabled** ([§ Email delivery connector](#email-delivery-connector-amazon-ses--1206-step-7)), add its overlay too, or a recreated admin-api silently loses email delivery:
+**Compose on the live VM:** JavaMelody and the SMTP connector are both enabled (connector since
+2026-11-15 ~19:15 ET; [`community/DEPLOYED.md`](community/DEPLOYED.md) § Email delivery). From
+`<compose-dir>`, every compose command uses all three files:
 
 ```bash
 C="docker compose -f docker-compose.yml -f docker-compose.javamelody.yml -f docker-compose.connector-smtp.yml"
 ```
+
+Use `$C` for F, H, and any recreate (including the separate postgres window). Omitting
+`docker-compose.javamelody.yml` drops `JAVAMELODY_*` on recreate. Omitting
+`docker-compose.connector-smtp.yml` makes a recreated admin-api silently lose email delivery.
+Email rollback: recreate admin-api with only the first two files, then remove the connector
+container ([§ Email delivery connector](#email-delivery-connector-amazon-ses--1206-step-7) Rollback).
 
 ### Principle
 
@@ -879,7 +885,7 @@ Presence, mode, and metadata only — **never** print key material, blob bytes, 
 
 ### F. Deployment, one step at a time
 
-Wait for healthy before the next recreate. Use `$C` (base + JavaMelody overlay).
+Wait for healthy before the next recreate. Use `$C` (the three-file compose above).
 
 1. Run **`db-grants`** first. Lightsail compose defines it as a one-shot (`restart: "no"`, entrypoint `apply-grants.sh`):
 
