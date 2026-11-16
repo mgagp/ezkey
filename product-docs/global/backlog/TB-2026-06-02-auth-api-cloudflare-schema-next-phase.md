@@ -8,7 +8,7 @@ Admin Cloudflare upload stays deferred — that is the remaining executable work
 - **First slice:** `TB-2026-06-02-auth-api-cloudflare-schema-first-slice` (`done`, PR `#478`)
 - **Integration slice:** `TB-2026-08-23-integration-api-cloudflare-schema` (`done`, PR `#479`)
 - **Created at:** `2026-08-23`
-- **Updated at:** `2026-08-25`
+- **Updated at:** `2026-11-15`
 
 ## What the Auth slice proved
 
@@ -34,7 +34,23 @@ fail-closed feedback). Escape hatch: **None** if a self-test locks out enroll or
 
 Product default for any later host that might see third-party traffic remains **None** until
 a dedicated observe period says otherwise. Do not treat community host Block as the Admin/Integration
-rollout default.
+rollout default. Superseded 2026-11-15: see the next section. Zone `ezkey.online` is **Block**.
+
+## community zone mitigation (2026-11-15)
+
+Supersedes the product-default note in the 2026-08-23 section above. After that observe period,
+the operator set schema-validation mitigation to **Block** on zone `ezkey.online`. That is the
+current state and the recommended default: best security posture, validated by a first run.
+Post-upgrade smoke on `c6d89274` passed under **Block** (Auth bind with and without
+`enrollmentId`, Admin UI). The same zone decision covers Auth and Integration.
+
+Rollback stays temporary **None** (log) if legitimate clients get an unexplained Cloudflare 403.
+Those requests never reach origin — check Cloudflare security events — then fix and re-upload
+the schema and return to **Block**. Re-upload the packaged schema whenever the API contract
+changes. Upload scripts still do not change mitigation.
+
+Runbooks: [`docs/cloudflare/auth-api-schema-validation.md`](../../../docs/cloudflare/auth-api-schema-validation.md),
+[`docs/cloudflare/integration-api-schema-validation.md`](../../../docs/cloudflare/integration-api-schema-validation.md).
 
 Still useful to record from maintainer tests: schema-validation events on
 `POST /api/v1/enrollments/instance-info` and the MFA write path.
@@ -44,9 +60,9 @@ Runbook: [`docs/cloudflare/auth-api-schema-validation.md`](../../../docs/cloudfl
 ## How to generalize
 
 Integration the community host copied the Auth recipe and is uploaded. Mitigation on
-`integration-api.ezkey.online` is **Block** (2026-08-23 maintainer-only exception, same
-reason as Auth). Escape hatch remains None. Do not treat that as the Admin or later-host
-default.
+`integration-api.ezkey.online` is **Block**. As of 2026-11-15 that is the zone default on
+`ezkey.online` (see above), not a maintainer-only exception. Escape hatch remains temporary
+**None** (log), then return to **Block**.
 
 Admin remains the later analysis, not this Integration slice:
 
@@ -61,7 +77,7 @@ Admin remains the later analysis, not this Integration slice:
 
 ## Out of scope for the Integration slice
 
-- Copying community Auth Block to Integration or Admin by default
+- Copying community Auth Block to Admin by default (Integration is on **Block** as of 2026-11-15)
 - Admin API Cloudflare upload
 - Coupling schema upload to Lightsail deploy
 - Treating localized specs as versioned release artifacts
