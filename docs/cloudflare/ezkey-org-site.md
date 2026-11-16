@@ -97,7 +97,7 @@ These are **directional** only; validate against product roadmap and budget befo
 - **JSON schema validation** — Auth / Integration API community slices are documented in
   [auth-api-schema-validation.md](auth-api-schema-validation.md) and
   [integration-api-schema-validation.md](integration-api-schema-validation.md)
-  (manual upload; mitigation **None** on community). Broader edge filtering still belongs here
+  (manual upload; mitigation **Block** on zone `ezkey.online`). Broader edge filtering still belongs here
   only where it matches threat model and cost.
 - Deeper **WAF** posture — may intersect paid tiers; document facts when evaluated.
 

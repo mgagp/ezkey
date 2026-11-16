@@ -89,18 +89,27 @@ Dashboard remains valid for the first bind and for Set action. Labels move; look
 **API Shield** / **Schema validation** on the zone that fronts `auth-api.ezkey.online`.
 
 1. Confirm the six operations above appear once under the packaged hostname only.
-2. Set the **Set action** mitigation (see below).
+2. Confirm **Set action** is **Block** (see below). Upload does not change mitigation.
+3. Re-upload the packaged schema whenever the API contract changes. A stale schema under
+   **Block** rejects legitimate new shapes at the edge (the request never reaches origin).
 
 ### Set action (community / ezkey.online)
 
-**Mitigation stays None.** Community hosts third-party traffic; observe / log only until an
-explicit operator decision says otherwise. A false Block on bind / verify / enrolled
-instance-info / pending / respond would interrupt the trust-refresh or MFA path for someone
-else.
+**Mitigation is Block** on zone `ezkey.online`. That is the current state and the recommended
+default. The first setup used **None** (log only) out of caution. After testing, the operator
+switched the zone to **Block** on 2026-11-15: best security posture, validated by a first run.
+Post-upgrade smoke on `c6d89274` passed under **Block** (bind with and without `enrollmentId`,
+Admin UI).
 
-- Cloudflare labels: **Block** = reject non-compliant requests; **None** = allow them through;
-  **Default** follows the zone default (today None).
-- Do **not** set **Block** on a multi-user community install without a fresh observe period.
+- Cloudflare labels: **Block** = reject non-compliant requests (current posture); **None** =
+  allow them through and log; **Default** follows the zone default (**Block** on
+  `ezkey.online`).
+- Schema-valid traffic still reaches origin. **Block** rejects shape mismatches only.
+
+**Rollback.** If legitimate clients get an unexplained Cloudflare **403**, the request never
+reached origin. Check Cloudflare security events, temporarily set mitigation to **None**
+(log), fix and re-upload the schema, then return to **Block**. Do not leave the zone on
+**None**.
 
 ## Functional checks after upload
 
@@ -128,7 +137,9 @@ Exercise the live community Auth API **through** the Cloudflare hostname, not lo
    verifies the signature. Cloudflare passing the request is not that verification.
 
 4. **MFA write path (when convenient)** — one bind or one pending/respond is enough to confirm
-   the write operations remain reachable under None mitigation.
+   schema-valid writes still reach origin under **Block**. A Cloudflare 403 / 1020 on a
+   known-good client means the uploaded schema does not match the live contract (see rollback
+   above).
 
 5. **Cloudflare logs** — look for schema-validation events on `auth-api.ezkey.online`. Note
    any drop or mismatch (extra property, type, missing required field). Record them in the TB
@@ -179,7 +190,9 @@ How to tell them apart: Ezkey `type` prefix vs `cloudflare_error` / Cloudflare `
 Operator / Bruno: this distinction is the check. End-user apps (mobile, Demo Device lab UI) should
 **not** special-case 1020 copy, `what_you_should_do`, or `ray_id` as Auth API domain errors. A
 well-formed client must not produce a schema violation; if one appears in production it is schema
-drift or an edge false positive (keep mitigation **None**, fix the packaged spec). Client-facing
+drift or an edge false positive. The request never reached origin — check Cloudflare security
+events, temporarily set mitigation to **None** (log), fix and re-upload the schema, then return
+to **Block**. Client-facing
 attribution for authenticator clients: branch on HTTP status and `type`; **do not display**
 `detail` or `title` verbatim — map Ezkey `type` under `https://ezkey.io/problems/` to local copy;
 otherwise a generic unreachable / request-failed string
@@ -195,7 +208,8 @@ Cloudflare format and `Accept` negotiation:
 - Admin API schema validation (Integration is a sibling runbook:
   [integration-api-schema-validation.md](integration-api-schema-validation.md))
 - Automated schema deploy from Lightsail
-- That **Block** is the product default (it is not; community stays **None**)
+- That a hostname outside zone `ezkey.online` already has **Block** applied (use **Block** when
+  that host gets a schema; same rollback)
 
 ## Related
 

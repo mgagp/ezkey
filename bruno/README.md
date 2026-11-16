@@ -44,9 +44,10 @@ For Cloudflare schema probes on community, select environment **community**, the
 `public-auth/get-public-instance-info` (positive) and
 `cloudflare-schema/negative-bind-wrong-enrollment-id-type` (negative). For Integration,
 `cloudflare-schema/negative-create-wrong-enrollment-id-type` uses
-`base_url_integration_api`. Product default mitigation is **None**; 1020 appears only if
-the operator sets Block. Do not treat `./scripts/bruno-health.sh --suite g0` as Cloudflare
-evidence.
+`base_url_integration_api`. Zone `ezkey.online` mitigation is **Block**: a schema mismatch
+returns Cloudflare 403 / 1020 and does not reach origin. Temporarily set **None** (log) only
+to diagnose an unexplained 403, then return to **Block**. Do not treat
+`./scripts/bruno-health.sh --suite g0` as Cloudflare evidence.
 
 **How to read community error JSON:** a schema-valid Auth or Integration failure is origin RFC 9457
 (`type` starts with `https://ezkey.io/problems/`). A schema **Block** is Cloudflare 403 / 1020
