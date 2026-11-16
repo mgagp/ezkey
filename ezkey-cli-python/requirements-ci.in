@@ -1,0 +1,21 @@
+# CI lock input for the cli-python job (.github/workflows/ci.yml).
+# Published floors stay ranged in setup.py and requirements.txt / requirements-test.txt.
+# Compile with (pip-tools 7.x; do not pass --strip-extras or --no-strip-extras):
+#   pip-compile --allow-unsafe --generate-hashes --output-file=requirements-ci.txt requirements-ci.in
+# Keep the leading comment block on requirements-ci.txt above the pip-compile header.
+#
+# Runtime floors — keep aligned with setup.py install_requires.
+click>=8.5.0
+requests>=2.34.2
+colorama>=0.4.6
+pyperclip>=1.11.0
+textual>=8.2.8
+
+# Test floors — keep aligned with requirements-test.txt.
+pytest>=9.2.0
+pytest-cov>=7.1.0
+
+# Build backend for `pip install --no-deps --no-build-isolation -e .`.
+# Not a published runtime dependency. setuptools is a pip-tools "unsafe" package.
+setuptools
+wheel

@@ -491,15 +491,17 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
           cache-dependency-path: |
+            ezkey-cli-python/requirements-ci.txt
             ezkey-cli-python/setup.py
-            ezkey-cli-python/requirements.txt
-            ezkey-cli-python/requirements-test.txt
 
+      # Scorecard Pinned-Dependencies: hash-locked deps, then a local editable
+      # install. `--no-deps` is required, and `-e` is what Scorecard treats as a
+      # pinned local path (`pip install --no-deps .` is still flagged).
       - name: Install package and test deps
         run: |
-          python -m pip install --upgrade pip
-          pip install .
-          pip install -r requirements-test.txt
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check --require-hashes -r requirements-ci.txt
+          python -m pip install --disable-pip-version-check --no-deps --no-build-isolation -e .
 
       - name: Unit tests
         run: pytest tests/unit
