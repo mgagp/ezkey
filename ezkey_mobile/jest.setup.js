@@ -61,6 +61,13 @@ jest.mock('react-native-config', () => ({
 }));
 
 /**
+ * v11 loads TurboModuleRegistry.getEnforcing('RNKeychainManager') on import.
+ * Use the manual mock in __mocks__/react-native-keychain.js. Suites that pass
+ * their own factory (secureStorage and workflow tests) still override this.
+ */
+jest.mock('react-native-keychain');
+
+/**
  * App imports cryptoService at load time; without a native module, CryptoService.create() throws.
  * Stub EzkeyCryptoModule so the tree can mount in Jest (no hardware keystore in Node).
  */

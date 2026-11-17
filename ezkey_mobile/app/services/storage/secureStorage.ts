@@ -18,8 +18,19 @@ import {isNativeCryptoLinked, nativeCrypto} from '../crypto/nativeCrypto';
 const SERVICE_PREFIX = 'org.ezkey.mobile.secure';
 const SEALED_SECRET_PREFIX = 'ezkey-mobile/sealed-secret';
 
+/**
+ * v11 treats omitted `cloudSync` and `false` as the same non-synchronizable iOS query.
+ * Explicit `false` documents that these secrets stay on this device and never sync to iCloud.
+ * Android ignores the flag. Writes, reads, and resets must pass the same value.
+ */
+const KEYCHAIN_CLOUD_SYNC = false;
+
 const serviceFor = (key: string) => `${SERVICE_PREFIX}.${key}`;
 const sealedStorageKeyFor = (key: string) => `${SEALED_SECRET_PREFIX}.${key}`;
+const keychainItem = (service: string) => ({
+  service,
+  cloudSync: KEYCHAIN_CLOUD_SYNC,
+});
 
 type KeychainLike = Pick<
   typeof Keychain,
@@ -62,7 +73,7 @@ class SecureStorageDelegate {
   }
 
   private async readLegacyKeychainValue(key: string): Promise<string | undefined> {
-    const record = await this.keychain.getGenericPassword({service: serviceFor(key)});
+    const record = await this.keychain.getGenericPassword(keychainItem(serviceFor(key)));
     if (!record) {
       return undefined;
     }
@@ -76,7 +87,7 @@ class SecureStorageDelegate {
   async setItem(key: string, value: string, installationScopeId: string) {
     if (!this.shouldUseAndroidSealedSecrets()) {
       await this.keychain.setGenericPassword(key, value, {
-        service: serviceFor(key),
+        ...keychainItem(serviceFor(key)),
         accessible: this.keychain.ACCESSIBLE.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,
       });
       return;
@@ -84,7 +95,7 @@ class SecureStorageDelegate {
 
     const sealedPayload = await this.crypto.sealSecret(installationScopeId, key, value);
     await this.metadata.setItem(sealedStorageKeyFor(key), sealedPayload);
-    await this.keychain.resetGenericPassword({service: serviceFor(key)});
+    await this.keychain.resetGenericPassword(keychainItem(serviceFor(key)));
   }
 
   /**
@@ -113,11 +124,11 @@ class SecureStorageDelegate {
   async removeItem(key: string) {
     if (this.shouldUseAndroidSealedSecrets()) {
       await this.metadata.removeItem(sealedStorageKeyFor(key));
-      await this.keychain.resetGenericPassword({service: serviceFor(key)});
+      await this.keychain.resetGenericPassword(keychainItem(serviceFor(key)));
       return;
     }
 
-    await this.keychain.resetGenericPassword({service: serviceFor(key)});
+    await this.keychain.resetGenericPassword(keychainItem(serviceFor(key)));
   }
 
   /**
@@ -135,7 +146,9 @@ class SecureStorageDelegate {
     const matching = services.filter(service =>
       servicePrefixes.some(prefix => service.startsWith(prefix)),
     );
-    await Promise.all(matching.map(service => this.keychain.resetGenericPassword({service})));
+    await Promise.all(
+      matching.map(service => this.keychain.resetGenericPassword(keychainItem(service))),
+    );
     return matching.length;
   }
 }

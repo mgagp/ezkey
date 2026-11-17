@@ -143,6 +143,10 @@ Companion hygiene for Dependabot `#1055`: see the springdoc 3.2.0 companion PR (
 
 - **Crypto-adjacent** (e.g. `js-sha256`, keystore / crypto / proof-token): never autonomous on a
   **major**; route to security owner (Christophe). *If it ain't broken, don't fix it.*
+- **react-native-keychain 11.0.0** migrated 2026-11-17 (Marc-approved dedicated lot; the app was
+  already on React Native 0.88 New Architecture). Supersedes Dependabot `#1341`: v11's TurboModule
+  import needed a shared Jest mock, and `Podfile.lock` had to be regenerated. Writes, reads, and
+  resets pass `cloudSync: false` explicitly (iOS non-synchronizable; `accessible` unchanged).
 - **Unchanged gates:** ESLint 10 mobile (RN lint plugins; `#1007` trial 2026-10-26 stopped —
   `eslint-plugin-react` + `eslint-plugin-react-native` still call removed ESLint 10 APIs; see
   [`ezkey_mobile/docs/MOBILE_ESLINT10_JEST30_UNBLOCK_MEMO.md`](../../../../ezkey_mobile/docs/MOBILE_ESLINT10_JEST30_UNBLOCK_MEMO.md)),
