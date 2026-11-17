@@ -150,6 +150,8 @@ Companion hygiene for Dependabot `#1055`: see the springdoc 3.2.0 companion PR (
   today. **Jest 30 mobile:** gate lifted 2026-10-26 after green `yarn test` on RN 0.87.1 (Dependabot
   `#653` integrated via hygiene PR; preset still *declares* Jest 29 deps — trust runtime evidence).
 
+**2026-11-17:** i18next 26 to 27 and react-i18next 17 to 18 moved together on Admin UI and mobile (react-i18next 18 requires i18next >= 27.0.1; replaces Dependabot #1375, #1376, #1378, and #1379).
+
 ## Majeures / Major upgrades
 
 Platform / runtime / base-image **line** changes are tracked in
