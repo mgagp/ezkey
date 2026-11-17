@@ -59,6 +59,7 @@ describe('secureStorage', () => {
     );
     expect(mockKeychain.resetGenericPassword).toHaveBeenCalledWith({
       service: 'org.ezkey.mobile.secure.secret-key',
+      cloudSync: false,
     });
   });
 
@@ -106,6 +107,10 @@ describe('secureStorage', () => {
 
     await expect(storage.getItem('secret-key', 'i-scope-1')).resolves.toBe('legacy-value');
 
+    expect(mockKeychain.getGenericPassword).toHaveBeenCalledWith({
+      service: 'org.ezkey.mobile.secure.secret-key',
+      cloudSync: false,
+    });
     expect(crypto.sealSecret).toHaveBeenCalledWith('i-scope-1', 'secret-key', 'legacy-value');
     expect(mockAsyncStorage.setItem).toHaveBeenCalledWith(
       'ezkey-mobile/sealed-secret.secret-key',
@@ -113,6 +118,7 @@ describe('secureStorage', () => {
     );
     expect(mockKeychain.resetGenericPassword).toHaveBeenCalledWith({
       service: 'org.ezkey.mobile.secure.secret-key',
+      cloudSync: false,
     });
   });
 
@@ -136,11 +142,17 @@ describe('secureStorage', () => {
 
     expect(mockKeychain.setGenericPassword).toHaveBeenCalledWith('secret-key', 'ios-value', {
       service: 'org.ezkey.mobile.secure.secret-key',
+      cloudSync: false,
       accessible: 'AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY',
+    });
+    expect(mockKeychain.getGenericPassword).toHaveBeenCalledWith({
+      service: 'org.ezkey.mobile.secure.secret-key',
+      cloudSync: false,
     });
     expect(mockAsyncStorage.setItem).not.toHaveBeenCalled();
     expect(mockKeychain.resetGenericPassword).toHaveBeenCalledWith({
       service: 'org.ezkey.mobile.secure.secret-key',
+      cloudSync: false,
     });
   });
 
@@ -169,9 +181,11 @@ describe('secureStorage', () => {
     expect(mockKeychain.resetGenericPassword).toHaveBeenCalledTimes(2);
     expect(mockKeychain.resetGenericPassword).toHaveBeenCalledWith({
       service: 'org.ezkey.mobile.secure.ezkey-mobile/enrollment-proof-token.orphan-1',
+      cloudSync: false,
     });
     expect(mockKeychain.resetGenericPassword).toHaveBeenCalledWith({
       service: 'org.ezkey.mobile.secure.ezkey-mobile/integration-public-key.orphan-1',
+      cloudSync: false,
     });
   });
 });
