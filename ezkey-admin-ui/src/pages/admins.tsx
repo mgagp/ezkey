@@ -1,26 +1,20 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Check, Copy, KeyRound, Pencil, Plus, Power, PowerOff, RefreshCw, UserX } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { AlertTriangle, Check, Copy, Plus, RefreshCw, UserX } from 'lucide-react';
 import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
-import { AdminBindCard } from '@/components/feature/admin-bind-card';
-import { AdminRecoveryCodesDialog } from '@/components/feature/admin-recovery-codes-dialog';
-import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
-import { EnrollmentFkLink } from '@/components/feature/fk-detail-links';
-import { OperationalWarning } from '@/components/feature/operational-warning';
-import { ReasonFieldRow } from '@/components/feature/reason-field-row';
+import { AdminStatusBadge, AdminTypeBadge } from '@/components/feature/admin-badges';
+import { DeactivateAdminDialog } from '@/components/feature/admin-deactivate-dialog';
 import { AppShell } from '@/components/layout/app-shell';
 import { type ColumnDef } from '@/components/data-table/data-table';
 import { PaginatedTable } from '@/components/data-table/paginated-table';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ContextHelp } from '@/components/ui/context-help';
 import { Dialog } from '@/components/ui/dialog';
-import { DetailInfoRow } from '@/components/ui/detail-info-row';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
@@ -28,37 +22,23 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { useAuth } from '@/context/use-auth';
 import { useDemoModeSession } from '@/context/use-demo-mode-session';
 import { useToast } from '@/context/use-toast';
-import { useDetailNavigation } from '@/hooks/use-detail-navigation';
-import { DetailDialogHeaderNav } from '@/components/ui/detail-dialog-header-nav';
 import { asOrvalPagedBody, usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
-import { fetchApi } from '@/lib/api-client';
 import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { isEvaluatorTempSession } from '@/lib/auth';
 import { adminDemoPresets, isDemoMode } from '@/lib/demo-mode';
 import { isPhoneNumberInputValid, normalizePhoneNumberInput } from '@/lib/phone-number';
-import { canReissuePendingAdministratorActivationCode } from '@/lib/admin-pending-activation-eligibility';
-import {
-  RECOVERY_CODES_ISSUANCE_COPY_KEYS,
-  recoveryCodesDialogCopy,
-  recoveryCodesIssuanceKind,
-  type RecoveryCodesIssuanceKind,
-} from '@/lib/admin-recovery-codes-issuance';
+import { isPendingActivationAdmin, shouldShowTenantOperationalWarning } from '@/lib/admin-record-rules';
+import { adminDetailHref, buildListDetailNavState } from '@/lib/list-detail-navigation';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
 import {
-  getGetAdminByIdQueryKey,
   listAdmins,
   useCreateGlobalAdmin,
   useCreateTenantAdmin,
-  useDeactivateAdmin,
-  useGetAdminById,
-  useUpdateAdmin,
 } from '@/generated/admin-api/administrator-provisioning/administrator-provisioning';
 import { useListTenants } from '@/generated/admin-api/tenants/tenants';
 import { AdminCreateRequestDtoOnboardingMode } from '@/generated/admin-api/model';
-import { canShowOnboardingCredentials } from '@/lib/admin-onboarding-eligibility';
 import type {
   AdminCreateRequestDto,
-  AdminUpdateRequestDto,
   AdminResponseDto,
   TenantResponseDto,
 } from '@/generated/admin-api/model';
@@ -71,96 +51,6 @@ interface AdminProvisioningShape {
   lifecycleStatus?: AdminResponseDto['lifecycleStatus'];
   activationCode?: string;
   activationCodeExpiresAt?: string;
-}
-
-/** UI-facing shape for recovery-code regeneration response. */
-interface AdminRecoveryCodesRegenerationShape {
-  adminId?: number;
-  username?: string;
-  recoveryCodes?: string[];
-  codesCount?: number;
-  invalidatedPreviousCodes?: boolean;
-  message?: string;
-}
-
-/** UI-facing shape for activation-code re-issue (Global Admin recovery for pending admins). */
-interface AdminActivationCodeReissueShape {
-  adminId?: number;
-  username?: string;
-  activationCode?: string;
-  activationCodeExpiresAt?: string;
-  invalidatedPreviousTokens?: boolean;
-  deactivatedActiveTokenCount?: number;
-  message?: string;
-}
-
-type RecoveryAwareAdmin = AdminResponseDto & { hasRecoveryCodes?: boolean };
-
-function isPendingActivationAdmin(
-  admin: Pick<AdminResponseDto, 'lifecycleStatus'> | null | undefined,
-): boolean {
-  return admin?.lifecycleStatus === 'PENDING_ACTIVATION';
-}
-
-function shouldShowTenantOperationalWarning(
-  admin: Pick<AdminResponseDto, 'adminType' | 'active' | 'operational' | 'lifecycleStatus'>,
-): boolean {
-  return (
-    admin.adminType !== 'GLOBAL_ADMIN'
-    && admin.active === true
-    && admin.lifecycleStatus === 'ACTIVE'
-    && admin.operational === false
-  );
-}
-
-function canRegenerateAdminRecoveryCodes(
-  admin: Pick<RecoveryAwareAdmin, 'active' | 'lifecycleStatus' | 'hasRecoveryCodes'>,
-): boolean {
-  return admin.active === true && admin.lifecycleStatus === 'ACTIVE' && admin.hasRecoveryCodes === true;
-}
-
-function canIssueInitialAdminRecoveryCodes(
-  admin: Pick<RecoveryAwareAdmin, 'active' | 'lifecycleStatus' | 'lastLoginAt' | 'hasRecoveryCodes'>,
-): boolean {
-  return (
-    admin.active === true
-    && admin.lifecycleStatus === 'ACTIVE'
-    && admin.hasRecoveryCodes !== true
-    && admin.lastLoginAt != null
-  );
-}
-
-function canShowIssueInitialAdminRecoveryCodesAction(
-  admin: Pick<RecoveryAwareAdmin, 'active' | 'lifecycleStatus' | 'hasRecoveryCodes'>,
-): boolean {
-  return (
-    admin.active === true
-    && admin.lifecycleStatus === 'ACTIVE'
-    && admin.hasRecoveryCodes !== true
-  );
-}
-
-function renderAdminStatusBadge(
-  admin: Pick<AdminResponseDto, 'active' | 'lifecycleStatus'>,
-  t: ReturnType<typeof useTranslation<'admins'>>['t'],
-  scope: 'list' | 'detail',
-) {
-  if (admin.lifecycleStatus === 'PENDING_ACTIVATION') {
-    return <Badge variant="warning">{t(`${scope}.statusPendingActivation`)}</Badge>;
-  }
-  if (admin.active) {
-    return <Badge variant="success">{t(`${scope}.statusActive`)}</Badge>;
-  }
-  return <Badge variant="muted">{t(`${scope}.statusInactive`)}</Badge>;
-}
-
-// ── Admin type badge ───────────────────────────────────────────────────────────
-
-function AdminTypeBadge({ type }: { type: AdminResponseDto['adminType'] }) {
-  const { t } = useTranslation('admins');
-  if (type === 'GLOBAL_ADMIN') return <Badge variant="warning">{t('adminType.global')}</Badge>;
-  if (type === 'INTEGRATION_ADMIN') return <Badge variant="muted">{t('adminType.integration')}</Badge>;
-  return <Badge variant="muted">{t('adminType.tenant')}</Badge>;
 }
 
 function renderAdminListTenantCell(
@@ -184,799 +74,6 @@ function renderAdminListTenantCell(
     >
       {label}
     </Link>
-  );
-}
-
-// ── Deactivate admin dialog ────────────────────────────────────────────────────
-
-function DeactivateAdminDialog({
-  open,
-  onClose,
-  admin,
-}: {
-  open: boolean;
-  onClose: () => void;
-  admin: AdminResponseDto | null;
-}) {
-  const { t } = useTranslation('admins');
-  const queryClient = useQueryClient();
-  const [reason, setReason] = useState('');
-
-  const deactivateMutation = useDeactivateAdmin({
-    mutation: {
-      onSuccess: () => {
-        void queryClient.invalidateQueries({ queryKey: ['admins'] });
-        setReason('');
-        onClose();
-      },
-    },
-  });
-
-  const handleClose = () => {
-    deactivateMutation.reset();
-    setReason('');
-    onClose();
-  };
-
-  const reasonTooShort = reason.trim().length < 10;
-  const params =
-    reason.trim().length >= 10 ? { reason: reason.trim() } : undefined;
-
-  return (
-    <Dialog open={open} onClose={handleClose} title={t('deactivate.title')} size="sm">
-      {admin && (
-        <div className="space-y-4">
-          <p className="text-sm text-fg">
-            {t('deactivate.confirmMessage', { username: admin.username })}
-          </p>
-          <p className="text-xs text-fg-muted">{t('deactivate.cannotUndo')}</p>
-
-          <ReasonFieldRow
-            presetGroup="admin_lifecycle"
-            idPrefix="deactivate-admin"
-            inputId="deactivate-admin-reason"
-            value={reason}
-            onChange={setReason}
-            label={t('deactivate.reasonLabel')}
-            placeholder={t('deactivate.reasonPlaceholder')}
-            showMinLengthError={reasonTooShort}
-            minLengthErrorTone="required"
-            childrenAfterInput={<DemoReasonBadges onSelect={setReason} />}
-          />
-
-          {deactivateMutation.isError && (
-            <Alert variant="error">
-              {getTranslatedApiError(deactivateMutation.error, t, t('deactivate.errorDeactivate'))}
-            </Alert>
-          )}
-
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="ghost" onClick={handleClose}>
-              {t('deactivate.cancel')}
-            </Button>
-            <Button
-              variant="destructive"
-              isLoading={deactivateMutation.isPending}
-              disabled={reasonTooShort}
-              onClick={() =>
-                admin &&
-                deactivateMutation.mutate({ id: admin.adminId!, params })
-              }
-            >
-              <UserX className="size-3.5 mr-1.5" />
-              {t('deactivate.submit')}
-            </Button>
-          </div>
-        </div>
-      )}
-    </Dialog>
-  );
-}
-
-// ── Admin detail dialog ────────────────────────────────────────────────────────
-
-function AdminDetailDialog({
-  admin,
-  onClose,
-  onRequestDeactivate,
-  onPrev,
-  onNext,
-  hasPrev,
-  hasNext,
-  showNav,
-  showEndOfPageHint,
-}: {
-  admin: AdminResponseDto | null;
-  onClose: () => void;
-  onRequestDeactivate?: (admin: AdminResponseDto) => void;
-  onPrev: () => void;
-  onNext: () => void;
-  hasPrev: boolean;
-  hasNext: boolean;
-  showNav: boolean;
-  showEndOfPageHint: boolean;
-}) {
-  const { t } = useTranslation('admins');
-  const { t: tc } = useTranslation('common');
-
-  useDetailNavigation(admin !== null && showNav, {
-    hasPrev: hasPrev && showNav,
-    hasNext: hasNext && showNav,
-    onPrev,
-    onNext,
-  });
-  const { session } = useAuth();
-  const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
-  const isTemporarySelfView =
-    session?.tokenPurpose === 'EVALUATOR_TEMP' &&
-    session.adminId != null &&
-    admin?.adminId === session.adminId;
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-  const [editOpen, setEditOpen] = useState(false);
-  const [editFirstName, setEditFirstName] = useState('');
-  const [editLastName, setEditLastName] = useState('');
-  const [editEmail, setEditEmail] = useState('');
-  const [editPhone, setEditPhone] = useState('');
-  const [regenerateOpen, setRegenerateOpen] = useState(false);
-  const [regeneratedCodes, setRegeneratedCodes] = useState<AdminRecoveryCodesRegenerationShape | null>(null);
-  const [regeneratedCodesCopied, setRegeneratedCodesCopied] = useState(false);
-  const [regeneratedCodesSavedConfirmed, setRegeneratedCodesSavedConfirmed] = useState(false);
-  const [recoveryCodesDialogMode, setRecoveryCodesDialogMode] = useState<'issue-initial' | 'regenerate'>('regenerate');
-  // Frozen when the dialog opens: the detail refetch after issuance clears recoveryCodesExhausted.
-  const [issuanceKind, setIssuanceKind] = useState<RecoveryCodesIssuanceKind>('initial');
-  const issuanceCopy = RECOVERY_CODES_ISSUANCE_COPY_KEYS[issuanceKind];
-  const [reissueActivationOpen, setReissueActivationOpen] = useState(false);
-  const [reissuedActivation, setReissuedActivation] = useState<AdminActivationCodeReissueShape | null>(null);
-  const [activationReissueCopied, setActivationReissueCopied] = useState(false);
-  const [activationReissueSavedConfirmed, setActivationReissueSavedConfirmed] = useState(false);
-
-  // Fetch live detail from API to ensure fresh data
-  const { data: detail } = useGetAdminById<RecoveryAwareAdmin>(
-    admin?.adminId ?? 0,
-    { query: { enabled: admin !== null } },
-  );
-
-  const adm = (detail ?? admin) as RecoveryAwareAdmin | null;
-
-  const [activateReason, setActivateReason] = useState('');
-
-  const activateMutation = useMutation({
-    mutationFn: async ({ id, reason }: { id: number; reason?: string }) => {
-      const trimmed = reason?.trim();
-      const qs =
-        trimmed != null && trimmed.length >= 10
-          ? `?reason=${encodeURIComponent(trimmed)}`
-          : '';
-      await fetchApi(`/api/v1/admins/${id}/activate${qs}`, { method: 'POST' });
-    },
-    onSuccess: () => {
-      toast(t('detail.toastActivated', { username: adm!.username }), 'success');
-      setActivateReason('');
-      void queryClient.invalidateQueries({ queryKey: ['admins'] });
-      void queryClient.invalidateQueries({ queryKey: ['admin-detail', adm!.adminId] });
-    },
-    onError: (e: unknown) => toast(getTranslatedApiError(e, t, t('detail.errorActivate')), 'error'),
-  });
-
-  const updateMutation = useUpdateAdmin({
-    mutation: {
-      onSuccess: async () => {
-        toast(t('detail.toastUpdated'), 'success');
-        await queryClient.invalidateQueries({ queryKey: ['admins'] });
-        await queryClient.invalidateQueries({ queryKey: getGetAdminByIdQueryKey(adm!.adminId!) });
-        setEditOpen(false);
-      },
-    },
-  });
-
-  const regenerateRecoveryCodesMutation = useMutation({
-    mutationFn: async (id: number) =>
-      fetchApi<AdminRecoveryCodesRegenerationShape>(`/api/v1/admins/${id}/recovery-codes/regenerate`, {
-        method: 'POST',
-      }),
-    onSuccess: async (data) => {
-      setRegeneratedCodes(data);
-      setRegeneratedCodesCopied(false);
-      setRegeneratedCodesSavedConfirmed(false);
-      toast(t('detail.toastRecoveryCodesRegenerated', { username: adm!.username }), 'success');
-      await queryClient.invalidateQueries({ queryKey: ['admins'] });
-      await queryClient.invalidateQueries({ queryKey: getGetAdminByIdQueryKey(adm!.adminId!) });
-    },
-    onError: (e: unknown) =>
-      toast(getTranslatedApiError(e, t, t('detail.errorRecoveryCodesRegenerate')), 'error'),
-  });
-
-  const issueInitialRecoveryCodesMutation = useMutation({
-    mutationFn: async (id: number) =>
-      fetchApi<AdminRecoveryCodesRegenerationShape>(`/api/v1/admins/${id}/recovery-codes/issue-initial`, {
-        method: 'POST',
-      }),
-    onSuccess: async (data) => {
-      setRegeneratedCodes(data);
-      setRegeneratedCodesCopied(false);
-      setRegeneratedCodesSavedConfirmed(false);
-      toast(t(issuanceCopy.toast, { username: adm!.username }), 'success');
-      await queryClient.invalidateQueries({ queryKey: ['admins'] });
-      await queryClient.invalidateQueries({ queryKey: getGetAdminByIdQueryKey(adm!.adminId!) });
-    },
-    onError: (e: unknown) =>
-      toast(getTranslatedApiError(e, t, t(issuanceCopy.error)), 'error'),
-  });
-
-  const reissueActivationCodeMutation = useMutation({
-    mutationFn: async (id: number) =>
-      fetchApi<AdminActivationCodeReissueShape>(`/api/v1/admins/${id}/activation-code/regenerate`, {
-        method: 'POST',
-      }),
-    onSuccess: async (data) => {
-      setReissuedActivation(data);
-      setActivationReissueCopied(false);
-      setActivationReissueSavedConfirmed(false);
-      toast(t('detail.toastActivationCodeReissued', { username: adm!.username }), 'success');
-      await queryClient.invalidateQueries({ queryKey: ['admins'] });
-      await queryClient.invalidateQueries({ queryKey: getGetAdminByIdQueryKey(adm!.adminId!) });
-    },
-    onError: (e: unknown) =>
-      toast(getTranslatedApiError(e, t, t('detail.errorActivationCodeReissue')), 'error'),
-  });
-
-  if (!adm) return null;
-
-  const activateReasonTooShort = activateReason.trim().length > 0 && activateReason.trim().length < 10;
-
-  const fullName = [adm.firstName, adm.lastName].filter(Boolean).join(' ');
-  const canShowIssueInitialAction = canShowIssueInitialAdminRecoveryCodesAction(adm);
-  const issueActionLabel = t(RECOVERY_CODES_ISSUANCE_COPY_KEYS[recoveryCodesIssuanceKind(adm)].action);
-  const canIssueInitialCodesNow = canIssueInitialAdminRecoveryCodes(adm);
-  const issueInitialCodesDisabledReason = canShowIssueInitialAction && !canIssueInitialCodesNow
-    ? t('detail.issueInitialRecoveryCodesBlockedFirstLoginRequired')
-    : null;
-
-  const openEditDialog = () => {
-    setEditFirstName(adm.firstName ?? '');
-    setEditLastName(adm.lastName ?? '');
-    setEditEmail(adm.email ?? '');
-    setEditPhone(adm.phoneNumber ?? '');
-    setEditOpen(true);
-  };
-
-  const openRegenerateDialog = () => {
-    setRecoveryCodesDialogMode('regenerate');
-    setRegeneratedCodes(null);
-    setRegeneratedCodesCopied(false);
-    setRegeneratedCodesSavedConfirmed(false);
-    setRegenerateOpen(true);
-  };
-
-  const openIssueInitialDialog = () => {
-    setRecoveryCodesDialogMode('issue-initial');
-    setIssuanceKind(recoveryCodesIssuanceKind(adm));
-    setRegeneratedCodes(null);
-    setRegeneratedCodesCopied(false);
-    setRegeneratedCodesSavedConfirmed(false);
-    setRegenerateOpen(true);
-  };
-
-  const openReissueActivationDialog = () => {
-    setReissuedActivation(null);
-    setActivationReissueCopied(false);
-    setActivationReissueSavedConfirmed(false);
-    setReissueActivationOpen(true);
-  };
-
-  const handleCloseRegenerateDialog = () => {
-    if (regeneratedCodes && !regeneratedCodesSavedConfirmed) {
-      return;
-    }
-    if (regenerateRecoveryCodesMutation.isPending || issueInitialRecoveryCodesMutation.isPending) {
-      return;
-    }
-    setRegenerateOpen(false);
-    setRegeneratedCodes(null);
-    setRegeneratedCodesCopied(false);
-    setRegeneratedCodesSavedConfirmed(false);
-    regenerateRecoveryCodesMutation.reset();
-    issueInitialRecoveryCodesMutation.reset();
-  };
-
-  const handleCloseReissueActivationDialog = () => {
-    if (reissuedActivation != null && !activationReissueSavedConfirmed) {
-      return;
-    }
-    if (reissueActivationCodeMutation.isPending) {
-      return;
-    }
-    setReissueActivationOpen(false);
-    setReissuedActivation(null);
-    setActivationReissueCopied(false);
-    setActivationReissueSavedConfirmed(false);
-    reissueActivationCodeMutation.reset();
-  };
-
-  const handleCopyRegeneratedCodes = async () => {
-    const codes = regeneratedCodes?.recoveryCodes;
-    if (codes == null || codes.length === 0) return;
-    try {
-      await navigator.clipboard.writeText(codes.join('\n'));
-      setRegeneratedCodesCopied(true);
-      setTimeout(() => setRegeneratedCodesCopied(false), 2000);
-    } catch {
-      /* ignore clipboard API errors */
-    }
-  };
-
-  const handleCopyReissuedActivationCode = async () => {
-    const code = reissuedActivation?.activationCode;
-    if (code == null || code === '') return;
-    try {
-      await navigator.clipboard.writeText(code);
-      setActivationReissueCopied(true);
-      setTimeout(() => setActivationReissueCopied(false), 2000);
-    } catch {
-      /* ignore clipboard API errors */
-    }
-  };
-
-  return (
-    <Dialog
-      open={admin !== null}
-      onClose={onClose}
-      title={t('detail.title', { username: adm.username })}
-      size="lg"
-      headerActions={
-        showNav ? (
-          <DetailDialogHeaderNav
-            hasPrev={hasPrev}
-            hasNext={hasNext}
-            onPrev={onPrev}
-            onNext={onNext}
-          />
-        ) : undefined
-      }
-    >
-      <div className="space-y-5">
-        {showEndOfPageHint && (
-          <p className="text-xs text-fg-muted italic border border-fg/20 bg-fg/[0.03] px-3 py-2">
-            {tc('detailNav.endOfPageMore')}
-          </p>
-        )}
-        {/* Info section */}
-        <dl className="space-y-2.5">
-          <DetailInfoRow label={t('detail.labelAdminId')} valueClassName="break-all"><span className="font-mono">{adm.adminId}</span></DetailInfoRow>
-          <DetailInfoRow label={t('detail.labelUsername')} valueClassName="break-all"><span className="font-medium">{adm.username}</span></DetailInfoRow>
-          <DetailInfoRow label={t('detail.labelName')} valueClassName="break-all">{fullName || <span className="text-fg-muted">—</span>}</DetailInfoRow>
-          <DetailInfoRow label={t('detail.labelEmail')} valueClassName="break-all">
-            {adm.email || <span className="text-fg-muted">—</span>}
-            <p className="text-xs text-fg-muted mt-0.5" data-testid="admin-email-hint">{t('detail.emailHint')}</p>
-          </DetailInfoRow>
-          <DetailInfoRow label={t('detail.labelPhone')} valueClassName="break-all">{adm.phoneNumber || <span className="text-fg-muted">—</span>}</DetailInfoRow>
-          <DetailInfoRow label={t('detail.labelType')} valueClassName="break-all"><AdminTypeBadge type={adm.adminType} /></DetailInfoRow>
-          {adm.tenantId != null && (
-            <DetailInfoRow label={t('detail.labelTenant')} valueClassName="break-all">
-              {adm.tenantName != null && adm.tenantName.trim() !== '' ? (
-                <>
-                  <span className="font-medium">{adm.tenantName.trim()}</span>
-                  <span className="text-fg-muted font-mono text-xs ml-1.5">(ID {adm.tenantId})</span>
-                </>
-              ) : (
-                <span className="font-mono">{adm.tenantId}</span>
-              )}
-            </DetailInfoRow>
-          )}
-          {/* #1313: Global only, from the session role. Display rule, not a protection: the id is
-              not a secret, and /enrollments/{id} answers 404 to a Tenant Admin. */}
-          {isGlobalAdmin && adm.enrollmentId != null && (
-            <DetailInfoRow label={t('detail.labelEnrollmentId')} valueClassName="break-all">
-              <span data-testid="admin-detail-enrollment-link">
-                <EnrollmentFkLink
-                  enrollmentId={adm.enrollmentId}
-                  enrollmentName={adm.enrollmentName}
-                  fallbackLabel={t('detail.enrollmentFallback', { id: adm.enrollmentId })}
-                />
-              </span>
-            </DetailInfoRow>
-          )}
-          <DetailInfoRow label={t('detail.labelStatus')} valueClassName="break-all">{renderAdminStatusBadge(adm, t, 'detail')}</DetailInfoRow>
-          {isPendingActivationAdmin(adm) && (
-            <DetailInfoRow label={t('detail.labelActivationCodeExpiresAt')} valueClassName="break-all">
-              <span data-testid="admin-detail-activation-code-expiry">
-                {adm.activationCodeExpiresAt
-                  ? formatDate(adm.activationCodeExpiresAt)
-                  : <span className="text-fg-muted">{t('detail.activationCodeNoValidCode')}</span>}
-              </span>
-            </DetailInfoRow>
-          )}
-          <DetailInfoRow label={t('detail.labelCreated')} valueClassName="break-all">{adm.createdAt ? formatDate(adm.createdAt) : '—'}</DetailInfoRow>
-          <DetailInfoRow label={t('detail.labelLastLogin')} valueClassName="break-all">
-            {adm.lastLoginAt ? (
-              <span>
-                {formatDate(adm.lastLoginAt)}
-                <span className="text-fg-muted text-xs ml-1.5">({formatRelativeTime(adm.lastLoginAt)})</span>
-              </span>
-            ) : (
-              <span className="text-fg-muted italic">{t('detail.lastLoginNever')}</span>
-            )}
-          </DetailInfoRow>
-          <DetailInfoRow label={t('detail.labelEnrollmentCapability')} valueClassName="break-all">
-            {adm.enrollmentId != null
-              ? <Badge variant="success">{t('detail.enrollmentCapabilityLinked')}</Badge>
-              : <Badge variant="muted">{t('detail.enrollmentCapabilityMissing')}</Badge>}
-          </DetailInfoRow>
-          <DetailInfoRow label={t('detail.labelAdminLoginState')} valueClassName="break-all">
-            {adm.lastLoginAt != null
-              ? <Badge variant="success">{t('detail.adminLoginStateCompleted')}</Badge>
-              : <Badge variant="warning">{t('detail.adminLoginStatePendingFirstLogin')}</Badge>}
-          </DetailInfoRow>
-        </dl>
-
-        {isTemporarySelfView && (
-          <Alert variant="info" data-testid="temporary-session-identity-bind-hint">
-            {t('detail.temporarySessionBindHint')}
-          </Alert>
-        )}
-
-        {isPendingActivationAdmin(adm) && (
-          <Alert variant="info">{t('detail.pendingActivationNotice')}</Alert>
-        )}
-
-        {shouldShowTenantOperationalWarning(adm) && (
-          <OperationalWarning message={t('detail.operationalWarning.tenantInactive')} />
-        )}
-
-        {canShowOnboardingCredentials(adm) && adm.adminId != null && (
-          <AdminBindCard key={adm.adminId} adminId={adm.adminId} enrollmentStatus={adm.enrollmentStatus} />
-        )}
-
-        {/* Actions */}
-        <div className="border-t-2 border-fg/10 pt-4 space-y-3">
-          <h3 className="font-bold text-xs uppercase tracking-wider text-fg-muted">{t('detail.sectionActions')}</h3>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              className="gap-1.5"
-              onClick={openEditDialog}
-            >
-              <Pencil className="size-3.5" />
-              {t('detail.editProfile')}
-            </Button>
-            {canShowIssueInitialAction && (
-              issueInitialCodesDisabledReason ? (
-                <Tooltip content={issueInitialCodesDisabledReason}>
-                  <span className="inline-flex">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="gap-1.5"
-                      disabled
-                    >
-                      <KeyRound className="size-3.5" />
-                      {issueActionLabel}
-                    </Button>
-                  </span>
-                </Tooltip>
-              ) : (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="gap-1.5"
-                  onClick={openIssueInitialDialog}
-                >
-                  <KeyRound className="size-3.5" />
-                  {issueActionLabel}
-                </Button>
-              )
-            )}
-            {canRegenerateAdminRecoveryCodes(adm) && (
-              <Button
-                variant="secondary"
-                size="sm"
-                className="gap-1.5"
-                onClick={openRegenerateDialog}
-              >
-                <RefreshCw className="size-3.5" />
-                {t('detail.regenerateRecoveryCodes')}
-              </Button>
-            )}
-            {isGlobalAdmin && canReissuePendingAdministratorActivationCode(adm) && (
-              <Button
-                variant="secondary"
-                size="sm"
-                className="gap-1.5"
-                onClick={openReissueActivationDialog}
-              >
-                <KeyRound className="size-3.5" />
-                {t('detail.reissueActivationCode')}
-              </Button>
-            )}
-
-            {isGlobalAdmin && adm.active && onRequestDeactivate && (
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="gap-1.5"
-                  onClick={() => onRequestDeactivate(adm)}
-                >
-                  <PowerOff className="size-3.5" />
-                  {t('detail.deactivate')}
-                </Button>
-                <ContextHelp
-                  title={t('detail.contextHelp.deactivateTitle')}
-                  content={t('detail.contextHelp.deactivateContent')}
-                />
-              </div>
-            )}
-
-            {isGlobalAdmin && !adm.active && (
-              <div className="w-full space-y-2">
-                <ReasonFieldRow
-                  presetGroup="admin_lifecycle"
-                  idPrefix="activate-admin"
-                  inputId="activate-admin-reason"
-                  value={activateReason}
-                  onChange={setActivateReason}
-                  label={
-                    <>
-                      {t('deactivate.reasonLabel')}{' '}
-                      <span className="text-fg-muted font-normal">{t('deactivate.reasonHint')}</span>
-                    </>
-                  }
-                  placeholder={t('detail.activateReasonPlaceholder')}
-                  showMinLengthError={activateReasonTooShort}
-                  childrenAfterInput={<DemoReasonBadges onSelect={setActivateReason} />}
-                />
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="gap-1.5 text-success border-success/30 hover:bg-success/10"
-                  isLoading={activateMutation.isPending}
-                  disabled={activateReasonTooShort}
-                  onClick={() =>
-                    activateMutation.mutate({
-                      id: adm!.adminId!,
-                      reason:
-                        activateReason.trim().length >= 10 ? activateReason.trim() : undefined,
-                    })
-                  }
-                >
-                  <Power className="size-3.5" />
-                  {t('detail.activate')}
-                </Button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="flex justify-end pt-2">
-          <Button onClick={onClose}>{t('detail.close')}</Button>
-        </div>
-      </div>
-      <AdminRecoveryCodesDialog
-        open={regenerateOpen}
-        onClose={handleCloseRegenerateDialog}
-        mode={recoveryCodesDialogMode}
-        issuanceKind={issuanceKind}
-        username={adm.username ?? ''}
-        result={regeneratedCodes}
-        copied={regeneratedCodesCopied}
-        savedConfirmed={regeneratedCodesSavedConfirmed}
-        onCopyAll={() => void handleCopyRegeneratedCodes()}
-        onSavedConfirmedChange={setRegeneratedCodesSavedConfirmed}
-        onConfirm={() => {
-          if (recoveryCodesDialogMode === 'issue-initial') {
-            issueInitialRecoveryCodesMutation.mutate(adm.adminId!);
-            return;
-          }
-          regenerateRecoveryCodesMutation.mutate(adm.adminId!);
-        }}
-        pending={regenerateRecoveryCodesMutation.isPending || issueInitialRecoveryCodesMutation.isPending}
-        errorMessage={
-          regenerateRecoveryCodesMutation.isError || issueInitialRecoveryCodesMutation.isError
-            ? getTranslatedApiError(
-                regenerateRecoveryCodesMutation.error ?? issueInitialRecoveryCodesMutation.error,
-                t,
-                t(recoveryCodesDialogCopy(recoveryCodesDialogMode, issuanceKind).error),
-              )
-            : null
-        }
-      />
-      <Dialog
-        open={reissueActivationOpen}
-        onClose={handleCloseReissueActivationDialog}
-        title={t('detail.reissueActivationCodeDialogTitle', { username: adm.username })}
-        size="md"
-        dismissible={false}
-      >
-        {reissuedActivation ? (
-          <div className="space-y-4">
-            <Alert variant="success">
-              {reissuedActivation.message ?? t('detail.reissueActivationCodeSuccess')}
-            </Alert>
-            <div className="space-y-2 border-2 border-warning/40 bg-bg p-3">
-              <div className="border-2 border-warning bg-warning/10 p-3 flex gap-2">
-                <AlertTriangle className="size-4 text-warning shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-black text-warning">{t('create.activationCodeWarningTitle')}</p>
-                  <p className="text-xs text-warning/80 mt-0.5">{t('create.activationCodeWarningBody')}</p>
-                </div>
-              </div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted">{t('create.activationCodeTitle')}</p>
-              <p className="text-xs text-fg-muted">{t('create.activationCodeHint')}</p>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => void handleCopyReissuedActivationCode()}
-                className="gap-1.5"
-              >
-                {activationReissueCopied
-                  ? <Check className="size-3.5 text-success" />
-                  : <Copy className="size-3.5" />}
-                {activationReissueCopied ? t('onboarding.copied') : t('create.copyActivationCode')}
-              </Button>
-              <div className="font-mono text-xs break-all border-2 border-fg/20 p-3 bg-surface">
-                {reissuedActivation.activationCode}
-              </div>
-              {reissuedActivation.activationCodeExpiresAt && (
-                <p className="text-xs text-fg-muted">
-                  {t('create.activationCodeExpiresAt', {
-                    expiresAt: formatDate(reissuedActivation.activationCodeExpiresAt),
-                  })}
-                </p>
-              )}
-              <div className="flex items-center gap-2.5 p-3 border-2 border-fg/20 bg-bg">
-                <input
-                  id="reissued-activation-code-saved"
-                  type="checkbox"
-                  className="size-4 border-2 border-fg accent-accent"
-                  checked={activationReissueSavedConfirmed}
-                  onChange={(e) => setActivationReissueSavedConfirmed(e.target.checked)}
-                />
-                <label htmlFor="reissued-activation-code-saved" className="text-sm font-bold cursor-pointer select-none">
-                  {t('create.activationCodeSavedConfirmLabel')}
-                </label>
-              </div>
-            </div>
-            <p className="text-sm text-fg-muted">{t('create.activationCodeSuccessHint')}</p>
-            <div className="flex justify-end pt-2">
-              <Button onClick={handleCloseReissueActivationDialog} disabled={!activationReissueSavedConfirmed}>
-                {t('detail.close')}
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <Alert variant="warning">{t('detail.reissueActivationCodeIntro')}</Alert>
-            <div className="border-2 border-error bg-error/5 p-3 flex gap-2">
-              <AlertTriangle className="size-4 text-error shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-black text-error">{t('detail.reissueActivationCodeWarningTitle')}</p>
-                <p className="text-xs text-error/80 mt-0.5">{t('detail.reissueActivationCodeWarningBody')}</p>
-              </div>
-            </div>
-            {reissueActivationCodeMutation.isError && (
-              <Alert variant="error">
-                {getTranslatedApiError(
-                  reissueActivationCodeMutation.error,
-                  t,
-                  t('detail.errorActivationCodeReissue'),
-                )}
-              </Alert>
-            )}
-            <div className="flex justify-end gap-2 pt-2">
-              <Button
-                variant="ghost"
-                type="button"
-                onClick={handleCloseReissueActivationDialog}
-                disabled={reissueActivationCodeMutation.isPending}
-              >
-                {t('detail.editCancel')}
-              </Button>
-              <Button
-                type="button"
-                isLoading={reissueActivationCodeMutation.isPending}
-                onClick={() => {
-                  const id = adm.adminId;
-                  if (id != null) {
-                    reissueActivationCodeMutation.mutate(id);
-                  }
-                }}
-              >
-                {t('detail.reissueActivationCodeConfirm')}
-              </Button>
-            </div>
-          </div>
-        )}
-      </Dialog>
-      <Dialog
-        open={editOpen}
-        onClose={() => {
-          if (!updateMutation.isPending) setEditOpen(false);
-        }}
-        title={t('detail.editDialogTitle')}
-        size="md"
-        dismissible={false}
-      >
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="adm-edit-first-name">{t('detail.editFirstName')}</Label>
-              <Input
-                id="adm-edit-first-name"
-                value={editFirstName}
-                onChange={(e) => setEditFirstName(e.target.value)}
-                maxLength={100}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="adm-edit-last-name">{t('detail.editLastName')}</Label>
-              <Input
-                id="adm-edit-last-name"
-                value={editLastName}
-                onChange={(e) => setEditLastName(e.target.value)}
-                maxLength={100}
-              />
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="adm-edit-email">{t('detail.editEmail')}</Label>
-            <Input
-              id="adm-edit-email"
-              type="email"
-              value={editEmail}
-              onChange={(e) => setEditEmail(e.target.value)}
-              maxLength={255}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="adm-edit-phone">{t('detail.editPhone')}</Label>
-            <Input
-              id="adm-edit-phone"
-              value={editPhone}
-              onChange={(e) => setEditPhone(e.target.value)}
-              maxLength={50}
-            />
-            {editPhone.trim() !== '' && !isPhoneNumberInputValid(editPhone) && (
-              <p className="text-xs text-error">{t('validation.invalidPhone')}</p>
-            )}
-          </div>
-          {updateMutation.isError && (
-            <Alert variant="error">
-              {getTranslatedApiError(updateMutation.error, t, t('detail.errorUpdate'))}
-            </Alert>
-          )}
-          <div className="flex justify-end gap-2 pt-2">
-            <Button
-              variant="ghost"
-              type="button"
-              onClick={() => setEditOpen(false)}
-              disabled={updateMutation.isPending}
-            >
-              {t('detail.editCancel')}
-            </Button>
-            <Button
-              type="button"
-              isLoading={updateMutation.isPending}
-              disabled={editPhone.trim() !== '' && !isPhoneNumberInputValid(editPhone)}
-              onClick={() => {
-                const data: AdminUpdateRequestDto = {
-                  version: adm.version,
-                  firstName: editFirstName.trim() || undefined,
-                  lastName: editLastName.trim() || undefined,
-                  email: editEmail.trim() || undefined,
-                  phoneNumber: normalizePhoneNumberInput(editPhone),
-                };
-                updateMutation.mutate({ id: adm.adminId!, data });
-              }}
-            >
-              {t('detail.editSave')}
-            </Button>
-          </div>
-        </div>
-      </Dialog>
-    </Dialog>
   );
 }
 
@@ -1475,6 +572,7 @@ function CreateAdminDialog({
 export default function AdminsPage() {
   const { t } = useTranslation('admins');
   const { session } = useAuth();
+  const navigate = useNavigate();
   const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
   const isTempSession = isEvaluatorTempSession(session);
   const canCreateAdmin = !isTempSession;
@@ -1488,21 +586,15 @@ export default function AdminsPage() {
     return Number.isFinite(n) && n > 0 ? n : null;
   }, [searchParams, canCreateAdmin]);
 
-  /** Deep-link from other screens (e.g. tenant admins table, enrollment “created by”). */
-  const adminIdFromUrl = useMemo(() => {
+  /** #1399: the record moved to /admins/:id; former ?adminId=N links (bookmarks, history) redirect. */
+  const legacyAdminId = useMemo(() => {
     const raw = searchParams.get('adminId');
     if (raw == null || raw === '') return null;
     const n = Number(raw);
-    return Number.isFinite(n) && n > 0 ? n : null;
+    return Number.isInteger(n) && n > 0 ? n : null;
   }, [searchParams]);
 
-  const { data: adminFromUrl } = useGetAdminById<AdminResponseDto>(
-    adminIdFromUrl ?? 0,
-    { query: { enabled: adminIdFromUrl != null } },
-  );
-
   const [createOpen, setCreateOpen] = useState(false);
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [deactivateTarget, setDeactivateTarget] = useState<AdminResponseDto | null>(null);
 
   const { data, pagination, isLoading, refetch } = usePaginatedFromOrval<AdminResponseDto, Record<string, never>>({
@@ -1510,40 +602,6 @@ export default function AdminsPage() {
     baseParams: {},
     fetchPage: (params) => listAdmins(params),
   });
-
-  const selectedAdmin = selectedIndex !== null ? data[selectedIndex] ?? null : null;
-  const dialogAdmin = selectedAdmin ?? (adminFromUrl != null ? adminFromUrl : null);
-
-  const clearAdminIdFromUrl = useCallback(() => {
-    if (!searchParams.has('adminId')) return;
-    const next = new URLSearchParams(searchParams);
-    next.delete('adminId');
-    setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams]);
-
-  const handleCloseDetailDialog = useCallback(() => {
-    setSelectedIndex(null);
-    clearAdminIdFromUrl();
-  }, [clearAdminIdFromUrl]);
-  const showRowNav = data.length > 1;
-  const hasPrev = selectedIndex !== null && selectedIndex > 0;
-  const hasNext = selectedIndex !== null && selectedIndex < data.length - 1;
-  const showEndOfPageHint =
-    selectedIndex !== null &&
-    data.length > 0 &&
-    selectedIndex === data.length - 1 &&
-    !pagination.isLast;
-
-  const goPrevAdmin = useCallback(() => {
-    setSelectedIndex((i) => (i !== null && i > 0 ? i - 1 : i));
-  }, []);
-
-  const goNextAdmin = useCallback(() => {
-    setSelectedIndex((i) => {
-      if (i === null) return i;
-      return i < data.length - 1 ? i + 1 : i;
-    });
-  }, [data.length]);
 
   const handleCloseCreateDialog = () => {
     setCreateOpen(false);
@@ -1555,15 +613,13 @@ export default function AdminsPage() {
     }
   };
 
-  /** #1313: after a creation, open the new administrator's record (/admins?adminId=N). */
+  /**
+   * #1313: after a creation, open the new administrator's record. A creation opened from another
+   * screen (?createTenantAdmin=1) replaces that URL, so Back does not reopen the create dialog.
+   */
   const handleLandOnRecord = (adminId: number) => {
     setCreateOpen(false);
-    setSelectedIndex(null);
-    const next = new URLSearchParams(searchParams);
-    next.delete('createTenantAdmin');
-    next.delete('tenantId');
-    next.set('adminId', String(adminId));
-    setSearchParams(next, { replace: true });
+    navigate(adminDetailHref(adminId), { replace: defaultTenantIdFromUrl != null });
   };
 
   const columns: ColumnDef<AdminResponseDto>[] = useMemo(() => {
@@ -1606,7 +662,7 @@ export default function AdminsPage() {
       sortKey: 'active',
       render: (r) => (isPendingActivationAdmin(r) ? (
         <Tooltip content={t('list.pendingActivationTooltip')}>
-          {renderAdminStatusBadge(r, t, 'list')}
+          {<AdminStatusBadge admin={r} scope="list" />}
         </Tooltip>
       ) : shouldShowTenantOperationalWarning(r) ? (
         <Tooltip content={t('list.operationalWarningTooltip')}>
@@ -1616,7 +672,7 @@ export default function AdminsPage() {
           </span>
         </Tooltip>
       ) : (
-        renderAdminStatusBadge(r, t, 'list')
+        <AdminStatusBadge admin={r} scope="list" />
       )),
     };
     const lastLoginCol: ColumnDef<AdminResponseDto> = {
@@ -1689,6 +745,10 @@ export default function AdminsPage() {
     ];
   }, [isGlobalAdmin, t]);
 
+  if (legacyAdminId != null) {
+    return <Navigate to={adminDetailHref(legacyAdminId)} replace />;
+  }
+
   return (
     <AppShell title={t('list.title')}>
       <div className="space-y-4">
@@ -1718,9 +778,9 @@ export default function AdminsPage() {
             data={data}
             isLoading={isLoading}
             onRowClick={(row) => {
-              const idx = data.findIndex((r) => r.adminId === row.adminId);
-              setSelectedIndex(idx >= 0 ? idx : null);
-              clearAdminIdFromUrl();
+              if (row.adminId == null) return;
+              const st = buildListDetailNavState(data, (r) => r.adminId ?? 0, row, !pagination.isLast);
+              navigate(adminDetailHref(row.adminId), { state: st ?? undefined });
             }}
             keyExtractor={(r, i) => r.adminId ?? i}
             emptyMessage={t('list.emptyMessage')}
@@ -1731,21 +791,6 @@ export default function AdminsPage() {
         </div>
       </div>
 
-      <AdminDetailDialog
-        admin={dialogAdmin}
-        onClose={handleCloseDetailDialog}
-        onRequestDeactivate={(a) => {
-          setSelectedIndex(null);
-          clearAdminIdFromUrl();
-          setDeactivateTarget(a);
-        }}
-        onPrev={goPrevAdmin}
-        onNext={goNextAdmin}
-        hasPrev={hasPrev}
-        hasNext={hasNext}
-        showNav={showRowNav}
-        showEndOfPageHint={showEndOfPageHint}
-      />
       {canCreateAdmin && (createOpen || defaultTenantIdFromUrl != null) && (
         <CreateAdminDialog
           open

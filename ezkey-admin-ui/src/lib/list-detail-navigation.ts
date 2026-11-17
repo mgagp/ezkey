@@ -31,11 +31,11 @@ export type ResolvedListDetailNav<T extends string | number = number> = {
 };
 
 /**
- * Admins open detail on the list route via {@code ?adminId=} — there is no {@code /admins/:id} page route.
- * Use this helper for every cross-screen link to an administrator.
+ * The administrator record page (#1399). Use this helper for every cross-screen link to an
+ * administrator; the list still redirects the former {@code /admins?adminId=N} links here.
  */
-export function adminListDetailHref(adminId: number): string {
-  return `/admins?adminId=${adminId}`;
+export function adminDetailHref(adminId: number): string {
+  return `/admins/${adminId}`;
 }
 
 /**

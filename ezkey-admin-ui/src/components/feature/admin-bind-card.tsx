@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Check, Copy, QrCode } from 'lucide-react';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useGetAdminOnboarding } from '@/generated/admin-api/administrator-provisioning/administrator-provisioning';
 import type { AdminResponseDto } from '@/generated/admin-api/model';
 import { fetchBlobUrl } from '@/lib/api-client';
@@ -22,7 +23,8 @@ interface AdminOnboardingShape {
  * operator clicks the reveal button. Each reveal writes an ADMIN_BIND_MATERIAL_REVEALED audit row
  * on the server.
  *
- * Mount it with key={adminId} so moving to another administrator resets the reveal.
+ * The record page mounts it under a component keyed by adminId, so moving to another administrator
+ * resets the reveal.
  */
 export function AdminBindCard({
   adminId,
@@ -87,64 +89,68 @@ export function AdminBindCard({
   else if (revealed) revealLabel = t('bindCard.hideCode');
 
   return (
-    <section className="border-t-2 border-fg/10 pt-4 space-y-3" data-testid="admin-bind-card">
-      <h3 className="font-bold text-xs uppercase tracking-wider text-fg-muted">{t('bindCard.title')}</h3>
-      <p className="text-sm text-fg" data-testid="admin-bind-in-person">{t('bindCard.inPerson')}</p>
-      <p className="text-xs text-fg-muted">{t('bindCard.revealAudited')}</p>
-      <Button
-        variant="secondary"
-        size="sm"
-        className="gap-1.5"
-        isLoading={qrLoading || (revealed && isFetching)}
-        onClick={() => (revealed ? hide() : void reveal())}
-        data-testid="admin-bind-reveal"
-      >
-        <QrCode className="size-3.5" />
-        {revealLabel}
-      </Button>
+    <Card data-testid="admin-bind-card">
+      <CardHeader>
+        <CardTitle>{t('bindCard.title')}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-fg" data-testid="admin-bind-in-person">{t('bindCard.inPerson')}</p>
+        <p className="text-xs text-fg-muted">{t('bindCard.revealAudited')}</p>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="gap-1.5"
+          isLoading={qrLoading || (revealed && isFetching)}
+          onClick={() => (revealed ? hide() : void reveal())}
+          data-testid="admin-bind-reveal"
+        >
+          <QrCode className="size-3.5" />
+          {revealLabel}
+        </Button>
 
-      {revealed && isError && <Alert variant="error">{t('bindCard.errorLoad')}</Alert>}
+        {revealed && isError && <Alert variant="error">{t('bindCard.errorLoad')}</Alert>}
 
-      {qrCodeUrl && (
-        <div className="border-2 border-fg p-3 w-fit" data-testid="admin-bind-qr">
-          <img src={qrCodeUrl} alt={t('bindCard.qrCodeAlt')} className="size-48" />
-        </div>
-      )}
-
-      {challenge != null && (
-        <div className="border-2 border-fg/30 p-3 bg-bg">
-          <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted mb-1">
-            {t('bindCard.bindingChallenge')}
-          </p>
-          {proofToken == null && (
-            <Alert variant="warning" className="mb-2" data-testid="admin-bind-bound-warning">
-              {t('enrollments:detail.boundChallengeWarning')}
-            </Alert>
-          )}
-          <p className="font-mono text-2xl font-black tracking-widest" data-testid="admin-bind-challenge">
-            {challenge}
-          </p>
-        </div>
-      )}
-
-      {proofToken != null && (
-        <div className="space-y-1.5" data-testid="admin-bind-token">
-          <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted">
-            {t('bindCard.proofToken')}
-          </p>
-          <div className="border-2 border-fg p-3 font-mono text-xs break-all bg-bg leading-relaxed">
-            {proofToken}
+        {qrCodeUrl && (
+          <div className="border-2 border-fg p-3 w-fit" data-testid="admin-bind-qr">
+            <img src={qrCodeUrl} alt={t('bindCard.qrCodeAlt')} className="size-48" />
           </div>
-          <Button variant="secondary" size="sm" onClick={() => void handleCopyToken()} className="gap-1.5">
-            {tokenCopied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
-            {tokenCopied ? t('onboarding.copied') : t('bindCard.copyToken')}
-          </Button>
-        </div>
-      )}
+        )}
 
-      {onboarding && proofToken == null && challenge == null && (
-        <Alert variant="info">{t('bindCard.noLongerAvailable')}</Alert>
-      )}
-    </section>
+        {challenge != null && (
+          <div className="border-2 border-fg/30 p-3 bg-bg">
+            <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted mb-1">
+              {t('bindCard.bindingChallenge')}
+            </p>
+            {proofToken == null && (
+              <Alert variant="warning" className="mb-2" data-testid="admin-bind-bound-warning">
+                {t('enrollments:detail.boundChallengeWarning')}
+              </Alert>
+            )}
+            <p className="font-mono text-2xl font-black tracking-widest" data-testid="admin-bind-challenge">
+              {challenge}
+            </p>
+          </div>
+        )}
+
+        {proofToken != null && (
+          <div className="space-y-1.5" data-testid="admin-bind-token">
+            <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted">
+              {t('bindCard.proofToken')}
+            </p>
+            <div className="border-2 border-fg p-3 font-mono text-xs break-all bg-bg leading-relaxed">
+              {proofToken}
+            </div>
+            <Button variant="secondary" size="sm" onClick={() => void handleCopyToken()} className="gap-1.5">
+              {tokenCopied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
+              {tokenCopied ? t('onboarding.copied') : t('bindCard.copyToken')}
+            </Button>
+          </div>
+        )}
+
+        {onboarding && proofToken == null && challenge == null && (
+          <Alert variant="info">{t('bindCard.noLongerAvailable')}</Alert>
+        )}
+      </CardContent>
+    </Card>
   );
 }

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/use-auth';
+import { adminDetailHref } from '@/lib/list-detail-navigation';
 import { formatDate } from '@/lib/utils';
 import { Header } from './header';
 import { Sidebar } from './sidebar';
@@ -30,7 +31,7 @@ export function AppShell({ title, breadcrumb, detailNav, children }: AppShellPro
   const { session } = useAuth();
   const isTemporarySession = session?.tokenPurpose === 'EVALUATOR_TEMP';
   const bindHref =
-    session?.adminId != null ? `/admins?adminId=${session.adminId}` : '/admins';
+    session?.adminId != null ? adminDetailHref(session.adminId) : '/admins';
 
   return (
     <div data-testid="app-shell" className="flex h-screen overflow-hidden bg-bg">

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { adminListDetailHref } from '@/lib/list-detail-navigation';
+import { adminDetailHref } from '@/lib/list-detail-navigation';
 
 interface AdminFkLinkProps {
   adminId: number;
@@ -10,7 +10,7 @@ interface AdminFkLinkProps {
 }
 
 /**
- * Operator-facing link to an administrator detail (list dialog via {@code ?adminId=}).
+ * Operator-facing link to an administrator record ({@code /admins/:id}).
  * Uses username when the API enriched the FK; otherwise plain {@code #id} when the admin row is
  * gone, or {@code fallbackLabel} as link when {@code linkWhenNameMissing} is set.
  */
@@ -24,7 +24,7 @@ export function AdminFkLink({
   if (label) {
     return (
       <Link
-        to={adminListDetailHref(adminId)}
+        to={adminDetailHref(adminId)}
         className="font-medium text-accent hover:underline"
       >
         {label}
@@ -35,7 +35,7 @@ export function AdminFkLink({
   if (linkWhenNameMissing) {
     return (
       <Link
-        to={adminListDetailHref(adminId)}
+        to={adminDetailHref(adminId)}
         className="font-medium text-accent hover:underline"
       >
         {fallbackLabel}

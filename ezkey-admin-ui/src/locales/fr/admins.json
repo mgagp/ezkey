@@ -62,7 +62,8 @@
     "errorDeactivate": "Échec de la désactivation de l'administrateur."
   },
   "detail": {
-    "title": "Admin — {{username}}",
+    "cardDetails": "Détails",
+    "notFound": "Cet administrateur n'existe pas ou ne vous est pas visible.",
     "labelAdminId": "ID admin",
     "labelUsername": "Identifiant",
     "labelName": "Nom",

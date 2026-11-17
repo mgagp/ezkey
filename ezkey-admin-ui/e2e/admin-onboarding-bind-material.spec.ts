@@ -76,10 +76,10 @@ test('@elective @device-backed admin onboarding: creation lands on the record wi
   const adminId = await submitCreate(page);
 
   // P1: no intermediate screen; the record opens with the toast and the bind card.
-  await expect(page).toHaveURL(new RegExp(`/admins\\?adminId=${adminId}$`));
+  await expect(page).toHaveURL(new RegExp(`/admins/${adminId}$`));
   await expect(page.getByRole('alert').filter({ hasText: username })).toBeVisible();
-  const dialog = page.getByRole('dialog');
-  await expect(dialog).toContainText(username);
+  const record = page.getByTestId('admin-record');
+  await expect(record).toContainText(username);
   const bindCard = page.getByTestId('admin-bind-card');
   const reveal = page.getByTestId('admin-bind-reveal');
   const token = page.getByTestId('admin-bind-token');
@@ -114,8 +114,8 @@ test('@elective @device-backed admin onboarding: creation lands on the record wi
   await expect(page.getByTestId('enrollment-edit-metadata')).toBeHidden();
   await expect(page.getByText(/contact email|courriel de contact/i)).toBeHidden();
   await owner.getByRole('link').click();
-  await expect(page).toHaveURL(new RegExp(`/admins\\?adminId=${adminId}$`));
-  await expect(page.getByRole('dialog')).toContainText(username);
+  await expect(page).toHaveURL(new RegExp(`/admins/${adminId}$`));
+  await expect(record).toContainText(username);
 
   const form = { enrollmentId: String(enrollmentId), enrollmentProofToken };
   const bind = await context.request.post(`${testEnv.demoDeviceUrl}/phone/ezkey/enrollment/bind`, {
@@ -123,8 +123,10 @@ test('@elective @device-backed admin onboarding: creation lands on the record wi
   });
   expect(await bind.text()).toContain('demo-device-bind-success');
 
-  const detailUrl = `/admins?adminId=${adminId}`;
-  await page.goto(detailUrl);
+  // #1399: the former deep link still opens the record page.
+  const detailUrl = `/admins/${adminId}`;
+  await page.goto(`/admins?adminId=${adminId}`);
+  await expect(page).toHaveURL(new RegExp(`${detailUrl}$`));
   await reveal.click();
   await expect(code).toHaveText(String(enrollmentChallenge));
   await expect(boundWarning).toBeVisible();
@@ -138,7 +140,7 @@ test('@elective @device-backed admin onboarding: creation lands on the record wi
   expect(await verify.text()).toContain('demo-device-verify-success');
 
   await page.goto(detailUrl);
-  await expect(page.getByRole('dialog')).toContainText(username);
+  await expect(record).toContainText(username);
   await expect(bindCard).toBeHidden();
   const qrAfterVerify = await page.request.get(`/api/v1/admins/${adminId}/onboarding/qrcode`, { headers });
   expect(qrAfterVerify.status()).toBe(409);
@@ -158,7 +160,7 @@ test('@elective @device-backed admin onboarding: creation lands on the record wi
   await tenantPage.locator('#adm-email').fill(`${colleague}@example.com`);
   const colleagueId = await submitCreate(tenantPage);
 
-  await expect(tenantPage).toHaveURL(new RegExp(`/admins\\?adminId=${colleagueId}$`));
+  await expect(tenantPage).toHaveURL(new RegExp(`/admins/${colleagueId}$`));
   await expect(tenantPage.getByTestId('admin-bind-card')).toBeVisible();
   await expect(tenantPage.getByTestId('admin-detail-enrollment-link')).toHaveCount(0);
   await tenantPage.getByTestId('admin-bind-reveal').click();
@@ -174,6 +176,17 @@ test('@elective @device-backed admin onboarding: creation lands on the record wi
     { headers: tenantHeaders },
   );
   expect(enrollmentAsTenant.status()).toBe(403);
+
+  // #1399: deactivate and reactivate from the record page (Global Admin).
+  await page.goto(detailUrl);
+  const record2 = page.getByTestId('admin-record');
+  await record2.getByRole('button', { name: 'Deactivate' }).click();
+  await page.locator('#deactivate-admin-reason').fill('E2E record page deactivation check');
+  await page.getByRole('dialog').getByRole('button', { name: 'Deactivate' }).click();
+  await expect(record2).toContainText('Inactive');
+  await page.locator('#activate-admin-reason').fill('E2E record page reactivation check');
+  await record2.getByRole('button', { name: 'Activate' }).click();
+  await expect(record2.getByRole('button', { name: 'Deactivate' })).toBeVisible();
 });
 
 // #1313 P2 + P6: the activation code is shown once behind the saved-confirmation gate, then the
@@ -201,11 +214,28 @@ test('@elective @device-backed admin onboarding: activation code lands on a pend
   await page.locator('#activation-code-saved').check();
   await done.click();
 
-  await expect(page).toHaveURL(new RegExp(`/admins\\?adminId=${adminId}$`));
-  await expect(page.getByRole('dialog')).toContainText(username);
+  await expect(page).toHaveURL(new RegExp(`/admins/${adminId}$`));
+  await expect(page.getByTestId('admin-record')).toContainText(username);
   // The code step already confirmed the creation: no toast repeats it.
   await expect(page.getByRole('alert').filter({ hasText: username })).toHaveCount(0);
   await expect(page.getByTestId('admin-detail-activation-code-expiry')).not.toHaveText('');
   await expect(page.getByTestId('admin-detail-enrollment-link')).toBeHidden();
   await expect(page.getByTestId('admin-bind-card')).toBeHidden();
+
+  // #1399: the record's dialogs open from the page. Edit the profile, then re-issue the code.
+  await page.getByRole('button', { name: 'Edit profile' }).click();
+  await page.locator('#adm-edit-first-name').fill('Alicia');
+  await page.getByRole('button', { name: 'Save changes' }).click();
+  await expect(page.getByTestId('admin-record')).toContainText('Alicia Chen');
+
+  await page.getByRole('button', { name: 'Re-issue activation code' }).click();
+  const reissue = page.getByRole('dialog');
+  await reissue.getByRole('button', { name: 'Re-issue activation code' }).click();
+  // The footer button (the header's X shares the "Close" name).
+  const close = reissue.getByRole('button', { name: 'Close' }).last();
+  await expect(close).toBeDisabled();
+  await page.locator('#reissued-activation-code-saved').check();
+  await close.click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page).toHaveURL(new RegExp(`/admins/${adminId}$`));
 });

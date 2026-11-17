@@ -77,9 +77,9 @@ flowchart LR
 
 ### Admins List and Detail
 
-- **Routes.** `/admins` (list). There is **no** `/admins/:id` — detail opens on `/admins?adminId=` via `adminListDetailHref`.
+- **Routes.** `/admins` (list), `/admins/:id` (record, #1399). Cross-screen links use `adminDetailHref`; the list redirects the former `/admins?adminId=N` links.
 - **Primary actor.** Both roles (Global Admin for Global Admins; Tenant Admin limited to own tenant).
-- **Purpose.** Provision and manage admin identities; regenerate recovery codes; retrieve onboarding credentials (and QR) when applicable.
+- **Purpose.** Provision and manage admin identities; regenerate recovery codes; reveal the bind material (QR, code) on the record while the enrollment is `CREATED` or `BOUND` (#1313).
 
 ### API Keys
 

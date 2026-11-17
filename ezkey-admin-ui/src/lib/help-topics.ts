@@ -38,7 +38,7 @@ export function resolveHelpTopicId(pathname: string): HelpTopicId {
   if (path === '/auth-attempts') return 'auth-attempts';
   if (path === '/api-keys') return 'api-keys';
   if (path.startsWith('/api-keys/')) return 'api-key-detail';
-  if (path === '/admins') return 'admins';
+  if (path === '/admins' || path.startsWith('/admins/')) return 'admins';
   if (path === '/encryption-keys') return 'encryption-keys';
   if (path === '/audit-logs') return 'audit-logs';
   if (path === '/integrity') return 'integrity';

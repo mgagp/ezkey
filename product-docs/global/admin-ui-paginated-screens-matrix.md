@@ -47,17 +47,18 @@ labels from joins. Cross-screen links must match how each entity opens detail:
 | Integration | `/integrations` | `/integrations/:id` page | path param |
 | Enrollment | `/enrollments` | `/enrollments/:id` page | path param |
 | Tenant | `/tenants` | `/tenants/:id` page | path param |
-| API key | `/api-keys` | list + dialog (query) | follow existing screen |
-| **Administrator** | `/admins` | list + dialog (`?adminId=`) | `adminListDetailHref(id)` in `@/lib/list-detail-navigation` |
+| API key | `/api-keys` | `/api-keys/:id` page | path param |
+| **Administrator** | `/admins` | `/admins/:id` page | `adminDetailHref(id)` in `@/lib/list-detail-navigation` |
 
-**Do not** link to `/admins/:id` — that route does not exist. Audit logs, enrollment detail, and
-tenant detail embedded lists must use `adminListDetailHref` (or equivalent `?adminId=` URL).
+Every cross-screen link to an administrator uses `adminDetailHref` (audit logs, enrollment
+detail, tenant detail embedded list). The record was a dialog over the list until #1399; the list
+still redirects the former `/admins?adminId=N` links to `/admins/N`.
 
 ## Matrix
 
 | Screen / route | API (list) | Tier | Operator question (1 line) | Target list columns (draft) | Join / display decision | Global vs Tenant | Status | Notes |
 |----------------|------------|------|------------------------------|----------------------------|-------------------------|------------------|--------|-------|
-| Admins | `GET /api/v1/admins` | A | Who can operate this instance and in what role? | **ID**, username, name, type, tenant (GA), status, last login, created | **Done** — joins + **ID** first column; detail via list `?adminId=` | Both (scoped) | `implemented` | Reference for joins; navigation pattern below |
+| Admins | `GET /api/v1/admins` | A | Who can operate this instance and in what role? | **ID**, username, name, type, tenant (GA), status, last login, created | **Done** — joins + **ID** first column; detail on `/admins/:id` (#1399) | Both (scoped) | `implemented` | Reference for joins; navigation pattern below |
 | Tenants | `GET /api/v1/tenants` | A | Which tenants exist and are they active? | **ID**, name, status (+ system badge), organization, domain, created | No joins — root entity; country on detail only | Global Admin | `implemented` | TB `TB-2026-06-23-admin-ui-tier-a-completion-embedded-tenants` |
 | Integrations | `GET /api/v1/integrations` | A | Which apps are protected and under which tenant? | **ID**, code, name, status (+ operational warning), **tenant name** (Global Admin), created | **Done** — `tenantName` via list join; ID kept as primary key | Both (tenant col GA only) | `implemented` | First operator-lists TB (`TB-2026-06-18-admin-ui-lists-tier-a-integrations`) |
 | Enrollments | `GET /api/v1/enrollments` | A | Which devices/users are enrolled and in what state? | **ID**, name, status (+ warning), **integration name**, user ID, **tenant name** (GA), created, last used, **deactivate/reactivate** | **Done** — order: identity → state → scope → time; batch integration+tenant join; quick lifecycle actions | Both (tenant col GA only) | `implemented` | TB enrollments + `TB-2026-06-20-admin-ui-enrollments-list-quick-actions` |
@@ -69,7 +70,7 @@ tenant detail embedded lists must use `adminListDetailHref` (or equivalent `?adm
 | Audit logs | `GET /api/v1/audit-logs` | B | Who did what, when, with what result? | time, event type, **actor (username)**, status, API; detail: integration/enrollment/tenant names | Selective batch joins (max 4/page); `#id` when entity gone | Both | `implemented` | TB `TB-2026-06-23-admin-ui-audit-logs-tier-b-labels`, #258, PR #259 |
 | Audit chain checkpoints | `GET .../chain-checkpoints` | B | Integrity windows healthy? | **ID**, **window start** / **window end** (absolute), **entries**, **type** (all four), **lifecycle**, **notes** (truncated); grey expandable quiet summary; late-written badge; orange undeclared-gap rows | No joins; default ~last 24h, `windowStart,DESC`, page size 50; client-side quiet-`REGULAR` collapse (never `entryCountMin=1`); gap detection on full page sequence before collapse — [`TB-2026-10-06-integrity-checkpoint-quiet-window-collapse`](backlog/TB-2026-10-06-integrity-checkpoint-quiet-window-collapse.md); URL-only compress (`cpQuiet`) | Global Admin | `implemented` | On `/integrity` Verify → Checkpoint timeline; prior polish TB `TB-2026-07-05` remains done (hide-empty shape superseded); IA lock [`admin-ui-audit-integrity-hard-split-intention.md`](admin-ui-audit-integrity-hard-split-intention.md) |
 | Audit chain lifecycle incidents | `GET .../lifecycle/incidents` | A | Heartbeat / operational incidents needing declare? | status, anchor checkpoint, stale/degraded/recovered timestamps, declare action | API already returns Spring `Page`; UI pager is cut-2 phase **B′** ([`admin-ui-integrity-cut2-phase-b.md`](admin-ui-integrity-cut2-phase-b.md)) — today hardcoded `page=0&size=50` | Global Admin | `reviewed` (API) / UI pager pending B′ | Embedded on `/integrity` under Remediate density; not a second journal |
-| Tenant detail → admins | scoped admins list | A | Admins for this tenant? | **ID**, username, name, type, status, last login, created (same as admins minus tenant col) | Same as admins Tier A | Global Admin | `implemented` | Embedded list; row opens `/admins?adminId=` |
+| Tenant detail → admins | scoped admins list | A | Admins for this tenant? | **ID**, username, name, type, status, last login, created (same as admins minus tenant col) | Same as admins Tier A | Global Admin | `implemented` | Embedded list; row opens `/admins/:id` with prev/next |
 | Integration detail → enrollments | scoped enrollments | A | Enrollments for this integration? | **ID**, name, status (+ warning), user ID, created, last used, **deactivate/reactivate** | Same as enrollments Tier A minus integration/tenant columns | Both | `implemented` | TB `TB-2026-06-23-admin-ui-tier-a-completion-embedded-tenants` |
 
 *Analysis fills TBD rows; add rows if new paginated surfaces ship.*
