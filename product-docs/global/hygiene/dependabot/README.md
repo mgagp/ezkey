@@ -57,7 +57,7 @@ Dependabot alone cannot prove current:
 | Python CLI | `pip` at `/ezkey-cli-python` (weekly) | — |
 | Delivery connectors | Reactor modules since #1278, so `maven` at `/` covers them; their Dockerfiles in the `docker` entry | Same **Java BOM pulse** as the core; licences in root `THIRD-PARTY.txt` |
 
-The Gradle wrapper (ignored by Dependabot in the `/ezkey_mobile/android` entry, with its `distributionSha256Sum`) and the PyYAML pin in `scripts/requirements-endoflife.txt` (no pip entry for `/scripts`) are updated by hand, with their checksums. Forgetting either fails the build loudly, never silently.
+The Gradle wrapper (ignored by Dependabot in the `/ezkey_mobile/android` entry, with its `distributionSha256Sum`) and the PyYAML pin in `scripts/requirements-endoflife.txt` (no pip entry for `/scripts`) are updated by hand, with their checksums. Forgetting either fails the build loudly, never silently. The CLI CI lock `ezkey-cli-python/requirements-ci.txt` is hash-pinned the same way (`pip install --require-hashes`) for Scorecard alerts 214–216, and the existing `pip` ecosystem at `/ezkey-cli-python` recompiles it; published floors stay ranged in `setup.py` and `requirements.txt`.
 
 **Alerts (enabled 2026-11-06, Marc's decision).** Version updates and alerts are complementary:
 transitive dependencies rarely move through version-update PRs, so lockfiles also need a refresh.
