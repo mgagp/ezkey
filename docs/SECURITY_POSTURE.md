@@ -147,7 +147,8 @@ challenge) and an activation code are each enough to become that administrator.
   Admin API refuses to set one (`409 admin-enrollment`), and V30 cleared any left over.
 - **One source for the bind material.** Only `/admins/{id}/onboarding*` returns an administrator's
   proof token, challenge and QR. The `/enrollments` endpoints return the record with those fields
-  null and refuse the QR, and QR delivery refuses administrator enrollments.
+  null and refuse the QR, and QR delivery refuses administrator enrollments. In the Admin UI, the
+  administrator record is the only screen that shows it, and only after an explicit "Show QR".
 - **One enrollment per administrator.** An enrollment is never shared between administrators
   (unique index on `ezkey_admin.enrollment_id`, V30). Sign-in finds the approving administrator by
   enrollment, so the rule is load-bearing.

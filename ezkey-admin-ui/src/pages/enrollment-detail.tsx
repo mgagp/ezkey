@@ -8,6 +8,7 @@ import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
 import { ReasonFieldRow } from '@/components/feature/reason-field-row';
 import { DevicePrivateKeyTierBadge } from '@/components/feature/device-private-key-tier-badge';
 import { EnrollmentStatusBadge } from '@/components/feature/enrollment-status-badge';
+import { AdminEnrollmentOwner } from '@/components/feature/admin-enrollment-owner';
 import { AdminFkLink } from '@/components/feature/fk-detail-links';
 import { IntegratedDeliveryNotice } from '@/components/feature/integrated-delivery-notice';
 import { QrEmailDelivery } from '@/components/feature/qr-email-delivery';
@@ -32,7 +33,7 @@ import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { authContextDemoPresets, isDemoMode } from '@/lib/demo-mode';
 import { isPhoneNumberInputValid, normalizePhoneNumberInput } from '@/lib/phone-number';
 import { formatChallengeCode, formatCountdown, formatDate } from '@/lib/utils';
-import { enrollmentEditScope } from '@/lib/enrollment-edit-scope';
+import { enrollmentEditScope, showsContactEmail } from '@/lib/enrollment-edit-scope';
 import { showsEnrollmentQrCard, showsIntegratedDeliveryNotice } from '@/lib/enrollment-bind-preview';
 import { enrollmentActiveToggle } from '@/lib/enrollment-active-toggle';
 import { useCancel, useCreate2, useGetById2 } from '@/generated/admin-api/auth-attempts/auth-attempts';
@@ -560,11 +561,12 @@ export default function EnrollmentDetailPage() {
       authAttemptChallengeRequired: editChallenge,
       userIdentifier: editUserId.trim(),
     };
-    if (editClearEmail) {
-      data.clearContactEmail = true;
-    } else {
+    // #1313: never send a contact email for an administrator's enrollment (the API answers 409).
+    if (showsContactEmail(enrollment)) {
       const email = editEmail.trim();
-      if (email) {
+      if (editClearEmail) {
+        data.clearContactEmail = true;
+      } else if (email) {
         data.contactEmail = email;
       }
     }
@@ -738,7 +740,11 @@ export default function EnrollmentDetailPage() {
                   )}
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-3">
+                {/* #1313: link back to the administrator; the record holds the bind material. */}
+                {enrollment.isSystemIntegration && (
+                  <AdminEnrollmentOwner ownerAdminId={enrollment.ownerAdminId} />
+                )}
                 <dl className="space-y-3">
                   <InfoRow label={t('detail.infoId')}><span className="font-mono">{enrollment.enrollmentId}</span></InfoRow>
                   <InfoRow label={t('detail.infoName')}><span className="font-medium">{enrollment.enrollmentName}</span></InfoRow>
@@ -792,9 +798,11 @@ export default function EnrollmentDetailPage() {
                       {enrollment.authAttemptChallengeRequired ? t('detail.challengeRequired') : t('detail.challengeNotRequired')}
                     </Badge>
                   </InfoRow>
-                  <InfoRow label={t('detail.infoContactEmail')}>
-                    <span className="text-fg-muted">{enrollment.contactEmail ?? '—'}</span>
-                  </InfoRow>
+                  {showsContactEmail(enrollment) && (
+                    <InfoRow label={t('detail.infoContactEmail')}>
+                      <span className="text-fg-muted">{enrollment.contactEmail ?? '—'}</span>
+                    </InfoRow>
+                  )}
                   <InfoRow label={t('detail.infoContactPhone')}>
                     <span className="text-fg-muted">{enrollment.contactPhoneNumber ?? '—'}</span>
                   </InfoRow>
@@ -1310,6 +1318,7 @@ export default function EnrollmentDetailPage() {
             />
           </div>
           )}
+          {showsContactEmail(enrollment) && (
           <div className="space-y-1.5">
             <Label htmlFor="edit-email">{t('detail.editContactEmail')}</Label>
             <Input
@@ -1335,6 +1344,7 @@ export default function EnrollmentDetailPage() {
               <span className="text-xs text-fg-muted">{t('detail.editClearContactEmail')}</span>
             </label>
           </div>
+          )}
           {!editContactEmailOnly && (
           <>
           <div className="space-y-1.5">

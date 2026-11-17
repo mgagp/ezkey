@@ -26,7 +26,6 @@
     "statusPendingActivation": "Activation en attente",
     "pendingActivationTooltip": "Cet administrateur attend encore la consommation de son code d'activation avant de pouvoir se connecter.",
     "operationalWarningTooltip": "Le tenant est inactif — la connexion de cet administrateur est bloquée",
-    "credentials": "Identifiants",
     "deactivate": "Désactiver"
   },
   "adminType": {
@@ -35,19 +34,22 @@
     "tenant": "Tenant"
   },
   "onboarding": {
-    "title": "Intégration — {{username}}",
-    "errorLoad": "Impossible de charger les identifiants d'intégration.",
-    "noLongerAvailable": "Cet enrôlement est terminé ou fermé : ses identifiants d'intégration ne sont plus disponibles.",
-    "alertShare": "Partagez ces identifiants avec l'administrateur pour configurer l'application mobile EZKey.",
-    "previewNotice": "Livraison intégrée : cette boîte affiche le jeton de preuve, le défi de liaison et le code QR dans l'interface d'administration pour qu'Ezkey fonctionne sans adaptateur courriel ni SMS. Pour une assurance plus forte, vous pouvez les séparer sur vos propres canaux (par exemple, envoyer une capture du QR par courriel et le défi à six chiffres par SMS ou messagerie). Une livraison assistée par SMTP pourra être configurée plus tard lorsque le canal courriel sera disponible.",
-    "enrollmentProofToken": "Jeton de preuve d'enrôlement",
+    "copied": "Copié !"
+  },
+  "bindCard": {
+    "title": "Liaison de l'application mobile",
+    "inPerson": "Faites scanner ce code à la personne sur votre écran. Pour quelqu'un qui n'est pas avec vous, créez l'administrateur avec un code d'activation. Ezkey n'envoie jamais l'enrôlement d'un administrateur par courriel.",
+    "revealAudited": "Chaque affichage est inscrit au journal d'audit.",
+    "showQr": "Afficher le QR",
+    "hideQr": "Masquer le QR",
+    "showCode": "Afficher le code de liaison",
+    "hideCode": "Masquer le code de liaison",
+    "qrCodeAlt": "QR code d'enrôlement de l'administrateur",
+    "bindingChallenge": "Code de défi de liaison",
+    "proofToken": "Jeton de preuve d'enrôlement (saisie manuelle)",
     "copyToken": "Copier le jeton",
-    "copied": "Copié !",
-    "bindingChallenge": "Code de liaison",
-    "showQrCode": "Afficher le QR Code",
-    "hideQrCode": "Masquer le QR Code",
-    "qrCodeAlt": "QR Code d'intégration administrateur",
-    "close": "Fermer"
+    "errorLoad": "Impossible de charger le matériel de liaison.",
+    "noLongerAvailable": "Cet enrôlement est terminé ou fermé : son matériel de liaison n'est plus disponible."
   },
   "deactivate": {
     "title": "Désactiver l'administrateur",
@@ -65,12 +67,15 @@
     "labelUsername": "Identifiant",
     "labelName": "Nom",
     "labelEmail": "E-mail",
+    "emailHint": "Identifie l'administrateur dans le journal d'audit. Ezkey n'y envoie rien.",
     "labelPhone": "Téléphone",
     "labelType": "Type",
     "labelTenant": "Tenant",
     "labelEnrollmentId": "Enrôlement",
     "enrollmentFallback": "Enrôlement #{{id}}",
     "labelStatus": "Statut",
+    "labelActivationCodeExpiresAt": "Expiration du code d'activation",
+    "activationCodeNoValidCode": "Aucun code valide. Un Global Admin peut en émettre un nouveau.",
     "labelCreated": "Créé",
     "labelLastLogin": "Dernière connexion",
     "labelEnrollmentCapability": "Capacité d'enrôlement",
@@ -85,7 +90,6 @@
     "adminLoginStatePendingFirstLogin": "Première connexion authentifiée en attente",
     "issueInitialRecoveryCodesBlockedFirstLoginRequired": "Disponible après la première connexion admin réussie.",
     "sectionActions": "Actions",
-    "credentials": "Identifiants",
     "issueInitialRecoveryCodes": "Émettre les premiers codes de récupération",
     "regenerateRecoveryCodes": "Régénérer les codes de récupération",
     "reissueActivationCode": "Réémettre le code d'activation",
@@ -141,7 +145,7 @@
     "toastActivated": "Administrateur « {{username }} » activé.",
     "errorActivate": "Échec de l'activation",
     "pendingActivationNotice": "Cet administrateur est en attente d'activation. Le premier enrôlement sera créé lorsque le code d'activation sera consommé. Les codes de récupération seront émis plus tard depuis le flux d'administration authentifié.",
-    "temporarySessionBindHint": "Session temporaire : utilisez Identifiants ci-dessous pour enrôler un appareil quand vous êtes prêt. La liaison met fin à cet accès temporaire et exige une nouvelle connexion.",
+    "temporarySessionBindHint": "Session temporaire : utilisez Liaison de l'application mobile ci-dessous pour enrôler un appareil quand vous êtes prêt. La liaison met fin à cet accès temporaire et exige une nouvelle connexion.",
     "operationalWarning": {
       "tenantInactive": "Le tenant de cet administrateur est actuellement inactif. Les tentatives de connexion de cet admin seront rejetées jusqu'à la réactivation du tenant."
     },
@@ -168,7 +172,6 @@
     "recoveryCodesWarningTitle": "C'est la seule fois où vous verrez ces codes de récupération.",
     "recoveryCodesWarningBody": "Copiez-les maintenant et conservez-les en lieu sûr. Ils ne pourront plus être récupérés après la fermeture de cette fenêtre.",
     "recoveryCodesSavedConfirmLabel": "J'ai enregistré ces codes de récupération dans un endroit sûr",
-    "successHint": "Utilisez le bouton Identifiants dans la liste pour récupérer le jeton d'intégration et le QR code à partager avec le nouvel admin. Les codes de récupération ne sont pas encore créés et doivent être émis plus tard depuis le flux d'administration authentifié après la première connexion.",
     "done": "Terminé",
     "fillDemo": "Remplir démo :",
     "typeTenant": "Admin tenant",
