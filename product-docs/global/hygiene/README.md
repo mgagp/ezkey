@@ -34,6 +34,7 @@ HITL shape. See root [`AGENTS.md`](../../AGENTS.md) for keywords.
 | [`java-controller-role-validation/`](java-controller-role-validation/) | `assessment-curated` (instance) | Java controller role / tenant-boundary coherence |
 | [`java-tenant-sql-isolation/`](java-tenant-sql-isolation/) | `assessment-curated` (instance) | Java service SQL / tenant isolation (TA, Auth, Integration API, API key) |
 | [`java-transactional-boundaries/`](java-transactional-boundaries/) | `assessment-curated` (instance) | Java `@Transactional` placement, self-invocation, `*TxHelper` |
+| [`hardcoded-values/`](hardcoded-values/) | `assessment-curated` (instance) | Hardcoded literals and magic numbers: default is keep in code; externalize only when someone has a legitimate reason to want another value |
 | [`react-doctor/`](react-doctor/) | `doctor-curated` | Admin UI React Doctor curated passes |
 | [`java-doctor/`](java-doctor/) | `java-doctor-curated` | Java SpotBugs / Semgrep / PMD curated passes |
 | [`pam-doctor/`](pam-doctor/) | `pam-doctor-curated` | Linux PAM module (`ezkey-pam/src`) clang-format / clang-tidy / cppcheck passes, plus an on-demand ASan / UBSan / Valgrind replay (`./scripts/pam-doctor-sanitizers.sh`). macOS install track excluded |
@@ -99,6 +100,9 @@ Repo-is-memory decisions (one line + reason):
   2029-06-30; Marc go, Edgar executes, Christophe posture (#909).
 - **dnf-automatic not adopted on community host** — conflicts with deterministic `releasever`
   upgrades; no unattended swap (#909).
+- **Hardcoded values stay in code unless someone legitimate needs another value** — externalization
+  is the exception (credible requester, use case, issue). A weekly slot would pressure changes that
+  should stay in code (Marc 2026-11-17, #1393).
 
 | Procedure | Owner lane | Trigger | Cadence | Signal | Prioritization rule | Human gate |
 |-----------|------------|---------|---------|--------|---------------------|------------|
@@ -120,6 +124,7 @@ Repo-is-memory decisions (one line + reason):
 | **Security pentest** (skill + `./scripts/security-pentest-curated.sh`; [`security-pentest/`](security-pentest/)) | `security-pentest-curated` | Operator + Christophe | **Monthly with Christophe** | Schemathesis + ZAP + Nuclei curated shortlist | **P1 / P2 / P3** (charter expected-context) | Christophe + HITL one-finding |
 | **JavaMelody / perf** (`./scripts/javamelody-curated.sh`; [`javamelody/`](javamelody/)) | `javamelody-curated` | After known workload (often post quality-gate churn) | **Monthly with Carl** | Ranked HTTP/SQL/Spring by total time | **P1 / P2 / P3**; high hit-count on churn paths ≠ signal | Carl + HITL one-finding |
 | **Assessment curated** (skill [`.cursor/skills/assessment-curated`](../../../.cursor/skills/assessment-curated/SKILL.md); [`assessment-curated/`](assessment-curated/)) | `assessment-curated` | Operator **mandate** | **On mandate** (not calendar) | Assessment register | Severity / confidence in register; small lot | HITL one-finding; GO = fix + handoff |
+| **Hardcoded values** ([`hardcoded-values/`](hardcoded-values/)) | `assessment-curated` (instance) | Operator mandate, plus a quarterly delta (`git diff` from the last pass SHA) | **On mandate**, at most **quarterly** (with the document-hygiene quarter). Quiet when nothing is new: no note, no message | Read-only `rg` in the pass note (no doctor script) | Patrick's question; zones (e) → (a) → (b) → (c) → (d); externalize ≤ 10–15% of a shortlist | HITL one lot at a time. Christophe on security properties. Marc on any behavior change. **Not a CI gate** |
 | **Document hygiene** (skill [`.cursor/skills/document-hygiene-curated`](../../../.cursor/skills/document-hygiene-curated/SKILL.md); [`document-hygiene/`](document-hygiene/)) | `document-hygiene-curated` | Operator | **Quarterly** | Legacy / duplicate docs | Keep / fold / archive / delete / retarget | HITL one document at a time |
 | **Corpus ablation** (skill [`.cursor/skills/corpus-ablation`](../../../.cursor/skills/corpus-ablation/SKILL.md); [`corpus-ablation/`](corpus-ablation/)) | `corpus-ablation` | — | **Not scheduled** — pending **challenger** repositioning (Mathieu mandate 2026-10-19) | Ephemeral plans / prompts | Discoverability-preserving Go packages | Mathieu when challenger lands |
 | **Critical review** (skill [`.cursor/skills/critical-review`](../../../.cursor/skills/critical-review/SKILL.md); [`critical-review/`](critical-review/)) | `critical-review` | G1 brief / P0–P1 vision / high-risk plan / PR craft | **Event-driven** (gate), not weekly | ≤10 findings; forced ≠ author model family | Severity in review report | Launcher (Mathieu / Patrick / Christophe) + author HITL |
