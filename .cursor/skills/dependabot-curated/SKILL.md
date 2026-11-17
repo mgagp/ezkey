@@ -211,6 +211,11 @@ help interpret a **non-empty** diff. Agent reading of release notes alone is a *
   LTS) and confirm `node -v` / CI satisfy package `engines` and Orval’s stated floor. On
   **nvm-windows**, `.nvmrc` is not applied automatically — `nvm install 24` then `nvm use 24`, then
   `corepack enable`. Do not treat an engine mismatch as an Orval regression.
+- Mobile committed client (#1392): `yarn api:drift` regenerates with `orval.config.ts` and fails on
+  `git diff --exit-code` for `app/services/api/generated` (chained in `validate:ci`), and
+  `generated-client.contract.test.ts` calls the real generated functions through the mutator so a
+  stale bump, case-insensitive header merge, or JSON body change fails even when Jest mocks those
+  functions.
 
 **Evidence:** 2026-10-05 Admin Orval 8.32→8.39 (#658, squash `5ebbd164`) — **empty** codegen diff,
 112 vitest green → **O0**.
