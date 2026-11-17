@@ -1460,13 +1460,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/runtime@npm:^7.29.7":
-  version: 7.29.7
-  resolution: "@babel/runtime@npm:7.29.7"
-  checksum: 10c0/ca11572f7146b21e0bde6a9ed4bb6a89eafbee5f0944c7eb54d0d8a2dac962c33638a1d611e14faa71dfbb92b4b5f9236232208568a6b7d5c6f3f39ddb91771e
-  languageName: node
-  linkType: hard
-
 "@babel/template@npm:^7.27.2, @babel/template@npm:^7.3.3":
   version: 7.27.2
   resolution: "@babel/template@npm:7.27.2"
@@ -6748,18 +6741,18 @@ __metadata:
     eslint: "npm:9.39.4"
     eslint-config-prettier: "npm:10.1.8"
     husky: "npm:9.1.7"
-    i18next: "npm:26.7.2"
+    i18next: "npm:27.1.5"
     jest: "npm:30.5.2"
     js-sha256: "npm:1.0.0"
     lint-staged: "npm:17.6.0"
     orval: "npm:8.47.0"
     prettier: "npm:3.9.10"
     react: "npm:19.3.1"
-    react-i18next: "npm:17.1.13"
+    react-i18next: "npm:18.0.2"
     react-native: "npm:0.88.1"
     react-native-config: "npm:1.7.2"
     react-native-gesture-handler: "npm:3.5.0"
-    react-native-keychain: "npm:10.0.0"
+    react-native-keychain: "npm:11.0.0"
     react-native-nitro-image: "npm:0.15.2"
     react-native-nitro-modules: "npm:0.37.2"
     react-native-safe-area-context: "npm:5.11.1"
@@ -7521,15 +7514,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"i18next@npm:26.7.2":
-  version: 26.7.2
-  resolution: "i18next@npm:26.7.2"
+"i18next@npm:27.1.5":
+  version: 27.1.5
+  resolution: "i18next@npm:27.1.5"
   peerDependencies:
     typescript: ^5 || ^6 || ^7
   peerDependenciesMeta:
     typescript:
       optional: true
-  checksum: 10c0/671576c1a225e10994cff250dfc44585fcccc4486cda4162caadbefe5287052e56998fe80aa15e36e1c441215b601770702a820fd1dc5511255bc4ad514aa2cf
+  checksum: 10c0/e345e01bcde5ae268a3a6ae1f3f0ef1e1402230160877111430c8e7a1e0e586388af25fcf21142e1a2e7c9b97c85517b994afadc1832ecf12a16dbf62dd0d9a4
   languageName: node
   linkType: hard
 
@@ -10308,25 +10301,22 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-i18next@npm:17.1.13":
-  version: 17.1.13
-  resolution: "react-i18next@npm:17.1.13"
+"react-i18next@npm:18.0.2":
+  version: 18.0.2
+  resolution: "react-i18next@npm:18.0.2"
   dependencies:
-    "@babel/runtime": "npm:^7.29.7"
     html-parse-stringify: "npm:^4.0.1"
-    use-sync-external-store: "npm:^1.6.0"
   peerDependencies:
-    i18next: ">= 26.2.0"
-    react: ">= 16.8.0"
+    "@types/react": "*"
+    i18next: ">= 27.0.1"
+    react: ">= 18.0.0"
     typescript: ^5 || ^6 || ^7
   peerDependenciesMeta:
-    react-dom:
-      optional: true
-    react-native:
+    "@types/react":
       optional: true
     typescript:
       optional: true
-  checksum: 10c0/961c7b43e8d568cc31499c810da8d3db7d4b1a8a5f14803c7e3462713bdae4f54444913e299750edd5fcf61f8b6962714d0781ee7399192fb94c3152bc894d38
+  checksum: 10c0/e6d3baf95c04a8fcde07d742d03ab02862488147128a7a4f9036b8909863e3be1803025d4fb5158f6467c3c48fcf525f27a82d1dbed04110f1da6a332da244ec
   languageName: node
   linkType: hard
 
@@ -10371,10 +10361,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-keychain@npm:10.0.0":
-  version: 10.0.0
-  resolution: "react-native-keychain@npm:10.0.0"
-  checksum: 10c0/a632ad27e58264506d2b373d329a867f042fb014e8a78db3a63031e953d61b5c98066eed1be238ee6c186d3f213d0efaa2a26526fb3a1d36a624c4460e982230
+"react-native-keychain@npm:11.0.0":
+  version: 11.0.0
+  resolution: "react-native-keychain@npm:11.0.0"
+  peerDependencies:
+    react: ">=19.1.1"
+    react-native: ">=0.82.0"
+  checksum: 10c0/6646589898c95324c6c25682f677ad6da83c09a2c8c3f538985a3cb62ba03f40efc67e6287b8c94384de774ffe56e30b8241c20ae144b982044c6b65f65bc0ab
   languageName: node
   linkType: hard
 
@@ -12114,7 +12107,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"use-sync-external-store@npm:^1.5.0, use-sync-external-store@npm:^1.6.0":
+"use-sync-external-store@npm:^1.5.0":
   version: 1.6.0
   resolution: "use-sync-external-store@npm:1.6.0"
   peerDependencies:

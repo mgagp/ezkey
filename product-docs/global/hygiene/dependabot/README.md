@@ -143,12 +143,18 @@ Companion hygiene for Dependabot `#1055`: see the springdoc 3.2.0 companion PR (
 
 - **Crypto-adjacent** (e.g. `js-sha256`, keystore / crypto / proof-token): never autonomous on a
   **major**; route to security owner (Christophe). *If it ain't broken, don't fix it.*
+- **react-native-keychain 11.0.0** migrated 2026-11-17 (Marc-approved dedicated lot; the app was
+  already on React Native 0.88 New Architecture). Supersedes Dependabot `#1341`: v11's TurboModule
+  import needed a shared Jest mock, and `Podfile.lock` had to be regenerated. Writes, reads, and
+  resets pass `cloudSync: false` explicitly (iOS non-synchronizable; `accessible` unchanged).
 - **Unchanged gates:** ESLint 10 mobile (RN lint plugins; `#1007` trial 2026-10-26 stopped —
   `eslint-plugin-react` + `eslint-plugin-react-native` still call removed ESLint 10 APIs; see
   [`ezkey_mobile/docs/MOBILE_ESLINT10_JEST30_UNBLOCK_MEMO.md`](../../../../ezkey_mobile/docs/MOBILE_ESLINT10_JEST30_UNBLOCK_MEMO.md)),
   TypeScript 7 (`deferred:later-train`), RN-core / vision-camera coupled slice → HITL / defer as
   today. **Jest 30 mobile:** gate lifted 2026-10-26 after green `yarn test` on RN 0.87.1 (Dependabot
   `#653` integrated via hygiene PR; preset still *declares* Jest 29 deps — trust runtime evidence).
+
+**2026-11-17:** i18next 26 to 27 and react-i18next 17 to 18 moved together on Admin UI and mobile (react-i18next 18 requires i18next >= 27.0.1; replaces Dependabot #1375, #1376, #1378, and #1379).
 
 ## Majeures / Major upgrades
 
