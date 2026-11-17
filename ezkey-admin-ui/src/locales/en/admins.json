@@ -26,7 +26,6 @@
     "statusPendingActivation": "Pending activation",
     "pendingActivationTooltip": "This administrator still needs to consume their activation code before login is possible.",
     "operationalWarningTooltip": "Tenant is inactive — this admin's login is blocked",
-    "credentials": "Credentials",
     "deactivate": "Deactivate"
   },
   "adminType": {
@@ -35,19 +34,22 @@
     "tenant": "Tenant"
   },
   "onboarding": {
-    "title": "Onboarding — {{username}}",
-    "errorLoad": "Could not load onboarding credentials.",
-    "noLongerAvailable": "This enrollment is complete or closed, so its onboarding credentials are no longer available.",
-    "alertShare": "Share these credentials with the admin to set up their EZKey mobile app.",
-    "previewNotice": "Integrated delivery: this dialog shows the enrollment proof token, binding challenge, and QR in the Admin UI so Ezkey works without email or SMS adapters. For stronger assurance, you may split them across your own channels (for example, send a screenshot of the QR by email and the 6-digit binding challenge by SMS or chat). Optional SMTP-assisted delivery can be configured later when the email channel is available.",
-    "enrollmentProofToken": "Enrollment Proof Token",
-    "copyToken": "Copy Token",
-    "copied": "Copied!",
-    "bindingChallenge": "Binding Challenge Code",
-    "showQrCode": "Show QR Code",
-    "hideQrCode": "Hide QR Code",
-    "qrCodeAlt": "Admin onboarding QR Code",
-    "close": "Close"
+    "copied": "Copied!"
+  },
+  "bindCard": {
+    "title": "Mobile app binding",
+    "inPerson": "Have the person scan this code on your screen. For someone who is not with you, create the administrator with an activation code. Ezkey never sends an administrator's enrollment by email.",
+    "revealAudited": "Each reveal is recorded in the audit log.",
+    "showQr": "Show QR",
+    "hideQr": "Hide QR",
+    "showCode": "Show binding code",
+    "hideCode": "Hide binding code",
+    "qrCodeAlt": "Administrator enrollment QR code",
+    "bindingChallenge": "Binding challenge code",
+    "proofToken": "Enrollment proof token (manual entry)",
+    "copyToken": "Copy token",
+    "errorLoad": "Could not load the binding material.",
+    "noLongerAvailable": "This enrollment is complete or closed, so its binding material is no longer available."
   },
   "deactivate": {
     "title": "Deactivate Admin",
@@ -65,12 +67,15 @@
     "labelUsername": "Username",
     "labelName": "Name",
     "labelEmail": "Email",
+    "emailHint": "Identifies the administrator in the audit trail. Ezkey sends nothing to it.",
     "labelPhone": "Phone",
     "labelType": "Type",
     "labelTenant": "Tenant",
     "labelEnrollmentId": "Enrollment",
     "enrollmentFallback": "Enrollment #{{id}}",
     "labelStatus": "Status",
+    "labelActivationCodeExpiresAt": "Activation code expires",
+    "activationCodeNoValidCode": "No valid code. A Global Admin can issue a new one.",
     "labelCreated": "Created",
     "labelLastLogin": "Last Login",
     "labelEnrollmentCapability": "Enrollment capability",
@@ -85,7 +90,6 @@
     "adminLoginStatePendingFirstLogin": "First authenticated sign-in pending",
     "issueInitialRecoveryCodesBlockedFirstLoginRequired": "Available after the first successful admin sign-in.",
     "sectionActions": "Actions",
-    "credentials": "Credentials",
     "issueInitialRecoveryCodes": "Issue initial recovery codes",
     "regenerateRecoveryCodes": "Regenerate recovery codes",
     "reissueActivationCode": "Re-issue activation code",
@@ -141,7 +145,7 @@
     "toastActivated": "Admin \"{{username}}\" activated.",
     "errorActivate": "Activation failed",
     "pendingActivationNotice": "This administrator is pending activation. The first enrollment will only be created when the activation code is consumed. Recovery codes are issued later from the authenticated admin-management flow.",
-    "temporarySessionBindHint": "Temporary session: use Credentials below to enroll a device when ready. Binding ends this temporary access and requires a fresh sign-in.",
+    "temporarySessionBindHint": "Temporary session: use Mobile app binding below to enroll a device when ready. Binding ends this temporary access and requires a fresh sign-in.",
     "operationalWarning": {
       "tenantInactive": "This admin's tenant is currently inactive. Login attempts by this admin will be rejected until the tenant is reactivated."
     },
@@ -168,7 +172,6 @@
     "recoveryCodesWarningTitle": "This is the only time you will see these recovery codes.",
     "recoveryCodesWarningBody": "Copy them now and store them securely. They cannot be retrieved after this dialog is closed.",
     "recoveryCodesSavedConfirmLabel": "I have saved these recovery codes in a secure location",
-    "successHint": "Use the Credentials button in the list to retrieve the onboarding token and QR code to share with the new admin. Recovery codes are not created yet and should be issued later from the authenticated admin-management flow after first sign-in.",
     "done": "Done",
     "fillDemo": "Fill demo:",
     "typeTenant": "Tenant Admin",

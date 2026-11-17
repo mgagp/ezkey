@@ -337,6 +337,10 @@ enrollment carries no contact email, and its bind material has one source,
 `/admins/{id}/onboarding*`, where each reveal is audited (`ADMIN_BIND_MATERIAL_REVEALED`). Reason:
 the second email had no function and could diverge, and a second door to the bind material would
 let a reveal bypass the audit. See `docs/SECURITY_POSTURE.md` § Administrator onboarding material.
+In the Admin UI, creating an administrator lands on the administrator record, which is the only
+screen that reveals that material (bind card, behind "Show QR", while `CREATED` or `BOUND`); the
+administrator's enrollment record links back to it and shows no bind material and no contact email
+(#1313; display rules in `product-docs/global/design-principles.md` §10).
 
 **Activation vs. recovery.** Ezkey treats first activation and recovery as separate concepts:
 

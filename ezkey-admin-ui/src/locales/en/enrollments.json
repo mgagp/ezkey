@@ -125,6 +125,8 @@
     "infoCreated": "Created",
     "infoVersion": "Version",
     "infoCreatedByAdmin": "Created by admin",
+    "adminEnrollmentOf": "MFA enrollment of administrator",
+    "adminEnrollmentNoOwner": "Administrator MFA enrollment",
     "infoDeactivated": "Deactivated",
     "infoRevoked": "Revoked",
     "infoByAdmin": "(admin {{id}})",

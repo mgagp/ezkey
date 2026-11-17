@@ -54,6 +54,13 @@ The Admin UI is a sober, pragmatic operator tool. It avoids decorative clutter a
 
 A creation ends on the object's canonical record; a confirmation dialog does not repeat the record's actions. A second copy is justified only when it saves the operator a real step, and it is re-checked whenever the flow changes. Example: once the record could send the enrollment QR by email (#1206 step 5), the create dialog's QR and challenge became a detour, so creating an enrollment now opens its record.
 
+Administrators follow the same rule (#1313). One source per piece of information:
+- Creating an administrator lands on the administrator record (`/admins?adminId=N`). With an activation code, the one-time code step comes first, behind its saved-confirmation gate.
+- The administrator record is the only screen that reveals an administrator's bind material: a bind card, shown while the enrollment is `CREATED` or `BOUND`, that loads nothing secret until the operator clicks "Show QR" (each reveal is audited). A pending administrator shows the activation code's expiry instead, with no enrollment link and no bind card.
+- The link to the administrator's enrollment is shown to Global Admins only, from the session role. This is a display rule, not a protection: the id is not a secret, and `/enrollments/{id}` answers 403 to a Tenant Admin.
+- The administrator's enrollment record links back to the administrator by name and shows no QR, challenge, contact email or send action.
+- Under the administrator's email: "Identifies the administrator in the audit trail. Ezkey sends nothing to it." No copy suggests it serves recovery or notification.
+
 ### 11. Lifecycle without surprise
 
 Lifecycle rules prefer reversible actions first. Irreversible actions (revoke, retire, delete) require a reason and strong guards. No persistent downstream cascade; reactivation restores healthy state cleanly. See [ADR-0004](architecture-decisions.md#adr-0004-lifecycle-without-persistent-cascade) and [`lifecycle-model.md`](lifecycle-model.md).

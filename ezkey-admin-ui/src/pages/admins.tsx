@@ -3,13 +3,13 @@ import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Check, Copy, KeyRound, Pencil, Plus, Power, PowerOff, QrCode, RefreshCw, UserX } from 'lucide-react';
+import { AlertTriangle, Check, Copy, KeyRound, Pencil, Plus, Power, PowerOff, RefreshCw, UserX } from 'lucide-react';
 import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
+import { AdminBindCard } from '@/components/feature/admin-bind-card';
 import { AdminRecoveryCodesDialog } from '@/components/feature/admin-recovery-codes-dialog';
 import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
 import { EnrollmentFkLink } from '@/components/feature/fk-detail-links';
-import { IntegratedDeliveryNotice } from '@/components/feature/integrated-delivery-notice';
 import { OperationalWarning } from '@/components/feature/operational-warning';
 import { ReasonFieldRow } from '@/components/feature/reason-field-row';
 import { AppShell } from '@/components/layout/app-shell';
@@ -31,7 +31,7 @@ import { useToast } from '@/context/use-toast';
 import { useDetailNavigation } from '@/hooks/use-detail-navigation';
 import { DetailDialogHeaderNav } from '@/components/ui/detail-dialog-header-nav';
 import { asOrvalPagedBody, usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
-import { fetchApi, fetchBlobUrl } from '@/lib/api-client';
+import { fetchApi } from '@/lib/api-client';
 import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { isEvaluatorTempSession } from '@/lib/auth';
 import { adminDemoPresets, isDemoMode } from '@/lib/demo-mode';
@@ -51,7 +51,6 @@ import {
   useCreateTenantAdmin,
   useDeactivateAdmin,
   useGetAdminById,
-  useGetAdminOnboarding,
   useUpdateAdmin,
 } from '@/generated/admin-api/administrator-provisioning/administrator-provisioning';
 import { useListTenants } from '@/generated/admin-api/tenants/tenants';
@@ -64,14 +63,9 @@ import type {
   TenantResponseDto,
 } from '@/generated/admin-api/model';
 
-/** UI-facing shape for admin onboarding (API returns GetAdminOnboarding200). */
-interface AdminOnboardingShape {
-  enrollmentProofToken?: string | null;
-  enrollmentChallenge?: number | null;
-}
-
 /** UI-facing shape for create admin response (API returns provisioning DTO with optional recovery codes). */
 interface AdminProvisioningShape {
+  adminId?: number;
   username?: string;
   onboardingMode?: AdminCreateRequestDto['onboardingMode'];
   lifecycleStatus?: AdminResponseDto['lifecycleStatus'];
@@ -193,143 +187,6 @@ function renderAdminListTenantCell(
   );
 }
 
-// ── Onboarding credentials dialog ─────────────────────────────────────────────
-
-function OnboardingDialog({
-  open,
-  onClose,
-  adminId,
-  adminUsername,
-}: {
-  open: boolean;
-  onClose: () => void;
-  adminId: number | null;
-  adminUsername: string;
-}) {
-  const { t } = useTranslation(['admins', 'enrollments']);
-  const [tokenCopied, setTokenCopied] = useState(false);
-  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
-  const [qrLoading, setQrLoading] = useState(false);
-
-  const { data: rawOnboarding, isLoading, isError } = useGetAdminOnboarding<AdminOnboardingShape>(
-    adminId ?? 0,
-    // #1266: always ask the server, so a cached token never outlives the state that allowed it.
-    { query: { enabled: open && adminId !== null, staleTime: 0, gcTime: 0 } },
-  );
-  const onboarding = rawOnboarding as unknown as AdminOnboardingShape | undefined;
-  const proofToken = onboarding?.enrollmentProofToken ?? null;
-  const challenge = onboarding?.enrollmentChallenge ?? null;
-
-  const handleCopy = async () => {
-    if (proofToken == null || proofToken === '') return;
-    try {
-      await navigator.clipboard.writeText(proofToken);
-      setTokenCopied(true);
-      setTimeout(() => setTokenCopied(false), 2000);
-    } catch { /* ignore */ }
-  };
-
-  const handleToggleQr = async () => {
-    if (qrCodeUrl) { URL.revokeObjectURL(qrCodeUrl); setQrCodeUrl(null); return; }
-    setQrLoading(true);
-    try {
-      const url = await fetchBlobUrl(`/api/v1/admins/${adminId}/onboarding/qrcode`);
-      setQrCodeUrl(url);
-    } catch { /* ignore */ } finally { setQrLoading(false); }
-  };
-
-  const handleClose = () => {
-    if (qrCodeUrl) { URL.revokeObjectURL(qrCodeUrl); setQrCodeUrl(null); }
-    onClose();
-  };
-
-  return (
-    <Dialog open={open} onClose={handleClose} title={t('onboarding.title', { username: adminUsername })} size="md">
-      {isLoading && (
-        <div className="flex justify-center py-8">
-          <span className="size-5 border-2 border-fg/30 border-t-fg rounded-full animate-spin" />
-        </div>
-      )}
-      {isError && <Alert variant="error">{t('onboarding.errorLoad')}</Alert>}
-      {onboarding && (
-        <div className="space-y-4">
-          {proofToken != null && (
-            <>
-              <Alert variant="info">
-                {t('onboarding.alertShare')}
-              </Alert>
-              <IntegratedDeliveryNotice summary={t('common:integratedDelivery.summary')}>
-                {t('onboarding.previewNotice')}
-              </IntegratedDeliveryNotice>
-
-              {/* Proof Token */}
-              <div className="space-y-1.5" data-testid="admin-onboarding-token">
-                <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted">
-                  {t('onboarding.enrollmentProofToken')}
-                </p>
-                <div className="border-2 border-fg p-3 font-mono text-xs break-all bg-bg leading-relaxed">
-                  {proofToken}
-                </div>
-                <Button variant="secondary" size="sm" onClick={handleCopy} className="gap-1.5">
-                  {tokenCopied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
-                  {tokenCopied ? t('onboarding.copied') : t('onboarding.copyToken')}
-                </Button>
-              </div>
-            </>
-          )}
-
-          {/* Challenge */}
-          {challenge != null && (
-            <div className="border-2 border-fg/30 p-3 bg-bg">
-              <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted mb-1">
-                {t('onboarding.bindingChallenge')}
-              </p>
-              {proofToken == null && (
-                <Alert variant="warning" className="mb-2" data-testid="admin-onboarding-bound-warning">
-                  {t('enrollments:detail.boundChallengeWarning')}
-                </Alert>
-              )}
-              <p className="font-mono text-2xl font-black tracking-widest" data-testid="admin-onboarding-challenge">
-                {challenge}
-              </p>
-            </div>
-          )}
-
-          {/* QR Code */}
-          {proofToken != null && (
-            <div className="space-y-2">
-              <Button
-                variant="secondary"
-                size="sm"
-                isLoading={qrLoading}
-                onClick={handleToggleQr}
-                className="gap-1.5"
-              >
-                <QrCode className="size-3.5" />
-                {qrCodeUrl ? t('onboarding.hideQrCode') : t('onboarding.showQrCode')}
-              </Button>
-              {qrCodeUrl && (
-                <div className="border-2 border-fg p-3 inline-block">
-                  <img src={qrCodeUrl} alt={t('onboarding.qrCodeAlt')} className="size-48" />
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* The enrollment moved on after the list was loaded. */}
-          {proofToken == null && challenge == null && (
-            <Alert variant="info">{t('onboarding.noLongerAvailable')}</Alert>
-          )}
-
-          <div className="flex justify-end pt-2">
-            <Button onClick={handleClose}>{t('onboarding.close')}</Button>
-          </div>
-        </div>
-      )}
-    </Dialog>
-  );
-}
-
 // ── Deactivate admin dialog ────────────────────────────────────────────────────
 
 function DeactivateAdminDialog({
@@ -421,7 +278,6 @@ function DeactivateAdminDialog({
 function AdminDetailDialog({
   admin,
   onClose,
-  onShowCredentials,
   onRequestDeactivate,
   onPrev,
   onNext,
@@ -432,7 +288,6 @@ function AdminDetailDialog({
 }: {
   admin: AdminResponseDto | null;
   onClose: () => void;
-  onShowCredentials: (id: number, username: string) => void;
   onRequestDeactivate?: (admin: AdminResponseDto) => void;
   onPrev: () => void;
   onNext: () => void;
@@ -691,7 +546,10 @@ function AdminDetailDialog({
           <DetailInfoRow label={t('detail.labelAdminId')} valueClassName="break-all"><span className="font-mono">{adm.adminId}</span></DetailInfoRow>
           <DetailInfoRow label={t('detail.labelUsername')} valueClassName="break-all"><span className="font-medium">{adm.username}</span></DetailInfoRow>
           <DetailInfoRow label={t('detail.labelName')} valueClassName="break-all">{fullName || <span className="text-fg-muted">—</span>}</DetailInfoRow>
-          <DetailInfoRow label={t('detail.labelEmail')} valueClassName="break-all">{adm.email || <span className="text-fg-muted">—</span>}</DetailInfoRow>
+          <DetailInfoRow label={t('detail.labelEmail')} valueClassName="break-all">
+            {adm.email || <span className="text-fg-muted">—</span>}
+            <p className="text-xs text-fg-muted mt-0.5" data-testid="admin-email-hint">{t('detail.emailHint')}</p>
+          </DetailInfoRow>
           <DetailInfoRow label={t('detail.labelPhone')} valueClassName="break-all">{adm.phoneNumber || <span className="text-fg-muted">—</span>}</DetailInfoRow>
           <DetailInfoRow label={t('detail.labelType')} valueClassName="break-all"><AdminTypeBadge type={adm.adminType} /></DetailInfoRow>
           {adm.tenantId != null && (
@@ -706,16 +564,29 @@ function AdminDetailDialog({
               )}
             </DetailInfoRow>
           )}
-          {adm.enrollmentId != null && (
+          {/* #1313: Global only, from the session role. Display rule, not a protection: the id is
+              not a secret, and /enrollments/{id} answers 404 to a Tenant Admin. */}
+          {isGlobalAdmin && adm.enrollmentId != null && (
             <DetailInfoRow label={t('detail.labelEnrollmentId')} valueClassName="break-all">
-              <EnrollmentFkLink
-                enrollmentId={adm.enrollmentId}
-                enrollmentName={adm.enrollmentName}
-                fallbackLabel={t('detail.enrollmentFallback', { id: adm.enrollmentId })}
-              />
+              <span data-testid="admin-detail-enrollment-link">
+                <EnrollmentFkLink
+                  enrollmentId={adm.enrollmentId}
+                  enrollmentName={adm.enrollmentName}
+                  fallbackLabel={t('detail.enrollmentFallback', { id: adm.enrollmentId })}
+                />
+              </span>
             </DetailInfoRow>
           )}
           <DetailInfoRow label={t('detail.labelStatus')} valueClassName="break-all">{renderAdminStatusBadge(adm, t, 'detail')}</DetailInfoRow>
+          {isPendingActivationAdmin(adm) && (
+            <DetailInfoRow label={t('detail.labelActivationCodeExpiresAt')} valueClassName="break-all">
+              <span data-testid="admin-detail-activation-code-expiry">
+                {adm.activationCodeExpiresAt
+                  ? formatDate(adm.activationCodeExpiresAt)
+                  : <span className="text-fg-muted">{t('detail.activationCodeNoValidCode')}</span>}
+              </span>
+            </DetailInfoRow>
+          )}
           <DetailInfoRow label={t('detail.labelCreated')} valueClassName="break-all">{adm.createdAt ? formatDate(adm.createdAt) : '—'}</DetailInfoRow>
           <DetailInfoRow label={t('detail.labelLastLogin')} valueClassName="break-all">
             {adm.lastLoginAt ? (
@@ -753,22 +624,14 @@ function AdminDetailDialog({
           <OperationalWarning message={t('detail.operationalWarning.tenantInactive')} />
         )}
 
+        {canShowOnboardingCredentials(adm) && adm.adminId != null && (
+          <AdminBindCard key={adm.adminId} adminId={adm.adminId} enrollmentStatus={adm.enrollmentStatus} />
+        )}
+
         {/* Actions */}
         <div className="border-t-2 border-fg/10 pt-4 space-y-3">
           <h3 className="font-bold text-xs uppercase tracking-wider text-fg-muted">{t('detail.sectionActions')}</h3>
           <div className="flex flex-wrap gap-2">
-            {canShowOnboardingCredentials(adm) && (
-              <Button
-                variant="secondary"
-                size="sm"
-                className="gap-1.5"
-                data-testid="admin-detail-credentials"
-                onClick={() => onShowCredentials(adm.adminId!, adm.username!)}
-              >
-                <KeyRound className="size-3.5" />
-                {t('detail.credentials')}
-              </Button>
-            )}
             <Button
               variant="secondary"
               size="sm"
@@ -1122,11 +985,14 @@ function AdminDetailDialog({
 function CreateAdminDialog({
   open,
   onClose,
+  onLandOnRecord,
   defaultGlobal = false,
   defaultTenantId,
 }: {
   open: boolean;
   onClose: () => void;
+  /** #1313: a creation ends on the administrator record (design-principles §10). */
+  onLandOnRecord: (adminId: number) => void;
   defaultGlobal?: boolean;
   /** When set (e.g. from tenant detail deep link), opens tenant-admin flow with this tenant pre-selected. */
   defaultTenantId?: number | null;
@@ -1247,16 +1113,38 @@ function CreateAdminDialog({
     !tenantAdminNeedsTenant ||
     (eligibleTenants.length > 0 && watchedTenantId != null && watchedTenantId !== '');
 
+  const resetDialog = () => {
+    reset();
+    setCreatedAdmin(null);
+    setProvisioningMaterialCopied(false);
+    setProvisioningMaterialSavedConfirmed(false);
+    setIsGlobalType(defaultTenantId != null && defaultTenantId > 0 ? false : defaultGlobal);
+    setOnboardingMode(AdminCreateRequestDtoOnboardingMode.IMMEDIATE);
+    setTenantFilter('');
+    createMutation.reset();
+  };
+
   const onCreated = (admin: AdminProvisioningShape, isGlobal: boolean) => {
-    setCreatedAdmin(admin);
     void queryClient.invalidateQueries({ queryKey: ['admins'] });
-    const typeLabel = isGlobal ? t('adminType.global') : t('adminType.tenant');
-    toast(t('create.toastCreated', { type: typeLabel, username: admin.username }));
+    const hasActivationCode = admin.activationCode != null && admin.activationCode.length > 0;
+    if (!hasActivationCode && admin.adminId != null) {
+      // IMMEDIATE: no intermediate screen; the record carries the bind card (#1313). The toast is
+      // the only confirmation, since the dialog closes.
+      const typeLabel = isGlobal ? t('adminType.global') : t('adminType.tenant');
+      toast(t('create.toastCreated', { type: typeLabel, username: admin.username }));
+      resetDialog();
+      onLandOnRecord(admin.adminId);
+      return;
+    }
+    // ACTIVATION_CODE: the code step's success alert confirms the creation (no toast on top), the
+    // one-time code is shown once, then Done lands on the record.
+    setCreatedAdmin(admin);
   };
 
   const mapProvisioningResponse = (data: unknown): AdminProvisioningShape => {
     const r = data as Record<string, unknown>;
     return {
+      adminId: typeof r.adminId === 'number' ? r.adminId : undefined,
       username: typeof r.username === 'string' ? r.username : undefined,
       onboardingMode:
         r.onboardingMode === 'IMMEDIATE' || r.onboardingMode === 'ACTIVATION_CODE'
@@ -1328,14 +1216,12 @@ function CreateAdminDialog({
     if (createdAdmin && requiresProvisioningMaterialConfirmation && !provisioningMaterialSavedConfirmed) {
       return;
     }
-    reset();
-    setCreatedAdmin(null);
-    setProvisioningMaterialCopied(false);
-    setProvisioningMaterialSavedConfirmed(false);
-    setIsGlobalType(defaultTenantId != null && defaultTenantId > 0 ? false : defaultGlobal);
-    setOnboardingMode(AdminCreateRequestDtoOnboardingMode.IMMEDIATE);
-    setTenantFilter('');
-    createMutation.reset();
+    const landOn = createdAdmin?.adminId;
+    resetDialog();
+    if (landOn != null) {
+      onLandOnRecord(landOn);
+      return;
+    }
     onClose();
   };
 
@@ -1412,9 +1298,7 @@ function CreateAdminDialog({
               </div>
             </div>
           )}
-          <p className="text-sm text-fg-muted">
-            {createdAdminHasActivationCode ? t('create.activationCodeSuccessHint') : t('create.successHint')}
-          </p>
+          <p className="text-sm text-fg-muted">{t('create.activationCodeSuccessHint')}</p>
           <div className="flex justify-end pt-2">
             <Button
               onClick={handleClose}
@@ -1619,7 +1503,6 @@ export default function AdminsPage() {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [onboardingTarget, setOnboardingTarget] = useState<{ id: number; username: string } | null>(null);
   const [deactivateTarget, setDeactivateTarget] = useState<AdminResponseDto | null>(null);
 
   const { data, pagination, isLoading, refetch } = usePaginatedFromOrval<AdminResponseDto, Record<string, never>>({
@@ -1670,6 +1553,17 @@ export default function AdminsPage() {
       next.delete('tenantId');
       setSearchParams(next, { replace: true });
     }
+  };
+
+  /** #1313: after a creation, open the new administrator's record (/admins?adminId=N). */
+  const handleLandOnRecord = (adminId: number) => {
+    setCreateOpen(false);
+    setSelectedIndex(null);
+    const next = new URLSearchParams(searchParams);
+    next.delete('createTenantAdmin');
+    next.delete('tenantId');
+    next.set('adminId', String(adminId));
+    setSearchParams(next, { replace: true });
   };
 
   const columns: ColumnDef<AdminResponseDto>[] = useMemo(() => {
@@ -1753,17 +1647,6 @@ export default function AdminsPage() {
       key: 'actions',
       render: (r) => (
         <div className="flex items-center gap-1.5">
-          {canShowOnboardingCredentials(r) && (
-            <Button
-              variant="secondary"
-              size="sm"
-              className="gap-1"
-              onClick={(e) => { e.stopPropagation(); setOnboardingTarget({ id: r.adminId!, username: r.username! }); }}
-            >
-              <KeyRound className="size-3" />
-              {t('list.credentials')}
-            </Button>
-          )}
           {isGlobalAdmin && r.active && (
             <Button
               variant="ghost"
@@ -1804,7 +1687,7 @@ export default function AdminsPage() {
       createdCol,
       actionsCol,
     ];
-  }, [isGlobalAdmin, t, setOnboardingTarget]);
+  }, [isGlobalAdmin, t]);
 
   return (
     <AppShell title={t('list.title')}>
@@ -1851,11 +1734,6 @@ export default function AdminsPage() {
       <AdminDetailDialog
         admin={dialogAdmin}
         onClose={handleCloseDetailDialog}
-        onShowCredentials={(id, username) => {
-          setSelectedIndex(null);
-          clearAdminIdFromUrl();
-          setOnboardingTarget({ id, username });
-        }}
         onRequestDeactivate={(a) => {
           setSelectedIndex(null);
           clearAdminIdFromUrl();
@@ -1872,16 +1750,11 @@ export default function AdminsPage() {
         <CreateAdminDialog
           open
           onClose={handleCloseCreateDialog}
+          onLandOnRecord={handleLandOnRecord}
           defaultGlobal={defaultTenantIdFromUrl != null ? false : isGlobalAdmin}
           defaultTenantId={defaultTenantIdFromUrl}
         />
       )}
-      <OnboardingDialog
-        open={onboardingTarget !== null}
-        onClose={() => setOnboardingTarget(null)}
-        adminId={onboardingTarget?.id ?? null}
-        adminUsername={onboardingTarget?.username ?? ''}
-      />
       <DeactivateAdminDialog
         open={deactivateTarget !== null}
         onClose={() => setDeactivateTarget(null)}
