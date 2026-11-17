@@ -1126,16 +1126,18 @@ function CreateAdminDialog({
 
   const onCreated = (admin: AdminProvisioningShape, isGlobal: boolean) => {
     void queryClient.invalidateQueries({ queryKey: ['admins'] });
-    const typeLabel = isGlobal ? t('adminType.global') : t('adminType.tenant');
-    toast(t('create.toastCreated', { type: typeLabel, username: admin.username }));
     const hasActivationCode = admin.activationCode != null && admin.activationCode.length > 0;
     if (!hasActivationCode && admin.adminId != null) {
-      // IMMEDIATE: no intermediate screen; the record carries the bind card (#1313).
+      // IMMEDIATE: no intermediate screen; the record carries the bind card (#1313). The toast is
+      // the only confirmation, since the dialog closes.
+      const typeLabel = isGlobal ? t('adminType.global') : t('adminType.tenant');
+      toast(t('create.toastCreated', { type: typeLabel, username: admin.username }));
       resetDialog();
       onLandOnRecord(admin.adminId);
       return;
     }
-    // ACTIVATION_CODE: the one-time code is shown once, then Done lands on the record.
+    // ACTIVATION_CODE: the code step's success alert confirms the creation (no toast on top), the
+    // one-time code is shown once, then Done lands on the record.
     setCreatedAdmin(admin);
   };
 

@@ -106,7 +106,7 @@ export function AdminBindCard({
       {revealed && isError && <Alert variant="error">{t('bindCard.errorLoad')}</Alert>}
 
       {qrCodeUrl && (
-        <div className="border-2 border-fg p-3 inline-block" data-testid="admin-bind-qr">
+        <div className="border-2 border-fg p-3 w-fit" data-testid="admin-bind-qr">
           <img src={qrCodeUrl} alt={t('bindCard.qrCodeAlt')} className="size-48" />
         </div>
       )}

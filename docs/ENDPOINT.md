@@ -1752,7 +1752,7 @@ Content-Type: application/json
 - ⚠️ **Admin MFA enrollments** sit on the **system integration**. `GET /enrollments/{id}` checks integration tenant, so a Tenant Admin cannot load their own (or a peer’s) admin MFA enrollment this way.
 - ✅ Use `GET /api/v1/admins/{id}/onboarding` (and `/onboarding/qrcode`) for admin MFA credentials.
 - ✅ `GET /enrollments/{id}` is still the right API for enrollments on integrations that belong to the Tenant Admin’s tenant.
-- ℹ️ The `enrollmentId` a Tenant Admin receives in `AdminResponseDto` and in the onboarding response is **not a secret**. The Admin UI hides it from Tenant Admins as a display rule only; the protection is this endpoint answering 404 to them (#1313).
+- ℹ️ The `enrollmentId` a Tenant Admin receives in `AdminResponseDto` and in the onboarding response is **not a secret**. The Admin UI hides it from Tenant Admins as a display rule only; the protection is this endpoint answering 403 to them (#1313).
 
 **Administrator MFA enrollments (#1313).** One administrator, one enrollment: an enrollment is never shared between administrators (unique index on `ezkey_admin.enrollment_id`, V30). For an administrator's enrollment, `GET` and search return the record with `enrollmentProofToken` and `enrollmentChallenge` **null in every status**: the single source is `/admins/{id}/onboarding*`. `contactEmail` stays null: the administrator's email (`ezkey_admin.email`) is the single email of an administrator.
 

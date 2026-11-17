@@ -1,8 +1,11 @@
-import { expect, test, type BrowserContext, type Page } from '@playwright/test';
-import { loginViaDemoDevice } from './support/auth-flow';
+import { expect, test, type Page } from '@playwright/test';
+import { loginAsEnrolledAdmin, loginViaDemoDevice } from './support/auth-flow';
 import { testEnv } from './support/test-env';
 
-/** Reads the bearer token the SPA sends, so the spec can set up data through the Admin API. */
+/**
+ * Opens `/admins` and reads the bearer token the SPA sends, so the spec can set up data and probe
+ * the Admin API as the signed-in administrator.
+ */
 async function captureBearerToken(page: Page): Promise<string> {
   const request = page.waitForRequest(
     (candidate) =>
@@ -10,35 +13,6 @@ async function captureBearerToken(page: Page): Promise<string> {
   );
   await page.goto('/admins');
   return (await request).headers().authorization;
-}
-
-/** Logs in as the new administrator and approves on the Demo Device they just enrolled on. */
-async function assertAdminCanLogIn(
-  page: Page,
-  context: BrowserContext,
-  username: string,
-  enrollmentId: number,
-): Promise<void> {
-  const login = await page.request.post('/api/v1/admin/auth/login', {
-    data: { username, challengeRequested: false, nonBlocking: true },
-  });
-  expect(login.ok()).toBe(true);
-  const { authAttemptId, waiterSecret } = await login.json();
-
-  const demoPage = await context.newPage();
-  await expect(async () => {
-    await demoPage.goto(`${testEnv.demoDeviceUrl}/phone/ezkey/enrollments/${enrollmentId}/auth`);
-    await expect(demoPage.getByTestId('demo-device-auth-pending')).toBeVisible({ timeout: 1_000 });
-  }).toPass({ timeout: 30_000 });
-  await demoPage.getByTestId('demo-device-approve-button').click();
-  await expect(demoPage.getByTestId('demo-device-result-success')).toBeVisible();
-  await demoPage.close();
-
-  const wait = await page.request.post('/api/v1/admin/auth/passwordless-wait', {
-    data: { authAttemptId, waiterSecret },
-  });
-  expect(wait.ok()).toBe(true);
-  expect((await wait.json()).token).toBeTruthy();
 }
 
 /** Creates a tenant through the API, so the create dialog has a tenant to pick. */
@@ -77,6 +51,8 @@ async function submitCreate(page: Page): Promise<number> {
 // nothing secret until "Show QR" (each reveal is audited), shows the QR while CREATED and only the
 // guarded code while BOUND, and disappears once VERIFIED. A Global Admin goes from the record to
 // the enrollment and back; the enrollment record shows no bind material and no contact email.
+// The new Tenant Admin then signs in through the UI and sees a colleague's record without the
+// enrollment link (P4).
 test('@elective @device-backed admin onboarding: creation lands on the record with the bind card', async ({
   page,
   context,
@@ -167,7 +143,37 @@ test('@elective @device-backed admin onboarding: creation lands on the record wi
   const qrAfterVerify = await page.request.get(`/api/v1/admins/${adminId}/onboarding/qrcode`, { headers });
   expect(qrAfterVerify.status()).toBe(409);
 
-  await assertAdminCanLogIn(page, context, username, enrollmentId);
+  // P4: the new Tenant Admin signs in, creates a colleague and lands on the colleague's record:
+  // bind card, no enrollment link; the enrollment record itself answers 403 to a Tenant Admin.
+  const tenantPage = await context.newPage();
+  await loginAsEnrolledAdmin(tenantPage, context, username, enrollmentId);
+  const tenantHeaders = { Authorization: await captureBearerToken(tenantPage) };
+
+  await tenantPage.getByTestId('admins-new-admin').click();
+  await expect(tenantPage.locator('#adm-tenant')).toHaveCount(0);
+  const colleague = `${username}-b`;
+  await tenantPage.locator('#adm-username').fill(colleague);
+  await tenantPage.locator('#adm-fname').fill('Bob');
+  await tenantPage.locator('#adm-lname').fill('Martin');
+  await tenantPage.locator('#adm-email').fill(`${colleague}@example.com`);
+  const colleagueId = await submitCreate(tenantPage);
+
+  await expect(tenantPage).toHaveURL(new RegExp(`/admins\\?adminId=${colleagueId}$`));
+  await expect(tenantPage.getByTestId('admin-bind-card')).toBeVisible();
+  await expect(tenantPage.getByTestId('admin-detail-enrollment-link')).toHaveCount(0);
+  await tenantPage.getByTestId('admin-bind-reveal').click();
+  await expect(tenantPage.getByTestId('admin-bind-qr')).toBeVisible();
+
+  const colleagueRecord = await tenantPage.request.get(`/api/v1/admins/${colleagueId}`, {
+    headers: tenantHeaders,
+  });
+  const colleagueEnrollmentId = (await colleagueRecord.json()).enrollmentId;
+  expect(colleagueEnrollmentId).toBeTruthy();
+  const enrollmentAsTenant = await tenantPage.request.get(
+    `/api/v1/enrollments/${colleagueEnrollmentId}`,
+    { headers: tenantHeaders },
+  );
+  expect(enrollmentAsTenant.status()).toBe(403);
 });
 
 // #1313 P2 + P6: the activation code is shown once behind the saved-confirmation gate, then the
@@ -197,6 +203,8 @@ test('@elective @device-backed admin onboarding: activation code lands on a pend
 
   await expect(page).toHaveURL(new RegExp(`/admins\\?adminId=${adminId}$`));
   await expect(page.getByRole('dialog')).toContainText(username);
+  // The code step already confirmed the creation: no toast repeats it.
+  await expect(page.getByRole('alert').filter({ hasText: username })).toHaveCount(0);
   await expect(page.getByTestId('admin-detail-activation-code-expiry')).not.toHaveText('');
   await expect(page.getByTestId('admin-detail-enrollment-link')).toBeHidden();
   await expect(page.getByTestId('admin-bind-card')).toBeHidden();

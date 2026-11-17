@@ -57,7 +57,7 @@ A creation ends on the object's canonical record; a confirmation dialog does not
 Administrators follow the same rule (#1313). One source per piece of information:
 - Creating an administrator lands on the administrator record (`/admins?adminId=N`). With an activation code, the one-time code step comes first, behind its saved-confirmation gate.
 - The administrator record is the only screen that reveals an administrator's bind material: a bind card, shown while the enrollment is `CREATED` or `BOUND`, that loads nothing secret until the operator clicks "Show QR" (each reveal is audited). A pending administrator shows the activation code's expiry instead, with no enrollment link and no bind card.
-- The link to the administrator's enrollment is shown to Global Admins only, from the session role. This is a display rule, not a protection: the id is not a secret, and `/enrollments/{id}` answers 404 to a Tenant Admin.
+- The link to the administrator's enrollment is shown to Global Admins only, from the session role. This is a display rule, not a protection: the id is not a secret, and `/enrollments/{id}` answers 403 to a Tenant Admin.
 - The administrator's enrollment record links back to the administrator by name and shows no QR, challenge, contact email or send action.
 - Under the administrator's email: "Identifies the administrator in the audit trail. Ezkey sends nothing to it." No copy suggests it serves recovery or notification.
 

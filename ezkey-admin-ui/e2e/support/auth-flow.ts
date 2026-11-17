@@ -51,10 +51,13 @@ async function openDemoDevicePendingRequest(demoPage: Page): Promise<void> {
   );
 }
 
-async function startPasswordlessLogin(adminPage: Page): Promise<void> {
+async function startPasswordlessLogin(
+  adminPage: Page,
+  username: string = testEnv.adminUsername,
+): Promise<void> {
   await adminPage.goto('/login');
   await expect(adminPage.getByTestId('login-page')).toBeVisible();
-  await adminPage.getByTestId('login-username-input').fill(testEnv.adminUsername);
+  await adminPage.getByTestId('login-username-input').fill(username);
 
   const challengeToggle = adminPage.getByTestId('login-challenge-toggle');
   if (await challengeToggle.isChecked()) {
@@ -63,6 +66,31 @@ async function startPasswordlessLogin(adminPage: Page): Promise<void> {
 
   await adminPage.getByTestId('login-submit-button').click();
   await expect(adminPage.getByTestId('login-waiting-state')).toBeVisible({ timeout: 20_000 });
+}
+
+/**
+ * Signs in through the login page as an administrator a spec just enrolled on the Demo Device,
+ * approving on that enrollment. Use a fresh page: the session lives in the tab's sessionStorage.
+ */
+export async function loginAsEnrolledAdmin(
+  adminPage: Page,
+  context: BrowserContext,
+  username: string,
+  enrollmentId: number,
+): Promise<void> {
+  await startPasswordlessLogin(adminPage, username);
+
+  const demoPage = await context.newPage();
+  await expect(async () => {
+    await demoPage.goto(`${testEnv.demoDeviceUrl}/phone/ezkey/enrollments/${enrollmentId}/auth`);
+    await expect(demoPage.getByTestId('demo-device-auth-pending')).toBeVisible({ timeout: 1_000 });
+  }).toPass({ timeout: 30_000 });
+  await demoPage.getByTestId('demo-device-approve-button').click();
+  await expect(demoPage.getByTestId('demo-device-result-success')).toBeVisible();
+  await demoPage.close();
+
+  await expect(adminPage).toHaveURL(/\/dashboard$/, { timeout: 60_000 });
+  await expect(adminPage.getByTestId('app-shell')).toBeVisible();
 }
 
 export async function loginViaDemoDevice(
