@@ -228,6 +228,10 @@ after an owner approval left the ruleset blocking the github-actions license com
 **bypassed** the ruleset; do not repeat without an explicit go. `#1288` (Conscrypt 2.9.0) is
 ci-gate green at `c743b97c` and stays unmerged (Pixel smoke + Marc's go). See
 [`2026-11-09-pass-1.md`](2026-11-09-pass-1.md).
+**2026-11-16 Monday full:** started at 2 open (`#1341` keychain 11, `#1339` jsdom 31), both held.
+During the pre-PR recheck Dependabot opened `#1372`–`#1378`; auto-merge squash-merged `#1373`
+(`c8aadf7c`) and `#1372` (`657cedc27`). This pass merged nothing. Java BOM **4.1.2** still current.
+Alerts API 403. See [`2026-11-16-pass-1.md`](2026-11-16-pass-1.md).
 
 **2026-10-19 Monday full (rerun):** merged Maven #868/#853, Admin UI #869/#871/#873/#875/#855 + Orval #872 (O0) + #874/#876/#822/#885, mobile lot via hygiene #913 (supersedes #879–#884); held #870 (Tink → Christophe), #877 (react without react-dom), #878 (RN 0.88 line), #767, #717 (post-#702 decision), gates #779/#653; `#627` Pixel smoke still pending — see [`2026-10-19-pass-1.md`](2026-10-19-pass-1.md).
 
