@@ -106,6 +106,7 @@ public interface EnrollmentAdminMapper {
   @Mapping(target = "createdByAdminUsername", ignore = true)
   @Mapping(target = "deactivatedByAdminUsername", ignore = true)
   @Mapping(target = "revokedByAdminUsername", ignore = true)
+  @Mapping(target = "ownerAdminId", ignore = true)
   @Mapping(
       target = "operational",
       expression =
@@ -140,7 +141,31 @@ public interface EnrollmentAdminMapper {
    */
   default EnrollmentResponseDto toResponseWithIntegrationAndAdminUsernames(
       Enrollment entity, Integration integration, Map<Integer, String> adminUsernamesById) {
+    return toResponseWithIntegrationAndAdminUsernames(
+        entity, integration, adminUsernamesById, null);
+  }
+
+  /**
+   * Same as {@link #toResponseWithIntegrationAndAdminUsernames(Enrollment, Integration, Map)} with
+   * the owning administrator for detail surfaces.
+   *
+   * <p>An administrator's MFA enrollment is returned with null proof token and challenge, in every
+   * status: its single source is {@code /admins/{id}/onboarding*} (#1313, {@link
+   * EnrollmentBindMaterialPolicy#servedByEnrollmentApi}).
+   *
+   * @param entity the enrollment entity
+   * @param integration the integration context, or null
+   * @param adminUsernamesById map of adminId → username from a batch lookup (may be empty)
+   * @param ownerAdminId owning administrator, or null when not resolved for this caller
+   * @return enriched enrollment response DTO
+   */
+  default EnrollmentResponseDto toResponseWithIntegrationAndAdminUsernames(
+      Enrollment entity,
+      Integration integration,
+      Map<Integer, String> adminUsernamesById,
+      Integer ownerAdminId) {
     EnrollmentResponseDto base = toResponse(entity);
+    boolean bindMaterialServed = EnrollmentBindMaterialPolicy.servedByEnrollmentApi(integration);
     String name = integration != null ? integration.getName() : null;
     Integer tenantId =
         integration != null && integration.getTenant() != null
@@ -170,8 +195,8 @@ public interface EnrollmentAdminMapper {
         base.enrollmentName(),
         base.enrollmentStatus(),
         base.enrollmentActive(),
-        base.enrollmentChallenge(),
-        base.enrollmentProofToken(),
+        bindMaterialServed ? base.enrollmentChallenge() : null,
+        bindMaterialServed ? base.enrollmentProofToken() : null,
         base.authAttemptChallengeRequired(),
         base.devicePrivateKeyStorageTier(),
         base.verifiedAt(),
@@ -193,7 +218,8 @@ public interface EnrollmentAdminMapper {
         tenantId,
         tenantName,
         isSystem,
-        operational);
+        operational,
+        ownerAdminId);
   }
 
   /**

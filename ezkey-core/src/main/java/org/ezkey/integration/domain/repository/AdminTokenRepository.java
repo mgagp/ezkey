@@ -406,4 +406,23 @@ public interface AdminTokenRepository extends JpaRepository<AdminToken, Integer>
   int deactivateTokensForAdminByPurpose(
       @Param("adminId") Integer adminId,
       @Param("purpose") org.ezkey.integration.domain.AdminTokenPurpose purpose);
+
+  /**
+   * Latest expiry among the active, unexpired tokens of a given purpose for one administrator.
+   *
+   * <p>Used to show when a pending administrator's activation code stops working (#1313). Only the
+   * instant is read; the token itself never leaves the repository.
+   *
+   * @param adminId administrator id
+   * @param purpose token purpose
+   * @param now tokens that expire at or before this instant are ignored
+   * @return the latest expiry, or empty when no such token exists
+   */
+  @Query(
+      "SELECT MAX(t.expiresAt) FROM AdminToken t WHERE t.admin.adminId = :adminId AND t.active ="
+          + " true AND t.tokenPurpose = :purpose AND t.expiresAt > :now")
+  Optional<OffsetDateTime> findLatestActiveExpiryForAdminByPurpose(
+      @Param("adminId") Integer adminId,
+      @Param("purpose") org.ezkey.integration.domain.AdminTokenPurpose purpose,
+      @Param("now") OffsetDateTime now);
 }

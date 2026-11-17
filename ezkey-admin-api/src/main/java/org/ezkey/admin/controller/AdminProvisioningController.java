@@ -19,6 +19,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 import java.net.URI;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -42,6 +43,7 @@ import org.ezkey.admin.service.AdminProvisioningService.ProvisioningResult;
 import org.ezkey.admin.service.AdminProvisioningService.RecoveryCodesRegenerationResult;
 import org.ezkey.admin.service.QrCodeGeneratorService;
 import org.ezkey.admin.service.QrCodePayloadService;
+import org.ezkey.admin.util.AdminBindMaterialRevealAudit;
 import org.ezkey.admin.util.AuditHelper;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
@@ -139,7 +141,8 @@ public class AdminProvisioningController {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problem);
   }
 
-  private static AdminResponseDto toAdminResponseDto(EzkeyAdmin admin) {
+  private static AdminResponseDto toAdminResponseDto(
+      EzkeyAdmin admin, OffsetDateTime activationCodeExpiresAt) {
     Integer enrollmentId =
         admin.getEnrollment() != null ? admin.getEnrollment().getEnrollmentId() : null;
     String enrollmentName =
@@ -177,7 +180,8 @@ public class AdminProvisioningController {
         admin.getLastLoginAt(),
         admin.getRecoveryCodes() != null && admin.getRecoveryCodes().length > 0,
         admin.getRecoveryCodes() != null && admin.getRecoveryCodes().length == 0,
-        operational);
+        operational,
+        activationCodeExpiresAt);
   }
 
   /**
@@ -492,7 +496,7 @@ public class AdminProvisioningController {
 
     Page<EzkeyAdmin> admins = provisioningService.listAdmins(effectiveTenantId, pageable);
 
-    Page<AdminResponseDto> response = admins.map(AdminProvisioningController::toAdminResponseDto);
+    Page<AdminResponseDto> response = admins.map(admin -> toAdminResponseDto(admin, null));
 
     return ResponseEntity.ok(response);
   }
@@ -529,7 +533,8 @@ public class AdminProvisioningController {
 
     try {
       EzkeyAdmin admin = provisioningService.getAdminById(id, principal);
-      return ResponseEntity.ok(toAdminResponseDto(admin));
+      return ResponseEntity.ok(
+          toAdminResponseDto(admin, provisioningService.findActivationCodeExpiresAt(admin)));
     } catch (ResourceNotFoundException e) {
       return ResponseEntity.notFound().build();
     } catch (IllegalArgumentException e) {
@@ -590,7 +595,8 @@ public class AdminProvisioningController {
       Boolean previousChallengeRequired = existingAdmin.getChallengeRequired();
 
       EzkeyAdmin admin = provisioningService.updateAdmin(id, request, principal);
-      AdminResponseDto response = toAdminResponseDto(admin);
+      AdminResponseDto response =
+          toAdminResponseDto(admin, provisioningService.findActivationCodeExpiresAt(admin));
 
       auditLogService.log(
           AuditHelper.createAdminAudit(
@@ -751,6 +757,9 @@ public class AdminProvisioningController {
               result.enrollmentChallenge(),
               result.recoveryCodes());
 
+      if (result.revealsBindMaterial()) {
+        AdminBindMaterialRevealAudit.json(auditLogService, httpRequest, principal, id, result);
+      }
       return ResponseEntity.ok(response);
     } catch (ResourceNotFoundException e) {
       return ResponseEntity.notFound().build();
@@ -1250,6 +1259,7 @@ public class AdminProvisioningController {
 
       // Generate QR code (300x300 pixels)
       byte[] qrCodeImage = qrCodeGeneratorService.generateQrCodeImage(qrContent, 300, 300);
+      AdminBindMaterialRevealAudit.qr(auditLogService, httpRequest, principal, id, result);
 
       // Return as PNG image
       HttpHeaders headers = new HttpHeaders();

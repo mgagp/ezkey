@@ -22,6 +22,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.time.OffsetDateTime;
@@ -213,9 +214,13 @@ public class EzkeyAdmin {
    *
    * <p>This field links to the standard enrollment record used for administrator authentication in
    * the Ezkey system.
+   *
+   * <p>One administrator, one enrollment: an enrollment is never shared between administrators.
+   * Sign-in finds the approving administrator by enrollment, so the rule is load-bearing. The
+   * database enforces it with a unique index on {@code ezkey_admin.enrollment_id} (V30, #1313).
    */
-  @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.MERGE)
-  @JoinColumn(name = "enrollment_id")
+  @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.MERGE)
+  @JoinColumn(name = "enrollment_id", unique = true)
   private Enrollment enrollment;
 
   /**

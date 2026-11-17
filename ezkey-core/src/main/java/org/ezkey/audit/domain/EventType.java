@@ -47,6 +47,13 @@ public enum EventType {
   // challengeRequired)
   ADMIN_DEACTIVATED, // Administrator deactivated + tokens revoked (+ reason when provided)
   ADMIN_ACTIVATED, // Administrator reactivated (reversible after deactivation)
+  /**
+   * An administrator's bind material (proof token, challenge or QR) was shown to an operator
+   * through {@code /admins/{id}/onboarding*} (#1313). Admin sign-in is passwordless, so this
+   * material is the whole administrator identity until a device binds. The row never carries the
+   * material itself.
+   */
+  ADMIN_BIND_MATERIAL_REVEALED,
 
   // Enrollment events
   ENROLLMENT_CREATED,

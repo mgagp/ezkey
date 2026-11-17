@@ -48,6 +48,8 @@ docs {
   
   Available only while the enrollment is `CREATED`; any other state returns 409 (#1180).
   
+  An administrator's MFA enrollment (system integration) always returns 409 with `code` `admin-enrollment`: its QR comes only from `GET /api/v1/admins/{id}/onboarding/qrcode`, where each reveal is audited (#1313).
+  
   **Path Parameters:**
   - `id` (required): Enrollment ID to generate QR code for
   
@@ -61,6 +63,7 @@ docs {
   - 400: Enrollment missing proof token
   - 401: Unauthorized - admin token required
   - 404: Enrollment not found or not visible to this admin (hide-existence)
+  - 409: Enrollment is not `CREATED`; or `admin-enrollment` for an administrator's MFA enrollment (#1313)
   - 500: Internal server error
   
   **Usage:**

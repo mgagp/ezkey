@@ -33,7 +33,8 @@ public enum EventTypeFamily {
       EventType.ADMIN_CREATED,
       EventType.ADMIN_PROFILE_UPDATED,
       EventType.ADMIN_DEACTIVATED,
-      EventType.ADMIN_ACTIVATED),
+      EventType.ADMIN_ACTIVATED,
+      EventType.ADMIN_BIND_MATERIAL_REVEALED),
   ENROLLMENT(
       EventType.ENROLLMENT_CREATED,
       EventType.ENROLLMENT_UPDATED,

@@ -100,6 +100,7 @@
     "ADMIN_PROFILE_UPDATED": "Admin Profile Updated",
     "ADMIN_DEACTIVATED": "Admin Deactivated",
     "ADMIN_ACTIVATED": "Admin Activated",
+    "ADMIN_BIND_MATERIAL_REVEALED": "Admin Enrollment QR Revealed",
     "ENROLLMENT_CREATED": "Enrollment Created",
     "ENROLLMENT_UPDATED": "Enrollment Updated",
     "ENROLLMENT_DELETED": "Enrollment Deleted",

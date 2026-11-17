@@ -4086,7 +4086,7 @@
             }
           },
           "409": {
-            "description": "Optimistic lock conflict - resource was modified, re-fetch and retry",
+            "description": "Optimistic lock conflict - resource was modified, re-fetch and retry; or admin-enrollment: contactEmail cannot be set or cleared on an administrator's MFA enrollment",
             "content": {
               "*/*": {
                 "schema": {
@@ -4672,7 +4672,7 @@
             }
           },
           "409": {
-            "description": "Enrollment is not CREATED",
+            "description": "Enrollment is not CREATED; or admin-enrollment: an administrator's QR is available only from /admins/{id}/onboarding/qrcode",
             "content": {
               "*/*": {
                 "schema": {
@@ -5446,6 +5446,7 @@
                 "ADMIN_PROFILE_UPDATED",
                 "ADMIN_DEACTIVATED",
                 "ADMIN_ACTIVATED",
+                "ADMIN_BIND_MATERIAL_REVEALED",
                 "ENROLLMENT_CREATED",
                 "ENROLLMENT_UPDATED",
                 "ENROLLMENT_DELETED",
@@ -9332,6 +9333,15 @@
             "type": "boolean",
             "description": "Whether the enrollment is currently operational: VERIFIED status, active flag true, and (when integration context is available) full parent chain also operational",
             "example": true
+          },
+          "ownerAdminId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Administrator who owns this MFA enrollment (one administrator, one enrollment). Set only on detail responses (GET and PATCH by ID) for a Global Admin caller; null otherwise, including for an enrollment no administrator owns",
+            "example": 7
           }
         }
       },
@@ -9653,6 +9663,15 @@
             "type": "boolean",
             "description": "Whether this administrator is fully operational (active and, for tenant admins, tenant also active)",
             "example": true
+          },
+          "activationCodeExpiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "When the pending administrator's activation code stops working (valid 7 days from issue). Set only on GET and PATCH by ID while an unexpired code exists; null otherwise. The code itself is never returned.",
+            "example": "2026-11-24T14:30:00Z"
           }
         }
       },
@@ -10473,6 +10492,7 @@
               "ADMIN_PROFILE_UPDATED",
               "ADMIN_DEACTIVATED",
               "ADMIN_ACTIVATED",
+              "ADMIN_BIND_MATERIAL_REVEALED",
               "ENROLLMENT_CREATED",
               "ENROLLMENT_UPDATED",
               "ENROLLMENT_DELETED",

@@ -19,10 +19,13 @@ import java.util.regex.Pattern;
 import org.ezkey.admin.dto.request.EnrollmentUpdateRequestDto;
 import org.ezkey.admin.util.AuditHelper;
 import org.ezkey.audit.util.AuditDetailsBuilder;
+import org.ezkey.enrollment.EnrollmentBindMaterialPolicy;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.exception.AdminEnrollmentOperationException;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.util.PhoneNumberUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,6 +47,9 @@ import org.springframework.transaction.annotation.Transactional;
  *       active for a request that touches contactEmail only
  *   <li>enrollmentName: must be unique per (integration_id, name) for VERIFIED status
  *   <li>expiresAt: must be in the future if provided; null = no expiration
+ *   <li>contactEmail: refused on an administrator's MFA enrollment, value or clear, before any
+ *       change ({@code 409 admin-enrollment}, #1313). The administrator's email is the single email
+ *       of an administrator.
  * </ul>
  *
  * <p><b>Optimistic Locking:</b> Uses {@code version} from the request to detect concurrent
@@ -70,14 +76,18 @@ public class EnrollmentUpdateService {
       Pattern.compile("^[\\w.+-]+@[\\w.-]+\\.[a-zA-Z]{2,}$");
 
   private final EnrollmentRepository enrollmentRepository;
+  private final IntegrationRepository integrationRepository;
 
   /**
    * Constructs the EnrollmentUpdateService with required dependencies.
    *
    * @param enrollmentRepository repository for enrollment persistence
+   * @param integrationRepository repository used to tell an administrator enrollment apart
    */
-  public EnrollmentUpdateService(EnrollmentRepository enrollmentRepository) {
+  public EnrollmentUpdateService(
+      EnrollmentRepository enrollmentRepository, IntegrationRepository integrationRepository) {
     this.enrollmentRepository = enrollmentRepository;
+    this.integrationRepository = integrationRepository;
   }
 
   /**
@@ -93,6 +103,8 @@ public class EnrollmentUpdateService {
    * @throws IllegalArgumentException if enrollment is not updatable (revoked, inactive) or
    *     validation fails (name uniqueness, expiresAt in past)
    * @throws ObjectOptimisticLockingFailureException if version mismatch (stale)
+   * @throws AdminEnrollmentOperationException if the request touches contactEmail on an
+   *     administrator's MFA enrollment (#1313)
    */
   @Transactional
   public EnrollmentUpdateOutcome updateEnrollment(
@@ -101,6 +113,14 @@ public class EnrollmentUpdateService {
         enrollmentRepository
             .findById(enrollmentId)
             .orElseThrow(() -> new ResourceNotFoundException("Enrollment", enrollmentId));
+
+    // #1313: an administrator has one email, ezkey_admin.email. Refuse before any other check or
+    // change, so the field stays null whatever the status.
+    if (touchesContactEmail(request) && isAdminEnrollment(enrollment)) {
+      throw new AdminEnrollmentOperationException(
+          "An administrator's MFA enrollment has no contact email. The administrator's email is"
+              + " set on the administrator record.");
+    }
 
     // Active, non-revoked VERIFIED enrollments can be updated. At CREATED, only contactEmail can
     // change, so an invitation can get an address before a send (#1206 step 5).
@@ -281,6 +301,16 @@ public class EnrollmentUpdateService {
 
     builder.custom("changes", changes);
     return builder.toJson();
+  }
+
+  private static boolean touchesContactEmail(EnrollmentUpdateRequestDto request) {
+    return Boolean.TRUE.equals(request.clearContactEmail()) || request.contactEmail() != null;
+  }
+
+  private boolean isAdminEnrollment(Enrollment enrollment) {
+    return enrollment.getIntegrationId() != null
+        && EnrollmentBindMaterialPolicy.isAdminEnrollment(
+            integrationRepository.findById(enrollment.getIntegrationId()).orElse(null));
   }
 
   private static boolean touchesMoreThanContactEmail(EnrollmentUpdateRequestDto request) {

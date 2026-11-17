@@ -50,6 +50,7 @@ export const AUDIT_EVENT_TYPE_GROUPS: readonly AuditEventTypeGroup[] = [
       'ADMIN_PROFILE_UPDATED',
       'ADMIN_DEACTIVATED',
       'ADMIN_ACTIVATED',
+      'ADMIN_BIND_MATERIAL_REVEALED',
     ],
   },
   {

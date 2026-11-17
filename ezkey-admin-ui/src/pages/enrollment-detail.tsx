@@ -33,6 +33,7 @@ import { authContextDemoPresets, isDemoMode } from '@/lib/demo-mode';
 import { isPhoneNumberInputValid, normalizePhoneNumberInput } from '@/lib/phone-number';
 import { formatChallengeCode, formatCountdown, formatDate } from '@/lib/utils';
 import { enrollmentEditScope } from '@/lib/enrollment-edit-scope';
+import { showsEnrollmentQrCard, showsIntegratedDeliveryNotice } from '@/lib/enrollment-bind-preview';
 import { enrollmentActiveToggle } from '@/lib/enrollment-active-toggle';
 import { useCancel, useCreate2, useGetById2 } from '@/generated/admin-api/auth-attempts/auth-attempts';
 import {
@@ -872,7 +873,7 @@ export default function EnrollmentDetailPage() {
 
             {/* Token + QR + Danger */}
             <div className="space-y-4">
-              {(enrollment.enrollmentStatus === 'CREATED' || enrollment.enrollmentStatus === 'BOUND') && (
+              {showsIntegratedDeliveryNotice(enrollment) && (
                 <IntegratedDeliveryNotice summary={t('common:integratedDelivery.summary')}>
                   {t('detail.credentialsPreviewNotice')}
                 </IntegratedDeliveryNotice>
@@ -942,8 +943,8 @@ export default function EnrollmentDetailPage() {
                 </Card>
               )}
 
-              {/* QR holds the proof token, so it follows the same rule (#1180) */}
-              {enrollment.enrollmentStatus === 'CREATED' && (
+              {/* QR holds the proof token (#1180); never for an admin enrollment (#1313) */}
+              {showsEnrollmentQrCard(enrollment) && (
                 <Card data-testid="enrollment-qr-card">
                   <CardHeader><CardTitle>{t('detail.qrCode')}</CardTitle></CardHeader>
                   <CardContent className="space-y-3">

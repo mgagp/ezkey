@@ -157,6 +157,12 @@ public final class AdminAuditConstants {
   /** Audit action for unexpected error during enrollment creation. */
   public static final String ENROLLMENT_CREATION_ERROR = "enrollment_creation_error";
 
+  /**
+   * Audit action: an administrator's bind material (proof token, challenge or QR) was shown to an
+   * operator through {@code /admins/{id}/onboarding*} (#1313).
+   */
+  public static final String ADMIN_BIND_MATERIAL_REVEALED = "admin_bind_material_revealed";
+
   /** Audit action for successful enrollment metadata update. */
   public static final String ENROLLMENT_UPDATED = "enrollment_updated";
 

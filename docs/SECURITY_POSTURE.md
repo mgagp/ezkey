@@ -136,6 +136,36 @@ Sending is optional. With no connector, the QR and the challenge stay on screen 
   private network is declared, which the local Mailpit setup does.
 - **Audit:** each send records the recipient, the outcome and the operator, never the QR or the token.
 
+### Administrator onboarding material (#1313)
+
+**Ezkey never sends an administrator's QR or activation code. Passing them on is the operator's
+act.** Admin sign-in is passwordless, so an administrator's enrollment QR (or proof token and
+challenge) and an activation code are each enough to become that administrator.
+
+- **One email per administrator.** `ezkey_admin.email` identifies the administrator in the audit
+  trail; Ezkey sends nothing to it. An administrator's MFA enrollment carries no contact email: the
+  Admin API refuses to set one (`409 admin-enrollment`), and V30 cleared any left over.
+- **One source for the bind material.** Only `/admins/{id}/onboarding*` returns an administrator's
+  proof token, challenge and QR. The `/enrollments` endpoints return the record with those fields
+  null and refuse the QR, and QR delivery refuses administrator enrollments.
+- **One enrollment per administrator.** An enrollment is never shared between administrators
+  (unique index on `ezkey_admin.enrollment_id`, V30). Sign-in finds the approving administrator by
+  enrollment, so the rule is load-bearing.
+- **Each reveal is audited, and that is all it does.** Every response that shows an administrator's
+  bind material writes one `ADMIN_BIND_MATERIAL_REVEALED` row (caller, target administrator,
+  enrollment, time, client IP; never the material). It answers one question after an unexpected
+  bind: who saw this material? It **detects; it does not prevent**: no alert, no block, and the
+  write is fail-open like every audit write. Ordinary enrollments are not audited on reveal: their
+  QR is one factor of two and showing it is routine work.
+- **Person present or not.** Have a teammate scan the QR on the operator's screen. For someone who
+  is not present, create the administrator with an activation code: text, single use, and a reissue
+  revokes the previous code. It is not cryptographically stronger than the QR; it is made to be
+  passed on.
+- **Activation code lifetime.** **7 days** from issue (a constant, not a setting), single use; a
+  successful activation revokes the other codes of that administrator. After expiry, only a Global
+  Admin can issue a new one. Long enough to cover a weekend or a few days away; the risk stays
+  bounded, and an intercepted code shows up when the real person finds it already used.
+
 ## What Ezkey does not do (current limits, stated honestly)
 
 - **It does not defend against a host-rooted adversary in-database.** Because the HMAC key lives on

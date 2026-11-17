@@ -1168,6 +1168,7 @@ Administrator provisioning endpoints allow GlobalAdmins and TenantAdmins to crea
 - In `ACTIVATION_CODE`, the creation response returns `lifecycleStatus`, `onboardingMode`,
   `activationCode`, and `activationCodeExpiresAt`; `enrollmentId` and `recoveryCodes` stay null
   until the activation code is consumed and the first enrollment exists.
+- **Activation code lifetime (#1313):** the code is valid **7 days** from issue (a constant, not a setting) and works **once**. A successful activation revokes the other codes of that administrator. After expiry, a **Global Admin** issues a new one with `POST /api/v1/admins/{id}/activation-code/regenerate` (pending administrator with no enrollment only); a Tenant Admin who invited a peer cannot reissue it and asks a Global Admin. The code alone is enough to become the administrator (sign-in is passwordless), so pass it on through a channel you trust. Ezkey never sends it.
 - Follows the same split as the enrollment API: bind credentials via a dedicated retrieval path;
   recovery codes are no longer revealed during unauthenticated/bootstrap steps and should be
   revealed later through an authenticated admin-management flow.
@@ -1339,6 +1340,8 @@ created with `onboardingMode = ACTIVATION_CODE` remain in `PENDING_ACTIVATION` w
 
 An admin who lost their device uses the reset flow, not this GET. `GET /api/v1/admins/{id}` exposes `enrollmentStatus`.
 
+**Audit ([#1313](https://github.com/mgagp/ezkey/issues/1313)):** a response that carries a proof token or a challenge writes one `ADMIN_BIND_MATERIAL_REVEALED` audit row (caller, target administrator, enrollment, time, client IP; never the material). This endpoint and `/onboarding/qrcode` are the only API source of an administrator's bind material; the `/enrollments` endpoints never return it. Same rule in both onboarding modes: after an activation code was used and before a device binds, another authorized administrator can still reveal the QR, under this audit.
+
 **Permissions:**
 - **GlobalAdmin**: Can retrieve onboarding credentials for any admin
 - **TenantAdmin**: Can only retrieve onboarding credentials for admins in their tenant
@@ -1379,6 +1382,8 @@ Authorization: Bearer ezkey_admin_token...
 **GET /api/v1/admins/{id}/onboarding/qrcode**
 
 Generates a PNG QR code image containing enrollment credentials for administrator onboarding. The QR code can be scanned by the mobile application for passwordless enrollment binding.
+
+Each QR image returned writes one `ADMIN_BIND_MATERIAL_REVEALED` audit row ([#1313](https://github.com/mgagp/ezkey/issues/1313)); a refused QR (409 outside `CREATED`) writes none.
 
 **Permissions:**
 - **GlobalAdmin**: Can generate QR codes for any admin
@@ -1474,6 +1479,8 @@ Re-issues a **new** one-time deferred onboarding activation code for an administ
 in `PENDING_ACTIVATION` and has **no** first enrollment yet. Any previously issued **unused**
 activation issuance rows for that administrator are **deactivated** first, so only the latest
 code remains valid until it is consumed or expires.
+
+**Activation code lifetime (#1313):** the code is valid **7 days** from issue (a constant, not a setting) and works **once**. A successful activation revokes the other codes of that administrator. After expiry, a **Global Admin** issues a new one with `POST /api/v1/admins/{id}/activation-code/regenerate` (pending administrator with no enrollment only); a Tenant Admin who invited a peer cannot reissue it and asks a Global Admin. The code alone is enough to become the administrator (sign-in is passwordless), so pass it on through a channel you trust. Ezkey never sends it.
 
 **Permissions:**
 - **GlobalAdmin** only (TenantAdmin receives 403).
@@ -1597,7 +1604,9 @@ GET /api/v1/admins/2
 Authorization: Bearer ezkey_admin_token...
 ```
 
-**Success Response (200 OK):** Same fields as a list item: `adminId`, `version`, `username`, `email`, `phoneNumber`, `firstName`, `lastName`, `adminType`, `tenantId`, `tenantName`, `enrollmentId`, `active`, `lifecycleStatus`, `createdAt`, `lastLoginAt`, `hasRecoveryCodes`, `recoveryCodesExhausted`, `operational`.
+**Success Response (200 OK):** Same fields as a list item: `adminId`, `version`, `username`, `email`, `phoneNumber`, `firstName`, `lastName`, `adminType`, `tenantId`, `tenantName`, `enrollmentId`, `active`, `lifecycleStatus`, `createdAt`, `lastLoginAt`, `hasRecoveryCodes`, `recoveryCodesExhausted`, `operational`, plus `activationCodeExpiresAt`.
+
+**`activationCodeExpiresAt` ([#1313](https://github.com/mgagp/ezkey/issues/1313)):** when a pending administrator's activation code stops working, set on `GET` and `PATCH` by id while an unexpired code exists; null otherwise, and always null in the list. Read-only; the code itself is never returned.
 
 **Status Codes:**
 - 200: Administrator retrieved successfully
@@ -1676,6 +1685,10 @@ Authorization: Bearer ezkey_admin_token...
 - Works correctly for **TenantAdmin** accessing their own enrollment
 - Semantic clarity: "Get onboarding credentials for admin X"
 
+**Single source of an administrator's bind material (#1313).** Admin sign-in is passwordless, so an administrator's enrollment is the whole identity until a device binds. `GET /api/v1/admins/{id}/onboarding` and `GET /api/v1/admins/{id}/onboarding/qrcode` are the only API source of an administrator's proof token, challenge and QR. The `/enrollments` endpoints never return them (see `GET /api/v1/enrollments/{id}` below).
+
+**Audit of the reveal (#1313).** Each response that carries a proof token or a challenge (JSON), and each QR image returned, writes one `ADMIN_BIND_MATERIAL_REVEALED` audit row with the caller, the target administrator, the enrollment, the time and the client IP. The row never holds the token, the challenge or the QR. A response that carries no material (after `VERIFIED`) and a refused QR write nothing. Opening an admin record or a list is not audited. Audit writes are fail-open: a failed write is logged and the response goes out. Ordinary enrollments are not audited on reveal.
+
 **Example:**
 ```http
 GET /api/v1/admins/2/onboarding
@@ -1739,6 +1752,11 @@ Content-Type: application/json
 - ⚠️ **Admin MFA enrollments** sit on the **system integration**. `GET /enrollments/{id}` checks integration tenant, so a Tenant Admin cannot load their own (or a peer’s) admin MFA enrollment this way.
 - ✅ Use `GET /api/v1/admins/{id}/onboarding` (and `/onboarding/qrcode`) for admin MFA credentials.
 - ✅ `GET /enrollments/{id}` is still the right API for enrollments on integrations that belong to the Tenant Admin’s tenant.
+- ℹ️ The `enrollmentId` a Tenant Admin receives in `AdminResponseDto` and in the onboarding response is **not a secret**. The Admin UI hides it from Tenant Admins as a display rule only; the protection is this endpoint answering 404 to them (#1313).
+
+**Administrator MFA enrollments (#1313).** One administrator, one enrollment: an enrollment is never shared between administrators (unique index on `ezkey_admin.enrollment_id`, V30). For an administrator's enrollment, `GET` and search return the record with `enrollmentProofToken` and `enrollmentChallenge` **null in every status**: the single source is `/admins/{id}/onboarding*`. `contactEmail` stays null: the administrator's email (`ezkey_admin.email`) is the single email of an administrator.
+
+**`ownerAdminId` (#1313):** on detail responses (`GET` and `PATCH` by id) for a **Global Admin** caller, the administrator who owns an administrator MFA enrollment, for the link back to the admin record. Null for any other caller, on search results, for ordinary enrollments, and for an enrollment no administrator owns.
 
 **Example:**
 ```http
@@ -1748,7 +1766,7 @@ Authorization: Bearer ezkey_admin_token...
 
 **Response (high level):** Returns the full enrollment record including integration display fields where applicable (`integrationName`, `isSystemIntegration`), client-reported `devicePrivateKeyStorageTier` when set at verify (`NONE`, `STANDARD`, `STRONG`; not independently verified by the server — see `docs/MOBILE_DEVELOPER_GUIDE.md`), and lifecycle audit timestamps such as `createdAt`, `createdByAdminId`, `deactivatedAt`, `deactivatedByAdminId`, `revokedAt`, and `revokedByAdminId` when set.
 
-**Bind material (#1180):** `enrollmentProofToken` is returned only while `CREATED`, and `enrollmentChallenge` only while `CREATED` or `BOUND` (verify follows bind, and the operator may still have to give the code); both are null otherwise. Integration and device public keys are never returned: protocol actors get them from Auth API bind and verify, and the server verifies device signatures from the stored entity. `GET` and search share this rule.
+**Bind material (#1180):** `enrollmentProofToken` is returned only while `CREATED`, and `enrollmentChallenge` only while `CREATED` or `BOUND` (verify follows bind, and the operator may still have to give the code); both are null otherwise, and always null for an administrator's MFA enrollment (#1313). Integration and device public keys are never returned: protocol actors get them from Auth API bind and verify, and the server verifies device signatures from the stored entity. `GET` and search share this rule.
 
 #### **GET /api/v1/enrollments/{id}/qrcode** (Enrollment bind-handle QR)
 
@@ -1765,6 +1783,7 @@ Authorization: Bearer ezkey_admin_token...
 - 400: Enrollment missing proof token
 - 404: Enrollment not found or not visible to this admin
 - 409: Enrollment is not `CREATED`: the QR holds the proof token, so it follows the same rule as the JSON GET (#1180)
+- 409 `admin-enrollment` (RFC 9457 problem, type `https://ezkey.io/problems/enrollment/admin-enrollment`, property `code`): the enrollment is an administrator's MFA enrollment; its QR is available only from `GET /api/v1/admins/{id}/onboarding/qrcode` (#1313)
 - 500: Internal server error
 
 #### **POST /api/v1/enrollments/{id}/qr-delivery** (Send the QR through a delivery connector)
@@ -1809,6 +1828,8 @@ Partially updates enrollment metadata. Only non-null fields in the request body 
 
 **Which enrollments:** an active `VERIFIED` enrollment accepts every field. A `CREATED` enrollment, which stays inactive until verify, accepts **`contactEmail` or `clearContactEmail` only**, so an invitation can get an address before a send (#1206 step 5). Any other field at `CREATED` returns **400**, and every other status returns **400**. If an invitation already went to a wrong address, revoke the enrollment and create a new one.
 
+**Administrator MFA enrollments (#1313):** a request that touches `contactEmail` (a value, an empty value, or `clearContactEmail`, even on a field already null) returns **409** with `code` `admin-enrollment`, before any change and whatever the status. The administrator's email is set on the administrator record. The refusal is audited as a failed `ENROLLMENT_UPDATED` (`error_message` `admin-enrollment`). Other fields follow the rules above. Creating an enrollment on the system integration is refused earlier, by `POST /api/v1/enrollments` (**403** `system-integration-create-not-allowed`), so creation is not a write path for this field.
+
 Omitted fields are left unchanged. Sending `null` for optional fields does **not** clear them. To clear optional `contactEmail` or `expiresAt`, set **`clearContactEmail`: true** or **`clearExpiresAt`: true** respectively (or send an empty `contactEmail` after trim to clear email). When `clearContactEmail` is true, any `contactEmail` value in the same request is ignored for the stored value. If `expiresAt` is non-null in the same request, it wins and **`clearExpiresAt` is ignored**.
 
 **Semantics — `expiresAt`:** This field governs the **pending invitation window** (creation → bind → verify). It is **not** a post-verification “MFA valid until” lifetime for the whole enrollment; after `VERIFIED`, ongoing authentication does not use this field as an automatic cutoff (a separate product concept may be introduced later).
@@ -1840,7 +1861,7 @@ Content-Type: application/json
 - 400: Invalid data, enrollment not updatable (revoked/inactive), or validation failed (e.g. duplicate name, expiresAt in past)
 - 403: Access denied
 - 404: Enrollment not found
-- 409: Optimistic lock conflict — resource was modified, re-fetch and retry
+- 409: Optimistic lock conflict — resource was modified, re-fetch and retry; or `admin-enrollment`: `contactEmail` cannot be set or cleared on an administrator's MFA enrollment (#1313)
 
 **Constraints:**
 - `enrollmentName`: must be unique per integration for VERIFIED status

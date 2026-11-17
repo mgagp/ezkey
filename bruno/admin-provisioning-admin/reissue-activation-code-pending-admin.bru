@@ -64,6 +64,8 @@ docs {
   
   **Permissions:** GlobalAdmin only.
   
+  **Lifetime (#1313):** the code is valid 7 days from issue and works once; a successful activation revokes the other codes of that administrator.
+  
   **Response (200 OK):** `AdminActivationCodeReissueResponseDto` — plaintext `activationCode` is shown only in this response.
   
   **Status Codes:** 200 / 400 (ineligibility) / 403 / 404.
