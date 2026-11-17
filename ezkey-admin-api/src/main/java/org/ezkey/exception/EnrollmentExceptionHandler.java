@@ -111,6 +111,33 @@ public class EnrollmentExceptionHandler extends ExceptionHandlerBase {
         request);
   }
 
+  /**
+   * Handles AdminEnrollmentOperationException and returns HTTP 409 Conflict (#1313).
+   *
+   * <p>Triggered when an {@code /enrollments} operation targets an administrator's MFA enrollment
+   * and does not apply to it: writing a contact email, or fetching the bind QR. The {@code code}
+   * property is {@code admin-enrollment}, the same code QR delivery uses.
+   *
+   * @param ex the exception
+   * @param request the HTTP servlet request for path extraction
+   * @return ResponseEntity containing ProblemDetail and HTTP 409 status
+   */
+  @ExceptionHandler(AdminEnrollmentOperationException.class)
+  public ResponseEntity<ProblemDetail> handleAdminEnrollmentOperationException(
+      AdminEnrollmentOperationException ex, HttpServletRequest request) {
+    ResponseEntity<ProblemDetail> response =
+        buildProblemDetail(
+            ex,
+            HttpStatus.CONFLICT,
+            "https://ezkey.io/problems/enrollment/admin-enrollment",
+            "Not Available for an Administrator Enrollment",
+            request);
+    if (response.getBody() != null) {
+      response.getBody().setProperty("code", AdminEnrollmentOperationException.CODE);
+    }
+    return response;
+  }
+
   @ExceptionHandler(ActiveVerifiedEnrollmentExistsException.class)
   public ResponseEntity<ProblemDetail> handleActiveVerifiedEnrollmentExistsException(
       ActiveVerifiedEnrollmentExistsException ex, HttpServletRequest request) {

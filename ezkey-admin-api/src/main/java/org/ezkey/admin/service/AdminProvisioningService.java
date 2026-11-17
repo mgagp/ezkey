@@ -1057,7 +1057,29 @@ public class AdminProvisioningService {
             ? loadedEnrollment.getEnrollmentChallenge()
             : null,
         null, // Recovery codes cannot be retrieved after initial provisioning (BCrypt hashed)
-        status);
+        status,
+        admin.getTenant() != null ? admin.getTenant().getTenantId() : null);
+  }
+
+  /**
+   * When a pending administrator's activation code stops working (#1313).
+   *
+   * <p>Only the instant is read. The code is valid 7 days from issue and is never returned after
+   * the show-once response.
+   *
+   * @param admin the administrator, already authorized for the caller
+   * @return the latest expiry among active, unexpired activation codes, or null when the
+   *     administrator is not pending activation or has no such code
+   */
+  @Transactional(readOnly = true)
+  public OffsetDateTime findActivationCodeExpiresAt(EzkeyAdmin admin) {
+    if (admin == null || admin.getLifecycleStatus() != AdminLifecycleStatus.PENDING_ACTIVATION) {
+      return null;
+    }
+    return tokenRepository
+        .findLatestActiveExpiryForAdminByPurpose(
+            admin.getAdminId(), AdminTokenPurpose.ACTIVATION, OffsetDateTime.now())
+        .orElse(null);
   }
 
   /**
@@ -1184,13 +1206,26 @@ public class AdminProvisioningService {
    * @param enrollmentChallenge Enrollment challenge code
    * @param recoveryCodes Recovery codes (null if not available)
    * @param enrollmentStatus Enrollment status that decided which material is present
+   * @param adminTenantId Tenant of the target administrator, null for a Global Admin (audit)
    */
   public record OnboardingCredentialsResult(
       Integer enrollmentId,
       String enrollmentProofToken,
       Integer enrollmentChallenge,
       java.util.List<String> recoveryCodes,
-      EnrollmentStatus enrollmentStatus) {}
+      EnrollmentStatus enrollmentStatus,
+      Integer adminTenantId) {
+
+    /**
+     * Whether this result carries bind material: a proof token or a challenge.
+     *
+     * @return true when the token or the challenge is present
+     */
+    public boolean revealsBindMaterial() {
+      return (enrollmentProofToken != null && !enrollmentProofToken.isEmpty())
+          || enrollmentChallenge != null;
+    }
+  }
 
   /**
    * Result containing a newly generated set of recovery codes for an administrator.

@@ -54,6 +54,7 @@ import org.ezkey.enrollment.dto.EnrollmentResponseDto;
 import org.ezkey.enrollment.mapper.EnrollmentAdminMapper;
 import org.ezkey.enrollment.service.EnrollmentService;
 import org.ezkey.exception.ActiveVerifiedEnrollmentExistsException;
+import org.ezkey.exception.AdminEnrollmentOperationException;
 import org.ezkey.exception.EnrollmentCreateValidationException;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.exception.SystemIntegrationEnrollmentCreationException;
@@ -341,7 +342,10 @@ public class EnrollmentController {
         @ApiResponse(responseCode = "404", description = "Enrollment not found"),
         @ApiResponse(
             responseCode = "409",
-            description = "Optimistic lock conflict - resource was modified, re-fetch and retry")
+            description =
+                "Optimistic lock conflict - resource was modified, re-fetch and retry; or"
+                    + " admin-enrollment: contactEmail cannot be set or cleared on an"
+                    + " administrator's MFA enrollment")
       })
   @PreAuthorize("hasRole('ADMIN')")
   @PatchMapping("/{id}")
@@ -413,6 +417,23 @@ public class EnrollmentController {
                 .adminId(principal.adminId())
                 .enrollmentId(auditEntityFkResolver.enrollmentIdForAuditOrNull(id))
                 .errorMessage(e.getMessage())
+                .build());
+      }
+      throw e;
+    } catch (AdminEnrollmentOperationException e) {
+      // #1313: contactEmail on an administrator's enrollment; same refusal pattern, no new type.
+      if (principal != null) {
+        Integer tenantId = resolveTenantIdFromEnrollment(id);
+        auditLogService.log(
+            AuditHelper.createAdminAudit(
+                    context,
+                    EventType.ENROLLMENT_UPDATED,
+                    AdminAuditConstants.ENROLLMENT_UPDATE_FAILED,
+                    tenantId)
+                .eventStatus(EventStatus.FAILURE)
+                .adminId(principal.adminId())
+                .enrollmentId(auditEntityFkResolver.enrollmentIdForAuditOrNull(id))
+                .errorMessage(AdminEnrollmentOperationException.CODE)
                 .build());
       }
       throw e;
@@ -755,7 +776,11 @@ public class EnrollmentController {
         @ApiResponse(
             responseCode = "404",
             description = "Enrollment not found or not visible to this admin"),
-        @ApiResponse(responseCode = "409", description = "Enrollment is not CREATED"),
+        @ApiResponse(
+            responseCode = "409",
+            description =
+                "Enrollment is not CREATED; or admin-enrollment: an administrator's QR is"
+                    + " available only from /admins/{id}/onboarding/qrcode"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
   @PreAuthorize("hasRole('ADMIN')")
@@ -771,6 +796,17 @@ public class EnrollmentController {
       }
 
       var enrollment = enrollmentService.getById(id);
+
+      // #1313: an administrator's bind material has one source, /admins/{id}/onboarding*.
+      Integration integration =
+          enrollment.getIntegrationId() != null
+              ? integrationRepository.findById(enrollment.getIntegrationId()).orElse(null)
+              : null;
+      if (!EnrollmentBindMaterialPolicy.servedByEnrollmentApi(integration)) {
+        throw new AdminEnrollmentOperationException(
+            "The QR of an administrator's MFA enrollment is available only from the"
+                + " administrator record.");
+      }
 
       // #1180: the QR encodes the proof token, so it follows the same rule as the JSON GET.
       if (!EnrollmentBindMaterialPolicy.proofTokenAvailable(enrollment.getStatus())) {
@@ -797,6 +833,8 @@ public class EnrollmentController {
 
     } catch (ResourceNotFoundException e) {
       return ResponseEntity.notFound().build();
+    } catch (AdminEnrollmentOperationException e) {
+      throw e;
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
@@ -1041,7 +1079,36 @@ public class EnrollmentController {
   private EnrollmentResponseDto mapEnrollmentDetailResponse(
       Enrollment enrollment, Integration integration) {
     return enrollmentMapper.toResponseWithIntegrationAndAdminUsernames(
-        enrollment, integration, resolveAdminUsernames(enrollment));
+        enrollment,
+        integration,
+        resolveAdminUsernames(enrollment),
+        resolveOwnerAdminId(enrollment, integration));
+  }
+
+  /**
+   * Resolves the administrator who owns an administrator MFA enrollment, for the back-link on the
+   * enrollment record (#1313). Only a Global Admin gets it: a Tenant Admin cannot open an
+   * administrator enrollment through {@code /enrollments/{id}} at all.
+   *
+   * @param enrollment the enrollment
+   * @param integration its integration, or null
+   * @return the owning administrator id, or null when not applicable or not visible
+   */
+  private Integer resolveOwnerAdminId(Enrollment enrollment, Integration integration) {
+    if (!EnrollmentBindMaterialPolicy.isAdminEnrollment(integration)
+        || enrollment.getEnrollmentId() == null) {
+      return null;
+    }
+    AdminPrincipal caller =
+        AdminProvisioningService.extractAdminPrincipal(
+            SecurityContextHolder.getContext().getAuthentication());
+    if (caller == null || !caller.isGlobalAdmin()) {
+      return null;
+    }
+    return adminRepository
+        .findByEnrollmentId(enrollment.getEnrollmentId())
+        .map(EzkeyAdmin::getAdminId)
+        .orElse(null);
   }
 
   /**

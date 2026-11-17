@@ -54,6 +54,8 @@ docs {
   
   The `authUrl` field is only included when `ezkey.qr.auth-base-url` is configured on the server. This allows the mobile app to dynamically connect to the correct auth-api instance, eliminating manual URL configuration.
   
+  **Audit (#1313):** each QR image returned writes one `ADMIN_BIND_MATERIAL_REVEALED` audit row; a refused QR writes none.
+  
   **Response (200 OK):**
   - Content-Type: `image/png`
   - Body: PNG image bytes (300x300 pixels)

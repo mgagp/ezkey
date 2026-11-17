@@ -244,7 +244,7 @@ public class EnrollmentQrDeliveryService {
           tenant.getTenantId(),
           enrollment.getStatus(),
           expired,
-          Boolean.TRUE.equals(integration.getIsSystemIntegration()),
+          EnrollmentBindMaterialPolicy.isAdminEnrollment(integration),
           Boolean.TRUE.equals(tenant.getSelfRegistered()),
           eligibilityService.isIntegrationOperational(integration)
               && eligibilityService.isTenantOperational(tenant),

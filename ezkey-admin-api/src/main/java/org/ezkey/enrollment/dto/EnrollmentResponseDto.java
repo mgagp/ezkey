@@ -83,6 +83,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
  *     when enrichment is used (e.g. GET by ID)
  * @param operational Whether the enrollment is currently operational: VERIFIED status, active flag
  *     true, and (when integration context is available) full parent chain also operational
+ * @param ownerAdminId Administrator who owns this MFA enrollment (one administrator, one
+ *     enrollment, #1313); set only on detail responses (GET and PATCH by ID) for a Global Admin
+ *     caller, null otherwise
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.enrollment.domain.entity.Enrollment
@@ -202,4 +205,12 @@ public record EnrollmentResponseDto(
                     + " true, and (when integration context is available) full parent chain also"
                     + " operational",
             example = "true")
-        Boolean operational) {}
+        Boolean operational,
+    @Schema(
+            description =
+                "Administrator who owns this MFA enrollment (one administrator, one enrollment)."
+                    + " Set only on detail responses (GET and PATCH by ID) for a Global Admin"
+                    + " caller; null otherwise, including for an enrollment no administrator owns",
+            nullable = true,
+            example = "7")
+        Integer ownerAdminId) {}

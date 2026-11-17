@@ -63,7 +63,7 @@ docs {
   - **TenantAdmin**: Can retrieve administrators in their own tenant only
   
   **Response (200 OK):**
-  - `adminId`, `version`, `username`, `email`, `phoneNumber`, `firstName`, `lastName`, `adminType`, `tenantId`, `tenantName` (null for global admins; tenant display name otherwise), `enrollmentId`, `active`, `lifecycleStatus`, `createdAt`, `lastLoginAt`, `hasRecoveryCodes`, `recoveryCodesExhausted`, `operational`
+  - `adminId`, `version`, `username`, `email`, `phoneNumber`, `firstName`, `lastName`, `adminType`, `tenantId`, `tenantName` (null for global admins; tenant display name otherwise), `enrollmentId`, `active`, `lifecycleStatus`, `createdAt`, `lastLoginAt`, `hasRecoveryCodes`, `recoveryCodesExhausted`, `operational`, `activationCodeExpiresAt` (pending administrator with an unexpired activation code; null otherwise, #1313)
   
   Use the returned `version` as `adminVersion` in the PATCH request for optimistic locking. Use `lastLoginAt` plus `hasRecoveryCodes` to decide whether to call `issue-initial` or `regenerate` for recovery-code management. When `hasRecoveryCodes = false`, `recoveryCodesExhausted = true` means a previous set was fully used, so `issue-initial` replaces it rather than issuing a first set.
 }

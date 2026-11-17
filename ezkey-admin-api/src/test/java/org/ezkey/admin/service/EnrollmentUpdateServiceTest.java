@@ -26,7 +26,10 @@ import org.ezkey.admin.dto.request.EnrollmentUpdateRequestDto;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.exception.AdminEnrollmentOperationException;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.integration.domain.entity.Integration;
+import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -53,6 +56,7 @@ class EnrollmentUpdateServiceTest {
   private final ObjectMapper objectMapper = new ObjectMapper();
 
   @Mock private EnrollmentRepository enrollmentRepository;
+  @Mock private IntegrationRepository integrationRepository;
 
   @InjectMocks private EnrollmentUpdateService enrollmentUpdateService;
 
@@ -420,5 +424,78 @@ class EnrollmentUpdateServiceTest {
     assertThatThrownBy(() -> enrollmentUpdateService.updateEnrollment(1, request))
         .isInstanceOf(IllegalArgumentException.class);
     verify(enrollmentRepository, never()).save(any());
+  }
+
+  private void onSystemIntegration() {
+    Integration system = new Integration();
+    system.setId(10);
+    system.setIsSystemIntegration(true);
+    when(integrationRepository.findById(10)).thenReturn(Optional.of(system));
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @EnumSource(
+      value = EnrollmentStatus.class,
+      names = {"CREATED", "VERIFIED"})
+  @DisplayName("#1313 T1: contactEmail on an admin enrollment is refused before any change")
+  void contactEmailOnAdminEnrollment_isRefusedBeforeAnyChange(EnrollmentStatus status) {
+    enrollment.setStatus(status);
+    enrollment.setContactEmail(null);
+    when(enrollmentRepository.findById(1)).thenReturn(Optional.of(enrollment));
+    onSystemIntegration();
+    EnrollmentUpdateRequestDto request =
+        new EnrollmentUpdateRequestDto(
+            0L, null, "someone@example.com", null, null, null, null, null, null);
+
+    assertThatThrownBy(() -> enrollmentUpdateService.updateEnrollment(1, request))
+        .isInstanceOf(AdminEnrollmentOperationException.class);
+    assertThat(enrollment.getContactEmail()).isNull();
+    verify(enrollmentRepository, never()).save(any());
+  }
+
+  @Test
+  @DisplayName("#1313 T2: clearing contactEmail on an admin enrollment is refused, even when null")
+  void clearContactEmailOnAdminEnrollment_isRefused() {
+    enrollment.setContactEmail(null);
+    when(enrollmentRepository.findById(1)).thenReturn(Optional.of(enrollment));
+    onSystemIntegration();
+    EnrollmentUpdateRequestDto request =
+        new EnrollmentUpdateRequestDto(0L, null, null, null, null, null, null, true, null);
+
+    assertThatThrownBy(() -> enrollmentUpdateService.updateEnrollment(1, request))
+        .isInstanceOf(AdminEnrollmentOperationException.class);
+    verify(enrollmentRepository, never()).save(any());
+  }
+
+  @Test
+  @DisplayName("#1313: a contactEmail change that sets it with other fields is refused as a whole")
+  void contactEmailWithOtherFieldsOnAdminEnrollment_isRefusedAsAWhole() {
+    when(enrollmentRepository.findById(1)).thenReturn(Optional.of(enrollment));
+    onSystemIntegration();
+    EnrollmentUpdateRequestDto request =
+        new EnrollmentUpdateRequestDto(
+            0L, "Renamed", "someone@example.com", null, null, null, null, null, null);
+
+    assertThatThrownBy(() -> enrollmentUpdateService.updateEnrollment(1, request))
+        .isInstanceOf(AdminEnrollmentOperationException.class);
+    assertThat(enrollment.getEnrollmentName()).isEqualTo("Original Name");
+    verify(enrollmentRepository, never()).save(any());
+  }
+
+  @Test
+  @DisplayName("#1313: other metadata of an admin enrollment can still change")
+  void otherMetadataOnAdminEnrollment_isAccepted() {
+    when(enrollmentRepository.findById(1)).thenReturn(Optional.of(enrollment));
+    when(enrollmentRepository.findByIntegrationIdAndEnrollmentNameAndStatusAndEnrollmentIdNot(
+            eq(10), eq("Renamed"), eq(EnrollmentStatus.VERIFIED), eq(1)))
+        .thenReturn(Collections.emptyList());
+    when(enrollmentRepository.save(any(Enrollment.class))).thenAnswer(inv -> inv.getArgument(0));
+    EnrollmentUpdateRequestDto request =
+        new EnrollmentUpdateRequestDto(0L, "Renamed", null, null, null, null, null, null, null);
+
+    EnrollmentUpdateOutcome outcome = enrollmentUpdateService.updateEnrollment(1, request);
+
+    assertThat(outcome.enrollment().getEnrollmentName()).isEqualTo("Renamed");
+    verify(integrationRepository, never()).findById(any());
   }
 }

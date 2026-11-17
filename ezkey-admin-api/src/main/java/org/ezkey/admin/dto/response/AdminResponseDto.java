@@ -81,6 +81,9 @@ import java.time.OffsetDateTime;
  *     since been used (false when unused codes remain or when no set was ever issued)
  * @param operational Whether this administrator is fully operational (active and, for tenant
  *     admins, tenant also active)
+ * @param activationCodeExpiresAt When the pending administrator's activation code stops working;
+ *     set only on GET and PATCH by ID while an unexpired code exists, null otherwise (#1313). The
+ *     code itself is never returned.
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.integration.domain.entity.EzkeyAdmin
@@ -169,4 +172,12 @@ public record AdminResponseDto(
                 "Whether this administrator is fully operational (active and, for tenant admins,"
                     + " tenant also active)",
             example = "true")
-        Boolean operational) {}
+        Boolean operational,
+    @Schema(
+            description =
+                "When the pending administrator's activation code stops working (valid 7 days from"
+                    + " issue). Set only on GET and PATCH by ID while an unexpired code exists;"
+                    + " null otherwise. The code itself is never returned.",
+            example = "2026-11-24T14:30:00Z",
+            nullable = true)
+        OffsetDateTime activationCodeExpiresAt) {}

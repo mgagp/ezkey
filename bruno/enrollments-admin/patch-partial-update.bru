@@ -56,4 +56,6 @@ docs {
   **Note:** `expiresAt` in PATCH refers to the pending invitation window, not a separate post-verify lifetime.
   
   **Audit:** Success writes structured JSON in audit `event_details` with a `changes` array (previous/new per field).
+  
+  **Administrator MFA enrollment (#1313):** any `contactEmail` or `clearContactEmail` returns 409 with `code` `admin-enrollment`, before any change. The administrator's email is set on the administrator record. The refusal is audited as a failed `ENROLLMENT_UPDATED`.
 }

@@ -85,6 +85,9 @@ docs {
   - `contactPhoneNumber`: Optional contact phone number for end-user in canonical E.164 format (null if not provided)
   - `userIdentifier`: Optional user identifier from integrating app (null if not provided)
   - `expiresAt`: Optional expiration for pending phase (ISO-8601); set when ezkey.enrollment.pending-expiration-days is configured; null otherwise
+  - `ownerAdminId`: For an administrator's MFA enrollment and a Global Admin caller, the administrator who owns it (link back to the admin record); null otherwise (#1313)
+  
+  **Administrator MFA enrollment (#1313):** `enrollmentProofToken` and `enrollmentChallenge` are null in every status, and `contactEmail` stays null. The single source of an administrator's bind material is `GET /api/v1/admins/{id}/onboarding*`.
   
   **Status Codes:**
   - 200: Enrollment found

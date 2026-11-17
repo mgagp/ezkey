@@ -100,6 +100,7 @@
     "ADMIN_PROFILE_UPDATED": "Profil admin mis à jour",
     "ADMIN_DEACTIVATED": "Admin désactivé",
     "ADMIN_ACTIVATED": "Admin activé",
+    "ADMIN_BIND_MATERIAL_REVEALED": "QR d'enrôlement admin affiché",
     "ENROLLMENT_CREATED": "Enrôlement créé",
     "ENROLLMENT_UPDATED": "Enrôlement mis à jour",
     "ENROLLMENT_DELETED": "Enrôlement supprimé",

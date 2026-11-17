@@ -74,7 +74,7 @@ class AdminProvisioningControllerOnboardingQrTest {
     when(provisioningService.getAdminOnboarding(any(), any()))
         .thenReturn(
             new OnboardingCredentialsResult(
-                ENROLLMENT_ID, "proof-token", 654321, null, EnrollmentStatus.CREATED));
+                ENROLLMENT_ID, "proof-token", 654321, null, EnrollmentStatus.CREATED, null));
     when(qrCodePayloadService.composePayload("proof-token")).thenReturn("{}");
     when(qrCodeGeneratorService.generateQrCodeImage("{}", 300, 300)).thenReturn(png);
 
@@ -93,7 +93,8 @@ class AdminProvisioningControllerOnboardingQrTest {
     // The token is set on purpose: the status decides, even if a caller left the value in place.
     when(provisioningService.getAdminOnboarding(any(), any()))
         .thenReturn(
-            new OnboardingCredentialsResult(ENROLLMENT_ID, "proof-token", 654321, null, status));
+            new OnboardingCredentialsResult(
+                ENROLLMENT_ID, "proof-token", 654321, null, status, null));
 
     ResponseEntity<?> response =
         controller.getAdminOnboardingQrCode(ADMIN_ID, authentication, httpRequest);

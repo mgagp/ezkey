@@ -327,6 +327,17 @@ visibility. Audit `tenant_id` for admin MFA bind/verify/pending/respond and for 
 see peer onboarding and MFA auth in their audit view — see Auth API `resolveTenantIdForAudit` and
 `docs/ENDPOINT.md` § Audit log.
 
+**One administrator, one enrollment (#1313).** An administrator has at most one MFA enrollment, and
+an enrollment is never shared between administrators. Sign-in finds the approving administrator by
+enrollment, so the rule is load-bearing; V30 enforces it with a unique index on
+`ezkey_admin.enrollment_id` (pending administrators have none). Recovery reset reuses the same
+enrollment row, so the link survives a reset; a deactivated administrator keeps it too. The
+administrator's email (`ezkey_admin.email`) is the single email of an administrator: the admin MFA
+enrollment carries no contact email, and its bind material has one source,
+`/admins/{id}/onboarding*`, where each reveal is audited (`ADMIN_BIND_MATERIAL_REVEALED`). Reason:
+the second email had no function and could diverge, and a second door to the bind material would
+let a reveal bypass the audit. See `docs/SECURITY_POSTURE.md` § Administrator onboarding material.
+
 **Activation vs. recovery.** Ezkey treats first activation and recovery as separate concepts:
 
 - **Activation** establishes the first normal enrollment for an admin who does not yet have one.
