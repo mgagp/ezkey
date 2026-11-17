@@ -46,9 +46,9 @@ No new product principle. The lines below are the existing posture, re-checked o
   line 87: "**Do not** keep the property “just in case” for a local compatibility artifact."
 
 A verbatim rule "do not create a parameter if it brings no value" was **not found** elsewhere.
-This lane states it once: do not add a configuration parameter that brings no value. A parameter
-needs a credible requester, a use case, and an issue. That sentence stays here. It is not copied
-into `AGENTS.md`.
+Principles #1 and #2 are applied here as: do not add a configuration parameter that brings no
+value. A parameter needs a credible requester, a use case, and an issue. That application stays
+in this lane README. It is not copied into `AGENTS.md`.
 
 The code-review checklist line that said "All configurable values use environment variables"
 ([`cr.md`](../../../../.cursor/rules/commands/cr.md)) is reworded to this posture: values an
@@ -91,17 +91,14 @@ No inventory.
 
 ## Triage grid
 
-« Qui a une raison légitime de vouloir une autre valeur ? »
-
-Externalize only when there is a credible requester. Anti-dogme : on externalise seulement s'il y
-a un demandeur crédible.
+Answer Patrick's question (see Posture).
 
 | Answer | Disposition |
 | --- | --- |
-| Personne, invariante de domaine ou de protocole | **keep** as-is |
-| Personne, mais la valeur n'est pas évidente | **keep + comment**: one line, why + issue/PR |
-| Le dev, quand le littéral est dupliqué ou porte un sens métier (TTL, plafond, lot) | **named constant** near its owner; no catch-all `Constants` |
-| L'opérateur ou l'adopteur, avec un cas réel (rétention, horizon, timeout, rate limit, cron) | **externalize**: typed `@ConfigurationProperties`, validated, generated metadata, default identical, one config-doc line |
+| Nobody. The value is a domain or protocol invariant | **keep** as-is |
+| Nobody, but the value is not obvious | **keep + comment**: one line, why + issue/PR |
+| The developer, when the literal is duplicated or carries a business meaning (TTL, cap, batch) | **named constant** near its owner; no catch-all `Constants` |
+| The operator or the adopter, with a real case (retention, horizon, timeout, rate limit, cron) | **externalize**: typed `@ConfigurationProperties`, validated, generated metadata, default identical, one config-doc line |
 | Java↔SQL/Flyway duplicate | **coherence test** rather than config |
 | Backend↔Admin UI duplicate | **one source** exposed by the API |
 
@@ -118,7 +115,7 @@ ordinals, i18n, licenses, generated code.
 - One change at a time, with a characterization test before extraction.
 - Fail fast at startup, never fail-open.
 - Security properties go through Christophe; product defaults through Alex.
-- No "au cas où" property: each one cites its use case and issue.
+- No "just in case" property: each one cites its use case and issue.
 - No value duplicated across profiles.
 - A durable decision adds one line to the owning doc, in the same PR.
 - The report ranks and recommends; lots stay small and separate.
@@ -128,7 +125,7 @@ ordinals, i18n, licenses, generated code.
 1. **(e)** Java↔SQL literals (coherence test).
 2. **(a)** Auth and onboarding TTLs (auth attempts, challenges, proof tokens, admin activation codes).
 3. **(b)** Schedulers and retention (partition horizon and clamp, crons, the #743 8-day cap, purge, ShedLock).
-4. **(c)** Connectors and network (SMTP, HTTP, PAM delays; Cloudflare's 100 s cap).
+4. **(c)** Connectors and network (SMTP, HTTP; Cloudflare's 100 s cap), excluding PAM (excluded lane).
 5. **(d)** API pagination and limits, with their copies in the UI.
 
 Start with **(e)** and **(a)**, read and rank, then **(b)**.
@@ -142,7 +139,7 @@ For every externalizing PR:
 2. The key is documented in `.env.example` (and the compose overlay, when there is one): env var,
    default, service, and whether a restart is enough or the container must be recreated. Spring
    config is read only at JVM start.
-3. Add a "Nouvelles options (facultatives)" line to the release note, or to
+3. Add a "New optional settings" line to the release note, or to
    `docs/lightsail/community/DEPLOYED.md` or `docs/lightsail/community-host.md`. No mandatory key
    without a default. A mandatory key without a default is a breaking change and needs an explicit
    runbook step.

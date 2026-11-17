@@ -32,7 +32,7 @@ One table per externalization candidate only. Skip this section when the shortli
 | --- | --- | --- |
 | 1 | Default equals the old value, proven by a test or a PR note |  |
 | 2 | `.env.example` (and compose overlay): var, default, service, restart or recreate |  |
-| 3 | "Nouvelles options (facultatives)" line; no mandatory key without a default |  |
+| 3 | "New optional settings" line; no mandatory key without a default |  |
 | 4 | Optional recommendation for the existing install, applied only with Marc's go |  |
 | 5 | No secret as a default |  |
 
