@@ -148,7 +148,7 @@
 
 ### Deployment Considerations
 - [ ] **Docker**: Proper Docker configuration if applicable
-- [ ] **Environment Variables**: Values an operator has a legitimate reason to change are externalized (environment variables, or documented Spring `@ConfigurationProperties` with metadata and a default that preserves current behavior). Other values stay in code as named constants or commented literals ([hardcoded-values lane](../../../product-docs/global/hygiene/hardcoded-values/README.md))
+- [ ] **Environment Variables**: Values an operator or adopter with a use case and an issue legitimately needs to change are externalized (environment variables, or documented Spring `@ConfigurationProperties` with metadata and a default that preserves current behavior). Other values stay in code as named constants or commented literals ([hardcoded-values lane](../../../product-docs/global/hygiene/hardcoded-values/README.md))
 - [ ] **Health Checks**: Proper health check endpoints
 - [ ] **Monitoring**: Integration with monitoring and observability tools
 

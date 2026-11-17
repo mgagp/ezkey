@@ -132,7 +132,7 @@ Start with **(e)** and **(a)**, read and rank, then **(b)**.
 
 ## Deployment checklist
 
-For every externalizing PR:
+Translated from Edgar's French checklist. For every externalizing PR:
 
 1. The default is exactly the old value, proven by a test or a PR note. An upgrade that does not
    touch `.env` keeps the same behavior.
