@@ -69,7 +69,6 @@ export const initializeI18n = async () => {
 
   if (!initialized) {
     await i18n.use(initReactI18next).init({
-      compatibilityJSON: 'v4',
       lng: locale,
       fallbackLng: DEFAULT_LOCALE,
       defaultNS: 'translation',

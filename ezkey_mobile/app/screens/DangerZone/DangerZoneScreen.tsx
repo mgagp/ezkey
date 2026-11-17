@@ -21,6 +21,7 @@ import {
   View,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
+import type {TFunction} from 'i18next';
 import {useTranslation} from 'react-i18next';
 import {useDeleteEnrollment, useEnrollments} from '../../hooks/useEnrollments';
 import {
@@ -66,7 +67,7 @@ const getEnrollmentDisplayName = (
 
 const formatRelativeAge = (
   value: string | undefined,
-  t: (key: string, options?: Record<string, string | number>) => string,
+  t: TFunction,
   now: number = Date.now(),
 ) => {
   if (!value) {
@@ -109,7 +110,7 @@ const formatRelativeAge = (
 
 const buildRecencyLabel = (
   enrollment: EnrollmentMetadataRecord,
-  t: (key: string, options?: Record<string, string | number>) => string,
+  t: TFunction,
   now: number = Date.now(),
 ) => {
   const lastActivity = formatRelativeAge(enrollment.lastActivityAt, t, now);
@@ -136,7 +137,7 @@ const wasRecentlyActive = (enrollment: EnrollmentMetadataRecord, now: number = D
 
 const buildDeleteMessage = (
   enrollment: EnrollmentMetadataRecord,
-  t: (key: string, options?: Record<string, string | number>) => string,
+  t: TFunction,
 ) => {
   const lines = [
     t('dangerZone.removeQuestion', {name: getEnrollmentDisplayName(enrollment, t)}),
