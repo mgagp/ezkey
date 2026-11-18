@@ -12,6 +12,7 @@ const IntegrationDetailPage = lazy(() => import('@/pages/integration-detail'));
 const EnrollmentsPage = lazy(() => import('@/pages/enrollments'));
 const EnrollmentDetailPage = lazy(() => import('@/pages/enrollment-detail'));
 const AdminsPage = lazy(() => import('@/pages/admins'));
+const AdminDetailPage = lazy(() => import('@/pages/admin-detail'));
 const AuthAttemptsPage = lazy(() => import('@/pages/auth-attempts'));
 const AuditLogsPage = lazy(() => import('@/pages/audit-logs'));
 const IntegrityPage = lazy(() => import('@/pages/integrity'));
@@ -166,6 +167,16 @@ export const router = createBrowserRouter([
       <ProtectedRoute>
         <SuspensePage>
           <AdminsPage />
+        </SuspensePage>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/admins/:id',
+    element: (
+      <ProtectedRoute>
+        <SuspensePage>
+          <AdminDetailPage />
         </SuspensePage>
       </ProtectedRoute>
     ),

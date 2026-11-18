@@ -49,6 +49,23 @@ test('@smoke @device-backed representative authenticated workflow loads admins a
   await expect(page).toHaveURL(/\/admins$/);
   await expect(page.locator('table').first()).toBeVisible();
 
+  // #1399: a row opens the record page; prev/next walks the list; the breadcrumb goes back.
+  const rows = page.locator('table tbody tr');
+  const firstIdCell = rows.first().locator('td').first();
+  await expect(firstIdCell).toHaveText(/^\d+$/);
+  const rowCount = await rows.count();
+  await firstIdCell.click();
+  await expect(page).toHaveURL(/\/admins\/\d+$/);
+  await expect(page.getByTestId('admin-record')).toBeVisible();
+  if (rowCount > 1) {
+    const firstUrl = page.url();
+    await page.getByRole('button', { name: /next entry|entrée suivante/i }).click();
+    await expect(page).not.toHaveURL(firstUrl);
+    await expect(page.getByTestId('admin-record')).toBeVisible();
+  }
+  await page.getByRole('navigation', { name: 'Breadcrumb' }).getByRole('link').first().click();
+  await expect(page).toHaveURL(/\/admins$/);
+
   await page.getByTestId('app-logout-button').click();
   await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByTestId('login-page')).toBeVisible();

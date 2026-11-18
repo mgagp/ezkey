@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useGetAdminById } from '@/generated/admin-api/administrator-provisioning/administrator-provisioning';
 import type { AdminResponseDto } from '@/generated/admin-api/model';
 import { adminOwnerDisplayName } from '@/lib/admin-owner-display-name';
-import { adminListDetailHref } from '@/lib/list-detail-navigation';
+import { adminDetailHref } from '@/lib/list-detail-navigation';
 
 /**
  * Link back from an administrator's MFA enrollment to the administrator record (#1313).
@@ -29,7 +29,7 @@ export function AdminEnrollmentOwner({ ownerAdminId }: { ownerAdminId: number | 
   return (
     <p className="text-sm" data-testid="enrollment-admin-owner">
       {t('detail.adminEnrollmentOf')}{' '}
-      <Link to={adminListDetailHref(ownerAdminId)} className="font-medium text-accent hover:underline">
+      <Link to={adminDetailHref(ownerAdminId)} className="font-medium text-accent hover:underline">
         {name}
       </Link>
     </p>

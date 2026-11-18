@@ -30,7 +30,7 @@ import { ContextHelp } from '@/components/ui/context-help';
 import { getCountryOptionsGrouped } from '@/lib/countries';
 import { getTimeZoneOptionsGrouped } from '@/lib/timezones';
 import { isPhoneNumberInputValid, normalizePhoneNumberInput } from '@/lib/phone-number';
-import { adminListDetailHref } from '@/lib/list-detail-navigation';
+import { adminDetailHref, buildListDetailNavState } from '@/lib/list-detail-navigation';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
 import { listAdmins } from '@/generated/admin-api/administrator-provisioning/administrator-provisioning';
 import {
@@ -603,7 +603,9 @@ export default function TenantDetailPage() {
                 data={admins}
                 isLoading={loadingAdmins}
                 onRowClick={(row) => {
-                  if (row.adminId != null) navigate(adminListDetailHref(row.adminId));
+                  if (row.adminId == null) return;
+                  const st = buildListDetailNavState(admins, (r) => r.adminId ?? 0, row, !admPagination.isLast);
+                  navigate(adminDetailHref(row.adminId), { state: st ?? undefined });
                 }}
                 keyExtractor={(r, i) => r.adminId ?? i}
                 emptyMessage={t('detail.adminsEmpty')}
