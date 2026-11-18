@@ -17,6 +17,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -158,6 +160,63 @@ class PartitionSchedulerServiceTest {
             PartitionSchedulerService.ALERT_DEDUPE_KEY,
             FAILURE_PAYLOAD);
     verify(jobLastRunService, never()).recordSuccess(any(), any());
+  }
+
+  @Test
+  @DisplayName("a non-boolean function result is a failure, not a created partition")
+  void createNextMonthPartitions_whenResultIsNotBoolean_recordsFailureAndRaisesAlert() {
+    stubQuery();
+    when(nativeQuery.getSingleResult()).thenReturn("t");
+
+    assertDoesNotThrow(() -> service.createNextMonthPartitions());
+
+    String payload =
+        "{\"monthsAhead\":3,\"from\":\"2026-11\",\"to\":\"2027-02\",\"failedTargets\":8,"
+            + "\"error\":\"IllegalStateException\"}";
+    verify(jobLastRunService)
+        .recordFailure(
+            ScheduledJobKey.PARTITION_CREATION,
+            "UTC 2026-11..2027-02 monthsAhead=3 failed=8/8",
+            "IllegalStateException");
+    verify(alertService)
+        .raiseOrTouch(
+            AlertType.PARTITION_CREATION_FAILED,
+            AlertSeverity.CRITICAL,
+            PartitionSchedulerService.ALERT_DEDUPE_KEY,
+            payload);
+    verify(jobLastRunService, never()).recordSuccess(any(), any());
+  }
+
+  @Test
+  @DisplayName("a down last-run registry still raises the partition alert")
+  void createNextMonthPartitions_whenOutcomeRegistryFails_stillRaisesAlert() {
+    stubQuery();
+    when(nativeQuery.getSingleResult()).thenThrow(new PersistenceException("permission denied"));
+    doThrow(new IllegalStateException("registry down"))
+        .when(jobLastRunService)
+        .recordFailure(any(), any(), any());
+
+    assertDoesNotThrow(() -> service.createNextMonthPartitions());
+
+    verify(alertService)
+        .raiseOrTouch(
+            eq(AlertType.PARTITION_CREATION_FAILED),
+            eq(AlertSeverity.CRITICAL),
+            eq(PartitionSchedulerService.ALERT_DEDUPE_KEY),
+            eq(FAILURE_PAYLOAD));
+  }
+
+  @Test
+  @DisplayName("a down alert store does not undo a restored horizon record")
+  void createNextMonthPartitions_whenAlertResolveFails_stillRecordsSuccess() {
+    stubFunctionResult(Boolean.TRUE);
+    doThrow(new IllegalStateException("alert store down"))
+        .when(alertService)
+        .resolveByDedupeKey(any(), any(), isNull());
+
+    assertDoesNotThrow(() -> service.createNextMonthPartitions());
+
+    verify(jobLastRunService).recordSuccess(ScheduledJobKey.PARTITION_CREATION, SUCCESS_SCOPE);
   }
 
   @Test

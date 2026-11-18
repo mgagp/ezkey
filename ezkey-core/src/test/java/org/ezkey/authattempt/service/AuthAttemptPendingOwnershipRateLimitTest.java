@@ -72,8 +72,42 @@ class AuthAttemptPendingOwnershipRateLimitTest {
         .thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> service.pending(request(), client()))
-        .isInstanceOf(AuthAttemptRequestFailedException.class);
+        .isInstanceOf(AuthAttemptRequestFailedException.class)
+        .hasMessage("Authentication request failed");
     verify(ownershipRateLimiter, never()).getIfAvailable();
+  }
+
+  @Test
+  @DisplayName("A blank proof token fails before lookup and does not debit the enrollment budget")
+  void blankProof_doesNotLookupOrDebit() {
+    AuthAttemptPendingRequest request = request();
+    request.setEnrollmentProofToken("  ");
+
+    assertThatThrownBy(() -> service.pending(request, client()))
+        .isInstanceOf(AuthAttemptRequestFailedException.class)
+        .hasMessage("Authentication request failed");
+    verify(enrollmentRepository, never()).findByEnrollmentProofTokenHashAndActive(any(), any());
+    verify(signatureService, never()).validateSignature(any(), any(), any());
+    verify(ownershipRateLimiter, never()).getIfAvailable();
+  }
+
+  @Test
+  @DisplayName("A body enrollment id that does not match the proof token does not debit or claim")
+  void mismatchedEnrollmentId_doesNotProveOrDebit() {
+    Enrollment enrollment = mock(Enrollment.class);
+    when(enrollment.getEnrollmentId()).thenReturn(42);
+    when(enrollmentRepository.findByEnrollmentProofTokenHashAndActive(any(), eq(true)))
+        .thenReturn(Optional.of(enrollment));
+    AuthAttemptPendingRequest request = request();
+    request.setEnrollmentId(7);
+
+    assertThatThrownBy(() -> service.pending(request, client()))
+        .isInstanceOf(AuthAttemptRequestFailedException.class)
+        .hasMessage("Authentication request failed");
+    verify(signatureService, never()).validateSignature(any(), any(), any());
+    verify(ownershipRateLimiter, never()).getIfAvailable();
+    verify(authAttemptRepository, never())
+        .findAndLockMostRecentValidByEnrollmentIdAndStatus(any(), any(), any());
   }
 
   @Test
