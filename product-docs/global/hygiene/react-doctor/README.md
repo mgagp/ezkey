@@ -14,6 +14,8 @@ Sibling lane: [`../java-doctor/`](../java-doctor/) (`java-doctor-curated`).
 |------|------|
 | [`TEMPLATE.md`](TEMPLATE.md) | Copy for each new campaign / lot |
 | `YYYY-MM-DD-pass-N.md` | Dated instance (decisions table + short rationale) |
+| [`2026-11-18-pass-1.md`](2026-11-18-pass-1.md) | Biweekly React rotation triage (docs-only; dispositions, no code) |
+| [`2026-07-15-pass-1.md`](2026-07-15-pass-1.md) | First curated pass (fix / suppress / skip lot) |
 
 ## Related
 
