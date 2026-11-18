@@ -39,7 +39,6 @@ import {
   buildIntegrationsDrilldownUrl,
 } from '@/lib/dashboard-drilldown-links';
 import { resolveBatchHealthQuietReason } from '@/lib/dashboard-batch-health-quiet';
-import { isEvaluatorTempSession } from '@/lib/auth';
 import { api } from '@/lib/api-client';
 
 /** Minimal row shape for dashboard follow-up widget (lifecycle incidents API). */
@@ -340,8 +339,6 @@ const quickActions = [
     descKey: 'newAdminDesc',
     to: '/admins',
     icon: ShieldCheck,
-    /** Hidden under EVALUATOR_TEMP — create-tenant-admin is deny-listed. */
-    hideForEvaluatorTemp: true,
   },
   { labelKey: 'newApiKey', descKey: 'newApiKeyDesc', to: '/api-keys', icon: Key },
 ];
@@ -365,10 +362,6 @@ export default function DashboardPage() {
   const { t } = useTranslation(['dashboard', 'layout', 'audit-logs', 'alerts']);
   const { session } = useAuth();
   const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
-  const isTempSession = isEvaluatorTempSession(session);
-  const visibleQuickActions = quickActions.filter(
-    (action) => !(action.hideForEvaluatorTemp && isTempSession),
-  );
 
   const {
     data: overview,
@@ -877,7 +870,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {visibleQuickActions.map(({ labelKey, descKey, to, icon: Icon }) => (
+                {quickActions.map(({ labelKey, descKey, to, icon: Icon }) => (
                   <Link
                     key={to}
                     to={to}

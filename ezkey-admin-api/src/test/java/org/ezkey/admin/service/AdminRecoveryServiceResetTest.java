@@ -84,8 +84,6 @@ class AdminRecoveryServiceResetTest {
     when(enrollmentRepository.save(enrollment)).thenReturn(enrollment);
     when(tokenRepository.deactivateTokensForAdminByPurpose(7, AdminTokenPurpose.SESSION))
         .thenReturn(1);
-    when(tokenRepository.deactivateTokensForAdminByPurpose(7, AdminTokenPurpose.EVALUATOR_TEMP))
-        .thenReturn(1);
 
     Enrollment reset = recoveryService.resetEnrollment(10, admin);
 
@@ -94,7 +92,6 @@ class AdminRecoveryServiceResetTest {
     assertThat(reset.getEnrollmentProofToken()).isEqualTo("new-proof-token");
     assertThat(reset.getEnrollmentChallenge()).isEqualTo(654321);
     verify(tokenRepository).deactivateTokensForAdminByPurpose(7, AdminTokenPurpose.SESSION);
-    verify(tokenRepository).deactivateTokensForAdminByPurpose(7, AdminTokenPurpose.EVALUATOR_TEMP);
   }
 
   @Test
@@ -111,8 +108,6 @@ class AdminRecoveryServiceResetTest {
     when(signatureService.generateSecureChallenge(6)).thenReturn(111222);
     when(enrollmentRepository.save(enrollment)).thenReturn(enrollment);
     when(tokenRepository.deactivateTokensForAdminByPurpose(7, AdminTokenPurpose.SESSION))
-        .thenReturn(0);
-    when(tokenRepository.deactivateTokensForAdminByPurpose(7, AdminTokenPurpose.EVALUATOR_TEMP))
         .thenReturn(0);
 
     Enrollment reset = recoveryService.resetEnrollment(10, admin);
@@ -138,8 +133,6 @@ class AdminRecoveryServiceResetTest {
     when(signatureService.generateSecureChallenge(6)).thenReturn(111222);
     when(enrollmentRepository.save(enrollment)).thenReturn(enrollment);
     when(tokenRepository.deactivateTokensForAdminByPurpose(7, AdminTokenPurpose.SESSION))
-        .thenReturn(0);
-    when(tokenRepository.deactivateTokensForAdminByPurpose(7, AdminTokenPurpose.EVALUATOR_TEMP))
         .thenReturn(0);
 
     Enrollment reset = recoveryService.resetEnrollment(10, admin);

@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.servlet.view.RedirectView;
 
 /**
- * Handles {@code GET /t/{code}} for temporary evaluator access links.
+ * Handles {@code GET /t/{code}} for evaluator access links provisioned by the operator.
  *
  * <p>Unknown codes render the login page with the generic error (no distinct 404). Known codes
  * invalidate any existing session, store only the slot id, and 303-redirect to {@code /login}.

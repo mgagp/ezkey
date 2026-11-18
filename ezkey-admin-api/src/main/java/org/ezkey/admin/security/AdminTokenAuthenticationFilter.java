@@ -141,12 +141,7 @@ public class AdminTokenAuthenticationFilter extends OncePerRequestFilter {
             adminToken.getIntegration() != null ? adminToken.getIntegration().getId() : null;
 
         AdminPrincipal principal =
-            new AdminPrincipal(
-                admin.getAdminId(),
-                admin.getAdminType(),
-                tenantId,
-                integrationId,
-                adminToken.getTokenPurpose());
+            new AdminPrincipal(admin.getAdminId(), admin.getAdminType(), tenantId, integrationId);
 
         List<SimpleGrantedAuthority> authorities = new ArrayList<>();
         authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));

@@ -67,7 +67,7 @@ class EnrollmentInstanceInfoServiceTest {
     when(publicInstanceInfoService.getPublicInstanceInfo())
         .thenReturn(
             new PublicInstanceInfoResponseDto(
-                "https://auth.example", "Acme", "Desc", "https://about.example", null));
+                "https://auth.example", "Acme", "Desc", "https://about.example"));
 
     EnrollmentInstanceInfoResponse response = service.getSignedInstanceInfo(proofToken);
 

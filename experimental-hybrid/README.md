@@ -98,8 +98,7 @@ Use this when the stack and Postgres data **already run** and you only add or up
    Optional **runtime profile**: default is integrity. For base (MFA crypto on; audit-integrity
    monitoring off), set `EZKEY_RUNTIME_PROFILE=base` and
    `SPRING_PROFILES_ACTIVE=docker,docker-base` (see `.env.example` comments and
-   [`docker/README.md`](../docker/README.md) § Runtime profiles). Orthogonal to
-   `EZKEY_EVALUATOR_SELF_REGISTRATION_ENABLED`.
+   [`docker/README.md`](../docker/README.md) § Runtime profiles).
 3. Edit **`lightsail/Caddyfile.ezkey-online`** hostnames if yours differ from `*.ezkey.online`.
 4. From `lightsail/`, start the stack **with encryption keys seeded** (pick one):
    - **Recommended for an empty / disposable VM:** `chmod +x clean-start.sh && ./clean-start.sh` — same idea as local `ezkey-tests/clean-start.sh`: wipes Compose volumes, generates master key into the correct Docker volume (`--experimental-lightsail`), then `docker compose up -d`. **Destructive** to the database; see script `--help`.
@@ -186,7 +185,7 @@ current lab.
 managed database.
 
 **Onboarding:** Do not revive “recovery-codes-first deferred enrollment.” Activation-code admin
-onboarding is the shipped path. Anonymous evaluator signup (empty tenant + activation code) is
-`I-2026-05-23` — keep that idea; do not fork a second enrollment story here.
+onboarding is the shipped path, and the only one: anonymous evaluator signup was retired in
+#1365. Do not fork a second enrollment story here.
 
 **Operator runbook:** this README + [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md).

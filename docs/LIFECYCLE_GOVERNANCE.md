@@ -316,6 +316,11 @@ This is the most important operational distinction in Ezkey:
 The critical distinction is that **admin identity lifecycle and admin MFA enrollment lifecycle are separate concerns:**
 
 - A pending admin identity may exist before any real MFA enrollment exists.
+- An `ACTIVE` admin whose enrollment is not yet `VERIFIED` has no Admin API session: no token
+  authenticates until the device bind completes and the admin signs in with passwordless MFA.
+  Onboarding has one path — a Global Admin (or a Tenant Admin for a peer) creates the identity,
+  the activation code is handed over, the admin activates, binds a device, signs in. The
+  temporary evaluator console that once allowed a session before the bind was retired (#1368).
 - Deactivating an admin suspends their ability to perform administrative actions. Their MFA enrollment remains intact.
 - Revoking an admin's MFA enrollment invalidates their login credential. Their admin identity remains in the system.
 - To fully lock out an already active admin, you deactivate their identity **and** revoke their MFA enrollment. This two-step approach is intentional — it lets you investigate (deactivate the identity) before making a final decision (revoke the credential).

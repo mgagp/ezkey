@@ -36,7 +36,6 @@ class OpenApiContractCustomizerTest {
     OpenAPI openApi = new OpenAPI();
     Paths paths = new Paths();
     paths.addPathItem("/api/v1/public/instance-info", new PathItem().get(new Operation()));
-    paths.addPathItem("/api/v1/public/evaluator-signup", new PathItem().post(new Operation()));
     openApi.setPaths(paths);
 
     OpenApiContractCustomizer.forAdminApi().customise(openApi);
@@ -44,9 +43,6 @@ class OpenApiContractCustomizerTest {
     Operation instanceInfo = openApi.getPaths().get("/api/v1/public/instance-info").getGet();
     assertThat(instanceInfo.getSecurity()).isEmpty();
     assertThat(instanceInfo.getResponses().get("401")).isNull();
-    Operation signup = openApi.getPaths().get("/api/v1/public/evaluator-signup").getPost();
-    assertThat(signup.getSecurity()).isEmpty();
-    assertThat(signup.getResponses().get("401")).isNull();
   }
 
   @Test

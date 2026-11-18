@@ -35,7 +35,6 @@ import org.ezkey.admin.connector.DeliveryConnectorPort.DeliveryResult;
 import org.ezkey.admin.connector.DeliveryConnectorPort.Outcome;
 import org.ezkey.admin.connector.QrDeliveryRefusedException.Reason;
 import org.ezkey.admin.constants.AdminAuditConstants;
-import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.service.QrCodeGeneratorService;
 import org.ezkey.admin.service.QrCodePayloadService;
 import org.ezkey.audit.domain.EventStatus;
@@ -49,11 +48,9 @@ import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.ResourceNotFoundException;
-import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.entity.Tenant;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
-import org.ezkey.integration.domain.repository.TenantRepository;
 import org.ezkey.service.EntityEligibilityService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -87,7 +84,6 @@ class EnrollmentQrDeliveryServiceTest {
   @Mock private DeliveryConnectorPort port;
   @Mock private EnrollmentRepository enrollmentRepository;
   @Mock private IntegrationRepository integrationRepository;
-  @Mock private TenantRepository tenantRepository;
   @Mock private EntityEligibilityService eligibilityService;
   @Mock private QrCodePayloadService qrCodePayloadService;
   @Mock private QrCodeGeneratorService qrCodeGeneratorService;
@@ -138,7 +134,6 @@ class EnrollmentQrDeliveryServiceTest {
             properties,
             enrollmentRepository,
             integrationRepository,
-            tenantRepository,
             eligibilityService,
             qrCodePayloadService,
             qrCodeGeneratorService,
@@ -277,42 +272,9 @@ class EnrollmentQrDeliveryServiceTest {
   }
 
   @Test
-  @DisplayName("an enrollment of a self-registered tenant is refused (#1206 step 7)")
-  void selfRegisteredTenant() {
-    when(tenant.getSelfRegistered()).thenReturn(true);
-    assertRefused(Reason.SELF_REGISTERED_TENANT);
-  }
-
-  @Test
-  @DisplayName("an admin of a self-registered tenant sees no usable connector")
-  void capabilityHiddenForSelfRegisteredTenant() {
-    Tenant own = new Tenant("eval-abc", "Anonymous evaluator preview tenant");
-    own.setSelfRegistered(true);
-    when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(own));
-
-    assertThat(
-            service.capabilityFor(new AdminPrincipal(1, AdminType.TENANT_ADMIN, TENANT_ID, null)))
-        .extracting(Capability::available)
-        .isEqualTo(false);
-    assertThat(
-            service.capabilityFor(
-                new AdminPrincipal(2, AdminType.INTEGRATION_ADMIN, TENANT_ID, INTEGRATION_ID)))
-        .extracting(Capability::available)
-        .isEqualTo(false);
-  }
-
-  @Test
-  @DisplayName("other callers see the connector as it is")
-  void capabilityKeptForOtherCallers() {
-    Tenant own = new Tenant("acme-tenant", "Acme");
-    when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(own));
-
-    assertThat(
-            service.capabilityFor(new AdminPrincipal(1, AdminType.TENANT_ADMIN, TENANT_ID, null)))
-        .isEqualTo(USABLE);
-    assertThat(service.capabilityFor(new AdminPrincipal(3, AdminType.GLOBAL_ADMIN, 1, null)))
-        .isEqualTo(USABLE);
-    verify(tenantRepository, never()).findById(1);
+  @DisplayName("the capability is the connector's, whoever asks")
+  void capabilityIsTheConnectors() {
+    assertThat(service.capability()).isEqualTo(USABLE);
   }
 
   @Test

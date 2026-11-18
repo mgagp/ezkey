@@ -43,7 +43,6 @@ import org.ezkey.admin.security.AdminCookieCsrfFilter;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.security.AdminTokenAuthenticationFilter;
-import org.ezkey.admin.security.EvaluatorTempAccessFilter;
 import org.ezkey.admin.service.AdminProvisioningService;
 import org.ezkey.admin.service.AdminRecoveryService;
 import org.ezkey.admin.service.AdminTokenValidationService;
@@ -94,7 +93,8 @@ import org.springframework.test.web.servlet.MockMvc;
  * <p>Runs the real {@link AdminTokenAuthenticationFilter} and {@link AdminTokenValidationService}
  * against an in-memory token store. The activation code is minted through the real {@link
  * AdminProvisioningService#createTenantAdmin} in {@code ACTIVATION_CODE} mode, which is the same
- * call anonymous evaluator signup makes, so the persisted row has the production shape.
+ * call the Admin UI makes when a Global Admin invites a Tenant Admin, so the persisted row has the
+ * production shape.
  *
  * @since 2026
  */
@@ -234,9 +234,9 @@ class ActivationCodeBearerSecurityWebMvcTest {
   }
 
   @Test
-  @DisplayName("Evaluator-signup activation code as Bearer on GET /integrations returns 401")
+  @DisplayName("Activation code as Bearer on GET /integrations returns 401")
   void activationCodeBearerOnIntegrationListIsUnauthorized() throws Exception {
-    String activationCode = mintEvaluatorActivationCode();
+    String activationCode = mintActivationCode();
 
     mockMvc
         .perform(get(INTEGRATIONS_PATH).header("Authorization", "Bearer " + activationCode))
@@ -248,9 +248,9 @@ class ActivationCodeBearerSecurityWebMvcTest {
   }
 
   @Test
-  @DisplayName("Activation code as Bearer on POST /admins/tenant (Mode C peer mint) returns 401")
+  @DisplayName("Activation code as Bearer on POST /admins/tenant (peer mint) returns 401")
   void activationCodeBearerOnPeerTenantAdminCreateIsUnauthorized() throws Exception {
-    String activationCode = mintEvaluatorActivationCode();
+    String activationCode = mintActivationCode();
 
     mockMvc
         .perform(
@@ -267,7 +267,7 @@ class ActivationCodeBearerSecurityWebMvcTest {
   @Test
   @DisplayName("Activation code persisted with the legacy SESSION purpose still returns 401")
   void legacySessionPurposeActivationRowIsUnauthorized() throws Exception {
-    String activationCode = mintEvaluatorActivationCode();
+    String activationCode = mintActivationCode();
     tokensByHash
         .get(SensitiveDataHasher.sha256Hex(activationCode))
         .setTokenPurpose(AdminTokenPurpose.SESSION);
@@ -280,7 +280,7 @@ class ActivationCodeBearerSecurityWebMvcTest {
   @Test
   @DisplayName("SESSION row for a PENDING_ACTIVATION admin without enrollment returns 401")
   void sessionRowForPendingAdminWithoutEnrollmentIsUnauthorized() throws Exception {
-    mintEvaluatorActivationCode();
+    mintActivationCode();
     EzkeyAdmin pendingAdmin = tokensByHash.values().iterator().next().getAdmin();
     String opaqueBearer = storeToken(pendingAdmin, AdminTokenPurpose.SESSION);
 
@@ -292,7 +292,7 @@ class ActivationCodeBearerSecurityWebMvcTest {
   @Test
   @DisplayName("Activation code stays 401 after /activate; only an MFA-verified SESSION gets 200")
   void activationCodeNeverAuthenticatesUntilMfaVerifiedSession() throws Exception {
-    String activationCode = mintEvaluatorActivationCode();
+    String activationCode = mintActivationCode();
 
     mockMvc
         .perform(get(INTEGRATIONS_PATH).header("Authorization", "Bearer " + activationCode))
@@ -321,16 +321,18 @@ class ActivationCodeBearerSecurityWebMvcTest {
   }
 
   @Test
-  @DisplayName("EVALUATOR_TEMP after /activate (pre-bind) still authenticates")
-  void evaluatorTempAfterActivationStillAuthenticates() throws Exception {
-    String activationCode = mintEvaluatorActivationCode();
+  @DisplayName("#1368: after /activate and before the device bind, no token authenticates")
+  void noTokenAuthenticatesBetweenActivationAndDeviceBind() throws Exception {
+    String activationCode = mintActivationCode();
     EzkeyAdmin admin = realProvisioningService.activatePendingAdmin(activationCode).admin();
+    assertThat(admin.getEnrollment().getStatus()).isNotEqualTo(EnrollmentStatus.VERIFIED);
 
-    String tempBearer = storeToken(admin, AdminTokenPurpose.EVALUATOR_TEMP);
+    // The retired temporary console was the only pre-bind session. Even a SESSION row fails now.
+    String preBindSession = storeToken(admin, AdminTokenPurpose.SESSION);
 
     mockMvc
-        .perform(get(INTEGRATIONS_PATH).header("Authorization", "Bearer " + tempBearer))
-        .andExpect(status().isOk());
+        .perform(get(INTEGRATIONS_PATH).header("Authorization", "Bearer " + preBindSession))
+        .andExpect(status().isUnauthorized());
   }
 
   @Test
@@ -338,7 +340,7 @@ class ActivationCodeBearerSecurityWebMvcTest {
       "Unprefixed ACTIVATION / RECOVERY token of an MFA-verified admin returns 401 (allowlist"
           + " only)")
   void nonSessionPurposeWithoutActivationPrefixIsUnauthorizedForVerifiedAdmin() throws Exception {
-    String activationCode = mintEvaluatorActivationCode();
+    String activationCode = mintActivationCode();
     EzkeyAdmin admin = realProvisioningService.activatePendingAdmin(activationCode).admin();
     admin.getEnrollment().setStatus(EnrollmentStatus.VERIFIED);
 
@@ -361,7 +363,7 @@ class ActivationCodeBearerSecurityWebMvcTest {
   @Test
   @DisplayName("Successful /activate revokes every other outstanding activation code of the admin")
   void activationRevokesSiblingActivationCodes() throws Exception {
-    String presentedCode = mintEvaluatorActivationCode();
+    String presentedCode = mintActivationCode();
     EzkeyAdmin pendingAdmin =
         tokensByHash.get(SensitiveDataHasher.sha256Hex(presentedCode)).getAdmin();
     String siblingCode =
@@ -383,13 +385,13 @@ class ActivationCodeBearerSecurityWebMvcTest {
         .andExpect(status().isUnauthorized());
   }
 
-  private String mintEvaluatorActivationCode() {
+  private String mintActivationCode() {
     AdminProvisioningService.ProvisioningResult result =
         realProvisioningService.createTenantAdmin(
-            "evaluator.admin",
+            "invited.admin",
             null,
             null,
-            "Evaluator",
+            "Invited",
             "Admin",
             TENANT_ID,
             AdminOnboardingMode.ACTIVATION_CODE,
@@ -449,12 +451,6 @@ class ActivationCodeBearerSecurityWebMvcTest {
     @Primary
     AdminCookieCsrfFilter adminCookieCsrfFilter() {
       return AdminCorsTestFilterBeans.passThrough(AdminCookieCsrfFilter.class);
-    }
-
-    @Bean
-    @Primary
-    EvaluatorTempAccessFilter evaluatorTempAccessFilter() {
-      return AdminCorsTestFilterBeans.passThrough(EvaluatorTempAccessFilter.class);
     }
   }
 }

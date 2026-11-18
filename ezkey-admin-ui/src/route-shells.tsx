@@ -3,7 +3,6 @@ import type { ReactNode } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { HelpProvider } from '@/context/help-context';
 import { useAuth } from '@/context/use-auth';
-import { isEvaluatorTempSession } from '@/lib/auth';
 
 export function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isAuthenticated, isSessionChecking } = useAuth();
@@ -14,13 +13,13 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
 
 /**
  * GLOBAL-only routes (Integrité, Tenants, Alerts, Encryption keys). Soft-redirects
- * tenant / temporary evaluator sessions away from deny-listed deep links.
+ * tenant-scoped sessions away from these deep links.
  */
 export function GlobalAdminRoute({ children }: { children: ReactNode }) {
   const { session, isAuthenticated, isSessionChecking } = useAuth();
   if (isSessionChecking) return <PageLoader />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (session?.adminType !== 'GLOBAL_ADMIN' || isEvaluatorTempSession(session)) {
+  if (session?.adminType !== 'GLOBAL_ADMIN') {
     return <Navigate to="/dashboard" replace />;
   }
   return <>{children}</>;

@@ -24,7 +24,6 @@ import { useDemoModeSession } from '@/context/use-demo-mode-session';
 import { useToast } from '@/context/use-toast';
 import { asOrvalPagedBody, usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { getTranslatedApiError } from '@/lib/api-error-i18n';
-import { isEvaluatorTempSession } from '@/lib/auth';
 import { adminDemoPresets, isDemoMode } from '@/lib/demo-mode';
 import { isPhoneNumberInputValid, normalizePhoneNumberInput } from '@/lib/phone-number';
 import { isPendingActivationAdmin, shouldShowTenantOperationalWarning } from '@/lib/admin-record-rules';
@@ -574,17 +573,14 @@ export default function AdminsPage() {
   const { session } = useAuth();
   const navigate = useNavigate();
   const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
-  const isTempSession = isEvaluatorTempSession(session);
-  const canCreateAdmin = !isTempSession;
   const [searchParams, setSearchParams] = useSearchParams();
 
   const defaultTenantIdFromUrl = useMemo(() => {
-    if (!canCreateAdmin) return null;
     const flag = searchParams.get('createTenantAdmin');
     if (flag !== '1' && flag !== 'true') return null;
     const n = Number(searchParams.get('tenantId'));
     return Number.isFinite(n) && n > 0 ? n : null;
-  }, [searchParams, canCreateAdmin]);
+  }, [searchParams]);
 
   /** #1399: the record moved to /admins/:id; former ?adminId=N links (bookmarks, history) redirect. */
   const legacyAdminId = useMemo(() => {
@@ -759,17 +755,15 @@ export default function AdminsPage() {
               {t('list.refresh')}
             </Button>
           </div>
-          {canCreateAdmin && (
-            <Button
-              size="sm"
-              onClick={() => setCreateOpen(true)}
-              className="gap-1.5"
-              data-testid="admins-new-admin"
-            >
-              <Plus className="size-3.5" />
-              {t('list.newAdmin')}
-            </Button>
-          )}
+          <Button
+            size="sm"
+            onClick={() => setCreateOpen(true)}
+            className="gap-1.5"
+            data-testid="admins-new-admin"
+          >
+            <Plus className="size-3.5" />
+            {t('list.newAdmin')}
+          </Button>
         </div>
 
         <div>
@@ -791,7 +785,7 @@ export default function AdminsPage() {
         </div>
       </div>
 
-      {canCreateAdmin && (createOpen || defaultTenantIdFromUrl != null) && (
+      {(createOpen || defaultTenantIdFromUrl != null) && (
         <CreateAdminDialog
           open
           onClose={handleCloseCreateDialog}

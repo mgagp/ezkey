@@ -106,10 +106,6 @@ function AdminRecord({ adm }: { adm: RecoveryAwareAdmin }) {
   const { t } = useTranslation('admins');
   const { session } = useAuth();
   const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
-  const isTemporarySelfView =
-    session?.tokenPurpose === 'EVALUATOR_TEMP' &&
-    session.adminId != null &&
-    adm.adminId === session.adminId;
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [editOpen, setEditOpen] = useState(false);
@@ -310,11 +306,6 @@ function AdminRecord({ adm }: { adm: RecoveryAwareAdmin }) {
 
   return (
     <div className="space-y-6" data-testid="admin-record">
-      {isTemporarySelfView && (
-        <Alert variant="info" data-testid="temporary-session-identity-bind-hint">
-          {t('detail.temporarySessionBindHint')}
-        </Alert>
-      )}
       {isPendingActivationAdmin(adm) && (
         <Alert variant="info">{t('detail.pendingActivationNotice')}</Alert>
       )}

@@ -34,10 +34,10 @@ public class DemoApiKeyConfigService {
 
   private static final Logger LOG = LoggerFactory.getLogger(DemoApiKeyConfigService.class);
 
-  /** Session attribute for pasted integration key (temporary evaluator console access). */
+  /** Session attribute for a pasted integration key (created in the visitor's own tenant). */
   public static final String SESSION_INTEGRATION_KEY = "demoIntegrationKey";
 
-  /** Session attribute for pasted secret key (temporary evaluator console access). */
+  /** Session attribute for a pasted secret key (created in the visitor's own tenant). */
   public static final String SESSION_SECRET_KEY = "demoSecretKey";
 
   /** Session attribute storing only the access-code slot id (never keys or the code). */

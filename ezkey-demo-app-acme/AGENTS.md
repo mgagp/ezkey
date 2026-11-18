@@ -10,7 +10,7 @@ Demo application for Ezkey passwordless login. Demonstrates backend-side authent
 |------|-------------|
 | `controller/HomeController.java` | Routes: `/dashboard`, `/logout` |
 | `controller/LoginController.java` | Handles POST `/login`, coordinates auth flow |
-| `controller/AccessCodeController.java` | `GET /t/{code}` temporary evaluator entry |
+| `controller/AccessCodeController.java` | `GET /t/{code}` evaluator entry (operator-provisioned slot) |
 | `config/EzkeyClientProvider.java` | Supplies EzkeyClient from current credentials (config or runtime override) |
 | `service/DemoApiKeyConfigService.java` | Per-`HttpSession` API key credentials (not JVM-global); "Apply API Key" override |
 | `service/AccessCodeService.java` | Access-code slots from `ezkey.access-codes.*` (startup fail-fast, digest lookup) |

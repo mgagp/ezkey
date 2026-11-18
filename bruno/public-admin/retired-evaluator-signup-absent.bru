@@ -1,0 +1,34 @@
+meta {
+  name: retired evaluator signup is absent
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/public/evaluator-signup
+  body: json
+  auth: none
+}
+
+body:json {
+  {}
+}
+
+script:post-response {
+  test("Status code is 404 (route retired, #1368)", function () {
+      expect(res.getStatus()).to.equal(404);
+  });
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Negative check. Anonymous evaluator self-registration was retired (#1365, #1368): no
+  unauthenticated route creates a tenant or an administrator. A Global Admin creates the tenant
+  and the Tenant Admin and hands over an activation code.
+
+  **Status codes:**
+  - 404: the route does not exist
+}

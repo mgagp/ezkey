@@ -33,7 +33,6 @@ import org.ezkey.admin.security.AdminSessionCookieService;
 import org.ezkey.admin.service.AdminAuthService;
 import org.ezkey.admin.service.AdminProvisioningService;
 import org.ezkey.admin.service.AdminRecoveryService;
-import org.ezkey.admin.service.EvaluatorTempSessionService;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
@@ -73,7 +72,6 @@ class AdminAuthControllerLoggingTest {
   @Mock private AdminBrowserSessionCookieProperties browserSessionCookieProperties;
   @Mock private AdminSessionCookieService sessionCookieService;
   @Mock private AdminCsrfTokenService csrfTokenService;
-  @Mock private EvaluatorTempSessionService evaluatorTempSessionService;
   @Mock private HttpServletRequest httpRequest;
 
   private AdminAuthController controller;
@@ -94,8 +92,7 @@ class AdminAuthControllerLoggingTest {
             adminRepository,
             browserSessionCookieProperties,
             sessionCookieService,
-            csrfTokenService,
-            evaluatorTempSessionService);
+            csrfTokenService);
 
     when(httpRequest.getHeader("X-Forwarded-For")).thenReturn(null);
     when(httpRequest.getRemoteAddr()).thenReturn(INJECTED_IP);

@@ -103,8 +103,8 @@ public class AdminToken {
   private String adminType;
 
   /**
-   * Purpose of this token: session (full Admin API), recovery (enrollment reset only), temporary
-   * evaluator console, or deferred-onboarding activation code.
+   * Purpose of this token: session (full Admin API), recovery (enrollment reset only), or
+   * deferred-onboarding activation code.
    *
    * <p>Enforced by {@code AdminTokenValidationService} for session authentication (SEC-021, #1122).
    * Deliberately has no default: every mint must state its purpose, so a forgotten purpose fails

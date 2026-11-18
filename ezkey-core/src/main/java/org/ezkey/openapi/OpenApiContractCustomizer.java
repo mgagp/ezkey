@@ -70,8 +70,7 @@ public final class OpenApiContractCustomizer implements OpenApiCustomizer {
   }
 
   /**
-   * Admin API: public instance-info and evaluator signup; login-family 401/429; empty 401
-   * elsewhere.
+   * Admin API: public instance-info; login-family 401/429; empty 401 elsewhere.
    *
    * @return admin contract customizer
    */
@@ -82,10 +81,7 @@ public final class OpenApiContractCustomizer implements OpenApiCustomizer {
             "/api/v1/admin/auth/passwordless-wait",
             "/api/v1/admin/auth/passwordless-cancel");
     return new OpenApiContractCustomizer(
-        Set.of("/api/v1/public/instance-info", "/api/v1/public/evaluator-signup"),
-        loginFamily,
-        loginFamily,
-        true);
+        Set.of("/api/v1/public/instance-info"), loginFamily, loginFamily, true);
   }
 
   /**

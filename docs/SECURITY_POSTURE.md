@@ -317,6 +317,21 @@ See [`../product-docs/global/normative-posture.md`](../product-docs/global/norma
   console stays a deny-list so the evaluator can still navigate. Enrollment QR delivery is denied
   for any id spelling. Encryption keys, enrollment reset, recover, and passwordless session mint
   were already denied.
+- **2026-11-18 (#1365, #1368):** Anonymous evaluator self-registration and the temporary
+  evaluator console are retired. One onboarding path remains, the adopter's: a Global Admin
+  creates the tenant and the Tenant Admin and hands over an activation code. Reason:
+  self-registration handed a Tenant Admin identity to anyone on the internet, so any defect that
+  needs an authenticated Tenant Admin became reachable anonymously (#1122), and the temporary
+  console was a session without MFA authorized by a deny-list (#1123). Removed:
+  `POST /api/v1/public/evaluator-signup`, `POST /api/v1/admin/auth/evaluator-temp`, the
+  `EVALUATOR_TEMP` purpose, the `ezkey.evaluator.self-registration.*` settings and the
+  self-registered-tenant marker. Session validation now accepts `SESSION` only, always with a
+  `VERIFIED` enrollment: between `/activate` and the device bind, no token authenticates. Every
+  unauthenticated `/api/v1/public/` route is `GET` only (pinned by
+  `PublicSurfaceNoSelfServiceTest`). Flyway V31 deletes `EVALUATOR_TEMP` rows and drops the
+  marker; it stops with an error while an active tenant still carries it, so the open-relay
+  guard on QR delivery is never lifted silently. The two entries above stay as the record of
+  that period.
 
 ## Traceability
 

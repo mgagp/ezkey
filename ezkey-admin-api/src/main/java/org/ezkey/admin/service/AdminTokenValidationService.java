@@ -76,10 +76,6 @@ public class AdminTokenValidationService {
    * <p>This method eagerly loads admin, tenant, and integration to support AdminPrincipal creation
    * without lazy loading issues.
    *
-   * <p>Not read-only: an active {@link AdminTokenPurpose#EVALUATOR_TEMP} token is deactivated when
-   * the admin’s enrollment is already device-bound {@link EnrollmentStatus#VERIFIED} (admin-owned
-   * supersede after bind; Auth-api does not touch tokens).
-   *
    * @param token the bearer token to validate
    * @return Optional containing the AdminToken with relations if token is valid, empty otherwise
    */
@@ -98,9 +94,9 @@ public class AdminTokenValidationService {
       if (tokenOptional.isPresent()) {
         AdminToken adminToken = tokenOptional.get();
 
-        // Allowlist (SEC-021, #1122): RECOVERY, ACTIVATION and any future purpose fail closed.
-        if (adminToken.getTokenPurpose() != AdminTokenPurpose.SESSION
-            && adminToken.getTokenPurpose() != AdminTokenPurpose.EVALUATOR_TEMP) {
+        // Allowlist (SEC-021, #1122): only SESSION authenticates; RECOVERY, ACTIVATION and any
+        // future purpose fail closed.
+        if (adminToken.getTokenPurpose() != AdminTokenPurpose.SESSION) {
           logger.warn(
               "❌ Token rejected: {}-purpose token cannot authenticate Admin API requests",
               adminToken.getTokenPurpose());
@@ -132,38 +128,21 @@ public class AdminTokenValidationService {
           // Defence-in-depth: EnrollmentRevocationService already invalidates tokens
           // immediately on revocation, but this guard catches any window where the
           // enrollment was deactivated without explicit token revocation.
-          // EVALUATOR_TEMP may run before MFA VERIFIED; still require active when linked.
           Enrollment enrollment = admin.getEnrollment();
           if (enrollment != null && !Boolean.TRUE.equals(enrollment.getActive())) {
             logger.warn("❌ Token rejected: enrollment inactive for admin: {}", admin.getUsername());
             return Optional.empty();
           }
 
-          // SESSION requires a device-bound MFA enrollment; only EVALUATOR_TEMP runs pre-bind.
-          if (adminToken.getTokenPurpose() == AdminTokenPurpose.SESSION && enrollment == null) {
+          // A session requires a device-bound MFA enrollment.
+          if (enrollment == null) {
             logger.warn("❌ Token rejected: no enrollment for admin: {}", admin.getUsername());
             return Optional.empty();
           }
 
-          if (adminToken.getTokenPurpose() == AdminTokenPurpose.SESSION
-              && !EnrollmentStatus.VERIFIED.equals(enrollment.getStatus())) {
+          if (!EnrollmentStatus.VERIFIED.equals(enrollment.getStatus())) {
             logger.warn(
                 "❌ Token rejected: enrollment is not verified for admin: {}", admin.getUsername());
-            return Optional.empty();
-          }
-
-          // Temporary evaluator console: once MFA is VERIFIED, TEMP must die on first Admin API
-          // call (even before passwordless SESSION re-login).
-          if (adminToken.getTokenPurpose() == AdminTokenPurpose.EVALUATOR_TEMP
-              && enrollment != null
-              && EnrollmentStatus.VERIFIED.equals(enrollment.getStatus())) {
-            int revoked =
-                tokenRepository.deactivateTokensForAdminByPurpose(
-                    admin.getAdminId(), AdminTokenPurpose.EVALUATOR_TEMP);
-            logger.info(
-                "Rejected EVALUATOR_TEMP after VERIFIED bind for admin: {} (revoked {} token(s))",
-                admin.getUsername(),
-                revoked);
             return Optional.empty();
           }
 
@@ -219,9 +198,8 @@ public class AdminTokenValidationService {
    * Open Session in View, merging the loaded row can write {@code active=true} and revive a token
    * revoked concurrently by logout, login rotation, or deactivation.
    *
-   * <p>For SESSION tokens, expiration is extended to now + expirationHours. Recovery,
-   * EVALUATOR_TEMP and ACTIVATION tokens keep the loaded expiration (SEC-021 / Mode C / #1122
-   * absolute TTL).
+   * <p>For SESSION tokens, expiration is extended to now + expirationHours. Recovery and ACTIVATION
+   * tokens keep the loaded expiration (SEC-021 / #1122 absolute TTL).
    *
    * @param adminToken the loaded token entity (id and purpose are read; the instance is not saved)
    * @return updated expiration when an active row was touched; empty if the token is null, has no
@@ -235,8 +213,7 @@ public class AdminTokenValidationService {
     try {
       OffsetDateTime now = OffsetDateTime.now();
       OffsetDateTime expiresAt;
-      // Sliding expiration for SESSION tokens only (SEC-021: never extend RECOVERY;
-      // Mode C: EVALUATOR_TEMP is absolute TTL).
+      // Sliding expiration for SESSION tokens only (SEC-021: never extend RECOVERY).
       if (adminToken.getTokenPurpose() == AdminTokenPurpose.SESSION) {
         int hours = Math.max(1, rotationProperties.getExpirationHours());
         expiresAt = now.plusHours(hours);

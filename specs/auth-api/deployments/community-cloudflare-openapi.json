@@ -838,12 +838,6 @@
             "description": "Optional URL for About / learn more (e.g. company instance page)",
             "example": "https://www.example.com/about-ezkey",
             "nullable": true
-          },
-          "evaluatorSelfRegistrationEnabled": {
-            "type": "boolean",
-            "description": "When true, evaluator self-registration and temporary console explore are available on this Admin API (community/lab). False or omitted when disabled.",
-            "example": false,
-            "nullable": true
           }
         }
       }

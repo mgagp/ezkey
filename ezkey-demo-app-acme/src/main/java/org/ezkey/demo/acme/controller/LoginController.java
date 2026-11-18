@@ -302,7 +302,7 @@ public class LoginController {
   }
 
   /**
-   * Applies API key credentials at runtime for temporary evaluator console access.
+   * Applies API key credentials pasted at runtime (keys the visitor created in their own tenant).
    *
    * <p>Validates keys first, then invalidates the previous session (clears slot or prior paste),
    * opens a new session, and stores the pasted keys. The client must reload to pick up the new CSRF

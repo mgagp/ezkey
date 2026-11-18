@@ -239,3 +239,70 @@ test('@elective @device-backed admin onboarding: activation code lands on a pend
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page).toHaveURL(new RegExp(`/admins/${adminId}$`));
 });
+
+// #1368: the single onboarding path, end to end. A Global Admin provisions a Tenant Admin with an
+// activation code; that person activates on /login, sees only the device-bind step (no other
+// option), binds the Demo Device and signs in with passwordless MFA.
+test('@elective @device-backed activation code: activate, enroll a device, sign in', async ({
+  page,
+  context,
+}) => {
+  await loginViaDemoDevice(page, context, 'approve');
+  const headers = { Authorization: await captureBearerToken(page) };
+
+  const suffix = Date.now();
+  const username = `e2e-1368-${suffix}`;
+  const tenantId = await createTenant(page, headers, suffix);
+  const created = await page.request.post('/api/v1/admins/tenant', {
+    headers,
+    data: {
+      username,
+      firstName: 'Dana',
+      lastName: 'Roy',
+      email: `${username}@example.com`,
+      tenantId,
+      onboardingMode: 'ACTIVATION_CODE',
+    },
+  });
+  expect(created.status()).toBe(201);
+  const { activationCode } = await created.json();
+  expect(activationCode).toMatch(/^ezkey_activation_/);
+
+  // A fresh tab holds no session: this is the invited person on the login page.
+  const invitee = await context.newPage();
+  await invitee.goto('/login');
+  await invitee.getByTestId('login-activation-link').click();
+  await invitee.locator('#activation-code').fill(activationCode);
+  const activated = invitee.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/admin/auth/activate') &&
+      response.request().method() === 'POST',
+  );
+  await invitee.getByTestId('login-activation-form').locator('button[type="submit"]').click();
+  const { enrollmentId, enrollmentProofToken, enrollmentChallenge } = await (
+    await activated
+  ).json();
+
+  // One path: the bind step shows at once, with nothing else to choose.
+  await expect(invitee.getByTestId('login-activation-success')).toBeVisible();
+  await expect(invitee.getByTestId('login-activation-fork')).toHaveCount(0);
+  await expect(invitee.getByTestId('login-activation-explore-temp')).toHaveCount(0);
+  await expect(invitee.getByAltText(/QR/i)).toBeVisible();
+  await expect(invitee.getByText(String(enrollmentChallenge), { exact: true })).toBeVisible();
+
+  const form = { enrollmentId: String(enrollmentId), enrollmentProofToken };
+  const bind = await context.request.post(`${testEnv.demoDeviceUrl}/phone/ezkey/enrollment/bind`, {
+    form,
+  });
+  expect(await bind.text()).toContain('demo-device-bind-success');
+  const verify = await context.request.post(
+    `${testEnv.demoDeviceUrl}/phone/ezkey/enrollment/verify`,
+    { form: { ...form, challengeResponse: String(enrollmentChallenge) } },
+  );
+  expect(await verify.text()).toContain('demo-device-verify-success');
+
+  await invitee.close();
+  const signIn = await context.newPage();
+  await loginAsEnrolledAdmin(signIn, context, username, enrollmentId);
+  await expect(signIn.getByTestId('temporary-session-banner')).toHaveCount(0);
+});

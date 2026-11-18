@@ -442,13 +442,9 @@ public class AdminRecoveryService {
       return;
     }
 
-    int sessionTokens =
+    int revokedTokens =
         tokenRepository.deactivateTokensForAdminByPurpose(
             admin.getAdminId(), AdminTokenPurpose.SESSION);
-    int tempTokens =
-        tokenRepository.deactivateTokensForAdminByPurpose(
-            admin.getAdminId(), AdminTokenPurpose.EVALUATOR_TEMP);
-    int revokedTokens = sessionTokens + tempTokens;
     if (revokedTokens > 0) {
       logger.info(
           "Invalidated {} active Admin API session token(s) for admin {} after recovery reset of"
