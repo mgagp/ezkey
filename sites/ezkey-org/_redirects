@@ -1,10 +1,14 @@
 # Retired EXP1 public URLs → alpha community pages (keep forever for bookmarks / inbound links)
 /experimental-preview-exp1.html /community-instance.html 301
 /exp1-guided-tour.html /community-guided-tour.html 301
-/exp1-signup.html /community-signup.html 301
+/exp1-signup.html /community-instance.html 301
 /fr/experimental-preview-exp1.html /fr/community-instance.html 301
 /fr/exp1-guided-tour.html /fr/community-guided-tour.html 301
-/fr/exp1-signup.html /fr/community-signup.html 301
+/fr/exp1-signup.html /fr/community-instance.html 301
+
+# Retired community signup (self-registration retired 2026-11-18, #1365) → community instance page
+/community-signup.html /community-instance.html 301
+/fr/community-signup.html /fr/community-instance.html 301
 
 # Legacy guided-tour screenshot paths (folder renamed community-guided-tour/)
 /exp1-guided-tour/exp1-tour-01-admin-login-activation.webp /community-guided-tour/community-tour-01-admin-login-activation.webp 301

@@ -196,7 +196,6 @@ When generating HTML from a draft, **omit** the YAML front matter and **omit** e
 | `/integration-api-reference.html` | `/fr/integration-api-reference.html` | Integration API public reference |
 | `/community-guided-tour.html` | `/fr/community-guided-tour.html` | Community guided tour (bilingual)
 | `/community-instance.html` | `/fr/community-instance.html` | Alpha community instance overview (ezkey.online)
-| `/community-signup.html` | `/fr/community-signup.html` | Instant community signup (bilingual); `?api=` / `adminUiUrl` / `guidedTourUrl` honor only allowlisted hosts via [`js/community-signup-urls.mjs`](js/community-signup-urls.mjs) (Lot B code-scanning 2026-10-13; reject `javascript:` and foreign hosts) |
 | `/changelog.html` | `/fr/changelog.html` | Technical changelog (placeholder) |
 
 **Rules:**
@@ -286,7 +285,7 @@ paths as cards, services as tiles, one "Before you start" box, three numbered ne
 **Editorial principles (apply when creating or challenging any page):**
 
 1. **Name the page's job first.** A *document page* is read (articles, digests, Lab Papers). An *entry
-   page* is acted on (community instance, signup, guides hub). Entry pages lead with what the visitor
+   page* is acted on (community instance, guides hub). Entry pages lead with what the visitor
    can do; document pages lead with what there is to read.
 2. **One primary action per entry page** (gradient button), at most one secondary (outlined button);
    everything else stays an inline link. If two actions look equally primary, the page has two jobs.
@@ -384,7 +383,6 @@ The site uses a **single coherent palette** derived from the background gradient
 | [../ezkey-org-editorial/LAB-PAPERS.md](../ezkey-org-editorial/LAB-PAPERS.md) | Lab Papers method canon (not deployed) |
 | [community-guided-tour.html](community-guided-tour.html) / [fr/community-guided-tour.html](fr/community-guided-tour.html) | Community guided tour (EN/FR)
 | [community-instance.html](community-instance.html) / [fr/community-instance.html](fr/community-instance.html) | Alpha community instance (EN/FR)
-| [community-signup.html](community-signup.html) / [fr/community-signup.html](fr/community-signup.html) | Community signup (EN/FR) |
 | [changelog.html](changelog.html) / [fr/changelog.html](fr/changelog.html) | Changelog placeholder |
 | [sitemap.xml](sitemap.xml) | Sitemap for crawlers |
 | [robots.txt](robots.txt) | Robots + sitemap URL |

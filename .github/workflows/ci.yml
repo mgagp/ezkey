@@ -94,9 +94,6 @@ jobs:
               - 'ezkey-demo-device/**'
               - 'ezkey-tests/**'
               - 'ezkey-connectors/**'
-              - 'sites/ezkey-org/js/**'
-              - 'sites/ezkey-org/community-signup.html'
-              - 'sites/ezkey-org/fr/community-signup.html'
               - 'docker/demo-app-acme-entrypoint.sh'
               - 'docker/bootstrap-init/**'
               - 'scripts/build.sh'
@@ -355,10 +352,10 @@ jobs:
       - name: Issue response reminder selection (#1275)
         run: bash scripts/issue-response-reminder.test.sh
 
-      # Lot B (code-scanning 2026-10-13): signup URL allowlist + ACME DOM XSS text rendering.
-      - name: Community-signup URL allowlist + ACME biz-status XSS tests
+      # Lot B (code-scanning 2026-10-13): ACME DOM XSS text rendering. The signup URL allowlist test
+      # left with the community signup page (#1367).
+      - name: ACME biz-status XSS tests
         run: |
-          node --test sites/ezkey-org/js/community-signup-urls.test.mjs
           node --test ezkey-demo-app-acme/src/test/js/biz-status.test.mjs
 
       - name: Servlet session cookie name guard (#799)
