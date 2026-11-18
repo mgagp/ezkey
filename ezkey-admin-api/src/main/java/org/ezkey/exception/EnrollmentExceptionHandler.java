@@ -12,6 +12,7 @@
 package org.ezkey.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.Map;
 import org.ezkey.admin.exception.EnrollmentCannotBeDeletedException;
 import org.ezkey.admin.exception.EnrollmentLinkedAsAdminException;
 import org.ezkey.admin.exception.SelfRevocationNotAllowedException;
@@ -138,15 +139,40 @@ public class EnrollmentExceptionHandler extends ExceptionHandlerBase {
     return response;
   }
 
-  @ExceptionHandler(ActiveVerifiedEnrollmentExistsException.class)
-  public ResponseEntity<ProblemDetail> handleActiveVerifiedEnrollmentExistsException(
-      ActiveVerifiedEnrollmentExistsException ex, HttpServletRequest request) {
-    return buildProblemDetail(
-        ex,
-        HttpStatus.CONFLICT,
-        "https://ezkey.io/problems/enrollment/active-verified-enrollment-exists",
-        "Active Verified Enrollment Already Exists",
-        request);
+  /**
+   * Handles VerifiedEnrollmentNameTakenException and returns HTTP 409 Conflict (#1404).
+   *
+   * <p>The type says whether the enrollment that holds the name is active ({@code
+   * active-verified-enrollment-exists}) or deactivated ({@code deactivated-enrollment-holds-name}).
+   * Extension {@code parameters.existingEnrollmentId} lets the Admin UI link to it.
+   *
+   * @param ex the exception
+   * @param request the HTTP servlet request for path extraction
+   * @return ResponseEntity containing ProblemDetail and HTTP 409 status
+   */
+  @ExceptionHandler(VerifiedEnrollmentNameTakenException.class)
+  public ResponseEntity<ProblemDetail> handleVerifiedEnrollmentNameTakenException(
+      VerifiedEnrollmentNameTakenException ex, HttpServletRequest request) {
+    ResponseEntity<ProblemDetail> response =
+        ex.isExistingActive()
+            ? buildProblemDetail(
+                ex,
+                HttpStatus.CONFLICT,
+                "https://ezkey.io/problems/enrollment/active-verified-enrollment-exists",
+                "Active Verified Enrollment Already Exists",
+                request)
+            : buildProblemDetail(
+                ex,
+                HttpStatus.CONFLICT,
+                "https://ezkey.io/problems/enrollment/deactivated-enrollment-holds-name",
+                "Deactivated Enrollment Holds This Name",
+                request);
+    if (response.getBody() != null && ex.getExistingEnrollmentId() != null) {
+      response
+          .getBody()
+          .setProperty("parameters", Map.of("existingEnrollmentId", ex.getExistingEnrollmentId()));
+    }
+    return response;
   }
 
   @ExceptionHandler(SystemIntegrationEnrollmentCreationException.class)

@@ -10,6 +10,7 @@ package org.ezkey.exception;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -27,13 +28,12 @@ class EnrollmentExceptionHandlerWave6Test {
     MockHttpServletRequest request = new MockHttpServletRequest();
     request.setRequestURI("/api/v1/enrollments");
 
-    ActiveVerifiedEnrollmentExistsException ex =
-        new ActiveVerifiedEnrollmentExistsException(
-            "An active verified enrollment with the same name already exists for this"
-                + " integration.");
+    VerifiedEnrollmentNameTakenException ex =
+        new VerifiedEnrollmentNameTakenException(
+            "A verified enrollment with this name is already active on this integration.", 7, true);
 
     ResponseEntity<ProblemDetail> response =
-        handler.handleActiveVerifiedEnrollmentExistsException(ex, request);
+        handler.handleVerifiedEnrollmentNameTakenException(ex, request);
 
     assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
     ProblemDetail body = response.getBody();
@@ -45,6 +45,32 @@ class EnrollmentExceptionHandlerWave6Test {
         "https://ezkey.io/problems/enrollment/active-verified-enrollment-exists",
         body.getType().toString());
     assertEquals("/api/v1/enrollments", body.getProperties().get("path"));
+    assertEquals(Map.of("existingEnrollmentId", 7), body.getProperties().get("parameters"));
+  }
+
+  @Test
+  @DisplayName("Maps a name held by a deactivated enrollment to its own 409 type (#1404)")
+  void mapsDeactivatedHolderTo409WithItsOwnType() {
+    EnrollmentExceptionHandler handler = new EnrollmentExceptionHandler();
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.setRequestURI("/api/v1/enrollments");
+
+    VerifiedEnrollmentNameTakenException ex =
+        new VerifiedEnrollmentNameTakenException(
+            "A deactivated enrollment already uses this name on this integration.", 7, false);
+
+    ResponseEntity<ProblemDetail> response =
+        handler.handleVerifiedEnrollmentNameTakenException(ex, request);
+
+    assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+    ProblemDetail body = response.getBody();
+    assertNotNull(body);
+    assertEquals("Deactivated Enrollment Holds This Name", body.getTitle());
+    assertEquals(
+        "https://ezkey.io/problems/enrollment/deactivated-enrollment-holds-name",
+        body.getType().toString());
+    assertEquals(ex.getMessage(), body.getDetail());
+    assertEquals(Map.of("existingEnrollmentId", 7), body.getProperties().get("parameters"));
   }
 
   @Test

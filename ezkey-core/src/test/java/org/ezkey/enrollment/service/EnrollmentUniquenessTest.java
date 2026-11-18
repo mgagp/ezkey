@@ -11,6 +11,7 @@
 package org.ezkey.enrollment.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -31,7 +32,7 @@ import org.ezkey.enrollment.domain.EnrollmentCreateResponse;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
-import org.ezkey.exception.ActiveVerifiedEnrollmentExistsException;
+import org.ezkey.exception.VerifiedEnrollmentNameTakenException;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.service.EntityEligibilityService;
@@ -126,26 +127,29 @@ class EnrollmentUniquenessTest {
         .thenReturn(List.of(existingVerified));
 
     // Act & Assert
-    ActiveVerifiedEnrollmentExistsException exception =
+    VerifiedEnrollmentNameTakenException exception =
         assertThrows(
-            ActiveVerifiedEnrollmentExistsException.class,
+            VerifiedEnrollmentNameTakenException.class,
             () -> enrollmentService.create(createRequest));
 
+    assertTrue(exception.isExistingActive());
+    assertEquals(100, exception.getExistingEnrollmentId());
     assertTrue(
-        exception.getMessage().contains("active verified enrollment"),
-        "Error message should mention active verified enrollment");
-    assertTrue(
-        exception.getMessage().contains("recovery process"),
-        "Error message should direct to recovery process");
+        exception.getMessage().contains("revoke that enrollment"),
+        "An end-user enrollment is replaced by revoke + create, not by admin recovery");
+    assertFalse(exception.getMessage().contains("/api/v1/admin/auth/recover"));
 
     // Verify enrollment was never saved
     verify(enrollmentRepository, never()).save(any(Enrollment.class));
   }
 
   @Test
-  @DisplayName("create() - Should allow creation when inactive VERIFIED enrollment exists")
-  void create_WhenInactiveVerifiedExists_ShouldAllow() {
-    // Arrange
+  @DisplayName(
+      "create() - Should reject creation when a deactivated VERIFIED enrollment holds the name"
+          + " (#1404)")
+  void create_WhenDeactivatedVerifiedExists_ShouldReject() {
+    // Verify and idx_enrollment_unique_verified_name refuse a second VERIFIED row with this
+    // name, so an invitation created here could never finish on the phone.
     Enrollment existingInactiveVerified = new Enrollment();
     existingInactiveVerified.setEnrollmentId(100);
     existingInactiveVerified.setIntegrationId(1);
@@ -157,23 +161,16 @@ class EnrollmentUniquenessTest {
             eq(1), eq("Test Enrollment"), eq(EnrollmentStatus.VERIFIED)))
         .thenReturn(List.of(existingInactiveVerified));
 
-    Enrollment newEnrollment = new Enrollment();
-    newEnrollment.setEnrollmentId(200);
-    newEnrollment.setIntegrationId(1);
-    newEnrollment.setEnrollmentName("Test Enrollment");
-    newEnrollment.setStatus(EnrollmentStatus.CREATED);
-    newEnrollment.setActive(false);
-    newEnrollment.setEnrollmentChallenge(123456);
+    VerifiedEnrollmentNameTakenException exception =
+        assertThrows(
+            VerifiedEnrollmentNameTakenException.class,
+            () -> enrollmentService.create(createRequest));
 
-    when(enrollmentRepository.save(any(Enrollment.class))).thenReturn(newEnrollment);
-
-    // Act
-    EnrollmentCreateResponse response = enrollmentService.create(createRequest);
-
-    // Assert
-    assertNotNull(response);
-    assertEquals(200, response.getEnrollmentId());
-    verify(enrollmentRepository, times(1)).save(any(Enrollment.class));
+    assertFalse(exception.isExistingActive());
+    assertEquals(100, exception.getExistingEnrollmentId());
+    assertTrue(exception.getMessage().contains("Reactivate"));
+    assertTrue(exception.getMessage().contains("revoke it to replace the device"));
+    verify(enrollmentRepository, never()).save(any(Enrollment.class));
   }
 
   @Test
@@ -255,8 +252,7 @@ class EnrollmentUniquenessTest {
 
     // Act & Assert
     assertThrows(
-        ActiveVerifiedEnrollmentExistsException.class,
-        () -> enrollmentService.create(createRequest));
+        VerifiedEnrollmentNameTakenException.class, () -> enrollmentService.create(createRequest));
 
     // Verify existing enrollment was never modified
     verify(enrollmentRepository, never()).save(existingVerified);

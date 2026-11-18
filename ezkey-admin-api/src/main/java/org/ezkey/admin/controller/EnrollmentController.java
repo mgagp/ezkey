@@ -53,12 +53,12 @@ import org.ezkey.enrollment.dto.EnrollmentCreateResponseDto;
 import org.ezkey.enrollment.dto.EnrollmentResponseDto;
 import org.ezkey.enrollment.mapper.EnrollmentAdminMapper;
 import org.ezkey.enrollment.service.EnrollmentService;
-import org.ezkey.exception.ActiveVerifiedEnrollmentExistsException;
 import org.ezkey.exception.AdminEnrollmentOperationException;
 import org.ezkey.exception.EnrollmentCreateValidationException;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.exception.SystemIntegrationEnrollmentCreationException;
 import org.ezkey.exception.TenantInactiveException;
+import org.ezkey.exception.VerifiedEnrollmentNameTakenException;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
@@ -474,7 +474,13 @@ public class EnrollmentController {
         @ApiResponse(responseCode = "201", description = "Enrollment created successfully"),
         @ApiResponse(responseCode = "400", description = "Invalid data"),
         @ApiResponse(responseCode = "403", description = "Forbidden by enrollment policy"),
-        @ApiResponse(responseCode = "409", description = "Enrollment conflict"),
+        @ApiResponse(
+            responseCode = "409",
+            description =
+                "A VERIFIED enrollment already holds this name on the integration: active"
+                    + " (active-verified-enrollment-exists) or deactivated"
+                    + " (deactivated-enrollment-holds-name). parameters.existingEnrollmentId"
+                    + " names it: reactivate it, or revoke it to replace the device."),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
   @PreAuthorize("hasRole('ADMIN')")
@@ -516,63 +522,23 @@ public class EnrollmentController {
       }
       EnrollmentCreateResponse response = enrollmentService.create(createRequest);
 
-      // Check if inactive VERIFIED enrollment exists for audit context
-      List<Enrollment> inactiveVerified =
-          enrollmentRepository
-              .findByIntegrationIdAndEnrollmentNameAndStatus(
-                  request.integrationId(), request.name(), EnrollmentStatus.VERIFIED)
-              .stream()
-              .filter(e -> Boolean.FALSE.equals(e.getActive()))
-              .toList();
-
-      // Audit successful enrollment creation
-      if (!inactiveVerified.isEmpty()) {
-        auditLogService.log(
-            AuditHelper.createAdminAudit(
-                    context,
-                    EventType.ENROLLMENT_CREATED,
-                    AdminAuditConstants.ENROLLMENT_CREATED,
-                    auditTenantId)
-                .eventStatus(EventStatus.SUCCESS)
-                .adminId(principal != null ? principal.adminId() : null)
-                .enrollmentId(response.getEnrollmentId())
-                .integrationId(
-                    auditEntityFkResolver.integrationIdForAuditOrNull(request.integrationId()))
-                .eventDetails(
-                    "Enrollment name: "
-                        + request.name()
-                        + ". Replacing inactive VERIFIED enrollment (ID: "
-                        + inactiveVerified.get(0).getEnrollmentId()
-                        + ")")
-                .build());
-      } else {
-        auditLogService.log(
-            AuditHelper.createAdminAudit(
-                    context,
-                    EventType.ENROLLMENT_CREATED,
-                    AdminAuditConstants.ENROLLMENT_CREATED,
-                    auditTenantId)
-                .eventStatus(EventStatus.SUCCESS)
-                .adminId(principal != null ? principal.adminId() : null)
-                .enrollmentId(response.getEnrollmentId())
-                .integrationId(
-                    auditEntityFkResolver.integrationIdForAuditOrNull(request.integrationId()))
-                .eventDetails("Enrollment name: " + request.name())
-                .build());
-      }
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ENROLLMENT_CREATED,
+                  AdminAuditConstants.ENROLLMENT_CREATED,
+                  auditTenantId)
+              .eventStatus(EventStatus.SUCCESS)
+              .adminId(principal != null ? principal.adminId() : null)
+              .enrollmentId(response.getEnrollmentId())
+              .integrationId(
+                  auditEntityFkResolver.integrationIdForAuditOrNull(request.integrationId()))
+              .eventDetails("Enrollment name: " + request.name())
+              .build());
 
       return ResponseEntity.status(HttpStatus.CREATED)
           .body(enrollmentMapper.toCreateResponseDto(response));
-    } catch (ActiveVerifiedEnrollmentExistsException e) {
-      Enrollment existing =
-          enrollmentRepository
-              .findByIntegrationIdAndEnrollmentNameAndStatus(
-                  request.integrationId(), request.name(), EnrollmentStatus.VERIFIED)
-              .stream()
-              .filter(enrollment -> Boolean.TRUE.equals(enrollment.getActive()))
-              .findFirst()
-              .orElse(null);
-
+    } catch (VerifiedEnrollmentNameTakenException e) {
       auditLogService.log(
           AuditHelper.createAdminAudit(
                   context,
@@ -583,12 +549,13 @@ public class EnrollmentController {
               .adminId(principal != null ? principal.adminId() : null)
               .integrationId(
                   auditEntityFkResolver.integrationIdForAuditOrNull(request.integrationId()))
-              .enrollmentId(existing != null ? existing.getEnrollmentId() : null)
+              .enrollmentId(e.getExistingEnrollmentId())
               .errorMessage(e.getMessage())
               .eventDetails(
-                  "Enrollment creation rejected: Active VERIFIED enrollment exists. "
-                      + "Existing enrollment ID: "
-                      + (existing != null ? existing.getEnrollmentId() : "unknown")
+                  "Enrollment creation rejected: "
+                      + (e.isExistingActive() ? "Active" : "Deactivated")
+                      + " VERIFIED enrollment holds the name. Existing enrollment ID: "
+                      + e.getExistingEnrollmentId()
                       + ", Requested name: "
                       + request.name())
               .build());

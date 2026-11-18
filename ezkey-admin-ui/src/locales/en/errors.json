@@ -46,7 +46,8 @@
   },
   "enrollment": {
     "enrollment-inactive": "This enrollment cannot be used for authentication (inactive or not verified).",
-    "active-verified-enrollment-exists": "An active verified enrollment with the same name already exists for this integration. Use the recovery flow to replace it.",
+    "active-verified-enrollment-exists": "An active enrollment already uses this name on this integration. To replace the device, revoke it, then create a new one.",
+    "deactivated-enrollment-holds-name": "A deactivated enrollment already uses this name on this integration. Reactivate it, or revoke it to replace the device.",
     "system-integration-create-not-allowed": "Enrollments for the system integration cannot be created here; use the admin provisioning APIs.",
     "self-revocation-not-allowed": "You cannot revoke, deactivate, or delete your own enrollment. Use the recovery flow.",
     "system-integration-revocation": "Bulk revocation or bulk deactivation cannot be applied to a system integration.",

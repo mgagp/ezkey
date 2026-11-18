@@ -12,4 +12,6 @@ This note captures product/backend workflows that are **not** covered by generic
 
 **Product decision (Ezkey):** Use the **existing** lifecycle: **revoke** the enrollment, then **create** a new enrollment for the user. No additional API surface (no dedicated “reset” or “rebind” endpoint). This matches common market practice, keeps the model simple, and preserves traceability through revoke + create as distinct audited steps.
 
+**Order matters (#1404):** revoke first, then create. Create refuses a name that a `VERIFIED` enrollment still holds, even deactivated, because the new invitation could never finish verify. A deactivated enrollment blocks authentication already, so revoking it first costs the user nothing.
+
 **Operator guidance:** Document the business reason in your usual change/ticket process if required; the platform does not require a separate reason field on a dedicated reset operation because that operation is not offered for non-admin enrollments.

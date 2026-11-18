@@ -11,7 +11,6 @@
 package org.ezkey.admin.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -24,7 +23,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.List;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.security.AccessControlService;
 import org.ezkey.admin.security.AdminPrincipal;
@@ -40,14 +38,12 @@ import org.ezkey.audit.support.AuditEntityFkResolver;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.EnrollmentCreateRequest;
 import org.ezkey.enrollment.domain.EnrollmentCreateResponse;
-import org.ezkey.enrollment.domain.EnrollmentStatus;
-import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.enrollment.dto.EnrollmentCreateRequestDto;
 import org.ezkey.enrollment.mapper.EnrollmentAdminMapper;
 import org.ezkey.enrollment.service.EnrollmentService;
-import org.ezkey.exception.ActiveVerifiedEnrollmentExistsException;
 import org.ezkey.exception.EnrollmentCreateValidationException;
+import org.ezkey.exception.VerifiedEnrollmentNameTakenException;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -167,30 +163,17 @@ class EnrollmentControllerAuditTest {
       "create() - Should log audit with existing enrollment ID when creation rejected (active"
           + " VERIFIED)")
   void create_WhenRejected_ShouldLogAuditWithExistingEnrollmentId() {
-    // Arrange
-    Enrollment existingVerified = new Enrollment();
-    existingVerified.setEnrollmentId(100);
-    existingVerified.setIntegrationId(1);
-    existingVerified.setEnrollmentName("Test Enrollment");
-    existingVerified.setStatus(EnrollmentStatus.VERIFIED);
-    existingVerified.setActive(true);
-
     when(enrollmentService.create(createRequest))
         .thenThrow(
-            new ActiveVerifiedEnrollmentExistsException(
-                "An active verified enrollment with the same name already exists for this"
-                    + " integration."));
+            new VerifiedEnrollmentNameTakenException(
+                "A verified enrollment with this name is already active on this integration.",
+                100,
+                true));
 
-    when(enrollmentRepository.findByIntegrationIdAndEnrollmentNameAndStatus(
-            eq(1), eq("Test Enrollment"), eq(EnrollmentStatus.VERIFIED)))
-        .thenReturn(List.of(existingVerified));
-
-    // Act
     assertThrows(
-        ActiveVerifiedEnrollmentExistsException.class,
+        VerifiedEnrollmentNameTakenException.class,
         () -> enrollmentController.create(requestDto, httpRequest));
 
-    // Assert: Verify audit log was written with required fields
     ArgumentCaptor<AuditLog> auditLogCaptor = ArgumentCaptor.forClass(AuditLog.class);
     verify(auditLogService, times(1)).log(auditLogCaptor.capture());
 
@@ -201,57 +184,39 @@ class EnrollmentControllerAuditTest {
     assertEquals(Integer.valueOf(1), auditLog.getIntegrationId());
     assertEquals(Integer.valueOf(100), auditLog.getEnrollmentId()); // Existing enrollment ID
     assertNotNull(auditLog.getErrorMessage());
-    assertTrue(auditLog.getErrorMessage().contains("active verified enrollment"));
+    assertTrue(auditLog.getErrorMessage().contains("already active"));
     assertNotNull(auditLog.getEventDetails());
+    assertTrue(auditLog.getEventDetails().contains("Active VERIFIED enrollment holds the name"));
     assertTrue(auditLog.getEventDetails().contains("Existing enrollment ID: 100"));
     assertTrue(auditLog.getEventDetails().contains("Requested name: Test Enrollment"));
   }
 
   @Test
   @DisplayName(
-      "create() - Should log audit with inactive enrollment ID when replacing inactive VERIFIED")
-  void create_WhenReplacingInactive_ShouldLogAuditWithInactiveEnrollmentId() {
-    // Arrange
-    Enrollment existingInactiveVerified = new Enrollment();
-    existingInactiveVerified.setEnrollmentId(100);
-    existingInactiveVerified.setIntegrationId(1);
-    existingInactiveVerified.setEnrollmentName("Test Enrollment");
-    existingInactiveVerified.setStatus(EnrollmentStatus.VERIFIED);
-    existingInactiveVerified.setActive(false);
+      "create() - Should log a failure with the deactivated enrollment ID when a deactivated"
+          + " VERIFIED enrollment holds the name (#1404)")
+  void create_WhenDeactivatedHoldsName_ShouldLogFailureWithItsId() {
+    when(enrollmentService.create(createRequest))
+        .thenThrow(
+            new VerifiedEnrollmentNameTakenException(
+                "A deactivated enrollment already uses this name on this integration.",
+                100,
+                false));
 
-    EnrollmentCreateResponse createResponse = new EnrollmentCreateResponse();
-    createResponse.setEnrollmentId(200);
-    createResponse.setEnrollmentChallenge(123456);
+    assertThrows(
+        VerifiedEnrollmentNameTakenException.class,
+        () -> enrollmentController.create(requestDto, httpRequest));
 
-    when(enrollmentService.create(createRequest)).thenReturn(createResponse);
-    when(enrollmentMapper.toCreateResponseDto(any(EnrollmentCreateResponse.class)))
-        .thenReturn(new org.ezkey.enrollment.dto.EnrollmentCreateResponseDto(200, 123456, null));
-
-    when(enrollmentRepository.findByIntegrationIdAndEnrollmentNameAndStatus(
-            eq(1), eq("Test Enrollment"), eq(EnrollmentStatus.VERIFIED)))
-        .thenReturn(List.of(existingInactiveVerified));
-
-    // Act
-    ResponseEntity<org.ezkey.enrollment.dto.EnrollmentCreateResponseDto> response =
-        enrollmentController.create(requestDto, httpRequest);
-
-    // Assert
-    assertEquals(HttpStatus.CREATED, response.getStatusCode());
-
-    // Verify audit log was written with inactive enrollment context
     ArgumentCaptor<AuditLog> auditLogCaptor = ArgumentCaptor.forClass(AuditLog.class);
     verify(auditLogService, times(1)).log(auditLogCaptor.capture());
 
     AuditLog auditLog = auditLogCaptor.getValue();
-    assertEquals(EventType.ENROLLMENT_CREATED, auditLog.getEventType());
-    assertEquals(EventStatus.SUCCESS, auditLog.getEventStatus());
-    assertEquals(AdminAuditConstants.ENROLLMENT_CREATED, auditLog.getEventAction());
-    assertEquals(Integer.valueOf(200), auditLog.getEnrollmentId()); // New enrollment ID
-    assertEquals(Integer.valueOf(1), auditLog.getIntegrationId());
-    assertEquals(Integer.valueOf(42), auditLog.getAdminId()); // From mocked AdminPrincipal
-    assertNotNull(auditLog.getEventDetails());
-    assertTrue(auditLog.getEventDetails().contains("Replacing inactive VERIFIED enrollment"));
-    assertTrue(auditLog.getEventDetails().contains("ID: 100")); // Inactive enrollment ID
+    assertEquals(EventStatus.FAILURE, auditLog.getEventStatus());
+    assertEquals(AdminAuditConstants.ENROLLMENT_CREATION_FAILED, auditLog.getEventAction());
+    assertEquals(Integer.valueOf(100), auditLog.getEnrollmentId());
+    assertTrue(
+        auditLog.getEventDetails().contains("Deactivated VERIFIED enrollment holds the name"));
+    assertTrue(auditLog.getEventDetails().contains("Existing enrollment ID: 100"));
   }
 
   @Test
@@ -265,10 +230,6 @@ class EnrollmentControllerAuditTest {
     when(enrollmentService.create(createRequest)).thenReturn(createResponse);
     when(enrollmentMapper.toCreateResponseDto(any(EnrollmentCreateResponse.class)))
         .thenReturn(new org.ezkey.enrollment.dto.EnrollmentCreateResponseDto(200, 123456, null));
-
-    when(enrollmentRepository.findByIntegrationIdAndEnrollmentNameAndStatus(
-            eq(1), eq("Test Enrollment"), eq(EnrollmentStatus.VERIFIED)))
-        .thenReturn(List.of()); // No VERIFIED enrollments
 
     // Act
     ResponseEntity<org.ezkey.enrollment.dto.EnrollmentCreateResponseDto> response =
@@ -289,9 +250,7 @@ class EnrollmentControllerAuditTest {
     assertEquals(Integer.valueOf(1), auditLog.getIntegrationId());
     assertEquals(Integer.valueOf(42), auditLog.getAdminId()); // From mocked AdminPrincipal
     assertNotNull(auditLog.getEventDetails());
-    assertTrue(auditLog.getEventDetails().contains("Enrollment name: Test Enrollment"));
-    // Should not contain replacement context
-    assertFalse(auditLog.getEventDetails().contains("Replacing inactive VERIFIED"));
+    assertEquals("Enrollment name: Test Enrollment", auditLog.getEventDetails());
   }
 
   @Test
