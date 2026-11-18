@@ -223,7 +223,7 @@ the platform—with UI dashboards at the end.**
 
 | # | Tag | Rationale |
 | --- | --- | --- |
-| 1 | Public | Instance metadata and evaluator signup without auth |
+| 1 | Public | Instance metadata without auth |
 | 2 | Admin Authentication | Login, logout, recovery, passwordless wait |
 | 3 | Tenants | Multi-tenant foundation |
 | 4 | Integrations | Applications protected by MFA |
@@ -237,7 +237,7 @@ the platform—with UI dashboards at the end.**
 | 12 | Alerts | Operator signals |
 | 13 | Dashboard | Aggregated UI stats |
 
-**Taxonomy fix:** single `Public` tag; merged description covering instance info and evaluator signup.
+**Taxonomy fix:** single `Public` tag. (Its description also covered evaluator signup until that route was retired on 2026-11-18, #1368.)
 
 ### 3.2 Admin API — `x-tagGroups` (ReDoc)
 
@@ -342,13 +342,13 @@ No intra-tag reorder needed until additional operations are added; new ops shoul
 
 #### P1 — Public (Getting started group)
 
-Two operations share the **discover → opt in** story with Admin Authentication in ReDoc group
-*Getting started*.
+One operation opens the *Getting started* ReDoc group, before Admin Authentication.
 
 | # | Method | Path | Rationale |
 | --- | --- | --- | --- |
 | 1 | GET | `/api/v1/public/instance-info` | Reachability and instance metadata before any write |
-| 2 | POST | `/api/v1/public/evaluator-signup` | Optional evaluator self-registration after discovery |
+
+`POST /api/v1/public/evaluator-signup` held position 2 until it was retired on 2026-11-18 (#1368).
 
 #### P2 — Auth Attempts
 

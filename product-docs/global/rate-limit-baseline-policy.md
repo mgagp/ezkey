@@ -120,11 +120,8 @@ Reference: [`AdminRateLimitFilter.java`](../../ezkey-admin-api/src/main/java/org
 
 ### Admin API — ad hoc (feature-scoped)
 
-| Surface | Prefix / mechanism | Family | Default | Notes |
-|---------|-------------------|--------|---------|-------|
-| `POST /api/v1/public/evaluator-signup` | `ezkey.evaluator.self-registration.*` + `EvaluatorSelfRegistrationRateLimiter` | L (capacity) | daily cap 5; 3 success / IP / 24h | community host / community preview; in-memory |
-
-Reference: [`EvaluatorSelfRegistrationProperties.java`](../../ezkey-admin-api/src/main/java/org/ezkey/admin/config/EvaluatorSelfRegistrationProperties.java).
+None. The evaluator signup capacity limiter left with anonymous self-registration (2026-11-18,
+#1365, #1368).
 
 ### Crypto API
 

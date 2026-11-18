@@ -145,7 +145,8 @@ the QR stays on screen.
 
 **Refused in the core, with no call:** caller's role or enrollment not `CREATED`; no connector or a `degraded` one;
 missing or invalid `contactEmail`; empty `ezkey.qr.auth-base-url`; daily cap reached; evaluator temporary session;
-self-registered tenant on the community instance; contract version, template or locale mismatch.
+self-registered tenant on the community instance; contract version, template or locale mismatch. (The evaluator
+temporary session and the self-registered tenant refusals were retired with self-registration on 2026-11-18, #1368.)
 
 **Starting timeouts, to adjust at step 3:** connect 3 s and read 20 s for a send, with the connector's own provider
 timeout at 15 s so it can answer `504` first. Health: 2 s, cached 10 s. All sit well under Cloudflare Free's 100 s.
@@ -272,7 +273,7 @@ Decisions taken one at a time with Marc:
 - **Self-registered tenants:** a `self_registered` fact on the tenant (V28, existing `eval-` tenants
   marked), a `self-registered-tenant` refusal on send, and a capability that reads unavailable for an
   admin scoped to such a tenant. A permission flag was not chosen: no governance to design without a
-  signal.
+  signal. Retired 2026-11-18 with self-registration (#1365, #1368; Flyway V31).
 - **SMTP credentials:** IAM SMTP credentials (user `ezkey-community-smtp`), not SES Mail Manager, which
   bills processing. Inline policy: `ses:SendRawEmail` only, `ca-central-1` only, sender fixed to
   `no-reply@mail.ezkey.org`. Rotation is manual for now.

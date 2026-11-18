@@ -51,9 +51,8 @@ Public product vocabulary for runtime presets is **`base`** and **`integrity`**
    P0 gates from historical September compass text.
 5. **No remaining P0 on the active backlog** — Waves A–C closed; Wave D closed as attention freeze
    (not an executable gate).
-6. **Evaluator self-registration off by default** —
-   `ezkey.evaluator.self-registration.enabled` defaults **off**. Community may enable it
-   **explicitly**; self-host / clean-start must not inherit an open signup path by default.
+6. ~~**Evaluator self-registration off by default**~~ — **superseded 2026-11-18:** the
+   capability is retired (see the amendment below). There is no signup path to turn on.
 
 ### Amendment 2026-10-08 (Marc)
 
@@ -62,6 +61,36 @@ weaken honesty bounds (laboratory · discreet · alpha ≠ prod for the platform
 (not designed here): product management must stay consistent with this split (tagging / version
 tags / branch management for the mobile app versus the platform) — see
 [`V-2026-10-07-multi-tenant-closed-testing-demo-app`](V-2026-10-07-multi-tenant-closed-testing-demo-app.md).
+
+### Amendment 2026-11-18 (Marc) — lock 6 superseded: self-registration retired
+
+Lock 6 kept anonymous evaluator self-registration off by default and let the community host turn
+it on. The capability is now **retired** ([#1365](https://github.com/mgagp/ezkey/issues/1365)):
+the signup endpoint, the temporary evaluator console and their settings leave the code
+([#1368](https://github.com/mgagp/ezkey/issues/1368)).
+
+**Reason.** The hypothesis was tested: self-registration was added (2026-05) on the idea that the
+email request kept evaluators away. After several months without that request, no evaluator came.
+The limit is discoverability, a deliberate choice (lab, discreet). Meanwhile the path handed a
+Tenant Admin identity to anyone on the internet, so any defect that needs an authenticated Tenant
+Admin became reachable anonymously (#1122), and the temporary console was a session without MFA
+in an MFA product (#1123). It was also a second onboarding path that no adopter will ever run.
+
+**What replaces it.** One onboarding path, the adopter's: a Global Admin creates the tenant and the
+Tenant Admin and hands over an activation code. Two ways to evaluate Ezkey:
+
+- **Technical exploration:** clone the repository and run a clean start, with the documentation
+  in GitHub. No contact needed. This is also the only evaluation faithful to a self-hosted
+  adoption.
+- **Community instance (`ezkey.online`):** write to the Ezkey team by email; the team replies
+  with an identifier.
+
+**What is lost, stated honestly.** The effortless look at the console for a hesitant visitor (the
+guided tour and the technical trace on ezkey.org stand in for it), and an anonymous interest
+counter that never counted anyone.
+
+The other locks are unchanged. The community instance moves closer to an adopter's posture: the
+same single path runs locally, on the community host and at an adopter's.
 
 ## Session restart phrase (cold start)
 
@@ -77,7 +106,7 @@ tags / branch management for the mobile app versus the platform) — see
 | [`operational-readiness-prioritization-2026-09.md`](../operational-readiness-prioritization-2026-09.md) | **Historical** — Waves A–C + freeze D retained; superseded as next-P0 gate |
 | [`V-2026-09-22-exp1-to-ezkey-online-alpha`](V-2026-09-22-exp1-to-ezkey-online-alpha.md) | **Promoted** domain/host posture — alpha + community hostnames |
 | [`../product-intent.md`](../product-intent.md) | Durable product identity; community vs self-host signup default |
-| [`V-2026-05-23-anonymous-evaluator-self-registration`](V-2026-05-23-anonymous-evaluator-self-registration.md) | Evaluator signup track — installation-scoped flag; not a platform default |
+| [`V-2026-05-23-anonymous-evaluator-self-registration`](V-2026-05-23-anonymous-evaluator-self-registration.md) | **Retired 2026-11-18** (#1365) — historical record of the signup track |
 
 ## Non-goals
 

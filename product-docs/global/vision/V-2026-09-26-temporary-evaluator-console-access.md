@@ -1,10 +1,12 @@
 # Vision Note — `V-2026-09-26-temporary-evaluator-console-access`
 # Alpha community: temporary navigable Admin console after activation code (no device required)
 
+> **Retired on 2026-11-18 by Marc ([#1365](https://github.com/mgagp/ezkey/issues/1365)).** Anonymous evaluator self-registration and the temporary evaluator console are removed: the hypothesis was tested and no evaluator came, while the path handed a Tenant Admin identity to anyone on the internet. Decision: [`V-2026-09-26-public-alpha-posture-closeout`](V-2026-09-26-public-alpha-posture-closeout.md) § Amendment 2026-11-18. This document is kept as a record; its body is not edited. Its "Product locks (settled — do not reopen)" were reopened and closed by Marc with this retirement.
+
 ## Metadata
 
 - **ID:** `V-2026-09-26-temporary-evaluator-console-access`
-- **Status:** `draft`
+- **Status:** `archived`
 - **Lane:** `D` (community alpha evaluator funnel)
 - **Created at:** `2026-09-26`
 - **Updated at:** `2026-09-26`

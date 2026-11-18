@@ -1,9 +1,11 @@
 # Tracer Bullet Brief — `TB-2026-05-23` EXP1 anonymous evaluator signup first cut
 
+> **Retired on 2026-11-18 by Marc ([#1365](https://github.com/mgagp/ezkey/issues/1365)).** Anonymous evaluator self-registration and the temporary evaluator console are removed: the hypothesis was tested and no evaluator came, while the path handed a Tenant Admin identity to anyone on the internet. Decision: [`V-2026-09-26-public-alpha-posture-closeout`](../vision/V-2026-09-26-public-alpha-posture-closeout.md) § Amendment 2026-11-18. This document is kept as a record; its body is not edited.
+
 ## Metadata
 
 - **ID:** `TB-2026-05-23-exp1-anonymous-evaluator-signup-first-cut`
-- **Status:** `under-review`
+- **Status:** `archived`
 - **Related idea:** `I-2026-05-23-exp1-anonymous-evaluator-onboarding`
 - **Grill session:** [`../grill-sessions/2026-05-23-exp1-anonymous-evaluator-onboarding-grill-me.md`](../grill-sessions/2026-05-23-exp1-anonymous-evaluator-onboarding-grill-me.md)
 - **Created at:** `2026-05-23`

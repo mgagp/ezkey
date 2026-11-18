@@ -278,7 +278,7 @@ Orientation only — M1 one-page brief, then execution on a **new branch**. No a
 | [`../../../docs/ENDPOINT.md`](../../../docs/ENDPOINT.md) | Integration API / auth-attempt / pull-model contract. |
 | [`V-2026-09-27-operator-and-mobile-feedback-channel`](V-2026-09-27-operator-and-mobile-feedback-channel.md) | Feedback channel for the pilot. |
 | [`V-2026-08-02-mobile-official-play-release-posture`](V-2026-08-02-mobile-official-play-release-posture.md) | Broader mobile Play posture. |
-| [`V-2026-05-23-anonymous-evaluator-self-registration`](V-2026-05-23-anonymous-evaluator-self-registration.md) | Acme pedagogy lineage (self-serve paste path remains for evaluators). |
+| [`V-2026-05-23-anonymous-evaluator-self-registration`](V-2026-05-23-anonymous-evaluator-self-registration.md) | Acme pedagogy lineage. Self-registration was retired on 2026-11-18 (#1365); the paste path remains for invited evaluators. |
 | [`../product-intent.md`](../product-intent.md) | Adopter posture and honesty of claims. |
 
 ## Promotion criteria
