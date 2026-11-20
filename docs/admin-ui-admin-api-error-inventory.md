@@ -21,7 +21,8 @@ These are allowlisted in `shouldPreferI18nOverDetail` because messages are fixed
 | `domain/integrity-validation-disabled` | Fixed message when `ezkey.audit.integrity.nightly.enabled` is false |
 | `domain/integrity-async-job-busy` | Fixed message when Integrity async slot or heavy-crypto gate is busy (async start + report GETs + operator retroactive POST + seal-archive pre-verify #781); response includes `Retry-After: 60` |
 | `enrollment/system-integration-create-not-allowed` | Single fixed message |
-| `enrollment/active-verified-enrollment-exists` | Single fixed message |
+| `enrollment/active-verified-enrollment-exists` | Single fixed message; `parameters.existingEnrollmentId` (#1404) |
+| `enrollment/deactivated-enrollment-holds-name` | Single fixed message; `parameters.existingEnrollmentId` (#1404) |
 | `enrollment/cannot-delete-with-history` | Single fixed message |
 | `enrollment/cannot-delete-linked-as-admin` | Single fixed message |
 

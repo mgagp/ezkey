@@ -1025,3 +1025,126 @@ describe('aws_secret_access_key and PEM DSA/PGP', () => {
     }
   });
 });
+
+describe('weekly 2026-11-19 opaque-token false positives', () => {
+  // PartitionSchedulerService INFO: Created partition: <name> for table: <parent>
+  const PARTITIONS = [
+    'ezkey_auth_attempt_2027_01',
+    'ezkey_auth_attempt_2027_02',
+    'ezkey_audit_log_2027_01',
+    'ezkey_audit_log_2027_02',
+  ];
+  // Playwright colleague: `e2e-1313-${Date.now()}-b` (9 + 13 + 2 = 24).
+  const COLLEAGUE = 'e2e-1313-1790000000000-b';
+  // Same spec, activation-code admin: `e2e-1313-code-${Date.now()}` (already digit-tailed).
+  const PENDING = 'e2e-1313-code-1790000000000';
+  // Same length as COLLEAGUE, other tail — must stay RED.
+  const NOT_COLLEAGUE = 'e2e-1313-1790000000000-x';
+  const OPAQUE = 'a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8s9T0';
+  const OPAQUE24 = 'AbCdEfGhIjKlMnOpQr123456';
+
+  it('uses the 24-char colleague shape and a distinct non-shape of the same length', () => {
+    assert.equal(COLLEAGUE.length, 24);
+    assert.equal(NOT_COLLEAGUE.length, 24);
+    assert.equal(OPAQUE24.length, 24);
+  });
+
+  it('ignores the four monthly partition names (negative)', () => {
+    for (const name of PARTITIONS) {
+      const table = name.replace(/_\d{4}_\d{2}$/, '');
+      const line = `Created partition: ${name} for table: ${table}`;
+      const r = detectSecrets(line);
+      assert.equal(r.kinds.includes('opaque-token'), false, `kinds=${r.kinds} line=${line}`);
+      assert.equal(r.severity, null, line);
+      assert.equal(sanitize(line).includes('<TOKEN>'), false, line);
+      assert.equal(sanitize(line).includes(name), true, line);
+    }
+  });
+
+  it('scores the 24-char colleague in recognized admin glue AMBER (negative)', () => {
+    const lines = [
+      `Creating tenant admin: ${COLLEAGUE} for tenant 4 (creator: 1)`,
+      `✅ Tenant admin created: ${COLLEAGUE} (ID: 4) for tenant: 4`,
+    ];
+    for (const line of lines) {
+      const r = detectSecrets(line);
+      assert.equal(r.kinds.includes('opaque-username'), true, `kinds=${r.kinds} line=${line}`);
+      assert.equal(r.kinds.includes('opaque-token'), false, line);
+      assert.equal(r.severity, 'AMBER', line);
+      assert.match(sanitize(line), /<USER>/);
+      assert.equal(sanitize(line).includes(COLLEAGUE), false, line);
+    }
+  });
+
+  it('scores reissue "pending admin " username AMBER and leaves the code unmatched (negative)', () => {
+    const line =
+      `✅ Activation code re-issued for pending admin ${PENDING} (adminId=7, deactivatedIssuanceTokens=1)`;
+    const r = detectSecrets(line);
+    assert.equal(r.kinds.includes('opaque-username'), true, `kinds=${r.kinds}`);
+    assert.equal(r.kinds.includes('opaque-token'), false, `kinds=${r.kinds}`);
+    assert.equal(r.severity, 'AMBER');
+    assert.match(sanitize(line), /pending admin <USER>/);
+    assert.equal(sanitize(line).includes(PENDING), false);
+  });
+
+  it('keeps a realistic opaque secret in the same log contexts RED (positive)', () => {
+    const lines = [
+      `Created partition: ${OPAQUE} for table: ezkey_auth_attempt`,
+      `Creating tenant admin: ${OPAQUE} for tenant 4 (creator: 1)`,
+      `✅ Tenant admin created: ${OPAQUE} (ID: 4) for tenant: 4`,
+      `✅ Activation code re-issued for pending admin ${OPAQUE} (adminId=7, deactivatedIssuanceTokens=1)`,
+      `Creating tenant admin: ${OPAQUE24} for tenant 4 (creator: 1)`,
+      `Creating tenant admin: ${NOT_COLLEAGUE} for tenant 4 (creator: 1)`,
+      `✅ Activation code re-issued for pending admin ${NOT_COLLEAGUE} (adminId=7, deactivatedIssuanceTokens=1)`,
+    ];
+    for (const line of lines) {
+      const r = detectSecrets(line);
+      assert.equal(r.severity, 'RED', `kinds=${r.kinds} line=${line}`);
+      assert.equal(r.kinds.includes('opaque-token'), true, `kinds=${r.kinds} line=${line}`);
+      assert.equal(r.kinds.includes('opaque-username'), false, line);
+    }
+  });
+
+  it('keeps a secret beside an allowlisted partition name or test username RED (positive)', () => {
+    const code = 'ezkey_activation_0123456789abcdef0123456789abcdef';
+    const cases = [
+      [
+        `Created partition: ezkey_auth_attempt_2027_01 note ${OPAQUE}`,
+        'ezkey_auth_attempt_2027_01',
+        OPAQUE,
+      ],
+      [
+        `Creating tenant admin: ${COLLEAGUE} proof=${OPAQUE}`,
+        null,
+        OPAQUE,
+      ],
+      [
+        `✅ Activation code re-issued for pending admin ${PENDING} leaked ${code}`,
+        null,
+        code,
+      ],
+    ];
+    for (const [line, kept, secret] of cases) {
+      const r = detectSecrets(line);
+      assert.equal(r.severity, 'RED', `kinds=${r.kinds} line=${line}`);
+      assert.equal(r.kinds.includes('opaque-token'), true, `kinds=${r.kinds} line=${line}`);
+      assert.equal(sanitize(line).includes(secret), false, line);
+      if (kept) assert.equal(sanitize(line).includes(kept), true, line);
+    }
+  });
+
+  it('does not allowlist partition lookalikes (extra suffix or non-month)', () => {
+    for (const name of [
+      'ezkey_audit_log_2027_02_admin',
+      'ezkey_auth_attempt_2027_13',
+      'ezkey_auth_attempt_2027_00',
+      'ezkey_other_table_2027_01',
+    ]) {
+      const line = `Created partition: ${name} for table: ezkey_auth_attempt`;
+      const r = detectSecrets(line);
+      assert.equal(r.severity, 'RED', `kinds=${r.kinds} name=${name}`);
+      assert.equal(r.kinds.includes('opaque-token'), true, name);
+      assert.equal(sanitize(line).includes(name), false, name);
+    }
+  });
+});

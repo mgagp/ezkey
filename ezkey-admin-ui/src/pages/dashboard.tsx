@@ -874,7 +874,7 @@ export default function DashboardPage() {
                   <Link
                     key={to}
                     to={to}
-                    className="flex items-start gap-3 p-2.5 border-2 border-fg/20 hover:border-fg hover:shadow-brutal bg-bg transition-all duration-100 group"
+                    className="flex items-start gap-3 p-2.5 border-2 border-fg/20 hover:border-fg hover:shadow-brutal bg-bg transition-[border-color,box-shadow,background-color] duration-100 group"
                     data-testid={`dashboard-quick-action-${labelKey}`}
                   >
                     <Icon className="size-4 text-fg-muted mt-0.5 shrink-0 group-hover:text-accent transition-colors" />

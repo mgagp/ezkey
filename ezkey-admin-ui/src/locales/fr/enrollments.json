@@ -59,6 +59,7 @@
     "cancel": "Annuler",
     "submit": "Créer l'enrôlement",
     "errorCreate": "Échec de la création de l'enrôlement. Veuillez réessayer.",
+    "openExistingEnrollment": "Ouvrir l'enrôlement n° {{id}}",
     "noIntegration": "Aucune intégration disponible.",
     "createIntegrationFirst": "Créez d'abord une intégration",
     "successMessage": "Enrôlement {{name}} créé avec succès.",

@@ -172,7 +172,7 @@ function ProgressBar({ pct }: { pct?: number }) {
     <div className="flex items-center gap-2">
       <div className="flex-1 h-2 bg-fg/10 border border-fg/20">
         <div
-          className="h-full bg-accent transition-all"
+          className="h-full bg-accent transition-[width]"
           style={{ width: `${Math.min(value, 100)}%` }}
         />
       </div>

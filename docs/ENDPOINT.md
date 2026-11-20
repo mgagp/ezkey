@@ -1618,7 +1618,7 @@ Authorization: Bearer ezkey_admin_token...
 
 Creates a pending enrollment (`CREATED`) for an integration. Returns identifiers needed for mobile bind/verify.
 
-**Uniqueness (`name`):** At most one `VERIFIED` enrollment per `(integrationId, name)` (see `docs/LIFECYCLE_GOVERNANCE.md` §3.3). Create is rejected when an **active** `VERIFIED` enrollment already uses that name (use recovery/reset or deactivate/re-enroll rather than supersession). Create is allowed when a same-name `VERIFIED` enrollment exists but is **inactive**, or when only non-`VERIFIED` rows exist.
+**Uniqueness (`name`):** At most one `VERIFIED` enrollment per `(integrationId, name)` (see `docs/LIFECYCLE_GOVERNANCE.md` §3.3). Create is rejected with **409** when a `VERIFIED` enrollment already uses that name, active (`enrollment/active-verified-enrollment-exists`) or deactivated (`enrollment/deactivated-enrollment-holds-name`, #1404). Both carry `parameters.existingEnrollmentId`. Reactivate that enrollment, or revoke it to replace the device, then create. Create is allowed when only non-`VERIFIED` rows use the name (retry). Verify and the unique index refuse a second `VERIFIED` row, so before #1404 an invitation created next to a deactivated enrollment could never finish on the phone.
 
 **Request body:**
 

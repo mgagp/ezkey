@@ -78,7 +78,7 @@ UNKNOWN/AMBER (never silent "no OOM").
 | [`config/quality-gate/thresholds.json`](../../../../config/quality-gate/thresholds.json) | Baseline locked (`baselineLocked: true`) from run 8 tip `79679907`. **Declarative only** — nothing reads the flag yet (no drift comparison). |
 | [`config/quality-gate/log-allowlist.txt`](../../../../config/quality-gate/log-allowlist.txt) | Emission-time allowlist; unknown phases/`requires=`/`^.*` rejected. |
 
-Shared redaction: [`scripts/lib/quality-gate-secrets.mjs`](../../../../scripts/lib/quality-gate-secrets.mjs).
+Shared redaction: [`scripts/lib/quality-gate-secrets.mjs`](../../../../scripts/lib/quality-gate-secrets.mjs). Monthly partition names (`ezkey_auth_attempt_YYYY_MM`, `ezkey_audit_log_YYYY_MM`) are not opaque tokens, and the Playwright colleague username (`e2e-1313-<millis>-b`, 24 chars) plus reissue glue `pending admin ` stay AMBER. The 2026-11-19 weekly NO-GO on `4923823e` was those shapes scored RED (PR #1413).
 HA helpers: [`scripts/lib/quality-gate-ha.sh`](../../../../scripts/lib/quality-gate-ha.sh).
 Run notes for #746 live on the PR comment (not in-tree).
 

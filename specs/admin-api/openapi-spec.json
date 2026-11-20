@@ -1266,7 +1266,7 @@
             }
           },
           "409": {
-            "description": "Enrollment conflict",
+            "description": "A VERIFIED enrollment already holds this name on the integration: active (active-verified-enrollment-exists) or deactivated (deactivated-enrollment-holds-name). parameters.existingEnrollmentId names it: reactivate it, or revoke it to replace the device.",
             "content": {
               "*/*": {
                 "schema": {

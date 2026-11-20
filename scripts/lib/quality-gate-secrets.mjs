@@ -55,10 +55,26 @@ export const SHA256_HEX64_RE = /^[0-9a-f]{64}$/i;
 
 /**
  * Test-generated admin username shape only (≤32 chars).
- * e.g. `admin-a1b2c3d4e5f67890`, `tenant-admin-1791682905`, `churn-ta-<hex>`.
+ * e.g. `admin-a1b2c3d4e5f67890`, `tenant-admin-1791682905`, `churn-ta-<hex>`,
+ * Playwright colleague `e2e-1313-<epochMillis>-b` (24 chars).
+ * The optional `-b` tail is that colleague disambiguator only — not an arbitrary token.
  */
 export const TEST_ADMIN_USERNAME_RE =
-  /^[a-z][a-z0-9-]*-(?:[0-9a-f]{8,20}|\d{10,13})$/;
+  /^[a-z][a-z0-9-]*-(?:[0-9a-f]{8,20}|\d{10,13})(?:-b)?$/;
+
+/**
+ * Ezkey monthly partition name only: `ezkey_auth_attempt_YYYY_MM` or
+ * `ezkey_audit_log_YYYY_MM` (month 01-12). Logged by PartitionSchedulerService.
+ * A longer token (`_admin`, `_auth`, `_integration`, or extra entropy) stays opaque.
+ *
+ * @param {string} match opaque candidate
+ * @returns {boolean}
+ */
+export function isEzkeyMonthlyPartitionName(match) {
+  return /^ezkey_(?:auth_attempt|audit_log)_\d{4}_(?:0[1-9]|1[0-2])$/.test(
+    String(match || ''),
+  );
+}
 
 /**
  * Test-generated display-name suffix only (≤32 chars): churn resourceSuffix as
@@ -115,7 +131,8 @@ export function isKeysetBackupFilename(match, after) {
  * Admin / provisioning username label glue. Exact prefixes (case-insensitive):
  * `for admin: `, `by admin: `, `tenant admin: `, `successful for: `,
  * `Tenant admin created: `, `Tenant created: `, `Creating tenant: `,
- * `Admin: `, and space form `Admin ` (e.g. "Admin <name> attempted…").
+ * `Admin: `, space form `Admin ` (e.g. "Admin <name> attempted…"), and
+ * space form `pending admin ` (activation-code reissue, no colon).
  *
  * @param {string} before
  * @returns {boolean}
@@ -130,7 +147,9 @@ export function isAdminUsernameOpaqueContext(before) {
     return true;
   }
   // "Admin <name> attempted to create API key…" (no colon)
-  return /\bAdmin\s+$/.test(b);
+  if (/\bAdmin\s+$/.test(b)) return true;
+  // "Activation code re-issued for pending admin <username>" (no colon)
+  return /\bpending admin\s+$/i.test(b);
 }
 
 /**
@@ -629,11 +648,13 @@ export function applyRedactions(rawLine) {
   );
 
   // 10) Opaque long tokens (letters+digits, not CamelCase / dotted packages).
-  // Skip jar/git/arch/64-hex Sha256Hex=/keyset-backup; test admin usernames → AMBER;
-  // test display-name suffixes → AMBER; publicKey= / DevicePublicKeyHash= → AMBER.
+  // Skip jar/git/arch/64-hex Sha256Hex=/keyset-backup and monthly partition names;
+  // test admin usernames → AMBER; test display-name suffixes → AMBER;
+  // publicKey= / DevicePublicKeyHash= → AMBER.
   out = out.replace(OPAQUE_TOKEN_RE, (m, offset, whole) => {
     if (isMaskedOrNonSecretValue(m)) return m;
     if (m === '<UUID>') return m;
+    if (isEzkeyMonthlyPartitionName(m)) return m;
     const before = String(whole).slice(Math.max(0, offset - 64), offset);
     const after = String(whole).slice(offset + m.length, offset + m.length + 24);
     if (isJarGitArchOpaqueContext(m, before, after)) return m;

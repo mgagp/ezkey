@@ -145,6 +145,20 @@ describe('getTranslatedApiError', () => {
     );
   });
 
+  it('tells the operator what to do when a deactivated enrollment holds the name (#1404)', async () => {
+    await i18n.changeLanguage('fr');
+    const t = i18n.t.bind(i18n);
+    const err = new ApiError(409, {}, 'English detail', {
+      type: `${EZKEY_PROBLEM_TYPE_BASE}/enrollment/deactivated-enrollment-holds-name`,
+      detail: 'A deactivated enrollment already uses this name on this integration.',
+      parameters: { existingEnrollmentId: 16 },
+    });
+    expect(getTranslatedApiError(err, t, 'generic')).toBe(
+      "Un enrôlement désactivé utilise déjà ce nom sur cette intégration. Réactivez-le, ou révoquez-le pour remplacer l'appareil.",
+    );
+    expect(parseProblemParameters(err.problemDetail)?.existingEnrollmentId).toBe(16);
+  });
+
   it('uses the French pending-attempt problem copy instead of a generic error', async () => {
     await i18n.changeLanguage('fr');
     const t = i18n.t.bind(i18n);

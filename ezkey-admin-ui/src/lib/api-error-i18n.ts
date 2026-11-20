@@ -23,6 +23,7 @@ const PREFER_I18N_OVER_DETAIL_RELS = new Set<string>([
   'domain.integrity-window-over-cap',
   'enrollment.system-integration-create-not-allowed',
   'enrollment.active-verified-enrollment-exists',
+  'enrollment.deactivated-enrollment-holds-name',
   'enrollment.cannot-delete-with-history',
   'enrollment.cannot-delete-linked-as-admin',
 ]);

@@ -59,6 +59,7 @@
     "cancel": "Cancel",
     "submit": "Create Enrollment",
     "errorCreate": "Failed to create enrollment. Please try again.",
+    "openExistingEnrollment": "Open enrollment #{{id}}",
     "noIntegration": "No integration available.",
     "createIntegrationFirst": "Create an integration first",
     "successMessage": "Enrollment {{name}} created successfully.",

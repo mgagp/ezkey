@@ -36,15 +36,16 @@ import org.ezkey.enrollment.domain.EnrollmentVerifyRequest;
 import org.ezkey.enrollment.domain.EnrollmentVerifyResponse;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
-import org.ezkey.exception.ActiveVerifiedEnrollmentExistsException;
 import org.ezkey.exception.EnrollmentCreateValidationException;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.exception.SystemIntegrationEnrollmentCreationException;
+import org.ezkey.exception.VerifiedEnrollmentNameTakenException;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.service.EntityEligibilityService;
 import org.ezkey.signature.Ed25519KeyPair;
 import org.ezkey.signature.SignatureService;
+import org.ezkey.util.LogSanitizer;
 import org.ezkey.util.PhoneNumberUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -369,8 +370,8 @@ public class EnrollmentService {
    *     including when the target integration reference does not resolve
    * @throws SystemIntegrationEnrollmentCreationException if enrollment creation targets the
    *     protected system integration
-   * @throws ActiveVerifiedEnrollmentExistsException if an active VERIFIED enrollment already exists
-   *     for the same integration and name
+   * @throws VerifiedEnrollmentNameTakenException if a VERIFIED enrollment, active or deactivated,
+   *     already holds the name on the same integration
    */
   public EnrollmentCreateResponse create(EnrollmentCreateRequest request) {
     if (request.getIntegrationId() == null) {
@@ -405,39 +406,32 @@ public class EnrollmentService {
     // Security: Block enrollment creation unless integration is ACTIVE and tenant is active
     eligibilityService.ensureIntegrationOperational(integration);
 
-    // Security validation: Check for existing VERIFIED enrollment
-    List<Enrollment> existingVerifiedEnrollments;
-    existingVerifiedEnrollments =
+    // A VERIFIED enrollment holding this name, active or deactivated, refuses creation (#1404).
+    // Verify and idx_enrollment_unique_verified_name refuse a second VERIFIED row, so an
+    // invitation created here could never finish on the phone. Refuse before it leaves
+    // (fail-closed); the index stays the backstop.
+    List<Enrollment> existingVerifiedEnrollments =
         enrollmentRepository.findByIntegrationIdAndEnrollmentNameAndStatus(
             request.getIntegrationId(), request.getName().trim(), EnrollmentStatus.VERIFIED);
 
     if (!existingVerifiedEnrollments.isEmpty()) {
       Enrollment existing = existingVerifiedEnrollments.get(0);
-
-      // If VERIFIED enrollment is active, reject creation
-      if (Boolean.TRUE.equals(existing.getActive())) {
-        logger.warn(
-            "Enrollment creation rejected: Active VERIFIED enrollment {} (ID: {}) already exists"
-                + " for integration {} and name '{}'. Use recovery process"
-                + " (/api/v1/admin/auth/recover + /api/v1/admin/enrollments/reset) to replace"
-                + " enrollment.",
-            existing.getEnrollmentName(),
-            existing.getEnrollmentId(),
-            request.getIntegrationId(),
-            request.getName());
-        throw new ActiveVerifiedEnrollmentExistsException(
-            "An active verified enrollment with the same name already exists for this integration."
-                + " To replace an enrollment, use the recovery process: POST"
-                + " /api/v1/admin/auth/recover with a recovery code, then POST"
-                + " /api/v1/admin/enrollments/reset to reset the existing enrollment.");
-      }
-
-      // If VERIFIED enrollment is inactive, allow creation (admin has deactivated it)
-      logger.info(
-          "Enrollment creation allowed: Inactive VERIFIED enrollment {} (ID: {}) exists. "
-              + "Creating new enrollment for replacement.",
-          existing.getEnrollmentName(),
-          existing.getEnrollmentId());
+      boolean existingActive = Boolean.TRUE.equals(existing.getActive());
+      logger.warn(
+          "Enrollment creation rejected: {} VERIFIED enrollment (ID: {}) holds name '{}' on"
+              + " integration {}",
+          existingActive ? "Active" : "Deactivated",
+          existing.getEnrollmentId(),
+          LogSanitizer.sanitizeForLog(request.getName().trim()),
+          request.getIntegrationId());
+      throw new VerifiedEnrollmentNameTakenException(
+          existingActive
+              ? "A verified enrollment with this name is already active on this integration. To"
+                  + " replace the device, revoke that enrollment, then create a new one."
+              : "A deactivated enrollment already uses this name on this integration. Reactivate"
+                  + " it, or revoke it to replace the device, then create a new one.",
+          existing.getEnrollmentId(),
+          existingActive);
     }
 
     var enrollment = new Enrollment();

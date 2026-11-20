@@ -26,6 +26,7 @@ import { useIntegrations } from '@/hooks/use-integrations';
 import { orvalPagedBody, usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { ENROLLMENT_BUCKET_PARAM, type EnrollmentDrilldownBucket } from '@/lib/dashboard-drilldown-links';
 import { ApiError } from '@/lib/api-client';
+import { getTranslatedApiError, parseProblemParameters } from '@/lib/api-error-i18n';
 import { enrollmentDemoPresets, isDemoMode } from '@/lib/demo-mode';
 import { buildListDetailNavState } from '@/lib/list-detail-navigation';
 import { isPhoneNumberInputValid, normalizePhoneNumberInput } from '@/lib/phone-number';
@@ -163,6 +164,13 @@ function EnrollmentCreateDialog({
       navigate(`/enrollments/${enrollment.enrollmentId}`);
     },
   });
+
+  // A VERIFIED enrollment that holds the name (active or deactivated) is named by the 409, so the
+  // operator can open it to reactivate or revoke it (#1404).
+  const existingEnrollmentId =
+    createMutation.error instanceof ApiError
+      ? parseProblemParameters(createMutation.error.problemDetail)?.existingEnrollmentId
+      : undefined;
 
   function handleClose() {
     reset(freshDefaults);
@@ -325,9 +333,19 @@ function EnrollmentCreateDialog({
           {/* API error */}
           {createMutation.isError && (
             <Alert variant="error">
-              {createMutation.error instanceof ApiError
-                ? createMutation.error.message
-                : t('create.errorCreate')}
+              {getTranslatedApiError(createMutation.error, t, t('create.errorCreate'))}
+              {existingEnrollmentId != null && (
+                <>
+                  {' '}
+                  <Link
+                    to={`/enrollments/${existingEnrollmentId}`}
+                    onClick={handleClose}
+                    className="font-medium underline"
+                  >
+                    {t('create.openExistingEnrollment', { id: existingEnrollmentId })}
+                  </Link>
+                </>
+              )}
             </Alert>
           )}
 
