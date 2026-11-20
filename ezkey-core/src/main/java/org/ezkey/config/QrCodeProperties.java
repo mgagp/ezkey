@@ -31,8 +31,8 @@ import org.springframework.stereotype.Component;
  * deployments, this is NOT the internal Docker network URL (e.g. {@code http://auth-api:8080}), but
  * the external URL reachable from outside the Docker network.
  *
- * <p><b>Backward Compatibility:</b> If not configured, QR codes will omit the {@code authUrl}
- * field. The mobile application will fall back to its configured default base URL.
+ * <p>If not configured, QR codes omit the {@code authUrl} field. The mobile application will fall
+ * back to its configured default base URL.
  *
  * @since 2025
  */

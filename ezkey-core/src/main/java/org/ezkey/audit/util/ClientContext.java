@@ -56,7 +56,7 @@ public record ClientContext(String clientIp, String userAgent) {
    *
    * <p>Equivalent to {@link #from(HttpServletRequest, Collection)} with null trusted proxies: only
    * the direct remote address is used for IP (no proxy headers trusted). Use this when
-   * trusted-proxy configuration is not available or when backward compatibility is required.
+   * trusted-proxy configuration is not available.
    *
    * @param request the HTTP servlet request (may be null; returns empty context)
    * @return a ClientContext populated with the resolved IP and user agent

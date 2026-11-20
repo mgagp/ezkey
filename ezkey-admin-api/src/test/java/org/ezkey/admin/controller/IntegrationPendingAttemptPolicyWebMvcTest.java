@@ -11,16 +11,18 @@
 package org.ezkey.admin.controller;
 
 import static org.mockito.Mockito.when;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.List;
 import java.util.Optional;
 import org.ezkey.admin.config.AdminCorsTestFilterBeans;
 import org.ezkey.admin.config.SecurityConfig;
 import org.ezkey.admin.config.TrustedProxyConfig;
 import org.ezkey.admin.security.AccessControlService;
+import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.service.EnrollmentRevocationService;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.exception.DomainExceptionHandler;
@@ -39,6 +41,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -73,7 +77,7 @@ class IntegrationPendingAttemptPolicyWebMvcTest {
     admin.setAdminId(1);
     admin.setUsername("global.admin");
     admin.setAdminType(AdminType.GLOBAL_ADMIN);
-    when(adminRepository.findByUsername("global.admin")).thenReturn(Optional.of(admin));
+    when(adminRepository.findById(1)).thenReturn(Optional.of(admin));
 
     Tenant tenant = new Tenant("Ezkey System", "system");
     tenant.setTenantId(1);
@@ -93,7 +97,12 @@ class IntegrationPendingAttemptPolicyWebMvcTest {
             post("/api/v1/integrations/3/pending-attempt-policy")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"pendingAttemptPolicy\":\"REFUSE\"}")
-                .with(user("global.admin").roles("ADMIN")))
+                .with(
+                    authentication(
+                        new UsernamePasswordAuthenticationToken(
+                            new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null),
+                            null,
+                            List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))))))
         .andExpect(status().isForbidden())
         .andExpect(
             jsonPath("$.type")

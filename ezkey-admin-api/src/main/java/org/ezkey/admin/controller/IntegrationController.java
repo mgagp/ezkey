@@ -776,26 +776,8 @@ public class IntegrationController {
               new IllegalStateException("Admin not found with ID: " + adminPrincipal.adminId()));
     }
 
-    // Fallback for backward compatibility (should not happen with new auth flow)
-    // Try to extract username from principal
-    String username = authentication.getName();
-    return loadAdminByUsername(username);
-  }
-
-  /**
-   * Loads admin entity from database by username.
-   *
-   * <p>Fallback method for backward compatibility. In the new multi-tenant architecture, admins are
-   * loaded by ID from AdminPrincipal.
-   *
-   * @param username the admin username
-   * @return the admin entity
-   * @throws IllegalStateException if admin not found
-   */
-  private EzkeyAdmin loadAdminByUsername(String username) {
-    return adminRepository
-        .findByUsername(username)
-        .orElseThrow(() -> new IllegalStateException("Admin not found: " + username));
+    // Only AdminPrincipal identifies an administrator; anything else fails closed.
+    throw new IllegalStateException("Authenticated principal is not an administrator");
   }
 
   /**

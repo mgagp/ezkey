@@ -36,7 +36,7 @@ type IntegrationListFilter = 'active' | 'retired' | 'all';
 
 function parseLifecycleFilterFromUrl(value: string | null): IntegrationListFilter {
   if (value === 'all' || value === 'retired') return value;
-  // 'active', legacy 'operational', 'inactive', and any unknown value all default to active.
+  // 'active' and any unknown value default to active.
   return 'active';
 }
 

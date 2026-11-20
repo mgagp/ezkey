@@ -111,11 +111,8 @@ public class SecurityConfig {
                 // credentials itself.
                 .requestMatchers("/api/v1/admin/auth/logout")
                 .permitAll()
-                // Allow public access to MFA endpoints (temp token in body)
-                .requestMatchers("/api/v1/admin/mfa/**")
-                .permitAll()
-                // Allow public access to enrollment reset (recovery token in header)
-                .requestMatchers("/api/v1/admin/enrollments/**")
+                // Enrollment reset authenticates with a recovery token in a header (controller)
+                .requestMatchers("/api/v1/admin/enrollments/reset")
                 .permitAll()
                 // Allow public access to health check endpoints
                 .requestMatchers("/actuator/**")

@@ -335,23 +335,7 @@ remains `nightly.window-hours` (not these caps).
 | `ezkey.audit.integrity.max-window-days` | `int` | `92` | optionnel | Async hard-reject (HTTP 400, type `integrity-window-over-cap`, extensions `maxWindowDays` + `capKind=ASYNC`) when `[from, to)` exceeds **`days × 24 h + 1 h`**. Primitive `int` + `@Min(1)` + `@Max(366)`. Must be **>=** `max-sync-window-days` (fail-fast at startup otherwise). |
 | `ezkey.audit.integrity.max-sync-window-days` | `int` | `8` | optionnel | Sync hard-reject for report GETs and operator `POST …/integrity-validation/run` (same problem type; `capKind=SYNC`). Same Instant-span rule. Over-cap ProblemDetail also includes fixed extension `asyncAlternative` = `POST /api/v1/audit-logs/integrity/jobs` (not from request input). Empty/`0`/`367+` fails startup. |
 
-**Upgrade note (old → new):**
-
-| Removed (fail-fast if set) | Replacement |
-|---|---|
-| `ezkey.audit.integrity.verify-report.max-window-hours` | `max-sync-window-days` (sync GETs) / `max-window-days` (async VERIFY) |
-| `ezkey.audit.integrity.retroactive.operator-max-window-hours` | `max-sync-window-days` (sync operator POST) / `max-window-days` (async `RUN_VALIDATION`) |
-
-**[live] host pre-check (2026-10-12, ezkey.online):** the community host sets **neither** old key
-(no property, no relaxed env form, nothing in `.env` / compose / mounts / `app.jar`). The Oct 5 tip
-currently deployed **predates #743 entirely**, so the next install goes straight to the new days
-keys with **nothing to migrate**.
-
-Relaxed env forms of the removed keys (compact and underscore — e.g.
-`EZKEY_AUDIT_INTEGRITY_VERIFYREPORT_MAXWINDOWHOURS`,
-`EZKEY_AUDIT_INTEGRITY_VERIFY_REPORT_MAX_WINDOW_HOURS`,
-`EZKEY_AUDIT_INTEGRITY_RETROACTIVE_OPERATORMAXWINDOWHOURS`) also fail startup. Startup messages name
-the replacement key and never echo values. Effective Instant length: async default **2209 h**
+Effective Instant length: async default **2209 h**
 (`92×24+1`); sync default **193 h** (`8×24+1`).
 
 ---

@@ -46,9 +46,6 @@ export function asOrvalPagedBody<T>(value: unknown): PagedBody<T> | undefined {
   return value as PagedBody<T>;
 }
 
-/** Alias for compatibility with code that still expects PageResponse (e.g. dashboard). */
-export type PageResponse<T> = PagedBody<T>;
-
 /** Controls returned alongside data — pass to <Pagination> and sort controls. */
 export interface PaginationControls {
   page: number;

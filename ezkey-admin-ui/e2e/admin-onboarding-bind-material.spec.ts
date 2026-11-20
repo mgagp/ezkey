@@ -123,10 +123,9 @@ test('@elective @device-backed admin onboarding: creation lands on the record wi
   });
   expect(await bind.text()).toContain('demo-device-bind-success');
 
-  // #1399: the former deep link still opens the record page.
+  // Reload the record page after the bind.
   const detailUrl = `/admins/${adminId}`;
-  await page.goto(`/admins?adminId=${adminId}`);
-  await expect(page).toHaveURL(new RegExp(`${detailUrl}$`));
+  await page.goto(detailUrl);
   await reveal.click();
   await expect(code).toHaveText(String(enrollmentChallenge));
   await expect(boundWarning).toBeVisible();

@@ -431,9 +431,8 @@ public class ApiKeyController {
    * Lists API keys for a specific integration with server-side pagination.
    *
    * <p>This endpoint returns API keys for the specified integration. When {@code active} is not
-   * provided, only active (non-revoked) keys are returned (backward compatible). When {@code
-   * active} is provided, filters by that value. The secret keys are never included in the response
-   * for security.
+   * provided, only active (non-revoked) keys are returned. When {@code active} is provided, filters
+   * by that value. The secret keys are never included in the response for security.
    *
    * @param integrationId the integration ID (path)
    * @param active optional filter by active flag (omit = active only; true/false for explicit)
@@ -940,28 +939,8 @@ public class ApiKeyController {
               new IllegalStateException("Admin not found with ID: " + adminPrincipal.adminId()));
     }
 
-    // Fallback for backward compatibility (should not happen with new auth flow)
-    // Try to extract username from principal
-    String username = authentication.getName();
-    return loadAdminByUsername(username);
-  }
-
-  /**
-   * Loads admin entity from database by username.
-   *
-   * <p>In the current architecture with a single global admin, this method loads the admin entity
-   * from the database using the EzkeyAdminRepository.
-   *
-   * @param username the admin username
-   * @return the admin entity
-   * @throws IllegalStateException if admin not found
-   */
-  private EzkeyAdmin loadAdminByUsername(String username) {
-    // Use the repository to load the admin entity
-    // This ensures consistency with the rest of the authentication system
-    return adminRepository
-        .findByUsername(username)
-        .orElseThrow(() -> new IllegalStateException("Admin not found: " + username));
+    // Only AdminPrincipal identifies an administrator; anything else fails closed.
+    throw new IllegalStateException("Authenticated principal is not an administrator");
   }
 
   /**
