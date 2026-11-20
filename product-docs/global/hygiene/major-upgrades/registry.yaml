@@ -237,11 +237,11 @@
     - { file: docker/docker-compose.ha.yml, expect: "postgres:18-alpine" }
     - { file: experimental-hybrid/lightsail/docker-compose.yml, expect: "postgres:18-alpine" }
   eol: 2030-11-14
-  target: "18"
-  decision: keep
+  target: "19"
+  decision: plan
   security: true
-  issue: null
-  last_review: 2026-10-19
+  issue: 1421
+  last_review: 2026-11-20
   notes: "Any major = dedicated issue + dump/restore; db-grants image tag must move with postgres"
 
 - id: caddy
