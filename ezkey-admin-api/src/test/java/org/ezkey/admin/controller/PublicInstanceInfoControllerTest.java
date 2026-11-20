@@ -11,11 +11,9 @@
 package org.ezkey.admin.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import org.ezkey.admin.config.EvaluatorSelfRegistrationProperties;
 import org.ezkey.instance.dto.PublicInstanceInfoResponseDto;
 import org.ezkey.instance.service.PublicInstanceInfoService;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,32 +30,28 @@ import org.springframework.http.ResponseEntity;
 class PublicInstanceInfoControllerTest {
 
   @Mock private PublicInstanceInfoService publicInstanceInfoService;
-  @Mock private EvaluatorSelfRegistrationProperties evaluatorSelfRegistrationProperties;
 
   private PublicInstanceInfoController controller;
 
   @BeforeEach
   void setUp() {
-    controller =
-        new PublicInstanceInfoController(
-            publicInstanceInfoService, evaluatorSelfRegistrationProperties);
+    controller = new PublicInstanceInfoController(publicInstanceInfoService);
   }
 
   @Test
-  @DisplayName("getInstanceInfo enriches branding with evaluator self-registration flag")
-  void getInstanceInfo_enrichesWithSelfRegFlag() {
+  @DisplayName("getInstanceInfo returns the shared branding payload unchanged")
+  void getInstanceInfo_returnsSharedPayload() {
     PublicInstanceInfoResponseDto base =
         new PublicInstanceInfoResponseDto(
-            "https://auth.example.com:8080", "Acme", "Desc", "https://about.example.com", null);
+            "https://auth.example.com:8080", "Acme", "Desc", "https://about.example.com");
     when(publicInstanceInfoService.getPublicInstanceInfo()).thenReturn(base);
-    when(evaluatorSelfRegistrationProperties.isEnabled()).thenReturn(true);
 
     ResponseEntity<PublicInstanceInfoResponseDto> response = controller.getInstanceInfo();
 
     assertEquals(HttpStatus.OK, response.getStatusCode());
     PublicInstanceInfoResponseDto body = response.getBody();
     assertEquals("Acme", body.instanceName());
-    assertTrue(Boolean.TRUE.equals(body.evaluatorSelfRegistrationEnabled()));
+    assertEquals(base, body);
     verify(publicInstanceInfoService).getPublicInstanceInfo();
   }
 }

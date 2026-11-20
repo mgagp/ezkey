@@ -33,10 +33,11 @@ startup (or script exit ≠ 0).
 | Community (ezkey.online) | [`experimental-hybrid/lightsail/.env.ezkey-online.example`](../experimental-hybrid/lightsail/.env.ezkey-online.example), [`docs/lightsail/community-host.md`](lightsail/community-host.md); community installs [`Caddyfile.ezkey-online`](../experimental-hybrid/lightsail/Caddyfile.ezkey-online) |
 | Admin UI Pages build | Root `.env` `VITE_API_BASE_URL` (required for `deploy-admin-ui-*.sh --build`); commented examples in `ezkey-admin-ui/.env.cloudflare` |
 
-Seb inventory context (community already overrides most live values): QR Auth base, evaluator
-`admin-ui-url` / `guided-tour-url`, Admin UI `VITE_API_BASE_URL`, and Caddyfile choice were the
-remaining silent footguns if an override dropped — closed in code/docs above; do not reintroduce
-community hostnames into generic defaults.
+Seb inventory context (community already overrides most live values): QR Auth base, Admin UI
+`VITE_API_BASE_URL`, and Caddyfile choice were the remaining silent footguns if an override
+dropped — closed in code/docs above; do not reintroduce community hostnames into generic
+defaults. (The evaluator `admin-ui-url` / `guided-tour-url` settings left with
+self-registration, #1368.)
 
 ### Runtime profile (integrity vs base)
 

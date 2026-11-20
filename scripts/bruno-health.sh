@@ -92,11 +92,10 @@ mkdir -p "${REPORT_DIR}"
 TARGETS=()
 case "${SUITE}" in
   g0)
-    # public-admin signup is feature-flagged (404 when disabled) — exclude from default smoke.
     TARGETS=(
       crypto
       public-auth/get-public-instance-info.bru
-      public-admin/get-public-instance-info.bru
+      public-admin
     )
     ;;
   crypto)
@@ -105,7 +104,7 @@ case "${SUITE}" in
   public)
     TARGETS=(
       public-auth/get-public-instance-info.bru
-      public-admin/get-public-instance-info.bru
+      public-admin
     )
     ;;
   g4)

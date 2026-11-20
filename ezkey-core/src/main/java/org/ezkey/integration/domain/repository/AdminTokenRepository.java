@@ -364,35 +364,6 @@ public interface AdminTokenRepository extends JpaRepository<AdminToken, Integer>
   int deactivateAllTokensForTenant(@Param("tenantId") Integer tenantId);
 
   /**
-   * Returns whether any token (active or inactive) of the given purpose exists for the admin.
-   *
-   * <p>Used to enforce one-shot {@code EVALUATOR_TEMP} footholds: cookie loss cannot re-mint.
-   *
-   * @param adminId administrator id
-   * @param purpose token purpose
-   * @return true when at least one matching row exists
-   */
-  boolean existsByAdminAdminIdAndTokenPurpose(
-      Integer adminId, org.ezkey.integration.domain.AdminTokenPurpose purpose);
-
-  /**
-   * Finds active tokens of a given purpose whose absolute expiry is at or before {@code cutoff}.
-   *
-   * @param purpose token purpose
-   * @param cutoff expiry cutoff (typically now)
-   * @return matching active tokens with admin and tenant loaded
-   */
-  @Query(
-      "SELECT t FROM AdminToken t "
-          + "LEFT JOIN FETCH t.admin a "
-          + "LEFT JOIN FETCH a.enrollment "
-          + "LEFT JOIN FETCH t.tenant "
-          + "WHERE t.tokenPurpose = :purpose AND t.active = true AND t.expiresAt <= :cutoff")
-  List<AdminToken> findActiveExpiredByPurposeWithRelations(
-      @Param("purpose") org.ezkey.integration.domain.AdminTokenPurpose purpose,
-      @Param("cutoff") OffsetDateTime cutoff);
-
-  /**
    * Deactivates all active tokens of a given purpose for one administrator.
    *
    * @param adminId administrator id

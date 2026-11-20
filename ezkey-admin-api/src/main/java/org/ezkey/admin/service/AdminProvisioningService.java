@@ -741,14 +741,12 @@ public class AdminProvisioningService {
    * @param requesterPrincipal principal of the invoking Global Administrator
    * @return new activation code payload and revocation summary
    * @throws ResourceNotFoundException when the administrator does not exist
-   * @throws AccessDeniedException when the caller is not a global administrator, or holds an
-   *     EVALUATOR_TEMP session
+   * @throws AccessDeniedException when the caller is not a global administrator
    * @throws IllegalStateException when the administrator is not eligible for re-issue
    */
   @Transactional
   public ActivationCodeReissueResult reissueActivationCode(
       Integer adminId, AdminPrincipal requesterPrincipal) {
-    rejectEvaluatorTemp(requesterPrincipal);
     if (requesterPrincipal == null || !requesterPrincipal.isGlobalAdmin()) {
       throw new AccessDeniedException(
           "Only global administrators may re-issue activation codes for pending administrators.");
@@ -1103,11 +1101,9 @@ public class AdminProvisioningService {
    * @throws ResourceNotFoundException if the administrator to deactivate is not found (404)
    * @throws AdminNotAllowedException if the admin tries to deactivate themselves (400, RFC 9457)
    * @throws AdminLimitException if deactivation would violate minimum limits (400, RFC 9457)
-   * @throws AccessDeniedException when the caller holds an EVALUATOR_TEMP session
    */
   @Transactional
   public boolean deactivateAdmin(Integer adminId, AdminPrincipal principal) {
-    rejectEvaluatorTemp(principal);
     // Load the admin to deactivate
     EzkeyAdmin adminToDeactivate =
         adminRepository
@@ -1175,11 +1171,9 @@ public class AdminProvisioningService {
    * @param adminId the ID of the administrator to activate
    * @param principal the admin principal performing the activation (must be GlobalAdmin)
    * @throws ResourceNotFoundException if the administrator is not found (404)
-   * @throws AccessDeniedException when the caller holds an EVALUATOR_TEMP session
    */
   @Transactional
   public boolean activateAdmin(Integer adminId, AdminPrincipal principal) {
-    rejectEvaluatorTemp(principal);
     EzkeyAdmin admin =
         adminRepository
             .findById(adminId)
@@ -1248,14 +1242,12 @@ public class AdminProvisioningService {
    * @param requesterPrincipal the principal performing the operation
    * @return the new plain-text codes and the target administrator
    * @throws ResourceNotFoundException if the target administrator does not exist
-   * @throws AccessDeniedException if the caller is outside the allowed scope, or holds an
-   *     EVALUATOR_TEMP session
+   * @throws AccessDeniedException if the caller is outside the allowed scope
    * @throws IllegalStateException if the target is not eligible for an initial set
    */
   @Transactional
   public RecoveryCodesRegenerationResult issueInitialRecoveryCodes(
       Integer adminId, AdminPrincipal requesterPrincipal) {
-    rejectEvaluatorTemp(requesterPrincipal);
     EzkeyAdmin admin = loadAdminAuthorizedForRecoveryCodeManagement(adminId, requesterPrincipal);
     validateRecoveryCodeManagementEligibility(admin);
 
@@ -1296,14 +1288,12 @@ public class AdminProvisioningService {
    * @param requesterPrincipal the principal performing the operation
    * @return result containing the target admin, new plain-text codes, and previous code count
    * @throws ResourceNotFoundException if the target administrator does not exist
-   * @throws AccessDeniedException if the caller is outside the allowed scope, or holds an
-   *     EVALUATOR_TEMP session
+   * @throws AccessDeniedException if the caller is outside the allowed scope
    * @throws IllegalStateException if the target administrator is inactive
    */
   @Transactional
   public RecoveryCodesRegenerationResult regenerateRecoveryCodes(
       Integer adminId, AdminPrincipal requesterPrincipal) {
-    rejectEvaluatorTemp(requesterPrincipal);
     EzkeyAdmin admin = loadAdminAuthorizedForRecoveryCodeManagement(adminId, requesterPrincipal);
     validateRecoveryCodeManagementEligibility(admin);
 
@@ -1356,21 +1346,6 @@ public class AdminProvisioningService {
     if (admin.getLifecycleStatus() != AdminLifecycleStatus.ACTIVE) {
       throw new IllegalStateException(
           "Cannot manage recovery codes before administrator activation is complete");
-    }
-  }
-
-  /**
-   * Temporary console sessions never mint or replace administrator credentials, including their
-   * own. The HTTP filter is the primary control; this refuses a caller that reaches the service
-   * without it.
-   *
-   * @param principal authenticated caller, or null when none is present
-   * @throws AccessDeniedException when the caller holds an EVALUATOR_TEMP session
-   */
-  private static void rejectEvaluatorTemp(AdminPrincipal principal) {
-    if (principal != null && principal.isEvaluatorTemp()) {
-      throw new AccessDeniedException(
-          "This action is not available during a temporary console session.");
     }
   }
 

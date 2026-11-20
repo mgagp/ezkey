@@ -350,10 +350,7 @@ EZKEY_RUNTIME_PROFILE=base ./docker/start.sh
 **Lightsail `.env`:** set `EZKEY_RUNTIME_PROFILE=base` and ensure
 `SPRING_PROFILES_ACTIVE` includes `docker-base` last (e.g. `docker,docker-base`), or use a start
 path that sources `docker/runtime-profile.sh`. Orthogonal flags
-(`EZKEY_EVALUATOR_SELF_REGISTRATION_ENABLED`, demo-device, Caddy, HA, JMX, JavaMelody) are unchanged.
-For local QA of self-registration + temporary console explore, use
-[`docker-compose.evaluator-self-reg.yml`](docker-compose.evaluator-self-reg.yml) as an overlay
-(default clean-start remains OFF).
+(demo-device, Caddy, HA, JMX, JavaMelody) are unchanged.
 
 Admin UI Integrity / Alerts surfaces may still be visible under base; monitoring jobs behind them
 are inactive — UI badge/mask is a separate track.

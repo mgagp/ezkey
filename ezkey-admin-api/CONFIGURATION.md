@@ -35,7 +35,6 @@ tenant and integration management, enrollment lifecycle, and audit log chain. It
 | `ezkey.trusted-proxies.required` | — | `false` | optionnel [prod] |
 | `ezkey.trusted-proxies.cidrs` | — | *(empty list)* | optionnel |
 | `ezkey.admin.cors.allowed-origins` | `EZKEY_ADMIN_CORS_ALLOWED_ORIGINS` | *(empty list)* | optionnel |
-| `ezkey.evaluator.self-registration.enabled` | `EZKEY_EVALUATOR_SELF_REGISTRATION_ENABLED` | `false` | optionnel |
 | `ezkey.admin.auth.browser-session-cookie-enabled` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_ENABLED` | `false` | optionnel |
 | `ezkey.admin.auth.browser-session-cookie-name` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_NAME` | `EZKEY_ADMIN_SESSION` | optionnel |
 | `ezkey.admin.auth.browser-session-cookie-secure` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_SECURE` | `true` | optionnel |
@@ -451,45 +450,6 @@ When `true`, Admin API emits a startup WARN in addition to the write-time WARN.
 | `ezkey.admin.auth.browser-session-cookie-same-site` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_SAME_SITE` | *(unset)* |
 | `ezkey.admin.auth.browser-csrf-cookie-name` | `EZKEY_ADMIN_AUTH_BROWSER_CSRF_COOKIE_NAME` | *(unset)* |
 | `ezkey.admin.auth.browser-csrf-header-name` | `EZKEY_ADMIN_AUTH_BROWSER_CSRF_HEADER_NAME` | *(unset)* |
-
----
-
-### 12. Evaluator self-registration (`ezkey.evaluator.self-registration.*`)
-
-**Description:** anonymous evaluator signup on experimental / community preview installations —
-empty tenant + pending Tenant Admin + activation code. Disabled by default; enable only on
-installations that intentionally expose public signup.
-
-**Defined in:** `EvaluatorSelfRegistrationProperties`
-
-| Property | Type | Default | Obligation | Description |
-|---|---|---|---|---|
-| `ezkey.evaluator.self-registration.enabled` | `boolean` | `false` | optionnel | When `false`, `POST /api/v1/public/evaluator-signup` returns HTTP 404. |
-| `ezkey.evaluator.self-registration.daily-cap` | `int` | `5` | optionnel | Max successful signups per UTC day (global). |
-| `ezkey.evaluator.self-registration.per-ip-window-hours` | `int` | `24` | optionnel | Per-IP success window. |
-| `ezkey.evaluator.self-registration.per-ip-max-success` | `int` | `3` | optionnel | Max successful signups per IP within the window (lab UX: operator retries without waiting 24h). Instance still capped by `daily-cap`. |
-| `ezkey.evaluator.self-registration.admin-ui-url` | `String` | *(empty)* | requis when `enabled=true` | Returned to clients after signup. No product default hostname. |
-| `ezkey.evaluator.self-registration.guided-tour-url` | `String` | *(empty)* | requis when `enabled=true` | Returned to clients after signup. No product default hostname. |
-| `ezkey.evaluator.self-registration.temporary-session-ttl-hours` | `int` | `8` | optionnel | Absolute TTL for temporary evaluator console (`EVALUATOR_TEMP`) sessions when `enabled=true`. |
-
-**Fail-closed:** when `enabled=true`, Admin API startup aborts if `admin-ui-url` or
-`guided-tour-url` is blank (`EvaluatorSelfRegistrationStartupValidator`).
-
-**Temporary evaluator console:** same self-registration flag only — no second temporary-console
-toggle. When ON, after activation the Admin UI offers « Explorer la console — accès temporaire
-(~8 h) » (mint `EVALUATOR_TEMP`) beside classic device enroll. See
-[`product-docs/global/vision/V-2026-09-26-temporary-evaluator-console-access.md`](../product-docs/global/vision/V-2026-09-26-temporary-evaluator-console-access.md).
-Local QA overlay: [`docker/docker-compose.evaluator-self-reg.yml`](../docker/docker-compose.evaluator-self-reg.yml).
-
-**Operator notes:**
-
-- Set URLs via env (`EZKEY_EVALUATOR_SELF_REGISTRATION_ADMIN_UI_URL`,
-  `EZKEY_EVALUATOR_SELF_REGISTRATION_GUIDED_TOUR_URL`) or overlay — never rely on a code default
-  hostname.
-- Optional TTL override: `EZKEY_EVALUATOR_SELF_REGISTRATION_TEMPORARY_SESSION_TTL_HOURS`.
-- Community overlay example: [`experimental-hybrid/lightsail/.env.ezkey-online.example`](../experimental-hybrid/lightsail/.env.ezkey-online.example).
-- Lightsail lab example values: [`experimental-hybrid/lightsail/.env.example`](../experimental-hybrid/lightsail/.env.example) (commented block when enabling).
-- Add marketing / Pages origins to `ezkey.admin.cors.allowed-origins` for cross-origin signup POSTs.
 
 ---
 

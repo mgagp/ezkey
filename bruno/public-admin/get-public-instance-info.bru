@@ -34,6 +34,10 @@ script:post-response {
       test("Response contains aboutUrl (nullable)", function () {
           expect(jsonData).to.have.property('aboutUrl');
       });
+
+      test("No self-registration flag (retired, #1368)", function () {
+          expect(jsonData).to.not.have.property('evaluatorSelfRegistrationEnabled');
+      });
   }
 }
 

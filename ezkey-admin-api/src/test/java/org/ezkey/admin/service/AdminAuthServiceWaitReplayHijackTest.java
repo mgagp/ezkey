@@ -102,8 +102,6 @@ class AdminAuthServiceWaitReplayHijackTest {
 
     // Crucial: Token rotation and token generation were called only ONCE (for session 1)
     verify(tokenRepository, times(1)).deactivateAllTokensForAdmin(adminId);
-    verify(tokenRepository, times(1))
-        .deactivateTokensForAdminByPurpose(adminId, AdminTokenPurpose.EVALUATOR_TEMP);
     verify(tokenRepository, times(1)).save(any());
   }
 
@@ -172,8 +170,6 @@ class AdminAuthServiceWaitReplayHijackTest {
     assertNotNull(response.token());
     verify(authAttemptRepository).markSessionIssued(eq(attemptId), any());
     verify(tokenRepository, times(1)).deactivateAllTokensForAdmin(adminId);
-    verify(tokenRepository, times(1))
-        .deactivateTokensForAdminByPurpose(adminId, AdminTokenPurpose.EVALUATOR_TEMP);
   }
 
   @Test

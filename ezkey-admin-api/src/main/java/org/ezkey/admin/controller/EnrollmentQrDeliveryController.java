@@ -72,21 +72,17 @@ public class EnrollmentQrDeliveryController {
   }
 
   /**
-   * Says whether the send action can be offered to this caller.
+   * Says whether the send action can be offered.
    *
    * @return the capability, with no connector detail beyond what an operator needs
    */
   @Operation(
       summary = "Read QR delivery capability",
-      description =
-          "Says whether a delivery connector can be used by this caller, without contacting a"
-              + " provider. An admin scoped to a self-registered tenant sees it unavailable.")
+      description = "Says whether a delivery connector can be used, without contacting a provider.")
   @PreAuthorize("hasRole('ADMIN')")
   @GetMapping("/qr-delivery/capability")
   public QrDeliveryCapabilityDto capability() {
-    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-    DeliveryCapabilityService.Capability capability =
-        deliveryService.capabilityFor(AdminProvisioningService.extractAdminPrincipal(auth));
+    DeliveryCapabilityService.Capability capability = deliveryService.capability();
     return new QrDeliveryCapabilityDto(
         capability.available(), capability.testMode(), capability.locales());
   }

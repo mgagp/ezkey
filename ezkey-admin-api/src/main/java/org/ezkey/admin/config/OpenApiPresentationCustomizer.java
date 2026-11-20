@@ -57,8 +57,7 @@ public final class OpenApiPresentationCustomizer implements OpenApiCustomizer {
           TAG_ALERTS,
           TAG_DASHBOARD);
 
-  private static final String PUBLIC_DESCRIPTION =
-      "Unauthenticated instance metadata, evaluator preview signup, and related public endpoints";
+  private static final String PUBLIC_DESCRIPTION = "Unauthenticated instance metadata";
 
   private static final Map<String, String> DEFAULT_DESCRIPTIONS =
       Map.ofEntries(

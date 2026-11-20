@@ -46,17 +46,17 @@ class AdminCookieCsrfFilterTest {
   }
 
   @Test
-  void evaluatorTempBootstrapPathSkipsCsrfEvenWhenCookieAuthenticated() throws Exception {
+  void retiredEvaluatorTempPathIsNoLongerACsrfExemption() throws Exception {
+    // #1368: the temporary console route is gone; its former exemption must not linger.
     MockHttpServletRequest request =
         new MockHttpServletRequest("POST", "/api/v1/admin/auth/evaluator-temp");
     request.setAttribute(AdminAuthRequestAttributes.AUTH_SOURCE, AuthSource.COOKIE);
-    request.setAttribute(AdminAuthRequestAttributes.PLAIN_TOKEN, "stale-session-token");
+    request.setAttribute(AdminAuthRequestAttributes.PLAIN_TOKEN, "session-token");
     MockHttpServletResponse response = new MockHttpServletResponse();
 
     filter.doFilter(request, response, new MockFilterChain());
 
-    assertEquals(200, response.getStatus());
-    assertNull(response.getErrorMessage());
+    assertEquals(403, response.getStatus());
   }
 
   @Test

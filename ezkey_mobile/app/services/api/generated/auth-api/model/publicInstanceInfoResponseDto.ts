@@ -38,9 +38,4 @@ export interface PublicInstanceInfoResponseDto {
      * @nullable
      */
   aboutUrl?: string | null;
-  /**
-     * When true, evaluator self-registration and temporary console explore are available on this Admin API (community/lab). False or omitted when disabled.
-     * @nullable
-     */
-  evaluatorSelfRegistrationEnabled?: boolean | null;
 }

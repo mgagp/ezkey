@@ -25,12 +25,15 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Contract: Java {@link AdminTokenPurpose} values must be allowed by the latest Flyway CHECK on
- * {@code ezkey_admin_tokens.token_purpose}. Catches the V18→mint gap (EVALUATOR_TEMP missing) and
- * the same gap for ACTIVATION (V26, #1122).
+ * {@code ezkey_admin_tokens.token_purpose}, and the CHECK must allow nothing else. Catches a
+ * missing purpose (the V18→mint gap, ACTIVATION in V26 / #1122) and a retired purpose left in the
+ * CHECK (EVALUATOR_TEMP, removed in V31 / #1368).
  *
  * @since 2026
  */
 class AdminTokenPurposeMigrationContractTest {
+
+  private static final String LATEST = "db/migration/V31__retire_evaluator_self_registration.sql";
 
   private static final Pattern CHECK_IN_CLAUSE =
       Pattern.compile(
@@ -38,13 +41,13 @@ class AdminTokenPurposeMigrationContractTest {
           Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
   @Test
-  @DisplayName("V26 CHECK allows every AdminTokenPurpose enum constant including ACTIVATION")
-  void latestCheckAllowsAllEnumPurposes() throws IOException {
-    String sql = readClasspathResource("db/migration/V26__admin_token_activation_purpose.sql");
+  @DisplayName("V31 CHECK allows exactly the AdminTokenPurpose enum constants")
+  void latestCheckAllowsExactlyEnumPurposes() throws IOException {
+    String sql = readClasspathResource(LATEST);
 
     Matcher matcher = CHECK_IN_CLAUSE.matcher(sql);
     assertThat(matcher.find())
-        .as("V26 must redefine chk_admin_tokens_token_purpose with an IN (...) list")
+        .as("V31 must redefine chk_admin_tokens_token_purpose with an IN (...) list")
         .isTrue();
 
     Set<String> allowed =
@@ -58,27 +61,20 @@ class AdminTokenPurposeMigrationContractTest {
         Arrays.stream(AdminTokenPurpose.values()).map(Enum::name).collect(Collectors.toSet());
 
     assertThat(allowed).containsExactlyInAnyOrderElementsOf(enumNames);
-    assertThat(allowed).contains("EVALUATOR_TEMP", "SESSION", "RECOVERY", "ACTIVATION");
+    assertThat(allowed).containsExactlyInAnyOrder("SESSION", "RECOVERY", "ACTIVATION");
     assertThat(sql)
         .containsIgnoringCase("DROP CONSTRAINT IF EXISTS chk_admin_tokens_token_purpose");
   }
 
   @Test
-  @DisplayName(
-      "V24 partial unique index enforces one EVALUATOR_TEMP per admin_id without active filter")
-  void v24PartialUniqueIndexOneEvaluatorTempPerAdmin() throws IOException {
-    String sql =
-        readClasspathResource("db/migration/V24__uq_admin_tokens_one_evaluator_temp_per_admin.sql");
+  @DisplayName("V31 deletes EVALUATOR_TEMP rows and drops the V24 one-per-admin index")
+  void v31RetiresEvaluatorTempStorage() throws IOException {
+    String sql = readClasspathResource(LATEST);
 
     assertThat(sql)
-        .containsIgnoringCase("uq_admin_tokens_one_evaluator_temp_per_admin")
-        .containsIgnoringCase("CREATE UNIQUE INDEX")
-        .contains("ON ezkey_admin_tokens (admin_id)")
-        .containsIgnoringCase("WHERE token_purpose = 'EVALUATOR_TEMP'");
-
-    // One-shot includes deactivated rows — must not restrict to active = true.
-    assertThat(sql.toLowerCase()).doesNotContain("active = true");
-    assertThat(sql.toLowerCase()).doesNotContain("active=true");
+        .containsIgnoringCase("DELETE FROM ezkey_admin_tokens")
+        .contains("token_purpose = 'EVALUATOR_TEMP'")
+        .containsIgnoringCase("DROP INDEX IF EXISTS uq_admin_tokens_one_evaluator_temp_per_admin");
   }
 
   private static String readClasspathResource(String path) throws IOException {

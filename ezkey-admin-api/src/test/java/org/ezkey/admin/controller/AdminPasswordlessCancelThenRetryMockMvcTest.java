@@ -34,7 +34,6 @@ import org.ezkey.admin.security.AdminSessionCookieService;
 import org.ezkey.admin.service.AdminAuthService;
 import org.ezkey.admin.service.AdminProvisioningService;
 import org.ezkey.admin.service.AdminRecoveryService;
-import org.ezkey.admin.service.EvaluatorTempSessionService;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -68,7 +67,6 @@ class AdminPasswordlessCancelThenRetryMockMvcTest {
   @Mock private AdminBrowserSessionCookieProperties browserSessionCookieProperties;
   @Mock private AdminSessionCookieService sessionCookieService;
   @Mock private AdminCsrfTokenService csrfTokenService;
-  @Mock private EvaluatorTempSessionService evaluatorTempSessionService;
 
   private MockMvc mockMvc;
 
@@ -97,8 +95,7 @@ class AdminPasswordlessCancelThenRetryMockMvcTest {
             adminRepository,
             browserSessionCookieProperties,
             sessionCookieService,
-            csrfTokenService,
-            evaluatorTempSessionService);
+            csrfTokenService);
 
     when(browserSessionCookieProperties.isBrowserSessionCookieEnabled()).thenReturn(false);
     when(adminRepository.findByUsername(anyString())).thenReturn(java.util.Optional.empty());

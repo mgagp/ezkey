@@ -391,7 +391,7 @@ See **Error responses (RFC 9457)** above. Before the signature verifies over the
 
 **Error responses (RFC 9457):** HTTP **4xx** and **5xx** responses from the Admin API use **RFC 9457** Problem Details (`Content-Type: application/problem+json`) with `type`, `title`, `status`, `detail`, and extension property `path`. RFC 9457 `instance` is the request path (a URI-reference, not an absolute URI). Some problems include an optional extension property **`parameters`** (JSON object of scalar values, **camelCase** keys) for client-side localization when `detail` contains dynamic fragments; clients should still branch on **`type`** and HTTP status. Unsupported HTTP methods on a mapped path return **405** (`type` `https://ezkey.io/problems/admin/method-not-allowed`) with an `Allow` header; they are not mapped as **500**. Missing or invalid session credentials on protected operations return **401** with an empty body (Spring `HttpStatusEntryPoint`). Login-family **400 / 401 / 408 / 500** remain Problem Details. Login and passwordless-wait **429** from the rate-limit filter are an **empty body** plus `Retry-After`.
 
-Public operations (`GET /api/v1/public/instance-info`, `POST /api/v1/public/evaluator-signup`) declare no HTTP security requirement in OpenAPI (`security: []`).
+The only public operation (`GET /api/v1/public/instance-info`) declares no HTTP security requirement in OpenAPI (`security: []`). No unauthenticated route creates a tenant or an administrator: a Global Admin creates the tenant and the Tenant Admin and hands over an activation code. Anonymous evaluator self-registration and the temporary evaluator console were retired in #1365 (#1368); `POST /api/v1/public/evaluator-signup` now answers **404**.
 
 ### Public instance metadata (unauthenticated)
 
@@ -422,44 +422,6 @@ vs enrolled instance-info).
 See also: enrollment QR JSON and `authUrl` (same property as `ezkey.qr.auth-base-url` on the Admin API); search this file for `ezkey.qr.auth-base-url`.
 
 **Bruno:** `bruno/public-admin/get-public-instance-info.bru` (no Bearer token; uses `{{base_url_admin_api}}`). The `postman/` tree is a historical leftover — see `postman/README.md`.
-
-### Anonymous evaluator self-registration (unauthenticated, installation-scoped)
-
-**Base path:** `POST http://localhost:9080/api/v1/public/evaluator-signup` (no `Authorization` header).
-
-Available only when `ezkey.evaluator.self-registration.enabled=true` (intended for the community alpha preview). When disabled, returns **404 Not Found** (no response body enumeration).
-
-Creates an **empty tenant** and a **pending Tenant Admin** with **`ACTIVATION_CODE`** onboarding. Does **not** create integrations, API keys, or enrollments — evaluators follow the [community guided tour](https://ezkey.org/community-guided-tour.html) from step 1.
-
-**Rate limits (defaults):** global **5 successful signups per UTC day**; **3 successful signups per client IP per 24h**. Failures return **429** with a generic capacity message.
-
-**Request body (optional JSON):**
-
-```json
-{
-  "tenantLabel": "My preview workspace"
-}
-```
-
-| Field | Required | Notes |
-| ----- | -------- | ----- |
-| `tenantLabel` | No | Max 40 chars; must not contain email or URL patterns |
-
-**Response (201 Created):**
-
-```json
-{
-  "activationCode": "ABCD-1234",
-  "activationCodeExpiresAt": "2026-05-30T12:00:00Z",
-  "adminUiUrl": "https://admin-ui.ezkey.online",
-  "guidedTourUrl": "https://ezkey.org/community-guided-tour.html",
-  "tenantLabel": "eval-a1b2c3d4"
-}
-```
-
-**CORS:** cross-origin signup from `ezkey.org` requires `ezkey.admin.cors.allowed-origins` to include the static site origin(s).
-
-See `ezkey-admin-api/CONFIGURATION.md` (evaluator self-registration group).
 
 ### Admin Authentication (Passwordless-Only)
 
@@ -732,47 +694,6 @@ flow (`POST /api/v1/admins/{id}/recovery-codes/regenerate`). See [LIFECYCLE_GOVE
 
 **Failure:** **403** for invalid, expired, or unusable codes (neutral client-safe message). **400**
 when activation cannot proceed in the current state.
-
----
-
-#### POST /evaluator-temp (temporary evaluator console)
-
-Available only when `ezkey.evaluator.self-registration.enabled=true` (same gate as anonymous
-evaluator signup). After activation, the Admin UI may offer temporary console explore without a
-device bind. Mints a one-shot `EVALUATOR_TEMP` session (absolute TTL, default 8h). Cookie/bearer
-loss cannot re-mint. After the TEMP identity’s MFA enrollment is **VERIFIED**, admin-api
-invalidates TEMP on the next bearer validation (and again when minting a fresh `SESSION`).
-Auth-api does not update `ezkey_admin_tokens`. Mint is refused unless the tenant is
-self-registered (anonymous evaluator signup). Expiry always revokes the TEMP token. Identity
-deactivation and the soft-tenant predicate run only for that same self-registered tenant — see
-vision `V-2026-09-26-temporary-evaluator-console-access` (amendment #923).
-
-**Request:**
-```http
-POST /api/v1/admin/auth/evaluator-temp
-Content-Type: application/json
-
-{
-  "enrollmentId": 123,
-  "enrollmentProofToken": "ezkey_proof_…"
-}
-```
-
-**Success Response (200 OK):** bearer or HttpOnly cookie (same delivery as login) plus
-`tokenPurpose: "EVALUATOR_TEMP"`. Never logs the token or proof.
-
-**Failure:** **403** when the flag is off, capability is invalid, already minted, or not eligible.
-
-**While the token purpose is `EVALUATOR_TEMP`:** the session may explore the tenant console
-(dashboard, lists, lab CRUD). It may read and update its own administrator profile, and it may
-read its own onboarding credentials and QR, only when the id segment is the canonical decimal
-form of its own id (no sign, no hex, no leading zeros, no trailing slash). A non-canonical
-spelling such as `0x63`, `+99`, or `099` is **403** even for profile and onboarding. Every other
-`/api/v1/admins/{id}/…` route is **403**, including recovery-code regeneration, initial
-recovery-code issuance, activation-code reissue, and deactivate/activate — for the caller's own
-id and for a peer. Those five mutations are also refused in the provisioning service. A
-`SESSION` token is not subject to this filter. See
-[#1123](https://github.com/mgagp/ezkey/issues/1123).
 
 ---
 
@@ -1432,8 +1353,6 @@ invalidates any previous unused recovery codes.
 **Permissions:**
 - **GlobalAdmin**: Can regenerate recovery codes for any administrator
 - **TenantAdmin**: Can regenerate recovery codes for administrators in their tenant
-- **`EVALUATOR_TEMP`**: Denied (403) for every administrator id, including the caller's own
-  (#1123). A normal `SESSION` token is unchanged.
 
 **Request:**
 ```http
@@ -1788,7 +1707,7 @@ Authorization: Bearer ezkey_admin_token...
 
 #### **POST /api/v1/enrollments/{id}/qr-delivery** (Send the QR through a delivery connector)
 
-Sends the QR of a `CREATED` enrollment to its `contactEmail`, as one attempt, through the optional delivery connector ([ADR-0018](../product-docs/global/architecture-decisions.md#adr-0018--connector-spi-for-external-services)). The challenge is never sent, and the QR stays available on screen whatever the outcome. Same tenant gate as `GET /qrcode`. Denied to evaluator temporary sessions.
+Sends the QR of a `CREATED` enrollment to its `contactEmail`, as one attempt, through the optional delivery connector ([ADR-0018](../product-docs/global/architecture-decisions.md#adr-0018--connector-spi-for-external-services)). The challenge is never sent, and the QR stays available on screen whatever the outcome. Same tenant gate as `GET /qrcode`.
 
 ```http
 POST /api/v1/enrollments/123/qr-delivery
@@ -1809,14 +1728,14 @@ Content-Type: application/json
 | Status | `code` | Meaning |
 |--------|--------|---------|
 | 404 | | Enrollment not found or not visible to this admin |
-| 409 | `enrollment-not-created`, `enrollment-expired`, `admin-enrollment`, `self-registered-tenant`, `parent-not-operational` | This enrollment cannot be sent. `self-registered-tenant`: its tenant came from anonymous evaluator signup and keeps integrated delivery |
+| 409 | `enrollment-not-created`, `enrollment-expired`, `admin-enrollment`, `parent-not-operational` | This enrollment cannot be sent |
 | 422 | `contact-email-missing`, `contact-email-invalid`, `expected-server-missing`, `locale-not-offered` | Sending data is missing or invalid |
 | 429 | `daily-cap-reached` | Tenant or instance daily cap reached |
 | 503 | `connector-unavailable` | No connector, or it is unreachable, `degraded` or on another contract version |
 
 #### **GET /api/v1/enrollments/qr-delivery/capability** (QR delivery capability)
 
-Says whether the send action can be offered to the caller. Reads the connector's health with a short cache, and never contacts a provider. An admin scoped to a self-registered tenant reads `available: false`. Denied to evaluator temporary sessions.
+Says whether the send action can be offered. Reads the connector's health with a short cache, and never contacts a provider.
 
 ```json
 { "available": true, "testMode": false, "locales": ["en", "fr"] }

@@ -42,8 +42,6 @@ class AdminCorsPreflightEnabledWebMvcTest {
 
   @MockitoBean private PublicInstanceInfoService publicInstanceInfoService;
 
-  @MockitoBean private EvaluatorSelfRegistrationProperties evaluatorSelfRegistrationProperties;
-
   @Autowired private MockMvc mockMvc;
 
   @Test

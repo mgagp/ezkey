@@ -15,10 +15,8 @@ package org.ezkey.integration.domain;
  *
  * <p>{@link #SESSION} tokens authenticate ordinary Admin API calls. {@link #RECOVERY} tokens are
  * issued after recovery-code validation and may only be used on the enrollment-reset funnel
- * (SEC-021). {@link #EVALUATOR_TEMP} tokens grant a one-shot navigable tenant-admin foothold on
- * community/lab when evaluator self-registration is enabled (Mode C); they must never be promoted
- * into {@link #SESSION}. {@link #ACTIVATION} rows hold deferred-onboarding invite codes; they are
- * only consumed by the unauthenticated activation endpoint and never authenticate a request.
+ * (SEC-021). {@link #ACTIVATION} rows hold deferred-onboarding invite codes; they are only consumed
+ * by the unauthenticated activation endpoint and never authenticate a request.
  *
  * @author Ezkey contributors
  * @since 2026
@@ -30,12 +28,6 @@ public enum AdminTokenPurpose {
 
   /** Temporary break-glass token scoped to enrollment reset. */
   RECOVERY,
-
-  /**
-   * One-shot temporary evaluator console session (absolute TTL, navigable TENANT_ADMIN deny-list).
-   * Distinct from {@link #SESSION}; revoked on MFA VERIFIED bind or expiry.
-   */
-  EVALUATOR_TEMP,
 
   /**
    * One-time deferred-onboarding activation code ({@code ezkey_activation_…}). Absolute TTL; never

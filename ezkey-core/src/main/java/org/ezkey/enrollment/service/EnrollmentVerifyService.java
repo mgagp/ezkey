@@ -154,9 +154,6 @@ public class EnrollmentVerifyService {
     // Step 7: Mark as verified and activate
     markAsVerified(lockedEnrollment, request);
 
-    // EVALUATOR_TEMP supersede is admin-api only (SESSION mint + TEMP validation gate).
-    // Auth enrollment-verify stays enrollment-only — no writes to ezkey_admin_tokens.
-
     // Step 8: Build and return response
     return buildVerifyResponse(lockedEnrollment);
   }

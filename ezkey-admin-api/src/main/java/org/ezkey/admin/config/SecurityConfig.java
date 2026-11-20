@@ -13,7 +13,6 @@ package org.ezkey.admin.config;
 import org.ezkey.admin.security.AdminCookieCsrfFilter;
 import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.security.AdminTokenAuthenticationFilter;
-import org.ezkey.admin.security.EvaluatorTempAccessFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -64,7 +63,6 @@ public class SecurityConfig {
   private final AdminTokenAuthenticationFilter adminTokenAuthenticationFilter;
   private final AdminRateLimitFilter adminRateLimitFilter;
   private final AdminCookieCsrfFilter adminCookieCsrfFilter;
-  private final EvaluatorTempAccessFilter evaluatorTempAccessFilter;
 
   /**
    * Creates the Admin API security configuration.
@@ -72,17 +70,14 @@ public class SecurityConfig {
    * @param adminTokenAuthenticationFilter Bearer / session token filter
    * @param adminRateLimitFilter login and admin-ops rate limit filter
    * @param adminCookieCsrfFilter CSRF check for cookie-authenticated unsafe methods
-   * @param evaluatorTempAccessFilter Mode C EVALUATOR_TEMP deny-list
    */
   public SecurityConfig(
       AdminTokenAuthenticationFilter adminTokenAuthenticationFilter,
       AdminRateLimitFilter adminRateLimitFilter,
-      AdminCookieCsrfFilter adminCookieCsrfFilter,
-      EvaluatorTempAccessFilter evaluatorTempAccessFilter) {
+      AdminCookieCsrfFilter adminCookieCsrfFilter) {
     this.adminTokenAuthenticationFilter = adminTokenAuthenticationFilter;
     this.adminRateLimitFilter = adminRateLimitFilter;
     this.adminCookieCsrfFilter = adminCookieCsrfFilter;
-    this.evaluatorTempAccessFilter = evaluatorTempAccessFilter;
   }
 
   /**
@@ -104,7 +99,6 @@ public class SecurityConfig {
                 // Allow public access to authentication bootstrap endpoints
                 .requestMatchers(
                     "/api/v1/admin/auth/activate",
-                    "/api/v1/admin/auth/evaluator-temp",
                     "/api/v1/admin/auth/login",
                     "/api/v1/admin/auth/passwordless-wait",
                     "/api/v1/admin/auth/passwordless-cancel",
@@ -146,8 +140,6 @@ public class SecurityConfig {
         adminTokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
     http.addFilterAfter(adminCookieCsrfFilter, AdminTokenAuthenticationFilter.class);
-
-    http.addFilterAfter(evaluatorTempAccessFilter, AdminCookieCsrfFilter.class);
 
     return http.build();
   }
