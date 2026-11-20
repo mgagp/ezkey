@@ -58,7 +58,7 @@ positioning rather than rediscovering the trade-off in chat.
 | --- | --- | --- |
 | P1 | Admin Authentication | `activate` → `login` → `passwordless-wait` → `me` → `recover` → `logout` |
 | P1 | Admin Enrollment Management | `reset` (single op; follows `recover` cross-tag) |
-| P1 | Public | `instance-info` → `evaluator-signup` (Getting started group) |
+| P1 | Public | `instance-info` → `evaluator-signup` (Getting started group; `evaluator-signup` retired 2026-11-18, #1368) |
 | P2 | Auth Attempts | `create` → `wait` → `cancel` → get → list → `pending-count` |
 | P3 | Tenants, Integrations, Enrollments, API Keys | List-first CRUD default |
 | Defer | Audit Logs, Encryption Keys, Alerts, Dashboard | Read/query heavy; lower return on custom path order |

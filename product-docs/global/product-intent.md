@@ -170,9 +170,12 @@ At a high level, Ezkey currently includes:
 
 **Community instance vs self-host:** A maintained **public alpha** community instance runs on
 **ezkey.online** for evaluation (lab · discreet; alpha ≠ production; no SLA; no IdP parity).
-Self-hosted and clean-start deployments remain first-class. Anonymous evaluator self-registration
-(`ezkey.evaluator.self-registration.enabled`) is **OFF by default**; the community host may turn
-it **ON explicitly**. Self-host operators do not inherit an open signup path unless they choose it.
+Self-hosted and clean-start deployments remain first-class. There is one onboarding path
+everywhere: a Global Admin creates the tenant and the Tenant Admin and hands over an activation
+code. There are two ways to evaluate Ezkey: **technical exploration** (clone the repository and
+run a clean start, no contact needed) or the **community instance** (write to the Ezkey team by
+email; the team replies with an identifier). Anonymous evaluator self-registration was retired on
+2026-11-18 ([#1365](https://github.com/mgagp/ezkey/issues/1365)).
 Public runtime presets are named **`base`** and **`integrity`** — not an « eval profile ».
 
 Detailed architecture and boundaries are described in [`architecture-overview.md`](architecture-overview.md). Component-specific behavior lives in the [component packs](../components/README.md).

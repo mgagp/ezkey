@@ -14,10 +14,11 @@ This index provides a lightweight list of active ideas and their current state.
 alpha ≠ prod · no SLA; public runtime names **`base`** / **`integrity`** (not « eval profile »);
 GitHub open; Play Store — **mobile app** may proceed closed testing → **production**; **platform
 backends stay alpha/lab**; intention-first. Waves A–C and Wave D (attention freeze) are **closed**.
-There is **no remaining P0** on the active backlog. Evaluator self-registration stays **OFF by
-default**; community may enable it **explicitly**. Amendment detail:
+There is **no remaining P0** on the active backlog. Anonymous evaluator self-registration is
+**retired** (2026-11-18, #1365): one onboarding path, two ways to evaluate (clean start, or the
+community instance by email). Amendment detail:
 [`../vision/V-2026-09-26-public-alpha-posture-closeout.md`](../vision/V-2026-09-26-public-alpha-posture-closeout.md)
-§ Amendment 2026-10-08.
+§ Amendments 2026-10-08 and 2026-11-18.
 
 Historical September operable-release compass (Waves A–C + freeze D narrative only):
 [`../operational-readiness-prioritization-2026-09.md`](../operational-readiness-prioritization-2026-09.md)
@@ -65,7 +66,7 @@ remains orthogonal to the closed September operability program. Wave B closeout:
 | `I-2026-0024` | SMS channel R1: HTTP adapter SPI + optional operator send | `incubating` | `P2` | `admin-api`, `admin-ui`, `infra`, `docs` | `2026-11-04` |
 | `I-2026-0025` | Auth API protocol capability versioning | `incubating` | `P2` | `auth-api`, `mobile`, `admin-api`, `docs` | `2026-05-24` |
 | `I-2026-0027` | iOS app implementation — fresh native rebuild | `ready` | `P1` | `mobile` | `2026-05-24` |
-| `I-2026-05-23-exp1-anonymous-evaluator-onboarding` | EXP1 anonymous evaluator onboarding | `active` | `P2` | `admin-api`, `admin-ui`, `ezkey-org`, `infra (community)`, `docs` | `2026-05-23` |
+| `I-2026-05-23-exp1-anonymous-evaluator-onboarding` | EXP1 anonymous evaluator onboarding (retired 2026-11-18, #1365) | `archived` | `P2` | `admin-api`, `admin-ui`, `ezkey-org`, `infra (community)`, `docs` | `2026-05-23` |
 | `I-2026-05-31-mobile-android-stack-followups` | Mobile Android stack follow-ups (post-#177) | `incubating` | `P2` | `mobile`, `android`, `ezkey-tests` | `2026-05-31` |
 | `I-2026-06-02-openapi-spec-lifecycle-and-cloudflare-validation` | OpenAPI spec lifecycle and Cloudflare validation | `active` | `P1` | `auth-api`, `admin-api`, `integration-api`, `specs`, `scripts`, `postman`, `cloudflare`, `sdk`, `mobile` | `2026-08-25` |
 | `I-2026-06-03-admin-api-openapi-intra-tag-journey-order` | Admin API OpenAPI intra-tag journey order | `captured` | `P3` | `admin-api`, `docs`, `specs`, `sites/ezkey-org` | `2026-06-02` |
@@ -117,7 +118,7 @@ remains orthogonal to the closed September operability program. Wave B closeout:
 | `TB-2026-07-07-auth-attempt-challenge-protection-phase-b` | Auth attempt challenge protection — phase B | `promoted` | `I-2026-07-07-auth-attempt-challenge-protection` |
 | `TB-2026-08-24-java-melody-collector` | JavaMelody collector (opt-in Docker, baseline + HA) | `under-review` | `I-2026-08-24-java-melody-collector` |
 | `TB-2026-05-25-admin-api-key-acceptance-flag` | Admin API key acceptance flag (R1 shipped; removal is `TB-2026-08-29`) | `promoted` | `I-2026-0004` |
-| `TB-2026-05-23-exp1-anonymous-evaluator-signup-first-cut` | EXP1 anonymous evaluator signup — first cut | `under-review` | `I-2026-05-23-exp1-anonymous-evaluator-onboarding` |
+| `TB-2026-05-23-exp1-anonymous-evaluator-signup-first-cut` | EXP1 anonymous evaluator signup — first cut (retired 2026-11-18, #1365) | `archived` | `I-2026-05-23-exp1-anonymous-evaluator-onboarding` |
 | `TB-2026-0004-mobile-ios-phase2-apple-stack-baseline` | Mobile iOS phase 2 — Apple stack baseline | `draft` | `I-2026-0027` |
 | `TB-2026-0002-android-real-device-functional-pilot` | Android real-device functional pilot (Maestro) | `in progress` | `I-2026-0019` |
 

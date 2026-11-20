@@ -1,9 +1,11 @@
 # Vision Note — `V-2026-05-23` Anonymous evaluator self-registration (community)
 
+> **Retired on 2026-11-18 by Marc ([#1365](https://github.com/mgagp/ezkey/issues/1365)).** Anonymous evaluator self-registration and the temporary evaluator console are removed: the hypothesis was tested and no evaluator came, while the path handed a Tenant Admin identity to anyone on the internet. Decision: [`V-2026-09-26-public-alpha-posture-closeout`](V-2026-09-26-public-alpha-posture-closeout.md) § Amendment 2026-11-18. This document is kept as a record; its body is not edited.
+
 ## Metadata
 
 - **ID:** `V-2026-05-23-anonymous-evaluator-self-registration`
-- **Status:** `under-review`
+- **Status:** `archived`
 - **Created at:** `2026-05-23`
 - **Updated at:** `2026-05-23`
 - **Captured by:** Marc

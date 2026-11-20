@@ -199,6 +199,11 @@ Current strategic priority is **mobile Play production** —
 
 **Verdict: PARKED** (2026-10-08). Amendments recorded above. Re-entry needs no second G0.
 
+**Note 2026-11-18 (#1365):** anonymous evaluator self-registration is retired. Every Tenant Admin
+on the community instance is now created by Marc after an email, so all of them can be reached by
+email; the « anonymous evaluators included » part of trigger (a) no longer applies. Lock 5a
+(treat the announcement body as public) stays as a prudent default.
+
 ### Re-entry triggers (parked)
 
 | Trigger | Condition |

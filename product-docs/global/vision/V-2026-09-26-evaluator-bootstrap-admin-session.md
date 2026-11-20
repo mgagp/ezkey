@@ -1,6 +1,8 @@
 # Vision Note — `V-2026-09-26-evaluator-bootstrap-admin-session`
 # Alpha community: public evaluator activation also issues an Admin UI bootstrap session
 
+> **Retired on 2026-11-18 by Marc ([#1365](https://github.com/mgagp/ezkey/issues/1365)).** Anonymous evaluator self-registration and the temporary evaluator console are removed: the hypothesis was tested and no evaluator came, while the path handed a Tenant Admin identity to anyone on the internet. Decision: [`V-2026-09-26-public-alpha-posture-closeout`](V-2026-09-26-public-alpha-posture-closeout.md) § Amendment 2026-11-18. This document is kept as a record; its body is not edited. It was already superseded by `V-2026-09-26-temporary-evaluator-console-access`, itself retired.
+
 ## Metadata
 
 - **ID:** `V-2026-09-26-evaluator-bootstrap-admin-session`

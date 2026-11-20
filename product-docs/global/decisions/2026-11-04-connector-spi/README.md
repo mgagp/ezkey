@@ -319,14 +319,18 @@ A send path can become a mail relay, above all on the public community instance,
 signup creates a real tenant and `contact_email` carries no proof of ownership (Marc, 2026-11-05).
 
 - **Fixed template:** the contract has no free subject or body.
-- **Evaluator temporary sessions are denied.** `EvaluatorTempAccessFilter` is a deny-list, so a new
-  route is open until listed.
+- ~~**Evaluator temporary sessions are denied.**~~ Retired 2026-11-18 (#1368): the temporary
+  evaluator console no longer exists, so there is no such session to deny.
 - **Daily caps** per tenant and per instance, on every installation.
 - **No sending for self-registered tenants on the community instance.** They keep integrated delivery.
   Open it later if evaluators ask. Done at step 7 (Marc, 2026-11-12): the tenant carries a
   `self_registered` fact (V28, existing `eval-` tenants marked), the send is refused with
   `self-registered-tenant`, and the capability reads unavailable for an admin scoped to that tenant,
   so no send button is offered. The rule holds on any installation, since only self-signup sets it.
+  **Retired 2026-11-18 (#1365, #1368):** self-registration is gone, so no tenant gets the marker.
+  The refusal, the capability hiding and the `self_registered` column are removed (Flyway V31,
+  which stops while an active tenant still carries the marker, so the guard is never lifted
+  silently). Every tenant is now created by a Global Admin who knows the person behind it.
 
 ## Failure postures (principle #17)
 
