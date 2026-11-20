@@ -194,6 +194,15 @@ rehearsal is dump / restore.
 The **`db-grants`** service uses the same Postgres image tag
 (`docker/docker-compose.yml` ~64) and **must move together** with `postgres` on every line bump.
 
+**BOM-managed libraries posture.** Flyway, pgJDBC, and Hibernate follow the versions managed by
+the Spring Boot BOM. Do not set a `flyway.version` override unless a real obligation requires it
+(blocking bug, security, or hard incompatibility). A hand pin drifts from the Spring train and can
+be incompatible with it; the posture is to wait for that train. The PostgreSQL 19 plan (#1421,
+Marc 2026-11-20) accepts the calculated risk that
+[Flyway's supported-databases matrix](https://documentation.red-gate.com/flyway/getting-started-with-flyway/system-requirements/supported-databases-and-versions)
+(updated 2026-10-26, PostgreSQL through 18) does not yet list 19, because Ezkey's SQL is basic
+and standard.
+
 ### React Native line
 
 1. In `ezkey_mobile/`: `yarn validate`.

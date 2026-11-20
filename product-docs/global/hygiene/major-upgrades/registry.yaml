@@ -225,7 +225,10 @@
   security: true
   issue: null
   last_review: 2026-10-19
-  notes: "Patches via Java BOM pulse; line change → light path + short opinion-only security issue"
+  notes: >
+    Patches via Java BOM pulse; line change → light path + short opinion-only security issue.
+    Flyway, pgJDBC, and Hibernate follow this BOM; no flyway.version override unless a real
+    obligation (blocking bug, security, hard incompatibility). Marc 2026-11-20.
 
 - id: postgresql
   component: PostgreSQL
@@ -242,7 +245,14 @@
   security: true
   issue: 1421
   last_review: 2026-11-20
-  notes: "Any major = dedicated issue + dump/restore; db-grants image tag must move with postgres"
+  notes: >
+    Any major = dedicated issue + dump/restore; db-grants image tag must move with postgres.
+    Flyway, pgJDBC, and Hibernate follow the Spring Boot BOM; no flyway.version override unless
+    a real obligation (blocking bug, security, hard incompatibility). Marc 2026-11-20.
+    PG 19 (#1421) accepts the calculated risk that Flyway's supported-databases matrix
+    (https://documentation.red-gate.com/flyway/getting-started-with-flyway/system-requirements/supported-databases-and-versions,
+    updated 2026-10-26, lists PostgreSQL through 18) does not yet list 19, because Ezkey SQL
+    is basic/standard.
 
 - id: caddy
   component: Caddy (exposed on Lightsail)
