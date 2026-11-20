@@ -46,7 +46,8 @@
   },
   "enrollment": {
     "enrollment-inactive": "Cet enrôlement ne peut pas servir à l'authentification (inactif ou non vérifié).",
-    "active-verified-enrollment-exists": "Un enrôlement vérifié actif portant le même nom existe déjà pour cette intégration. Utilisez le parcours de récupération pour le remplacer.",
+    "active-verified-enrollment-exists": "Un enrôlement actif utilise déjà ce nom sur cette intégration. Pour remplacer l'appareil, révoquez-le, puis créez-en un nouveau.",
+    "deactivated-enrollment-holds-name": "Un enrôlement désactivé utilise déjà ce nom sur cette intégration. Réactivez-le, ou révoquez-le pour remplacer l'appareil.",
     "system-integration-create-not-allowed": "Les enrôlements pour l'intégration système ne peuvent pas être créés ici ; utilisez les API d'approvisionnement administrateur.",
     "self-revocation-not-allowed": "Vous ne pouvez pas révoquer, désactiver ou supprimer votre propre enrôlement. Utilisez le parcours de récupération.",
     "system-integration-revocation": "La révocation ou la désactivation en masse ne peut pas s'appliquer à une intégration système.",

@@ -37,11 +37,11 @@ import org.ezkey.enrollment.domain.EnrollmentVerifyRequest;
 import org.ezkey.enrollment.domain.EnrollmentVerifyResponse;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
-import org.ezkey.exception.ActiveVerifiedEnrollmentExistsException;
 import org.ezkey.exception.EnrollmentCreateValidationException;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.exception.SystemIntegrationEnrollmentCreationException;
 import org.ezkey.exception.TenantInactiveException;
+import org.ezkey.exception.VerifiedEnrollmentNameTakenException;
 import org.ezkey.exception.auth.EnrollmentAlreadyBoundException;
 import org.ezkey.exception.auth.EnrollmentBindingFailedException;
 import org.ezkey.exception.auth.EnrollmentIntegrationNotFoundException;
@@ -324,8 +324,7 @@ class EnrollmentServiceTest {
 
   @Test
   @DisplayName("create() - Should throw conflict when active VERIFIED enrollment already exists")
-  void
-      create_WhenActiveVerifiedEnrollmentExists_ShouldThrowActiveVerifiedEnrollmentExistsException() {
+  void create_WhenActiveVerifiedEnrollmentExists_ShouldThrowNameTaken() {
     // Arrange
     Enrollment existingVerified = new Enrollment();
     existingVerified.setEnrollmentId(999);
@@ -338,12 +337,14 @@ class EnrollmentServiceTest {
         .thenReturn(List.of(existingVerified));
 
     // Act & Assert
-    ActiveVerifiedEnrollmentExistsException exception =
+    VerifiedEnrollmentNameTakenException exception =
         assertThrows(
-            ActiveVerifiedEnrollmentExistsException.class,
+            VerifiedEnrollmentNameTakenException.class,
             () -> enrollmentService.create(createRequest));
 
-    assertTrue(exception.getMessage().contains("active verified enrollment"));
+    assertTrue(exception.getMessage().contains("already active"));
+    assertEquals(999, exception.getExistingEnrollmentId());
+    assertTrue(exception.isExistingActive());
     verify(signatureService, never()).generateProofToken();
     verify(enrollmentRepository, never()).save(any(Enrollment.class));
   }

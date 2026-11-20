@@ -70,7 +70,8 @@ docs {
   - 201: Enrollment created successfully
   - 400: Invalid data (e.g., integration not found)
   - 401: Unauthorized - admin token required
+  - 409: A `VERIFIED` enrollment already holds this `name` on the integration (#1404). Type `enrollment/active-verified-enrollment-exists` when it is active, `enrollment/deactivated-enrollment-holds-name` when it is deactivated. `parameters.existingEnrollmentId` names it: reactivate it, or revoke it to replace the device, then create again. Repeating this request is fine while no enrollment with this name is verified.
   - 500: Internal server error
-  
+
   **Usage:** After creation, use the enrollment ID and challenge to bind a mobile device via the auth API.
 }

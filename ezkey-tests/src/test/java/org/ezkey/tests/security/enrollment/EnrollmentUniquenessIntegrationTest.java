@@ -92,14 +92,13 @@ public class EnrollmentUniquenessIntegrationTest extends AbstractSecurityTest {
         .isEqualTo("https://ezkey.io/problems/enrollment/active-verified-enrollment-exists");
     assertThat(response.jsonPath().getString("title"))
         .isEqualTo("Active Verified Enrollment Already Exists");
-    assertThat(response.jsonPath().getString("detail"))
-        .contains("active verified enrollment")
-        .contains("recovery process");
+    assertThat(response.jsonPath().getString("detail")).contains("already active");
   }
 
   @Test
-  @DisplayName("Should allow creation when inactive VERIFIED enrollment exists")
-  void testCreateAllowedWhenInactiveVerifiedExists() {
+  @DisplayName(
+      "Should reject creation when a deactivated VERIFIED enrollment holds the name (#1404)")
+  void testCreateRejectedWhenDeactivatedVerifiedExists() {
     // Skip if admin token not available
     try {
       authTokenManager.getAdminToken();
@@ -134,11 +133,16 @@ public class EnrollmentUniquenessIntegrationTest extends AbstractSecurityTest {
             .extract()
             .response();
 
-    // Assert: Should succeed (201 Created)
-    assertThat(response.getStatusCode()).isEqualTo(201);
-    Integer enrollmentId2 = response.jsonPath().getInt("enrollmentId");
-    assertThat(enrollmentId2).isNotNull();
-    assertThat(enrollmentId2).isNotEqualTo(enrollmentId1);
+    // Assert: refused before an invitation leaves; verify could never finish (#1404)
+    assertThat(response.getStatusCode()).isEqualTo(409);
+    assertThat(response.getContentType()).contains("application/problem+json");
+    assertThat(response.jsonPath().getString("type"))
+        .isEqualTo("https://ezkey.io/problems/enrollment/deactivated-enrollment-holds-name");
+    assertThat(response.jsonPath().getInt("parameters.existingEnrollmentId"))
+        .isEqualTo(enrollmentId1);
+    assertThat(response.jsonPath().getString("detail"))
+        .contains("Reactivate")
+        .contains("revoke it to replace the device");
   }
 
   @Test
@@ -574,10 +578,11 @@ public class EnrollmentUniquenessIntegrationTest extends AbstractSecurityTest {
 
     configureForAdminApi(dockerStackConfig);
 
-    // Setup: Create integration and verify an enrollment, then deactivate it
+    // Setup: two invitations with the same name (allowed while both are CREATED), then the
+    // first one is verified and deactivated
     Integer integrationId = testDataFactory.createIntegration();
     Integer enrollmentId1 = testDataFactory.createEnrollment(integrationId, "Test Device", false);
-    // Verify and then deactivate
+    Integer enrollmentId2 = testDataFactory.createEnrollment(integrationId, "Test Device", false);
     databaseHelper.executeUpdate(
         "UPDATE ezkey_enrollment SET enrollment_status = 'VERIFIED', enrollment_active = false"
             + " WHERE enrollment_id = "
@@ -595,11 +600,6 @@ public class EnrollmentUniquenessIntegrationTest extends AbstractSecurityTest {
             && ("t".equalsIgnoreCase(active1Str.trim()) || Boolean.parseBoolean(active1Str.trim()));
     assertThat(status1).isEqualTo("VERIFIED");
     assertThat(active1).isFalse();
-
-    // Create second enrollment (CREATED status) - this SHOULD be allowed via API
-    // when VERIFIED is
-    // inactive (according to business logic)
-    Integer enrollmentId2 = testDataFactory.createEnrollment(integrationId, "Test Device", false);
 
     // Bind the second enrollment
     databaseHelper.executeUpdate(
@@ -630,8 +630,8 @@ public class EnrollmentUniquenessIntegrationTest extends AbstractSecurityTest {
   }
 
   @Test
-  @DisplayName("Error message directs user to recovery process")
-  void testErrorMessageDirectsToRecoveryProcess() {
+  @DisplayName("Error message directs the operator to revoke, not to administrator recovery")
+  void testErrorMessageDirectsToRevokeForEndUserEnrollment() {
     // Skip if admin token not available
     try {
       authTokenManager.getAdminToken();
@@ -669,10 +669,15 @@ public class EnrollmentUniquenessIntegrationTest extends AbstractSecurityTest {
     // Assert: Should be rejected with 409 Conflict ProblemDetail
     assertThat(response.getStatusCode()).isEqualTo(409);
     assertThat(response.getContentType()).contains("application/problem+json");
+    assertThat(response.jsonPath().getString("type"))
+        .isEqualTo("https://ezkey.io/problems/enrollment/active-verified-enrollment-exists");
+    assertThat(response.jsonPath().getInt("parameters.existingEnrollmentId"))
+        .isEqualTo(enrollmentId1);
+    // An end-user enrollment is replaced by revoke + create; administrator recovery does not
+    // apply (#1404)
     assertThat(response.jsonPath().getString("detail"))
-        .containsAnyOf("/api/v1/admin/auth/recover", "/auth/recover", "recovery process");
-    assertThat(response.jsonPath().getString("detail"))
-        .containsAnyOf("/api/v1/admin/enrollments/reset", "/enrollments/reset", "recovery process");
+        .contains("revoke that enrollment")
+        .doesNotContain("/auth/recover");
   }
 
   /**

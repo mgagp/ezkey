@@ -1318,7 +1318,7 @@
             }
           },
           "409": {
-            "description": "Enrollment conflict",
+            "description": "A VERIFIED enrollment already holds this name on the integration: active (active-verified-enrollment-exists) or deactivated (deactivated-enrollment-holds-name). parameters.existingEnrollmentId names it: reactivate it, or revoke it to replace the device.",
             "content": {
               "*/*": {
                 "schema": {
@@ -11263,42 +11263,42 @@
   },
   "x-tagGroups": [
     {
-      "name": "Getting started",
       "tags": [
         "Public",
         "Admin Authentication"
-      ]
+      ],
+      "name": "Getting started"
     },
     {
-      "name": "Tenant and integration setup",
       "tags": [
         "Tenants",
         "Integrations",
         "Enrollments",
         "API Keys"
-      ]
+      ],
+      "name": "Tenant and integration setup"
     },
     {
-      "name": "MFA operations",
       "tags": [
         "Auth Attempts",
         "Admin Enrollment Management"
-      ]
+      ],
+      "name": "MFA operations"
     },
     {
-      "name": "Administration",
       "tags": [
         "Administrator Provisioning"
-      ]
+      ],
+      "name": "Administration"
     },
     {
-      "name": "Platform operations",
       "tags": [
         "Audit Logs",
         "Encryption Keys",
         "Alerts",
         "Dashboard"
-      ]
+      ],
+      "name": "Platform operations"
     }
   ]
 }
