@@ -80,8 +80,8 @@
     "zustand": "5.1.0"
   },
   "devDependencies": {
-    "@babel/core": "8.1.0",
-    "@babel/runtime": "8.1.0",
+    "@babel/core": "8.1.2",
+    "@babel/runtime": "8.1.2",
     "@react-native-community/cli": "20.2.0",
     "@react-native-community/cli-platform-android": "20.2.0",
     "@react-native-community/cli-platform-ios": "20.2.0",
@@ -98,9 +98,9 @@
     "eslint-config-prettier": "10.1.8",
     "husky": "9.1.7",
     "jest": "30.5.2",
-    "lint-staged": "17.6.0",
+    "lint-staged": "17.6.1",
     "orval": "8.48.0",
-    "prettier": "3.9.10",
+    "prettier": "3.10.1",
     "react-native-svg-transformer": "1.5.3",
     "react-test-renderer": "19.3.1",
     "typescript": "6.0.3"
