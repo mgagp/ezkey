@@ -337,13 +337,13 @@
             <p>Le but est de faire vivre une expérience Ezkey de bout en bout, du premier contact avec la console jusqu’à une authentification réussie via l’application mobile, en s’appuyant sur une application de démonstration intégrée à l’instance communautaire ezkey.online. Les figures reprennent chaque étape numérotée. Une fois les étapes assimilées, prenez quelques minutes pour le tableau de bord du tenant dans l’Admin UI ; nous y revenons en fin de parcours.</p>
 
             <h2 id="demo-device">Pas d’app mobile Ezkey ? Utilisez le Demo Device</h2>
-            <p>L’application mobile Ezkey est encore en test interne limité et n’est en général pas accessible aux évaluateurs anonymes. En attendant une publication mobile publique, vous pouvez suivre ce parcours avec l’Ezkey Demo Device, un téléphone simulé autonome, publié sur GitHub et exécutable en local : <a href="https://github.com/mgagp/ezkey-demo-device" rel="noopener noreferrer">github.com/mgagp/ezkey-demo-device</a>.</p>
+            <p>L’application mobile Ezkey est encore en test interne limité et n’est en général pas accessible aux évaluateurs. En attendant une publication mobile publique, vous pouvez suivre ce parcours avec l’Ezkey Demo Device, un téléphone simulé exécuté en local à partir du dépôt Ezkey : <a href="https://github.com/mgagp/ezkey/tree/main/ezkey-demo-device" rel="noopener noreferrer">github.com/mgagp/ezkey, dossier ezkey-demo-device</a>.</p>
             <ul>
-                <li>Lancez-le avec Docker (voir le README du dépôt) ; par défaut il cible l’Auth API communautaire (<code>auth-api.ezkey.online</code>) et s’ouvre sur <code>localhost:3080</code>.</li>
+                <li>Clonez le dépôt et, depuis sa racine, lancez <code>docker compose -f ezkey-demo-device/docker-compose.yml up --build</code> (Docker seulement ; la première construction prend quelques minutes). Il cible l’Auth API communautaire (<code>auth-api.ezkey.online</code>) et s’ouvre sur <code>localhost:3080/phone/ezkey</code>.</li>
                 <li>Il reprend la même cryptographie d’enrôlement et d’approbation que le client mobile, à des fins de démonstration.</li>
                 <li>C’est un outil d’assistance à la démo, pas un logiciel de production. Il n’offre pas les protections matérielles d’un vrai téléphone, en particulier le Secure Storage et le StrongBox (stockage de clés soutenu par le matériel Android) que l’app mobile est conçue pour utiliser.</li>
             </ul>
-            <p>Dans la suite de ce guide, chaque mention de « app mobile » vise aussi le Demo Device comme substitut pratique sur l’instance communautaire pour les évaluateurs en libre-service.</p>
+            <p>Dans la suite de ce guide, chaque mention de « app mobile » vise aussi le Demo Device comme substitut pratique sur l’instance communautaire.</p>
 
             <h2>Le parcours en un coup d’œil</h2>
             <ol class="steps">

@@ -1,0 +1,31 @@
+# Ezkey Demo Device on its own, without the clean-start stack (#943).
+#
+# Use it with the community instance (ezkey.online): from the repository root,
+#   docker compose -f ezkey-demo-device/docker-compose.yml up --build
+# then open http://localhost:3080/phone/ezkey.
+#
+# The clean-start stack already runs the Demo Device on http://localhost:8083; you do not
+# need this file for the technical-exploration path. Port 3080 avoids the stack's ports, so
+# both can run at the same time.
+#
+# Another Auth API: set EZKEY_AUTH_API_URL in the shell before `up`. Its host becomes the
+# default allowed host for QR `authUrl` (see CONFIGURATION.md).
+name: ezkey-demo-device
+
+services:
+  demo-device:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: demo-device
+    image: ezkey-demo-device:local
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      EZKEY_AUTH_API_URL: ${EZKEY_AUTH_API_URL:-https://auth-api.ezkey.online}
+    ports:
+      - "3080:8083"
+    volumes:
+      - demo-device-data:/app/data
+
+volumes:
+  demo-device-data:
