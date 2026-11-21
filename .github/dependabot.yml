@@ -144,6 +144,10 @@ updates:
       # wait for @eslint-community migration (Marc 2026-10-30, was #1007).
       - dependency-name: "eslint"
         update-types: ["version-update:semver-major"]
+      # React Native 0.88 (Metro, jest, codegen, babel-preset) runs on Babel 7; stay on 7.x
+      # until RN officially supports Babel 8 (see hygiene/dependabot/README.md).
+      - dependency-name: "@babel/*"
+        update-types: ["version-update:semver-major"]
     groups:
       # ESLint / Jest majors stay ungrouped (visible solo PRs). RN preset gates
       # (`yarn deps:monitor`) block ESLint 10 / Jest 30; do not batch them with

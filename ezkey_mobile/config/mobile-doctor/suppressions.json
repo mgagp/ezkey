@@ -37,7 +37,7 @@
     {
       "tool": "react-doctor",
       "rule": "rn-no-metro-babel-runtime-version",
-      "reason": "RN 0.86.2 already enables transform-runtime. Explicit enableBabelRuntime version string is a compiler hint, not a missing library pin (@babel/runtime is already 8.0.0). Deferred: Babel 8 + Metro is a sensitive surface and there is no measured bundle defect. Campaign 2026-08-25 pass-1."
+      "reason": "RN 0.86.2 already enables transform-runtime. Explicit enableBabelRuntime version string is a compiler hint, not a missing library pin (@babel/runtime is pinned in package.json). Deferred: Babel + Metro is a sensitive surface and there is no measured bundle defect. Campaign 2026-08-25 pass-1."
     },
     {
       "tool": "react-doctor",
