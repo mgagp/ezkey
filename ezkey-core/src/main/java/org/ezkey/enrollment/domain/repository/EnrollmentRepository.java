@@ -172,24 +172,6 @@ public interface EnrollmentRepository
   boolean existsByDevicePublicKeyHash(@Param("devicePublicKeyHash") String devicePublicKeyHash);
 
   /**
-   * Checks if a device public key is already used by a verified enrollment (legacy method).
-   *
-   * <p>This method is deprecated in favor of {@link #existsByDevicePublicKeyHash(String)} which
-   * uses hash-based validation independent of encryption format.
-   *
-   * @param devicePublicKey the Base64-encoded device public key to check for uniqueness
-   * @return true if the device public key is already used by a verified enrollment, false otherwise
-   * @deprecated Use {@link #existsByDevicePublicKeyHash(String)} instead for encryption-independent
-   *     validation
-   * @since 2025
-   */
-  @Deprecated
-  @Query(
-      "SELECT COUNT(e) > 0 FROM Enrollment e WHERE e.devicePublicKey = :devicePublicKey AND"
-          + " e.status = 'VERIFIED'")
-  boolean existsByDevicePublicKeyAndVerified(@Param("devicePublicKey") String devicePublicKey);
-
-  /**
    * Find enrollment by ID and proof token for secure binding.
    *
    * <p>This method provides secure access to enrollment data by requiring both the enrollment ID

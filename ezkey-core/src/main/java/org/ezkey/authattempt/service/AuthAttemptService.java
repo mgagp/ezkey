@@ -745,9 +745,8 @@ public class AuthAttemptService {
   /**
    * Process pending authentication attempt request using secure enrollment proof token.
    *
-   * <p>This method delegates to the specialized AuthAttemptPendingService to handle the complex
-   * logic of processing pending authentication requests while maintaining the same public API for
-   * backward compatibility.
+   * <p>This method delegates to the specialized AuthAttemptPendingService, so callers keep a single
+   * authentication-attempt entry point.
    *
    * @param request the pending request with enrollment proof token
    * @return the pending authentication response with proof token
@@ -817,8 +816,8 @@ public class AuthAttemptService {
   /**
    * Waits for authentication response completion with configurable timeout and polling.
    *
-   * <p>This method delegates to the specialized AuthAttemptWaitService to handle the complex logic
-   * of polling and waiting while maintaining the same public API for backward compatibility.
+   * <p>This method delegates to the specialized AuthAttemptWaitService, so callers keep a single
+   * authentication-attempt entry point.
    *
    * @param authAttemptId the ID of the authentication attempt to wait for
    * @param request the wait request containing timeout and polling configuration

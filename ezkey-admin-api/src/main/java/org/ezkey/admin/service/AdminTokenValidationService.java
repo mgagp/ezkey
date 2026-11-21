@@ -54,23 +54,6 @@ public class AdminTokenValidationService {
   }
 
   /**
-   * Validates a bearer token and returns the associated admin if valid.
-   *
-   * <p>This method is transaction-aware and properly handles JPA entity relationships.
-   *
-   * @param token the bearer token to validate
-   * @return Optional containing the admin if token is valid, empty otherwise
-   * @deprecated Use validateTokenWithRelations instead to get AdminToken with tenant/integration
-   *     loaded
-   */
-  @Deprecated
-  @Transactional(readOnly = true)
-  public Optional<EzkeyAdmin> validateToken(String token) {
-    Optional<AdminToken> tokenOpt = validateTokenWithRelations(token);
-    return tokenOpt.map(AdminToken::getAdmin);
-  }
-
-  /**
    * Validates a bearer token and returns the AdminToken with all relations loaded if valid.
    *
    * <p>This method eagerly loads admin, tenant, and integration to support AdminPrincipal creation

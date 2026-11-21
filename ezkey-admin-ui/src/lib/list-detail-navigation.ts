@@ -32,7 +32,7 @@ export type ResolvedListDetailNav<T extends string | number = number> = {
 
 /**
  * The administrator record page (#1399). Use this helper for every cross-screen link to an
- * administrator; the list still redirects the former {@code /admins?adminId=N} links here.
+ * administrator.
  */
 export function adminDetailHref(adminId: number): string {
   return `/admins/${adminId}`;

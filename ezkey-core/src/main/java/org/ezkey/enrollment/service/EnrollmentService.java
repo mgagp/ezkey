@@ -490,8 +490,8 @@ public class EnrollmentService {
   /**
    * Binds an enrollment to a device.
    *
-   * <p>This method delegates to the specialized EnrollmentBindService to handle the complex logic
-   * of enrollment binding while maintaining the same public API for backward compatibility.
+   * <p>This method delegates to the specialized EnrollmentBindService, so callers keep a single
+   * enrollment entry point.
    *
    * @param request the bind request
    * @return the bind response
@@ -505,8 +505,8 @@ public class EnrollmentService {
   /**
    * Verifies an enrollment with comprehensive security validation.
    *
-   * <p>This method delegates to the specialized EnrollmentVerifyService to handle the complex logic
-   * of enrollment verification while maintaining the same public API for backward compatibility.
+   * <p>This method delegates to the specialized EnrollmentVerifyService, so callers keep a single
+   * enrollment entry point.
    *
    * @param request the verify request containing device keys and signatures
    * @return the verify response confirming successful enrollment

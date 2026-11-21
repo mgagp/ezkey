@@ -20,6 +20,15 @@ Prefer the simplest solution that meets the need. Target roughly 80% of the valu
 
 Essential complexity (what the feature genuinely needs) is acceptable. Accidental complexity (extra abstraction, indirection, ceremony) must be minimized. If an abstraction does not change outcomes, it does not belong.
 
+**No compatibility path for the past while no adopter runs Ezkey in production** (lab, alpha, no
+SLA). A change removes what it replaces in the same PR: no redirect for old links, no guard for old
+configuration keys, no deprecated method kept "for compatibility", no "Removed:" note left in
+examples. A step a live host needs (delete an env var, fix a row) goes in the deploy issue and the
+ledger, not in code. Two exceptions, because they are data or devices we do not control: what must
+stay readable (ciphertext under older keys, audit rows) and the mobile app already installed on
+testers' phones. Revisit this rule when a first adopter runs in production. (Marc, 2026-11-20;
+cleanup after #1365.)
+
 ### 3. Backend-first integrity
 
 Durable state, verification, and policy decisions live on the backend. Clients observe and request; they do not mutate state on their own. This keeps the trust model explicit and auditable.

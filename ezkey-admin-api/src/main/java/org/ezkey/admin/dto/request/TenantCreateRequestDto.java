@@ -23,7 +23,7 @@ import org.ezkey.admin.validation.IanaTimezone;
  *
  * <p>This DTO contains the information required to create a new tenant in the multi-tenant Ezkey
  * system. Only global administrators can create tenants. All fields except {@code tenantName} are
- * optional for backward compatibility.
+ * optional.
  *
  * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *

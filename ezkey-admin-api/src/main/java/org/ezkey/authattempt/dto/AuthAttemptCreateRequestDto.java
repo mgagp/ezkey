@@ -23,7 +23,7 @@ import jakarta.validation.constraints.Size;
  * admin API. It supports two identification modes:
  *
  * <ul>
- *   <li><b>By enrollmentId:</b> Direct reference to an enrollment (legacy, SDK, admin)
+ *   <li><b>By enrollmentId:</b> Direct reference to an enrollment (SDK, admin)
  *   <li><b>By userIdentifier:</b> User reference (e.g. username); resolves to enrollment within
  *       integration scope. When using API key, integrationId is derived from the key. When using
  *       admin token, integrationId must be provided in the request.

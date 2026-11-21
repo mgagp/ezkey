@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, Check, Copy, Plus, RefreshCw, UserX } from 'lucide-react';
@@ -582,14 +582,6 @@ export default function AdminsPage() {
     return Number.isFinite(n) && n > 0 ? n : null;
   }, [searchParams]);
 
-  /** #1399: the record moved to /admins/:id; former ?adminId=N links (bookmarks, history) redirect. */
-  const legacyAdminId = useMemo(() => {
-    const raw = searchParams.get('adminId');
-    if (raw == null || raw === '') return null;
-    const n = Number(raw);
-    return Number.isInteger(n) && n > 0 ? n : null;
-  }, [searchParams]);
-
   const [createOpen, setCreateOpen] = useState(false);
   const [deactivateTarget, setDeactivateTarget] = useState<AdminResponseDto | null>(null);
 
@@ -740,10 +732,6 @@ export default function AdminsPage() {
       actionsCol,
     ];
   }, [isGlobalAdmin, t]);
-
-  if (legacyAdminId != null) {
-    return <Navigate to={adminDetailHref(legacyAdminId)} replace />;
-  }
 
   return (
     <AppShell title={t('list.title')}>

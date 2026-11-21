@@ -144,7 +144,6 @@ public class AdminAuthService {
    *         <li><b>No challenge + nonBlocking=true:</b> Return immediately with authAttemptId for
    *             client polling (enables countdown timer in TUI)
    *         <li><b>No challenge + nonBlocking=false/null:</b> Block and wait for device response
-   *             (backward compatible)
    *       </ul>
    *   <li>Issue bearer token on approval
    * </ol>

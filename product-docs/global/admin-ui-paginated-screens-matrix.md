@@ -51,8 +51,7 @@ labels from joins. Cross-screen links must match how each entity opens detail:
 | **Administrator** | `/admins` | `/admins/:id` page | `adminDetailHref(id)` in `@/lib/list-detail-navigation` |
 
 Every cross-screen link to an administrator uses `adminDetailHref` (audit logs, enrollment
-detail, tenant detail embedded list). The record was a dialog over the list until #1399; the list
-still redirects the former `/admins?adminId=N` links to `/admins/N`.
+detail, tenant detail embedded list). The record was a dialog over the list until #1399.
 
 ## Matrix
 

@@ -5,7 +5,7 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Test: AdminEnrollmentControllerSecurityWebMvcTest
- * Description: Regression for missing Authorization header on enrollment reset endpoint.
+ * Description: Regression for the enrollment reset authentication contract and its public scope.
  */
 
 package org.ezkey.admin.controller;
@@ -61,5 +61,18 @@ class AdminEnrollmentControllerSecurityWebMvcTest {
         .andExpect(jsonPath("$.detail").value("Missing required Authorization header"))
         .andExpect(jsonPath("$.status").value(401))
         .andExpect(jsonPath("$.path").value("/api/v1/admin/enrollments/reset"));
+  }
+
+  @Test
+  @DisplayName(
+      "Only the reset path is public: other admin enrollment and MFA paths require a session")
+  void onlyResetPathIsPublic() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/admin/enrollments/other").contentType(APPLICATION_JSON).content("{}"))
+        .andExpect(status().isUnauthorized());
+    mockMvc
+        .perform(post("/api/v1/admin/mfa/attempt").contentType(APPLICATION_JSON).content("{}"))
+        .andExpect(status().isUnauthorized());
   }
 }

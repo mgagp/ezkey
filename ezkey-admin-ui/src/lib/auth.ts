@@ -23,11 +23,11 @@ export interface AuthSession {
   adminId?: number;
   /**
    * Tenant scope when the administrator is tenant- or integration-scoped; omitted for global
-   * administrators and legacy sessions saved before this field existed.
+   * administrators.
    */
   tenantId?: number | null;
   /**
-   * Tenant display name when scoped; omitted for global administrators and legacy sessions.
+   * Tenant display name when scoped; omitted for global administrators.
    */
   tenantName?: string | null;
   /** Non-secret CSRF token used only by cookie-authenticated browser sessions. */

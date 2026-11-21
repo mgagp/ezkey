@@ -293,7 +293,7 @@ Canonical matrix: [`product-docs/global/admin-ui-paginated-screens-matrix.md`](.
 
 - **ID first:** bounded Tier A paginated lists show the entity primary key as the **first column** (`font-mono text-xs`, server `sortKey` when supported).
 - **Labels alongside ID:** join-enriched names (tenant, integration, username) live in their business columns; they do not replace the ID column.
-- **Administrator links:** the record is the `/admins/:id` page (#1399), like the other managed entities. Use `adminDetailHref(id)` from `@/lib/list-detail-navigation` for every cross-screen link to an admin (audit logs, enrollment detail, tenant embedded list, etc.). The list redirects the former `/admins?adminId=N` links.
+- **Administrator links:** the record is the `/admins/:id` page (#1399), like the other managed entities. Use `adminDetailHref(id)` from `@/lib/list-detail-navigation` for every cross-screen link to an admin (audit logs, enrollment detail, tenant embedded list, etc.).
 - **Global-scope tenant label:** when `tenantId` / `tenantName` are null, show `list.tenantPlatform` (“Platform”). Do not invent “Unknown tenant”.
 - **FK name links:** use `AdminFkLink` / `EnrollmentFkLink` from `@/components/feature/fk-detail-links` (join-enriched name + ID). Do **not** reintroduce a lazy “More details” expand that GET-by-id duplicates already-enriched list/detail payloads.
 

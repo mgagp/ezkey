@@ -57,13 +57,6 @@ public final class AdminAuditConstants {
   /** Audit action for successful admin login. */
   public static final String LOGIN_SUCCESS = "login_success";
 
-  /**
-   * Legacy audit action for pending admin login (challenge / non-blocking MFA request created).
-   *
-   * <p>New rows use {@link #LOGIN_MFA_REQUESTED}; this string remains for historical rows.
-   */
-  public static final String LOGIN_PENDING = "login_pending";
-
   /** Audit action when an MFA request was created and the client must call /passwordless-wait. */
   public static final String LOGIN_MFA_REQUESTED = "login_mfa_requested";
 
