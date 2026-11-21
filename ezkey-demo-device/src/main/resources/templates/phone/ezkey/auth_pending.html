@@ -115,7 +115,17 @@
       color: #fff; 
     }
     .btn-deny:hover { background: #c82333; }
-    .side-exit { position: absolute; right: -14px; top: 40%; width: 8px; height: 120px; background:#333; border-radius: 4px; cursor: pointer; display: block; text-decoration: none; color: inherit; }
+    .side-exit { position: absolute; right: -14px; top: 40%; width: 8px; height: 120px; background:#333; border-radius: 4px; cursor: pointer; display: block; text-decoration: none; color: inherit; border: none; padding: 0; }
+    .retry-banner {
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.12);
+      color: #f5f5f7;
+      font-size: 0.875rem;
+    }
+    .leave-hint { margin-top: 10px; font-size: 0.8rem; color: #999; text-align: center; }
   </style>
 </head>
 <body>
@@ -156,6 +166,7 @@
           data-testid="demo-device-auth-form"
           th:action="@{'/phone/ezkey/enrollments/' + ${enrollmentId} + '/auth/respond'}"
           method="post">
+          <div th:if="${retryMessage}" class="retry-banner" data-testid="demo-device-auth-retry-message" th:text="${retryMessage}">Try again.</div>
           <div class="auth-title" th:text="${contextTitle != null ? 'Review &amp; Respond' : 'Authentication Request'}">Authentication Request</div>
           <div class="auth-description">
             <span th:if="${contextTitle == null}">An authentication request is pending for this enrollment.</span>
@@ -186,14 +197,24 @@
             <button type="submit" name="approved" value="true" class="btn btn-approve" data-testid="demo-device-approve-button">Approve</button>
             <button type="submit" name="approved" value="false" class="btn btn-deny" data-testid="demo-device-deny-button">Deny</button>
           </div>
+          <div class="leave-hint" data-testid="demo-device-leave-declines-hint" th:text="${leaveHint}">Leaving this screen declines the request.</div>
         </form>
       </div>
     </div>
-    <a href="/phone/ezkey"
-       class="side-exit"
-       title="Exit to enrollments list"
-       aria-label="Exit to enrollments list"
-       data-testid="demo-device-auth-back"></a>
+    <!-- Leaving the request screen declines it, like the mobile app (#943): no challenge needed. -->
+    <form th:action="@{'/phone/ezkey/enrollments/' + ${enrollmentId} + '/auth/respond'}"
+          method="post"
+          data-testid="demo-device-auth-leave-form">
+      <input type="hidden" name="authAttemptId" th:value="${authAttemptId}">
+      <input type="hidden" name="authAttemptProofToken" th:value="${authAttemptProofToken}">
+      <input type="hidden" name="approved" value="false">
+      <input type="hidden" name="leave" value="true">
+      <button type="submit"
+              class="side-exit"
+              title="Leave (declines the request)"
+              aria-label="Leave and decline the request"
+              data-testid="demo-device-auth-back"></button>
+    </form>
   </div>
 </body>
 </html>

@@ -102,7 +102,7 @@
           </div>
           <div class="integration-details">
             <div class="integration-name" th:text="${enrollmentName ?: integrationName ?: 'Enrollment #' + enrollmentId}">Enrollment Name</div>
-            <div class="integration-description" th:text="${integrationDescription ?: 'Authentication completed'}">Integration description</div>
+            <div class="integration-description" th:text="${integrationDescription ?: 'Authentication request'}">Integration description</div>
           </div>
         </div>
       </div>
@@ -120,23 +120,30 @@
         
         <!-- Expired State (Authentication Expired) -->
         <div th:if="${expired}" data-testid="demo-device-result-expired" class="result-icon result-expired">⏰</div>
-        
+
+        <!-- Neutral, Back-only states (#943, mobile #834 Q8/Q9/Q10) -->
+        <div th:if="${inactive}" data-testid="demo-device-result-inactive" class="result-icon result-expired">⏹️</div>
+        <div th:if="${unconfirmed}" data-testid="demo-device-result-unconfirmed" class="result-icon result-expired">📨</div>
+        <div th:if="${uncertain}" data-testid="demo-device-result-uncertain" class="result-icon result-expired">❔</div>
+
         <!-- Dynamic Title -->
-        <div class="result-title" 
-             th:text="${success ? 'Authentication Successful' : 
-                        denied ? 'Authentication Denied' : 
-                        failed ? 'Authentication Failed' : 
-                        expired ? 'Authentication Expired' :
+        <div class="result-title"
+             th:text="${success ? 'Authentication Successful' :
+                        denied ? 'Authentication Denied' :
+                        failed ? 'Authentication Failed' :
+                        expired ? 'Request Expired' :
+                        inactive ? 'Request No Longer Active' :
+                        unconfirmed ? 'Response Sent' :
+                        uncertain ? 'Result Uncertain' :
                         'Authentication Result'}">
           Result
         </div>
-        
-        <!-- Dynamic Message -->
-        <div class="result-message" 
-             th:text="${message ?: 
-                        denied ? 'Authentication was denied by user' : 
-                        failed ? 'Authentication failed due to technical error' : 
-                        expired ? 'This authentication request has expired. Restart the login from the application.' :
+
+        <!-- Dynamic Message (always set by the controller; fallbacks never name a cause) -->
+        <div class="result-message"
+             th:text="${message ?:
+                        denied ? 'Authentication was denied by user' :
+                        expired ? 'This request has expired.' :
                         'Authentication response submitted'}">
           Result message
         </div>

@@ -3,8 +3,10 @@ package org.ezkey.demo.device.controller;
 import jakarta.servlet.http.HttpSession;
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.TimeoutException;
 import org.ezkey.demo.device.config.DemoDeviceProperties;
 import org.ezkey.demo.device.service.AuthApiService;
 import org.ezkey.demo.device.service.AuthApiUrlValidator;
@@ -40,6 +42,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -106,13 +109,103 @@ public class EzkeyAppController {
    */
   static final String AUTH_ATTEMPT_EXPIRED_TYPE_SUFFIX = "auth-attempt-expired";
 
-  /** Neutral copy when the attempt expired — any initiator (Admin UI, PAM/SSH, SDK, …). */
-  static final String MSG_AUTH_EXPIRED =
-      "This authentication request has expired. Restart the login from the application.";
+  /** Suffix of ProblemDetail {@code type} for a temporary signing outage on respond (#844). */
+  static final String INTEGRATION_SIGNING_UNAVAILABLE_TYPE_SUFFIX =
+      "integration-signing-unavailable";
 
-  /** Neutral copy when the attempt is no longer active (superseded, decided, …). */
+  /** Suffix of ProblemDetail {@code type} when pending no longer maps to an active enrollment. */
+  static final String AUTH_ATTEMPT_BINDING_FAILED_TYPE_SUFFIX = "auth-attempt-binding-failed";
+
+  // On-screen copy. Strings marked "mobile" are the mobile app's English strings
+  // (ezkey_mobile/app/i18n/resources.ts): the evaluator must see the same outcome and tone (#943).
+  // Never show HTTP codes, server `detail`, exception messages, URLs, or hosts.
+
+  /** Mobile {@code pendingAuth.requestExpired}: typed 409 {@code auth-attempt-expired}. */
+  static final String MSG_AUTH_EXPIRED = "This request has expired.";
+
+  /** Mobile {@code pendingAuth.requestNoLongerActive}: any other 409 (cancel, decided, …). */
   static final String MSG_AUTH_NO_LONGER_ACTIVE =
-      "This authentication request is no longer active. Restart the login from the application.";
+      "This request is no longer active. No action is required.";
+
+  /** Mobile {@code pendingAuth.resultNotConfirmed}: HTTP 200 but result signature missing/bad. */
+  static final String MSG_RESULT_NOT_CONFIRMED =
+      "The response was sent, but its confirmation could not be verified. Check the sign-in"
+          + " where it was started.";
+
+  /** Mobile {@code pendingAuth.uncertainDecision}: sent, then no usable answer (transport, 5xx). */
+  static final String MSG_RESULT_UNCERTAIN =
+      "The result of this request is uncertain. Check the sign-in where it was started. This is"
+          + " not a failure — do not send another decision from this device.";
+
+  /** Mobile {@code pendingAuth.integrationSigningUnavailable}: 503, retryable. */
+  static final String MSG_SIGNING_UNAVAILABLE =
+      "Authentication signing is temporarily unavailable. Try again later.";
+
+  /** HTTP 429 on any Auth API call, retryable. */
+  static final String MSG_RATE_LIMITED = "Too many attempts. Try again in a few seconds.";
+
+  /** Mobile {@code pendingAuth.enterChallenge}: approve without a usable challenge. */
+  static final String MSG_ENTER_CHALLENGE = "Enter the 2-digit code shown on the sign-in screen.";
+
+  /** Mobile {@code pendingAuth.leaveDeclinesHint}, shown under Approve / Deny. */
+  static final String MSG_LEAVE_DECLINES_HINT = "Leaving this screen declines the request.";
+
+  /** Generic fallback (mobile {@code pendingAuth.requestFailed}, with a next step). */
+  static final String MSG_REQUEST_FAILED = "Request failed. Try again.";
+
+  /** No HTTP answer from the Auth API before anything was decided. */
+  static final String MSG_AUTH_API_UNREACHABLE = "Could not reach the Auth API. Try again.";
+
+  /** Pending refused with {@code auth-attempt-binding-failed} (mobile enrollment detail). */
+  static final String MSG_ENROLLMENT_NO_LONGER_ACTIVE =
+      "This enrollment is no longer active: the server no longer accepts it. Ask your"
+          + " administrator for a new enrollment.";
+
+  /** Bind answered with a key algorithm other than Ed25519 (mobile refuses it too). */
+  static final String MSG_BIND_UNSUPPORTED_KEY =
+      "This enrollment uses an unsupported integration key. Ask your administrator for a new"
+          + " enrollment.";
+
+  /** Bind failed without a usable HTTP answer. */
+  static final String MSG_BIND_FAILED =
+      "Bind failed. Check that the Auth API is reachable, then try again.";
+
+  /** Verify failed; the local draft is discarded, as before. */
+  static final String MSG_VERIFY_FAILED =
+      "Verification failed. Please start over from the beginning.";
+
+  /** Only Ed25519 integration keys are accepted at bind, like the mobile app. */
+  static final String EXPECTED_INTEGRATION_KEY_ALGORITHM = "ed25519";
+
+  /**
+   * Terminal states of {@code auth_result}. Each sets one boolean model flag of the same name
+   * (lower case) that the template reads.
+   */
+  enum ResultState {
+    SUCCESS,
+    DENIED,
+    FAILED,
+    EXPIRED,
+    /** Neutral grey: 409 other than expired. Back only. */
+    INACTIVE,
+    /** Response sent; the integration's confirmation could not be verified. Back only. */
+    UNCONFIRMED,
+    /** Response sent; no usable answer came back. Back only. */
+    UNCERTAIN
+  }
+
+  /** How an Auth API HTTP error on respond is shown. */
+  enum RespondHttpOutcome {
+    EXPIRED,
+    NO_LONGER_ACTIVE,
+    /** Retryable: back to the same request with a banner. */
+    SIGNING_UNAVAILABLE,
+    /** Retryable: back to the same request with a banner. */
+    RATE_LIMITED,
+    /** The request reached the server; its answer is unusable. */
+    UNCERTAIN,
+    FAILED
+  }
 
   /**
    * Creates the controller.
@@ -184,6 +277,15 @@ public class EzkeyAppController {
           authApiService.bind(enrollmentProofToken, bindResolution.apiBaseUrl()).block();
       if (bindResponse != null && bindResponse.getEnrollmentId() != null) {
         Integer enrollmentId = bindResponse.getEnrollmentId();
+        // Fail closed before generating or persisting anything, like the mobile wizard (#943)
+        if (!EXPECTED_INTEGRATION_KEY_ALGORITHM.equalsIgnoreCase(
+            bindResponse.getIntegrationKeyAlgorithm())) {
+          logger.warn(
+              "Bind refused for enrollment {}: integration key algorithm is not Ed25519",
+              enrollmentId);
+          model.addAttribute("error", MSG_BIND_UNSUPPORTED_KEY);
+          return "phone/ezkey/bind_enrollment";
+        }
         // Generate device keys
         ECP256DeviceKeyPair keyPair = cryptoService.generateDeviceKeyPair();
         String devicePublicKeyB64 = keyPair.base64PublicKey();
@@ -256,12 +358,10 @@ public class EzkeyAppController {
           "Bind API error: status={}, problemType={}",
           e.getStatusCode().value(),
           problemTypeFromError(e));
-      String userMessage =
-          toBindErrorMessage(e.getStatusCode().value(), e.getResponseBodyAsString());
-      model.addAttribute("error", userMessage);
+      model.addAttribute("error", toBindErrorMessage(e.getStatusCode().value()));
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Bind failed", e);
-      model.addAttribute("error", "Bind failed: " + e.getMessage());
+      model.addAttribute("error", MSG_BIND_FAILED);
     }
     return "phone/ezkey/bind_enrollment";
   }
@@ -340,20 +440,68 @@ public class EzkeyAppController {
     return cleaned;
   }
 
-  /** Maps bind API error status and optional body to a clear, actionable message for the user. */
-  private static String toBindErrorMessage(int statusCode, String responseBody) {
+  /**
+   * Maps a bind API error status to an actionable message. Never echoes the response body or the
+   * status code (#943).
+   *
+   * @param statusCode HTTP status from Auth API
+   * @return on-screen message
+   */
+  static String toBindErrorMessage(int statusCode) {
     if (statusCode == 409) {
       return "This enrollment is already bound to a device. Create a new enrollment in the Admin UI"
-          + " and use its ID and proof token to bind.";
+          + " and scan its QR code.";
     }
     if (statusCode == 400) {
-      return "Invalid request: use an enrollment that was just created (not yet bound), with the"
-          + " exact proof token from the Admin UI. If the invitation has expired, create a"
-          + " new enrollment.";
+      return "This invitation cannot be used: it may be already used, mistyped, or expired. Create"
+          + " a new enrollment in the Admin UI.";
     }
-    return "Bind failed: server returned "
-        + statusCode
-        + (responseBody != null && !responseBody.isBlank() ? " — " + responseBody : "");
+    if (statusCode == 429) {
+      return MSG_RATE_LIMITED;
+    }
+    return MSG_BIND_FAILED;
+  }
+
+  /**
+   * Classifies an Auth API HTTP error on respond, like the mobile app (#844, #895, #943).
+   *
+   * @param statusCode HTTP status
+   * @param problemType sanitized ProblemDetail type, or {@code null}
+   * @return how the outcome is shown
+   */
+  static RespondHttpOutcome classifyRespondHttpError(int statusCode, String problemType) {
+    if (statusCode == 409) {
+      return isAuthAttemptExpiredProblem(problemType)
+          ? RespondHttpOutcome.EXPIRED
+          : RespondHttpOutcome.NO_LONGER_ACTIVE;
+    }
+    if (statusCode == 503
+        && problemType != null
+        && problemType.endsWith(INTEGRATION_SIGNING_UNAVAILABLE_TYPE_SUFFIX)) {
+      return RespondHttpOutcome.SIGNING_UNAVAILABLE;
+    }
+    if (statusCode == 429) {
+      return RespondHttpOutcome.RATE_LIMITED;
+    }
+    if (statusCode >= 500) {
+      return RespondHttpOutcome.UNCERTAIN;
+    }
+    return RespondHttpOutcome.FAILED;
+  }
+
+  /**
+   * Sets the terminal result for {@code auth_result}: one boolean flag per {@link ResultState} plus
+   * the message.
+   *
+   * @param model Thymeleaf model
+   * @param state terminal state
+   * @param message on-screen message (never a server detail or exception text)
+   */
+  static void applyResult(Model model, ResultState state, String message) {
+    for (ResultState s : ResultState.values()) {
+      model.addAttribute(s.name().toLowerCase(Locale.ROOT), s == state);
+    }
+    model.addAttribute("message", message);
   }
 
   @PostMapping("/enrollment/verify")
@@ -474,9 +622,7 @@ public class EzkeyAppController {
       storeService.delete(enrollmentId);
       logger.error("Verify failed for enrollment {} - removed from store", enrollmentId, e);
       model.addAttribute("enrollmentId", enrollmentId);
-      model.addAttribute(
-          "error",
-          "Verification failed: " + e.getMessage() + ". Please start over from the beginning.");
+      model.addAttribute("error", MSG_VERIFY_FAILED);
     }
     return "phone/ezkey/bind_enrollment";
   }
@@ -589,18 +735,77 @@ public class EzkeyAppController {
       }
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Authentication check failed for enrollment {}", enrollmentId, e);
-
-      // Check if it's an expired authentication attempt
-      if (e.getMessage() != null && e.getMessage().contains("No pending authentication request")) {
-        model.addAttribute("message", MSG_AUTH_EXPIRED);
-      } else {
-        model.addAttribute("error", "Authentication check failed: " + e.getMessage());
-      }
+      model.addAttribute("error", toPendingErrorMessage(e));
       model.addAttribute("hasPendingAuth", false);
       return "phone/ezkey/auth";
     }
   }
 
+  /**
+   * Maps a pending (claim) failure to an on-screen message, never the exception text (#943).
+   *
+   * @param error failure from the pending call
+   * @return on-screen message
+   */
+  static String toPendingErrorMessage(Exception error) {
+    WebClientResponseException http =
+        error instanceof WebClientResponseException direct
+            ? direct
+            : error.getCause() instanceof WebClientResponseException cause ? cause : null;
+    if (http == null) {
+      return isTransportFailure(error) ? MSG_AUTH_API_UNREACHABLE : MSG_REQUEST_FAILED;
+    }
+    if (http.getStatusCode().value() == 429) {
+      return MSG_RATE_LIMITED;
+    }
+    String problemType = problemTypeFromError(http);
+    if (problemType != null && problemType.endsWith(AUTH_ATTEMPT_BINDING_FAILED_TYPE_SUFFIX)) {
+      return MSG_ENROLLMENT_NO_LONGER_ACTIVE;
+    }
+    return MSG_REQUEST_FAILED;
+  }
+
+  /**
+   * Whether a failure means no HTTP answer came back (connection refused, reset, timeout).
+   *
+   * @param error failure from a blocking WebClient call
+   * @return {@code true} for transport-level failures
+   */
+  static boolean isTransportFailure(Throwable error) {
+    for (Throwable t = error; t != null; t = t.getCause()) {
+      if (t instanceof WebClientRequestException || t instanceof TimeoutException) {
+        return true;
+      }
+      if (t.getCause() == t) {
+        break;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Sends Approve / Deny, or the decline sent when the person leaves the request screen.
+   *
+   * <p>Outcomes follow the mobile pending-auth FSM where the evaluator sees them (#943): typed 409
+   * expired vs no longer active (Back only); 503 signing unavailable and 429 return to the same
+   * request with a banner and keep the session claim; a result whose signature cannot be verified
+   * is "unconfirmed"; a request that was sent without a usable answer is "uncertain". The session
+   * claim is cleared on every other outcome.
+   *
+   * <p>{@code leave=true} is the light leave-as-deny: the request screen's exit control sends a
+   * Deny, then always returns to the enrollments list, whatever the outcome (mobile #834 Q3: never
+   * trap the person; the integrating application shows the result).
+   *
+   * @param enrollmentId local enrollment id
+   * @param authAttemptId claimed attempt id
+   * @param approved {@code true} for Approve
+   * @param challengeResponse 2-digit challenge (Approve only)
+   * @param authAttemptProofToken proof token from the claimed pending
+   * @param leave {@code true} when sent by the screen's exit control (forces Deny)
+   * @param model Thymeleaf model
+   * @param session HTTP session holding the claim
+   * @return view name
+   */
   @PostMapping("/enrollments/{enrollmentId}/auth/respond")
   public String respondToAuth(
       @PathVariable("enrollmentId") Integer enrollmentId,
@@ -608,22 +813,23 @@ public class EzkeyAppController {
       @RequestParam("approved") Boolean approved,
       @RequestParam(value = "challengeResponse", required = false) String challengeResponse,
       @RequestParam("authAttemptProofToken") String authAttemptProofToken,
+      @RequestParam(value = "leave", defaultValue = "false") boolean leave,
       Model model,
       HttpSession session) {
-    // Leaving the pending UI — clear session claim whether respond succeeds or fails
-    PendingAuthClaimSession.clear(session, enrollmentId);
+    boolean accepted = Boolean.TRUE.equals(approved) && !leave;
     model.addAttribute("pageTitle", "Authentication Response");
     model.addAttribute("enrollmentId", enrollmentId);
+    String view = "phone/ezkey/auth_result";
+    boolean keepClaim = false;
+    boolean sent = false;
     try {
-      // Load enrollment record
       Optional<Record> recOpt = storeService.load(enrollmentId);
       if (recOpt.isEmpty()) {
         model.addAttribute("error", "Enrollment not found");
-        return "phone/ezkey/auth";
+        view = "phone/ezkey/auth";
+        return leave ? "redirect:/phone/ezkey" : view;
       }
       Record rec = recOpt.get();
-
-      // Add integration information to model
       model.addAttribute("enrollmentName", rec.enrollmentName());
       model.addAttribute("integrationName", rec.integrationName());
       model.addAttribute("integrationDescription", rec.integrationDescription());
@@ -632,180 +838,186 @@ public class EzkeyAppController {
       // Sign canonical payload (proofToken|accepted) so backend can verify accepted was not
       // tampered
       String respondPayload =
-          AuthAttemptPayloadUtil.buildRespondPayload(authAttemptProofToken, approved);
+          AuthAttemptPayloadUtil.buildRespondPayload(authAttemptProofToken, accepted);
       String responseSignature =
           cryptoService.signStringToBase64(respondPayload, rec.devicePrivateKey());
-
-      // Create respond request with authAttemptId explicitly set
       AuthAttemptRespondRequestDto respondRequest =
           new AuthAttemptRespondRequestDto()
               .authAttemptId(authAttemptId)
-              .authAttemptAccepted(approved)
+              .authAttemptAccepted(accepted)
               .authAttemptProofTokenSignedByDevice(responseSignature);
 
-      // Add challenge response if provided — never log the challenge value (#753)
-      if (challengeResponse != null && !challengeResponse.trim().isEmpty()) {
+      // Challenge on Approve only; the server skips it on Deny. Never log its value (#753).
+      if (accepted && challengeResponse != null && !challengeResponse.isBlank()) {
         try {
-          Integer challengeResponseInt = Integer.parseInt(challengeResponse.trim());
-          respondRequest.authAttemptChallengeResponse(challengeResponseInt);
-          logger.info(
-              "Challenge response included for auth attempt {} enrollment {}",
-              authAttemptId,
-              enrollmentId);
+          respondRequest.authAttemptChallengeResponse(Integer.parseInt(challengeResponse.trim()));
         } catch (NumberFormatException e) {
           logger.warn(
               "Invalid challenge response format for auth attempt {} enrollment {}",
               authAttemptId,
               enrollmentId);
-          model.addAttribute("success", false);
-          model.addAttribute("denied", false);
-          model.addAttribute("failed", true);
-          model.addAttribute(
-              "message", "Invalid challenge response format. Please enter a numeric code.");
-          return "phone/ezkey/auth_result";
+          keepClaim = reshowClaimedPending(model, session, enrollmentId, MSG_ENTER_CHALLENGE);
+          if (keepClaim) {
+            view = "phone/ezkey/auth_pending";
+          } else {
+            applyResult(model, ResultState.INACTIVE, MSG_AUTH_NO_LONGER_ACTIVE);
+          }
+          return view;
         }
       }
-      logger.info("Responding to auth attempt {} for enrollment {}", authAttemptId, enrollmentId);
+      logger.info(
+          "Responding to auth attempt {} for enrollment {} (leave={})",
+          authAttemptId,
+          enrollmentId,
+          leave);
 
       String authApiBase =
           EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(
               rec, configuredAuthApiBase, allowedAuthApiHosts);
-
+      sent = true;
       AuthAttemptRespondResponseDto respondResponse =
           authApiService.respond(respondRequest, authApiBase).block();
-      if (respondResponse != null) {
-        logger.info(
-            "Auth response submitted successfully for auth attempt {} enrollment {}",
-            respondResponse.getAuthAttemptId(),
-            enrollmentId);
-
-        String resultPayload =
-            AuthAttemptPayloadUtil.buildRespondResultPayload(
-                authAttemptProofToken,
-                respondResponse.getAuthAttemptId(),
-                respondResponse.getAuthAttemptResult() != null
-                    ? respondResponse.getAuthAttemptResult().getValue()
-                    : null,
-                respondResponse.getAuthAttemptMessage());
-        String respondSig = respondResponse.getAuthAttemptProofTokenResultSignedByIntegration();
-        if (respondSig == null || respondSig.isBlank()) {
-          model.addAttribute("success", false);
-          model.addAttribute("denied", false);
-          model.addAttribute("failed", true);
-          model.addAttribute(
-              "message",
-              "Authentication response was not signed by the integration (missing signature).");
-          return "phone/ezkey/auth_result";
-        }
-        boolean respondSignatureValid =
-            cryptoService.validateSignature(resultPayload, respondSig, rec.integrationPublicKey());
-        if (!respondSignatureValid) {
-          model.addAttribute("success", false);
-          model.addAttribute("denied", false);
-          model.addAttribute("failed", true);
-          model.addAttribute(
-              "message", "Could not verify authentication result signature (possible tampering).");
-          return "phone/ezkey/auth_result";
-        }
-
-        // Determine result based on the API response
-        String result = respondResponse.getAuthAttemptResult().getValue();
-        if ("APPROVED".equals(result)) {
-          // Authentication was successful
-          model.addAttribute("success", true);
-          model.addAttribute("denied", false);
-          model.addAttribute("failed", false);
-          model.addAttribute("message", respondResponse.getAuthAttemptMessage());
-        } else if ("DENIED".equals(result)) {
-          // Authentication was denied by user
-          model.addAttribute("success", false);
-          model.addAttribute("denied", true);
-          model.addAttribute("failed", false);
-          model.addAttribute("message", respondResponse.getAuthAttemptMessage());
-        } else if ("FAILED".equals(result)) {
-          // Technical error occurred
-          model.addAttribute("success", false);
-          model.addAttribute("denied", false);
-          model.addAttribute("failed", true);
-          model.addAttribute("message", respondResponse.getAuthAttemptMessage());
-        } else if ("EXPIRED".equals(result)) {
-          // Authentication attempt expired
-          model.addAttribute("success", false);
-          model.addAttribute("denied", false);
-          model.addAttribute("failed", false);
-          model.addAttribute("expired", true);
-          model.addAttribute("message", respondResponse.getAuthAttemptMessage());
-        } else {
-          // Unknown result - treat as failed
-          model.addAttribute("success", false);
-          model.addAttribute("denied", false);
-          model.addAttribute("failed", true);
-          model.addAttribute("message", "Unknown authentication result: " + result);
-        }
+      if (respondResponse == null) {
+        applyResult(model, ResultState.UNCERTAIN, MSG_RESULT_UNCERTAIN);
       } else {
-        // Technical failure
-        model.addAttribute("success", false);
-        model.addAttribute("denied", false);
-        model.addAttribute("failed", true);
-        model.addAttribute("message", "Failed to submit authentication response");
+        applyVerifiedRespondResult(model, rec, authAttemptProofToken, respondResponse);
       }
-    } catch (WebClientResponseException e) {
-      // Never log the raw problem body (#754); map typed expiry when PR-A is present.
-      String problemType = problemTypeFromError(e);
-      logger.error(
-          "Auth response failed for enrollment {} authAttempt {} status={} type={}",
-          enrollmentId,
-          authAttemptId,
-          e.getStatusCode().value(),
-          problemType != null ? problemType : "-");
-      applyRespondConflictToModel(model, e.getStatusCode().value(), problemType);
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
-      logger.error(
-          "Auth response failed for enrollment {} authAttempt {}", enrollmentId, authAttemptId, e);
-      Throwable cause = e.getCause();
-      if (cause instanceof WebClientResponseException wcre) {
-        String problemType = problemTypeFromError(wcre);
-        applyRespondConflictToModel(model, wcre.getStatusCode().value(), problemType);
+      WebClientResponseException http =
+          e instanceof WebClientResponseException direct
+              ? direct
+              : e.getCause() instanceof WebClientResponseException cause ? cause : null;
+      if (http != null) {
+        // Never log the raw problem body (#754)
+        String problemType = problemTypeFromError(http);
+        logger.warn(
+            "Auth response refused for enrollment {} authAttempt {} status={} type={}",
+            enrollmentId,
+            authAttemptId,
+            http.getStatusCode().value(),
+            problemType != null ? problemType : "-");
+        RespondHttpOutcome outcome =
+            classifyRespondHttpError(http.getStatusCode().value(), problemType);
+        if (!leave
+            && (outcome == RespondHttpOutcome.SIGNING_UNAVAILABLE
+                || outcome == RespondHttpOutcome.RATE_LIMITED)) {
+          String banner =
+              outcome == RespondHttpOutcome.SIGNING_UNAVAILABLE
+                  ? MSG_SIGNING_UNAVAILABLE
+                  : MSG_RATE_LIMITED;
+          keepClaim = reshowClaimedPending(model, session, enrollmentId, banner);
+        }
+        if (keepClaim) {
+          view = "phone/ezkey/auth_pending";
+        } else {
+          applyRespondHttpOutcome(model, outcome);
+        }
       } else {
-        model.addAttribute("success", false);
-        model.addAttribute("denied", false);
-        model.addAttribute("failed", true);
-        model.addAttribute("expired", false);
-        model.addAttribute("message", "Authentication response failed: " + e.getMessage());
+        logger.error(
+            "Auth response failed for enrollment {} authAttempt {}",
+            enrollmentId,
+            authAttemptId,
+            e);
+        if (sent) {
+          applyResult(model, ResultState.UNCERTAIN, MSG_RESULT_UNCERTAIN);
+        } else {
+          applyResult(model, ResultState.FAILED, MSG_REQUEST_FAILED);
+        }
+      }
+    } finally {
+      if (!keepClaim) {
+        PendingAuthClaimSession.clear(session, enrollmentId);
       }
     }
-    return "phone/ezkey/auth_result";
+    return leave ? "redirect:/phone/ezkey" : view;
   }
 
   /**
-   * Maps respond HTTP conflicts to the auth result UI.
-   *
-   * <p>When status is 409 and the ProblemDetail type ends with {@code auth-attempt-expired} (PR-A),
-   * shows a clear expired state. Other 409s (including older {@code auth-attempt-state-conflict} or
-   * a missing type) show a neutral “no longer active” message — tolerant of a server without PR-A.
+   * Shows a respond HTTP 200: verifies the integration's result signature, then maps the result.
    *
    * @param model Thymeleaf model
-   * @param statusCode HTTP status from Auth API
-   * @param problemType sanitized ProblemDetail type, or {@code null}
+   * @param rec local enrollment
+   * @param authAttemptProofToken proof token from the claimed pending
+   * @param respondResponse Auth API answer
    */
-  static void applyRespondConflictToModel(Model model, int statusCode, String problemType) {
-    model.addAttribute("success", false);
-    model.addAttribute("denied", false);
-    if (statusCode == 409 && isAuthAttemptExpiredProblem(problemType)) {
-      model.addAttribute("failed", false);
-      model.addAttribute("expired", true);
-      model.addAttribute("message", MSG_AUTH_EXPIRED);
+  private void applyVerifiedRespondResult(
+      Model model,
+      Record rec,
+      String authAttemptProofToken,
+      AuthAttemptRespondResponseDto respondResponse) {
+    String result =
+        respondResponse.getAuthAttemptResult() != null
+            ? respondResponse.getAuthAttemptResult().getValue()
+            : null;
+    String resultPayload =
+        AuthAttemptPayloadUtil.buildRespondResultPayload(
+            authAttemptProofToken,
+            respondResponse.getAuthAttemptId(),
+            result,
+            respondResponse.getAuthAttemptMessage());
+    String respondSig = respondResponse.getAuthAttemptProofTokenResultSignedByIntegration();
+    // Mobile #834 Q2/Q9: the decision was sent; without a valid signature, show neither approved
+    // nor denied — "unconfirmed", Back only.
+    if (respondSig == null
+        || respondSig.isBlank()
+        || !cryptoService.validateSignature(
+            resultPayload, respondSig, rec.integrationPublicKey())) {
+      applyResult(model, ResultState.UNCONFIRMED, MSG_RESULT_NOT_CONFIRMED);
       return;
     }
-    if (statusCode == 409) {
-      model.addAttribute("failed", true);
-      model.addAttribute("expired", false);
-      model.addAttribute("message", MSG_AUTH_NO_LONGER_ACTIVE);
-      return;
+    String message = respondResponse.getAuthAttemptMessage();
+    if ("APPROVED".equals(result)) {
+      applyResult(model, ResultState.SUCCESS, message);
+    } else if ("DENIED".equals(result)) {
+      applyResult(model, ResultState.DENIED, message);
+    } else if ("EXPIRED".equals(result)) {
+      applyResult(model, ResultState.EXPIRED, message);
+    } else {
+      // FAILED (e.g. wrong challenge) or an unknown value: the signed message when present
+      applyResult(
+          model,
+          ResultState.FAILED,
+          "FAILED".equals(result) && message != null ? message : MSG_REQUEST_FAILED);
     }
-    model.addAttribute("failed", true);
-    model.addAttribute("expired", false);
-    model.addAttribute("message", "Authentication response failed: server returned " + statusCode);
+  }
+
+  /**
+   * Shows a terminal respond HTTP error on {@code auth_result}.
+   *
+   * @param model Thymeleaf model
+   * @param outcome classified outcome
+   */
+  static void applyRespondHttpOutcome(Model model, RespondHttpOutcome outcome) {
+    switch (outcome) {
+      case EXPIRED -> applyResult(model, ResultState.EXPIRED, MSG_AUTH_EXPIRED);
+      case NO_LONGER_ACTIVE -> applyResult(model, ResultState.INACTIVE, MSG_AUTH_NO_LONGER_ACTIVE);
+      case UNCERTAIN -> applyResult(model, ResultState.UNCERTAIN, MSG_RESULT_UNCERTAIN);
+      case SIGNING_UNAVAILABLE -> applyResult(model, ResultState.FAILED, MSG_SIGNING_UNAVAILABLE);
+      case RATE_LIMITED -> applyResult(model, ResultState.FAILED, MSG_RATE_LIMITED);
+      default -> applyResult(model, ResultState.FAILED, MSG_REQUEST_FAILED);
+    }
+  }
+
+  /**
+   * Re-shows the claimed request with a banner, keeping the claim (retryable outcomes).
+   *
+   * @param model Thymeleaf model
+   * @param session HTTP session
+   * @param enrollmentId local enrollment id
+   * @param banner neutral message shown above Approve / Deny
+   * @return {@code true} when the claim was still open and the request is shown again
+   */
+  private static boolean reshowClaimedPending(
+      Model model, HttpSession session, Integer enrollmentId, String banner) {
+    Optional<ClaimedPendingAuth> claim =
+        PendingAuthClaimSession.findOpen(
+            session, enrollmentId, Instant.now(), PendingAuthClaimSession.DEFAULT_TTL);
+    if (claim.isEmpty()) {
+      return false;
+    }
+    applyClaimedPendingToModel(model, claim.get());
+    model.addAttribute("retryMessage", banner);
+    return true;
   }
 
   /**
@@ -821,6 +1033,7 @@ public class EzkeyAppController {
     model.addAttribute("challengeRequired", claim.challengeRequired());
     model.addAttribute("contextTitle", claim.contextTitle());
     model.addAttribute("contextMessage", claim.contextMessage());
+    model.addAttribute("leaveHint", MSG_LEAVE_DECLINES_HINT);
     model.addAttribute("hasPendingAuth", true);
   }
 }
