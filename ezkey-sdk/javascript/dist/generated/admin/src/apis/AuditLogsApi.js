@@ -665,6 +665,7 @@ exports.GetAuditLogsEventTypeEnum = {
     AdminProfileUpdated: 'ADMIN_PROFILE_UPDATED',
     AdminDeactivated: 'ADMIN_DEACTIVATED',
     AdminActivated: 'ADMIN_ACTIVATED',
+    AdminBindMaterialRevealed: 'ADMIN_BIND_MATERIAL_REVEALED',
     EnrollmentCreated: 'ENROLLMENT_CREATED',
     EnrollmentUpdated: 'ENROLLMENT_UPDATED',
     EnrollmentDeleted: 'ENROLLMENT_DELETED',

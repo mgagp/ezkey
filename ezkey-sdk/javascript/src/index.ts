@@ -15,6 +15,17 @@ export { EzkeyClient } from './client';
 export { EzkeyAdminAPI } from './admin-api';
 export { EzkeyAuthAPI } from './auth-api';
 
+// Integration API (API key, machine to machine) — what an application backend uses to sign users in
+export { EzkeyIntegrationClient, EzkeyIntegrationError } from './integration-api';
+export type {
+  EzkeyIntegrationConfig,
+  AuthAttemptCreateOptions,
+  AuthAttemptCreated,
+  AuthAttemptStatus,
+  AuthAttemptWaitResult,
+  AuthAttemptCancelled
+} from './integration-api';
+
 // Configuration
 export { EzkeyConfig, createDefaultConfig } from './config';
 

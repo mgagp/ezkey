@@ -156,12 +156,6 @@ export type AuthAttemptRespondResponseDtoAuthAttemptResultEnum = typeof AuthAtte
  */
 export interface EnrollmentBindRequestDto {
     /**
-     * Enrollment ID to bind to the mobile device
-     * @type {number}
-     * @memberof EnrollmentBindRequestDto
-     */
-    enrollmentId: number;
-    /**
      * Enrollment proof token for authentication
      * @type {string}
      * @memberof EnrollmentBindRequestDto
@@ -456,10 +450,4 @@ export interface PublicInstanceInfoResponseDto {
      * @memberof PublicInstanceInfoResponseDto
      */
     aboutUrl?: string | null;
-    /**
-     * When true, evaluator self-registration and temporary console explore are available on this Admin API (community/lab). False or omitted when disabled.
-     * @type {boolean}
-     * @memberof PublicInstanceInfoResponseDto
-     */
-    evaluatorSelfRegistrationEnabled?: boolean | null;
 }

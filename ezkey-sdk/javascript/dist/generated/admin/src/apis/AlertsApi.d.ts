@@ -62,9 +62,11 @@ export type ListAlertsStatusEnum = typeof ListAlertsStatusEnum[keyof typeof List
  * @export
  */
 export declare const ListAlertsAlertTypeEnum: {
-    readonly ChainGapPending: "AUDIT_CHAIN_GAP_PENDING";
-    readonly ChainHeartbeatStale: "AUDIT_CHAIN_HEARTBEAT_STALE";
-    readonly IntegrityRupture: "AUDIT_INTEGRITY_RUPTURE";
+    readonly AuditChainGapPending: "AUDIT_CHAIN_GAP_PENDING";
+    readonly AuditChainHeartbeatStale: "AUDIT_CHAIN_HEARTBEAT_STALE";
+    readonly AuditIntegrityRupture: "AUDIT_INTEGRITY_RUPTURE";
+    readonly AuthAttemptRejected: "AUTH_ATTEMPT_REJECTED";
+    readonly PartitionCreationFailed: "PARTITION_CREATION_FAILED";
 };
 export type ListAlertsAlertTypeEnum = typeof ListAlertsAlertTypeEnum[keyof typeof ListAlertsAlertTypeEnum];
 /**

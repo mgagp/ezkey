@@ -46,7 +46,7 @@ try {
   );
 
   // Use Auth API
-  const binding = await client.auth().bindEnrollment(enrollmentId, enrollmentProofToken);
+  const binding = await client.auth().bindEnrollment(enrollmentProofToken);
 } catch (error) {
   if (error instanceof EzkeyException) {
     console.error(`API Error: ${error.message}`);
@@ -143,7 +143,7 @@ await adminAPI.deleteAuthAttempt(authAttemptId);
 
 ```typescript
 // Enrollment operations
-const binding = await authAPI.bindEnrollment(enrollmentId, enrollmentProofToken);
+const binding = await authAPI.bindEnrollment(enrollmentProofToken);
 
 const verification = await authAPI.verifyEnrollment(
   enrollmentId, challengeResponse, devicePublicKey, enrollmentProofTokenSigned

@@ -1,6 +1,6 @@
 {
   "name": "ezkey-auth-client",
-  "version": "0.2.0-SNAPSHOT",
+  "version": "1.0.0",
   "description": "OpenAPI client for ezkey-auth-client",
   "author": "OpenAPI-Generator",
   "repository": {

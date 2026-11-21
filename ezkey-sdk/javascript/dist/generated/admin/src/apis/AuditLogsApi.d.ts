@@ -253,6 +253,7 @@ export declare const GetAuditLogsEventTypeEnum: {
     readonly AdminProfileUpdated: "ADMIN_PROFILE_UPDATED";
     readonly AdminDeactivated: "ADMIN_DEACTIVATED";
     readonly AdminActivated: "ADMIN_ACTIVATED";
+    readonly AdminBindMaterialRevealed: "ADMIN_BIND_MATERIAL_REVEALED";
     readonly EnrollmentCreated: "ENROLLMENT_CREATED";
     readonly EnrollmentUpdated: "ENROLLMENT_UPDATED";
     readonly EnrollmentDeleted: "ENROLLMENT_DELETED";

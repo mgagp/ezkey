@@ -364,6 +364,44 @@ class IntegrationsApi extends runtime.BaseAPI {
         const response = await this.searchRaw(requestParameters, initOverrides);
         return await response.value();
     }
+    /**
+     * Sets whether a new authentication attempt replaces a live one (REPLACE) or is refused while a live one exists (REFUSE). Default for new integrations is REPLACE. The system integration stays REPLACE; changing it returns 403 system-integration-lifecycle.
+     * Update pending-attempt policy
+     */
+    async updatePendingAttemptPolicyRaw(requestParameters, initOverrides) {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError('id', 'Required parameter "id" was null or undefined when calling updatePendingAttemptPolicy().');
+        }
+        if (requestParameters['integrationPendingAttemptPolicyRequestDto'] == null) {
+            throw new runtime.RequiredError('integrationPendingAttemptPolicyRequestDto', 'Required parameter "integrationPendingAttemptPolicyRequestDto" was null or undefined when calling updatePendingAttemptPolicy().');
+        }
+        const queryParameters = {};
+        const headerParameters = {};
+        headerParameters['Content-Type'] = 'application/json';
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        const response = await this.request({
+            path: `/api/v1/integrations/{id}/pending-attempt-policy`.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id']))),
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['integrationPendingAttemptPolicyRequestDto'],
+        }, initOverrides);
+        return new runtime.JSONApiResponse(response);
+    }
+    /**
+     * Sets whether a new authentication attempt replaces a live one (REPLACE) or is refused while a live one exists (REFUSE). Default for new integrations is REPLACE. The system integration stays REPLACE; changing it returns 403 system-integration-lifecycle.
+     * Update pending-attempt policy
+     */
+    async updatePendingAttemptPolicy(requestParameters, initOverrides) {
+        const response = await this.updatePendingAttemptPolicyRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
 }
 exports.IntegrationsApi = IntegrationsApi;
 /**

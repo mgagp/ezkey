@@ -492,6 +492,12 @@ export interface AdminResponseDto {
      * @memberof AdminResponseDto
      */
     operational?: boolean;
+    /**
+     * When the pending administrator's activation code stops working (valid 7 days from issue). Set only on GET and PATCH by ID while an unexpired code exists; null otherwise. The code itself is never returned.
+     * @type {string}
+     * @memberof AdminResponseDto
+     */
+    activationCodeExpiresAt?: string | null;
 }
 
 
@@ -576,12 +582,6 @@ export interface AdminSessionResponseDto {
      * @memberof AdminSessionResponseDto
      */
     csrfToken?: string;
-    /**
-     * Token purpose: SESSION for passwordless login, EVALUATOR_TEMP for temporary console explore
-     * @type {string}
-     * @memberof AdminSessionResponseDto
-     */
-    tokenPurpose?: AdminSessionResponseDtoTokenPurposeEnum;
 }
 
 
@@ -594,16 +594,6 @@ export const AdminSessionResponseDtoAdminTypeEnum = {
     IntegrationAdmin: 'INTEGRATION_ADMIN'
 } as const;
 export type AdminSessionResponseDtoAdminTypeEnum = typeof AdminSessionResponseDtoAdminTypeEnum[keyof typeof AdminSessionResponseDtoAdminTypeEnum];
-
-/**
- * @export
- */
-export const AdminSessionResponseDtoTokenPurposeEnum = {
-    Session: 'SESSION',
-    EvaluatorTemp: 'EVALUATOR_TEMP',
-    Recovery: 'RECOVERY'
-} as const;
-export type AdminSessionResponseDtoTokenPurposeEnum = typeof AdminSessionResponseDtoTokenPurposeEnum[keyof typeof AdminSessionResponseDtoTokenPurposeEnum];
 
 /**
  * Request DTO for partial update of administrator profile
@@ -733,9 +723,11 @@ export interface AlertResponseDto {
  * @export
  */
 export const AlertResponseDtoAlertTypeEnum = {
-    ChainGapPending: 'AUDIT_CHAIN_GAP_PENDING',
-    ChainHeartbeatStale: 'AUDIT_CHAIN_HEARTBEAT_STALE',
-    IntegrityRupture: 'AUDIT_INTEGRITY_RUPTURE'
+    AuditChainGapPending: 'AUDIT_CHAIN_GAP_PENDING',
+    AuditChainHeartbeatStale: 'AUDIT_CHAIN_HEARTBEAT_STALE',
+    AuditIntegrityRupture: 'AUDIT_INTEGRITY_RUPTURE',
+    AuthAttemptRejected: 'AUTH_ATTEMPT_REJECTED',
+    PartitionCreationFailed: 'PARTITION_CREATION_FAILED'
 } as const;
 export type AlertResponseDtoAlertTypeEnum = typeof AlertResponseDtoAlertTypeEnum[keyof typeof AlertResponseDtoAlertTypeEnum];
 
@@ -765,7 +757,8 @@ export const AlertResponseDtoResolutionReasonEnum = {
     GapDeclared: 'GAP_DECLARED',
     HeartbeatRestored: 'HEARTBEAT_RESTORED',
     Manual: 'MANUAL',
-    IntegrityRuptureConciliated: 'INTEGRITY_RUPTURE_CONCILIATED'
+    IntegrityRuptureConciliated: 'INTEGRITY_RUPTURE_CONCILIATED',
+    PartitionHorizonRestored: 'PARTITION_HORIZON_RESTORED'
 } as const;
 export type AlertResponseDtoResolutionReasonEnum = typeof AlertResponseDtoResolutionReasonEnum[keyof typeof AlertResponseDtoResolutionReasonEnum];
 
@@ -1614,6 +1607,7 @@ export const AuditLogResponseDtoEventTypeEnum = {
     AdminProfileUpdated: 'ADMIN_PROFILE_UPDATED',
     AdminDeactivated: 'ADMIN_DEACTIVATED',
     AdminActivated: 'ADMIN_ACTIVATED',
+    AdminBindMaterialRevealed: 'ADMIN_BIND_MATERIAL_REVEALED',
     EnrollmentCreated: 'ENROLLMENT_CREATED',
     EnrollmentUpdated: 'ENROLLMENT_UPDATED',
     EnrollmentDeleted: 'ENROLLMENT_DELETED',
@@ -2141,9 +2135,11 @@ export interface DashboardAlertItemDto {
  * @export
  */
 export const DashboardAlertItemDtoAlertTypeEnum = {
-    ChainGapPending: 'AUDIT_CHAIN_GAP_PENDING',
-    ChainHeartbeatStale: 'AUDIT_CHAIN_HEARTBEAT_STALE',
-    IntegrityRupture: 'AUDIT_INTEGRITY_RUPTURE'
+    AuditChainGapPending: 'AUDIT_CHAIN_GAP_PENDING',
+    AuditChainHeartbeatStale: 'AUDIT_CHAIN_HEARTBEAT_STALE',
+    AuditIntegrityRupture: 'AUDIT_INTEGRITY_RUPTURE',
+    AuthAttemptRejected: 'AUTH_ATTEMPT_REJECTED',
+    PartitionCreationFailed: 'PARTITION_CREATION_FAILED'
 } as const;
 export type DashboardAlertItemDtoAlertTypeEnum = typeof DashboardAlertItemDtoAlertTypeEnum[keyof typeof DashboardAlertItemDtoAlertTypeEnum];
 
@@ -2406,6 +2402,43 @@ export interface DashboardOverviewDto {
     integrityConfigSummary?: DashboardIntegrityConfigSummaryDto;
 }
 /**
+ * Structured horizon for the PARTITION_CREATION dashboard row
+ * @export
+ * @interface DashboardPartitionHorizonDto
+ */
+export interface DashboardPartitionHorizonDto {
+    /**
+     * First month in the horizon (yyyy-MM)
+     * @type {string}
+     * @memberof DashboardPartitionHorizonDto
+     */
+    from?: string;
+    /**
+     * Last month in the horizon (yyyy-MM)
+     * @type {string}
+     * @memberof DashboardPartitionHorizonDto
+     */
+    to?: string;
+    /**
+     * Future months beyond the current one
+     * @type {number}
+     * @memberof DashboardPartitionHorizonDto
+     */
+    monthsAhead?: number;
+    /**
+     * Partitions not created; null when the run succeeded
+     * @type {number}
+     * @memberof DashboardPartitionHorizonDto
+     */
+    failedTargets?: number;
+    /**
+     * Partitions the run attempted; null when the run succeeded
+     * @type {number}
+     * @memberof DashboardPartitionHorizonDto
+     */
+    targets?: number;
+}
+/**
  * Recent audit log entry for dashboard overview
  * @export
  * @interface DashboardRecentActivityItemDto
@@ -2490,6 +2523,12 @@ export interface DashboardScheduledJobRowDto {
      * @memberof DashboardScheduledJobRowDto
      */
     lastErrorSummary?: string;
+    /**
+     * Structured months for PARTITION_CREATION. Null for other jobs. The dashboard uses this instead of lastRunScope and lastErrorSummary.
+     * @type {DashboardPartitionHorizonDto}
+     * @memberof DashboardScheduledJobRowDto
+     */
+    partitionHorizon?: DashboardPartitionHorizonDto;
 }
 
 
@@ -2499,7 +2538,8 @@ export interface DashboardScheduledJobRowDto {
 export const DashboardScheduledJobRowDtoJobKeyEnum = {
     AuditChainCheckpoint: 'AUDIT_CHAIN_CHECKPOINT',
     NightlyIntegrityValidation: 'NIGHTLY_INTEGRITY_VALIDATION',
-    Reencryption: 'REENCRYPTION'
+    Reencryption: 'REENCRYPTION',
+    PartitionCreation: 'PARTITION_CREATION'
 } as const;
 export type DashboardScheduledJobRowDtoJobKeyEnum = typeof DashboardScheduledJobRowDtoJobKeyEnum[keyof typeof DashboardScheduledJobRowDtoJobKeyEnum];
 
@@ -3004,6 +3044,12 @@ export interface EnrollmentResponseDto {
      * @memberof EnrollmentResponseDto
      */
     operational?: boolean;
+    /**
+     * Administrator who owns this MFA enrollment (one administrator, one enrollment). Set only on detail responses (GET and PATCH by ID) for a Global Admin caller; null otherwise, including for an enrollment no administrator owns
+     * @type {number}
+     * @memberof EnrollmentResponseDto
+     */
+    ownerAdminId?: number | null;
 }
 
 
@@ -3197,148 +3243,6 @@ export const EntryIntegrityViolationConciliationStatusEnum = {
 export type EntryIntegrityViolationConciliationStatusEnum = typeof EntryIntegrityViolationConciliationStatusEnum[keyof typeof EntryIntegrityViolationConciliationStatusEnum];
 
 /**
- * Anonymous evaluator self-registration request
- * @export
- * @interface EvaluatorSelfRegistrationRequestDto
- */
-export interface EvaluatorSelfRegistrationRequestDto {
-    /**
-     * Optional short label for the preview tenant (max 40 characters; no email or URL)
-     * @type {string}
-     * @memberof EvaluatorSelfRegistrationRequestDto
-     */
-    tenantLabel?: string;
-}
-/**
- * Anonymous evaluator self-registration response
- * @export
- * @interface EvaluatorSelfRegistrationResponseDto
- */
-export interface EvaluatorSelfRegistrationResponseDto {
-    /**
-     * One-time activation code (save immediately)
-     * @type {string}
-     * @memberof EvaluatorSelfRegistrationResponseDto
-     */
-    activationCode?: string;
-    /**
-     * Activation code expiration instant (UTC)
-     * @type {string}
-     * @memberof EvaluatorSelfRegistrationResponseDto
-     */
-    activationCodeExpiresAt?: string;
-    /**
-     * Admin UI URL for this preview instance
-     * @type {string}
-     * @memberof EvaluatorSelfRegistrationResponseDto
-     */
-    adminUiUrl?: string;
-    /**
-     * Guided tour URL on ezkey.org
-     * @type {string}
-     * @memberof EvaluatorSelfRegistrationResponseDto
-     */
-    guidedTourUrl?: string;
-    /**
-     * Server-generated tenant slug
-     * @type {string}
-     * @memberof EvaluatorSelfRegistrationResponseDto
-     */
-    tenantLabel?: string;
-}
-/**
- * Mint a one-shot temporary evaluator console session after activation
- * @export
- * @interface EvaluatorTempSessionRequestDto
- */
-export interface EvaluatorTempSessionRequestDto {
-    /**
-     * Enrollment ID returned by POST /admin/auth/activate
-     * @type {number}
-     * @memberof EvaluatorTempSessionRequestDto
-     */
-    enrollmentId: number;
-    /**
-     * Enrollment proof token returned by POST /admin/auth/activate (capability to mint)
-     * @type {string}
-     * @memberof EvaluatorTempSessionRequestDto
-     */
-    enrollmentProofToken: string;
-}
-/**
- * Temporary evaluator console session mint response
- * @export
- * @interface EvaluatorTempSessionResponseDto
- */
-export interface EvaluatorTempSessionResponseDto {
-    /**
-     * Whether the temporary session was minted
-     * @type {boolean}
-     * @memberof EvaluatorTempSessionResponseDto
-     */
-    success?: boolean;
-    /**
-     * Operator-facing message
-     * @type {string}
-     * @memberof EvaluatorTempSessionResponseDto
-     */
-    message?: string;
-    /**
-     * Opaque bearer token. Omitted when the API issues an HttpOnly session cookie.
-     * @type {string}
-     * @memberof EvaluatorTempSessionResponseDto
-     */
-    token?: string;
-    /**
-     * Administrator type
-     * @type {string}
-     * @memberof EvaluatorTempSessionResponseDto
-     */
-    adminType?: string;
-    /**
-     * Administrator username
-     * @type {string}
-     * @memberof EvaluatorTempSessionResponseDto
-     */
-    username?: string;
-    /**
-     * Absolute temporary session expiry (UTC)
-     * @type {string}
-     * @memberof EvaluatorTempSessionResponseDto
-     */
-    expiresAt?: string;
-    /**
-     * Administrator ID
-     * @type {number}
-     * @memberof EvaluatorTempSessionResponseDto
-     */
-    adminId?: number;
-    /**
-     * Tenant scope ID
-     * @type {number}
-     * @memberof EvaluatorTempSessionResponseDto
-     */
-    tenantId?: number;
-    /**
-     * Tenant display name
-     * @type {string}
-     * @memberof EvaluatorTempSessionResponseDto
-     */
-    tenantName?: string;
-    /**
-     * Token purpose
-     * @type {string}
-     * @memberof EvaluatorTempSessionResponseDto
-     */
-    tokenPurpose?: string;
-    /**
-     * CSRF token for cookie mode
-     * @type {string}
-     * @memberof EvaluatorTempSessionResponseDto
-     */
-    csrfToken?: string;
-}
-/**
  * 
  * @export
  * @interface GapDeclarationRequest
@@ -3436,7 +3340,24 @@ export interface IntegrationCreateRequestDto {
      * @memberof IntegrationCreateRequestDto
      */
     description?: string;
+    /**
+     * What to do when a live authentication attempt already exists. Omit for REPLACE.
+     * @type {string}
+     * @memberof IntegrationCreateRequestDto
+     */
+    pendingAttemptPolicy?: IntegrationCreateRequestDtoPendingAttemptPolicyEnum;
 }
+
+
+/**
+ * @export
+ */
+export const IntegrationCreateRequestDtoPendingAttemptPolicyEnum = {
+    Replace: 'REPLACE',
+    Refuse: 'REFUSE'
+} as const;
+export type IntegrationCreateRequestDtoPendingAttemptPolicyEnum = typeof IntegrationCreateRequestDtoPendingAttemptPolicyEnum[keyof typeof IntegrationCreateRequestDtoPendingAttemptPolicyEnum];
+
 /**
  * Response DTO containing created integration details
  * @export
@@ -3456,6 +3377,30 @@ export interface IntegrationCreateResponseDto {
      */
     id?: number;
 }
+/**
+ * Request to change the pending-attempt policy of an integration
+ * @export
+ * @interface IntegrationPendingAttemptPolicyRequestDto
+ */
+export interface IntegrationPendingAttemptPolicyRequestDto {
+    /**
+     * REPLACE or REFUSE
+     * @type {string}
+     * @memberof IntegrationPendingAttemptPolicyRequestDto
+     */
+    pendingAttemptPolicy: IntegrationPendingAttemptPolicyRequestDtoPendingAttemptPolicyEnum;
+}
+
+
+/**
+ * @export
+ */
+export const IntegrationPendingAttemptPolicyRequestDtoPendingAttemptPolicyEnum = {
+    Replace: 'REPLACE',
+    Refuse: 'REFUSE'
+} as const;
+export type IntegrationPendingAttemptPolicyRequestDtoPendingAttemptPolicyEnum = typeof IntegrationPendingAttemptPolicyRequestDtoPendingAttemptPolicyEnum[keyof typeof IntegrationPendingAttemptPolicyRequestDtoPendingAttemptPolicyEnum];
+
 /**
  * Response DTO containing complete integration details
  * @export
@@ -3522,6 +3467,12 @@ export interface IntegrationResponseDto {
      * @memberof IntegrationResponseDto
      */
     isSystemIntegration?: boolean;
+    /**
+     * What happens when a live authentication attempt already exists for an enrollment
+     * @type {string}
+     * @memberof IntegrationResponseDto
+     */
+    pendingAttemptPolicy?: IntegrationResponseDtoPendingAttemptPolicyEnum;
 }
 
 
@@ -3533,6 +3484,15 @@ export const IntegrationResponseDtoLifecycleStatusEnum = {
     Retired: 'RETIRED'
 } as const;
 export type IntegrationResponseDtoLifecycleStatusEnum = typeof IntegrationResponseDtoLifecycleStatusEnum[keyof typeof IntegrationResponseDtoLifecycleStatusEnum];
+
+/**
+ * @export
+ */
+export const IntegrationResponseDtoPendingAttemptPolicyEnum = {
+    Replace: 'REPLACE',
+    Refuse: 'REFUSE'
+} as const;
+export type IntegrationResponseDtoPendingAttemptPolicyEnum = typeof IntegrationResponseDtoPendingAttemptPolicyEnum[keyof typeof IntegrationResponseDtoPendingAttemptPolicyEnum];
 
 /**
  * Accepted Integrity async job (minimal body).
@@ -4453,12 +4413,6 @@ export interface PublicInstanceInfoResponseDto {
      * @memberof PublicInstanceInfoResponseDto
      */
     aboutUrl?: string | null;
-    /**
-     * When true, evaluator self-registration and temporary console explore are available on this Admin API (community/lab). False or omitted when disabled.
-     * @type {boolean}
-     * @memberof PublicInstanceInfoResponseDto
-     */
-    evaluatorSelfRegistrationEnabled?: boolean | null;
 }
 /**
  * 
