@@ -19,7 +19,36 @@ Auth API pending is read-once (`PENDING` → `READ`). After a successful claim, 
 
 Auth API pending currently omits expiry on the wire (#834 — countdown stays on the integrating app). The local fallback can drift: e.g. PAM `ttlSeconds` 90 with a 120 s fallback leaves a stale Approve/Deny visible for ~30 s after server expiry. Prefer aligning the property with the initiator TTL, or rely on respond **409** as the fail-closed net. `PendingAuthClaimSession.findOpen` invalidates at `min(expiresAt, claimedAt + 10 min)`.
 
-On `POST …/auth/respond`, HTTP **409** with ProblemDetail type ending in `auth-attempt-expired` (PR-A) shows the expired result with initiator-neutral copy (“Restart the login from the application” — Admin UI, PAM/SSH, SDK, …). Other 409s (including older `auth-attempt-state-conflict` or a missing type) show “no longer active” — tolerant when PR-A is not yet deployed.
+On `POST …/auth/respond`, HTTP **409** with ProblemDetail type ending in `auth-attempt-expired` (PR-A) shows the expired result. Other 409s (including `auth-attempt-state-conflict` or a missing type) show “no longer active”. Outcomes and copy: § *Visible parity with the mobile app*.
+
+## Visible parity with the mobile app (#943)
+
+Rule: at every moment an evaluator sees, the Demo Device shows the same outcome, tone, and
+possible action as the mobile app (`ezkey_mobile/docs/MOBILE_APP_STATE_MACHINE.md`); internals stay
+simple. On-screen strings marked "mobile" in `EzkeyAppController` are the mobile app's English
+strings (`ezkey_mobile/app/i18n/resources.ts`); change them together. Never show HTTP codes,
+server `detail`, exception text, URLs, or hosts.
+
+| Moment | Demo Device |
+| --- | --- |
+| Bind answers a key algorithm other than Ed25519 | Refused before keys are generated or saved |
+| Bind / verify / pending error | Fixed message per case (429, binding failed, unreachable, …) |
+| Respond 409 `auth-attempt-expired` | `expired` result, Back only |
+| Respond other 409 (cancel, decided, superseded, bad signature #916) | Neutral `inactive` result, Back only; never split the causes |
+| Respond 503 `integration-signing-unavailable` or 429 | Same request again with a banner (`retryMessage`); the session claim is kept |
+| Respond 200, result signature missing or invalid | `unconfirmed` result (mobile Q2/Q9), Back only |
+| Respond sent, then transport failure or other 5xx | `uncertain` result (mobile Q10), Back only |
+| Leaving the request screen | The exit control (`demo-device-auth-back` on `auth_pending`) sends a **Deny**, then returns to the list whatever the outcome (mobile Q3); the hint line says so |
+
+The session claim is cleared on every outcome except the retryable ones above. Agents approving an
+Admin UI login must use Approve, not the exit control, on the request screen.
+
+**Non-goals (accepted limits, reopen only with a reason):** biometrics and protected approval; a
+countdown on the phone (#834 Q1); the `UncertainDecision` id lock (a server-rendered result page
+is already Back only); leave-as-deny on browser Back or tab close (only the in-app exit control
+declines); i18n (English only); an in-memory bind draft (the record is saved at bind, as before);
+`expiresAt` on the pending wire; verifying the bind and verify-result signatures (the evaluator
+does not see them; reopen if the Demo Device becomes a protocol reference).
 
 ## QR `authUrl` routing (mobile parity)
 

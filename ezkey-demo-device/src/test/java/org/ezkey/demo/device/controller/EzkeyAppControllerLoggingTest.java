@@ -140,7 +140,14 @@ class EzkeyAppControllerLoggingTest {
 
     Model model = new ConcurrentModel();
     controller.respondToAuth(
-        ENROLLMENT_ID, AUTH_ATTEMPT_ID, true, CHALLENGE, PROOF_TOKEN, model, new MockHttpSession());
+        ENROLLMENT_ID,
+        AUTH_ATTEMPT_ID,
+        true,
+        CHALLENGE,
+        PROOF_TOKEN,
+        false,
+        model,
+        new MockHttpSession());
 
     String joined = joinedMessages();
     assertThat(joined).contains(String.valueOf(ENROLLMENT_ID));
@@ -249,6 +256,7 @@ class EzkeyAppControllerLoggingTest {
         true,
         badChallenge,
         PROOF_TOKEN,
+        false,
         model,
         new MockHttpSession());
 

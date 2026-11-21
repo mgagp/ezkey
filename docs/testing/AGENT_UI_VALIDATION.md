@@ -185,7 +185,8 @@ Canonical agent path — do **not** invent a parallel protocol:
 6. Click **Approve** → confirm Demo Device success (`Authentication Successful` /
    `demo-device-result-success`), then click **`[data-testid="demo-device-back-to-enrollments"]`**
    (primary CTA **Back to Enrollments**). Do **not** use the side-exit control
-   (`demo-device-auth-back` / “Exit to enrollments list”) unless the primary CTA is missing.
+   (`demo-device-auth-back`) unless the primary CTA is missing. On the request screen (before
+   Approve) that control **declines** the request, like leaving the mobile screen (#943).
 7. **Tab A** should land on `/dashboard` as **Global Admin**. Spot-check list routes for the slice
    when that is the goal (e.g. `/integrations`, `/enrollments`).
 8. **Logout** when the smoke is done (**Déconnexion** / Logout) → confirm `/login` again.
