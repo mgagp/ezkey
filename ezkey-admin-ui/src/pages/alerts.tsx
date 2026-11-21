@@ -11,6 +11,7 @@ import { PaginatedTable } from '@/components/data-table/paginated-table';
 import { type ColumnDef } from '@/components/data-table/data-table';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { resolveAlertListSummary } from '@/lib/alert-list-summary';
+import { buildListDetailNavState } from '@/lib/list-detail-navigation';
 import { formatDate } from '@/lib/utils';
 import { listAlerts } from '@/generated/admin-api/alerts/alerts';
 import type {
@@ -258,7 +259,10 @@ export default function AlertsPage() {
             isLoading={isLoading}
             keyExtractor={(r, i) => r.alertId ?? i}
             emptyMessage={t('alerts:list.emptyMessage')}
-            onRowClick={(row) => navigate(`/alerts/${row.alertId}`)}
+            onRowClick={(row) => {
+              const st = buildListDetailNavState(data, (r) => r.alertId ?? 0, row, !pagination.isLast);
+              navigate(`/alerts/${row.alertId}`, { state: st ?? undefined });
+            }}
             currentSort={pagination.sort}
             onSort={pagination.setSort}
             pagination={pagination}

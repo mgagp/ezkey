@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Check, Copy, KeyRound, Pencil, Power, PowerOff, RefreshCw } from 'lucide-react';
+import { AlertTriangle, Check, Copy, KeyRound, ListOrdered, Pencil, Power, PowerOff, RefreshCw } from 'lucide-react';
 import { AdminBindCard } from '@/components/feature/admin-bind-card';
 import { AdminStatusBadge, AdminTypeBadge } from '@/components/feature/admin-badges';
 import { DeactivateAdminDialog } from '@/components/feature/admin-deactivate-dialog';
@@ -40,7 +40,11 @@ import {
   recoveryCodesIssuanceKind,
   type RecoveryCodesIssuanceKind,
 } from '@/lib/admin-recovery-codes-issuance';
-import { isPendingActivationAdmin, shouldShowTenantOperationalWarning } from '@/lib/admin-record-rules';
+import {
+  adminEnrollmentState,
+  isPendingActivationAdmin,
+  shouldShowTenantOperationalWarning,
+} from '@/lib/admin-record-rules';
 import { fetchApi } from '@/lib/api-client';
 import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { isPhoneNumberInputValid, normalizePhoneNumberInput } from '@/lib/phone-number';
@@ -106,6 +110,7 @@ function AdminRecord({ adm }: { adm: RecoveryAwareAdmin }) {
   const { t } = useTranslation('admins');
   const { session } = useAuth();
   const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [editOpen, setEditOpen] = useState(false);
@@ -212,6 +217,7 @@ function AdminRecord({ adm }: { adm: RecoveryAwareAdmin }) {
   const activateReasonTooShort = activateReason.trim().length > 0 && activateReason.trim().length < 10;
 
   const fullName = [adm.firstName, adm.lastName].filter(Boolean).join(' ');
+  const enrollmentState = adminEnrollmentState(adm);
   const canShowIssueInitialAction = canShowIssueInitialAdminRecoveryCodesAction(adm);
   const issueActionLabel = t(RECOVERY_CODES_ISSUANCE_COPY_KEYS[recoveryCodesIssuanceKind(adm)].action);
   const canIssueInitialCodesNow = canIssueInitialAdminRecoveryCodes(adm);
@@ -373,18 +379,19 @@ function AdminRecord({ adm }: { adm: RecoveryAwareAdmin }) {
                       <span className="text-fg-muted text-xs ml-1.5">({formatRelativeTime(adm.lastLoginAt)})</span>
                     </span>
                   ) : (
-                    <span className="text-fg-muted italic">{t('detail.lastLoginNever')}</span>
+                    // V-2026-06-05 admin login state, merged into this row (#1428).
+                    <span data-testid="admin-detail-first-login-pending">
+                      <Badge variant="warning">{t('detail.lastLoginFirstSignInPending')}</Badge>
+                    </span>
                   )}
                 </DetailInfoRow>
-                <DetailInfoRow label={t('detail.labelEnrollmentCapability')} valueClassName="break-all">
-                  {adm.enrollmentId != null
-                    ? <Badge variant="success">{t('detail.enrollmentCapabilityLinked')}</Badge>
-                    : <Badge variant="muted">{t('detail.enrollmentCapabilityMissing')}</Badge>}
-                </DetailInfoRow>
-                <DetailInfoRow label={t('detail.labelAdminLoginState')} valueClassName="break-all">
-                  {adm.lastLoginAt != null
-                    ? <Badge variant="success">{t('detail.adminLoginStateCompleted')}</Badge>
-                    : <Badge variant="warning">{t('detail.adminLoginStatePendingFirstLogin')}</Badge>}
+                {/* V-2026-06-05 enrollment state (#1428): the only cue of it for a Tenant Admin. */}
+                <DetailInfoRow label={t('detail.labelEnrollmentState')} valueClassName="break-all">
+                  <span data-testid="admin-detail-enrollment-state" data-state={enrollmentState.key}>
+                    <Badge variant={enrollmentState.variant}>
+                      {t(`detail.enrollmentState.${enrollmentState.key}`)}
+                    </Badge>
+                  </span>
                 </DetailInfoRow>
               </dl>
             </CardContent>
@@ -459,6 +466,28 @@ function AdminRecord({ adm }: { adm: RecoveryAwareAdmin }) {
                   {t('detail.reissueActivationCode')}
                 </Button>
               )}
+
+              {/* Audit-log context (#1428). One filter cannot say actor OR target: two links. */}
+              <Button
+                variant="secondary"
+                size="sm"
+                className="w-full justify-start gap-2"
+                data-testid="admin-detail-view-audits-actor"
+                onClick={() => navigate(`/audit-logs?adminId=${adm.adminId}&source=admin-detail`)}
+              >
+                <ListOrdered className="size-3.5" />
+                {t('detail.viewAuditsActor')}
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="w-full justify-start gap-2"
+                data-testid="admin-detail-view-audits-target"
+                onClick={() => navigate(`/audit-logs?targetAdminId=${adm.adminId}&source=admin-detail`)}
+              >
+                <ListOrdered className="size-3.5" />
+                {t('detail.viewAuditsTarget')}
+              </Button>
 
               {isGlobalAdmin && adm.active && (
                 <div className="flex items-center gap-2">

@@ -73,6 +73,10 @@ First slice delivered in Admin UI (dual-state indicators, blocked-action rationa
 Operator-facing lifecycle semantics remain aligned with `docs/LIFECYCLE_GOVERNANCE.md`. Further
 broad admin lifecycle redesign is not implied by this closeout.
 
+2026-11-20, #1428: indicators refined, two dimensions kept. The enrollment row now follows
+`enrollmentStatus` (a `CREATED` enrollment no longer reads as done), and the admin login state
+merged into the Last login row (pending badge until the first authenticated sign-in).
+
 ## Related documents
 
 - `docs/LIFECYCLE_GOVERNANCE.md`
