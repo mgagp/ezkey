@@ -63,6 +63,20 @@ test('@smoke @device-backed representative authenticated workflow loads admins a
     await expect(page).not.toHaveURL(firstUrl);
     await expect(page.getByTestId('admin-record')).toBeVisible();
   }
+
+  // #1428: the enrollment row follows enrollmentStatus; the record links to its audit-log context.
+  await expect(page.getByTestId('admin-detail-enrollment-state')).toHaveAttribute(
+    'data-state',
+    /^(CREATED|BOUND|VERIFIED|INVALID|REVOKED|EXPIRED|NONE)$/,
+  );
+  const recordAdminId = new URL(page.url()).pathname.split('/').pop();
+  await page.getByTestId('admin-detail-view-audits-actor').click();
+  await expect(page).toHaveURL(new RegExp(`/audit-logs\\?.*adminId=${recordAdminId}(&|$)`));
+  await expect(page).toHaveURL(/source=admin-detail/);
+  await expect(page.getByTestId('audit-logs-context-admin')).toContainText(`#${recordAdminId}`);
+  await page.goBack();
+  await expect(page.getByTestId('admin-record')).toBeVisible();
+
   await page.getByRole('navigation', { name: 'Breadcrumb' }).getByRole('link').first().click();
   await expect(page).toHaveURL(/\/admins$/);
 

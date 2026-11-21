@@ -6,8 +6,10 @@ import { AppShell } from '@/components/layout/app-shell';
 import { Alert as UiAlert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DetailPageNav } from '@/components/ui/detail-page-nav';
 import { EntryHmacBadge } from '@/components/feature/entry-hmac-badge';
 import { useGetAlert } from '@/generated/admin-api/alerts/alerts';
+import { useListDetailPageNavigation } from '@/hooks/use-list-detail-page-navigation';
 import {
   checkChainIntegrity,
   checkIntegrity,
@@ -524,6 +526,12 @@ export default function AlertDetailPage() {
   const { alertId } = useParams<{ alertId: string }>();
   const id = Number(alertId);
 
+  const { nav: alertListNav, goPrev: goPrevAlert, goNext: goNextAlert, showEndOfPageHint: showAlertListEndHint } =
+    useListDetailPageNavigation({
+      currentId: id,
+      pathPrefix: '/alerts',
+    });
+
   const { data: alert, isLoading } = useGetAlert<AlertResponseDto>(
     Number.isNaN(id) ? 0 : id,
     { query: { enabled: !Number.isNaN(id) } },
@@ -560,6 +568,17 @@ export default function AlertDetailPage() {
   return (
     <AppShell
       title={isLoading ? t('alerts:detail.fallbackTitle') : t('alerts:detail.title', { id: alert?.alertId ?? '?' })}
+      detailNav={
+        alertListNav ? (
+          <DetailPageNav
+            hasPrev={alertListNav.prevId !== undefined}
+            hasNext={alertListNav.nextId !== undefined}
+            onPrev={goPrevAlert}
+            onNext={goNextAlert}
+            showEndOfPageHint={showAlertListEndHint}
+          />
+        ) : undefined
+      }
       breadcrumb={[{ label: t('alerts:detail.breadcrumb'), path: '/alerts' }]}
     >
       {isLoading && (

@@ -299,6 +299,9 @@ Canonical matrix: [`product-docs/global/admin-ui-paginated-screens-matrix.md`](.
 
 ### Prev/Next detail navigation
 
+Dialog or record page, what a record holds, and the no-arrows-without-list-context rule:
+[`product-docs/components/admin-ui/screens-and-wireflow.md` § Record anatomy](../product-docs/components/admin-ui/screens-and-wireflow.md#record-anatomy) (#1428).
+
 When opening detail from a list (investigation / sequential review), reuse the shared pattern — do not invent ad-hoc arrow handlers:
 
 - **Modals:** `useDetailNavigation` (←/→ when focus is not in an editable field) + header chevrons (`DetailDialogHeaderNav` where used). Scope is the **current page** of results.

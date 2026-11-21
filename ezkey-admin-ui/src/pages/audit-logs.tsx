@@ -51,7 +51,103 @@ type AuditLogQueryParams = GetAuditLogsParams & {
 };
 type AuditEventStatusFilter = NonNullable<GetAuditLogsParams['eventStatus']> | '';
 type AuditApiNameFilter = NonNullable<GetAuditLogsParams['apiName']> | '';
-type ContextEntityType = 'enrollment' | 'authAttempt' | 'integration' | '';
+type EntityContextType =
+  | 'enrollment'
+  | 'authAttempt'
+  | 'integration'
+  | 'admin'
+  | 'targetAdmin'
+  | 'tenant';
+type ContextEntityType = EntityContextType | '';
+type EntityFilters = Partial<Record<EntityContextType, string>>;
+
+/**
+ * Entity context sources: a record page links here with `?<param>=<id>&source=<source>`.
+ * The page then filters on that entity over the last 24 hours and offers "Extend context".
+ * Administrator and tenant records joined integration, enrollment and auth attempt (#1428).
+ * Order matters when several params are present: the first one names the focused entity.
+ */
+const ENTITY_CONTEXTS: ReadonlyArray<{
+  type: EntityContextType;
+  /** URL and API query parameter; also the matching field on an audit row. */
+  param: 'enrollmentId' | 'authAttemptId' | 'integrationId' | 'adminId' | 'targetAdminId' | 'tenantId';
+  source: string;
+  contextualKey: string;
+  expandedKey: string;
+}> = [
+  {
+    type: 'enrollment',
+    param: 'enrollmentId',
+    source: 'enrollment-detail',
+    contextualKey: 'list.contextualEnrollment',
+    expandedKey: 'list.expandedContextFromEnrollment',
+  },
+  {
+    type: 'authAttempt',
+    param: 'authAttemptId',
+    source: 'auth-attempt-detail',
+    contextualKey: 'list.contextualAuthAttempt',
+    expandedKey: 'list.expandedContextFromAuthAttempt',
+  },
+  {
+    type: 'integration',
+    param: 'integrationId',
+    source: 'integration-detail',
+    contextualKey: 'list.contextualIntegration',
+    expandedKey: 'list.expandedContextFromIntegration',
+  },
+  {
+    type: 'admin',
+    param: 'adminId',
+    source: 'admin-detail',
+    contextualKey: 'list.contextualAdmin',
+    expandedKey: 'list.expandedContextFromAdmin',
+  },
+  {
+    type: 'targetAdmin',
+    param: 'targetAdminId',
+    source: 'admin-detail',
+    contextualKey: 'list.contextualTargetAdmin',
+    expandedKey: 'list.expandedContextFromTargetAdmin',
+  },
+  {
+    type: 'tenant',
+    param: 'tenantId',
+    source: 'tenant-detail',
+    contextualKey: 'list.contextualTenant',
+    expandedKey: 'list.expandedContextFromTenant',
+  },
+];
+
+const ENTITY_CONTEXT_SOURCES = new Set(ENTITY_CONTEXTS.map((c) => c.source));
+
+function readEntityFilters(searchParams: URLSearchParams): EntityFilters {
+  const filters: EntityFilters = {};
+  for (const c of ENTITY_CONTEXTS) {
+    const value = searchParams.get(c.param);
+    if (value) {
+      filters[c.type] = value;
+    }
+  }
+  return filters;
+}
+
+/** First entity filter set, in {@link ENTITY_CONTEXTS} order. */
+function firstEntityFilter(filters: EntityFilters): { type: EntityContextType; id: string } | null {
+  for (const c of ENTITY_CONTEXTS) {
+    const id = filters[c.type];
+    if (id) {
+      return { type: c.type, id };
+    }
+  }
+  return null;
+}
+
+/** True when the URL comes from a record page link: a known source plus its entity param. */
+function isEntityContextArrival(searchParams: URLSearchParams): boolean {
+  const source = searchParams.get('source');
+  return ENTITY_CONTEXTS.some((c) => c.source === source && Boolean(searchParams.get(c.param)));
+}
 
 /** Operational heartbeat incident row (Admin API lifecycle). */
 
@@ -89,10 +185,7 @@ function parseContextCount(value: string | null | undefined, fallback = 10): num
 }
 
 function parseContextEntityType(value: string | null | undefined): ContextEntityType {
-  if (value === 'enrollment' || value === 'authAttempt' || value === 'integration') {
-    return value;
-  }
-  return '';
+  return ENTITY_CONTEXTS.find((c) => c.type === value)?.type ?? '';
 }
 
 function toDateInputValue(iso?: string | null): string {
@@ -419,8 +512,8 @@ export default function AuditLogsPage() {
   const [apiNameFilter, setApiNameFilter] = useState<AuditApiNameFilter>(
     () => parseApiNameFilter(searchParams.get('apiName')),
   );
-  const [enrollmentFilter, setEnrollmentFilter] = useState(
-    () => searchParams.get('enrollmentId') ?? '',
+  const [entityFilters, setEntityFilters] = useState<EntityFilters>(
+    () => readEntityFilters(searchParams),
   );
   const [contextAnchorAuditLogId, setContextAnchorAuditLogId] = useState(
     () => parsePositiveIntegerString(searchParams.get('anchorAuditLogId')),
@@ -431,34 +524,18 @@ export default function AuditLogsPage() {
   const [contextAfterCount, setContextAfterCount] = useState(
     () => parseContextCount(searchParams.get('afterCount')),
   );
-  const [authAttemptFilter, setAuthAttemptFilter] = useState(
-    () => searchParams.get('authAttemptId') ?? '',
-  );
-  const [integrationFilter, setIntegrationFilter] = useState(
-    () => searchParams.get('integrationId') ?? '',
-  );
   const [contextSource, setContextSource] = useState(() => searchParams.get('source') ?? '');
   const [contextEntityType, setContextEntityType] = useState<ContextEntityType>(() => {
     const explicitEntityType = parseContextEntityType(searchParams.get('contextEntityType'));
     if (explicitEntityType) {
       return explicitEntityType;
     }
-    if (searchParams.get('source') === 'enrollment-detail' && searchParams.get('enrollmentId')) {
-      return 'enrollment';
-    }
-    if (searchParams.get('source') === 'auth-attempt-detail' && searchParams.get('authAttemptId')) {
-      return 'authAttempt';
-    }
-    if (searchParams.get('source') === 'integration-detail' && searchParams.get('integrationId')) {
-      return 'integration';
-    }
-    return '';
+    const source = searchParams.get('source');
+    return ENTITY_CONTEXTS.find((c) => c.source === source && searchParams.get(c.param))?.type ?? '';
   });
   const [contextEntityId, setContextEntityId] = useState(
     () => searchParams.get('contextEntityId')
-      ?? searchParams.get('enrollmentId')
-      ?? searchParams.get('authAttemptId')
-      ?? searchParams.get('integrationId')
+      ?? firstEntityFilter(readEntityFilters(searchParams))?.id
       ?? '',
   );
   const [contextBaseDateRange, setContextBaseDateRange] = useState<{
@@ -472,14 +549,7 @@ export default function AuditLogsPage() {
       return { createdAfter: baseCreatedAfter, createdBefore: baseCreatedBefore };
     }
 
-    const source = searchParams.get('source');
-    const enrollmentId = searchParams.get('enrollmentId');
-    const authAttemptId = searchParams.get('authAttemptId');
-    const integrationId = searchParams.get('integrationId');
-
-    if ((source === 'enrollment-detail' && enrollmentId)
-        || (source === 'auth-attempt-detail' && authAttemptId)
-        || (source === 'integration-detail' && integrationId)) {
+    if (isEntityContextArrival(searchParams)) {
       return getLast24HoursWindow();
     }
 
@@ -495,17 +565,11 @@ export default function AuditLogsPage() {
   } | null>(() => {
     const createdAfter = searchParams.get('createdAfter');
     const createdBefore = searchParams.get('createdBefore');
-    const source = searchParams.get('source');
-    const enrollmentId = searchParams.get('enrollmentId');
-    const authAttemptId = searchParams.get('authAttemptId');
-    const integrationId = searchParams.get('integrationId');
 
     if (createdAfter && createdBefore) {
       return { createdAfter, createdBefore };
     }
-    if ((source === 'enrollment-detail' && enrollmentId)
-        || (source === 'auth-attempt-detail' && authAttemptId)
-        || (source === 'integration-detail' && integrationId)) {
+    if (isEntityContextArrival(searchParams)) {
       return getLast24HoursWindow();
     }
     return null;
@@ -513,11 +577,9 @@ export default function AuditLogsPage() {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const anchorAuditLogId = contextAnchorAuditLogId ? Number(contextAnchorAuditLogId) : null;
   const isAuditLogContextMode = anchorAuditLogId !== null;
-  const isEntityContextSource = contextSource === 'enrollment-detail'
-    || contextSource === 'auth-attempt-detail'
-    || contextSource === 'integration-detail';
+  const isEntityContextSource = ENTITY_CONTEXT_SOURCES.has(contextSource);
   const isExpandedEntityContext = contextSource === 'context-expanded';
-  const hasEntityContext = Boolean(enrollmentFilter || authAttemptFilter || integrationFilter);
+  const hasEntityContext = firstEntityFilter(entityFilters) !== null;
   const canExpandEntityContext = !isAuditLogContextMode
     && isEntityContextSource
     && hasEntityContext
@@ -577,19 +639,16 @@ export default function AuditLogsPage() {
     if (apiNameFilter) {
       next.set('apiName', apiNameFilter);
     }
-    if (enrollmentFilter) {
-      next.set('enrollmentId', enrollmentFilter);
+    for (const c of ENTITY_CONTEXTS) {
+      const value = entityFilters[c.type];
+      if (value) {
+        next.set(c.param, value);
+      }
     }
     if (contextAnchorAuditLogId) {
       next.set('anchorAuditLogId', contextAnchorAuditLogId);
       next.set('beforeCount', String(contextBeforeCount));
       next.set('afterCount', String(contextAfterCount));
-    }
-    if (authAttemptFilter) {
-      next.set('authAttemptId', authAttemptFilter);
-    }
-    if (integrationFilter) {
-      next.set('integrationId', integrationFilter);
     }
     if (listApiDateParams.createdAfter && listApiDateParams.createdBefore) {
       next.set('createdAfter', listApiDateParams.createdAfter);
@@ -613,7 +672,6 @@ export default function AuditLogsPage() {
     }
   }, [
     apiNameFilter,
-    authAttemptFilter,
     contextAfterCount,
     contextAnchorAuditLogId,
     contextBaseDateRange,
@@ -621,10 +679,9 @@ export default function AuditLogsPage() {
     contextEntityId,
     contextEntityType,
     contextSource,
-    enrollmentFilter,
+    entityFilters,
     eventFilter,
     eventStatusFilter,
-    integrationFilter,
     listApiDateParams.createdAfter,
     listApiDateParams.createdBefore,
     searchParams,
@@ -637,9 +694,7 @@ export default function AuditLogsPage() {
       eventFilter,
       eventStatusFilter,
       apiNameFilter,
-      enrollmentFilter,
-      authAttemptFilter,
-      integrationFilter,
+      ...ENTITY_CONTEXTS.map((c) => entityFilters[c.type] ?? ''),
       listApiDateParams.createdAfter ?? '',
       listApiDateParams.createdBefore ?? '',
       effectiveTimeZoneId,
@@ -648,9 +703,12 @@ export default function AuditLogsPage() {
       ...eventFilterParams,
       eventStatus: eventStatusFilter || undefined,
       apiName: apiNameFilter || undefined,
-      enrollmentId: enrollmentFilter ? Number(enrollmentFilter) : undefined,
-      authAttemptId: authAttemptFilter ? Number(authAttemptFilter) : undefined,
-      integrationId: integrationFilter ? Number(integrationFilter) : undefined,
+      ...Object.fromEntries(
+        ENTITY_CONTEXTS.map((c) => [
+          c.param,
+          entityFilters[c.type] ? Number(entityFilters[c.type]) : undefined,
+        ]),
+      ),
       createdAfter: listApiDateParams.createdAfter,
       createdBefore: listApiDateParams.createdBefore,
     },
@@ -709,40 +767,23 @@ export default function AuditLogsPage() {
       setContextBaseDateRange(contextualDateRange);
     }
 
-    if (enrollmentFilter) {
-      setContextEntityType('enrollment');
-      setContextEntityId(enrollmentFilter);
-    } else if (authAttemptFilter) {
-      setContextEntityType('authAttempt');
-      setContextEntityId(authAttemptFilter);
-    } else if (integrationFilter) {
-      setContextEntityType('integration');
-      setContextEntityId(integrationFilter);
+    const focused = firstEntityFilter(entityFilters);
+    if (focused) {
+      setContextEntityType(focused.type);
+      setContextEntityId(focused.id);
     }
 
-    setEnrollmentFilter('');
-    setAuthAttemptFilter('');
-    setIntegrationFilter('');
+    setEntityFilters({});
     setContextSource('context-expanded');
     setContextualDateRange(getLast48HoursWindow());
     setDateRange({ from: '', to: '' });
     setSelectedIndex(null);
-  }, [authAttemptFilter, contextualDateRange, enrollmentFilter, integrationFilter]);
+  }, [contextualDateRange, entityFilters]);
 
   const restoreEntityContext = useCallback(() => {
-    setEnrollmentFilter(contextEntityType === 'enrollment' ? contextEntityId : '');
-    setAuthAttemptFilter(contextEntityType === 'authAttempt' ? contextEntityId : '');
-    setIntegrationFilter(contextEntityType === 'integration' ? contextEntityId : '');
-
-    if (contextEntityType === 'enrollment') {
-      setContextSource('enrollment-detail');
-    } else if (contextEntityType === 'authAttempt') {
-      setContextSource('auth-attempt-detail');
-    } else if (contextEntityType === 'integration') {
-      setContextSource('integration-detail');
-    } else {
-      setContextSource('');
-    }
+    const descriptor = ENTITY_CONTEXTS.find((c) => c.type === contextEntityType);
+    setEntityFilters(descriptor ? { [descriptor.type]: contextEntityId } : {});
+    setContextSource(descriptor?.source ?? '');
 
     setContextualDateRange(getLast24HoursWindow());
     setDateRange({ from: '', to: '' });
@@ -774,16 +815,8 @@ export default function AuditLogsPage() {
       return false;
     }
 
-    if (contextEntityType === 'enrollment') {
-      return row.enrollmentId === expandedContextEntityId;
-    }
-    if (contextEntityType === 'authAttempt') {
-      return row.authAttemptId === expandedContextEntityId;
-    }
-    if (contextEntityType === 'integration') {
-      return row.integrationId === expandedContextEntityId;
-    }
-    return false;
+    const descriptor = ENTITY_CONTEXTS.find((c) => c.type === contextEntityType);
+    return descriptor !== undefined && row[descriptor.param] === expandedContextEntityId;
   }, [canRestoreExpandedContext, contextEntityType, expandedContextEntityId, isWithinBaseContextRange]);
 
   const clearAuditLogContext = useCallback(() => {
@@ -973,24 +1006,14 @@ export default function AuditLogsPage() {
           </div>
         ) : (hasEntityContext || canRestoreExpandedContext) && (
           <div className="flex flex-wrap items-center gap-2 border border-fg/20 bg-fg/[0.03] px-3 py-2 text-sm">
-            {enrollmentFilter && (
-              <span>{t('list.contextualEnrollment', { id: enrollmentFilter })}</span>
-            )}
-            {authAttemptFilter && (
-              <span>{t('list.contextualAuthAttempt', { id: authAttemptFilter })}</span>
-            )}
-            {integrationFilter && (
-              <span>{t('list.contextualIntegration', { id: integrationFilter })}</span>
-            )}
-            {canRestoreExpandedContext && contextEntityType === 'enrollment' && (
-              <span>{t('list.expandedContextFromEnrollment', { id: contextEntityId })}</span>
-            )}
-            {canRestoreExpandedContext && contextEntityType === 'authAttempt' && (
-              <span>{t('list.expandedContextFromAuthAttempt', { id: contextEntityId })}</span>
-            )}
-            {canRestoreExpandedContext && contextEntityType === 'integration' && (
-              <span>{t('list.expandedContextFromIntegration', { id: contextEntityId })}</span>
-            )}
+            {ENTITY_CONTEXTS.filter((c) => entityFilters[c.type]).map((c) => (
+              <span key={c.type} data-testid={`audit-logs-context-${c.type}`}>
+                {t(c.contextualKey, { id: entityFilters[c.type] })}
+              </span>
+            ))}
+            {canRestoreExpandedContext && ENTITY_CONTEXTS.filter((c) => c.type === contextEntityType).map((c) => (
+              <span key={c.type}>{t(c.expandedKey, { id: contextEntityId })}</span>
+            ))}
             {isEntityContextSource && contextualDateRange && (
               <span className="text-fg-muted">{t('list.contextualEnrollmentWindow')}</span>
             )}
@@ -1004,9 +1027,7 @@ export default function AuditLogsPage() {
               type="button"
               className="ml-auto text-xs font-medium text-accent underline hover:text-accent/80"
               onClick={() => {
-                setEnrollmentFilter('');
-                setAuthAttemptFilter('');
-                setIntegrationFilter('');
+                setEntityFilters({});
                 setContextSource('');
                 setContextEntityType('');
                 setContextEntityId('');
