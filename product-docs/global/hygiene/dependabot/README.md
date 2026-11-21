@@ -154,7 +154,7 @@ Companion hygiene for Dependabot `#1055`: see the springdoc 3.2.0 companion PR (
   today. **Babel 8 mobile:** `/ezkey_mobile` ignores semver-major `@babel/*` until React Native
   officially supports Babel 8; RN 0.88's Metro, jest, codegen and babel preset all run Babel 7, so
   the top-level 8.x pin (#208) was unused for transforms and only mixed `@babel/runtime` 8 into
-  Babel 7 output (back on 7.x in #PR_NUMBER). **Jest 30 mobile:** gate lifted 2026-10-26 after green `yarn test` on RN 0.87.1 (Dependabot
+  Babel 7 output (back on 7.x in #1425). **Jest 30 mobile:** gate lifted 2026-10-26 after green `yarn test` on RN 0.87.1 (Dependabot
   `#653` integrated via hygiene PR; preset still *declares* Jest 29 deps — trust runtime evidence).
 
 **2026-11-17:** i18next 26 to 27 and react-i18next 17 to 18 moved together on Admin UI and mobile (react-i18next 18 requires i18next >= 27.0.1; replaces Dependabot #1375, #1376, #1378, and #1379).
