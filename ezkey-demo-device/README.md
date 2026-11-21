@@ -1,8 +1,12 @@
 # Ezkey Demo Device
 
-Spring Boot lab simulator of a mobile device for Auth API enrollment and MFA flows. Used with the
-local Docker clean-start stack (default http://localhost:8083) and optionally against experimental
-Auth API hosts.
+Spring Boot lab simulator of a mobile device for Auth API enrollment and MFA flows. It serves
+integrated tests (agents, Playwright) and is the evaluator's phone on both ways to evaluate Ezkey
+while the mobile app is not public: the clean-start stack (http://localhost:8083) and the community
+instance `ezkey.online` (run it on its own, see [Running](#running)).
+
+This module is the only source. The former standalone repository `mgagp/ezkey-demo-device` is
+retired: its manual sync had drifted from the Auth API contract (#943).
 
 ## Limitations (read this first)
 
@@ -28,10 +32,15 @@ See [`CONFIGURATION.md`](CONFIGURATION.md) for `ezkey.auth.api.url` and
 
 ## Running
 
-| Mode | URL |
-|------|-----|
-| Clean-start stack (monorepo) | http://localhost:8083 |
-| Standalone Docker | see standalone mirror `mgagp/ezkey-demo-device` |
-| Local JDK | `mvn test` then `mvn spring-boot:run` from this module |
+| Mode | How | URL |
+|------|-----|-----|
+| Clean-start stack | started with the stack | http://localhost:8083/phone/ezkey |
+| On its own, with the community instance | `docker compose -f ezkey-demo-device/docker-compose.yml up --build` from the repository root (Docker only, no JDK) | http://localhost:3080/phone/ezkey |
+| Local JDK | `mvn test` then `mvn spring-boot:run` from this module | http://localhost:8083/phone/ezkey |
+
+On its own, the Demo Device targets `https://auth-api.ezkey.online` by default. Set
+`EZKEY_AUTH_API_URL` in the shell before `up` to target another Auth API. The first build compiles
+the Java modules in Docker and takes a few minutes; later starts reuse the image. Enrollments stay
+in the Docker volume `ezkey-demo-device_demo-device-data`.
 
 Agent notes: [`AGENTS.md`](AGENTS.md).

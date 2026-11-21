@@ -337,13 +337,13 @@
             <p>The goal is to experience a full Ezkey path, from first contact with the console through successful mobile-backed authentication, using an integrated demo application on the ezkey.online community setup. Figures mirror each numbered step. Once the steps feel familiar, spend a few minutes on the tenant dashboard in the Admin UI; we return to it at the end.</p>
 
             <h2 id="demo-device">No Ezkey mobile app? Use the Demo Device</h2>
-            <p>The Ezkey mobile app is still in limited internal testing and is not generally available to anonymous evaluators. Until a public mobile release ships, you can complete this walkthrough with the Ezkey Demo Device, a standalone simulated phone published on GitHub and runnable locally: <a href="https://github.com/mgagp/ezkey-demo-device" rel="noopener noreferrer">github.com/mgagp/ezkey-demo-device</a>.</p>
+            <p>The Ezkey mobile app is still in limited internal testing and is not generally available to evaluators. Until a public mobile release ships, you can complete this walkthrough with the Ezkey Demo Device, a simulated phone that runs locally from the Ezkey repository: <a href="https://github.com/mgagp/ezkey/tree/main/ezkey-demo-device" rel="noopener noreferrer">github.com/mgagp/ezkey, folder ezkey-demo-device</a>.</p>
             <ul>
-                <li>Run it with Docker (see the repo README); by default it targets the community Auth API (<code>auth-api.ezkey.online</code>) and opens at <code>localhost:3080</code>.</li>
+                <li>Clone the repository and, from its root, run <code>docker compose -f ezkey-demo-device/docker-compose.yml up --build</code> (Docker only; the first build takes a few minutes). It targets the community Auth API (<code>auth-api.ezkey.online</code>) and opens at <code>localhost:3080/phone/ezkey</code>.</li>
                 <li>It follows the same enrollment and approval cryptography as the mobile client, for demonstration purposes.</li>
                 <li>It is a demo assist tool, not production software. It does not provide the device-backed protections of a real phone, in particular Secure Storage and StrongBox (Android hardware-backed key storage), which the mobile app is designed to use.</li>
             </ul>
-            <p>Throughout this guide, wherever we say “mobile app”, the Demo Device is the practical substitute on the community instance for self-service evaluators.</p>
+            <p>Throughout this guide, wherever we say “mobile app”, the Demo Device is the practical substitute on the community instance.</p>
 
             <h2>The path at a glance</h2>
             <ol class="steps">

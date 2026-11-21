@@ -2,7 +2,18 @@
 
 Spring Boot app simulating a mobile device for Auth API enrollment and MFA flows. Calls Auth API via **WebClient**; persists enrollments as JSON files under `data/enrollments/`.
 
-Monorepo copy lives under `ezkey/ezkey-demo-device/`; public standalone mirror: `mgagp/ezkey-demo-device` (sync Java `src/`, `openapi-spec.json`, `pom.xml`, `AGENTS.md` after monorepo changes).
+## Product posture (#943, Marc 2026-11-20)
+
+The Demo Device serves integrated tests (agents, Playwright) and is the evaluator's phone on both
+evaluation paths while the mobile app is not public: clean start (port 8083) and the community
+instance `ezkey.online` (run on its own with `docker-compose.yml` in this module, port 3080). At
+every moment the evaluator sees, it behaves like the mobile app (same outcome, same tone, same
+possible action); its internals stay simple. Ezkey never deploys it: it runs locally.
+
+**Single source.** This module is the only Demo Device. The standalone repository
+`mgagp/ezkey-demo-device` is retired (#943): its manual sync stopped in 2026-08, missed the
+token-only invitation (#1301) and still targeted a retired Auth host. Do not recreate a mirror; if
+evaluators need a prebuilt image one day, publish it from this monorepo's CI.
 
 ## Home screen tenant grouping
 
@@ -49,7 +60,7 @@ When an Admin UI enrollment QR includes `authUrl`, the demo device routes **bind
 | Mode | Default / example |
 |------|-------------------|
 | Docker Compose (monorepo / `application-docker.properties`) | `http://auth-api:8080` |
-| Standalone against community | set `EZKEY_AUTH_API_URL=https://auth-api.ezkey.online` |
+| On its own (`ezkey-demo-device/docker-compose.yml`) | `https://auth-api.ezkey.online` (override with `EZKEY_AUTH_API_URL`) |
 
 QR local enrollments override without `.env` change when that host is on the allowlist (default
 includes the configured Auth API host). Public community hostnames (and names that must not be
@@ -91,7 +102,7 @@ mvn test -pl ezkey-demo-device -Dtest=EnrollmentStoreRecordJsonRoundtripTest
 
 ## OpenAPI models
 
-- Spec: Maven reads `../specs/auth-api/openapi-spec.json` in the monorepo (no local symlink/copy — #833). Standalone mirror `mgagp/ezkey-demo-device` keeps its own committed `openapi-spec.json` when synced.
+- Spec: Maven reads `../specs/auth-api/openapi-spec.json` in the monorepo (no local symlink/copy — #833).
 - Generated package: `org.ezkey.demodevice.generated.dto`.
 - Hand-written HTTP: `AuthApiService` (WebClient + generated DTOs).
 
@@ -117,6 +128,9 @@ bootstrap Global Admin:
 
 **Clean-start stack (monorepo):** demo device on http://localhost:8083, Auth API via Docker internal URL.
 
-**Standalone Docker:** `./start.sh` — http://localhost:3080 (see standalone repo).
+**On its own (community instance):** from the repository root,
+`docker compose -f ezkey-demo-device/docker-compose.yml up --build` — http://localhost:3080,
+Auth API `https://auth-api.ezkey.online` unless `EZKEY_AUTH_API_URL` is set. Compose project
+`ezkey-demo-device`, so it does not collide with the clean-start containers.
 
 **Local JDK:** from module directory, `mvn test` then `mvn spring-boot:run` or run the repackaged JAR.
