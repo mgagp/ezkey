@@ -53,6 +53,11 @@ labels from joins. Cross-screen links must match how each entity opens detail:
 Every cross-screen link to an administrator uses `adminDetailHref` (audit logs, enrollment
 detail, tenant detail embedded list). The record was a dialog over the list until #1399.
 
+Alerts open as a record page too (`/alerts/:id`, prev/next since #1428). Consulted rows (audit log
+entries, auth attempts, encryption keys, re-encryption batches) open as a dialog over the list.
+When to choose which, what a record page holds, and why:
+[`screens-and-wireflow.md` § Record anatomy](../components/admin-ui/screens-and-wireflow.md#record-anatomy).
+
 ## Matrix
 
 | Screen / route | API (list) | Tier | Operator question (1 line) | Target list columns (draft) | Join / display decision | Global vs Tenant | Status | Notes |

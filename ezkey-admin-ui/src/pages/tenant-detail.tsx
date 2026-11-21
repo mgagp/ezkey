@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { Edit, Power, PowerOff, UserPlus } from 'lucide-react';
+import { Edit, ListOrdered, Power, PowerOff, UserPlus } from 'lucide-react';
 import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
 import { ReasonFieldRow } from '@/components/feature/reason-field-row';
 import { AppShell } from '@/components/layout/app-shell';
@@ -554,6 +554,16 @@ export default function TenantDetailPage() {
                       onClick={() => navigate(`/integrations?tenantId=${tenant.tenantId}`)}
                     >
                       {t('detail.viewIntegrations')}
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="w-full justify-start gap-2"
+                      data-testid="tenant-detail-view-audits"
+                      onClick={() => navigate(`/audit-logs?tenantId=${tenant.tenantId}&source=tenant-detail`)}
+                    >
+                      <ListOrdered className="size-3.5" />
+                      {t('detail.viewRelatedAudits')}
                     </Button>
                   </CardContent>
                 </Card>
