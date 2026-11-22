@@ -8,10 +8,12 @@
 #   * no password value is ever printed (stdout/stderr), passed as a command argument, or put in
 #     a process environment; values travel through files (mode 600) and stdin only;
 #   * one transaction for all ALTER ROLE statements. Before BEGIN the session sets
-#     log_statement=none, log_min_duration_statement=-1, and log_min_error_statement=PANIC;
+#     log_statement=none, log_min_duration_statement=-1, log_min_error_statement=PANIC,
+#     log_transaction_sample_rate=0, and log_min_duration_sample=-1;
 #   * refuses unless server log_statement is already none (exit 4). The session SET does not
-#     change other connections. Also refuses (exit 8) when shared_preload_libraries contains
-#     pg_stat_statements, pgaudit, or auto_explain (those can record statement text anyway);
+#     change other connections. Also refuses (exit 8) when a shared_preload_libraries entry
+#     names pg_stat_statements, pgaudit, or auto_explain after the directory prefix, quotes,
+#     and a trailing .so are removed (those libraries can record statement text anyway);
 #   * the .env is backed up first, the new .env is prepared BEFORE the ALTER ROLE and moved into
 #     place only AFTER the COMMIT. On SQL failure the live .env is not replaced (see exit 5);
 #   * idempotent .env update: keys are replaced in place or appended once;
@@ -40,8 +42,8 @@
 # Exit codes:
 #   0 ok · 2 usage · 3 prerequisite missing or unsafe password value
 #   4 log_statement is not 'none'
-#   5 SQL session failed (live .env unchanged; transaction abort only if the error
-#     was before COMMIT — see the error line)
+#   5 SQL session failed (live .env unchanged; prepared file removed; rollback
+#     command printed. Transaction abort only if the error was before COMMIT)
 #   6 .env write failed AFTER COMMIT
 #   7 post-write equality check failed
 #   8 shared_preload_libraries includes pg_stat_statements, pgaudit, or auto_explain
@@ -95,6 +97,30 @@ psql_in() {
 }
 q() { printf '%s\n' "$1" | psql_in; }
 
+# Library name only: trim, drop quotes, drop a directory prefix, drop one trailing .so.
+# "$libdir/pg_stat_statements.so" and pg_stat_statements.so both become pg_stat_statements.
+preload_base() {
+  local e="$1" i=0
+  e="${e#"${e%%[![:space:]]*}"}"
+  e="${e%"${e##*[![:space:]]}"}"
+  while [ "$i" -lt 3 ]; do
+    i=$((i + 1))
+    case "$e" in
+      \"*\") e=${e#\"}; e=${e%\"} ;;
+      \'*\') e=${e#\'}; e=${e%\'} ;;
+      *) break ;;
+    esac
+    e="${e#"${e%%[![:space:]]*}"}"
+    e="${e%"${e##*[![:space:]]}"}"
+  done
+  e=${e##*/}
+  e=${e#\"}; e=${e%\"}; e=${e#\'}; e=${e%\'}
+  e=${e%.so}
+  e="${e#"${e%%[![:space:]]*}"}"
+  e="${e%"${e##*[![:space:]]}"}"
+  printf '%s' "$e"
+}
+
 # Whole file, not one line: a newline must not split a value into a safe prefix.
 value_is_safe() {
   local content
@@ -131,13 +157,11 @@ command -v openssl >/dev/null || [ -n "$ROLLBACK" ] || { err "openssl not found"
 ls=$(q "SHOW log_statement") || { err "cannot read log_statement"; exit 3; }
 [ "$ls" = "none" ] || { err "log_statement is '$ls' (must be 'none'); refusing (ALTER ROLE would be logged)"; exit 4; }
 libs=$(q "SHOW shared_preload_libraries") || { err "cannot read shared_preload_libraries"; exit 3; }
-libs=${libs//[[:space:]]/}
 if [ -n "$libs" ]; then
   IFS=',' read -r -a LIB_LIST <<< "$libs"
   for lib in "${LIB_LIST[@]}"; do
-    base=${lib##*/}
-    base=${base#\"}
-    base=${base%\"}
+    base=$(preload_base "$lib")
+    [ -n "$base" ] || continue
     case "$base" in
       pg_stat_statements|pgaudit|auto_explain)
         err "shared_preload_libraries includes ${base}; refusing (it can record ALTER ROLE text)"
@@ -175,6 +199,12 @@ cleanup() {
     done
     rmdir "$W" 2>/dev/null || true
   fi
+  # After COMMIT and before mv, this file is the only copy of the new passwords.
+  # Deleting it on a signal would make the roles unrecoverable. Print the path only.
+  if [ "${announced_new:-0}" -eq 0 ] && [ -n "${NEW:-}" ] && [ -f "$NEW" ]; then
+    announced_new=1
+    err "kept ${NEW} (mode 600). Not deleted: if COMMIT already succeeded this is the only copy of the new passwords. Apply it or shred it yourself. Contents were not printed."
+  fi
 }
 trap cleanup EXIT
 trap 'cleanup; exit 129' HUP
@@ -201,6 +231,7 @@ if ! cp -p "$ENV_FILE" "$BAK" || ! chmod 600 "$BAK"; then
   exit 3
 fi
 say "backup: $BAK"
+announced_new=0
 NEW="${ENV_FILE}.new.$$"
 if [ $MODE = rotate ]; then
   awk -v dir="$W" -v roles="$ROLES" '
@@ -217,13 +248,16 @@ if ! {
   printf "SET log_statement = 'none';\n"
   printf 'SET log_min_duration_statement = -1;\n'
   printf 'SET log_min_error_statement = PANIC;\n'
+  printf 'SET log_transaction_sample_rate = 0;\n'
+  printf 'SET log_min_duration_sample = -1;\n'
   printf 'BEGIN;\n'
   for r in "${ROLE_LIST[@]}"; do printf "ALTER ROLE ezkey_%s PASSWORD '%s';\n" "$r" "$(<"$W/$r")"; done
   [ -n "${EZKEY_ROTATE_TEST_FAIL_SQL:-}" ] && printf 'SELECT 1/0;\n'
   printf 'COMMIT;\n'
 } | psql_in >/dev/null; then
   rm -f "$NEW"
-  err "SQL session failed (exit 5). Guaranteed when the error is a statement failure before COMMIT: the transaction is aborted and the live .env is unchanged. Not guaranteed: a COMMIT the server applied but this client missed, or that the statement text never reached the server log. Backup kept: $BAK"
+  err "SQL session failed (exit 5). Guaranteed: the live .env was not replaced and the prepared file was removed. If this was a statement error before COMMIT, PostgreSQL aborted that transaction. Not guaranteed: that the server did not already commit, or that these session SETs kept the statement text out of the server log. If the roles may have changed, restore them with:"
+  err "  $0 --docker --container $CONTAINER --env-file $ENV_FILE --roles $ROLES --rollback $BAK"
   exit 5
 fi
 say "roles updated (one transaction): $(printf 'ezkey_%s ' "${ROLE_LIST[@]}")"

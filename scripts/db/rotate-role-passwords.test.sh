@@ -15,9 +15,32 @@ nohex(){ ! printf '%s' "$out" | grep -qE '[0-9a-f]{64}' && ! printf '%s' "$out" 
 cnt(){ grep -cE "^EZKEY_DB_$1_PASSWORD=" "$T/.env" || true; }
 ORIG="$T/.env.orig"; cp -p "$T/.env" "$ORIG"
 
+guc() {
+  docker exec -i "$CT" psql -X -q -U postgres -d ezkey_db -v ON_ERROR_STOP=1 -c "$1" >/dev/null
+}
+showg() {
+  docker exec -i "$CT" psql -X -q -U postgres -d ezkey_db -Atc "SHOW $1;"
+}
+orig_duration=$(showg log_min_duration_statement)
+case "$orig_duration" in
+  -1|[0-9]|[0-9][0-9]|[0-9][0-9][0-9]|[0-9]ms|[0-9][0-9]ms|[0-9]s) ;;
+  *) echo "FAIL unexpected original log_min_duration_statement '$orig_duration'"; exit 1 ;;
+esac
+# Put the server back even when a later assertion fails.
+restore_server_logs() {
+  docker exec -i "$CT" psql -X -q -U postgres -d ezkey_db -v ON_ERROR_STOP=1 >/dev/null <<SQL
+ALTER SYSTEM SET log_min_duration_statement = '${orig_duration}';
+ALTER SYSTEM RESET log_transaction_sample_rate;
+ALTER SYSTEM RESET log_min_duration_sample;
+ALTER SYSTEM RESET log_statement_sample_rate;
+SELECT pg_reload_conf();
+SQL
+}
+trap restore_server_logs EXIT
+
 # Server duration logging is the case a log_statement=none check does not see.
-docker exec -i "$CT" psql -X -q -U postgres -d ezkey_db -v ON_ERROR_STOP=1 -c "ALTER SYSTEM SET log_min_duration_statement = 0;" >/dev/null
-docker exec -i "$CT" psql -X -q -U postgres -d ezkey_db -c "SELECT pg_reload_conf();" >/dev/null
+guc "ALTER SYSTEM SET log_min_duration_statement = 0;"
+guc "SELECT pg_reload_conf();"
 shown=$(docker exec -i "$CT" psql -X -q -U postgres -d ezkey_db -Atc "SHOW log_min_duration_statement;")
 if [ "$shown" = "0" ]; then ok "server log_min_duration_statement=0"; else ko "log_min_duration_statement is '$shown'"; fi
 log_from=$(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -89,18 +112,91 @@ else
   ko "no duration log lines; log_min_duration_statement=0 check is inconclusive"
 fi
 shred -u "$logtmp" 2>/dev/null || rm -f "$logtmp"
+
+# Sampling is independent of log_statement and log_min_duration_statement.
+# Put duration logging back first so a leaked ALTER ROLE can only come from sampling.
+guc "ALTER SYSTEM SET log_min_duration_statement = '${orig_duration}';"
+guc "ALTER SYSTEM SET log_transaction_sample_rate = 1;"
+guc "SELECT pg_reload_conf();"
+shown=$(showg log_transaction_sample_rate)
+case "$shown" in
+  1|1.0|1.00) ok "server log_transaction_sample_rate=1" ;;
+  *) ko "log_transaction_sample_rate is '$shown'" ;;
+esac
+sample_rotate() {
+  local label="$1" since tmp
+  since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  run
+  if [ "$rc" -eq 0 ] && nohex; then
+    ok "$label rotate -> 0, no value printed"
+  else
+    ko "$label rotate rc=$rc"
+  fi
+  tmp=$(mktemp)
+  sleep 1
+  docker logs --since "$since" "$CT" >"$tmp" 2>&1 || true
+  if grep -q "ALTER ROLE" "$tmp"; then
+    ko "$label logged ALTER ROLE"
+  else
+    ok "$label did not log ALTER ROLE"
+  fi
+  shred -u "$tmp" 2>/dev/null || rm -f "$tmp"
+}
+sample_rotate "transaction sample"
+guc "ALTER SYSTEM SET log_transaction_sample_rate = 0;"
+guc "ALTER SYSTEM SET log_min_duration_sample = 0;"
+guc "ALTER SYSTEM SET log_statement_sample_rate = 1;"
+guc "SELECT pg_reload_conf();"
+shown=$(showg log_min_duration_sample)
+rate=$(showg log_statement_sample_rate)
+if [ "$shown" = "0" ] || [ "$shown" = "0ms" ]; then
+  ok "server log_min_duration_sample=0"
+else
+  ko "log_min_duration_sample is '$shown'"
+fi
+case "$rate" in
+  1|1.0|1.00) ok "server log_statement_sample_rate=1" ;;
+  *) ko "log_statement_sample_rate is '$rate'" ;;
+esac
+sample_rotate "statement sample"
+
 if grep -q 'PGPASSWORD' "$S"; then
   ko "script still references PGPASSWORD"
 else
   ok "verify login does not use PGPASSWORD"
 fi
+# Same function the script uses, including quotes, spaces, a directory prefix, and .so.
+# shellcheck disable=SC1090
+eval "$(sed -n '/^preload_base()/,/^}/p' "$S")"
+norm() {
+  local got
+  got=$(preload_base "$1")
+  if [ "$got" = "$2" ]; then
+    ok "normalize '$1'"
+  else
+    ko "normalize '$1' -> '$got' (want $2)"
+  fi
+}
+libdir_so="\$libdir/pg_stat_statements.so"
+norm 'pg_stat_statements.so' pg_stat_statements
+norm "$libdir_so" pg_stat_statements
+norm '  "auto_explain.so"  ' auto_explain
+norm " '\$libdir/pgaudit.so' " pgaudit
+
 img=$(docker inspect -f '{{.Config.Image}}' "$CT")
-if docker run --rm --user root --entrypoint sh "$img" -c 'test -f "$(pg_config --pkglibdir)/pg_stat_statements.so"'; then
-  pre="ezkey-rotate-preload-$$"
-  docker rm -f "$pre" >/dev/null 2>&1 || true
-  if docker run -d --name "$pre" --network "$NET" \
-      -e POSTGRES_PASSWORD=ezkey -e POSTGRES_DB=ezkey_db \
-      "$img" -c shared_preload_libraries=pg_stat_statements -c log_statement=none >/dev/null; then
+if docker run --rm --user root --entrypoint sh "$img" -c 'test -f "$(pg_config --pkglibdir)/pg_stat_statements.so" && test -f "$(pg_config --pkglibdir)/auto_explain.so"'; then
+  preload_n=0
+  expect_preload_exit8() {
+    local setting="$1" label="$2" expect_name="$3" pre ready penv pout prc
+    preload_n=$((preload_n + 1))
+    pre="ezkey-rotate-preload-${preload_n}-$$"
+    docker rm -f "$pre" >/dev/null 2>&1 || true
+    if ! docker run -d --name "$pre" --network "$NET" \
+        -e POSTGRES_PASSWORD=ezkey -e POSTGRES_DB=ezkey_db \
+        "$img" -c "shared_preload_libraries=${setting}" -c log_statement=none >/dev/null; then
+      ko "$label: could not start postgres"
+      return
+    fi
     ready=0
     for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
       if docker exec "$pre" pg_isready -U postgres -d ezkey_db >/dev/null 2>&1; then ready=1; break; fi
@@ -114,21 +210,31 @@ if docker run --rm --user root --entrypoint sh "$img" -c 'test -f "$(pg_config -
     if [ "$ready" -eq 1 ]; then
       pout=$("$S" --docker --container "$pre" --env-file "$penv/.env" --compose-file "$penv/docker-compose.yml" --dry-run 2>&1)
       prc=$?
-      if [ "$prc" -eq 8 ] && cmp -s "$penv/.env" "$ORIG" && ! printf '%s' "$pout" | grep -q "PASSWORD"; then
-        ok "pg_stat_statements preload refused (exit 8), .env unchanged"
+      if [ "$prc" -eq 8 ] && cmp -s "$penv/.env" "$ORIG" && printf '%s' "$pout" | grep -q "includes ${expect_name}" \
+          && ! printf '%s' "$pout" | grep -q "PASSWORD"; then
+        ok "$label refused (exit 8), .env unchanged"
       else
-        ko "preload refusal rc=$prc"
+        ko "$label refusal rc=$prc"
       fi
     else
-      ko "preload postgres did not become ready"
+      ko "$label postgres did not become ready"
     fi
     docker rm -f "$pre" >/dev/null 2>&1 || true
     rm -rf "$penv"
-  else
-    ko "could not start postgres with pg_stat_statements"
-  fi
+  }
+  expect_preload_exit8 'pg_stat_statements' 'bare pg_stat_statements' pg_stat_statements
+  expect_preload_exit8 'pg_stat_statements.so' 'pg_stat_statements.so' pg_stat_statements
+  expect_preload_exit8 "$libdir_so" "$libdir_so" pg_stat_statements
+  expect_preload_exit8 'auto_explain.so' 'auto_explain.so' auto_explain
 else
-  ko "pg_stat_statements.so missing; preload refusal not tested"
+  ko "pg_stat_statements.so or auto_explain.so missing; preload refusal not tested"
+fi
+restore_server_logs
+restored=$(showg log_min_duration_statement)
+if [ "$restored" = "$orig_duration" ]; then
+  ok "log_min_duration_statement restored to ${orig_duration}"
+else
+  ko "log_min_duration_statement is '${restored}', want '${orig_duration}'"
 fi
 mode_bad=0
 for f in "$T"/.env*; do
