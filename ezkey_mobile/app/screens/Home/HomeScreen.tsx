@@ -11,8 +11,8 @@
  * @since 2025
  */
 
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
-import {ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View} from 'react-native';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {ActivityIndicator, Alert, AppState, ScrollView, Text, TouchableOpacity, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useNavigation} from '@react-navigation/native';
 import {StackNavigationProp} from '@react-navigation/stack';
@@ -64,6 +64,9 @@ const sortEnrollments = (items: EnrollmentMetadataRecord[]) =>
     return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
   });
 
+/** Minimum gap before an app resume may retry the installation metadata refresh (#1436). */
+const INSTALLATION_REFRESH_RESUME_COOLDOWN_MS = 5 * 60 * 1000;
+
 type HomeNavigation = StackNavigationProp<RootStackParamList, 'Home'>;
 
 /**
@@ -79,8 +82,7 @@ export const HomeScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const {data, isLoading} = useEnrollments();
   const refreshInstallationMetadata = useRefreshInstallationMetadata();
-  const {isPending: isRefreshingInstallationMetadata, mutate: refreshInstallations} =
-    refreshInstallationMetadata;
+  const {mutate: refreshInstallations} = refreshInstallationMetadata;
   const deleteEnrollment = useDeleteEnrollment();
   const setSelected = useEnrollmentStore(store => store.setSelected);
   const [expandedInstallations, setExpandedInstallations] = useState<string[]>([]);
@@ -157,13 +159,44 @@ export const HomeScreen: React.FC = () => {
     });
   }, [installationGroups]);
 
+  /*
+   * Opportunistic installation metadata refresh (#1436): at most once per mount, per change of the
+   * enrollment set, or per app resume after a cooldown. A failed signed instance-info fetch (any HTTP
+   * status, transport error or bad signature) is never retried immediately; last good branding stays.
+   */
+  const enrollmentSetKey = useMemo(
+    () => (healthyEnrollments ?? []).map(enrollment => enrollment.id).sort().join('|'),
+    [healthyEnrollments],
+  );
+  const attemptedRefreshKeyRef = useRef<string | null>(null);
+  const lastRefreshAttemptAtRef = useRef(0);
+  const [refreshResumeTick, setRefreshResumeTick] = useState(0);
+
   useEffect(() => {
-    if (!healthyEnrollments || healthyEnrollments.length === 0 || isRefreshingInstallationMetadata) {
+    if (!healthyEnrollments || healthyEnrollments.length === 0) {
+      return;
+    }
+    if (attemptedRefreshKeyRef.current === enrollmentSetKey) {
       return;
     }
 
+    attemptedRefreshKeyRef.current = enrollmentSetKey;
+    lastRefreshAttemptAtRef.current = Date.now();
     refreshInstallations(healthyEnrollments);
-  }, [healthyEnrollments, isRefreshingInstallationMetadata, refreshInstallations]);
+  }, [enrollmentSetKey, healthyEnrollments, refreshInstallations, refreshResumeTick]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', state => {
+      if (
+        state === 'active' &&
+        Date.now() - lastRefreshAttemptAtRef.current >= INSTALLATION_REFRESH_RESUME_COOLDOWN_MS
+      ) {
+        attemptedRefreshKeyRef.current = null;
+        setRefreshResumeTick(tick => tick + 1);
+      }
+    });
+    return () => subscription.remove();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
