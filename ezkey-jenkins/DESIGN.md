@@ -54,7 +54,7 @@ A local admin path that does **not** depend on Ezkey / Integration API being up.
 | Cancel on abandon / fail-closed | `cancelAuthAttempt(id)` | Covered |
 | HTTP Basic integration key + secret | `EzkeyClient.builder().integrationKey().secretKey().baseUrl()` | Covered |
 | Zero extra Maven deps in `.hpi` | Zero compile-scope dependencies; Java 17 | Fits Jenkins plugin packaging (bundled in `.hpi`) |
-| Dogfood | `ezkey-demo-app-acme` uses the same Integration client | Proven in-repo |
+| Dogfood | Integration API create / wait / cancel exercised end to end by `ezkey-demo-login` (TypeScript SDK) | Proven in-repo |
 
 **Not needed:** Admin API client, Auth API / device crypto, or OpenAPI codegen.
 

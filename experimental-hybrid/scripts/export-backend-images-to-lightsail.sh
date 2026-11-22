@@ -48,7 +48,7 @@ LIGHTSAIL_LOCAL_DIR="${REPO_ROOT}/experimental-hybrid/lightsail"
 REMOTE_REPO_ROOT="${LIGHTSAIL_REMOTE_DIR}/../.."
 
 INCLUDE_MIGRATION="1"
-INCLUDE_DEMO_ACME=""
+INCLUDE_DEMO_LOGIN=""
 DO_CLEAN_START=""
 REMOVE_REMOTE_TARS=""
 DRY_RUN=""
@@ -70,7 +70,7 @@ SSH target (required — no silent default; #812):
 
 Options:
   --apis-only            Export only admin-api, auth-api, integration-api (no migration image).
-  --include-demo-acme    Also export ezkey-demo-app-acme (after API tars; build image first).
+  --include-demo-login   Also export ezkey-demo-login (after API tars; build image first).
                          With --remote-up, requires --sync-operator-files (new image + old compose
                          healthcheck on 8082 breaks Caddy depends_on). Remote compose must contain
                          8086/actuator/health before up.
@@ -98,8 +98,8 @@ Options:
   --dry-run              Print commands only (skips local docker image checks).
   -h, --help             Show this help.
 
-Build demo image when using --include-demo-acme (from repository root):
-  docker build -f docker/Dockerfile --target demo-app-acme -t ezkey-demo-app-acme:latest .
+Build the Demo Login image when using --include-demo-login (from repository root):
+  docker build -f ezkey-demo-login/Dockerfile -t ezkey-demo-login:latest .
 EOF
 }
 
@@ -112,7 +112,7 @@ while [[ $# -gt 0 ]]; do
       continue
       ;;
     --apis-only) INCLUDE_MIGRATION="" ;;
-    --include-demo-acme) INCLUDE_DEMO_ACME="1" ;;
+    --include-demo-login) INCLUDE_DEMO_LOGIN="1" ;;
     --sync-operator-files) SYNC_OPERATOR_FILES="1" ;;
     --remote-up) REMOTE_UP="1" ;;
     --clean-start) DO_CLEAN_START="1" ;;
@@ -138,15 +138,6 @@ if [[ -n "$DO_CLEAN_START" ]] && { [[ -n "$SYNC_OPERATOR_FILES" ]] || [[ -n "$RE
   exit 1
 fi
 
-# New Acme image + old compose (healthcheck still on 8082) breaks Caddy depends_on.
-# Refuse --include-demo-acme --remote-up without syncing operator files in the same pass.
-if [[ -n "$INCLUDE_DEMO_ACME" && -n "$REMOTE_UP" && -z "$SYNC_OPERATOR_FILES" ]]; then
-  echo "error: --include-demo-acme with --remote-up requires --sync-operator-files." >&2
-  echo "  Dangerous pair: new Acme image (management port 8086) + old compose healthcheck on 8082" >&2
-  echo "  → Acme unhealthy → Caddy depends_on blocks public APIs. Ship image and compose together." >&2
-  exit 1
-fi
-
 # Community --clean-start wipes Postgres; require explicit confirmation (first commissioning only).
 if [[ -n "$DO_CLEAN_START" ]]; then
   lightsail_require_community_wipe_confirm
@@ -160,9 +151,9 @@ if [[ -n "$INCLUDE_MIGRATION" ]]; then
 fi
 IMAGES+=(ezkey-admin-api:latest ezkey-auth-api:latest ezkey-integration-api:latest)
 TARS+=(ezkey-admin-api.tar ezkey-auth-api.tar ezkey-integration-api.tar)
-if [[ -n "$INCLUDE_DEMO_ACME" ]]; then
-  IMAGES+=(ezkey-demo-app-acme:latest)
-  TARS+=(ezkey-demo-app-acme.tar)
+if [[ -n "$INCLUDE_DEMO_LOGIN" ]]; then
+  IMAGES+=(ezkey-demo-login:latest)
+  TARS+=(ezkey-demo-login.tar)
 fi
 
 # JavaMelody collector: ship a pre-built image when enabling JM (never build on the VM).
@@ -435,8 +426,8 @@ echo "=========================================="
 echo "  Export backend images → Lightsail"
 echo "  SSH: ${SSH_HOST}"
 echo "  target: ${LIGHTSAIL_TARGET:-custom (explicit host)}"
-if [[ -n "$INCLUDE_DEMO_ACME" ]]; then
-  echo "  (including demo-app-acme)"
+if [[ -n "$INCLUDE_DEMO_LOGIN" ]]; then
+  echo "  (including demo-login)"
 fi
 if [[ -n "$JM_ENABLE" ]]; then
   echo "  (JavaMelody collector: ${JAVAMELODY_COLLECTOR_IMAGE} — ship pre-built; no remote build)"
@@ -470,9 +461,9 @@ for i in "${!IMAGES[@]}"; do
   if [[ -z "$DRY_RUN" ]]; then
     if ! docker image inspect "$img" >/dev/null 2>&1; then
       echo "error: image not found locally: ${img}" >&2
-      if [[ "$img" == "ezkey-demo-app-acme:latest" ]]; then
+      if [[ "$img" == "ezkey-demo-login:latest" ]]; then
         echo "  Build first, e.g. from repo root:" >&2
-        echo "    docker build -f docker/Dockerfile --target demo-app-acme -t ezkey-demo-app-acme:latest ." >&2
+        echo "    docker build -f ezkey-demo-login/Dockerfile -t ezkey-demo-login:latest ." >&2
       elif [[ "$img" == "${CONNECTOR_SMTP_IMAGE}" ]]; then
         echo "  Build first (or re-run with EZKEY_ENABLE_CONNECTOR_SMTP=true so this script builds it):" >&2
         echo "    docker build -f ezkey-connectors/ezkey-connector-smtp/Dockerfile -t ${img} ." >&2
@@ -527,27 +518,6 @@ if [[ -n "$REMOTE_UP" && -z "$DO_CLEAN_START" ]]; then
   # type (Docker would otherwise create an empty directory for a missing file bind).
   verify_remote_bind_mounts
 
-  # Acme image↔compose: remote healthcheck must target 8086 before up (Edgar S1).
-  if [[ -n "$INCLUDE_DEMO_ACME" ]]; then
-    acme_health_needle="8086/actuator/health"
-    local_compose="${LIGHTSAIL_LOCAL_DIR}/docker-compose.yml"
-    if [[ -n "$DRY_RUN" ]]; then
-      if [[ ! -f "$local_compose" ]] || ! grep -Fq "$acme_health_needle" "$local_compose"; then
-        echo "error: local ${local_compose} must contain ${acme_health_needle} before Acme remote-up" >&2
-        exit 1
-      fi
-      echo "[dry-run] would verify remote docker-compose.yml contains ${acme_health_needle}"
-    else
-      if ! ssh "${SSH_HOST}" \
-        "grep -Fq '${acme_health_needle}' ${LIGHTSAIL_REMOTE_DIR}/docker-compose.yml"; then
-        echo "error: remote docker-compose.yml on ${SSH_HOST} lacks ${acme_health_needle}." >&2
-        echo "  Sync operator files (new compose) before loading a new Acme image — old 8082" >&2
-        echo "  healthcheck + new classpath management port 8086 leaves Acme unhealthy and" >&2
-        echo "  blocks Caddy." >&2
-        exit 1
-      fi
-    fi
-  fi
   #
   # JavaMelody (#846 / Edgar): default rolling up does NOT pass --remove-orphans.
   # Guard so a plain base-only up cannot leave APIs without JM env while the collector

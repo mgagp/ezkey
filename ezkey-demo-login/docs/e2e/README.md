@@ -20,6 +20,10 @@ enrollments through its screens. Tests run against a dedicated container (`ezkey
 port 18082) with a 30-second request lifetime, so the "expired" case takes seconds instead of two
 minutes. The container is restarted with other settings for the configuration cases.
 
+The three ezkey.org guided-tour images come from `e2e/tour-screens.spec.ts`, run on demand:
+`E2E_TOUR=1 npx playwright test e2e/tour-screens.spec.ts`, then `cwebp -q 82` each PNG into
+`sites/ezkey-org/community-guided-tour/community-tour-0{5,6,7}-demo-login-*.webp`.
+
 ## Users
 
 | Application user | Ezkey side | Used by |

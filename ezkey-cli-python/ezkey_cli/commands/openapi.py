@@ -69,7 +69,7 @@ def download_and_save_spec(http_client: HttpClient, url: str, target_path: Path,
 
 
 def refresh_admin_spec(config: ConfigManager, project_root: Path, verbose: bool = False) -> bool:
-    """Refresh Admin API specification for demo-app-acme and ezkey-admin-ui."""
+    """Refresh the Admin API specification copy used by ezkey-admin-ui."""
     OutputUtils.info("Refreshing Admin API specification...")
 
     admin_url = config.get('adminUrl')
@@ -82,7 +82,6 @@ def refresh_admin_spec(config: ConfigManager, project_root: Path, verbose: bool 
 
     # Propagate to all Admin API consumers
     targets = [
-        (project_root / 'ezkey-demo-app-acme' / 'openapi-spec.json', 'Admin API (demo-app-acme)'),
         (project_root / 'ezkey-admin-ui' / 'openapi-spec.json', 'Admin API (admin-ui)'),
     ]
 
@@ -129,7 +128,7 @@ def refresh_auth_spec(config: ConfigManager, project_root: Path, verbose: bool =
 
 @openapi_group.command('refresh')
 @click.option('--all', 'refresh_all', is_flag=True, help='Refresh all demo applications (default)')
-@click.option('--app', is_flag=True, help='Refresh only demo-app-acme (admin API)')
+@click.option('--app', is_flag=True, help='Refresh only the Admin UI copy (admin API)')
 @click.option('--device', is_flag=True, help='Refresh only demo-device (auth API)')
 @click.pass_context
 def refresh_specs(ctx, refresh_all, app, device):

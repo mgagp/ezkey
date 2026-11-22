@@ -18,8 +18,7 @@ For **what to test** on each URL (headers, Bruno, `curl`), see **[admin-ui-secur
 | Integration API (management) | `127.0.0.1:7081`                   | **Not exposed through this Caddy file** — use `7081`      |
 | Crypto API (management)      | `127.0.0.1:9091`                   | **Not exposed through Caddy** — use `9091`                 |
 | Demo Device (management)     | `127.0.0.1:8084`                   | **Not exposed through Caddy** — use `8084`                 |
-| Demo App ACME                | `8082`                             | Via proxy hostname when configured — Actuator is **not** on `8082` |
-| Demo App ACME (management)   | `127.0.0.1:8086`                   | Health/Actuator only — never routed by Caddy |
+| Demo Login                   | `8082`                             | Node app; health at `/healthz`, no Actuator (#1430) |
 | JavaMelody collector (opt-in `--with-java-melody`) | `8088` | **No Caddy hop** — collector UI only |
 
 **Management host publish:** local `docker-compose.yml` maps management ports as
@@ -30,14 +29,14 @@ Docker peers and HAProxy healthchecks (e.g. `ezkey-pam/test/test_pam.sh` →
 `MANAGEMENT_SERVER_ADDRESS=127.0.0.1` on the local compose (that binding is community-only).
 IDE defaults keep `127.0.0.1`.
 
-**Reserved management ports:** `8084` (demo-device), `8086` (acme), `8087` (crypto IDE default),
+**Reserved management ports:** `8084` (demo-device), `8087` (crypto IDE default),
 `9091` (crypto Docker). Confirm they stay free of other services before reassigning.
 
 **IDE defaults** (`config/application.properties` / demo-device JAR defaults): management port +
 `management.server.address=127.0.0.1` on Admin/Auth/Integration/Crypto/Demo Device (E5).
 
 
-**Servlet session cookies on localhost:** each Spring servlet app sets a distinct `server.servlet.session.cookie.name` (Acme `EZKEY_ACME_SESSION`, demo-device `EZKEY_DEVICE_SESSION`, plus `EZKEY_*_API_SESSION` on the APIs) so browsers do not overwrite sessions across ports — shared default `JSESSIONID` caused Acme “session expired” after using the demo device (#799). APIs keep the property in `config/application.properties` (external config shipped with the image); demos keep it in the JAR `src/main/resources/application.properties`. Redeploying Acme or the demo device drops any in-memory sessions that still used the old cookie name. Cross-cutting guard: `node --test scripts/lib/session-cookie-names.test.mjs` (RED fixtures under `scripts/lib/fixtures/session-cookie-names/`; tolerates `=` / `:` with spaces; last assignment within a file; each `application-*.properties` profile checked separately as base+that-profile — #807).
+**Servlet session cookies on localhost:** each Spring servlet app sets a distinct `server.servlet.session.cookie.name` (demo-device `EZKEY_DEVICE_SESSION`, plus `EZKEY_*_API_SESSION` on the APIs) so browsers do not overwrite sessions across ports — a shared default `JSESSIONID` caused “session expired” across demo apps (#799). Demo Login (Node) uses its own cookie, `demo_login_session`. APIs keep the property in `config/application.properties` (external config shipped with the image); demos keep it in the JAR `src/main/resources/application.properties`. Redeploying the demo device drops any in-memory sessions that still used the old cookie name. Cross-cutting guard: `node --test scripts/lib/session-cookie-names.test.mjs` (RED fixtures under `scripts/lib/fixtures/session-cookie-names/`; tolerates `=` / `:` with spaces; last assignment within a file; each `application-*.properties` profile checked separately as base+that-profile — #807).
 
 **Default for day-to-day manual testing (Bruno, curl, OpenAPI links):** use **direct** URLs (`8080`, `9080`, `7080`, …). Same semantics as the services; minimal moving parts.
 
@@ -60,7 +59,7 @@ Switch the active environment in Bruno (or `./scripts/bruno-health.sh --env …`
 
 ## Demos and bootstrap (Docker network)
 
-**Demo Device**, **Acme App Demo**, and similar containers should keep using **intra-compose** service names and **internal** ports (e.g. `auth-api:8080`, `admin-api:9080`). There is no `auth-api:18080` on the Docker network — `18080` is a **host** mapping for Caddy.
+**Demo Device**, **Demo Login**, and similar containers should keep using **intra-compose** service names and **internal** ports (e.g. `auth-api:8080`, `admin-api:9080`). There is no `auth-api:18080` on the Docker network — `18080` is a **host** mapping for Caddy.
 
 Pointing demos at `host.docker.internal:18080` by default would add fragility and rarely helps the nominal integration flow. **Default:** demos and bootstrap flows stay on **direct service URLs** inside Compose; use **Caddy host ports** from the **host** (Bruno on your machine, browser to localhost) when you explicitly want the proxy path.
 

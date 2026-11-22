@@ -26,7 +26,7 @@ Cover all testing that protects or demonstrates Ezkey behavior:
 | Admin UI | Unit, Playwright, exploratory operator flows |
 | Admin / Auth / Integration APIs | Unit, integration, contract, Bruno, security cases |
 | Mobile | Unit, Maestro / device, MASVS-oriented cases |
-| Demos | Demo Device and ACME demo app smoke and campaign runs |
+| Demos | Demo Device and Demo Login smoke and campaign runs (Demo Login matrix: `ezkey-demo-login/docs/e2e/`) |
 | CLI / SDK | Smoke and contract-parity checks |
 | Experimental PAM | `ezkey-pam` only — experimental, not product-core |
 | Core / crypto / migration | Prefer **black-box** and API-level evidence; avoid white-box churn as the primary story |
@@ -50,7 +50,7 @@ against the monorepo layout (2026-10-13).
 | `INTEG` | `ezkey-integration-api/`, `ezkey-sdk/` | M2M API + client SDK |
 | `MOB` | `ezkey_mobile/` | Reference mobile app |
 | `DEV` | `ezkey-demo-device/` | Browser demo device |
-| `ACME` | `ezkey-demo-app-acme/` | Sample integrating app |
+| `DEMOLOGIN` | `ezkey-demo-login/` | Reference integrating app (TypeScript SDK); replaces `ACME`, retired with the Acme app (#1430) |
 | `CLI` | `ezkey-cli-python/` | Python CLI |
 | `PAM` | `ezkey-pam/` | **Experimental** — do not treat as release-critical by default |
 | `CORE` | `ezkey-core/`, `ezkey-core-security/`, `ezkey-crypto-api/`, `ezkey-migration/` | Prefer black-box / API-level cases |

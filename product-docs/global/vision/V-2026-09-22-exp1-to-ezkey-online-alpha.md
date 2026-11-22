@@ -53,7 +53,7 @@ closed with [`V-2026-09-26-public-alpha-posture-closeout`](V-2026-09-26-public-a
 |----------------------|--------------------|
 | `exp1-admin-ui.ezkey.org` | `admin-ui.ezkey.online` |
 | `exp1-admin-api.ezkey.org` | `admin-api.ezkey.online` |
-| `exp1-demo-acme.ezkey.org` | `demo-acme.ezkey.online` |
+| `exp1-demo-acme.ezkey.org` | `demo-acme` (host retired, #1430) |
 | Auth API (EXP1 Auth host) | `auth-api.ezkey.online` |
 
 ## Domain map

@@ -203,12 +203,10 @@ challenge) and an activation code are each enough to become that administrator.
 - **It does not encrypt general PII under the platform keyset.** Contacts, admin names/emails, audit
   IP/UA, and free-text auth context are stored in cleartext. Keyset loss is an availability /
   re-enrollment problem for encrypted columns, not a PII confidentiality guarantee.
-- **Demo App ACME access-code slot secrets are plaintext on the host volume.** Integration keys and
-  secrets for evaluator `/t/{code}` slots live in `/app/config/application.properties` on the
-  `demo-app-acme-config` volume (non-root `spring` uid). The entrypoint applies `umask 077`,
-  `chmod 600`, and **fail-closes** (refuses to start) unless the file mode is **0600**. Slots load
-  at JVM start — **restart required** after edit. There is **no** encryption-at-rest guarantee for
-  those demo secrets (Related to [#958](https://github.com/mgagp/ezkey/issues/958)).
+- **Demo Login's API key is a plain environment variable.** The integration key and secret of the
+  demo tenant's integration live in the community `.env` and the container environment (#1430).
+  Its users and session-token hashes live in a SQLite file on the `demo-login-data` volume. There
+  is **no** encryption-at-rest guarantee for that demo data; it is test data only.
 
 ## What Ezkey aims to do (planned, if adoption justifies)
 
@@ -261,8 +259,7 @@ See [`../product-docs/global/normative-posture.md`](../product-docs/global/norma
   [`lightsail/community-host.md`](lightsail/community-host.md) § Observability. Companion memory
   cgroup / heap ceilings: [#749](https://github.com/mgagp/ezkey/issues/749).
 - **2026-10-19:** Management ports are internal-only (community: `MANAGEMENT_SERVER_ADDRESS=127.0.0.1`
-  unless the JavaMelody overlay reopens `0.0.0.0` for the collector). Demo App ACME uses management
-  port **8086** (Actuator off business port 8082). Startup fails closed if JavaMelody is enabled
+  unless the JavaMelody overlay reopens `0.0.0.0` for the collector). Startup fails closed if JavaMelody is enabled
   without management-endpoint monitoring, or if management port equals business port. Spring
   Security `permitAll` on `/actuator/**` applies on the management context (health and
   `/actuator/monitoring` need no auth). Caddy deny remains defense in depth. ADR-0015.
@@ -382,7 +379,7 @@ schedule, `workflow_dispatch` and any change to the CodeQL setup analyze every l
 
 | Trigger | Action |
 |---|---|
-| New **critical/high** on **deployed, exposed** code (`admin-api`, `auth-api`, `integration-api`, `admin-ui`, `crypto-api`, `demo-app-acme`, Caddy) | Triage within **24 h**; alert Marc; fix or mitigate within **14 days** |
+| New **critical/high** on **deployed, exposed** code (`admin-api`, `auth-api`, `integration-api`, `admin-ui`, `crypto-api`, `demo-login`, Caddy) | Triage within **24 h**; alert Marc; fix or mitigate within **14 days** |
 | Dependency CVE in **CISA KEV** on deployed code | **3 days** |
 | Abnormal jump in alert count (e.g. suite change as in [#805](https://github.com/mgagp/ezkey/pull/805)/[#809](https://github.com/mgagp/ezkey/pull/809)) or upcoming **ezkey.online** upgrade | Triage **before deploy** |
 
@@ -414,7 +411,7 @@ drifts from upstream.
 
 **D** is first detection on `main` (same clock as rule 1 in this policy). Deployed,
 exposed code is the set in the immediate-trigger table (`admin-api`, `auth-api`,
-`integration-api`, `admin-ui`, `crypto-api`, `demo-app-acme`, Caddy).
+`integration-api`, `admin-ui`, `crypto-api`, `demo-login`, Caddy).
 
 #### Decision matrix
 

@@ -22,7 +22,6 @@ COPY ezkey-sdk/java/pom.xml ./ezkey-sdk/java/pom.xml
 COPY ezkey-demo-device/pom.xml ./ezkey-demo-device/pom.xml
 # Demo-device OpenAPI generator reads ../specs/auth-api/openapi-spec.json (no git symlink — #833).
 COPY specs/auth-api/openapi-spec.json ./specs/auth-api/openapi-spec.json
-COPY ezkey-demo-app-acme/pom.xml ./ezkey-demo-app-acme/pom.xml
 COPY ezkey-tests/pom.xml ./ezkey-tests/pom.xml
 # Delivery connectors are reactor modules (#1278): Maven needs their POMs to read the reactor,
 # even though this image does not build them (each connector has its own Dockerfile).
@@ -38,7 +37,7 @@ COPY ezkey-connectors/ezkey-connector-smtp/pom.xml ./ezkey-connectors/ezkey-conn
 RUN --mount=type=cache,target=/root/.m2,id=maven-cache,sharing=shared \
     echo "📦 Downloading Maven dependencies (using BuildKit cache)..." && \
     mvn dependency:go-offline -Pno-checkstyle -B \
-        -pl checkstyle-config,ezkey-core,ezkey-core-security,ezkey-migration,ezkey-admin-api,ezkey-auth-api,ezkey-integration-api,ezkey-crypto-api,ezkey-sdk/java,ezkey-demo-app-acme,ezkey-demo-device \
+        -pl checkstyle-config,ezkey-core,ezkey-core-security,ezkey-migration,ezkey-admin-api,ezkey-auth-api,ezkey-integration-api,ezkey-crypto-api,ezkey-sdk/java,ezkey-demo-device \
         -am || true && \
     echo "✅ Dependencies cached in BuildKit cache"
 
@@ -57,8 +56,6 @@ COPY ezkey-crypto-api/src ./ezkey-crypto-api/src
 COPY ezkey-crypto-api/config ./ezkey-crypto-api/config
 COPY ezkey-sdk/java/src ./ezkey-sdk/java/src
 COPY ezkey-demo-device/src ./ezkey-demo-device/src
-COPY ezkey-demo-app-acme/src ./ezkey-demo-app-acme/src
-COPY ezkey-demo-app-acme/config ./ezkey-demo-app-acme/config
 # Committed root license inventory — packaged into META-INF/licenses/ for shipped JARs
 # (maven-resources-plugin copy-resources; not regenerated during the image build).
 COPY THIRD-PARTY.txt ./THIRD-PARTY.txt
@@ -71,7 +68,7 @@ COPY THIRD-PARTY.txt ./THIRD-PARTY.txt
 RUN --mount=type=cache,target=/root/.m2,id=maven-cache,sharing=shared \
     echo "🔨 Building all modules (using cached dependencies)..." && \
     mvn clean package -DskipTests -Pno-checkstyle -B \
-        -pl checkstyle-config,ezkey-core,ezkey-core-security,ezkey-migration,ezkey-admin-api,ezkey-auth-api,ezkey-integration-api,ezkey-crypto-api,ezkey-sdk/java,ezkey-demo-app-acme,ezkey-demo-device \
+        -pl checkstyle-config,ezkey-core,ezkey-core-security,ezkey-migration,ezkey-admin-api,ezkey-auth-api,ezkey-integration-api,ezkey-crypto-api,ezkey-sdk/java,ezkey-demo-device \
         -am && \
     echo "✅ Build completed successfully"
 
@@ -216,29 +213,4 @@ EXPOSE 8083 8084
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
   CMD curl -f http://localhost:8084/actuator/health || exit 1
 ENTRYPOINT ["java", "-jar", "app.jar"]
-
-# ============================================
-# Stage 7: Runtime image for demo-app-acme service
-# ============================================
-FROM eclipse-temurin:25-jre-alpine@sha256:e1898fd6a11fc965a994d8ace186fd3585aeb636cf8f05f47a723fcfee0b0918 AS demo-app-acme
-# Create non-root user and pre-create all required directories with correct ownership at build time
-RUN apk add --no-cache curl && \
-    addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring && \
-    mkdir -p /app /app/config /app/data && \
-    chown -R spring:spring /app
-ARG OCI_IMAGE_REVISION=unknown
-LABEL org.opencontainers.image.revision=${OCI_IMAGE_REVISION}
-WORKDIR /app
-COPY --chown=spring:spring --from=build /build/ezkey-demo-app-acme/target/*.jar app.jar
-# Copy config template
-COPY --chown=spring:spring ezkey-demo-app-acme/config/application.properties.example /app/config-template.properties
-# Entrypoint: create config from template when missing; always chmod 600 (spring uid 100 / gid 101).
-COPY --chown=spring:spring docker/demo-app-acme-entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
-USER spring:spring
-EXPOSE 8082
-EXPOSE 8086
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD curl -f http://127.0.0.1:8086/actuator/health || exit 1
-ENTRYPOINT ["/app/entrypoint.sh"]
 

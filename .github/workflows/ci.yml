@@ -43,6 +43,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       admin-ui: ${{ steps.resolve.outputs.admin-ui }}
+      demo-login: ${{ steps.resolve.outputs.demo-login }}
       backend: ${{ steps.resolve.outputs.backend }}
       mobile: ${{ steps.resolve.outputs.mobile }}
       mobile-ios: ${{ steps.resolve.outputs.mobile-ios }}
@@ -79,6 +80,9 @@ jobs:
             admin-ui:
               - 'ezkey-admin-ui/**'
               - 'specs/**'
+            demo-login:
+              - 'ezkey-demo-login/**'
+              - 'ezkey-sdk/javascript/**'
             backend:
               - 'pom.xml'
               - 'checkstyle-config/**'
@@ -90,11 +94,9 @@ jobs:
               - 'ezkey-integration-api/**'
               - 'ezkey-crypto-api/**'
               - 'ezkey-sdk/java/**'
-              - 'ezkey-demo-app-acme/**'
               - 'ezkey-demo-device/**'
               - 'ezkey-tests/**'
               - 'ezkey-connectors/**'
-              - 'docker/demo-app-acme-entrypoint.sh'
               - 'docker/bootstrap-init/**'
               - 'scripts/build.sh'
               - 'scripts/update-specs.sh'
@@ -184,13 +186,14 @@ jobs:
           fi
           if [[ "$event" == "schedule" ]] &&
             (( $(date +%s) - $(git log -1 --format=%ct) > 86400 )); then
-            for suite in admin-ui backend mobile mobile-ios cli-python ezkey-pam lightsail \
+            for suite in admin-ui demo-login backend mobile mobile-ios cli-python ezkey-pam lightsail \
               dart-sdk ezkey-jenkins connectors quality-gate workflows; do
               echo "$suite=false" >> "$GITHUB_OUTPUT"
             done
             echo "Nightly: no commit on main in the last 24 h, nothing to run"
           elif [[ "$event" == "workflow_dispatch" || "$event" == "schedule" ]]; then
             echo "admin-ui=true" >> "$GITHUB_OUTPUT"
+            echo "demo-login=true" >> "$GITHUB_OUTPUT"
             echo "backend=true" >> "$GITHUB_OUTPUT"
             echo "mobile=true" >> "$GITHUB_OUTPUT"
             echo "mobile-ios=true" >> "$GITHUB_OUTPUT"
@@ -205,6 +208,7 @@ jobs:
             echo "Forced all suites ($event)"
           else
             echo "admin-ui=${{ steps.filter.outputs.admin-ui }}" >> "$GITHUB_OUTPUT"
+            echo "demo-login=${{ steps.filter.outputs.demo-login }}" >> "$GITHUB_OUTPUT"
             echo "backend=${{ steps.filter.outputs.backend }}" >> "$GITHUB_OUTPUT"
             echo "mobile=${{ steps.filter.outputs.mobile }}" >> "$GITHUB_OUTPUT"
             echo "mobile-ios=${{ steps.filter.outputs.mobile-ios }}" >> "$GITHUB_OUTPUT"
@@ -279,6 +283,45 @@ jobs:
       - name: Assert no demo strings in production build
         run: bash scripts/assert-no-demo-in-build.sh dist
 
+  # Demo Login (#1430) and the TypeScript SDK it uses. The browser matrix (e2e/) needs a live
+  # clean-start stack, so it is not a PR gate (same as the Admin UI Playwright suite).
+  demo-login:
+    name: demo-login
+    needs: changes
+    if: needs.changes.outputs.demo-login == 'true' || needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7 — Node from root .nvmrc (24 LTS)
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+          cache-dependency-path: |
+            ezkey-demo-login/package-lock.json
+            ezkey-sdk/javascript/package-lock.json
+
+      - name: TypeScript SDK unit tests (committed dist/)
+        working-directory: ezkey-sdk/javascript
+        run: node --test test/
+
+      - name: Install dependencies
+        working-directory: ezkey-demo-login
+        run: npm ci
+
+      - name: Back-end tests
+        working-directory: ezkey-demo-login
+        run: npm test
+
+      - name: Typecheck and build
+        working-directory: ezkey-demo-login
+        run: npm run build
+
   backend:
     name: backend
     needs: changes
@@ -351,12 +394,6 @@ jobs:
       # 14-day first-response reminder: who is waiting, day 7 / day 12, no write on dry-run.
       - name: Issue response reminder selection (#1275)
         run: bash scripts/issue-response-reminder.test.sh
-
-      # Lot B (code-scanning 2026-10-13): ACME DOM XSS text rendering. The signup URL allowlist test
-      # left with the community signup page (#1367).
-      - name: ACME biz-status XSS tests
-        run: |
-          node --test ezkey-demo-app-acme/src/test/js/biz-status.test.mjs
 
       - name: Servlet session cookie name guard (#799)
         run: node --test scripts/lib/session-cookie-names.test.mjs
@@ -697,7 +734,7 @@ jobs:
   # failure or cancellation of any needed job fails the gate.
   ci-gate:
     name: ci-gate
-    needs: [changes, admin-ui, backend, version-alignment, licenses-drift, ha-smoke, mobile, mobile-ios, cli-python, ezkey-pam, ezkey-pam-macos, lightsail, dart-sdk, ezkey-jenkins, connectors, quality-gate]
+    needs: [changes, admin-ui, demo-login, backend, version-alignment, licenses-drift, ha-smoke, mobile, mobile-ios, cli-python, ezkey-pam, ezkey-pam-macos, lightsail, dart-sdk, ezkey-jenkins, connectors, quality-gate]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -707,6 +744,7 @@ jobs:
           set -euo pipefail
           echo "changes=${{ needs.changes.result }}"
           echo "admin-ui=${{ needs.admin-ui.result }}"
+          echo "demo-login=${{ needs.demo-login.result }}"
           echo "backend=${{ needs.backend.result }}"
           echo "version-alignment=${{ needs.version-alignment.result }}"
           echo "licenses-drift=${{ needs.licenses-drift.result }}"
@@ -729,6 +767,7 @@ jobs:
 
           for pair in \
             "admin-ui:${{ needs.admin-ui.result }}" \
+            "demo-login:${{ needs.demo-login.result }}" \
             "backend:${{ needs.backend.result }}" \
             "version-alignment:${{ needs.version-alignment.result }}" \
             "licenses-drift:${{ needs.licenses-drift.result }}" \

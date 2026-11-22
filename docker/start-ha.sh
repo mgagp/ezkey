@@ -313,7 +313,7 @@ echo "  - Auth API:        http://localhost:8080 (HAProxy → auth-api-1, auth-a
 echo "  - Integration API: http://localhost:7080 (HAProxy → integration-api-1, integration-api-2)"
 echo "  - Crypto API:      http://localhost:9090"
 echo "  - Demo Device:     http://localhost:8083"
-echo "  - Demo App ACME:   http://localhost:8082"
+echo "  - Demo Login:      http://localhost:8082"
 if [[ "${EZKEY_ENABLE_JAVA_MELODY:-}" == "1" || "${EZKEY_ENABLE_JAVA_MELODY:-}" == "true" ]]; then
     echo "  - JavaMelody:      http://localhost:8088 (aggregates both replicas per API)"
 fi

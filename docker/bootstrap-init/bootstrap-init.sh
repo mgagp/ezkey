@@ -16,7 +16,6 @@ fi
 BOOTSTRAP_CREDS_FILE="${BOOTSTRAP_CREDS_FILE:-/bootstrap/bootstrap-credentials.json}"
 DEVICE_CREDS_FILE="${DEVICE_CREDS_FILE:-/bootstrap/device-credentials.json}"
 DEMO_DEVICE_ENROLLMENTS_DIR="${DEMO_DEVICE_ENROLLMENTS_DIR:-/app/data/enrollments}"
-# Note: demo-app-acme uses userIdentifier (username) for auth attempt creation; no acme-users.json
 
 ADMIN_API_URL="${ADMIN_API_URL:-http://admin-api:9080}"
 AUTH_API_URL="${AUTH_API_URL:-http://auth-api:8080}"
@@ -260,9 +259,6 @@ echo "$ENROLLMENT_JSON" > "$ENROLLMENT_FILE"
 chmod 600 "$ENROLLMENT_FILE"
 echo "✅ Demo-device enrollment file created: $ENROLLMENT_FILE (mode 0600)"
 
-# Step 8: Demo-app-acme uses userIdentifier (username) - no users mapping file
-# Ensure enrollment has user_identifier set when created (TUI/demo flow)
-
 echo ""
 echo "=========================================="
 echo "  ✅ Bootstrap Init Complete!"
@@ -270,10 +266,10 @@ echo "=========================================="
 echo ""
 echo "📋 Summary:"
 echo "   Enrollment ID: $ENROLLMENT_ID"
-echo "   Username: $USERNAME (use as userIdentifier in demo-app-acme)"
+echo "   Username: $USERNAME (Global Admin sign-in to the Admin UI)"
 echo "   Device credentials: $DEVICE_CREDS_FILE"
 echo "   Demo-device enrollment: $ENROLLMENT_FILE"
 echo ""
-echo "🎉 Demo-device and demo-app-acme are ready for use!"
+echo "🎉 Demo Device is ready for use!"
 echo "   Next: Login via POST /api/v1/admin/auth/login and approve on demo-device"
 

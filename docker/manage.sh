@@ -146,11 +146,11 @@ function show_status() {
         echo "  ❌ Demo Device: Unhealthy"
     fi
 
-    # Check Demo App ACME (optional companion; management port inside the container)
-    if ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" exec -T demo-app-acme curl -sf http://localhost:8086/actuator/health > /dev/null 2>&1; then
-        echo "  ✅ Demo App ACME: Healthy"
+    # Check Demo Login (reference integration; says "not configured" until it has an API key)
+    if curl -sf http://localhost:8082/healthz > /dev/null 2>&1; then
+        echo "  ✅ Demo Login: http://localhost:8082"
     else
-        echo "  ⚠️  Demo App ACME: Not available"
+        echo "  ⚠️  Demo Login: Not available"
     fi
 
     if curl -sf http://localhost:8088/ > /dev/null 2>&1; then

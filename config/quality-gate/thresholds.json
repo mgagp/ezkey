@@ -42,7 +42,7 @@
       "integration-api-2": 1100,
       "crypto-api": 768,
       "demo-device": 768,
-      "demo-app-acme": 768
+      "demo-login": 256
     },
     "hostMarginMiB": 2048,
     "postgresReserveMiB": 1024,

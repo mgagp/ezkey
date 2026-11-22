@@ -1,16 +1,55 @@
 # Ezkey JavaScript/TypeScript SDK
 
-The Ezkey JavaScript/TypeScript SDK provides easy integration with Ezkey Admin and Auth APIs for Node.js and browser applications.
+Two parts, for two kinds of callers:
 
-## Features
+- **`EzkeyIntegrationClient`** — what an application back end uses to sign its users in: the
+  **Integration API** (API key, machine to machine) to create an authentication attempt, wait for the
+  answer and cancel it. Fetch only, no dependency; Node 18+ or any runtime with `fetch`. Keep it on
+  the server: it holds the secret key. Reference app: [`ezkey-demo-login`](../../ezkey-demo-login/).
+- **`EzkeyClient`** — generated clients for the Admin API and the Auth API (operators, devices).
+
+## Sign users in (Integration API)
+
+```typescript
+import { EzkeyIntegrationClient, EzkeyIntegrationError } from 'ezkey-javascript-sdk';
+
+const ezkey = new EzkeyIntegrationClient({
+  baseUrl: process.env.EZKEY_INTEGRATION_API_URL!, // e.g. http://localhost:7080
+  integrationKey: process.env.EZKEY_INTEGRATION_KEY!,
+  secretKey: process.env.EZKEY_SECRET_KEY!,
+});
+
+// 1. Your app knows the user; Ezkey resolves the enrollment by its User ID within the key's integration.
+const attempt = await ezkey.createAuthAttemptByUserIdentifier('alice', { challengeRequested: true });
+// Show attempt.authAttemptChallenge (two digits) to the user; they pick it on their device.
+
+// 2. Long-poll until the user answers (call again while not completed and not expired).
+const result = await ezkey.waitForAuthAttempt(attempt.authAttemptId, { timeoutSeconds: 25 });
+if (result.status === 'ACCEPTED') {
+  // open your session
+}
+
+// 3. The user gave up: withdraw the request from the device.
+await ezkey.cancelAuthAttempt(attempt.authAttemptId);
+```
+
+Errors are `EzkeyIntegrationError` with `status` (0 when the server could not be reached),
+`problemType`, `title` and `detail` from the RFC 9457 problem document. Statuses: `ACCEPTED`,
+`REJECTED`, `INVALID` (wrong code or signature), `EXPIRED` (also after a cancel), `PENDING`, `READ`.
+
+Tests: `npm test` (after `npm run build`).
+
+## Admin and Auth API clients
+
+### Features
 
 - **TypeScript Support**: Full TypeScript definitions and type safety
-- **Zero External Dependencies**: Uses only Node.js built-ins and minimal fetch polyfill
+- **Zero runtime dependencies**: uses the platform `fetch`
 - **Configurable Endpoints**: Support for custom Admin and Auth API URLs
 - **Complete API Coverage**: All Admin and Auth API operations
 - **Promise-Based**: Modern async/await API
 - **Browser Compatible**: Works in both Node.js and browser environments
-- **Node.js 14+ Compatible**: Works with Node.js 14 and higher
+- **Node.js 18+**: uses the global `fetch`
 
 ## Quick Start
 
@@ -252,10 +291,8 @@ For modern bundlers (webpack, vite, etc.), configure Node.js polyfills as needed
 
 ## Dependencies
 
-The SDK uses minimal dependencies:
-- `node-fetch@2.7.0` for HTTP requests
-- `@types/node` for TypeScript definitions
-- TypeScript compiler for build process
+No runtime dependency: HTTP goes through the platform `fetch`. Development only: TypeScript,
+`@types/node`, and the OpenAPI generator for the Admin and Auth clients.
 
 ## Package.json Integration
 
@@ -271,9 +308,8 @@ Add to your package.json dependencies:
 
 ## Requirements
 
-- Node.js 14+
-- npm 6+
-- TypeScript 5.3+ (for development)
+- Node.js 18+ (24 in this repository)
+- TypeScript 6 (for development)
 
 ## License
 

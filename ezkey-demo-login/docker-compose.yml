@@ -1,0 +1,33 @@
+# Demo Login on its own, without the clean-start stack: your own application back end, on your
+# computer, signing users in against an Ezkey Integration API (the community instance by default).
+#
+# From the repository root, with the API key of an integration you created in the Admin UI:
+#   EZKEY_INTEGRATION_KEY=ezkey_ikey_... EZKEY_SECRET_KEY=ezkey_skey_... \
+#     docker compose -f ezkey-demo-login/docker-compose.yml up --build -d
+#   docker compose -f ezkey-demo-login/docker-compose.yml exec demo-login node server/cli.js user add alice
+# then open http://localhost:3082.
+#
+# The clean-start stack already runs Demo Login on http://localhost:8082; you do not need this file
+# for the technical-exploration path. Port 3082 avoids the stack's ports.
+# Another Integration API: set EZKEY_INTEGRATION_API_URL before `up`.
+name: ezkey-demo-login
+
+services:
+  demo-login:
+    build:
+      context: ..
+      dockerfile: ezkey-demo-login/Dockerfile
+    image: ezkey-demo-login:local
+    environment:
+      EZKEY_INTEGRATION_API_URL: ${EZKEY_INTEGRATION_API_URL:-https://integration-api.ezkey.online}
+      EZKEY_INTEGRATION_KEY: ${EZKEY_INTEGRATION_KEY:-}
+      EZKEY_SECRET_KEY: ${EZKEY_SECRET_KEY:-}
+    ports:
+      - "3082:8082"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - demo-login-data:/app/data
+
+volumes:
+  demo-login-data:

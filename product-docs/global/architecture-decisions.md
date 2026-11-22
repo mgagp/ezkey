@@ -962,6 +962,9 @@ Standards posture for that canon:
 - **ID:** ADR-0015.
 - **Date:** 2026-10-19.
 - **Status:** accepted.
+- **Note 2026-11-21 (#1430):** `demo-app-acme` is removed. Its replacement, Demo Login, is a Node
+  app without Actuator or JavaMelody, and Caddy no longer depends on the demo. The text below about
+  Acme is historical.
 - **Scope:** global (community host + Docker management surface).
 - **Owners:** Platform / ops.
 

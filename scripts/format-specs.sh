@@ -109,7 +109,7 @@ main() {
     echo "Formatting project-specific specifications..."
     
     # Demo projects
-    for project in "ezkey-demo-app-acme" "ezkey-demo-device"; do
+    for project in "ezkey-demo-device"; do
         local spec_file="$project_root/$project/openapi-spec.json"
         if [ -f "$spec_file" ]; then
             total_count=$((total_count + 1))

@@ -263,42 +263,30 @@ services:
       start_period: 90s
       retries: 5
 
-  demo-app-acme:
-    image: ezkey-demo-app-acme:latest
-    container_name: ezkey-exp-demo-app-acme
+  # Demo Login (#1430): reference integration, Node, no JVM. Bound to the demo tenant's
+  # integration; keys come from .env (DEMO_LOGIN_INTEGRATION_KEY / DEMO_LOGIN_SECRET_KEY).
+  # Users: docker exec ezkey-exp-demo-login node server/cli.js user add <name>
+  demo-login:
+    image: ezkey-demo-login:latest
+    container_name: ezkey-exp-demo-login
     logging: *default-logging
-    mem_limit: 384m
-    memswap_limit: 384m
+    mem_limit: 128m
+    memswap_limit: 128m
     depends_on:
-      admin-api:
-        condition: service_healthy
       integration-api:
         condition: service_healthy
     environment:
-      <<: *env-jvm-demo
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
-      SPRING_CONFIG_ADDITIONAL_LOCATION: optional:file:/app/config/,optional:file:./config/
-      EZKEY_ADMIN_API_URL: http://integration-api:7080
-      EZKEY_DEMO_APP_SESSION_COOKIE_SECURE: "true"
-      # So redirect:/login keeps https when Caddy terminates TLS (X-Forwarded-Proto).
-      SERVER_FORWARD_HEADERS_STRATEGY: ${SERVER_FORWARD_HEADERS_STRATEGY:-framework}
-      # Same CIDRs as other APIs: trust Caddy on the Docker network for CF-Connecting-IP / X-Forwarded-For.
-      EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.16.0.0/12,10.0.0.0/8,172.17.0.0/16}
-      # Management port (Actuator) — must ship with an image that listens on 8086.
-      MANAGEMENT_SERVER_PORT: 8086
-      MANAGEMENT_SERVER_ADDRESS: 127.0.0.1
+      EZKEY_INTEGRATION_API_URL: http://integration-api:7080
+      EZKEY_INTEGRATION_KEY: ${DEMO_LOGIN_INTEGRATION_KEY:-}
+      EZKEY_SECRET_KEY: ${DEMO_LOGIN_SECRET_KEY:-}
+      DEMO_LOGIN_COOKIE_SECURE: "true"
+      # Caddy overwrites X-Forwarded-For with the client address (see Caddyfile).
+      DEMO_LOGIN_TRUST_PROXY: "true"
     volumes:
-      - demo-app-acme-data:/app/data
-      - demo-app-acme-config:/app/config
+      - demo-login-data:/app/data
     networks:
       - ezkey-exp-net
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://127.0.0.1:8086/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 3s
-      start_period: 40s
-      retries: 3
 
   caddy:
     image: caddy:2-alpine
@@ -323,8 +311,6 @@ services:
         condition: service_healthy
       integration-api:
         condition: service_healthy
-      demo-app-acme:
-        condition: service_healthy
     networks:
       - ezkey-exp-net
     restart: unless-stopped
@@ -338,5 +324,4 @@ volumes:
   encryption-secrets:
   bootstrap-artifacts:
   caddy-data:
-  demo-app-acme-data:
-  demo-app-acme-config:
+  demo-login-data:

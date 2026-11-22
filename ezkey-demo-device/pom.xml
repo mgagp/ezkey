@@ -112,7 +112,7 @@
 				</executions>
 			</plugin>
 
-			<!-- OpenAPI Generator Plugin (same parameters as demo-acme-app) -->
+			<!-- OpenAPI Generator Plugin -->
 			<plugin>
 				<groupId>org.openapitools</groupId>
 				<artifactId>openapi-generator-maven-plugin</artifactId>

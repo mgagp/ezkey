@@ -3,7 +3,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { readFile, stat } from 'node:fs/promises';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { extname, join, normalize, resolve } from 'node:path';
+import { extname, join, normalize, resolve, sep } from 'node:path';
 import type { DemoLoginConfig } from './config.ts';
 import type { DemoLoginDb, User } from './db.ts';
 import { LoginError, type LoginFlow } from './login-flow.ts';
@@ -228,12 +228,30 @@ export function createHandler(config: DemoLoginConfig, db: DemoLoginDb, flow: Lo
       res.writeHead(405, SECURITY_HEADERS).end();
       return;
     }
-    const candidate = normalize(join(staticRoot, decodeURIComponent(path)));
-    let file = candidate.startsWith(staticRoot) ? candidate : join(staticRoot, 'index.html');
-    try {
-      if (!(await stat(file)).isFile()) file = join(staticRoot, 'index.html');
-    } catch {
-      file = join(staticRoot, 'index.html'); // client-side routes fall back to the app shell
+    // One page, no client-side routes: "/" is the app shell, other paths must be real files.
+    // Anything else is a plain 404 (so probes such as /actuator/health never get the shell).
+    let file: string | null = null;
+    if (path === '/' || path === '/index.html') {
+      file = join(staticRoot, 'index.html');
+    } else {
+      let decoded = path;
+      try {
+        decoded = decodeURIComponent(path);
+      } catch {
+        /* malformed escape: treated as not found */
+      }
+      const candidate = normalize(join(staticRoot, decoded));
+      if (candidate.startsWith(staticRoot + sep)) {
+        try {
+          if ((await stat(candidate)).isFile()) file = candidate;
+        } catch {
+          /* not found */
+        }
+      }
+    }
+    if (!file) {
+      res.writeHead(404, { ...SECURITY_HEADERS, 'Content-Type': 'text/plain; charset=utf-8' }).end('Not found');
+      return;
     }
     try {
       const content = await readFile(file);

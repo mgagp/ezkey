@@ -14,6 +14,10 @@
 - **Component tags:** `admin-ui`, `admin-api`, `sdk`, `sdk-java`, `docs`, `ezkey-demo-app-acme`
 - **Captured by:** Marc
 
+> **Amendment 2026-11-21 (#1430):** the first-party M2M app is now Demo Login
+> ([`I-2026-11-21-demo-login-reference-integration`](I-2026-11-21-demo-login-reference-integration.md)),
+> on the TypeScript SDK's new Integration API client. Mentions of Demo ACME below are historical.
+
 ## Intent
 
 Make Ezkey's **SDK consumption dogfood** explicit, honest, and progressively stronger: document

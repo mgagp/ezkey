@@ -164,7 +164,7 @@ How to tell them apart: Ezkey `type` prefix vs `cloudflare_error` / Cloudflare `
 HTTP 403 1020. A Spring ProblemDetail means the request **reached origin** — not schema-Block
 evidence.
 
-SDK / Demo App ACME / other Integration clients must **not** special-case 1020 copy,
+SDKs / Demo Login / other Integration clients must **not** special-case 1020 copy,
 `what_you_should_do`, or `ray_id` as Integration API domain errors. A well-formed client must
 not produce a schema violation; if one appears it is schema drift or an edge false positive.
 The request never reached origin — check Cloudflare security events, temporarily set

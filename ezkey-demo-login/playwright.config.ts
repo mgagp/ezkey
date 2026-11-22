@@ -3,6 +3,8 @@ import { defineConfig } from '@playwright/test';
 // End-to-end matrix against a running clean-start stack (see docs/e2e/README.md).
 export default defineConfig({
   testDir: './e2e',
+  // The tour screenshots run on demand only (see e2e/tour-screens.spec.ts).
+  testIgnore: process.env.E2E_TOUR ? [] : ['**/tour-screens.spec.ts'],
   globalSetup: './e2e/global-setup.ts',
   fullyParallel: false,
   workers: 1,

@@ -508,36 +508,27 @@ services:
       start_period: 40s
       retries: 3
 
-  # Demo App ACME (Integration API via HAProxy)
-  demo-app-acme:
+  # Demo Login (#1430): reference integration, Integration API via HAProxy. Node, no JVM.
+  demo-login:
     build:
       context: ..
-      dockerfile: docker/Dockerfile
-      target: demo-app-acme
-    container_name: ezkey-demo-app-acme-ha
+      dockerfile: ezkey-demo-login/Dockerfile
+    container_name: ezkey-demo-login-ha
     depends_on:
       haproxy-integration:
         condition: service_healthy
     environment:
       <<: *container-tz
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
-      SPRING_CONFIG_ADDITIONAL_LOCATION: optional:file:/app/config/,optional:file:./config/
-      # Tenant API-key flows live on Integration API (7080 via HAProxy).
-      EZKEY_ADMIN_API_URL: http://haproxy-integration:7080
+      EZKEY_INTEGRATION_API_URL: http://haproxy-integration:7080
+      EZKEY_INTEGRATION_KEY: ${EZKEY_INTEGRATION_KEY:-}
+      EZKEY_SECRET_KEY: ${EZKEY_SECRET_KEY:-}
     volumes:
-      - demo-app-acme-data-ha:/app/data
-      - demo-app-acme-config-ha:/app/config
+      - demo-login-data-ha:/app/data
     ports:
       - "8082:8082"
     networks:
       - ezkey-network-ha
     restart: on-failure:3
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8086/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 3s
-      start_period: 40s
-      retries: 3
 
   # Bootstrap Init (runs after all services are healthy)
   bootstrap-init:
@@ -554,8 +545,6 @@ services:
         condition: service_healthy
       demo-device:
         condition: service_started
-      demo-app-acme:
-        condition: service_started
     environment:
       <<: *container-tz
       ADMIN_API_URL: http://haproxy-admin:9080
@@ -565,7 +554,6 @@ services:
     volumes:
       - bootstrap-artifacts-ha:/bootstrap
       - demo-device-data-ha:/app/data
-      - demo-app-acme-data-ha:/app/acme-data
     networks:
       - ezkey-network-ha
     restart: "no"
@@ -586,6 +574,5 @@ volumes:
   postgres-data-ha:
   encryption-secrets-ha:
   demo-device-data-ha:
-  demo-app-acme-data-ha:
-  demo-app-acme-config-ha:
+  demo-login-data-ha:
   bootstrap-artifacts-ha:

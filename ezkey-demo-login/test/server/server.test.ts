@@ -178,3 +178,27 @@ test('a forged session cookie is ignored', async () => {
   const res = await fetch(base + '/api/me', { headers: { cookie: 'demo_login_session=forged-token' } });
   assert.equal(res.status, 401);
 });
+
+test('static files: the shell at /, real files only, 404 otherwise', async () => {
+  const { mkdtempSync, writeFileSync, mkdirSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const dir = mkdtempSync(join(tmpdir(), 'demo-login-web-'));
+  writeFileSync(join(dir, 'index.html'), '<!doctype html><title>shell</title>');
+  mkdirSync(join(dir, 'assets'));
+  writeFileSync(join(dir, 'assets', 'app.js'), 'console.log(1)');
+  const staticServer = createServer(createHandler({ ...config, staticDir: dir }, db, new LoginFlow(db, ezkey, 60)));
+  await new Promise<void>((r) => staticServer.listen(0, '127.0.0.1', r));
+  const url = `http://127.0.0.1:${(staticServer.address() as AddressInfo).port}`;
+  try {
+    assert.equal((await fetch(url + '/')).status, 200);
+    const asset = await fetch(url + '/assets/app.js');
+    assert.equal(asset.status, 200);
+    assert.match(asset.headers.get('cache-control') ?? '', /immutable/);
+    for (const path of ['/actuator/health', '/monitoring', '/../package.json', '/%2e%2e/package.json', '/%E0%A4%A']) {
+      assert.equal((await fetch(url + path)).status, 404, path);
+    }
+  } finally {
+    await new Promise((r) => staticServer.close(r));
+  }
+});

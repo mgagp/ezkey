@@ -10,7 +10,6 @@ This directory contains the centralized OpenAPI specification for the Ezkey Admi
 ## Usage
 
 This specification is used by:
-- `ezkey-demo-app-acme` - Demo application
 - `ezkey-sdk` - SDK generation for all languages
 
 ## Update Process

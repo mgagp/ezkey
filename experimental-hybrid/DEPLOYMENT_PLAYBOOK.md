@@ -64,7 +64,7 @@ After a rebuild, set each API **A** record in Cloudflare to the **new** Lightsai
 | [`lightsail/caddy-certs/`](lightsail/caddy-certs/) | On the VM only: **Origin CA** PEMs from Cloudflare (**not** in git; `.gitignore` keeps the folder) |
 | [`lightsail/clean-start.sh`](lightsail/clean-start.sh) | Optional **destructive** reset: `down -v`, keygen, `up -d` |
 | [`lightsail/.env.example`](lightsail/.env.example) | Template for `lightsail/.env` |
-| [`scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) | Requires **`--target community`** (or `LIGHTSAIL_SSH_HOST`). `docker save` → `scp` → `docker load`; optional **`--include-demo-acme`**. **`--sync-operator-files`**: scp `docker-compose.yml`, **target-aware** Caddyfile (`Caddyfile.ezkey-online`), `clean-start.sh` without volume wipe (#812). **`--remote-up`**: `docker compose up -d --no-build` on the VM (never remote build). With **`EZKEY_ENABLE_JAVA_MELODY=true`**: locally builds and ships `ezkey-javamelody-collector:<version>` (Lightsail overlay is image-only + `pull_policy: never`). Incompatible with `--clean-start`. |
+| [`scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) | Requires **`--target community`** (or `LIGHTSAIL_SSH_HOST`). `docker save` → `scp` → `docker load`; optional **`--include-demo-login`**. **`--sync-operator-files`**: scp `docker-compose.yml`, **target-aware** Caddyfile (`Caddyfile.ezkey-online`), `clean-start.sh` without volume wipe (#812). **`--remote-up`**: `docker compose up -d --no-build` on the VM (never remote build). With **`EZKEY_ENABLE_JAVA_MELODY=true`**: locally builds and ships `ezkey-javamelody-collector:<version>` (Lightsail overlay is image-only + `pull_policy: never`). Incompatible with `--clean-start`. |
 | [`scripts/full-exp-environment-upgrade.sh`](scripts/full-exp-environment-upgrade.sh) | Same **`--target`** requirement; optional: local build + export + clean-start + Pages deploy |
 
 ---
@@ -74,7 +74,7 @@ After a rebuild, set each API **A** record in Cloudflare to the **new** Lightsai
 **Goal:** Browsers trust **Cloudflare’s** certificate; the origin trusts **Cloudflare Origin CA** (issued in the dashboard, long-lived).
 
 1. **SSL/TLS** → **Full** or **Full (strict)** (strict once the origin presents the Origin cert correctly).
-2. **Origin Server** → **Create certificate** → hostnames: your **API** FQDNs (e.g. `auth-api.ezkey.online`, `admin-api.ezkey.online`, `integration-api.ezkey.online`) and, if you use it, the **ACME demo** hostname (e.g. `demo-acme.ezkey.online` — see [`lightsail/Caddyfile.ezkey-online`](lightsail/Caddyfile.ezkey-online)) so Caddy can present the cert for that site block. Save **`origin.pem`** and **`origin-key.pem`** locally (never commit). Re-issue the Origin cert when you add a new hostname.
+2. **Origin Server** → **Create certificate** → hostnames: your **API** FQDNs (e.g. `auth-api.ezkey.online`, `admin-api.ezkey.online`, `integration-api.ezkey.online`) and the **Demo Login** hostname (`demo-login.ezkey.online` — see [`lightsail/Caddyfile.ezkey-online`](lightsail/Caddyfile.ezkey-online)) so Caddy can present the cert for that site block. Save **`origin.pem`** and **`origin-key.pem`** locally (never commit). Re-issue the Origin cert when you add a new hostname.
 3. On the VM: `mkdir -p ~/ezkey/experimental-hybrid/lightsail/caddy-certs`, `chmod 700`, copy PEMs, `chmod 600` on the key.
 4. **DNS:** set API **A** records to the Lightsail IP, then enable **proxied (orange)**.
 5. **HSTS** (optional): start with a **short** `max-age` or disable until stable; add **`includeSubDomains`** / **preload** only when the whole zone is ready. Enable **No-Sniff** if offered in the same UI.
@@ -138,12 +138,12 @@ Then **Phase 2** (images) and **Phase 3** (start).
 
 ## Phase 2 — Build and transfer images
 
-1. On the workstation: `docker compose -f docker/docker-compose.yml build migration admin-api auth-api integration-api` (or targets you need). For the **ACME demo** image: `docker build -f docker/Dockerfile --target demo-app-acme -t ezkey-demo-app-acme:latest .`
+1. On the workstation: `docker compose -f docker/docker-compose.yml build migration admin-api auth-api integration-api` (or targets you need). For the **Demo Login** image: `docker build -f ezkey-demo-login/Dockerfile -t ezkey-demo-login:latest .`
 2. `docker save` → tars; `scp` to VM; on VM: `docker load`.
 
-**Scripted:** [`scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) — pass **`--target community`** (required; #812). Add **`--include-demo-acme`** to push `ezkey-demo-app-acme` tars in the same pass (after a local `demo-app-acme` build). For a **no-wipe** refresh of Caddy, Compose, and all loaded images: **`--sync-operator-files --remote-up`**. With **`EZKEY_ENABLE_JAVA_MELODY=true`**, the script also builds/ships the JavaMelody collector image and applies the overlay with **`--no-build`** (never build on the VM — remote buildx is often too old). Use **`--clean-start`** only for a **destructive** VM reset. **`caddy-certs/` and `.env` are not copied** by the script (secrets / operator files).
+**Scripted:** [`scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) — pass **`--target community`** (required; #812). Add **`--include-demo-login`** to push `ezkey-demo-login` tars in the same pass (after a local `demo-login` build). For a **no-wipe** refresh of Caddy, Compose, and all loaded images: **`--sync-operator-files --remote-up`**. With **`EZKEY_ENABLE_JAVA_MELODY=true`**, the script also builds/ships the JavaMelody collector image and applies the overlay with **`--no-build`** (never build on the VM — remote buildx is often too old). Use **`--clean-start`** only for a **destructive** VM reset. **`caddy-certs/` and `.env` are not copied** by the script (secrets / operator files).
 
-**Presets — [`scripts/full-exp-environment-upgrade.sh`](scripts/full-exp-environment-upgrade.sh):** e.g. **`--target community rolling`** = build (migration + APIs) + export + remove remote tars + **`--sync-operator-files` + `--remote-up`**. Add **`--include-demo-acme`** for the ACME demo. **`--target community full`** = destructive build + export + `clean-start` + UI deploy (requires `EZKEY_CONFIRM_WIPE=ezkey-online`). See script **`--help`**. For the **already commissioned** community host with curated live Caddyfile / `.env`, do **not** use blind `rolling` — follow [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md) § *Non-destructive upgrade (checklist)*.
+**Presets — [`scripts/full-exp-environment-upgrade.sh`](scripts/full-exp-environment-upgrade.sh):** e.g. **`--target community rolling`** = build (migration + APIs) + export + remove remote tars + **`--sync-operator-files` + `--remote-up`**. Add **`--include-demo-login`** for Demo Login. **`--target community full`** = destructive build + export + `clean-start` + UI deploy (requires `EZKEY_CONFIRM_WIPE=ezkey-online`). See script **`--help`**. For the **already commissioned** community host with curated live Caddyfile / `.env`, do **not** use blind `rolling` — follow [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md) § *Non-destructive upgrade (checklist)*.
 
 **Per-service or manual rolling:** [`BACKEND_ROLLING_UPDATE.md`](BACKEND_ROLLING_UPDATE.md).
 
@@ -189,18 +189,6 @@ Without **`/etc/ezkey/secrets/master.key`**, Tink may stay disabled. Prefer **`c
 ## Phase 5 — Optional local companions
 
 [`local/docker-compose.yml`](local/docker-compose.yml) — see [`README.md`](README.md).
-
----
-
-## ACME M2M cutover (Admin API hatch removed)
-
-The next rolling upgrade must retarget Demo ACME at Integration API. Do **not** re-enable an Admin API API-key hatch on the VM.
-
-```text
-./experimental-hybrid/scripts/full-exp-environment-upgrade.sh --target community rolling --include-demo-acme
-```
-
-That syncs Compose (`EZKEY_ADMIN_API_URL=http://integration-api:7080`), recreates Admin API (no API-key authentication) and ACME, and keeps Postgres. After sync, delete `EZKEY_ADMIN_AUTH_API_KEY_AUTH_ATTEMPTS_ENABLED` from the live `.env` if present. Details: [`BACKEND_ROLLING_UPDATE.md`](BACKEND_ROLLING_UPDATE.md).
 
 ---
 
