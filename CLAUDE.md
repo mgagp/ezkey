@@ -21,6 +21,14 @@ Read on demand, when the work touches that surface:
 - Admin UI: `.cursor/rules/ui-browser-test-autonomy.mdc`, `agent-ui-closeout-validation.mdc`
 - Schema: `.cursor/rules/flyway-partitioned-tables.mdc`
 
+## Claude Code cloud sessions
+
+Only when `CLAUDE_CODE_REMOTE=true` (claude.ai/code container; not the Mac, Rootbeer, or Cursor Cloud):
+read [`docs/CLAUDE_CODE_CLOUD.md`](docs/CLAUDE_CODE_CLOUD.md) before building or testing. The
+SessionStart hook (`.claude/hooks/session-start.sh`) starts Docker, relays the proxy for image builds
+and exports JDK 25. After a container restart, rerun it by hand: daemons are gone and the proxy port
+changes.
+
 ## macOS workstation notes
 
 - The shell is zsh/bash on macOS: ignore the Windows-only sections of `AGENTS.md`
