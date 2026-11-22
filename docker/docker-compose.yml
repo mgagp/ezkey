@@ -18,7 +18,6 @@ x-ezkey-image-build: &ezkey-image-build
   dockerfile: docker/Dockerfile
   args:
     OCI_IMAGE_REVISION: ${OCI_IMAGE_REVISION:-unknown}
-    HTTPS_PROXY: ${EZKEY_BUILD_HTTPS_PROXY:-}
   labels:
     org.opencontainers.image.revision: ${OCI_IMAGE_REVISION:-unknown}
 
@@ -325,8 +324,6 @@ services:
     build:
       context: ..
       dockerfile: ezkey-demo-login/Dockerfile
-      args:
-        HTTPS_PROXY: ${EZKEY_BUILD_HTTPS_PROXY:-}
     container_name: ezkey-demo-login
     depends_on:
       integration-api:
@@ -349,8 +346,6 @@ services:
     build:
       context: ..
       dockerfile: docker/bootstrap-init/Dockerfile
-      args:
-        HTTPS_PROXY: ${EZKEY_BUILD_HTTPS_PROXY:-}
     container_name: ezkey-bootstrap-init
     depends_on:
       admin-api:

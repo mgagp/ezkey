@@ -36,10 +36,7 @@ COPY ezkey-connectors/ezkey-connector-smtp/pom.xml ./ezkey-connectors/ezkey-conn
 # Using -pl to explicitly list modules (excludes ezkey-tests which uses Karate/TestContainers)
 RUN --mount=type=cache,target=/root/.m2,id=maven-cache,sharing=shared \
     echo "📦 Downloading Maven dependencies (using BuildKit cache)..." && \
-    MVN_PROXY_ARGS="" && if [ -n "${HTTPS_PROXY:-}" ]; then p="${HTTPS_PROXY#*://}"; p="${p%%/*}"; p="${p##*@}"; \
-      printf '<settings><proxies><proxy><id>build</id><active>true</active><protocol>https</protocol><host>%s</host><port>%s</port></proxy></proxies></settings>' "${p%:*}" "${p##*:}" > /tmp/mvn-proxy-settings.xml; \
-      MVN_PROXY_ARGS="-s /tmp/mvn-proxy-settings.xml"; fi && \
-    mvn ${MVN_PROXY_ARGS} dependency:go-offline -Pno-checkstyle -B \
+    mvn dependency:go-offline -Pno-checkstyle -B \
         -pl checkstyle-config,ezkey-core,ezkey-core-security,ezkey-migration,ezkey-admin-api,ezkey-auth-api,ezkey-integration-api,ezkey-crypto-api,ezkey-sdk/java,ezkey-demo-device \
         -am || true && \
     echo "✅ Dependencies cached in BuildKit cache"
@@ -70,10 +67,7 @@ COPY THIRD-PARTY.txt ./THIRD-PARTY.txt
 # -am (also-make) ensures dependencies are built, -amd (also-make-dependents) not needed here
 RUN --mount=type=cache,target=/root/.m2,id=maven-cache,sharing=shared \
     echo "🔨 Building all modules (using cached dependencies)..." && \
-    MVN_PROXY_ARGS="" && if [ -n "${HTTPS_PROXY:-}" ]; then p="${HTTPS_PROXY#*://}"; p="${p%%/*}"; p="${p##*@}"; \
-      printf '<settings><proxies><proxy><id>build</id><active>true</active><protocol>https</protocol><host>%s</host><port>%s</port></proxy></proxies></settings>' "${p%:*}" "${p##*:}" > /tmp/mvn-proxy-settings.xml; \
-      MVN_PROXY_ARGS="-s /tmp/mvn-proxy-settings.xml"; fi && \
-    mvn ${MVN_PROXY_ARGS} clean package -DskipTests -Pno-checkstyle -B \
+    mvn clean package -DskipTests -Pno-checkstyle -B \
         -pl checkstyle-config,ezkey-core,ezkey-core-security,ezkey-migration,ezkey-admin-api,ezkey-auth-api,ezkey-integration-api,ezkey-crypto-api,ezkey-sdk/java,ezkey-demo-device \
         -am && \
     echo "✅ Build completed successfully"
