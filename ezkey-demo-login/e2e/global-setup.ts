@@ -9,8 +9,12 @@ import { adminApi, cli, enrollDevice, provision, REPO, SHOTS, startApp, CONTAINE
 export default async function globalSetup(): Promise<void> {
   mkdirSync(SHOTS, { recursive: true });
 
-  // 1. Build the image from the working tree (the same image the clean start runs).
-  execFileSync('docker', ['build', '-q', '-f', 'ezkey-demo-login/Dockerfile', '-t', IMAGE, '.'], { cwd: REPO, stdio: 'inherit' });
+  // 1. Build the image from the working tree (the same image the clean start runs). Behind an HTTPS
+  // proxy, pass it like compose does (docker/README.md § Building behind an HTTPS proxy).
+  const proxyArgs = process.env.EZKEY_BUILD_HTTPS_PROXY
+    ? ['--build-arg', `HTTPS_PROXY=${process.env.EZKEY_BUILD_HTTPS_PROXY}`]
+    : [];
+  execFileSync('docker', ['build', '-q', ...proxyArgs, '-f', 'ezkey-demo-login/Dockerfile', '-t', IMAGE, '.'], { cwd: REPO, stdio: 'inherit' });
 
   // 2. Ezkey side: integrations, API key, enrollments (Admin API, Global Admin token).
   // Workers inherit process.env from the global setup (documented Playwright behaviour).

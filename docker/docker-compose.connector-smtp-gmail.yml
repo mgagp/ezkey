@@ -7,6 +7,8 @@ services:
     build:
       context: ..
       dockerfile: ezkey-connectors/ezkey-connector-smtp/Dockerfile
+      args:
+        HTTPS_PROXY: ${EZKEY_BUILD_HTTPS_PROXY:-}
     container_name: ezkey-connector-smtp
     env_file:
       - path: ./connector-smtp.local.env
