@@ -3662,25 +3662,25 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/query-core@npm:5.108.0":
-  version: 5.108.0
-  resolution: "@tanstack/query-core@npm:5.108.0"
-  checksum: 10c0/abf7119b0389b8571b7be5295d384a3b9cb23c14bbd6d66de6d51c0d445e970637f2b85d0f1daba6d90b709027df1d222b05de852f7a778713f13046e7506fcb
+"@tanstack/query-core@npm:5.108.1":
+  version: 5.108.1
+  resolution: "@tanstack/query-core@npm:5.108.1"
+  checksum: 10c0/f0ae485a157dbeb6ebb987c6ccce056a076216cf38ee903dcd36ac501540ef523bea4e943ffa30de2c2b978750a525b19c3af09978b32457ed17f908f05f918f
   languageName: node
   linkType: hard
 
-"@tanstack/react-query@npm:5.108.0":
-  version: 5.108.0
-  resolution: "@tanstack/react-query@npm:5.108.0"
+"@tanstack/react-query@npm:5.108.1":
+  version: 5.108.1
+  resolution: "@tanstack/react-query@npm:5.108.1"
   dependencies:
-    "@tanstack/query-core": "npm:5.108.0"
+    "@tanstack/query-core": "npm:5.108.1"
   peerDependencies:
     "@types/react": ^18 || ^19
     react: ^18 || ^19
   peerDependenciesMeta:
     "@types/react":
       optional: true
-  checksum: 10c0/bcbb0c8884d7c2c6fb5f8076a2793a0d71a8b5f27c110708df1c7f9f172baef26a7f81535385b7e339aa1acc8db92cfc348f6e034cf3d530563c46bcb4becf7d
+  checksum: 10c0/f80d2c6f935f8958572b6e3e25a151f816afe02e722276ce9139821254deb6f5a1c5829d1f07d67ee081d0473d7d64a27c219c0ba36ab598869f202854d9207d
   languageName: node
   linkType: hard
 
@@ -6488,7 +6488,7 @@ __metadata:
     "@react-navigation/native-stack": "npm:7.21.1"
     "@react-navigation/stack": "npm:7.12.2"
     "@rnx-kit/third-party-notices": "npm:3.0.4"
-    "@tanstack/react-query": "npm:5.108.0"
+    "@tanstack/react-query": "npm:5.108.1"
     "@types/jest": "npm:30.0.0"
     "@types/react": "npm:19.3.0"
     "@types/react-test-renderer": "npm:19.3.1"
@@ -6496,14 +6496,14 @@ __metadata:
     eslint: "npm:9.39.4"
     eslint-config-prettier: "npm:10.1.8"
     husky: "npm:9.1.7"
-    i18next: "npm:27.1.5"
+    i18next: "npm:27.2.2"
     jest: "npm:30.5.2"
-    js-sha256: "npm:1.0.1"
+    js-sha256: "npm:1.1.0"
     lint-staged: "npm:17.6.1"
     orval: "npm:8.48.0"
     prettier: "npm:3.10.1"
     react: "npm:19.3.1"
-    react-i18next: "npm:18.0.2"
+    react-i18next: "npm:18.0.3"
     react-native: "npm:0.88.1"
     react-native-config: "npm:1.7.2"
     react-native-gesture-handler: "npm:3.5.0"
@@ -7262,15 +7262,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"i18next@npm:27.1.5":
-  version: 27.1.5
-  resolution: "i18next@npm:27.1.5"
+"i18next@npm:27.2.2":
+  version: 27.2.2
+  resolution: "i18next@npm:27.2.2"
   peerDependencies:
     typescript: ^5 || ^6 || ^7
   peerDependenciesMeta:
     typescript:
       optional: true
-  checksum: 10c0/e345e01bcde5ae268a3a6ae1f3f0ef1e1402230160877111430c8e7a1e0e586388af25fcf21142e1a2e7c9b97c85517b994afadc1832ecf12a16dbf62dd0d9a4
+  checksum: 10c0/97cb1992b8cba47b428f7065c5bdde71a7bcf63667b648ff147ccac175b10a6860d4a3f2d3e605040e7c18432e9cf6867aaa649671c42526b6e7e2761acc6e75
   languageName: node
   linkType: hard
 
@@ -8423,10 +8423,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"js-sha256@npm:1.0.1":
-  version: 1.0.1
-  resolution: "js-sha256@npm:1.0.1"
-  checksum: 10c0/0b2d0edb9ba0cbc2c16e286a123af374e4d3873b1ee5a8a61a0b63a33e56045926a9ab7d83cd82e7c1ad27c78e76b76f6bae1617422e5ac14d2ed4de4c1cc1b2
+"js-sha256@npm:1.1.0":
+  version: 1.1.0
+  resolution: "js-sha256@npm:1.1.0"
+  checksum: 10c0/1d565839a0ff8cce5ad98632f6cc9ab60d2dd350d39569c0e75f01288dbcb25a52cc9336b937a4556b8031d020b42c0ec731bfc7d75b9fa351cdc61ae4221635
   languageName: node
   linkType: hard
 
@@ -10028,9 +10028,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-i18next@npm:18.0.2":
-  version: 18.0.2
-  resolution: "react-i18next@npm:18.0.2"
+"react-i18next@npm:18.0.3":
+  version: 18.0.3
+  resolution: "react-i18next@npm:18.0.3"
   dependencies:
     html-parse-stringify: "npm:^4.0.1"
   peerDependencies:
@@ -10043,7 +10043,7 @@ __metadata:
       optional: true
     typescript:
       optional: true
-  checksum: 10c0/e6d3baf95c04a8fcde07d742d03ab02862488147128a7a4f9036b8909863e3be1803025d4fb5158f6467c3c48fcf525f27a82d1dbed04110f1da6a332da244ec
+  checksum: 10c0/69814ea0554b1aff2ef4fb105e965d9e81cfec069394bd0925004f0efbb746e498eb65988a741f9fff628ab0a9ca0c39969607837ed4370d640a51a84c34ce93
   languageName: node
   linkType: hard
 
