@@ -6,6 +6,8 @@
 # Stage 1: Build all modules with Maven
 FROM maven:3.9-eclipse-temurin-25@sha256:93b8a14ea2f412782e4e842651273b4d903e35cc496284f178fbbe2d67d00976 AS build
 WORKDIR /build
+# HTTPS_PROXY-aware Maven wrapper (build stage only): docker/README.md § Building behind an HTTPS proxy
+COPY docker/mvn-proxy.sh /usr/local/bin/mvn-proxy
 
 # Copy all POMs first (for dependency caching)
 # Note: We copy ezkey-tests/pom.xml so Maven can resolve it, but we don't build it
@@ -36,7 +38,7 @@ COPY ezkey-connectors/ezkey-connector-smtp/pom.xml ./ezkey-connectors/ezkey-conn
 # Using -pl to explicitly list modules (excludes ezkey-tests which uses Karate/TestContainers)
 RUN --mount=type=cache,target=/root/.m2,id=maven-cache,sharing=shared \
     echo "📦 Downloading Maven dependencies (using BuildKit cache)..." && \
-    mvn dependency:go-offline -Pno-checkstyle -B \
+    mvn-proxy dependency:go-offline -Pno-checkstyle -B \
         -pl checkstyle-config,ezkey-core,ezkey-core-security,ezkey-migration,ezkey-admin-api,ezkey-auth-api,ezkey-integration-api,ezkey-crypto-api,ezkey-sdk/java,ezkey-demo-device \
         -am || true && \
     echo "✅ Dependencies cached in BuildKit cache"
@@ -67,7 +69,7 @@ COPY THIRD-PARTY.txt ./THIRD-PARTY.txt
 # -am (also-make) ensures dependencies are built, -amd (also-make-dependents) not needed here
 RUN --mount=type=cache,target=/root/.m2,id=maven-cache,sharing=shared \
     echo "🔨 Building all modules (using cached dependencies)..." && \
-    mvn clean package -DskipTests -Pno-checkstyle -B \
+    mvn-proxy clean package -DskipTests -Pno-checkstyle -B \
         -pl checkstyle-config,ezkey-core,ezkey-core-security,ezkey-migration,ezkey-admin-api,ezkey-auth-api,ezkey-integration-api,ezkey-crypto-api,ezkey-sdk/java,ezkey-demo-device \
         -am && \
     echo "✅ Build completed successfully"
@@ -83,12 +85,12 @@ COPY ezkey-connectors/ezkey-connector-mock/src ./ezkey-connectors/ezkey-connecto
 COPY ezkey-connectors/ezkey-connector-smtp/src ./ezkey-connectors/ezkey-connector-smtp/src
 RUN --mount=type=cache,target=/root/.m2,id=maven-cache,sharing=shared \
     echo "🔍 Validating reactor (Spotless check, Checkstyle, install, unit tests)..." && \
-    mvn install -pl checkstyle-config -DskipTests -B && \
-    mvn spotless:check -B && \
-    mvn checkstyle:check -B && \
-    mvn clean -B && \
-    mvn install -DskipTests -B && \
-    mvn test -pl '!ezkey-tests' -B && \
+    mvn-proxy install -pl checkstyle-config -DskipTests -B && \
+    mvn-proxy spotless:check -B && \
+    mvn-proxy checkstyle:check -B && \
+    mvn-proxy clean -B && \
+    mvn-proxy install -DskipTests -B && \
+    mvn-proxy test -pl '!ezkey-tests' -B && \
     echo "✅ Reactor validation completed successfully"
 
 # ============================================

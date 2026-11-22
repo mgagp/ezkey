@@ -280,6 +280,47 @@ To validate the Java reactor without installing JDK/Maven on the host (equivalen
 
 See also [`docs/DEVELOPMENT.md`](../docs/DEVELOPMENT.md) (Docker-only validation). The formatter step uses a named volume for container `~/.m2` (default `ezkey-maven-spotless-cache`) because `spotless:apply` must write back to the Git checkout via a bind mount.
 
+## Building behind an HTTPS proxy
+
+When the host reaches the internet only through an HTTPS proxy (corporate proxy, Claude Code cloud
+session), image builds cannot download packages unless the build containers know the proxy. Set
+**`EZKEY_BUILD_HTTPS_PROXY`** to a proxy URL **reachable from containers** before `clean-start.sh`,
+`start.sh`, `start-ha.sh` or `docker compose build`:
+
+```bash
+export EZKEY_BUILD_HTTPS_PROXY=http://172.17.0.1:3128   # example: proxy on the Docker bridge gateway
+cd ezkey-tests && ./clean-start.sh
+```
+
+- Every compose file passes it to its builds as the standard `HTTPS_PROXY` build arg. Empty by
+  default, so builds without it behave exactly as before.
+- `apk` and `npm` honour `HTTPS_PROXY` by themselves. **Maven does not** (nor `-Dhttps.proxyHost`),
+  so Maven build stages call [`mvn-proxy.sh`](mvn-proxy.sh), which writes a throwaway
+  `settings.xml` proxy entry when `HTTPS_PROXY` is set. It is copied into build stages only, never into
+  runtime images.
+- Only builds get the proxy. Running containers do not: do **not** use the Docker client `proxies`
+  setting (`~/.docker/config.json`) for this, because it also injects proxy variables into running
+  containers and breaks service-to-service calls and health checks.
+- The Demo Login e2e setup (`ezkey-demo-login/e2e/global-setup.ts`) passes the same variable to its own
+  `docker build`.
+- After a failed Maven download inside a build, run `docker builder prune -af` before retrying, so
+  BuildKit's Maven cache does not keep the cached resolution failures.
+
+**Cloud agent sessions.** The session proxy listens on `127.0.0.1`, which containers cannot reach.
+Relay it on the Docker bridge, deriving the port from `HTTPS_PROXY` (it changes when the session
+container restarts), then point the builds at the relay:
+
+```bash
+port="${HTTPS_PROXY##*:}"
+gw="$(docker network inspect bridge --format '{{(index .IPAM.Config 0).Gateway}}')"
+nohup socat "TCP-LISTEN:${port},bind=${gw},fork,reuseaddr" "TCP:127.0.0.1:${port}" >/tmp/socat.log 2>&1 &
+export EZKEY_BUILD_HTTPS_PROXY="http://${gw}:${port}"
+```
+
+Hosts the session network must allow for a default clean start: Maven Central, Docker Hub, the npm
+registry and `dl-cdn.alpinelinux.org`. The JavaMelody overlay also downloads its `.war` from a GitHub
+release.
+
 ## Direct Docker Compose Usage
 
 You can also use Docker Compose directly:

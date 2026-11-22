@@ -57,6 +57,7 @@ services:
       context: ./javamelody
       dockerfile: Dockerfile
       args:
+        HTTPS_PROXY: ${EZKEY_BUILD_HTTPS_PROXY:-}
         JAVAMELODY_VERSION: "2.9.0"
     container_name: ezkey-javamelody-collector
     depends_on:
