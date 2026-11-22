@@ -314,41 +314,33 @@ services:
       start_period: 40s
       retries: 3
 
-  demo-app-acme:
+  demo-login:
+    # Demo Login (#1430): a small web app that signs its users in with Ezkey through the
+    # TypeScript SDK. Node, no JVM; users and sessions in a SQLite file on the volume.
+    # After creating an integration and an API key in the Admin UI:
+    #   EZKEY_INTEGRATION_KEY=... EZKEY_SECRET_KEY=... docker compose up -d demo-login
+    #   docker compose exec demo-login node server/cli.js user add alice
+    # See ezkey-demo-login/README.md.
     build:
-      <<: *ezkey-image-build
-      target: demo-app-acme
-    container_name: ezkey-demo-app-acme
+      context: ..
+      dockerfile: ezkey-demo-login/Dockerfile
+    container_name: ezkey-demo-login
     depends_on:
       integration-api:
         condition: service_healthy
     environment:
       <<: *container-tz
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
-      # External configuration location - must be set as environment variable to be loaded early enough
-      # Spring Boot automatically searches in ./config/ relative to working directory (/app/config/)
-      # But we explicitly set it to ensure it's loaded
-      SPRING_CONFIG_ADDITIONAL_LOCATION: optional:file:/app/config/,optional:file:./config/
-      # Ezkey SDK base URL (same REST paths). Tenant API-key flows live on Integration API (7080), not Admin API (9080).
-      EZKEY_ADMIN_API_URL: http://integration-api:7080
-      # EZKEY_INTEGRATION_KEY and EZKEY_SECRET_KEY: Leave unset initially - configure via /app/config/application.properties after creating integration
-      # Format: Authorization: Basic base64(integrationKey:secretKey)
-      MANAGEMENT_SERVER_PORT: 8086
+      EZKEY_INTEGRATION_API_URL: http://integration-api:7080
+      EZKEY_INTEGRATION_KEY: ${EZKEY_INTEGRATION_KEY:-}
+      EZKEY_SECRET_KEY: ${EZKEY_SECRET_KEY:-}
+      DEMO_LOGIN_AUTH_TTL_SECONDS: ${DEMO_LOGIN_AUTH_TTL_SECONDS:-120}
     volumes:
-      - demo-app-acme-data:/app/data
-      - demo-app-acme-config:/app/config
+      - demo-login-data:/app/data
     ports:
       - "8082:8082"
-      - "127.0.0.1:8086:8086"
     networks:
       - ezkey-network
     restart: on-failure:3
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://127.0.0.1:8086/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 3s
-      start_period: 40s
-      retries: 3
 
   bootstrap-init:
     build:
@@ -374,7 +366,6 @@ services:
     volumes:
       - bootstrap-artifacts:/bootstrap
       - demo-device-data:/app/data
-      - demo-app-acme-data:/app/acme-data
     networks:
       - ezkey-network
     restart: "no"
@@ -386,8 +377,7 @@ networks:
 volumes:
   postgres-data:
   demo-device-data:
-  demo-app-acme-data:
-  demo-app-acme-config:
+  demo-login-data:
   encryption-secrets:
   bootstrap-artifacts:
 
