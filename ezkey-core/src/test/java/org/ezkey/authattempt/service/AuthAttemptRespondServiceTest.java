@@ -140,6 +140,9 @@ class AuthAttemptRespondServiceTest {
         .updateStatusIfCurrent(
             eq(42), eq(AuthAttemptStatus.READ), eq(AuthAttemptStatus.ACCEPTED), any());
     verify(authAttemptRepository, never()).save(any());
+    // #940 / #1433: last-used is a version-free bulk update, never a save of the enrollment.
+    verify(enrollmentRepository).touchLastUsedAt(any(), any());
+    verify(enrollmentRepository, never()).save(any());
   }
 
   @Test

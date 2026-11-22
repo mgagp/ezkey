@@ -33,4 +33,4 @@ business-approval / context mode — deferred).
 
 ## Known
 
-- #1433: cancel right after start can get a 401 from the Integration API (API key optimistic lock).
+- Case 06 cancels with no pause on purpose: it guards #1433 (concurrent calls on one API key got 401).
