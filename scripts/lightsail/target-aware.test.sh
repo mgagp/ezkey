@@ -926,21 +926,16 @@ assert_ok "export dry-run sync mentions refuse-if-directory" \
 assert_stdout_contains "dry-run refuse directory before scp" "refuse sync if remote Caddyfile.ezkey-online is a directory"
 assert_stdout_contains "dry-run no auto-rmdir" "no auto-rmdir"
 
-# --- #886 S1: Acme image↔compose — refuse remote-up without sync; verify 8086 needle ---
-assert_fail "export include-demo-acme+remote-up without sync-operator-files fails" \
-  bash "${EXPORT}" --target community --dry-run --apis-only --include-demo-acme --remote-up
-assert_stderr_contains "acme remote-up needs sync" "--include-demo-acme with --remote-up requires --sync-operator-files"
-
+# --- #1430: Demo Login image ships with --include-demo-login (dry-run, no ssh) ---
 : >"${FAKE_SSH_LOG}"
-assert_ok "export include-demo-acme+sync+remote-up dry-run checks 8086 health needle" \
-  bash "${EXPORT}" --target community --dry-run --apis-only --include-demo-acme \
-    --sync-operator-files --remote-up
-assert_stdout_contains "dry-run acme 8086 needle" "8086/actuator/health"
+assert_ok "export include-demo-login dry-run lists the Demo Login image" \
+  bash "${EXPORT}" --target community --dry-run --apis-only --include-demo-login
+assert_stdout_contains "dry-run demo-login image" "ezkey-demo-login:latest"
 if [[ ! -s "${FAKE_SSH_LOG}" ]]; then
-  echo "PASS: dry-run acme remote-up never called fake ssh"
+  echo "PASS: dry-run demo-login export never called fake ssh"
   pass=$((pass + 1))
 else
-  echo "FAIL: dry-run acme remote-up should not invoke ssh" >&2
+  echo "FAIL: dry-run demo-login export should not invoke ssh" >&2
   cat "${FAKE_SSH_LOG}" >&2
   fail=$((fail + 1))
 fi

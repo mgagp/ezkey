@@ -49,8 +49,6 @@ services:
     mem_reservation: 192m
     environment:
       <<: *java-tool
-  demo-app-acme:
-    mem_limit: 768m
-    mem_reservation: 192m
-    environment:
-      <<: *java-tool
+  demo-login:
+    mem_limit: 256m
+    mem_reservation: 64m

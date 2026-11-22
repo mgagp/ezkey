@@ -145,25 +145,19 @@ integration-api.ezkey.online {
 	}
 }
 
-demo-acme.ezkey.online {
+demo-login.ezkey.online {
 	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin-key.pem {
 		protocols tls1.3 tls1.3
 	}
-	# demo-app-acme exposes /actuator/health on the business port — deny at the edge (#846 / Edgar).
+	# Demo Login (#1430). Its health route is /healthz; keep the shared observability deny anyway.
 	import ezkey_online_observability_deny
-	# Explicit forwarded headers so Spring (forward-headers-strategy) keeps https on redirects.
-	# Keep X-Forwarded-Proto / X-Forwarded-Host; harden IP headers below.
-	reverse_proxy demo-app-acme:8082 {
+	# The app trusts X-Forwarded-For / X-Forwarded-Host (DEMO_LOGIN_TRUST_PROXY): overwrite them here.
+	reverse_proxy demo-login:8082 {
 		header_up CF-Connecting-IP {client_ip}
 		header_up X-Forwarded-For {client_ip}
 		header_up -Forwarded
 		header_up -X-Real-IP
 		header_up X-Forwarded-Proto {scheme}
 		header_up X-Forwarded-Host {host}
-	}
-	header {
-		X-Content-Type-Options "nosniff"
-		X-Frame-Options "DENY"
-		Referrer-Policy "no-referrer"
 	}
 }

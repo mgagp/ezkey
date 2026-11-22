@@ -94,7 +94,7 @@ assert_eq "classify 302 → inconclusive" "inconclusive" "$(business_port_probe_
 assert_eq "classify 500 → inconclusive" "inconclusive" "$(business_port_probe_classify 500 "${empty}")"
 assert_eq "classify 404+JM → exposed" "exposed" "$(business_port_probe_classify 404 "${jm}")"
 
-# End-to-end: fake curl returns 404 for business ports (auth + acme) — must PASS.
+# End-to-end: fake curl returns 404 for business ports (auth + integration) — must PASS.
 # (Covers both /actuator/health and /monitoring probes.)
 FAKE_BIN="${TMP}/fake-bin"
 mkdir -p "${FAKE_BIN}"
@@ -140,10 +140,10 @@ chmod +x "${FAKE_BIN}/docker"
 OUT="${TMP}/out"
 ERR="${TMP}/err"
 if env PATH="${FAKE_BIN}:${PATH}" \
-  BUSINESS_PORT_URLS="http://auth-api:8080 http://demo-app-acme:8082" \
+  BUSINESS_PORT_URLS="http://auth-api:8080 http://integration-api:7080" \
   bash "${SCRIPT}" --business-ports >"${OUT}" 2>"${ERR}"; then
   if grep -q 'OK  404' "${OUT}" && grep -q 'PASS' "${OUT}"; then
-    echo "PASS: --business-ports with 404 on auth+acme exits 0"
+    echo "PASS: --business-ports with 404 on auth+integration exits 0"
     pass=$((pass + 1))
   else
     echo "FAIL: expected OK 404 + PASS in stdout" >&2
@@ -370,7 +370,7 @@ FAKE_CURL
 chmod +x "${FAKE_BIN}/curl"
 
 if env PATH="${FAKE_BIN}:${PATH}" \
-  BUSINESS_PORT_URLS="http://demo-app-acme:8082" \
+  BUSINESS_PORT_URLS="http://integration-api:7080" \
   bash "${SCRIPT}" --business-ports >"${OUT}" 2>"${ERR}"; then
   echo "FAIL: 500 inconclusive should exit non-zero" >&2
   fail=$((fail + 1))

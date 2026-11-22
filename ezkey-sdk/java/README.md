@@ -10,7 +10,7 @@ Admin or Auth API wrapper, and it is not a device client (bind / verify / pendin
 - JSON via an internal helper — no Jackson (or other) compile dependency
 - Logging via `System.Logger`
 
-Living demo: `ezkey-demo-app-acme` (reactor module `ezkey-sdk/java`).
+The TypeScript counterpart, `EzkeyIntegrationClient`, is used by `ezkey-demo-login`.
 
 Admin API (`9080`) remains the operator / bearer-token surface. Admin API does not authenticate
 API keys; use this client against Integration API.

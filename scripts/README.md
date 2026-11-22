@@ -222,7 +222,7 @@ App layer remains [`experimental-hybrid/lightsail/`](../experimental-hybrid/ligh
 
 [`ops/check-ezkey-online-hosts.sh`](ops/check-ezkey-online-hosts.sh) — greps tracked files for
 `*.ezkey.online` and fails on any label outside `{auth-api, admin-api, integration-api,
-demo-acme, admin-ui}`. Bare zone `ezkey.online` is allowed only when it is **not** written as
+demo-login, admin-ui}`. Bare zone `ezkey.online` is allowed only when it is **not** written as
 an `http(s)` URL to the apex (that form fails). Not-served names (`n`, `auth`, `www`, …) may
 appear only in [`docs/lightsail/community-host.md`](../docs/lightsail/community-host.md) §
 *Product hostnames*. Wired into the `lightsail` job in
@@ -253,7 +253,6 @@ Pre-upgrade scan: sync `scripts/ops/` with `--target community --sync-operator-f
 Demo projects were using two different approaches for OpenAPI specifications:
 
 - **ezkey-demo-device** : Live URL (`http://localhost:8080/v3/api-docs`)
-- **ezkey-demo-app-acme** : Local file (`openapi-spec.json`)
 
 ## Adopted Solution: Standardized Local File
 
@@ -407,7 +406,7 @@ mvn spring-boot:run -pl ezkey-admin-api &
 ./scripts/update-specs.sh
 
 # Recompile demo projects
-mvn clean compile -pl ezkey-demo-device,ezkey-demo-app-acme
+mvn clean compile -pl ezkey-demo-device
 ```
 
 ### 2. Before Commit
@@ -419,7 +418,7 @@ mvn clean compile -pl ezkey-demo-device,ezkey-demo-app-acme
 ./scripts/update-specs.sh --all
 
 # Test that everything compiles
-mvn clean compile -pl ezkey-demo-device,ezkey-demo-app-acme
+mvn clean compile -pl ezkey-demo-device
 ```
 
 ### 3. Production Deployment
@@ -455,10 +454,6 @@ specs/                         # Centralized specifications
 
 ezkey-demo-device/
 ├── openapi-spec.json          # Links to specs/auth-api/openapi-spec.json
-└── pom.xml                    # Uses local file
-
-ezkey-demo-app-acme/
-├── openapi-spec.json          # Links to specs/admin-api/openapi-spec.json
 └── pom.xml                    # Uses local file
 
 ezkey-sdk/

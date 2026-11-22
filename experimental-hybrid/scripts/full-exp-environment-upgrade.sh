@@ -20,7 +20,7 @@
 # production + build. For --target community, requires EZKEY_CONFIRM_WIPE=ezkey-online.
 #
 # Subcommand "rolling" (no database wipe):
-#   --build --export --include-demo-acme is available via --include-demo-acme
+#   --include-demo-login also builds and ships the Demo Login image
 #   default: build migration + all APIs, export all images including migration, --remove-remote-tars,
 #   --sync-operator-files, --remote-up on the resolved SSH host (Caddy + Compose from repo, then
 #   docker compose up -d; Postgres and named volumes are preserved; Flyway runs from new image).
@@ -57,7 +57,7 @@ APIS_ONLY=""
 REMOVE_REMOTE_TARS=""
 DO_SYNC_OP=""
 DO_REMOTE_UP=""
-INCLUDE_DEMO_ACME=""
+INCLUDE_DEMO_LOGIN=""
 DRY_RUN=""
 DECLARED_TARGET=""
 
@@ -74,12 +74,12 @@ SSH target (required when exporting — no silent default; #812):
                    EZKEY_CONFIRM_WIPE=${LIGHTSAIL_SSH_HOST_COMMUNITY}.
   rolling          No-wipe Lightsail stack upgrade: --build --export --remove-remote-tars
                    --sync-operator-files --remote-up (Caddy, Compose, migration + backends + demo
-                   if --include-demo-acme, then remote docker compose up -d + caddy force-recreate).
+                   if --include-demo-login, then remote docker compose up -d + caddy force-recreate).
   (no subcommand)  Prints this help and exits (does not imply full).
 
   After "full" or "rolling", option flags can override or add, e.g.:
     $0 --target community full --ui-preview
-    $0 --target community rolling --include-demo-acme
+    $0 --target community rolling --include-demo-login
     $0 --target community --export --sync-operator-files --remote-up --dry-run
 
   --build            Run docker compose -f docker/docker-compose.yml build (see preset / flags).
@@ -87,7 +87,7 @@ SSH target (required when exporting — no silent default; #812):
   --apis-only        Pass --apis-only to export (skip migration image; use when Flyway unchanged)
   --sync-operator-files  Pass to export: scp lightsail docker-compose.yml, target-aware Caddyfile, clean-start.sh
   --remote-up        Pass to export: ssh to VM and run docker compose up -d (rolling apply, DB kept)
-  --include-demo-acme  Pass to export and add demo-app-acme to the local docker compose build
+  --include-demo-login Pass to export and add demo-login to the local docker compose build
   --clean-start      Pass to export (DESTRUCTIVE: remote clean-start.sh). Community requires
                      EZKEY_CONFIRM_WIPE=${LIGHTSAIL_SSH_HOST_COMMUNITY}. Incompatible with rolling.
   --remove-remote-tars  Pass to export
@@ -106,7 +106,7 @@ Examples:
   $0 --target community full
   $0 --target community rolling
   $0 --target community rolling --dry-run
-  $0 --target community rolling --include-demo-acme
+  $0 --target community rolling --include-demo-login
   $0 --target community --build --export --sync-operator-files --remote-up --remove-remote-tars
   EZKEY_CONFIRM_WIPE=${LIGHTSAIL_SSH_HOST_COMMUNITY} $0 --target community full
   $0 --target community --export --clean-start
@@ -173,7 +173,7 @@ while [[ $# -gt 0 ]]; do
     --apis-only) APIS_ONLY="1" ;;
     --sync-operator-files) DO_SYNC_OP="1" ;;
     --remote-up) DO_REMOTE_UP="1" ;;
-    --include-demo-acme) INCLUDE_DEMO_ACME="1" ;;
+    --include-demo-login) INCLUDE_DEMO_LOGIN="1" ;;
     --clean-start) DO_CLEAN_START="1" ;;
     --remove-remote-tars) REMOVE_REMOTE_TARS="1" ;;
     --dry-run) DRY_RUN="1" ;;
@@ -235,8 +235,8 @@ echo ""
 
 if [[ -n "$DO_BUILD" ]]; then
   BUILD_TARGETS=(migration admin-api auth-api integration-api)
-  if [[ -n "$INCLUDE_DEMO_ACME" ]]; then
-    BUILD_TARGETS+=(demo-app-acme)
+  if [[ -n "$INCLUDE_DEMO_LOGIN" ]]; then
+    BUILD_TARGETS+=(demo-login)
   fi
   if [[ -z "${OCI_IMAGE_REVISION:-}" ]]; then
     OCI_IMAGE_REVISION="$(git -C "${REPO_ROOT}" rev-parse HEAD 2>/dev/null || echo unknown)"
@@ -267,7 +267,7 @@ if [[ -n "$DO_EXPORT" ]]; then
   [[ -n "$APIS_ONLY" ]] && ex_args+=(--apis-only)
   [[ -n "$DO_CLEAN_START" ]] && ex_args+=(--clean-start)
   [[ -n "${REMOVE_REMOTE_TARS:-}" ]] && ex_args+=(--remove-remote-tars)
-  [[ -n "$INCLUDE_DEMO_ACME" ]] && ex_args+=(--include-demo-acme)
+  [[ -n "$INCLUDE_DEMO_LOGIN" ]] && ex_args+=(--include-demo-login)
   [[ -n "$DO_SYNC_OP" ]] && ex_args+=(--sync-operator-files)
   [[ -n "$DO_REMOTE_UP" ]] && ex_args+=(--remote-up)
   [[ -n "$DRY_RUN" ]] && ex_args+=(--dry-run)

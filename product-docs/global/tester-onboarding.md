@@ -16,7 +16,7 @@ tests continus. Les règles générales (codes, nommage, runs, hygiène) sont da
 
 | Qui | Fait quoi |
 | --- | --------- |
-| Marc | Invitations, tenant et enrollment, config Acme, envoi des courriels, fermeture des runs |
+| Marc | Invitations, enrollment dans le tenant de démo, usager Demo Login, envoi des courriels, fermeture des runs |
 | Isabelle (agent QA) | Rédige les courriels, prépare les runs, relit les résultats, ferme les runs avec Marc |
 | Testeur | Suit les courriels, exécute les cas dans **sa** run, inscrit résultat et commentaire |
 
@@ -30,8 +30,8 @@ Cocher chaque étape dans l'ordre. Une étape ne commence que si la précédente
 | 2 | Courriel d'accueil | Isabelle rédige, Marc valide et envoie | Courriel envoyé |
 | 3 | Cas d'initiation réussi | Testeur | Résultat et commentaire inscrits dans sa run |
 | 4 | App installée, version inscrite | Testeur | Cas d'installation passé, version notée |
-| 5 | Tenant dédié + enrollment sur l'instance communautaire (ezkey.online) ; Marc envoie le code QR et le code d'enrollment **par courriel** | Marc | Le testeur a activé l'enrollment dans l'app |
-| 6 | Lien Acme : bloc `ezkey.access-codes` ajouté à l'Acme communautaire | Marc | Le lien Acme ouvre la page de connexion du tenant |
+| 5 | Enrollment dans le tenant de démo de l'instance communautaire (ezkey.online), intégration Demo Login ; Marc envoie le code QR et le code d'enrollment **par courriel** | Marc | Le testeur a activé l'enrollment dans l'app |
+| 6 | Usager ajouté dans Demo Login (ligne de commande) | Marc | `user list` montre l'usager |
 | 7 | Courriel de tests | Isabelle rédige, Marc valide et envoie | Courriel envoyé |
 | 8 | Tests continus : runs courtes, puis bilan | Testeur, puis Marc + Isabelle | Bilan fait avec Marc |
 
@@ -48,45 +48,37 @@ Contenu :
   relecture.
 - Le lien vers la run d'initiation (ex. nom de run : « Reine - initiation »).
 
-### Étape 5 : tenant et enrollment
+### Étape 5 : enrollment
 
-- Un tenant dédié par testeur sur ezkey.online.
+- Un enrollment par testeur dans le **tenant de démo**, sous l'intégration de Demo Login (#1430).
+  Plus de tenant dédié par testeur : la démo hébergée est liée à ce seul tenant.
+- **User ID** de l'enrollment = l'identifiant usager choisi (ex. fictif `elodie.martin`).
 - Marc envoie le code QR et le code d'enrollment au testeur **par courriel**.
 - Ne jamais coller le code QR ni le code d'enrollment dans QA Sphere (placeholders seulement dans
   ce dépôt : `<code-qr>`, `<code-enrollment>`).
 
-### Étape 6 : lien Acme
+### Étape 6 : usager Demo Login
 
-Dans l'`application.properties` de l'Acme communautaire (volume externe, pas l'image), ajouter un
-bloc de quatre lignes. Le slot n'utilise **pas** l'UUID du tenant : il porte la **clé
-d'intégration** et la **clé secrète** du tenant (étape 5), plus un code aléatoire et un libellé.
+Demo Login a sa propre table d'usagers : un nom qu'elle ne connaît pas n'atteint jamais Ezkey. Sur
+la VM communautaire :
 
-```properties
-ezkey.access-codes.<slot>.code=<openssl rand -hex 16>
-ezkey.access-codes.<slot>.integration-key=<clé d'intégration du tenant>
-ezkey.access-codes.<slot>.secret-key=<clé secrète du tenant — jamais dans le chat>
-ezkey.access-codes.<slot>.label=<court libellé, ex. prénom du testeur>
+```bash
+docker exec ezkey-exp-demo-login node server/cli.js user add elodie.martin --name "Élodie Martin"
+docker exec ezkey-exp-demo-login node server/cli.js user list
 ```
 
-- Édition : en tant que `spring`, sauvegarde `.bak`, écriture atomique (temp + `mv`), puis
-  **redémarrage du seul conteneur Acme** (les slots sont lus au démarrage JVM). Procédure Edgar :
-  [`docs/lightsail/acme-access-code-runbook.md`](../../docs/lightsail/acme-access-code-runbook.md).
-- Le code doit être 32–64 hex minuscules ; un code simple comme « ABC » fait échouer le démarrage.
-- La **clé secrète** ne va jamais dans le chat, un courriel, QA Sphere ou ce dépôt. Seul le lien
-  `/t/<code>` (et le `user_identifier`) partent au testeur.
+`--ezkey-id` n'est utile que si le User ID de l'enrollment diffère du nom d'usager. Aucune clé ni
+aucun secret ne part au testeur : seulement l'adresse de Demo Login et son nom d'usager.
 
 ### Étape 7 : courriel de tests
 
 Contenu :
 
-- L'URL Acme (avec le code d'accès).
-- L'identifiant usager exact de l'enrollment (`user_identifier`) — **pas** le nom affiché. C'est
-  la valeur passée à `createAuthAttemptByUserIdentifier`, celle que le testeur saisit dans le
-  champ **USERNAME** d'Acme. Exemple fictif : identifiant `elodie.martin` ; nom affiché
-  « Élodie Martin — iPhone 15 ». Le courriel doit donner l'identifiant exact (`elodie.martin`),
-  jamais seulement le nom affiché.
+- L'adresse de Demo Login : `https://demo-login.ezkey.online`.
+- Le nom d'usager exact (ex. fictif `elodie.martin`) — **pas** le nom affiché. C'est ce que le
+  testeur saisit dans le champ **Username** de Demo Login.
 - La marche à suivre courte.
-- Le lien vers la run des cas d'usage (ex. « Reine - acme-approuvée »).
+- Le lien vers la run des cas d'usage (ex. « Reine - connexion-approuvée »).
 
 ## Cas du premier cycle
 
@@ -97,13 +89,13 @@ Détail des cas dans QA Sphere (projet `EZK`). Titres :
 | `DOC-ONB-001` | DOC (dossier 23) | Initiation à QA Sphere (générique, tous testeurs) |
 | `MOB-ONB-001` | MOB | Installer l'app et inscrire la version |
 | `MOB-ONB-002` | MOB | Activer l'enrollment |
-| `MOB-AUTH-010` | MOB | Connexion Acme approuvée |
-| `MOB-AUTH-011` | MOB | Connexion Acme refusée |
+| `MOB-AUTH-010` | MOB | Connexion Demo Login approuvée |
+| `MOB-AUTH-011` | MOB | Connexion Demo Login refusée |
 
 Reporté au cycle 2 : `MOB-AUTH-012` Demande laissée expirer.
 
 Les codes `MOB-ONB-*` suivent la nomenclature `CODE-AREA-NNN` de
-[`test-strategy.md`](test-strategy.md) (zone courte `ONB` sous `MOB`). Les connexions Acme
+[`test-strategy.md`](test-strategy.md) (zone courte `ONB` sous `MOB`). Les connexions Demo Login
 continuent la série existante `MOB-AUTH-001`…`009`.
 
 ## Retours conservés
@@ -127,7 +119,7 @@ change ce flux est inscrite **dans ce document**, dans la même PR que le change
 
 ## Annexe — détail des cas (premier cycle)
 
-Textes d'écran tirés du code (`ezkey_mobile` ; `ezkey-demo-app-acme`). Type : `functional`.
+Textes d'écran tirés du code (`ezkey_mobile` ; `ezkey-demo-login`, en anglais ou en français selon le choix EN | FR). Type : `functional`.
 Chaque cas renvoie à ce runbook.
 
 ### DOC-ONB-001 — Initiation à QA Sphere
@@ -170,41 +162,36 @@ Chaque cas renvoie à ce runbook.
   4. Revenir à l'accueil. → Le compte apparaît dans la liste des enrôlements.
 - Ne pas copier le code QR ni le code d'enrollment dans QA Sphere.
 
-### MOB-AUTH-010 — Connexion Acme approuvée
+### MOB-AUTH-010 — Connexion Demo Login approuvée
 
 - Dossier : 16 MOB · Priorité : high
-- Préconditions : MOB-ONB-002 passé ; courriel de tests reçu (URL Acme avec code d'accès,
-  identifiant usager `user_identifier` exact — ex. fictif `elodie.martin`, pas le nom affiché).
+- Préconditions : MOB-ONB-002 passé ; courriel de tests reçu (adresse de Demo Login, nom
+  d'usager exact — ex. fictif `elodie.martin`).
 - Étapes / résultats attendus :
-  1. Ouvrir l'URL Acme dans un navigateur. → La page **SIGN IN** s'affiche (sous-titre
-     « Passwordless authentication with EZKey »).
-  2. Saisir l'identifiant usager (`user_identifier`) dans le champ **USERNAME**, puis toucher
-     **LOGIN WITH EZKEY**. → Acme affiche **AWAITING APPROVAL** / « Waiting for device
-     approval... ». Si l'enrollment exige un challenge, un **CHALLENGE CODE** à 2 chiffres
-     apparaît aussi (sinon non — cela dépend du réglage de l'enrollment, pas d'Acme).
+  1. Ouvrir `https://demo-login.ezkey.online` dans un navigateur (FR en haut à droite pour le
+     français). → La boîte **Demo Login** s'affiche avec le champ **Nom d'usager**.
+  2. Saisir le nom d'usager, laisser cochée **Afficher un code à choisir sur mon appareil**, puis
+     toucher **Se connecter avec Ezkey**. → Demo Login affiche **Choisissez ce code sur votre
+     appareil**, un **code de vérification** à 2 chiffres et le **temps restant**.
   3. Sur le téléphone, ouvrir l'enrôlement, toucher **Vérifier les demandes en attente**. →
      L'écran **Authentification en attente** s'affiche.
-  4. Si un code à 2 chiffres est affiché (sur Acme ou sur le téléphone), le saisir / le vérifier
-     (consigne mobile : « Entrez le code à 2 chiffres affiché sur l'écran de connexion »), puis
-     toucher **Approuver**. S'il n'y a pas de code à 2 chiffres, approuver directement. → L'app
-     affiche **Approuvée** ; Acme passe à « Authentication successful! Redirecting... » puis au
-     tableau de bord (**WELCOME, …**).
+  4. Saisir le code à 2 chiffres affiché par Demo Login (consigne mobile : « Entrez le code à 2
+     chiffres affiché sur l'écran de connexion »), puis toucher **Approuver**. → L'app affiche
+     **Approuvée** ; Demo Login affiche **Vous êtes connecté** et **Bienvenue, …**.
 - Commentaire : version de l'app et ce qui a semblé confus.
 
-### MOB-AUTH-011 — Connexion Acme refusée
+### MOB-AUTH-011 — Connexion Demo Login refusée
 
 - Dossier : 16 MOB · Priorité : high
 - Préconditions : comme MOB-AUTH-010.
 - Étapes / résultats attendus :
   1–3. Comme MOB-AUTH-010 jusqu'à l'écran **Authentification en attente**. → La demande
      s'affiche sur le téléphone.
-  4. Si un code à 2 chiffres est affiché, le saisir / le vérifier ; sinon passer. Puis toucher
-     **Refuser**. → L'app affiche **Rejetée** ; Acme montre un message clair du type
-     « Authentication rejected by user. / Authentification refusée sur l'appareil. » (puis retour
-     vers la page de connexion).
+  4. Toucher **Refuser**. → L'app affiche **Rejetée** ; Demo Login affiche **Connexion refusée** —
+     « La demande a été refusée sur l'appareil. », avec **Réessayer**.
 - Commentaire : version de l'app et ce qui a semblé confus.
 
 ### Reporté au cycle 2 — MOB-AUTH-012 Demande laissée expirer
 
-Ne pas créer ce cas dans le premier cycle. Message Acme attendu (pour référence) :
-« Authentication request expired / La demande d'authentification a expiré ».
+Ne pas créer ce cas dans le premier cycle. Message Demo Login attendu (pour référence) :
+**Demande expirée** — « Personne n'a répondu sur l'appareil à temps. »

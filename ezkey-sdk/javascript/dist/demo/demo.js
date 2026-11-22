@@ -89,7 +89,7 @@ class EzkeyDemo {
             const devicePublicKey = this.encodePublicKey(deviceKeys.publicKey);
             console.log('✓ Generated device key pair');
             // Bind enrollment
-            const bindResponse = await this.client.auth().bindEnrollment(enrollment.enrollmentId, enrollmentProofToken);
+            const bindResponse = await this.client.auth().bindEnrollment(enrollmentProofToken);
             console.log('✓ Bound enrollment');
             console.log(`  Integration: ${bindResponse.integrationName}`);
             console.log(`  Description: ${bindResponse.integrationDescription}`);

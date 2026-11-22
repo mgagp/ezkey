@@ -110,12 +110,12 @@ export declare class EnrollmentsApi extends runtime.BaseAPI {
      */
     getById(requestParameters: GetByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EnrollmentResponseDto>;
     /**
-     * Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentId, enrollmentProofToken, authUrl}). Only while the enrollment is CREATED; 409 otherwise
+     * Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentProofToken, authUrl}). Only while the enrollment is CREATED; 409 otherwise
      * Generate QR code for enrollment
      */
     getQrCodeRaw(requestParameters: GetQrCodeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<string>>;
     /**
-     * Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentId, enrollmentProofToken, authUrl}). Only while the enrollment is CREATED; 409 otherwise
+     * Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentProofToken, authUrl}). Only while the enrollment is CREATED; 409 otherwise
      * Generate QR code for enrollment
      */
     getQrCode(requestParameters: GetQrCodeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<string>;

@@ -8,11 +8,11 @@ Short runbook for creating a **NEW** Amazon Lightsail VM for the **ezkey.online*
 
 **SSH target (#812):** deploy/bootstrap scripts never silent-default to a bare Host alias. Pass `--target community` (→ `ezkey-online`) or set `LIGHTSAIL_SSH_HOST` explicitly; community `--sync-operator-files` installs `Caddyfile.ezkey-online` under that same remote basename (compose bind mount — #863).
 
-**Acme evaluator access-code slots:** when Marc provisions an evaluator tenant, Edgar edits
-`/app/config/application.properties` (`ezkey.access-codes.<slot>.*`) and restarts only the Acme
-container — see [`acme-access-code-runbook.md`](acme-access-code-runbook.md). Do not put real
-secrets in this host doc. (Hot-reload of a second mapping file is deliberately not done; Related to
-#958.)
+**Demo Login users (#1430):** when Marc gives someone access to the demo, create that person's
+enrollment in the demo tenant (Admin UI, User ID = username), then
+`docker exec ezkey-exp-demo-login node server/cli.js user add <username> --name "<Name>"` on the VM.
+The Demo Login API key lives in `.env` (`DEMO_LOGIN_INTEGRATION_KEY` / `DEMO_LOGIN_SECRET_KEY`); do
+not put real secrets in this host doc.
 
 **Public cutover context (do not invent product language):** publish repositioned **ezkey.org** first; then community host on **ezkey.online**.
 
@@ -57,7 +57,7 @@ aws lightsail get-static-ip \
   --region ca-central-1
 ```
 
-**Decision (2026-10-19):** Marc attached static IP `ezkey-online-community` (`<static-ip ezkey-online-community>`) to `ezkey-online`. Stop/start no longer changes the public IPv4. The address is free while it stays attached. Marc updated the four proxied Cloudflare **A** records (`admin-api`, `auth-api`, `integration-api`, `demo-acme`) and SSH aliases `ezkey-online` / `ezkey-online-db` in the same cutover.
+**Decision (2026-10-19):** Marc attached static IP `ezkey-online-community` (`<static-ip ezkey-online-community>`) to `ezkey-online`. Stop/start no longer changes the public IPv4. The address is free while it stays attached. Marc updated the four proxied Cloudflare **A** records (`admin-api`, `auth-api`, `integration-api`, `demo-login`) and SSH aliases `ezkey-online` / `ezkey-online-db` in the same cutover.
 
 **Decision (2026-10-19, origin IP):** The origin IPv4 is **never versioned** in this public repository — use the `<static-ip ezkey-online-community>` marker and the `get-static-ip` command above. Direct origin access is already limited by the Lightsail firewall (HTTPS sources = Cloudflare IPv4 ranges only; see § Open ports). Keeping the address out of git is **defense in depth**, not the primary control.
 
@@ -95,7 +95,7 @@ hostnames in generic defaults. Other docs should **link here** instead of duplic
 | `admin-api.ezkey.online` | Admin API | Caddy on Lightsail | A proxied → `<static-ip ezkey-online-community>` | 401 |
 | `auth-api.ezkey.online` | Auth API (QR URL) | Caddy on Lightsail | A proxied → `<static-ip ezkey-online-community>` | 404 (no `/` route) |
 | `integration-api.ezkey.online` | Integration API | Caddy on Lightsail | A proxied → `<static-ip ezkey-online-community>` | 401 |
-| `demo-acme.ezkey.online` | Demo ACME | Caddy on Lightsail | A proxied → `<static-ip ezkey-online-community>` | 302 |
+| `demo-login.ezkey.online` | Demo Login (#1430) | Caddy on Lightsail | A proxied → `<static-ip ezkey-online-community>` (to create at the #1430 deployment) | 200 |
 
 Community Caddy site blocks (four hosts only): [`experimental-hybrid/lightsail/Caddyfile.ezkey-online`](../../experimental-hybrid/lightsail/Caddyfile.ezkey-online) (TLS 1.3 Origin CA paths, docs block, reverse_proxy targets). Admin UI is Pages, not Caddy.
 
@@ -110,7 +110,8 @@ environments, or client configs:
 | `n.ezkey.online` | No DNS; does not exist |
 | `auth.ezkey.online` | No DNS; does not exist (use `auth-api.ezkey.online`) |
 | `admin.ezkey.online` | No DNS; does not exist (use `admin-api` / `admin-ui`) |
-| `acme.ezkey.online` | No DNS; does not exist (use `demo-acme.ezkey.online`) |
+| `acme.ezkey.online` | No DNS; does not exist (use `demo-login.ezkey.online`) |
+| `demo-acme.ezkey.online` | Retired with the Demo App Acme (#1430); remove its DNS record at the Demo Login deployment |
 | `api.ezkey.online` | No DNS; does not exist |
 | `www.ezkey.online` | CNAME proxied; Cloudflare Single Redirect **301** → `https://ezkey.org/` (not a product origin) |
 
@@ -158,13 +159,13 @@ Do these **after** VM create → ports → Docker bootstrap (below). No secrets 
    **Operator laptop copy:** the community-host operator environment lives in [`experimental-hybrid/lightsail/.local/`](../../experimental-hybrid/lightsail/) (gitignored, operator-only, never committed). Example: `env.ezkey-online` is the local file to `scp` onto the VM as `.env`. If the local copy may be older than the live VM file, treat the **live `.env` on the VM as source of truth** — compare variable **names** only; never print or log values.
 6. **Images** — export with optional demo:
    ```bash
-   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --target community --include-demo-acme
+   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --target community --include-demo-login
    ```
 7. **Remote clean-start** — **first commissioning only** (destructive: `docker compose down -v` wipes Postgres). Not for upgrades. Requires `EZKEY_CONFIRM_WIPE=ezkey-online`:
    ```bash
    EZKEY_CONFIRM_WIPE=ezkey-online \
      ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh \
-     --target community --include-demo-acme --clean-start
+     --target community --include-demo-login --clean-start
    ```
    Or run `./clean-start.sh` on the VM from `~/ezkey/experimental-hybrid/lightsail/` after files are in place (see playbook). For **kept** community DB upgrades, follow **[Non-destructive upgrade (checklist)](#non-destructive-upgrade-checklist)** — do **not** treat `full-exp-environment-upgrade.sh … rolling` / blind `--sync-operator-files --remote-up` as the community default (see that section’s script gap).
 8. **Pages Admin UI** — separate Cloudflare Pages project (or branch) for `admin-ui.ezkey.online` with `VITE_API_BASE_URL=https://admin-api.ezkey.online` and Mode B UI flag above. Not automated by `scripts/lightsail/`.
@@ -219,38 +220,6 @@ Canon overlay: [`.env.ezkey-online.example`](../../experimental-hybrid/lightsail
 **Symptom (2026-10-14):** passwordless login → Cancel on device / Admin UI → immediate retry → HTTP 429 on `admin-api.ezkey.online` (#831). **Cause:** login and `passwordless-wait` shared a 5/min IP bucket. **Fix:** separate wait bucket (keyed `ip+authAttemptId` + per-IP + wait backstop; login cache isolated), login 15/min greedy refill, waiter-secret `passwordless-cancel`, mobile leave-as-deny. Redeploy admin-api (+ Admin UI / mobile when those clients are updated).
 
 **Caddy admin-api access log (#833 C1):** site-level `log` with `format filter` (delete all request/response headers; strip query keys `token` / `proof` / `challenge` / `waiterSecret` / `code`) plus `log_skip` for paths outside `/api/v1/admin/auth/*`. Do **not** write `log @matcher` — Caddy treats that token as a logger name and logs every route. Container stdout is still under Compose `x-logging` (`max-size: 20m`, `max-file: 3`) — see § Docker `json-file` log rotation below. Runtime proof: `scripts/prove-caddy-admin-auth-log.sh` (derives the HTTP proof site from the real Caddyfile log block).
-
-## demo-acme HTTPS redirects
-
-**Symptom:** `curl -sI https://demo-acme.ezkey.online/` returned `Location: http://demo-acme.ezkey.online/login` while the session cookie is `Secure` — broken behind Cloudflare Full (strict).
-
-**Cause:** Caddy → `demo-app-acme:8082` is plain HTTP. Spring `redirect:/login` built an absolute URL from the *inbound* scheme unless forwarded headers are applied. Trusted-proxy CIDRs alone do not fix redirect scheme.
-
-**In-repo fix:**
-- `server.forward-headers-strategy=framework` in demo-acme `application.properties` (honours `X-Forwarded-Proto` / `Host`)
-- Lightsail compose sets `SERVER_FORWARD_HEADERS_STRATEGY=framework` on `demo-app-acme` (works on an existing image without rebuild — Spring Boot env binding)
-- Community Caddyfile passes `header_up X-Forwarded-Proto` / `Host` on the demo-acme site block
-
-**Edgar — apply on live `ezkey-online` (no secrets):**
-
-```bash
-# From workstation: sync compose + community Caddyfile, recreate demo + caddy
-./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh \
-  --target community --sync-operator-files --apis-only
-# (or manual scp of compose + Caddyfile.ezkey-online under that same remote basename)
-ssh ezkey-online 'cd ~/ezkey/experimental-hybrid/lightsail && \
-  docker compose up -d --no-deps --force-recreate demo-app-acme caddy'
-```
-
-Optional one-liner if compose is not synced yet: set `SERVER_FORWARD_HEADERS_STRATEGY=framework` in the VM `.env` or compose service env, then recreate `demo-app-acme`.
-
-**Verify (after recreate):**
-
-```bash
-curl -sI https://demo-acme.ezkey.online/ | tr -d '\r' | grep -i '^location:'
-# Expect: Location: https://demo-acme.ezkey.online/login
-# Not:    Location: http://demo-acme.ezkey.online/login
-```
 
 ---
 
@@ -337,11 +306,11 @@ after the order guard. Keep a control session open.
 
 ### 5. Image export path
 
-App compose stays under `experimental-hybrid/lightsail/`. Push images with the **existing** export script and a **declared** target (`--target community` → Host `ezkey-online`; no silent default — #812), then follow **Ordered path** steps 2–8 (Origin CA, DNS, `.env`, optional `--include-demo-acme`, clean-start, Pages).
+App compose stays under `experimental-hybrid/lightsail/`. Push images with the **existing** export script and a **declared** target (`--target community` → Host `ezkey-online`; no silent default — #812), then follow **Ordered path** steps 2–8 (Origin CA, DNS, `.env`, optional `--include-demo-login`, clean-start, Pages).
 
 ```bash
 ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --target community --dry-run
-# then real run; optional --include-demo-acme / --sync-operator-files / --clean-start
+# then real run; optional --include-demo-login / --sync-operator-files / --clean-start
 # --sync-operator-files with --target community installs Caddyfile.ezkey-online
 # under that same remote basename (compose bind mount)
 ```
@@ -498,7 +467,7 @@ memory ceiling.
 | admin-api | 1152m | 65% |
 | auth-api | 768m | 60% |
 | integration-api | 576m | 60% |
-| demo-app-acme | 384m | 55% |
+| demo-login | 128m | n/a (Node) |
 | postgres | 384m | n/a |
 | caddy | 128m | n/a |
 | migration | 512m | 60% |
@@ -574,17 +543,12 @@ Collector image/version is aligned with the API starter (**2.9.0**, WAR sha256 p
   `127.0.0.1`, not `localhost`). The JM overlay **must** set `MANAGEMENT_SERVER_ADDRESS=0.0.0.0`
   or the collector stays empty — export/`verify-javamelody-non-exposure.sh --check-jm-overlay-bind`
   fail closed if the overlay omits that reopen.
-- Monitoring reports on management ports (`9081` / `8085` / `7081`); demo-app-acme management is
-  **8086** (Actuator not on business 8082). Caddy denies `/monitoring` and `/actuator` (and nested /
-  case / `//` / `;` variants) on all public API + demo-acme hostnames — defense in depth; do not
-  remove the deny when ports move.
-- **Deploy risk (image ↔ compose):** The dangerous pair is a **new** Acme image (classpath
-  `management.server.port=8086`) with an **old** compose whose healthcheck still probes
-  `8082/actuator/health` → Acme unhealthy → Caddy `depends_on: demo-app-acme: service_healthy`
-  blocks public APIs on recreate. Old image + new compose is usually OK (env vars move Actuator).
-  Always ship Acme image with `--sync-operator-files` on the same `--remote-up` (export refuses
-  `--include-demo-acme --remote-up` without sync, and checks remote compose for
-  `8086/actuator/health`).
+- Monitoring reports on management ports (`9081` / `8085` / `7081`). Caddy denies `/monitoring`
+  and `/actuator` (and nested / case / `//` / `;` variants) on all public API and Demo Login
+  hostnames — defense in depth; do not remove the deny when ports move. Demo Login is Node (no
+  Actuator, no JavaMelody); its health route is `/healthz` and unknown paths answer 404.
+- Caddy does not depend on Demo Login: a demo outage or a bad demo image never blocks the public
+  APIs (the former Acme `depends_on: service_healthy` did, #886).
 - Business-port `/actuator/health` must be native **404**; `/monitoring` must stay non-exposed:
   only **401**, **403**, or **404** without a JavaMelody body count as OK (do not harmonize).
   **HTTP 200** or any response whose body looks like JavaMelody is an exposure failure. Any other
@@ -618,8 +582,7 @@ curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8088/
 ./scripts/ops/verify-javamelody-non-exposure.sh \
   --base-url https://admin-api.ezkey.online \
   --base-url https://auth-api.ezkey.online \
-  --base-url https://integration-api.ezkey.online \
-  --base-url https://demo-acme.ezkey.online
+  --base-url https://integration-api.ezkey.online
 
 # On the VM: confirm management/collector ports are loopback-only (IPv4 + IPv6 [::])
 ./scripts/ops/verify-javamelody-non-exposure.sh --check-ss
@@ -843,7 +806,7 @@ Covered by the plan go (unless a pre-check needs its own touch of the live host 
 1. No test or evaluation campaign in flight on the instance.
 2. Announce the maintenance window and a **precise start time** if needed. Reference timings (2026-10-25 / #961): about **18 to 27 s** measured per API (four windows for #961; ~**90 s** total), about **25 s** for a single API restart, **6–9 s** for postgres recreate; **plan for up to ~2 min** of operator attention per API step.
 3. All stack containers healthy (`$C ps` from `<compose-dir>`).
-4. Note current image IDs / tags for admin-api, auth-api, integration-api, demo-app-acme, migration.
+4. Note current image IDs / tags for admin-api, auth-api, integration-api, demo-login, migration.
 5. Read release notes: if a **Flyway** migration is required, rollback becomes schema-aware (see H) and migration must run before APIs (see F).
 
 ### B. Read-only pre-check
@@ -867,7 +830,7 @@ Presence, mode, and metadata only — **never** print key material, blob bytes, 
 2. Restricted archive of key files from `<encryption-secrets-volume>` (`umask 077`, mode **600**; never unpack into the git worktree). Store the **key archive separately** from the database dump (dump + keys together would give plaintext access). Keep both **encrypted at rest** on the operator machine; define retention and **delete after the window**.
 3. Copy dump and archive **off the VM** to the operator machine, **outside the repo**, restricted ACL; **delete on the VM** after a verified copy. Do not leave both artefacts co-located on the VM.
 4. Backup live `.env` and compose files on the VM (`cp -p`, timestamp suffix, mode **600** — do not commit).
-5. Tag current images as `:rollback-pre-<n>` (or `:rollback-pre-<short-sha>`) for: admin-api, auth-api, integration-api, demo-app-acme, migration.
+5. Tag current images as `:rollback-pre-<n>` (or `:rollback-pre-<short-sha>`) for: admin-api, auth-api, integration-api, demo-login, migration.
 
 ### D. Secrets and configuration
 
@@ -901,7 +864,7 @@ Wait for healthy before the next recreate. Use `$C` (the three-file compose abov
    $C up -d --no-deps --no-build --force-recreate <service>
    ```
 
-   Order: **admin-api** first (sole keyset writer under ADR-0016), then **auth-api**, **integration-api**, **demo-app-acme**. Wait until healthy after each (about **18 to 27 s** measured; four windows for #961).
+   Order: **admin-api** first (sole keyset writer under ADR-0016), then **auth-api**, **integration-api**, **demo-login**. Wait until healthy after each (about **18 to 27 s** measured; four windows for #961).
 4. **Do not** recreate **postgres**, **caddy**, or the JavaMelody **collector** in this API window (postgres: separate window above).
 
 ### G. Checks
@@ -971,7 +934,7 @@ Short operator checklist verified against repo scripts/compose (not live VM obse
 4. **Static IP attach / detach changes the instance public IPv4** — attaching or detaching
    `ezkey-online-community` (or any Lightsail static IP) immediately changes the address the
    instance presents. Update the four proxied Cloudflare **A** records
-   (`admin-api`, `auth-api`, `integration-api`, `demo-acme`) and SSH `HostName` on the
+   (`admin-api`, `auth-api`, `integration-api`, `demo-login`) and SSH `HostName` on the
    aliases that exist (`ezkey-online`, `ezkey-online-db`; planned alias
    `ezkey-online-metrics` is not yet on Rootbeer — see decision 2026-10-19) right after the
    change. The Lightsail firewall and Origin CA certificate do **not** change on

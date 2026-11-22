@@ -4,7 +4,7 @@ This directory contains Docker configuration files and scripts to run the Ezkey 
 
 ## Overview
 
-The HA stack runs **2 instances** of each API (**admin-api**, **auth-api**, and **integration-api**) behind **HAProxy load balancers**, plus **Crypto API**, **Demo Device**, and **Demo App ACME**. This setup allows testing ShedLock distributed locking and multi-instance request routing. Management Actuator binds `0.0.0.0` inside containers (`MANAGEMENT_SERVER_ADDRESS` / `application-docker.properties`) so HAProxy healthchecks reach `:9081` / `:8085` / `:7081`; API replicas use `expose` only. HAProxy **stats** host publishes are `127.0.0.1:9081|8085|7081` only (#905).
+The HA stack runs **2 instances** of each API (**admin-api**, **auth-api**, and **integration-api**) behind **HAProxy load balancers**, plus **Crypto API**, **Demo Device**, and **Demo Login**. This setup allows testing ShedLock distributed locking and multi-instance request routing. Management Actuator binds `0.0.0.0` inside containers (`MANAGEMENT_SERVER_ADDRESS` / `application-docker.properties`) so HAProxy healthchecks reach `:9081` / `:8085` / `:7081`; API replicas use `expose` only. HAProxy **stats** host publishes are `127.0.0.1:9081|8085|7081` only (#905).
 
 ## Architecture
 
@@ -18,7 +18,7 @@ The HA stack runs **2 instances** of each API (**admin-api**, **auth-api**, and 
 │                      ──► 2× Integration API ──► :7080   │
 │                      ──► Crypto API :9090                │
 │                      ──► Demo Device :8083               │
-│                      ──► Demo App ACME :8082             │
+│                      ──► Demo Login :8082                │
 │                                                          │
 │  HAProxy stats (127.0.0.1 only): :9081 / :8085 / :7081   │
 │  docker-dev override (127.0.0.1 only) per-instance Actuator: │
@@ -53,7 +53,7 @@ The script will:
 3. Run database migrations (including ShedLock table `ezkey_shedlock` in V5)
 4. Start 2 instances each of admin-api, auth-api, and integration-api
 5. Start HAProxy load balancers (Admin, Auth, Integration)
-6. Start Crypto API, Demo Device, and Demo App ACME
+6. Start Crypto API, Demo Device, and Demo Login
 7. Wait for all services to be healthy
 8. Run bootstrap-init (Demo Device enrollment seed)
 
@@ -66,7 +66,7 @@ Once started, you can access:
 - **Integration API** (via HAProxy): http://localhost:7080
 - **Crypto API**: http://localhost:9090
 - **Demo Device**: http://localhost:8083
-- **Demo App ACME**: http://localhost:8082
+- **Demo Login**: http://localhost:8082
 
 **HAProxy Statistics Pages:**
 - **Admin API Load Balancer Stats**: http://localhost:9081/stats
@@ -434,7 +434,7 @@ If both instances are executing the same job simultaneously:
 | **HAProxy stats** | N/A | 9081 (Admin), 8085 (Auth), 7081 (Integration) |
 | **Crypto API** | Included | Included |
 | **Demo Device** | Included | Included (uses HAProxy Auth) |
-| **Demo App ACME** | Included | Included (uses HAProxy Integration) |
+| **Demo Login** | Included | Included (uses HAProxy Integration) |
 | **Load Balancing** | None | HAProxy round-robin |
 | **Long-poll timeouts** | Direct to JVM | HAProxy client/server **180s** (passwordless-wait / auth wait) |
 | **Health Checks** | Docker healthchecks | HAProxy + Docker healthchecks |

@@ -92,7 +92,7 @@ path, delete the Admin wiring and config rows. Do **not** touch Integration API 
 - **Do not** treat TypeScript SDK as in-scope rewrite; it already targets Integration API.
   Touch it only if a leftover sentence still mentions the Admin hatch.
 - **Do not** change community public hostnames (`admin-api.ezkey.online`,
-  `integration-api.ezkey.online`, `demo-acme.ezkey.online`).
+  `integration-api.ezkey.online`, `demo-acme` (host retired, #1430)).
 
 ## First executable slice
 

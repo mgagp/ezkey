@@ -346,17 +346,12 @@ ezkey-core/src/test/java/org/ezkey/authattempt/service/AuthAttemptServiceDeviceP
 11f8700119b93ac84ea5cf9867430a7c456a188f:ezkey-demo-app-acme/src/test/java/org/ezkey/demo/acme/config/AccessCodeStartupFailureTest.java:generic-api-key:54
 2521d5622acb34d66959b11e64ae190dc6276b96:ezkey-demo-app-acme/src/test/java/org/ezkey/demo/acme/config/AccessCodeStartupFailureTest.java:generic-api-key:52
 2521d5622acb34d66959b11e64ae190dc6276b96:ezkey-demo-app-acme/src/test/java/org/ezkey/demo/acme/config/AccessCodeStartupFailureTest.java:generic-api-key:56
-ezkey-demo-app-acme/src/test/java/org/ezkey/demo/acme/config/AccessCodeStartupFailureTest.java:generic-api-key:50
-ezkey-demo-app-acme/src/test/java/org/ezkey/demo/acme/config/AccessCodeStartupFailureTest.java:generic-api-key:54
 26262981eb3b87725568a17ee948be0044f75759:ezkey-demo-app-acme/src/test/java/org/ezkey/demo/acme/controller/AccessCodeLoggingTest.java:generic-api-key:41
 26262981eb3b87725568a17ee948be0044f75759:ezkey-demo-app-acme/src/test/java/org/ezkey/demo/acme/docker/DemoAppAcmeEntrypointScriptTest.java:generic-api-key:60
 7e62955d094916f7159db02972c91b19b0bf8c8d:ezkey-demo-app-acme/src/test/java/org/ezkey/demo/acme/docker/DemoAppAcmeEntrypointScriptTest.java:generic-api-key:60
-ezkey-demo-app-acme/src/test/java/org/ezkey/demo/acme/docker/DemoAppAcmeEntrypointScriptTest.java:generic-api-key:60
 9bb79e5e18222affdde37d801edbf0ed8c9ad9dd:ezkey-demo-app-acme/src/test/java/org/ezkey/demo/acme/security/AccessLinkSessionCookieIsolationTest.java:generic-api-key:64
-ezkey-demo-app-acme/src/test/java/org/ezkey/demo/acme/security/AccessLinkSessionCookieIsolationTest.java:generic-api-key:64
 26262981eb3b87725568a17ee948be0044f75759:ezkey-demo-app-acme/src/test/java/org/ezkey/demo/acme/service/AccessCodeServiceTest.java:generic-api-key:31
 7e62955d094916f7159db02972c91b19b0bf8c8d:ezkey-demo-app-acme/src/test/java/org/ezkey/demo/acme/service/AccessCodeServiceTest.java:generic-api-key:31
-ezkey-demo-app-acme/src/test/java/org/ezkey/demo/acme/service/AccessCodeServiceTest.java:generic-api-key:31
 12f77e9478f6c4acf3396292f8e4a170d6e6aa84:ezkey_mobile/app/utils/__tests__/generateProofToken.test.ts:generic-api-key:11
 ezkey_mobile/app/utils/__tests__/generateProofToken.test.ts:generic-api-key:11
 e81bd3c1b87add448ac421536db28eefcf74ebe2:scripts/db/verify-grants.test.sh:generic-api-key:334
@@ -379,8 +374,6 @@ scripts/lib/quality-gate-secrets.test.mjs:private-key:472
 # --- example-configs ---
 26a35ef2248ad9bf5443bff84f96a792a865e7c1:ezkey-demo-app-acme/config/application.properties.example:generic-api-key:32
 26a35ef2248ad9bf5443bff84f96a792a865e7c1:ezkey-demo-app-acme/config/application.properties.example:generic-api-key:33
-ezkey-demo-app-acme/config/application.properties.example:generic-api-key:33
-ezkey-demo-app-acme/config/application.properties.example:generic-api-key:34
 fd6d30728a9b92cfe13a28f55e1c21dd69bb932f:ezkey-demo-app-acme/config/application.properties.example:generic-api-key:32
 fd6d30728a9b92cfe13a28f55e1c21dd69bb932f:ezkey-demo-app-acme/config/application.properties.example:generic-api-key:33
 

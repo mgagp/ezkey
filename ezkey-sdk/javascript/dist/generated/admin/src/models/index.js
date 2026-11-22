@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.RetroactiveIntegrityValidationRunResponseTriggerSourceEnum = exports.IntegrityRuptureReconciliationResultCategoryEnum = exports.IntegrityRuptureReconciliationRequestCategoryEnum = exports.IntegrityBootstrapResponseDtoRuntimeProfileEnum = exports.IntegrityAsyncJobStartRequestTriggerEnum = exports.IntegrityAsyncJobStartRequestTypeEnum = exports.IntegrityAsyncJobResponseBusyHolderEnum = exports.IntegrityAsyncJobResponseChainStatusEnum = exports.IntegrityAsyncJobResponseTriggerEnum = exports.IntegrityAsyncJobResponseStatusEnum = exports.IntegrityAsyncJobResponseTypeEnum = exports.IntegrationResponseDtoLifecycleStatusEnum = exports.EntryIntegrityViolationConciliationStatusEnum = exports.EntryIntegrityConciliationSummaryCategoryEnum = exports.EnrollmentResponseDtoDevicePrivateKeyStorageTierEnum = exports.EnrollmentResponseDtoEnrollmentStatusEnum = exports.DeclareAuditChainIncidentRequestRootCauseEnum = exports.DashboardScheduledJobRowDtoLastStatusEnum = exports.DashboardScheduledJobRowDtoJobKeyEnum = exports.DashboardAlertItemDtoStatusEnum = exports.DashboardAlertItemDtoSeverityEnum = exports.DashboardAlertItemDtoAlertTypeEnum = exports.AuthAttemptWaitResponseDtoStatusEnum = exports.AuthAttemptDtoAuthAttemptStatusEnum = exports.AuditLogResponseDtoApiNameEnum = exports.AuditLogResponseDtoEventStatusEnum = exports.AuditLogResponseDtoEventTypeEnum = exports.AuditChainIncidentResponseDtoRootCauseEnum = exports.AuditChainIncidentResponseDtoStatusEnum = exports.AuditChainCheckpointResponseDtoCheckpointTypeEnum = exports.AuditChainCheckpointResponseDtoLifecycleStateEnum = exports.AlertResponseDtoResolutionReasonEnum = exports.AlertResponseDtoStatusEnum = exports.AlertResponseDtoSeverityEnum = exports.AlertResponseDtoAlertTypeEnum = exports.AdminSessionResponseDtoTokenPurposeEnum = exports.AdminSessionResponseDtoAdminTypeEnum = exports.AdminResponseDtoLifecycleStatusEnum = exports.AdminResponseDtoEnrollmentStatusEnum = exports.AdminResponseDtoAdminTypeEnum = exports.AdminLoginResponseDtoAdminTypeEnum = exports.AdminLoginResponseDtoStatusEnum = exports.AdminCreateRequestDtoOnboardingModeEnum = void 0;
+exports.RetroactiveIntegrityValidationRunResponseTriggerSourceEnum = exports.IntegrityRuptureReconciliationResultCategoryEnum = exports.IntegrityRuptureReconciliationRequestCategoryEnum = exports.IntegrityBootstrapResponseDtoRuntimeProfileEnum = exports.IntegrityAsyncJobStartRequestTriggerEnum = exports.IntegrityAsyncJobStartRequestTypeEnum = exports.IntegrityAsyncJobResponseBusyHolderEnum = exports.IntegrityAsyncJobResponseChainStatusEnum = exports.IntegrityAsyncJobResponseTriggerEnum = exports.IntegrityAsyncJobResponseStatusEnum = exports.IntegrityAsyncJobResponseTypeEnum = exports.IntegrationResponseDtoPendingAttemptPolicyEnum = exports.IntegrationResponseDtoLifecycleStatusEnum = exports.IntegrationPendingAttemptPolicyRequestDtoPendingAttemptPolicyEnum = exports.IntegrationCreateRequestDtoPendingAttemptPolicyEnum = exports.EntryIntegrityViolationConciliationStatusEnum = exports.EntryIntegrityConciliationSummaryCategoryEnum = exports.EnrollmentResponseDtoDevicePrivateKeyStorageTierEnum = exports.EnrollmentResponseDtoEnrollmentStatusEnum = exports.DeclareAuditChainIncidentRequestRootCauseEnum = exports.DashboardScheduledJobRowDtoLastStatusEnum = exports.DashboardScheduledJobRowDtoJobKeyEnum = exports.DashboardAlertItemDtoStatusEnum = exports.DashboardAlertItemDtoSeverityEnum = exports.DashboardAlertItemDtoAlertTypeEnum = exports.AuthAttemptWaitResponseDtoStatusEnum = exports.AuthAttemptDtoAuthAttemptStatusEnum = exports.AuditLogResponseDtoApiNameEnum = exports.AuditLogResponseDtoEventStatusEnum = exports.AuditLogResponseDtoEventTypeEnum = exports.AuditChainIncidentResponseDtoRootCauseEnum = exports.AuditChainIncidentResponseDtoStatusEnum = exports.AuditChainCheckpointResponseDtoCheckpointTypeEnum = exports.AuditChainCheckpointResponseDtoLifecycleStateEnum = exports.AlertResponseDtoResolutionReasonEnum = exports.AlertResponseDtoStatusEnum = exports.AlertResponseDtoSeverityEnum = exports.AlertResponseDtoAlertTypeEnum = exports.AdminSessionResponseDtoAdminTypeEnum = exports.AdminResponseDtoLifecycleStatusEnum = exports.AdminResponseDtoEnrollmentStatusEnum = exports.AdminResponseDtoAdminTypeEnum = exports.AdminLoginResponseDtoAdminTypeEnum = exports.AdminLoginResponseDtoStatusEnum = exports.AdminCreateRequestDtoOnboardingModeEnum = void 0;
 /**
  * @export
  */
@@ -62,18 +62,12 @@ exports.AdminSessionResponseDtoAdminTypeEnum = {
 /**
  * @export
  */
-exports.AdminSessionResponseDtoTokenPurposeEnum = {
-    Session: 'SESSION',
-    EvaluatorTemp: 'EVALUATOR_TEMP',
-    Recovery: 'RECOVERY'
-};
-/**
- * @export
- */
 exports.AlertResponseDtoAlertTypeEnum = {
-    ChainGapPending: 'AUDIT_CHAIN_GAP_PENDING',
-    ChainHeartbeatStale: 'AUDIT_CHAIN_HEARTBEAT_STALE',
-    IntegrityRupture: 'AUDIT_INTEGRITY_RUPTURE'
+    AuditChainGapPending: 'AUDIT_CHAIN_GAP_PENDING',
+    AuditChainHeartbeatStale: 'AUDIT_CHAIN_HEARTBEAT_STALE',
+    AuditIntegrityRupture: 'AUDIT_INTEGRITY_RUPTURE',
+    AuthAttemptRejected: 'AUTH_ATTEMPT_REJECTED',
+    PartitionCreationFailed: 'PARTITION_CREATION_FAILED'
 };
 /**
  * @export
@@ -97,7 +91,8 @@ exports.AlertResponseDtoResolutionReasonEnum = {
     GapDeclared: 'GAP_DECLARED',
     HeartbeatRestored: 'HEARTBEAT_RESTORED',
     Manual: 'MANUAL',
-    IntegrityRuptureConciliated: 'INTEGRITY_RUPTURE_CONCILIATED'
+    IntegrityRuptureConciliated: 'INTEGRITY_RUPTURE_CONCILIATED',
+    PartitionHorizonRestored: 'PARTITION_HORIZON_RESTORED'
 };
 /**
  * @export
@@ -155,6 +150,7 @@ exports.AuditLogResponseDtoEventTypeEnum = {
     AdminProfileUpdated: 'ADMIN_PROFILE_UPDATED',
     AdminDeactivated: 'ADMIN_DEACTIVATED',
     AdminActivated: 'ADMIN_ACTIVATED',
+    AdminBindMaterialRevealed: 'ADMIN_BIND_MATERIAL_REVEALED',
     EnrollmentCreated: 'ENROLLMENT_CREATED',
     EnrollmentUpdated: 'ENROLLMENT_UPDATED',
     EnrollmentDeleted: 'ENROLLMENT_DELETED',
@@ -255,9 +251,11 @@ exports.AuthAttemptWaitResponseDtoStatusEnum = {
  * @export
  */
 exports.DashboardAlertItemDtoAlertTypeEnum = {
-    ChainGapPending: 'AUDIT_CHAIN_GAP_PENDING',
-    ChainHeartbeatStale: 'AUDIT_CHAIN_HEARTBEAT_STALE',
-    IntegrityRupture: 'AUDIT_INTEGRITY_RUPTURE'
+    AuditChainGapPending: 'AUDIT_CHAIN_GAP_PENDING',
+    AuditChainHeartbeatStale: 'AUDIT_CHAIN_HEARTBEAT_STALE',
+    AuditIntegrityRupture: 'AUDIT_INTEGRITY_RUPTURE',
+    AuthAttemptRejected: 'AUTH_ATTEMPT_REJECTED',
+    PartitionCreationFailed: 'PARTITION_CREATION_FAILED'
 };
 /**
  * @export
@@ -280,7 +278,8 @@ exports.DashboardAlertItemDtoStatusEnum = {
 exports.DashboardScheduledJobRowDtoJobKeyEnum = {
     AuditChainCheckpoint: 'AUDIT_CHAIN_CHECKPOINT',
     NightlyIntegrityValidation: 'NIGHTLY_INTEGRITY_VALIDATION',
-    Reencryption: 'REENCRYPTION'
+    Reencryption: 'REENCRYPTION',
+    PartitionCreation: 'PARTITION_CREATION'
 };
 /**
  * @export
@@ -341,9 +340,30 @@ exports.EntryIntegrityViolationConciliationStatusEnum = {
 /**
  * @export
  */
+exports.IntegrationCreateRequestDtoPendingAttemptPolicyEnum = {
+    Replace: 'REPLACE',
+    Refuse: 'REFUSE'
+};
+/**
+ * @export
+ */
+exports.IntegrationPendingAttemptPolicyRequestDtoPendingAttemptPolicyEnum = {
+    Replace: 'REPLACE',
+    Refuse: 'REFUSE'
+};
+/**
+ * @export
+ */
 exports.IntegrationResponseDtoLifecycleStatusEnum = {
     Active: 'ACTIVE',
     Retired: 'RETIRED'
+};
+/**
+ * @export
+ */
+exports.IntegrationResponseDtoPendingAttemptPolicyEnum = {
+    Replace: 'REPLACE',
+    Refuse: 'REFUSE'
 };
 /**
  * @export

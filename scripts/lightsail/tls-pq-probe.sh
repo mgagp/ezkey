@@ -27,7 +27,7 @@ source "${SCRIPT_DIR}/common.sh"
 
 readonly PQ_GROUP="X25519MLKEM768"
 readonly CLASSICAL_GROUP="X25519"
-readonly DEFAULT_HOSTS="admin-api.ezkey.online,auth-api.ezkey.online,integration-api.ezkey.online,demo-acme.ezkey.online"
+readonly DEFAULT_HOSTS="admin-api.ezkey.online,auth-api.ezkey.online,integration-api.ezkey.online,demo-login.ezkey.online"
 
 HOSTS_CSV="${DEFAULT_HOSTS}"
 ORIGIN=""

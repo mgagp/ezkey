@@ -30,7 +30,6 @@ specs/
 | Consumer | Resolution |
 | --- | --- |
 | **ezkey-admin-ui** | Committed copy `ezkey-admin-ui/openapi-spec.json` (module Docker build context cannot see `specs/`); CI `cmp` vs this file; refreshed by `update-specs.sh` |
-| **ezkey-demo-app-acme** | Committed copy (historical dispatch); refreshed by `update-specs.sh` |
 | **ezkey-demo-device** | Maven `inputSpec` → `../specs/auth-api/openapi-spec.json`; Docker COPY places the same path under `/build` |
 | **ezkey_mobile** | Orval `../specs/auth-api/openapi-spec.json` |
 | **ezkey-sdk** (JS) | `openapi-generator-cli` → `../../specs/{admin,auth}-api/openapi-spec.json` |
@@ -105,7 +104,7 @@ curl http://localhost:7080/api-docs -o specs/integration-api/openapi-spec.json
 
 3. **Build Projects**:
    ```bash
-   mvn clean compile -pl ezkey-demo-device,ezkey-demo-app-acme
+   mvn clean compile -pl ezkey-demo-device
    ```
 
 ### Before Commits
@@ -117,7 +116,7 @@ curl http://localhost:7080/api-docs -o specs/integration-api/openapi-spec.json
 
 2. **Test Builds**:
    ```bash
-   mvn clean compile -pl ezkey-demo-device,ezkey-demo-app-acme
+   mvn clean compile -pl ezkey-demo-device
    mvn clean compile -pl ezkey-sdk/java
    cd ezkey-sdk/javascript && npm run build
    ```
@@ -242,7 +241,6 @@ If projects fail to build after specification update:
 
 2. **Check Project Links**:
    ```bash
-   ls -la ezkey-demo-app-acme/openapi-spec.json
    ls -la ezkey-demo-device/openapi-spec.json
    ```
 

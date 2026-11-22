@@ -36,15 +36,9 @@ describe('servlet session cookie names (#799)', () => {
     }
   });
 
-  it('covers Acme, demo-device, and API config/ properties', () => {
+  it('covers demo-device and API config/ properties', () => {
     const rows = collectServletSessionCookieNames(REPO_ROOT);
     const byModule = Object.fromEntries(rows.map((r) => [r.module, r]));
-
-    assert.equal(byModule['ezkey-demo-app-acme']?.cookieName, 'EZKEY_ACME_SESSION');
-    assert.equal(
-      byModule['ezkey-demo-app-acme']?.propertiesPath,
-      'ezkey-demo-app-acme/src/main/resources/application.properties',
-    );
 
     assert.equal(byModule['ezkey-demo-device']?.cookieName, 'EZKEY_DEVICE_SESSION');
     assert.equal(
@@ -62,7 +56,7 @@ describe('servlet session cookie names (#799)', () => {
     assert.equal(byModule['ezkey-integration-api']?.cookieName, 'EZKEY_INTEGRATION_API_SESSION');
     assert.equal(byModule['ezkey-crypto-api']?.cookieName, 'EZKEY_CRYPTO_API_SESSION');
 
-    assert.equal(rows.length, 6);
+    assert.equal(rows.length, 5);
   });
 });
 

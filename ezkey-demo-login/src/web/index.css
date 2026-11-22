@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+/* Neo-brutalism, yellow and pink: deliberately unlike the Admin UI (blue and orange). */
+@theme {
+  --color-bg: #fff1b8;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f4f0ff;
+  --color-ink: #111111;
+  --color-accent: #ff7ab6;
+  --color-accent-soft: #ffe0ef;
+  --color-error: #c81e1e;
+  --color-error-soft: #ffd9d9;
+  --color-warning: #b45309;
+  --color-warning-soft: #ffedc2;
+  --color-success-soft: #c9f7dc;
+
+  --shadow-brutal: 4px 4px 0 #111111;
+  --shadow-brutal-lg: 7px 7px 0 #111111;
+  --shadow-brutal-accent: 4px 4px 0 #ff7ab6;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+@utility border-3 {
+  border-width: 3px;
+}
+
+body {
+  background-color: var(--color-bg);
+  background-image: radial-gradient(#11111122 1px, transparent 1px);
+  background-size: 18px 18px;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+@layer components {
+  .btn-primary {
+    @apply border-3 border-ink bg-accent px-4 py-3 font-black shadow-brutal transition-transform;
+  }
+  .btn-primary:hover:not(:disabled) {
+    transform: translate(-1px, -1px);
+    box-shadow: 5px 5px 0 #111111;
+  }
+  .btn-primary:active:not(:disabled) {
+    transform: translate(3px, 3px);
+    box-shadow: 1px 1px 0 #111111;
+  }
+  .btn-primary:disabled {
+    opacity: 0.6;
+  }
+  .btn-secondary {
+    @apply border-3 border-ink bg-surface px-4 py-2 font-bold shadow-brutal;
+  }
+  .btn-secondary:hover:not(:disabled) {
+    background-color: var(--color-surface-alt);
+  }
+}

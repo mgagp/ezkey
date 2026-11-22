@@ -155,9 +155,11 @@ exports.ListAlertsStatusEnum = {
  * @export
  */
 exports.ListAlertsAlertTypeEnum = {
-    ChainGapPending: 'AUDIT_CHAIN_GAP_PENDING',
-    ChainHeartbeatStale: 'AUDIT_CHAIN_HEARTBEAT_STALE',
-    IntegrityRupture: 'AUDIT_INTEGRITY_RUPTURE'
+    AuditChainGapPending: 'AUDIT_CHAIN_GAP_PENDING',
+    AuditChainHeartbeatStale: 'AUDIT_CHAIN_HEARTBEAT_STALE',
+    AuditIntegrityRupture: 'AUDIT_INTEGRITY_RUPTURE',
+    AuthAttemptRejected: 'AUTH_ATTEMPT_REJECTED',
+    PartitionCreationFailed: 'PARTITION_CREATION_FAILED'
 };
 /**
  * @export

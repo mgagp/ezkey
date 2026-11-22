@@ -13,8 +13,7 @@
 #   ./scripts/ops/verify-javamelody-non-exposure.sh \
 #     --base-url https://admin-api.ezkey.online \
 #     --base-url https://auth-api.ezkey.online \
-#     --base-url https://integration-api.ezkey.online \
-#     --base-url https://demo-acme.ezkey.online
+#     --base-url https://integration-api.ezkey.online
 #
 # On the VM (ss bind gate — IPv4 0.0.0.0 and IPv6 [::] / *):
 #   ./scripts/ops/verify-javamelody-non-exposure.sh --check-ss
@@ -26,7 +25,6 @@
 #   # Local stack: --via-caddy ezkey-caddy
 #   # Default URLs (override with BUSINESS_PORT_URLS / --business-port-url):
 #   #   http://admin-api:9080  http://auth-api:8080  http://integration-api:7080
-#   #   http://demo-app-acme:8082
 #   # Probes: /actuator/health (expect 404) and /monitoring (401/403/404 OK).
 #
 # When JavaMelody overlay is used, management must listen on 0.0.0.0 (collector scrape):
@@ -80,7 +78,6 @@ DEFAULT_BUSINESS_PORT_URLS=(
   http://admin-api:9080
   http://auth-api:8080
   http://integration-api:7080
-  http://demo-app-acme:8082
 )
 
 BASE_URLS=()

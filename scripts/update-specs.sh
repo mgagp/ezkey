@@ -3,7 +3,7 @@
 # Ezkey OpenAPI Specifications Update Script
 # This script centralizes the management of OpenAPI specifications for all Ezkey projects.
 # It never creates git symlinks (mode 120000). Consumers either read specs/ directly or
-# receive a physical copy (Admin UI / demo-acme committed copies; ezkey-org portal copies
+# receive a physical copy (Admin UI committed copy; ezkey-org portal copies
 # are gitignored and synced at update/deploy time). See specs/README.md (#833).
 
 set -e  # Exit on any error
@@ -133,7 +133,6 @@ update_project_copies() {
             print_status "Updating admin-api committed copies..."
             # Admin UI Docker build context is the module folder only — committed copy + CI cmp.
             update_copy "$spec_file" "ezkey-admin-ui/openapi-spec.json"
-            update_copy "$spec_file" "ezkey-demo-app-acme/openapi-spec.json"
             ;;
         "auth-api")
             # Mobile Orval, SDK openapi-generator, and demo-device Maven read specs/auth-api/

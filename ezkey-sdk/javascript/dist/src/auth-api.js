@@ -29,14 +29,12 @@ class EzkeyAuthAPI {
     /**
      * Binds a device to an enrollment.
      *
-     * @param enrollmentId enrollment to bind
-     * @param enrollmentProofToken proof token from the enrollment QR / create flow
+     * @param enrollmentProofToken proof token from the enrollment QR / create flow (it identifies the enrollment)
      */
-    async bindEnrollment(enrollmentId, enrollmentProofToken) {
+    async bindEnrollment(enrollmentProofToken) {
         try {
             return await this.enrollmentApi.bind({
                 enrollmentBindRequestDto: {
-                    enrollmentId,
                     enrollmentProofToken
                 }
             });

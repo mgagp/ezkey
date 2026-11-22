@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Fail if tracked files mention *.ezkey.online hostnames outside the product allowlist.
 #
-# Allowlist (served): auth-api, admin-api, integration-api, demo-acme, admin-ui.
+# Allowlist (served): auth-api, admin-api, integration-api, demo-login, admin-ui.
 # Bare zone name ezkey.online is allowed only when it is not a URL (https?://ezkey.online fails).
 # Documentation wildcard *.ezkey.online is allowed.
 # Not-served names may appear only in docs/lightsail/community-host.md (SSOT inventory).
@@ -14,9 +14,9 @@ ROOT="${CHECK_EZKEY_ONLINE_HOSTS_ROOT:-$(cd "$(dirname "$0")/../.." && pwd)}"
 SSOT_REL="docs/lightsail/community-host.md"
 USE_GIT="${CHECK_EZKEY_ONLINE_HOSTS_GIT:-1}"
 
-ALLOW_LABELS='auth-api|admin-api|integration-api|demo-acme|admin-ui'
+ALLOW_LABELS='auth-api|admin-api|integration-api|demo-login|admin-ui'
 # Documented as not served in community-host.md only.
-NOT_SERVED_LABELS='www|n|auth|admin|acme|api'
+NOT_SERVED_LABELS='www|n|auth|admin|acme|api|demo-acme'
 
 fail=0
 hits=0
@@ -135,7 +135,7 @@ done < <(list_files)
 
 if [[ "${fail}" -gt 0 ]]; then
   echo "check-ezkey-online-hosts: ${fail} violation(s) (scanned matches≈${hits})" >&2
-  echo "Allowlist: auth-api, admin-api, integration-api, demo-acme, admin-ui (+ bare ezkey.online non-URL, *.ezkey.online)." >&2
+  echo "Allowlist: auth-api, admin-api, integration-api, demo-login, admin-ui (+ bare ezkey.online non-URL, *.ezkey.online)." >&2
   echo "Canon: ${SSOT_REL} § Product hostnames (ezkey.online)" >&2
   exit 1
 fi

@@ -19,6 +19,7 @@ import type {
   AuthAttemptDto,
   AuthAttemptWaitResponseDto,
   PagedModelAuthAttemptDto,
+  ProblemDetail,
 } from '../models/index';
 
 export interface CancelRequest {

@@ -1,0 +1,45 @@
+{
+  "name": "ezkey-demo-login",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Demo Login: a small web application that signs its users in with Ezkey through the TypeScript SDK",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "concurrently -n api,web \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:api": "node --watch --env-file-if-exists=.env src/server/main.ts",
+    "dev:web": "vite",
+    "build": "npm run typecheck && npm run build:web && npm run build:server",
+    "build:web": "vite build",
+    "build:server": "esbuild src/server/main.ts src/server/cli.ts --bundle --platform=node --format=esm --target=node24 --outdir=dist/server --packages=bundle --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.server.json --noEmit",
+    "test": "node --test \"test/**/*.test.ts\"",
+    "e2e": "EZKEY_ADMIN_TOKEN=\"${EZKEY_ADMIN_TOKEN:-$(node -p \"require('../ezkey-tests/.ezkey-test/admin-token.json').token\")}\" playwright test",
+    "start": "node dist/server/main.js",
+    "cli": "node --env-file-if-exists=.env src/server/cli.ts"
+  },
+  "dependencies": {
+    "ezkey-javascript-sdk": "file:../ezkey-sdk/javascript"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.1",
+    "@tailwindcss/vite": "^4.3.5",
+    "@types/node": "^24",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "concurrently": "^9.2.1",
+    "esbuild": "0.28.2",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "tailwindcss": "^4.3.3",
+    "typescript": "~6.0.3",
+    "vite": "^8.3.8"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  }
+}

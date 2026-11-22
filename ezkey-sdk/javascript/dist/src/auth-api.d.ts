@@ -12,10 +12,9 @@ export declare class EzkeyAuthAPI {
     /**
      * Binds a device to an enrollment.
      *
-     * @param enrollmentId enrollment to bind
-     * @param enrollmentProofToken proof token from the enrollment QR / create flow
+     * @param enrollmentProofToken proof token from the enrollment QR / create flow (it identifies the enrollment)
      */
-    bindEnrollment(enrollmentId: number, enrollmentProofToken: string): Promise<EnrollmentBindResponseDto>;
+    bindEnrollment(enrollmentProofToken: string): Promise<EnrollmentBindResponseDto>;
     /**
      * Verifies and completes the enrollment process.
      */

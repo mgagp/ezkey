@@ -1,0 +1,9 @@
+# Build context is the repository root; this file applies to ezkey-demo-login/Dockerfile only.
+**/node_modules
+**/.git
+ezkey-demo-login/dist
+ezkey-demo-login/data
+ezkey-demo-login/test-results
+ezkey-demo-login/playwright-report
+ezkey-demo-login/e2e/.state
+ezkey-demo-login/.env

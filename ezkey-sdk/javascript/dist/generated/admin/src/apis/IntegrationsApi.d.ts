@@ -10,7 +10,7 @@
  * Do not edit the class manually.
  */
 import * as runtime from '../runtime';
-import type { BulkEnrollmentOperationResultDto, IntegrationCreateRequestDto, IntegrationCreateResponseDto, IntegrationResponseDto, PagedModelIntegrationResponseDto } from '../models/index';
+import type { BulkEnrollmentOperationResultDto, IntegrationCreateRequestDto, IntegrationCreateResponseDto, IntegrationPendingAttemptPolicyRequestDto, IntegrationResponseDto, PagedModelIntegrationResponseDto } from '../models/index';
 export interface CreateRequest {
     integrationCreateRequestDto: IntegrationCreateRequestDto;
 }
@@ -48,6 +48,10 @@ export interface SearchRequest {
     page?: number;
     size?: number;
     sort?: Array<string>;
+}
+export interface UpdatePendingAttemptPolicyRequest {
+    id: number;
+    integrationPendingAttemptPolicyRequestDto: IntegrationPendingAttemptPolicyRequestDto;
 }
 /**
  *
@@ -133,6 +137,16 @@ export declare class IntegrationsApi extends runtime.BaseAPI {
      * Search integrations
      */
     search(requestParameters?: SearchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PagedModelIntegrationResponseDto>;
+    /**
+     * Sets whether a new authentication attempt replaces a live one (REPLACE) or is refused while a live one exists (REFUSE). Default for new integrations is REPLACE. The system integration stays REPLACE; changing it returns 403 system-integration-lifecycle.
+     * Update pending-attempt policy
+     */
+    updatePendingAttemptPolicyRaw(requestParameters: UpdatePendingAttemptPolicyRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<IntegrationResponseDto>>;
+    /**
+     * Sets whether a new authentication attempt replaces a live one (REPLACE) or is refused while a live one exists (REFUSE). Default for new integrations is REPLACE. The system integration stays REPLACE; changing it returns 403 system-integration-lifecycle.
+     * Update pending-attempt policy
+     */
+    updatePendingAttemptPolicy(requestParameters: UpdatePendingAttemptPolicyRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<IntegrationResponseDto>;
 }
 /**
  * @export

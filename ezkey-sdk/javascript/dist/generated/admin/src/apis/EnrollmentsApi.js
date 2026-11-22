@@ -224,7 +224,7 @@ class EnrollmentsApi extends runtime.BaseAPI {
         return await response.value();
     }
     /**
-     * Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentId, enrollmentProofToken, authUrl}). Only while the enrollment is CREATED; 409 otherwise
+     * Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentProofToken, authUrl}). Only while the enrollment is CREATED; 409 otherwise
      * Generate QR code for enrollment
      */
     async getQrCodeRaw(requestParameters, initOverrides) {
@@ -254,7 +254,7 @@ class EnrollmentsApi extends runtime.BaseAPI {
         }
     }
     /**
-     * Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentId, enrollmentProofToken, authUrl}). Only while the enrollment is CREATED; 409 otherwise
+     * Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentProofToken, authUrl}). Only while the enrollment is CREATED; 409 otherwise
      * Generate QR code for enrollment
      */
     async getQrCode(requestParameters, initOverrides) {

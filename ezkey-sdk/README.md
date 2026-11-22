@@ -9,13 +9,13 @@ Handwritten, **zero compile-scope dependency** client for the **Integration API*
 on port **7080**: authentication-attempt create, wait, and cancel only.
 
 It is **not** a generated Admin or Auth wrapper, and it is **not** a device client (bind / verify /
-pending / respond). Details: [`java/README.md`](java/). Living demo: `ezkey-demo-app-acme`.
+pending / respond). Details: [`java/README.md`](java/).
 
 ## Other language folders
 
 | Language | Directory | Notes |
 |----------|-----------|--------|
-| JavaScript/TypeScript | [`javascript/`](javascript/) | Generated Admin + Auth OpenAPI clients (separate from the Java Integration API client) |
+| JavaScript/TypeScript | [`javascript/`](javascript/) | **Integration API client** (`EzkeyIntegrationClient`: create, wait, cancel; fetch only), used by [`ezkey-demo-login`](../ezkey-demo-login/); plus generated Admin + Auth OpenAPI clients |
 | Python | [`python/`](python/) | Experimental / incomplete vs the Java Integration API client |
 
 **.NET:** no SDK today. The former `dotnet/` folder held only a project file and a README, with no

@@ -18,7 +18,7 @@
 #   4 = INCONCLUSIVE (HA invalid and/or any skipped phase)
 #   2 = usage / bad args (also Bash < 4)
 # API replica check covers the 7 HA API JVMs (admin/auth/integration ×2 + crypto).
-# demo-device / demo-app-acme are excluded: not LB replicas; mem-sampled only.
+# demo-device / demo-login are excluded: not LB replicas; mem-sampled only.
 #
 set -uo pipefail
 
@@ -60,7 +60,7 @@ C1_OVERLAY="$REPO_ROOT/ezkey-tests/gate-c1/docker-compose.ha.gate-c1-test.yml"
 PHASES="preflight unit-tests clean-start post-clean-health c1-rate-limit functional-tests elective-tests playwright churn-init churn health"
 
 HA_REPLICAS="ezkey-admin-api-1 ezkey-admin-api-2 ezkey-auth-api-1 ezkey-auth-api-2 ezkey-integration-api-1 ezkey-integration-api-2 ezkey-crypto-api-ha"
-MEM_SAMPLE_CONTAINERS="$HA_REPLICAS ezkey-demo-device-ha ezkey-demo-app-acme-ha"
+MEM_SAMPLE_CONTAINERS="$HA_REPLICAS ezkey-demo-device-ha ezkey-demo-login-ha"
 
 usage() {
   cat <<'EOF'

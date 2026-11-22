@@ -1,10 +1,12 @@
 # Vision Note — `V-2026-10-07-multi-tenant-closed-testing-demo-app`
 # Multi-tenant closed-testing demo path (Acme + Northwind Portal tenant)
 
+> **Retired on 2026-11-21 by Marc ([#1430](https://github.com/mgagp/ezkey/issues/1430)).** The Demo App Acme and its `/t/{code}` access-code links are removed; Demo Login, bound to the demo tenant, replaces them. Superseded by: [`I-2026-11-21-demo-login-reference-integration`](../backlog/ideas/I-2026-11-21-demo-login-reference-integration.md). This document is kept as a record; its body is not edited.
+
 ## Metadata
 
 - **ID:** `V-2026-10-07-multi-tenant-closed-testing-demo-app`
-- **Status:** `under-review`
+- **Status:** `archived`
 - **Lane:** `D` (community alpha / mobile Play closed-testing friction)
 - **Created at:** `2026-10-07`
 - **Updated at:** `2026-10-31`
@@ -23,7 +25,7 @@ integration keys every session, and without treating Admin UI tenant-admin login
 case.
 
 **Play path (locked):** small adjustments to the **existing** Acme demo
-([`ezkey-demo-app-acme/`](../../../ezkey-demo-app-acme/), already at `demo-acme.ezkey.online`) —
+([`ezkey-demo-app-acme/`](../../../ezkey-demo-app-acme/), already at `demo-acme` (host retired, #1430)) —
 access-code table → `(ikey, skey)` in config, `/t/{code}` feeding
 [`DemoApiKeyConfigService`](../../../ezkey-demo-app-acme/src/main/java/org/ezkey/demo/acme/service/DemoApiKeyConfigService.java),
 generic errors, switch-code session safety. Keeps Acme’s portability and low tester friction. **No
@@ -92,7 +94,7 @@ exercised real product flows; a credible integrator path answers that. Platform 
 alpha/lab (compass 2026-10-08).
 
 Today Acme
-([`ezkey-demo-app-acme/`](../../../ezkey-demo-app-acme/), `demo-acme.ezkey.online`) already creates
+([`ezkey-demo-app-acme/`](../../../ezkey-demo-app-acme/), `demo-acme` (host retired, #1430)) already creates
 auth attempts by `userIdentifier` with challenge and accepts server-side keys — but requires pasting
 ikey/skey into the session every time. That pedagogy path
 ([`V-2026-05-23-anonymous-evaluator-self-registration`](V-2026-05-23-anonymous-evaluator-self-registration.md))
@@ -110,7 +112,7 @@ developer account and satisfy the 12×14 continuous opt-in rule.
 | **Integration API keys + rate limits** | [`ENDPOINT.md` § API Keys Authentication (Machine-to-Machine)](../../../docs/ENDPOINT.md) (create / use / rate limits) |
 | **Create / wait / cancel auth attempts** | [`ENDPOINT.md` § Authentication Attempts](../../../docs/ENDPOINT.md) (`userIdentifier` scoped to integration; statuses; TTL) |
 | **Admin UI login** | Admin API passwordless — UX reference only; demo talks Integration API |
-| **Acme today** | [`ezkey-demo-app-acme/`](../../../ezkey-demo-app-acme/) — Java SDK living demo; host `demo-acme.ezkey.online` already on community Caddy |
+| **Acme today** | [`ezkey-demo-app-acme/`](../../../ezkey-demo-app-acme/) — Java SDK living demo; host `demo-acme` (host retired, #1430) already on community Caddy |
 | **Deploy / CI** | Lightsail + Caddy ledger [`DEPLOYED.md`](../../../docs/lightsail/community/DEPLOYED.md); Acme in backend path filter → `ci-gate` ([`ci.yml`](../../../.github/workflows/ci.yml)) |
 | **TS SDK** | Separate public repo `mgagp/ezkey-sdk-typescript` — **not** on the Play path (follow-up `I-*`) |
 
@@ -119,7 +121,7 @@ developer account and satisfy the 12×14 continuous opt-in rule.
 1. **Acme Play path.** Multi-tenant access-code table in Acme config → `(ikey, skey)`; route
    `/t/{code}` pre-fills/hides the code and feeds `DemoApiKeyConfigService`; generic errors; switching
    `/t/A` → `/t/B` in the same browser session **replaces credentials and logs out** (switch-code
-   safety). Reuse existing host `demo-acme.ezkey.online`. No new subdomain.
+   safety). Reuse existing host `demo-acme` (host retired, #1430). No new subdomain.
 2. **Secrets server-side only.** Never in browser, repo, logs, or client bundles. Env / Docker secret
    / root-owned host file is enough for 2–3 tenants — **no encrypted-at-rest requirement** for this
    pilot. **Never log the access code.**
@@ -142,7 +144,7 @@ developer account and satisfy the 12×14 continuous opt-in rule.
 9. **Security controls (pilot):** always `challengeRequested=true`; named secure channel for **QR +
    enrollment code** (activation secret — not plain email); backend global per-IP rate limit;
    Cloudflare rate-limit rule optional; `Referrer-Policy: no-referrer` via **Caddy** on
-   `demo-acme.ezkey.online` (app also sends it for local/direct access). Access-code slots live in
+   `demo-acme` (host retired, #1430) (app also sends it for local/direct access). Access-code slots live in
    external `application.properties` on the `demo-app-acme-config` volume (mode **0600**, owner
    **spring** uid **100** / gid **101**); **restart-based** load at JVM start — Edgar runbook
    [`docs/lightsail/acme-access-code-runbook.md`](../../../docs/lightsail/acme-access-code-runbook.md).
@@ -189,7 +191,7 @@ Must state clearly:
 1. **Android 12+** required (iPhone excluded for this cohort).
 2. Join the Play **closed test** (Google account + opt-in link); **never opt out**.
 3. Enrollment: **camera scan of the QR from a second screen** (release builds have no manual entry).
-4. Bookmark `demo-acme.ezkey.online/t/{code}`; Sign in with username only.
+4. Bookmark `demo-acme/t/{code}` (host retired, #1430); Sign in with username only.
 5. Within **120 seconds** after Sign in, **open the Ezkey app** and consume the pending request.
 6. Do **3–4 actions** across sessions (e.g. approve, deny, challenge match) so engagement is real.
 7. How to send feedback (channel from
@@ -261,7 +263,7 @@ Orientation only — M1 one-page brief, then execution on a **new branch**. No a
 | Surface | Consequence |
 | ------- | ----------- |
 | **Acme** | Access-code table, `/t/{code}`, generic errors, switch-code safety, challenge always on. |
-| **Host / Caddy** | Same host `demo-acme.ezkey.online`; community `Caddyfile.ezkey-online` gains Referrer-Policy `no-referrer` plus Cloudflare `trusted_proxies` / client-IP header hardening (M1). |
+| **Host / Caddy** | Same host `demo-acme` (host retired, #1430); community `Caddyfile.ezkey-online` gains Referrer-Policy `no-referrer` plus Cloudflare `trusted_proxies` / client-IP header hardening (M1). |
 | **Tenancy** | Northwind Portal (Marc) + second tenant; Reine in both; three oracles. |
 | **Play** | Opt-ins open now; mission sheet EN/FR; feedback channel; App access at M1. |
 | **TS SDK / new demo app** | Not on this path. |
