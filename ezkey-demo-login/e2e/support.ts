@@ -1,6 +1,6 @@
 // Helpers for the Demo Login end-to-end tests (clean-start stack + a dedicated Demo Login container).
 import { execFileSync, spawnSync } from 'node:child_process';
-import { appendFileSync, readFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Page } from '@playwright/test';
@@ -32,8 +32,11 @@ export interface Provision {
   enrollments: Record<'alice' | 'carol' | 'dave' | 'bob' | 'oscar', Enrollment>;
 }
 
+/** Provisioning result, handed over by the global setup through the environment (never on disk). */
 export function provision(): Provision {
-  return JSON.parse(readFileSync(resolve(here, '.state/provision.json'), 'utf8')) as Provision;
+  const raw = process.env.E2E_PROVISION;
+  if (!raw) throw new Error('E2E_PROVISION is not set: run the tests through Playwright (global setup)');
+  return JSON.parse(raw) as Provision;
 }
 
 function docker(...args: string[]): string {
@@ -52,6 +55,7 @@ export async function startApp(env: AppEnv = {}): Promise<void> {
   const p = provision();
   try {
     // Keep each run's logs: the container is replaced on every configuration change.
+    mkdirSync(resolve(here, '.state'), { recursive: true });
     appendFileSync(resolve(here, '.state/app.log'), appLogs());
   } catch {
     /* first start */
@@ -98,9 +102,8 @@ export function appLogs(): string {
 }
 
 export async function adminApi(method: string, path: string): Promise<unknown> {
-  const token =
-    process.env.EZKEY_ADMIN_TOKEN ??
-    (JSON.parse(readFileSync(resolve(REPO, 'ezkey-tests/.ezkey-test/admin-token.json'), 'utf8')) as { token: string }).token;
+  const token = process.env.EZKEY_ADMIN_TOKEN;
+  if (!token) throw new Error('EZKEY_ADMIN_TOKEN is not set');
   const res = await fetch(ADMIN_API + path, { method, headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } });
   const text = await res.text();
   if (!res.ok) throw new Error(`${method} ${path} -> ${res.status}: ${text.slice(0, 200)}`);

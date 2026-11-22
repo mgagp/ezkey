@@ -7,14 +7,15 @@
   "scripts": {
     "build": "npm run clean && npm run generate && npm run compile",
     "clean": "rimraf dist generated",
-    "generate": "npm run generate-admin && npm run generate-auth",
+    "generate": "npm run generate-admin && npm run generate-auth && npm run align-generated-versions",
     "generate-admin": "openapi-generator-cli generate -i ../../specs/admin-api/openapi-spec.json -g typescript-fetch -o generated/admin --additional-properties=typescriptThreePlus=true,supportsES6=true,npmName=ezkey-admin-client,withoutRuntimeChecks=true",
     "generate-auth": "openapi-generator-cli generate -i ../../specs/auth-api/openapi-spec.json -g typescript-fetch -o generated/auth --additional-properties=typescriptThreePlus=true,supportsES6=true,npmName=ezkey-auth-client,withoutRuntimeChecks=true",
     "compile": "tsc",
     "demo": "node dist/demo/demo.js",
-    "test": "node --test test/",
+    "test": "node --test test/*.test.mjs",
     "license:check": "license-checker --summary",
-    "license:generate": "license-checker --csv > THIRD-PARTY-LICENSES.txt"
+    "license:generate": "license-checker --csv > THIRD-PARTY-LICENSES.txt",
+    "align-generated-versions": "node -e \"const fs=require('fs');const v=require('./package.json').version;for(const n of ['admin','auth']){const f='generated/'+n+'/package.json';const j=JSON.parse(fs.readFileSync(f,'utf8'));j.version=v;fs.writeFileSync(f,JSON.stringify(j,null,2)+'\\\\n');}\""
   },
   "keywords": [
     "ezkey",

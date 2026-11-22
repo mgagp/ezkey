@@ -1,6 +1,6 @@
 {
   "name": "ezkey-admin-client",
-  "version": "1.0.0",
+  "version": "0.2.0-SNAPSHOT",
   "description": "OpenAPI client for ezkey-admin-client",
   "author": "OpenAPI-Generator",
   "repository": {

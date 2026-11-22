@@ -48,7 +48,11 @@ class EzkeyIntegrationClient {
         if (!config.integrationKey || !config.secretKey) {
             throw new Error('integrationKey and secretKey are required');
         }
-        this.baseUrl = config.baseUrl.replace(/\/+$/, '');
+        // Trim trailing slashes without a regular expression (no backtracking on long inputs).
+        let baseUrl = config.baseUrl;
+        while (baseUrl.endsWith('/'))
+            baseUrl = baseUrl.slice(0, -1);
+        this.baseUrl = baseUrl;
         this.authorization = 'Basic ' + toBase64(`${config.integrationKey}:${config.secretKey}`);
         this.requestTimeoutMs = (_a = config.requestTimeoutMs) !== null && _a !== void 0 ? _a : DEFAULT_REQUEST_TIMEOUT_MS;
         const fetchImpl = (_b = config.fetch) !== null && _b !== void 0 ? _b : globalThis.fetch;

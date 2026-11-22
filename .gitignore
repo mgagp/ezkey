@@ -130,6 +130,7 @@ node_modules/
 package-lock.json
 # Keep lockfiles for local npm trees that pin CLI/tooling
 !ezkey-admin-ui/package-lock.json
+!ezkey-demo-login/package-lock.json
 !bruno/package-lock.json
 !product-docs/site/package-lock.json
 npm-debug.log*

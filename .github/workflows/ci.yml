@@ -308,7 +308,7 @@ jobs:
 
       - name: TypeScript SDK unit tests (committed dist/)
         working-directory: ezkey-sdk/javascript
-        run: node --test test/
+        run: node --test test/*.test.mjs
 
       - name: Install dependencies
         working-directory: ezkey-demo-login

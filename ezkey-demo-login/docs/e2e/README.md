@@ -11,17 +11,17 @@ From the repository root, with Docker:
 ```bash
 cd ezkey-tests && ./clean-start.sh && cd ..
 mvn -q test -pl ezkey-tests -Dtest=AdminTokenCreationTest   # caches a Global Admin token
-cd ezkey-demo-login && npm ci && npx playwright test
+cd ezkey-demo-login && npm ci && npm run e2e   # takes EZKEY_ADMIN_TOKEN from that cache
 ```
 
 The global setup builds the image, creates two integrations, an API key and the enrollments
-(`e2e/provision.mjs`), adds the application users with the CLI, and activates the Demo Device
+(`e2e/provision.mjs`; the result stays in memory, handed to the tests through the environment), adds the application users with the CLI, and activates the Demo Device
 enrollments through its screens. Tests run against a dedicated container (`ezkey-demo-login-e2e`,
 port 18082) with a 30-second request lifetime, so the "expired" case takes seconds instead of two
 minutes. The container is restarted with other settings for the configuration cases.
 
 The three ezkey.org guided-tour images come from `e2e/tour-screens.spec.ts`, run on demand:
-`E2E_TOUR=1 npx playwright test e2e/tour-screens.spec.ts`, then `cwebp -q 82` each PNG into
+`E2E_TOUR=1 npm run e2e -- e2e/tour-screens.spec.ts`, then `cwebp -q 82` each PNG into
 `sites/ezkey-org/community-guided-tour/community-tour-0{5,6,7}-demo-login-*.webp`.
 
 ## Users

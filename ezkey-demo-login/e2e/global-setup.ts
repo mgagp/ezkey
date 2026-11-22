@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { chromium } from '@playwright/test';
+import { provisionStack } from './provision.mjs';
 import { adminApi, cli, enrollDevice, provision, REPO, SHOTS, startApp, CONTAINER, IMAGE } from './support';
 
 export default async function globalSetup(): Promise<void> {
@@ -12,7 +13,8 @@ export default async function globalSetup(): Promise<void> {
   execFileSync('docker', ['build', '-q', '-f', 'ezkey-demo-login/Dockerfile', '-t', IMAGE, '.'], { cwd: REPO, stdio: 'inherit' });
 
   // 2. Ezkey side: integrations, API key, enrollments (Admin API, Global Admin token).
-  execFileSync('node', ['e2e/provision.mjs'], { stdio: 'inherit' });
+  // Workers inherit process.env from the global setup (documented Playwright behaviour).
+  process.env.E2E_PROVISION = JSON.stringify(await provisionStack());
   const p = provision();
   const e = p.enrollments;
 

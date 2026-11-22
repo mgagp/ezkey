@@ -1,28 +1,18 @@
 // Provisions a clean-start stack for the Demo Login end-to-end tests, through the Admin API.
 //
-// Needs a Global Admin token: run once from the repository root
-//   mvn -q test -pl ezkey-tests -Dtest=AdminTokenCreationTest
-// (it caches ezkey-tests/.ezkey-test/admin-token.json), or set EZKEY_ADMIN_TOKEN.
+// Needs a Global Admin token in EZKEY_ADMIN_TOKEN (`npm run e2e` takes it from the
+// ezkey-tests cache; see docs/e2e/README.md).
 //
 // Creates two integrations (the Demo Login one and "another application"), an API key, and the
-// enrollments the test matrix needs. Writes e2e/.state/provision.json. Binding to the Demo Device
-// is done by the tests themselves (through its UI), from the proof tokens written here.
+// enrollments the test matrix needs, and returns them. Nothing is written to disk: the global setup
+// hands the result to the tests through the environment. Binding to the Demo Device is done by the
+// setup through its screens, from the proof tokens returned here.
 
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const here = dirname(fileURLToPath(import.meta.url));
-const repo = resolve(here, '../..');
 const ADMIN_API = process.env.EZKEY_ADMIN_API_URL ?? 'http://localhost:9080';
 
-function adminToken() {
-  if (process.env.EZKEY_ADMIN_TOKEN) return process.env.EZKEY_ADMIN_TOKEN;
-  const file = resolve(repo, 'ezkey-tests/.ezkey-test/admin-token.json');
-  return JSON.parse(readFileSync(file, 'utf8')).token;
-}
-
-const token = adminToken();
+export async function provisionStack() {
+const token = process.env.EZKEY_ADMIN_TOKEN;
+if (!token) throw new Error('EZKEY_ADMIN_TOKEN is not set (run `npm run e2e`, see docs/e2e/README.md)');
 
 async function admin(method, path, body) {
   const res = await fetch(ADMIN_API + path, {
@@ -80,6 +70,6 @@ const state = {
   },
 };
 
-mkdirSync(resolve(here, '.state'), { recursive: true });
-writeFileSync(resolve(here, '.state/provision.json'), JSON.stringify(state, null, 2), { mode: 0o600 });
 console.log(`Provisioned run ${run}: integration ${demoId}, other ${otherId}, ${Object.keys(state.enrollments).length} enrollments.`);
+return state;
+}

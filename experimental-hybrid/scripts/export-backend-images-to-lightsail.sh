@@ -71,9 +71,6 @@ SSH target (required — no silent default; #812):
 Options:
   --apis-only            Export only admin-api, auth-api, integration-api (no migration image).
   --include-demo-login   Also export ezkey-demo-login (after API tars; build image first).
-                         With --remote-up, requires --sync-operator-files (new image + old compose
-                         healthcheck on 8082 breaks Caddy depends_on). Remote compose must contain
-                         8086/actuator/health before up.
   --sync-operator-files  After load, scp docker-compose.yml, docker-compose.javamelody.yml (if present),
                          target-aware Caddyfile (remote name = compose bind basename, #863),
                          clean-start.sh + host mounts including scripts/ops/ and docker/javamelody/.

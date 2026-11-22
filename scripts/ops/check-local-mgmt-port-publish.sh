@@ -165,7 +165,8 @@ need_ha_stats_loopback "9081"
 need_ha_stats_loopback "8085"
 need_ha_stats_loopback "7081"
 
-for p in 9081 8085 7081 8084 9091 8086; do
+# 8086 was the retired Acme management port (#1430); Demo Login is Node, no management port.
+for p in 9081 8085 7081 8084 9091; do
   need_publish "$COMPOSE" "$p" "docker-compose.yml"
   need_health_127 "$COMPOSE" "$p" "docker-compose.yml"
 done
