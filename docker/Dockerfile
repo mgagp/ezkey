@@ -7,7 +7,7 @@
 FROM maven:3.9-eclipse-temurin-25@sha256:93b8a14ea2f412782e4e842651273b4d903e35cc496284f178fbbe2d67d00976 AS build
 WORKDIR /build
 # HTTPS_PROXY-aware Maven wrapper (build stage only): docker/README.md § Building behind an HTTPS proxy
-COPY docker/build/mvn-proxy.sh /usr/local/bin/mvn-proxy
+COPY docker/mvn-proxy.sh /usr/local/bin/mvn-proxy
 
 # Copy all POMs first (for dependency caching)
 # Note: We copy ezkey-tests/pom.xml so Maven can resolve it, but we don't build it

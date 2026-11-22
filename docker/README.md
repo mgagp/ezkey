@@ -295,7 +295,7 @@ cd ezkey-tests && ./clean-start.sh
 - Every compose file passes it to its builds as the standard `HTTPS_PROXY` build arg. Empty by
   default, so builds without it behave exactly as before.
 - `apk` and `npm` honour `HTTPS_PROXY` by themselves. **Maven does not** (nor `-Dhttps.proxyHost`),
-  so Maven build stages call [`build/mvn-proxy.sh`](build/mvn-proxy.sh), which writes a throwaway
+  so Maven build stages call [`mvn-proxy.sh`](mvn-proxy.sh), which writes a throwaway
   `settings.xml` proxy entry when `HTTPS_PROXY` is set. It is copied into build stages only, never into
   runtime images.
 - Only builds get the proxy. Running containers do not: do **not** use the Docker client `proxies`

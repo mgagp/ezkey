@@ -5,7 +5,7 @@
 # External bases use tag@sha256 of the multi-arch index so Dependabot can bump tag and digest.
 FROM maven:3.9-eclipse-temurin-25@sha256:93b8a14ea2f412782e4e842651273b4d903e35cc496284f178fbbe2d67d00976 AS build
 WORKDIR /build
-COPY docker/build/mvn-proxy.sh /usr/local/bin/mvn-proxy
+COPY docker/mvn-proxy.sh /usr/local/bin/mvn-proxy
 COPY .mvn .mvn
 COPY pom.xml THIRD-PARTY.txt ./
 COPY ezkey-connectors/pom.xml ezkey-connectors/pom.xml
