@@ -7,12 +7,19 @@
 # Guarantees:
 #   * no password value is ever printed (stdout/stderr), passed as a command argument, or put in
 #     a process environment; values travel through files (mode 600) and stdin only;
-#   * one transaction for all ALTER ROLE statements, with log_min_error_statement = PANIC so a
-#     failing statement is never written to the server log; refuses to run unless log_statement=none;
+#   * one transaction for all ALTER ROLE statements. Before BEGIN the session sets
+#     log_statement=none, log_min_duration_statement=-1, and log_min_error_statement=PANIC;
+#   * refuses unless server log_statement is already none (exit 4). The session SET does not
+#     change other connections. Also refuses (exit 8) when shared_preload_libraries contains
+#     pg_stat_statements, pgaudit, or auto_explain (those can record statement text anyway);
 #   * the .env is backed up first, the new .env is prepared BEFORE the ALTER ROLE and moved into
-#     place only AFTER the COMMIT (SQL failure => .env untouched);
+#     place only AFTER the COMMIT. On SQL failure the live .env is not replaced (see exit 5);
 #   * idempotent .env update: keys are replaced in place or appended once;
+#   * rollback values must match [A-Za-z0-9_-] (a quote or a backslash is refused);
 #   * the script never recreates a service: it prints which ones to recreate.
+#
+# Run under tmux, or another session that survives an SSH disconnect. A dropped session
+# during the SQL step is the case exit 5 does not fully cover.
 #
 # Usage (from the compose directory, e.g. ~/ezkey/experimental-hybrid/lightsail):
 #   ../../scripts/db/rotate-role-passwords.sh --docker [--dry-run]
@@ -28,11 +35,16 @@
 #   --keep-dir DIR           keep generated values in DIR (mode 700/600) instead of shredding them
 #   --dry-run                checks only; generates and changes nothing
 #   --rollback BACKUP        restore BACKUP as .env and set the roles back to its values
-#                            (a key absent from BACKUP means the compose default)
+#                            (a key absent from BACKUP means the compose default;
+#                            each value must match [A-Za-z0-9_-])
 # Exit codes:
-#   0 ok · 2 usage · 3 prerequisite missing · 4 log_statement is not 'none'
-#   5 SQL failed (transaction rolled back, .env untouched) · 6 .env write failed AFTER COMMIT
+#   0 ok · 2 usage · 3 prerequisite missing or unsafe password value
+#   4 log_statement is not 'none'
+#   5 SQL session failed (live .env unchanged; transaction abort only if the error
+#     was before COMMIT — see the error line)
+#   6 .env write failed AFTER COMMIT
 #   7 post-write equality check failed
+#   8 shared_preload_libraries includes pg_stat_statements, pgaudit, or auto_explain
 set -uo pipefail
 set +x
 umask 077
@@ -83,6 +95,13 @@ psql_in() {
 }
 q() { printf '%s\n' "$1" | psql_in; }
 
+# Whole file, not one line: a newline must not split a value into a safe prefix.
+value_is_safe() {
+  local content
+  content=$(<"$1")
+  [[ "$content" =~ ^[A-Za-z0-9_-]+$ ]]
+}
+
 env_get_to() { # env_get_to FILE KEY DEST — copy the value (unquoted) into DEST file; returns 1 if absent
   local line
   line=$(grep -E "^$2=" "$1" | tail -n 1) || return 1
@@ -109,12 +128,28 @@ if [ -n "$ROLLBACK" ]; then
   [ -f "$COMPOSE_FILE" ] || { err "compose file not found (needed for defaults): $COMPOSE_FILE"; exit 3; }
 fi
 command -v openssl >/dev/null || [ -n "$ROLLBACK" ] || { err "openssl not found"; exit 3; }
+ls=$(q "SHOW log_statement") || { err "cannot read log_statement"; exit 3; }
+[ "$ls" = "none" ] || { err "log_statement is '$ls' (must be 'none'); refusing (ALTER ROLE would be logged)"; exit 4; }
+libs=$(q "SHOW shared_preload_libraries") || { err "cannot read shared_preload_libraries"; exit 3; }
+libs=${libs//[[:space:]]/}
+if [ -n "$libs" ]; then
+  IFS=',' read -r -a LIB_LIST <<< "$libs"
+  for lib in "${LIB_LIST[@]}"; do
+    base=${lib##*/}
+    base=${base#\"}
+    base=${base%\"}
+    case "$base" in
+      pg_stat_statements|pgaudit|auto_explain)
+        err "shared_preload_libraries includes ${base}; refusing (it can record ALTER ROLE text)"
+        exit 8
+        ;;
+    esac
+  done
+fi
 for r in "${ROLE_LIST[@]}"; do
   n=$(q "select count(*) from pg_roles where rolname='ezkey_$r'") || { err "cannot query roles"; exit 3; }
   [ "$n" = "1" ] || { err "role ezkey_$r does not exist"; exit 3; }
 done
-ls=$(q "show log_statement") || { err "cannot read log_statement"; exit 3; }
-[ "$ls" = "none" ] || { err "log_statement is '$ls' (must be 'none'); refusing (ALTER ROLE would be logged)"; exit 4; }
 
 MODE=rotate; [ -n "$ROLLBACK" ] && MODE=rollback
 say "mode=$MODE container=$CONTAINER db=$DB env=$ENV_FILE roles=${ROLES}"
@@ -130,10 +165,21 @@ fi
 # ---------- values ----------
 TS=$(date +%Y%m%d-%H%M%S)
 if [ -n "$KEEP_DIR" ]; then mkdir -p "$KEEP_DIR" && chmod 700 "$KEEP_DIR"; W="$KEEP_DIR"; else W=$(mktemp -d); fi
-# EXIT trap only; shellcheck does not treat that reference as a call (SC2317).
+# EXIT and signal traps only; shellcheck does not treat trap strings as calls (SC2317).
 # shellcheck disable=SC2317
-cleanup() { if [ -z "$KEEP_DIR" ]; then for f in "$W"/*; do [ -f "$f" ] && { shred -u "$f" 2>/dev/null || rm -f "$f"; }; done; rmdir "$W" 2>/dev/null; fi; }
+cleanup() {
+  if [ -z "$KEEP_DIR" ] && [ -n "${W:-}" ] && [ -d "$W" ]; then
+    local f
+    for f in "$W"/*; do
+      [ -f "$f" ] && { shred -u "$f" 2>/dev/null || rm -f "$f"; }
+    done
+    rmdir "$W" 2>/dev/null || true
+  fi
+}
 trap cleanup EXIT
+trap 'cleanup; exit 129' HUP
+trap 'cleanup; exit 130' INT
+trap 'cleanup; exit 143' TERM
 for r in "${ROLE_LIST[@]}"; do
   k=$(key_of "$r")
   if [ $MODE = rotate ]; then
@@ -144,6 +190,8 @@ for r in "${ROLE_LIST[@]}"; do
     env_get_to "$ROLLBACK" "$k" "$W/$r" || compose_default_to "$k" "$W/$r" || { err "no value for $k in backup nor compose default"; exit 3; }
   fi
   chmod 600 "$W/$r"
+  # Single-quoted SQL literal. Reject quote, backslash, and anything else outside this class.
+  value_is_safe "$W/$r" || { err "refusing value for ezkey_$r: characters outside [A-Za-z0-9_-]"; exit 3; }
 done
 
 # ---------- backup + prepare new .env (before SQL) ----------
@@ -166,13 +214,17 @@ chmod 600 "$NEW"
 
 # ---------- one transaction ----------
 if ! {
+  printf "SET log_statement = 'none';\n"
+  printf 'SET log_min_duration_statement = -1;\n'
   printf 'SET log_min_error_statement = PANIC;\n'
   printf 'BEGIN;\n'
   for r in "${ROLE_LIST[@]}"; do printf "ALTER ROLE ezkey_%s PASSWORD '%s';\n" "$r" "$(<"$W/$r")"; done
   [ -n "${EZKEY_ROTATE_TEST_FAIL_SQL:-}" ] && printf 'SELECT 1/0;\n'
   printf 'COMMIT;\n'
 } | psql_in >/dev/null; then
-  rm -f "$NEW"; err "SQL failed: transaction rolled back, roles and .env unchanged (backup kept: $BAK)"; exit 5
+  rm -f "$NEW"
+  err "SQL session failed (exit 5). Guaranteed when the error is a statement failure before COMMIT: the transaction is aborted and the live .env is unchanged. Not guaranteed: a COMMIT the server applied but this client missed, or that the statement text never reached the server log. Backup kept: $BAK"
+  exit 5
 fi
 say "roles updated (one transaction): $(printf 'ezkey_%s ' "${ROLE_LIST[@]}")"
 
@@ -206,7 +258,15 @@ rm -f "$W/.chk"
 if [ -n "$VERIFY_NET" ]; then
   IMG=$(docker inspect -f '{{.Config.Image}}' "$CONTAINER")
   for r in "${ROLE_LIST[@]}"; do
-    u=$(docker run --rm -i --network "$VERIFY_NET" "$IMG" sh -c "read -r PGPASSWORD; export PGPASSWORD; psql -X -h postgres -U ezkey_$r -d $DB -Atc 'select current_user'" < "$W/$r" 2>/dev/null)
+    # Password stays on stdin and in a mode-600 .pgpass. PGPASSFILE is a path, not the secret.
+    u=$(printf 'postgres:5432:%s:ezkey_%s:%s\n' "$DB" "$r" "$(<"$W/$r")" \
+      | docker run --rm -i --network "$VERIFY_NET" \
+          -e PGPASSFILE=/tmp/.pgpass \
+          -e PGUSER="ezkey_${r}" \
+          -e PGDATABASE="$DB" \
+          "$IMG" \
+          sh -c 'umask 077; cat > "$PGPASSFILE"; chmod 600 "$PGPASSFILE"; psql -X -h postgres -w -Atc "select current_user"' \
+      2>/dev/null)
     if [ "$u" = "ezkey_$r" ]; then
       say "  login ezkey_$r over $VERIFY_NET: ok"
     else

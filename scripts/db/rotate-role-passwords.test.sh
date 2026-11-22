@@ -15,6 +15,13 @@ nohex(){ ! printf '%s' "$out" | grep -qE '[0-9a-f]{64}' && ! printf '%s' "$out" 
 cnt(){ grep -cE "^EZKEY_DB_$1_PASSWORD=" "$T/.env" || true; }
 ORIG="$T/.env.orig"; cp -p "$T/.env" "$ORIG"
 
+# Server duration logging is the case a log_statement=none check does not see.
+docker exec -i "$CT" psql -X -q -U postgres -d ezkey_db -v ON_ERROR_STOP=1 -c "ALTER SYSTEM SET log_min_duration_statement = 0;" >/dev/null
+docker exec -i "$CT" psql -X -q -U postgres -d ezkey_db -c "SELECT pg_reload_conf();" >/dev/null
+shown=$(docker exec -i "$CT" psql -X -q -U postgres -d ezkey_db -Atc "SHOW log_min_duration_statement;")
+if [ "$shown" = "0" ]; then ok "server log_min_duration_statement=0"; else ko "log_min_duration_statement is '$shown'"; fi
+log_from=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
 run --bogus
 if [ "$rc" -eq 2 ]; then ok "usage -> 2"; else ko "usage rc=$rc"; fi
 run --dry-run
@@ -59,6 +66,70 @@ else
 fi
 for R in MIGRATE ADMIN AUTH INTEGRATION; do [ "$(cnt "$R")" = 0 ] || ko "after rollback key $R count $(cnt "$R")"; done
 ok "keys absent again after rollback"
+badb="$T/.env.bak.quote"
+cp -p "$ORIG" "$badb"
+printf '%s\n' "EZKEY_DB_ADMIN_PASSWORD=unsafe'value" >> "$badb"
+chmod 600 "$badb"
+env_before="$T/.env.before-quote"
+cp -p "$T/.env" "$env_before"
+run --rollback "$badb"
+if [ "$rc" -eq 3 ] && cmp -s "$T/.env" "$env_before" && ! printf '%s' "$out" | grep -q "unsafe"; then
+  ok "rollback value with apostrophe refused (exit 3), .env unchanged, value not printed"
+else
+  ko "apostrophe rollback rc=$rc"
+fi
+sleep 1
+logtmp=$(mktemp)
+docker logs --since "$log_from" "$CT" >"$logtmp" 2>&1 || true
+if grep -q "ALTER ROLE" "$logtmp"; then
+  ko "ALTER ROLE found in server log while log_min_duration_statement=0"
+elif grep -q "duration:" "$logtmp"; then
+  ok "duration logging active and ALTER ROLE absent"
+else
+  ko "no duration log lines; log_min_duration_statement=0 check is inconclusive"
+fi
+shred -u "$logtmp" 2>/dev/null || rm -f "$logtmp"
+if grep -q 'PGPASSWORD' "$S"; then
+  ko "script still references PGPASSWORD"
+else
+  ok "verify login does not use PGPASSWORD"
+fi
+img=$(docker inspect -f '{{.Config.Image}}' "$CT")
+if docker run --rm --user root --entrypoint sh "$img" -c 'test -f "$(pg_config --pkglibdir)/pg_stat_statements.so"'; then
+  pre="ezkey-rotate-preload-$$"
+  docker rm -f "$pre" >/dev/null 2>&1 || true
+  if docker run -d --name "$pre" --network "$NET" \
+      -e POSTGRES_PASSWORD=ezkey -e POSTGRES_DB=ezkey_db \
+      "$img" -c shared_preload_libraries=pg_stat_statements -c log_statement=none >/dev/null; then
+    ready=0
+    for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+      if docker exec "$pre" pg_isready -U postgres -d ezkey_db >/dev/null 2>&1; then ready=1; break; fi
+      sleep 1
+    done
+    penv=$(mktemp -d)
+    chmod 700 "$penv"
+    cp -p "$ORIG" "$penv/.env"
+    chmod 600 "$penv/.env"
+    cp "$T/docker-compose.yml" "$penv/docker-compose.yml"
+    if [ "$ready" -eq 1 ]; then
+      pout=$("$S" --docker --container "$pre" --env-file "$penv/.env" --compose-file "$penv/docker-compose.yml" --dry-run 2>&1)
+      prc=$?
+      if [ "$prc" -eq 8 ] && cmp -s "$penv/.env" "$ORIG" && ! printf '%s' "$pout" | grep -q "PASSWORD"; then
+        ok "pg_stat_statements preload refused (exit 8), .env unchanged"
+      else
+        ko "preload refusal rc=$prc"
+      fi
+    else
+      ko "preload postgres did not become ready"
+    fi
+    docker rm -f "$pre" >/dev/null 2>&1 || true
+    rm -rf "$penv"
+  else
+    ko "could not start postgres with pg_stat_statements"
+  fi
+else
+  ko "pg_stat_statements.so missing; preload refusal not tested"
+fi
 mode_bad=0
 for f in "$T"/.env*; do
   [ -e "$f" ] || continue
