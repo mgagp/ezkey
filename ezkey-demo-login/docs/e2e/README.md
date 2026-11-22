@@ -2,7 +2,7 @@
 
 What Demo Login does in each case, proven on a clean-start stack: Playwright drives Demo Login in one
 browser and the Demo Device (the phone) in another. Screenshots below are produced by the run
-(`screenshots/`). Last run: 2026-11-21, 21/21 passed (`main` + #1430).
+(`screenshots/`). Last run: 2026-11-22, 21/21 passed (#1433 fix; case 06 cancels with no pause, also 10/10 with `--repeat-each 10`).
 
 ## How to run it
 
