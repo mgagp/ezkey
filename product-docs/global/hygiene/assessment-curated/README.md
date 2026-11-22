@@ -32,6 +32,29 @@ Before exploring, lock three lines with the operator (or infer explicitly from t
 That mandate paragraph removes most ambiguity between “browse the repo” and “produce a curated
 lot.” Write it into the assessment header and the campaign note metadata.
 
+### Lifecycle lens (optional attention axis)
+
+Use it when the mandate touches a lifecycle (status enum, job, session, key, attempt) that meets
+**at least two** of these: a security boundary or irreversible action; two or more concurrent actors,
+or a timer / async job, on the same object; two or more fixes on that lifecycle in 90 days, or a
+confusion incident; state encoded in several fields (enum + boolean); a new entry mode or path.
+Skip it for two- or three-state, single-actor lifecycles and for domains already modelled and stable.
+
+Ask these questions of each status writer, citing `file:line`:
+
+- **Crash or restart** mid-transition: who notices, and does anything ever leave that state?
+- **Second actor**: a concurrent cancel, respond, resume, or scheduler run on the same row.
+- **Second replica** and **proxy cut at 100 s** (Cloudflare): who holds the slot, what the client sees.
+- **Clocks and TTLs**: whose clock decides, what happens when the TTL expires mid-step.
+- Is every status write **conditional on the current state**?
+- Does every enum value have **a writer and a reader**? A value without a writer is a phantom state.
+
+Findings go into the normal register and one-at-a-time HITL. No diagram, no FSM library, no HTML,
+no separate document: a transition table in the register is enough when one helps. Stop when the
+last three questions produced no new decision. Origin: the mobile app state machine (#834) and the
+evaluation that closed #848 on 2026-11-21. The point is these questions, not a full model. First
+finding: #1431.
+
 ## Ceremony (six steps)
 
 1. **Mandate** — surface + axes + non-goals (above).

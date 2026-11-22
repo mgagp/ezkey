@@ -70,6 +70,7 @@
     "editTenant": "Edit Tenant",
     "addTenantAdmin": "Add tenant administrator",
     "viewIntegrations": "View Integrations",
+    "viewRelatedAudits": "View related audits",
     "deactivateWarning": "Deactivating a tenant will make all its integrations, enrollments, and admin accounts inaccessible.",
     "activateWarning": "This tenant is currently inactive. Re-activating will restore access to all resources.",
     "deactivateTenant": "Deactivate Tenant",
