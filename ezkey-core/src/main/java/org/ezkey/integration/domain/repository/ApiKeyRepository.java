@@ -262,4 +262,25 @@ public interface ApiKeyRepository
       """)
   List<ApiKey> findBySecretKeyHashEncryptionKeyId(
       @Param("keyId") Long keyId, @Param("lastId") Integer lastId, @Param("limit") int limit);
+
+  /**
+   * Records the last use of an active API key without touching its optimistic-lock version.
+   *
+   * <p>Used on the Integration API authentication hot path instead of {@code save} of the loaded
+   * {@link ApiKey}. Concurrent requests that share one key would otherwise race on {@code @Version}
+   * and the loser would surface as 401 (#1433). {@code lastUsedAt} is a best-effort usage hint, not
+   * guarded state, so concurrent writers simply queue on the row lock. Inactive keys are skipped so
+   * a key revoked meanwhile is never touched.
+   *
+   * @param integrationKey public integration key of the API key
+   * @param lastUsedAt last-used timestamp to persist
+   * @return 1 when an active key was updated; 0 when it is missing or inactive
+   */
+  @Modifying
+  @Query(
+      "UPDATE ApiKey k SET k.lastUsedAt = :lastUsedAt WHERE k.integrationKey = :integrationKey"
+          + " AND k.active = true")
+  int touchLastUsedIfActive(
+      @Param("integrationKey") String integrationKey,
+      @Param("lastUsedAt") OffsetDateTime lastUsedAt);
 }

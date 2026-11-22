@@ -75,11 +75,10 @@ Device enrollment, done by the setup: [Demo Device verify step](screenshots/00-d
 - **Configuration problems are not blamed on the user** (15–17): the message points to the
   application, and the log names the cause.
 
-## Known platform defect
+## Known platform behaviour
 
-Cancelling within milliseconds of starting a sign-in can collide with the back end's first wait call
-on the same API key: the Integration API then answers 401 to the cancel (optimistic lock on
-`api_key.last_used_at`), and the request stays pending on the device. Tracked in #1433. Case 06
-waits 1.5 seconds before cancelling, as a person would; remove the pause once #1433 is fixed.
+Case 06 cancels immediately after the start, while the back end's first wait call is in flight on
+the same API key. Before #1433 this collided on the key's optimistic lock and the cancel got a 401;
+the case keeps no pause so it guards that fix.
 
 Also seen: the Demo Device requires a challenge code even to deny a request (case 03 fills one).
