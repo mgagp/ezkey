@@ -26,19 +26,30 @@ const config: DemoLoginConfig = {
 class FakeEzkey implements IntegrationClient {
   calls: string[] = [];
   createError: unknown = null;
+  waitError: unknown = null;
+  cancelError: unknown = null;
+  /** When set, the created attempt is already expired on the app clock. */
+  createExpiresAt: string | null = null;
   waitResults: AuthAttemptWaitResult[] = [];
 
   async createAuthAttemptByUserIdentifier(userIdentifier: string, options: { challengeRequested: boolean }) {
     this.calls.push(`create:${userIdentifier}:${options.challengeRequested}`);
     if (this.createError) throw this.createError;
-    return { authAttemptId: 41, authAttemptChallenge: options.challengeRequested ? 7 : null, timeoutSeconds: 60, expiresAt: new Date(Date.now() + 60_000).toISOString() };
+    return {
+      authAttemptId: 41,
+      authAttemptChallenge: options.challengeRequested ? 7 : null,
+      timeoutSeconds: 60,
+      expiresAt: this.createExpiresAt ?? new Date(Date.now() + 60_000).toISOString(),
+    };
   }
   async waitForAuthAttempt(id: number) {
     this.calls.push(`wait:${id}`);
+    if (this.waitError) throw this.waitError;
     return this.waitResults.shift() ?? { status: 'PENDING' as const, completed: false, timeoutReached: true };
   }
   async cancelAuthAttempt(id: number) {
     this.calls.push(`cancel:${id}`);
+    if (this.cancelError) throw this.cancelError;
     return { authAttemptId: id, authAttemptStatus: 'EXPIRED' };
   }
 }
@@ -142,6 +153,8 @@ test('Ezkey errors map to stable codes', async () => {
     [new EzkeyIntegrationError('x', 401), 503, 'configuration-error'],
     [new EzkeyIntegrationError('x', 403), 403, 'enrollment-other-integration'],
     [new EzkeyIntegrationError('x', 400), 409, 'enrollment-unavailable'],
+    [new EzkeyIntegrationError('x', 404), 409, 'enrollment-unavailable'],
+    [new EzkeyIntegrationError('x', 422), 409, 'enrollment-unavailable'],
     [new EzkeyIntegrationError('x', 409, 'https://ezkey.io/problems/auth-attempt-pending-exists'), 409, 'attempt-pending'],
     [new EzkeyIntegrationError('x', 409, 'https://ezkey.io/problems/auth-attempt-creation-cooldown'), 409, 'cooldown'],
     [new EzkeyIntegrationError('x', 429), 429, 'rate-limited'],
@@ -152,6 +165,42 @@ test('Ezkey errors map to stable codes', async () => {
     const res = await post('/api/login', { username: 'alice' });
     assert.deepEqual([res.status, res.body.error], [status, code], `HTTP ${error.status} ${error.problemType ?? ''}`);
   }
+});
+
+test('blank, non-string, and oversized usernames never reach Ezkey', async () => {
+  const blank = await post('/api/login', { username: '   ' });
+  const number = await post('/api/login', { username: 12 });
+  const longName = await post('/api/login', { username: 'a'.repeat(129) });
+  assert.deepEqual([blank.status, blank.body.error], [400, 'invalid-request']);
+  assert.deepEqual([number.status, number.body.error], [400, 'invalid-request']);
+  assert.deepEqual([longName.status, longName.body.error], [400, 'invalid-request']);
+  assert.deepEqual(ezkey.calls, []);
+});
+
+test('a failed wait drops the pending login and opens no session', async () => {
+  const start = await post('/api/login', { username: 'alice' });
+  ezkey.waitError = new EzkeyIntegrationError('down', 0);
+  const done = await post(`/api/login/${start.body.loginId}/wait`);
+  assert.deepEqual([done.status, done.body.error, done.cookie], [503, 'service-unavailable', null]);
+  assert.equal((await post(`/api/login/${start.body.loginId}/wait`)).body.error, 'login-not-found');
+});
+
+test('cancel still ends the login when Ezkey refuses the cancel', async () => {
+  const start = await post('/api/login', { username: 'alice' });
+  ezkey.cancelError = new EzkeyIntegrationError('gone', 409);
+  const done = await post(`/api/login/${start.body.loginId}/cancel`);
+  assert.deepEqual([done.status, done.body.state], [200, 'cancelled']);
+  assert.equal((await post(`/api/login/${start.body.loginId}/wait`)).body.error, 'login-not-found');
+});
+
+test('a still-pending Ezkey result expires once the app clock is past the attempt', async () => {
+  ezkey.createExpiresAt = new Date(Date.now() - 10_000).toISOString();
+  const start = await post('/api/login', { username: 'alice' });
+  ezkey.waitResults.push({ status: 'PENDING', completed: false, timeoutReached: true });
+  const done = await post(`/api/login/${start.body.loginId}/wait`);
+  assert.equal(done.body.state, 'expired');
+  assert.equal(done.cookie, null);
+  assert.equal((await post(`/api/login/${start.body.loginId}/wait`)).body.error, 'login-not-found');
 });
 
 test('not configured: refused before any call', async () => {
