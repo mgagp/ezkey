@@ -18,6 +18,22 @@ What can linger is only the **default `*.pages.dev` subdomain** Cloudflare attac
 - **Nature:** Fully static HTML/CSS; no bundler or Maven module. Suitable for **Cloudflare Pages** (or equivalent) with **no build command** and publish directory = `sites/ezkey-org` (or the project root if the Pages project points at that folder only).
 - **Deployment today:** Manual or ad hoc Cloudflare deployment is acceptable; the important part is that **git** holds the canonical content.
 - **Cross-cutting product docs:** Edge IP and rate-limiting context remain in [OPERATIONAL.md](../OPERATIONAL.md). Admin UI split deployment and CSP at the edge are covered in [admin-ui-security.md](../admin-ui-security.md).
+- **Edge response headers:** [`sites/ezkey-org/_headers`](../../sites/ezkey-org/_headers) is deployed with the static folder (Cloudflare Pages custom headers; no build step). It sets CSP, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: DENY`, a minimal `Permissions-Policy`, and `Strict-Transport-Security: max-age=31536000` (no `includeSubDomains`, no `preload`). `script-src` allows only same-origin scripts plus the pinned ReDoc CE bundle. The API reference bootstrap is [`api-reference.js`](../../sites/ezkey-org/api-reference.js) so `script-src` does not need `'unsafe-inline'`. `style-src` keeps `'unsafe-inline'` because pages use inline `<style>` blocks and style attributes, and ReDoc CE injects styles at runtime.
+
+### HSTS on ezkey.org is a zone setting
+
+Observed 2026-11-23: `https://ezkey.org/logo.svg` (and `www.ezkey.org`, `methodology.ezkey.org`) respond with `Strict-Transport-Security: max-age=0`. The same Pages project on `https://ezkey-teaser.pages.dev/` does **not** send that header. `max-age=0` is what Cloudflare emits when **SSL/TLS → Edge Certificates → HTTP Strict Transport Security (HSTS)** is enabled with **Max Age Header = 0 (Disable)**. That zone setting replaces an origin or `_headers` HSTS value on hostnames in the zone, so changing `_headers` alone does not change what `ezkey.org` sends.
+
+Recommended dashboard value when an operator is ready to turn HSTS on (do not enable `includeSubDomains` or `preload` in the same step; other services live on `ezkey.org` subdomains):
+
+| Setting | Value |
+| --- | --- |
+| Enable HSTS | On |
+| Max Age Header | 12 months (`31536000`) |
+| Apply HSTS policy to subdomains (`includeSubDomains`) | Off |
+| Preload | Off |
+
+The same custom-domain responses also carry the Cloudflare managed transform **Add security headers** (`x-content-type-options: nosniff`, `x-xss-protection: 1; mode=block`, `x-frame-options: SAMEORIGIN`, `referrer-policy: same-origin`, `expect-ct`). Those are zone rules, not files in this repo. `Content-Security-Policy` `frame-ancestors 'none'` is what stops framing in current browsers if `X-Frame-Options: SAMEORIGIN` is still added beside `DENY`.
 
 ## Short term — intended workflow (preview then production)
 

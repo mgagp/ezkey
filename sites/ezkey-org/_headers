@@ -1,0 +1,26 @@
+# Cloudflare Pages headers for ezkey.org.
+# This file is deployed with sites/ezkey-org/ (no build step). See
+# docs/cloudflare/ezkey-org-site.md section "Edge response headers".
+#
+# script-src has no 'unsafe-inline'. The only inline scripts were the six API
+# reference bootstraps; they now live in /api-reference.js. The ReDoc CE bundle
+# is the pinned file on cdn.redoc.ly (v2.5.2).
+#
+# style-src keeps 'unsafe-inline' because it is unavoidable with the current
+# pages: each HTML file carries its own <style> block (lab papers also link
+# lab-paper.css), many hubs use style attributes, and ReDoc CE injects <style>
+# at runtime (including a data: SVG in CSS). Hashing those blocks would break
+# on every copy edit and still would not cover ReDoc's generated styles.
+#
+# Strict-Transport-Security below is the Pages policy: one year, no
+# includeSubDomains, no preload. On hostnames in the ezkey.org zone, Cloudflare
+# Edge Certificates HSTS (Max Age 0) currently replaces this header. *.pages.dev
+# is outside that zone and serves this value.
+
+/*
+  Content-Security-Policy: default-src 'none'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; frame-src 'none'; form-action 'none'; script-src 'self' https://cdn.redoc.ly/redoc/v2.5.2/bundles/redoc.standalone.js; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://cdn.redoc.ly/redoc/logo-mini.svg; font-src 'none'; connect-src 'self'; worker-src blob:; manifest-src 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  Permissions-Policy: accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()
+  Strict-Transport-Security: max-age=31536000
