@@ -91,11 +91,14 @@ Repo-is-memory decisions (one line + reason):
   distinct GHSA. An empty Dependabot PR queue is not proof the lockfile is free of advisories.
   `package-lock.json` and `yarn.lock` for the same GHSA count once. A row already waiting on
   upstream, with its fallback date still ahead, stays waiting (Marc 2026-11-13).
-- **Host OS H1 monthly Monday (or ≤7 days for Critical/Important kernel/openssh/openssl/glibc)** —
-  community Lightsail stays on a locked AL2023 `releasever`; autonomous rootbeer agent after
-  snapshot; Marc go only if reboot needed (#909).
-- **Host OS H2 quarterly with major-upgrades walk** — AL2023 minor via
-  `dnf upgrade --releasever=…` + reboot; Marc go; snapshot + pg_dump on rootbeer (#909).
+- **Host OS weekly read-only check (Fred)** — `os-patch-check.sh --target community` reports
+  only when a newer dated AL2023 release has Important or Critical advisories (or the probe
+  is `unknown`). Plain `dnf update` on the locked releasever is a no-op and hides those
+  advisories (blind spot found 2026-11-22; Marc chose option 2). No dnf-automatic (#909).
+- **Host OS H1** — `dnf upgrade --releasever=<dated release>` when that check reports;
+  Edgar, snapshot, reboot or docker restart, **Marc go**. Not an autonomous monthly patch (#909).
+- **Host OS H2 quarterly with major-upgrades walk** — same dated `dnf upgrade --releasever=…`
+  (never `latest`) + reboot; Edgar; Marc go; snapshot + pg_dump on rootbeer (#909).
 - **Host OS H3 ad hoc (plan by 2028)** — major / new instance blue-green before AL2023 EOL
   2029-06-30; Marc go, Edgar executes, Christophe posture (#909).
 - **dnf-automatic not adopted on community host** — conflicts with deterministic `releasever`
@@ -132,8 +135,9 @@ Repo-is-memory decisions (one line + reason):
 | **Ops: `check-ezkey-online-hosts`** / **`check-local-mgmt-port-publish`** (`scripts/ops/`; CI jobs) | Ops / CI | CI path filter | Every relevant CI run | Forbidden hosts / mgmt port publish | Fail = fix before merge | Author |
 | **Ops: `docker-log-hygiene`** (`scripts/ops/docker-log-hygiene.sh`) | Ops / Lightsail | Pre-upgrade + after compose up | On community upgrade checklist | Missing `max-size` / `max-file` | Fix before `--remote-up` | Operator on VM |
 | **Ops: `verify-javamelody-non-exposure`** / **`check-javamelody-spring-json`** / **`validate-caddy-observability-regexp`** | Ops / security | After JM or Caddy change; JM deploy smoke | On change + with monthly JM/pentest when JM in scope | Exposure / JSON drift / regexp | Fail = fix | Operator / Christophe |
-| **Host OS H1** (security patch within `releasever`; [`host-os/`](host-os/); `./scripts/lightsail/os-patch-check.sh --target community`) | `host-os` | rootbeer-local agent | **Monthly Monday**, or **≤7 days** when Critical/Important hits kernel / openssh / openssl / glibc | `os-patch-check` + `dnf updateinfo` | Patch within locked releasever; snapshot before apply; rotate older snapshots | Autonomous after snapshot; **Marc go only if reboot needed** |
-| **Host OS H2** (AL2023 minor + reboot; [`host-os/`](host-os/)) | `host-os` | Quarterly with major-upgrades walk | **Quarterly** Jan / Apr / Jul / Oct | `dnf check-release-update` → pin `--releasever=` | Snapshot + pg_dump (rootbeer) before apply; reboot after Marc go | **Marc go**; rootbeer agent executes |
+| **Host OS detect** (weekly read-only; [`host-os/`](host-os/); `./scripts/lightsail/os-patch-check.sh --target community`) | `host-os` | Fred, rootbeer-local | **Weekly** | `RELEASE_UPDATE` line (latest dated release, not the locked repo) | Report only on newer release with Important/Critical, or on `unknown`; quiet when `no` or `yes` with both counts 0 | None (read-only) |
+| **Host OS H1** (dated release with Important/Critical; `dnf upgrade --releasever=<dated>`; [`host-os/`](host-os/)) | `host-os` | Edgar, rootbeer-local | When the weekly check reports | Same signal | Snapshot before apply; rotate older snapshots; reboot or docker restart | **Marc go** |
+| **Host OS H2** (quarterly dated release + reboot; [`host-os/`](host-os/)) | `host-os` | Edgar, rootbeer-local | **Quarterly** Jan / Apr / Jul / Oct | `dnf check-release-update` → pin `--releasever=<dated>` (never `latest`) | Snapshot + pg_dump (rootbeer) before apply; reboot or docker restart | **Marc go** |
 | **Host OS H3** (major / new instance blue-green; [`host-os/`](host-os/)) | `host-os` | Ad hoc | **Plan by 2028** (AL2023 EOL 2029-06-30) | EOL proximity + register `amazon-linux-community` | `create-instance` + `bootstrap-host` + pg_dump restore + static IP move | **Marc go**; Edgar executes; Christophe posture |
 
 Doctor biweekly rotation order (repeat): **Java → mobile → React → …**. Empty high-signal lot → no campaign note.

@@ -6,6 +6,11 @@
 # Never runs dnf update/upgrade, never reboots, never creates snapshots.
 # Intended for rootbeer-local agents (cloud agents have no SSH route).
 #
+# Exit 0 when the probe finishes, including when a newer release or advisories
+# are found and when the probe is inconclusive (RELEASE_UPDATE=unknown).
+# Non-zero only for bad arguments or ssh failure. The weekly routine decides
+# from the RELEASE_UPDATE line, not from the exit status.
+#
 # Usage (from repository root, Git Bash):
 #   ./scripts/lightsail/os-patch-check.sh --target community
 #   ./scripts/lightsail/os-patch-check.sh --target community --dry-run
@@ -35,11 +40,18 @@ Usage (from repository root, Git Bash):
 
 This script SSHes as ec2-user and reports (read-only):
   - /etc/system-release and /etc/dnf/vars/releasever (if present)
-  - dnf check-release-update
-  - dnf updateinfo list --sec-severity=Critical and --sec-severity=Important (one each)
+  - dnf check-release-update (installed vs latest dated release, releases behind)
+  - cumulative advisories on that latest release:
+      dnf --releasever=<latest> updateinfo summary
+      dnf --releasever=<latest> updateinfo list --sec-severity=Critical
+      dnf --releasever=<latest> updateinfo list --sec-severity=Important
+    (one severity per call; never the locked repo, which hides newer releases)
   - needs-restarting -r (exit 1 = reboot required; exit 0 = no reboot)
   - uname -r
   - docker ps
+  - one machine-readable line:
+      RELEASE_UPDATE=yes|no|unknown INSTALLED=<ver or -> LATEST=<ver or -> BEHIND=<n or -> CRITICAL=<n or -> IMPORTANT=<n or ->
+    A dash means unknown, not zero. Exit status stays 0 when this line is printed.
 
 It does NOT:
   - run dnf update / dnf upgrade
@@ -108,78 +120,13 @@ fi
 lightsail_resolve_ssh_target "${DECLARED_TARGET}"
 SSH_HOST="${LIGHTSAIL_SSH_HOST}"
 
-REMOTE_SCRIPT=$(
-  cat <<'REMOTE'
-set -euo pipefail
-
-section() {
-  printf '\n==> %s\n' "$1"
-}
-
-section "system-release"
-if [[ -r /etc/system-release ]]; then
-  cat /etc/system-release
-else
-  echo "(missing /etc/system-release)"
-fi
-
-section "dnf releasever (locked)"
-if [[ -r /etc/dnf/vars/releasever ]]; then
-  cat /etc/dnf/vars/releasever
-else
-  echo "(no /etc/dnf/vars/releasever — dnf may use image default)"
-fi
-
-section "dnf check-release-update"
-# Read-only probe; non-zero can mean "no update available" depending on dnf build.
-set +e
-sudo dnf check-release-update
-cru_rc=$?
-set -e
-echo "(dnf check-release-update exit=${cru_rc})"
-
-section "security updateinfo (Critical, Important)"
-# dnf rejects comma-separated --sec-severity values; query one severity per call.
-set +e
-for sev in Critical Important; do
-  echo "-- sec-severity=${sev}"
-  sudo dnf updateinfo list --sec-severity="${sev}"
-  ui_rc=$?
-  echo "(dnf updateinfo list --sec-severity=${sev} exit=${ui_rc})"
-done
-set -e
-
-section "needs-restarting -r"
-# needs-restarting -r: exit 0 = no reboot required; exit 1 = reboot required.
-if command -v needs-restarting >/dev/null 2>&1; then
-  set +e
-  sudo needs-restarting -r
-  nr_rc=$?
-  set -e
-  if [[ "${nr_rc}" -eq 1 ]]; then
-    echo "(needs-restarting -r exit=1 — reboot is required)"
-  elif [[ "${nr_rc}" -eq 0 ]]; then
-    echo "(needs-restarting -r exit=0 — no reboot required)"
-  else
-    echo "(needs-restarting -r exit=${nr_rc} — unexpected; treat as inconclusive)"
-  fi
-else
-  echo "(needs-restarting not installed — skip; do not install from this script)"
-fi
-
-section "uname -r"
-uname -r
-
-section "docker ps"
-if command -v docker >/dev/null 2>&1; then
-  docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}'
-else
-  echo "(docker not on PATH for this user)"
-fi
-
-section "os-patch-check complete (read-only)"
-REMOTE
-)
+# Parser first, then the remote probe, as one bash -s payload (functions exist
+# before the probe runs; the host does not need a checkout of this repo).
+REMOTE_SCRIPT="$(
+  cat "${SCRIPT_DIR}/os-patch-parse.sh"
+  printf '\n'
+  cat "${SCRIPT_DIR}/os-patch-check-remote.sh"
+)"
 
 ssh_cmd=(ssh)
 if [[ -n "${SSH_IDENTITY}" ]]; then

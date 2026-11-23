@@ -35,22 +35,35 @@ One line each (reason + issue):
 - **pg_dump before H2 and H3 only** — logical DB backup on rootbeer complements the disk
   snapshot when reboot or host move can leave Postgres mid-flight; H1 security patches do not
   require it (#909).
-- **AL2023 deterministic upgrades** — `dnf update` stays on the locked `releasever`; use
-  `dnf check-release-update` then `dnf upgrade --releasever=2023.x.YYYYMMDD` (never `latest`)
-  so the community host does not silently float (#909).
+- **AL2023 deterministic upgrades** — `dnf check-release-update`, then
+  `dnf upgrade --releasever=2023.x.YYYYMMDD` (never `latest`) so the host does not float.
+  Plain `dnf update` stays on the locked repo and is a no-op for fixes that shipped in a
+  newer release (the 2026-11-02 H1 practice; #909).
 - **dnf-automatic not adopted** — conflicts with deterministic `releasever` upgrades and would
-  apply patches without the snapshot / Marc-go gates; no swap for auto-apply (#909).
-- **Execution boundary** — H1/H2 run from a rootbeer-local agent (SSH + AWS profile); cloud
+  apply patches without the snapshot / Marc-go gates; no swap for auto-apply. The 2026-11-22
+  detection change does not enable it (#909).
+- **Locked-releasever blind spot (found 2026-11-22)** — `dnf updateinfo` on the installed
+  releasever reported no advisories while newer AL2023 releases carried Important fixes,
+  because each release repo is immutable; Marc chose option 2: weekly read-only detection
+  against the latest dated release, and apply stays a separate H1/H2 window (Edgar,
+  snapshot, reboot or docker restart, Marc go; no dnf-automatic) (#909).
+- **Execution boundary** — the weekly read-only check and H1/H2 apply run from rootbeer
+  (SSH + AWS profile). Fred owns the weekly check; Edgar owns the apply window. Cloud
   agents document and open PRs only (#909).
 
 ---
 
 ## Tiers
 
+Detection is not a tier. Fred runs `os-patch-check.sh --target community` weekly (read-only,
+rootbeer) and reports only when a newer dated release has Important or Critical advisories,
+or when the probe is `RELEASE_UPDATE=unknown`. `yes` with both counts at 0 stays quiet.
+`-` is unknown, not zero. Applying is a separate H1 or H2 window.
+
 | Tier | What | Cadence | Human gate | Snapshot | pg_dump | Who executes |
 |------|------|---------|------------|----------|---------|--------------|
-| **H1** | Security patch within current `releasever` (`dnf update`) | Monthly Monday, **or** ≤7 days when Critical/Important hits kernel / openssh / openssl / glibc | Autonomous after snapshot; **Marc go only if reboot needed** | Yes (before apply) | No | rootbeer-local agent |
-| **H2** | AL2023 minor release (`dnf upgrade --releasever=…`) + reboot | Quarterly Jan / Apr / Jul / Oct with major-upgrades walk | **Marc go** | Yes | Yes (on rootbeer) | rootbeer-local agent |
+| **H1** | Dated release that has Important or Critical advisories (`dnf upgrade --releasever=<dated release>`, the 2026-11-02 practice). Plain `dnf update` is a no-op on the locked repo. | When the weekly check reports | **Marc go** | Yes (before apply) | No | Edgar (rootbeer-local) |
+| **H2** | Quarterly dated release (`dnf upgrade --releasever=<dated>`) + reboot, including weeks the check stayed quiet | Quarterly Jan / Apr / Jul / Oct with major-upgrades walk | **Marc go** | Yes | Yes (on rootbeer) | Edgar (rootbeer-local) |
 | **H3** | Major OS / new instance (blue/green) | Ad hoc; **plan by 2028** (AL2023 EOL 2029-06-30) | **Marc go**; Edgar executes; Christophe posture | Via new instance path | Yes (restore into new host) | Edgar (+ Christophe posture) |
 
 AL2023 support notes: quarterly minors until **2027-06-30**; EOL **2029-06-30** (endoflife.date
@@ -70,41 +83,59 @@ Read-only probe (rootbeer only):
 Reports (no mutations):
 
 - `/etc/system-release` and locked `releasever`
-- `dnf check-release-update` (pending AL2023 minor)
-- `dnf updateinfo list` for Critical / Important (one `--sec-severity` call each; dnf rejects CSV)
+- `dnf check-release-update`, parsed into installed vs latest dated release and how many
+  releases behind (no newer release is a clean `RELEASE_UPDATE=no`, not an error)
+- cumulative advisories **toward that latest release** (`dnf --releasever=<latest> updateinfo summary`
+  and `updateinfo list` for Critical and Important, one `--sec-severity` per call). The locked
+  repo is immutable, so updateinfo without `--releasever` stays empty while newer releases exist.
 - `needs-restarting -r` (exit **1** = reboot required; exit **0** = no reboot)
 - `uname -r`
 - `docker ps` (stack still up)
+- one decision line, exit status still 0 when the probe finishes:
 
-**H1 urgency:** if Critical/Important advisories touch **kernel**, **openssh**, **openssl**, or
-**glibc**, treat as ≤7-day SLA rather than waiting for the monthly Monday slot.
+```text
+RELEASE_UPDATE=yes|no|unknown INSTALLED=<ver|-> LATEST=<ver|-> BEHIND=<n|-> CRITICAL=<n|-> IMPORTANT=<n|->
+```
+
+**Weekly report (Fred):** report when `RELEASE_UPDATE=yes` and `CRITICAL` or `IMPORTANT` is
+greater than 0, and when the line is `unknown` or `yes` with `-` counts (failed probe — not
+all-clear). Stay quiet on `no`, and on `yes` with both counts at 0. If the Important/Critical
+list names **kernel**, **openssh**, **openssl**, or **glibc**, say so in the report so the H1
+window can be pulled forward. The check does not apply anything.
 
 Live ledger fields: [`docs/lightsail/community/DEPLOYED.md`](../../../../docs/lightsail/community/DEPLOYED.md)
 § *Host OS*.
 
 ---
 
-## H1 — security patch (within releasever)
+## H1 — dated release with Important or Critical advisories
+
+Apply is not the weekly check. Fred's check only reports. Edgar runs this window after Marc go.
 
 ### Pre
 
-1. Run `./scripts/lightsail/os-patch-check.sh --target community`; copy signal into the campaign note.
-2. Create Lightsail instance snapshot (AWS CLI profile `ezkey-lightsail`, region `ca-central-1`),
+1. Weekly signal shows `RELEASE_UPDATE=yes` with `CRITICAL` or `IMPORTANT` greater than 0.
+   Copy the check output into the campaign note.
+2. **Marc go.**
+3. Create Lightsail instance snapshot (AWS CLI profile `ezkey-lightsail`, region `ca-central-1`),
    name e.g. `ezkey-online-pre-h1-YYYYMMDD`. Wait until snapshot state is available.
-3. Confirm Docker stack healthy (`docker ps` via the check script).
+4. Confirm Docker stack healthy (`docker ps` via the check script).
 
-### Apply (rootbeer agent)
+### Apply (Edgar, rootbeer)
 
 ```bash
-ssh ezkey-online 'sudo dnf update -y'
-# Do NOT pass --releasever=latest. Stay on the locked releasever.
+# Pin the dated release from the check. Never `latest`. Never plain `dnf update`
+# (that stays on the locked repo and installs nothing).
+ssh ezkey-online 'sudo dnf upgrade -y --releasever=2023.x.YYYYMMDD'
 ```
 
-### Reboot gate
+### Reboot or docker restart
 
 - If `needs-restarting -r` exits **1** (reboot required), or `dnf` reports a reboot-required
-  kernel / glibc change: **stop** and get **Marc go** before `sudo reboot`.
-- Otherwise finish without reboot; re-run the check script and post-checks.
+  kernel / glibc change: `sudo reboot` under the same Marc go. `unless-stopped` containers
+  come back.
+- If the host stays up, restart the Docker stack so processes pick up upgraded libraries.
+- Do not leave a kernel or glibc upgrade running on the old userspace.
 
 ### Post
 
@@ -120,11 +151,15 @@ ssh ezkey-online 'sudo dnf update -y'
 
 ---
 
-## H2 — AL2023 minor release (+ reboot)
+## H2 — quarterly dated release (+ reboot)
+
+Same apply command as H1 (`dnf upgrade --releasever=<dated release>`). This window is the
+quarterly walk, including when the weekly check stayed quiet (no Important/Critical).
+Edgar executes after Marc go. pg_dump stays on H2/H3 only.
 
 ### Pre
 
-1. Signal script + confirm a new `releasever` from `dnf check-release-update`.
+1. Signal script + confirm the dated `releasever` from `dnf check-release-update` (never `latest`).
 2. **Marc go** (quarterly walk or out-of-band).
 3. Lightsail instance snapshot (`ezkey-online-pre-h2-YYYYMMDD`).
 4. **pg_dump** of community Postgres to rootbeer (tunnel via `ezkey-online-db` / LocalForward

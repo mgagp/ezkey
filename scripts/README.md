@@ -206,8 +206,9 @@ export AWS_PROFILE=ezkey-lightsail
 ```
 
 [`lightsail/os-patch-check.sh`](lightsail/os-patch-check.sh) — **read-only** Host OS signal over SSH
-(`--target community` required; #812): system-release, `dnf check-release-update`, Critical/Important
-updateinfo, `needs-restarting -r`, kernel, `docker ps`. Never updates packages or reboots. Canon:
+(`--target community` required; #812): system-release, installed vs latest AL2023 release,
+cumulative Critical/Important advisories on that latest dated release (`RELEASE_UPDATE=…`),
+`needs-restarting -r`, kernel, `docker ps`. Never updates packages or reboots. Canon:
 [`product-docs/global/hygiene/host-os/README.md`](../product-docs/global/hygiene/host-os/README.md)
 
 [`lightsail/tls-pq-probe.sh`](lightsail/tls-pq-probe.sh) — **read-only** hybrid post-quantum TLS
