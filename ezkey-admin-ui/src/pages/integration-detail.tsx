@@ -10,6 +10,7 @@ import { AppShell } from '@/components/layout/app-shell';
 import { ContextHelp } from '@/components/ui/context-help';
 import { type ColumnDef } from '@/components/data-table/data-table';
 import { PaginatedTable } from '@/components/data-table/paginated-table';
+import { EnrollmentUserIdCell } from '@/components/feature/enrollment-identity-fields';
 import { EnrollmentListLifecycleDialog, type EnrollmentLifecycleAction } from '@/components/feature/enrollment-list-lifecycle-dialog';
 import { EnrollmentStatusBadge } from '@/components/feature/enrollment-status-badge';
 import { Alert } from '@/components/ui/alert';
@@ -31,6 +32,7 @@ import { isDemoMode } from '@/lib/demo-mode';
 import { useListDetailPageNavigation } from '@/hooks/use-list-detail-page-navigation';
 import { buildListDetailNavState } from '@/lib/list-detail-navigation';
 import type { ReasonPresetGroupId } from '@/lib/reason-preset-groups';
+import { placeEnrollmentUserIdAfterName } from '@/lib/enrollment-identity';
 import { formatDate } from '@/lib/utils';
 import { DetailPageNav } from '@/components/ui/detail-page-nav';
 import {
@@ -274,7 +276,7 @@ export default function IntegrationDetailPage() {
       },
     };
 
-    return [
+    return placeEnrollmentUserIdAfterName([
       {
         header: tEnrollments('list.columns.id'),
         key: 'enrollmentId',
@@ -290,17 +292,10 @@ export default function IntegrationDetailPage() {
       },
       statusCol,
       {
-        header: tEnrollments('list.columns.userIdentifier'),
+        header: tEnrollments('identity.userId'),
         key: 'userIdentifier',
         sortKey: 'userIdentifier',
-        render: (r) => (
-          <span
-            className="text-xs text-fg-muted max-w-[10rem] truncate block"
-            title={r.userIdentifier ?? undefined}
-          >
-            {r.userIdentifier ?? '—'}
-          </span>
-        ),
+        render: (r) => <EnrollmentUserIdCell value={r.userIdentifier} />,
       },
       {
         header: tEnrollments('list.columns.created'),
@@ -323,7 +318,7 @@ export default function IntegrationDetailPage() {
         ),
       },
       actionsCol,
-    ];
+    ]);
   }, [tEnrollments]);
 
   const name = integration ? getIntegrationName(integration) : '...';

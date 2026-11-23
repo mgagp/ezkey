@@ -20,7 +20,6 @@
     "columns": {
       "id": "ID",
       "name": "Nom",
-      "userIdentifier": "ID utilisateur",
       "status": "Statut",
       "active": "Actif",
       "integration": "Intégration",
@@ -53,8 +52,6 @@
     "contactEmailPlaceholder": "user@garageducoin.ca",
     "contactPhone": "Téléphone de contact",
     "contactPhonePlaceholder": "+1 514 555 1234",
-    "userIdentifier": "Identifiant utilisateur",
-    "userIdentifierPlaceholder": "Référence interne (ID RH, nom d'utilisateur…)",
     "challengeRequired": "Exiger un code défi à chaque authentification",
     "cancel": "Annuler",
     "submit": "Créer l'enrôlement",
@@ -97,6 +94,7 @@
     "selectIntegration": "Sélectionnez une intégration",
     "nameRequired": "Le nom est obligatoire",
     "nameMax": "Max. {{n}} caractères",
+    "userIdMax": "Max. {{n}} caractères",
     "invalidEmail": "Adresse e-mail invalide",
     "invalidPhone": "Utilisez un numéro international avec indicatif pays (exemple : +1 514 555 1234)",
     "invitationExpiryRequired": "Choisissez une date et une heure lorsque vous utilisez une échéance personnalisée.",
@@ -118,7 +116,6 @@
     "challengeNotRequired": "Non requis",
     "infoContactEmail": "E-mail de contact",
     "infoContactPhone": "Téléphone de contact",
-    "infoUserId": "ID utilisateur",
     "infoVerified": "Vérifié",
     "infoKeyTier": "Stockage de la clé appareil",
     "infoLastUsed": "Dernière utilisation",
@@ -141,7 +138,6 @@
     "editName": "Nom de l'enrôlement",
     "editContactEmail": "E-mail de contact",
     "editContactPhone": "Téléphone de contact",
-    "editUserIdentifier": "Identifiant utilisateur",
     "editChallengeRequired": "Exiger un défi à chaque authentification",
     "editExpiresAt": "Expiration de l'invitation (liaison / vérif.)",
     "editExpiresHint": "S'applique à la fenêtre d'invitation en attente, pas à une durée de vie distincte après vérification.",
@@ -278,5 +274,12 @@
     "doneCancelled": "Annulé. Le test d'authentification a été annulé.",
     "runAnotherTest": "Relancer un test",
     "close": "Fermer"
+  },
+  "identity": {
+    "userId": "Identifiant utilisateur",
+    "nameHelp": "Libellé de l'appareil, affiché sur le téléphone.",
+    "userIdHelp": "Nom d'usager dans l'application protégée. L'intégration s'en sert pour connecter l'utilisateur.",
+    "userIdEmptyWarning": "Sans identifiant utilisateur, Demo Login, PAM et les autres intégrations ne pourront pas connecter cet utilisateur.",
+    "userIdNotSet": "Non défini"
   }
 }

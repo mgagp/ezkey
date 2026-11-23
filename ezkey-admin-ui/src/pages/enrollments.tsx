@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { AppShell } from '@/components/layout/app-shell';
 import { type ColumnDef } from '@/components/data-table/data-table';
 import { PaginatedTable } from '@/components/data-table/paginated-table';
+import { EnrollmentIdentityFormFields, EnrollmentUserIdCell } from '@/components/feature/enrollment-identity-fields';
 import { EnrollmentListLifecycleDialog, type EnrollmentLifecycleAction } from '@/components/feature/enrollment-list-lifecycle-dialog';
 import { EnrollmentStatusBadge } from '@/components/feature/enrollment-status-badge';
 import { Alert } from '@/components/ui/alert';
@@ -28,6 +29,14 @@ import { ENROLLMENT_BUCKET_PARAM, type EnrollmentDrilldownBucket } from '@/lib/d
 import { ApiError } from '@/lib/api-client';
 import { getTranslatedApiError, parseProblemParameters } from '@/lib/api-error-i18n';
 import { enrollmentDemoPresets, isDemoMode } from '@/lib/demo-mode';
+import {
+  enrollmentNameField,
+  enrollmentUserIdField,
+  enrollmentUserIdForCreate,
+  ENROLLMENT_NAME_MAX_LENGTH,
+  ENROLLMENT_USER_ID_MAX_LENGTH,
+  placeEnrollmentUserIdAfterName,
+} from '@/lib/enrollment-identity';
 import { buildListDetailNavState } from '@/lib/list-detail-navigation';
 import { isPhoneNumberInputValid, normalizePhoneNumberInput } from '@/lib/phone-number';
 import { formatDate } from '@/lib/utils';
@@ -72,7 +81,10 @@ function EnrollmentCreateDialog({
       z
         .object({
           integrationId: z.string().min(1, t('validation.selectIntegration')),
-          name: z.string().min(1, t('validation.nameRequired')).max(100, t('validation.nameMax', { n: 100 })),
+          name: enrollmentNameField(
+            t('validation.nameRequired'),
+            t('validation.nameMax', { n: ENROLLMENT_NAME_MAX_LENGTH }),
+          ),
           authAttemptChallengeRequired: z.boolean(),
           contactEmail: z.string().email(t('validation.invalidEmail')).optional().or(z.literal('')),
           contactPhoneNumber: z
@@ -80,7 +92,9 @@ function EnrollmentCreateDialog({
             .refine((value) => value === '' || isPhoneNumberInputValid(value), t('validation.invalidPhone'))
             .optional()
             .or(z.literal('')),
-          userIdentifier: z.string().max(100).optional().or(z.literal('')),
+          userIdentifier: enrollmentUserIdField(
+            t('validation.userIdMax', { n: ENROLLMENT_USER_ID_MAX_LENGTH }),
+          ),
           useCustomInvitationExpiry: z.boolean(),
           invitationExpiresLocal: z.string().optional(),
         })
@@ -185,7 +199,7 @@ function EnrollmentCreateDialog({
       authAttemptChallengeRequired: values.authAttemptChallengeRequired,
       contactEmail: values.contactEmail || undefined,
       contactPhoneNumber: normalizePhoneNumberInput(values.contactPhoneNumber),
-      userIdentifier: values.userIdentifier || undefined,
+      userIdentifier: enrollmentUserIdForCreate(values.userIdentifier),
     };
     if (values.useCustomInvitationExpiry && values.invitationExpiresLocal?.trim()) {
       payload.expiresAt = new Date(values.invitationExpiresLocal.trim()).toISOString();
@@ -244,16 +258,26 @@ function EnrollmentCreateDialog({
             </Select>
           </div>
 
-          {/* Name */}
-          <div className="space-y-1">
-            <Label htmlFor="enr-name">{t('create.name')}</Label>
-            <Input
-              id="enr-name"
-              placeholder={t('create.namePlaceholder')}
-              error={errors.name?.message}
-              {...register('name')}
-            />
-          </div>
+          <EnrollmentIdentityFormFields
+            nameLabel={t('create.name')}
+            name={{
+              id: 'enr-name',
+              registration: register('name'),
+              error: errors.name?.message,
+              placeholder: t('create.namePlaceholder'),
+            }}
+            userId={{
+              id: 'enr-uid',
+              registration: register('userIdentifier'),
+              error: errors.userIdentifier?.message,
+            }}
+            userIdentifier={watch('userIdentifier') ?? ''}
+            isSystemIntegration={
+              integrations.find((integration) => String(integration.id) === watch('integrationId'))
+                ?.isSystemIntegration === true
+            }
+            userIdOptional={t('create.contactEmailOptional')}
+          />
 
           {/* Contact email */}
           <div className="space-y-1">
@@ -274,17 +298,6 @@ function EnrollmentCreateDialog({
               placeholder={t('create.contactPhonePlaceholder')}
               error={errors.contactPhoneNumber?.message}
               {...register('contactPhoneNumber')}
-            />
-          </div>
-
-          {/* User identifier */}
-          <div className="space-y-1">
-            <Label htmlFor="enr-uid">{t('create.userIdentifier')} <span className="text-fg-muted font-normal">{t('create.contactEmailOptional')}</span></Label>
-            <Input
-              id="enr-uid"
-              placeholder={t('create.userIdentifierPlaceholder')}
-              error={errors.userIdentifier?.message}
-              {...register('userIdentifier')}
             />
           </div>
 
@@ -685,17 +698,10 @@ export default function EnrollmentsPage() {
     };
 
     const userIdCol: ColumnDef<EnrollmentResponseDto> = {
-      header: t('list.columns.userIdentifier'),
+      header: t('identity.userId'),
       key: 'userIdentifier',
       sortKey: 'userIdentifier',
-      render: (r) => (
-        <span
-          className="text-xs text-fg-muted max-w-[10rem] truncate block"
-          title={r.userIdentifier ?? undefined}
-        >
-          {r.userIdentifier ?? '—'}
-        </span>
-      ),
+      render: (r) => <EnrollmentUserIdCell value={r.userIdentifier} />,
     };
 
     const createdCol: ColumnDef<EnrollmentResponseDto> = {
@@ -784,7 +790,7 @@ export default function EnrollmentsPage() {
       actionsCol,
     ];
 
-    return base;
+    return placeEnrollmentUserIdAfterName(base);
   }, [isGlobalAdmin, t]);
 
   return (
