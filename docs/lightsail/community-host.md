@@ -444,6 +444,7 @@ agent only — cloud agents have no SSH route). Live Host OS fields:
 - [`product-docs/global/hygiene/host-os/README.md`](../../product-docs/global/hygiene/host-os/README.md) -- Host OS hygiene lane H1/H2/H3 (#909)
 - [ADR-0016](../../product-docs/global/architecture-decisions.md#adr-0016-keyset-blob-single-source-of-truth) + [`community-upgrade-impact.md`](../../product-docs/global/decisions/2026-10-21-keyset-storage-strategy/community-upgrade-impact.md) -- blob-only keyset authority; community in-place upgrade impact (#961)
 - **[Non-destructive upgrade (checklist)](#non-destructive-upgrade-checklist)** -- kept-DB community upgrade runbook (#1020)
+- **[Terminal sessions (tmux)](#terminal-sessions-tmux)** -- detachable shell for long or non-idempotent steps on the community VM (tmux 3.6a, installed 2026-11-22)
 
 ## Observability (JavaMelody) — #846 / memory bounds #749
 
@@ -756,9 +757,55 @@ against the new quota at that time. Until then, every recipient must be a verifi
 
 ---
 
+## Terminal sessions (tmux)
+
+**tmux** is a terminal multiplexer. A session keeps running on the community VM
+after the SSH connection drops (laptop sleep, network blip, closed window).
+Reconnect, then reattach: the same terminal is still there, scrollback included.
+
+**Why on this host.** Long or supervised production steps must survive an SSH
+drop: DB role password rotation, Flyway migrations, and compose recreates.
+tmux **3.6a** was installed with `dnf` on **2026-11-22**. It is the reference
+tool for that work on the community VM.
+
+**When.** Any multi-minute or non-idempotent step on the VM. Name the session
+after the work, never after a secret.
+
+```bash
+tmux new -s <name>
+```
+
+| Action | Keys or command |
+|--------|-----------------|
+| Detach; the session keeps running | `Ctrl-b` then `d` |
+| List sessions | `tmux ls` |
+| Reattach | `tmux attach -t <name>` |
+| Scrollback (`q` leaves copy mode) | `Ctrl-b` then `[` |
+| End the session | `tmux kill-session -t <name>` |
+
+**Logging.** For a transcript, run `script <logfile>` inside the session (`exit`
+stops it), or `tmux pipe-pane -o 'cat >> <logfile>'` (the same command again
+stops the capture). Mode **600** on the file. Delete it after the report is
+written. Never log secret values (role passwords, `.env` contents, key
+material).
+
+**Alternatives.** `screen` also keeps a session across an SSH drop. `nohup` and
+`systemd-run` detach one command without a reattachable terminal or scrollback.
+tmux is the reference: one command set, a live view after reconnect, and
+scrollback for the supervised steps above.
+
+Docs: [tmux wiki](https://github.com/tmux/tmux/wiki) and
+[Getting Started](https://github.com/tmux/tmux/wiki/Getting-Started).
+On the VM, `man 1 tmux` is the command reference for the installed 3.6a
+([published manual](https://man.openbsd.org/tmux)).
+
+---
+
 ## Non-destructive upgrade (checklist)
 
 Controlled in-place upgrade for the **already commissioned** community instance (images and scripts change; the data volume does not). Derived from the 2026-10-25 cutover to `92717a40` ([#961](https://github.com/mgagp/ezkey/issues/961), [ADR-0016](../../product-docs/global/architecture-decisions.md#adr-0016-keyset-blob-single-source-of-truth)). Design companion: [`community-upgrade-impact.md`](../../product-docs/global/decisions/2026-10-21-keyset-storage-strategy/community-upgrade-impact.md).
+
+Supervised steps in this checklist (role password rotation, Flyway migrations, compose recreates) run in a [tmux](#terminal-sessions-tmux) session.
 
 **Placeholders only in this section** — do not paste origin IPs, public hostnames, absolute VM paths, secret values, or `.env` contents into tickets, chat, or git. Use markers such as `<ssh-host>`, `<compose-dir>`, `<admin-api-public-base>`, `<encryption-secrets-volume>`, `<postgres-container>`.
 
@@ -839,7 +886,7 @@ Presence, mode, and metadata only — **never** print key material, blob bytes, 
 3. No blind `--sync-operator-files` (see script gap above). Diff first; apply only after human go. The **announced plan must list the files to change** (from that diff) **and the backup destination**; any file **outside** the announced diff needs a **separate go**.
 4. Do **not** load the live `.env` with `. ./.env` or `source`. Bash runs unquoted words, so a value with spaces (`Ezkey Community`) or a cron expression (`*/20 ...`) is executed as a command. Docker Compose reads the file itself (`--env-file .env`, or the compose-directory default). `verify-grants.sh` parses only the Postgres keys it needs (see G.1). **Never** under `set -x`, and **do not** leave secret values in the session shell. The Docker warning that a **volume already exists but was not created by Docker Compose** is pre-existing and harmless.
 
-**Role password rotation (#1017).** From the compose directory, [`scripts/db/rotate-role-passwords.sh`](../../scripts/db/rotate-role-passwords.sh) `--docker` replaces the four application role passwords (`ezkey_migrate`, `ezkey_admin`, `ezkey_auth`, `ezkey_integration`, keys `EZKEY_DB_MIGRATE_PASSWORD`, `EZKEY_DB_ADMIN_PASSWORD`, `EZKEY_DB_AUTH_PASSWORD`, `EZKEY_DB_INTEGRATION_PASSWORD`) and writes them into `.env` only after one committed `ALTER ROLE` transaction. Run it under tmux. Server `log_statement` must already be `none` (exit 4); the session also sets `log_statement=none`, `log_min_duration_statement=-1`, `log_min_error_statement=PANIC`, `log_transaction_sample_rate=0`, and `log_min_duration_sample=-1` before `BEGIN`. The script refuses (exit 8) if a `shared_preload_libraries` entry names `pg_stat_statements`, `pgaudit`, or `auto_explain` (a directory prefix and a trailing `.so` still match). Values stay in mode-600 files and on stdin. Run it in a deliberate window: the script names the APIs to recreate and does not recreate them. It does not rotate `POSTGRES_PASSWORD` or `ezkey_crypto`. The live ezkey.online rotation stays on #1017 until the community upgrade window.
+**Role password rotation (#1017).** From the compose directory, [`scripts/db/rotate-role-passwords.sh`](../../scripts/db/rotate-role-passwords.sh) `--docker` replaces the four application role passwords (`ezkey_migrate`, `ezkey_admin`, `ezkey_auth`, `ezkey_integration`, keys `EZKEY_DB_MIGRATE_PASSWORD`, `EZKEY_DB_ADMIN_PASSWORD`, `EZKEY_DB_AUTH_PASSWORD`, `EZKEY_DB_INTEGRATION_PASSWORD`) and writes them into `.env` only after one committed `ALTER ROLE` transaction. Run it under [tmux](#terminal-sessions-tmux). Server `log_statement` must already be `none` (exit 4); the session also sets `log_statement=none`, `log_min_duration_statement=-1`, `log_min_error_statement=PANIC`, `log_transaction_sample_rate=0`, and `log_min_duration_sample=-1` before `BEGIN`. The script refuses (exit 8) if a `shared_preload_libraries` entry names `pg_stat_statements`, `pgaudit`, or `auto_explain` (a directory prefix and a trailing `.so` still match). Values stay in mode-600 files and on stdin. Run it in a deliberate window: the script names the APIs to recreate and does not recreate them. It does not rotate `POSTGRES_PASSWORD` or `ezkey_crypto`. The live ezkey.online rotation stays on #1017 until the community upgrade window.
 
 ### E. Code and images
 
