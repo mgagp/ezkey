@@ -1,6 +1,6 @@
 # Team roles (one-liners)
 
-Roles may be played by a human or an AI agent. The owner (**Marc**) decides merges. See also [`AGENTS.md`](../../AGENTS.md) § *Working conventions*.
+Roles may be played by a human or an AI agent. The owner (**Marc**) decides merges. How Claude Code plays the review roles: [`CLAUDE.md`](../../CLAUDE.md) § *Team roles in Claude Code*. See also [`AGENTS.md`](../../AGENTS.md) § *Working conventions*.
 
 | Name | Role |
 |------|------|
