@@ -74,7 +74,7 @@ aws lightsail get-static-ip \
 | [`create-instance.sh`](../../scripts/lightsail/create-instance.sh) | `create-instances`; dry-run default; `--apply` to create; waits until `running`; refuses existing name |
 | [`open-ports.sh`](../../scripts/lightsail/open-ports.sh) | SSH 22 + HTTPS 443 (`open-instance-public-ports` or `--mode put`); dry-run default |
 | [`bootstrap-host.sh`](../../scripts/lightsail/bootstrap-host.sh) | SSH Phase 0b/0c: Docker + Compose v2 + `docker` group; installs `/etc/ssh/sshd_config.d/40-pq-kex.conf` (#1177); no clean-start / no image push |
-| [`os-patch-check.sh`](../../scripts/lightsail/os-patch-check.sh) | Read-only Host OS signal over SSH (`--target community`); releasever / security updateinfo / reboot hint / `docker ps` (#909) |
+| [`os-patch-check.sh`](../../scripts/lightsail/os-patch-check.sh) | Read-only Host OS signal over SSH (`--target community`); installed vs latest releasever, cumulative Critical/Important on the latest dated release, reboot hint, `docker ps` (#909) |
 | [`delete-instance.sh`](../../scripts/lightsail/delete-instance.sh) | Delete by name; `--apply` requires explicit `--name`; community `ezkey-online` also needs `EZKEY_CONFIRM_DELETE=ezkey-online`; never releases static IPs |
 | [`status.sh`](../../scripts/lightsail/status.sh) | `get-instance` / `--list` → `get-instances` |
 | [`common.sh`](../../scripts/lightsail/common.sh) | Shared defaults and helpers (sourced; not run directly) |
