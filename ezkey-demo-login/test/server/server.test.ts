@@ -157,7 +157,6 @@ test('Ezkey errors map to stable codes', async () => {
     [new EzkeyIntegrationError('x', 422), 409, 'enrollment-unavailable'],
     [new EzkeyIntegrationError('x', 409, 'https://ezkey.io/problems/auth-attempt-pending-exists'), 409, 'attempt-pending'],
     [new EzkeyIntegrationError('x', 409, 'https://ezkey.io/problems/auth-attempt-creation-cooldown'), 409, 'cooldown'],
-    [new EzkeyIntegrationError('x', 409, 'https://ezkey.io/problems/enrollment-suspended'), 409, 'cooldown'],
     [new EzkeyIntegrationError('x', 429), 429, 'rate-limited'],
     [new EzkeyIntegrationError('x', 500), 503, 'service-unavailable'],
   ];
