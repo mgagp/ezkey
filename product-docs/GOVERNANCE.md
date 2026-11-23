@@ -171,6 +171,21 @@ To keep the corpus discoverable and useful for automated agents:
 - When a link is ambiguous, prefer linking to the **component pack** and let the pack's `README.md` redirect.
 - When a question is not answered here, look up the canonical answer in the legacy [`../docs/`](../docs/) hub or a module-level README; if the answer becomes recurring, promote it into this corpus.
 
+## Methodology publication boundary
+
+`product-docs/` has two roles: the official Ezkey working documentation, and the source of the
+publishable methodology product (explorer + download pack).
+
+- Publish method-level canon only: `product-docs/methodology/README.md`, `product-docs/templates/`,
+  `product-docs/glossary.md`.
+- Do **not** publish regular Ezkey delivery artifacts from `product-docs/global/`,
+  `product-docs/components/`, backlog / roadmap / vision execution records, or editor-local agent
+  assets (`.cursor/`, `.claude/`) as part of the methodology product.
+- A reusable methodological lesson found in a project artifact is restated or promoted into the
+  methodology README, not published by widening the surface ad hoc.
+- In each pack exposed in the methodology explorer (`product-docs/methodology/`,
+  `product-docs/templates/`), keep `README.md` first so the pack opens with orientation.
+
 ## Enrichment Scope
 
 The initial corpus pass established the skeleton and seeded it with minimal concrete content. The

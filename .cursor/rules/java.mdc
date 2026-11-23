@@ -1,0 +1,8 @@
+---
+description: Ezkey Java conventions (canonical file is .claude/rules/java.md)
+globs: "**/*.java"
+alwaysApply: false
+---
+
+Read and follow [`.claude/rules/java.md`](../../.claude/rules/java.md) before writing or editing
+Java code. It is the single source for Ezkey Java conventions (shared with Claude Code).

@@ -10,11 +10,11 @@ This document describes the technical structure of the Admin API backend: the st
 - **Spring Web MVC** — REST endpoints.
 - **Spring Data JPA + MyBatis** — persistence (mixed as documented in repo rules).
 - **Flyway** — database migrations under [`../../../ezkey-core/src/main/resources/db/migration/`](../../../ezkey-core/src/main/resources/db/migration/).
-- **MapStruct** — DTO ↔ domain mapping. Explicit default methods are used for enum-to-string conversions (see [`../../../.cursor/rules/mapstruct.mdc`](../../../.cursor/rules/mapstruct.mdc)).
+- **MapStruct** — DTO ↔ domain mapping. MapStruct 1.6 converts enums to and from `String` implicitly; other enum targets need an explicit method.
 - **Springdoc OpenAPI** — spec generation; the resulting artifacts under [`../../../specs/`](../../../specs/) are **generated** and never hand-edited.
 - **Tink** — cryptographic primitives for encryption at rest and key rotation.
 - **SLF4J + Logback** — logging.
-- **Maven** — build. The reactor is Checkstyle-sensitive; see [`../../../.cursor/rules/maven-build.mdc`](../../../.cursor/rules/maven-build.mdc).
+- **Maven** — build. The reactor is Checkstyle-sensitive; see [`docs/DEVELOPMENT.md`](../../../docs/DEVELOPMENT.md) § *Reliable Local Maven Validation*.
 
 ## Runtime Shape
 
@@ -101,7 +101,7 @@ Before running targeted Maven commands, use the reactor-safe baseline from the r
 3. `mvn clean`
 4. `mvn install -DskipTests`
 
-Then use targeted commands (for example `mvn test -pl 'ezkey-admin-api,!ezkey-tests'`). Reference: [`../../../.cursor/rules/maven-build.mdc`](../../../.cursor/rules/maven-build.mdc).
+Then use targeted commands (for example `mvn test -pl 'ezkey-admin-api,!ezkey-tests'`). Reference: [`docs/DEVELOPMENT.md`](../../../docs/DEVELOPMENT.md) § *Reliable Local Maven Validation*.
 
 ## Related Documents
 

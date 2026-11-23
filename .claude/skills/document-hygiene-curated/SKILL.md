@@ -41,7 +41,6 @@ change that protects canonicality and discoverability.
 - Hygiene index: [`product-docs/global/hygiene/README.md`](../../../product-docs/global/hygiene/README.md)
 - Methodology: [`product-docs/methodology/README.md`](../../../product-docs/methodology/README.md) § *Three rules worth keeping*
 - Root keyword: `AGENTS.md` keyword table
-- Copilot mirror: `.github/copilot-instructions.md` § Code hygiene keywords
 
 ## Decision criteria
 

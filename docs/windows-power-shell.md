@@ -41,7 +41,7 @@ export EZKEY_ENABLE_JMX=true
 - Android Gradle wrapper: `ezkey_mobile/android/gradlew.bat` (toolchain).
 - A small set of interim mobile Maestro harness scripts under `ezkey_mobile/scripts/*.ps1` (orthogonal workstream).
 
-See [`.cursor/rules/shell-preferences.mdc`](../.cursor/rules/shell-preferences.mdc) and [`docker/README.md`](../docker/README.md).
+See [`.cursor/rules/windows-agent-shell.mdc`](../.cursor/rules/windows-agent-shell.mdc) and [`docker/README.md`](../docker/README.md).
 
 ---
 

@@ -1,7 +1,11 @@
 ---
 description: OpenAPI spec files are generated artifacts; refresh via clean-start + update-specs when API contracts change — never hand-edit specs or dispatched copies
-globs: "**/specs/**/*.json"
-alwaysApply: true
+globs:
+  - "**/specs/**/*.json"
+  - "**/controller/**/*.java"
+  - "**/dto/**/*.java"
+  - "**/openapi-spec.json"
+alwaysApply: false
 ---
 
 # OpenAPI Specifications — Generated Artifacts

@@ -129,7 +129,6 @@ Example assessment: [`../../../docs/security/mobile-protocol-crypto-assessment-2
 
 - Skill: [`.claude/skills/assessment-curated/SKILL.md`](../../../../.claude/skills/assessment-curated/SKILL.md)
 - Root skills table: `AGENTS.md` § Skills
-- Copilot mirror: `.github/copilot-instructions.md` § Assessment curated
 
 ## How to invoke (operator cheat sheet)
 

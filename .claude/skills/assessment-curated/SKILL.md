@@ -39,7 +39,6 @@ is a **human mandate + white-box assessment**, not an OSS linter shortlist.
 - Hygiene index: [`product-docs/global/hygiene/README.md`](../../../product-docs/global/hygiene/README.md)
 - Hygiene vs program: [`product-docs/methodology/README.md`](../../../product-docs/methodology/README.md) § *Three rules worth keeping*
 - Root skills table: `AGENTS.md` § Skills
-- Copilot mirror: `.github/copilot-instructions.md` § Assessment curated
 
 ## Procedure
 
