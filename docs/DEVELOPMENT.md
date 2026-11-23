@@ -465,6 +465,16 @@ inventory and improvement plan:
 | `dart-sdk` | `ezkey_dart/**` or workflows | Experimental Dart SDK offline gate in a pinned `dart` image: `ezkey_dart/scripts/test.sh` (format check, `analyze --fatal-infos`, unit tests). The live-stack suite `ezkey_dart/scripts/e2e.sh` stays local ([`ezkey_dart/README.md`](../ezkey_dart/README.md) §6) |
 | `ci-gate` | Always | Aggregate pass/fail for the jobs above |
 
+**Docker image builds in CI reuse the runner's Maven repository.** `ha-smoke` and `connectors` build
+the images, whose Maven step starts from an empty BuildKit cache and would download everything from
+Maven Central. Central sometimes throttles GitHub runner IPs with HTTP 429: on 2026-11-23 the
+first request (the Spring Boot BOM) failed `ha-smoke` on a nightly `main` run and twice on #1458.
+Both jobs therefore run `scripts/ci-seed-docker-maven-cache.sh` first. It copies `~/.m2/repository`
+(restored by `actions/setup-java` in `connectors`; restore-only `actions/cache` with the same key in
+`ha-smoke`, so that job never writes the cache) into the BuildKit cache `id=maven-cache`, without our
+own `org/ezkey` artifacts. Fail-open: with nothing restored, the build downloads as before. Never pass
+`--no-cache` to these builds: it also discards BuildKit cache mounts.
+
 CI checks that the Admin UI’s committed OpenAPI copy matches `specs/admin-api/`, but it does **not**
 guarantee that copy matches the real running Admin API — refresh the committed spec by hand with
 `./scripts/update-specs.sh` against a live stack.

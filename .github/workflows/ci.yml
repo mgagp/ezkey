@@ -106,6 +106,7 @@ jobs:
               - 'docker/Dockerfile'
               - 'docker/**'
               - 'scripts/ci-ha-lb-smoke.sh'
+              - 'scripts/ci-seed-docker-maven-cache.sh'
               - 'scripts/ci-ha-lb-smoke.test.sh'
               - 'scripts/lib/ci-ha-lb-smoke-lib.sh'
               - 'scripts/db/verify-grants.sh'
@@ -170,6 +171,7 @@ jobs:
               - 'docker/docker-compose.connector-mock.yml'
               - 'docker/docker-compose.connector-smtp.yml'
               - 'scripts/ci-connector-scenarios.sh'
+              - 'scripts/ci-seed-docker-maven-cache.sh'
 
       # Manual and nightly runs must exercise every suite; path filters alone would
       # skip all and leave ci-gate green with nothing checked.
@@ -478,6 +480,22 @@ jobs:
         with:
           persist-credentials: false
 
+      # Image builds download every Maven dependency inside Docker. Central sometimes throttles
+      # runner IPs (HTTP 429 on the Spring Boot BOM: main 2026-11-23, #1458), so seed the BuildKit
+      # Maven cache from the repository the backend job caches. Restore only: this job never writes
+      # that cache. Same key as actions/setup-java (cache: maven); restore-keys falls back to the
+      # latest cache when the poms changed. A miss leaves the build downloading as before.
+      - name: Restore the backend Maven repository (restore only)
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: ~/.m2/repository
+          key: setup-java-${{ runner.os }}-x64-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            setup-java-${{ runner.os }}-x64-maven-
+
+      - name: Seed the Docker Maven cache
+        run: bash scripts/ci-seed-docker-maven-cache.sh
+
       - name: HA load-balancer smoke (#905)
         run: bash scripts/ci-ha-lb-smoke.sh
 
@@ -675,6 +693,11 @@ jobs:
           java-version: '25'
           distribution: 'temurin'
           cache: maven
+
+      # Same reason as ha-smoke: the scenarios build images; seed their Maven cache from the
+      # repository setup-java just restored instead of downloading it all from Central.
+      - name: Seed the Docker Maven cache
+        run: bash scripts/ci-seed-docker-maven-cache.sh
 
       - name: Delivery scenarios and log canary
         run: ./scripts/ci-connector-scenarios.sh
