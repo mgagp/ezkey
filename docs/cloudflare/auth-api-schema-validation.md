@@ -99,7 +99,8 @@ Dashboard remains valid for the first bind and for Set action. Labels move; look
 default. The first setup used **None** (log only) out of caution. After testing, the operator
 switched the zone to **Block** on 2026-11-15: best security posture, validated by a first run.
 Post-upgrade smoke on `c6d89274` passed under **Block** (bind with and without `enrollmentId`,
-Admin UI).
+Admin UI). Schema re-uploaded in the 2026-11-22 `91dc5fe3` window; mitigation stayed **Block**
+([`../lightsail/community/DEPLOYED.md`](../lightsail/community/DEPLOYED.md)).
 
 - Cloudflare labels: **Block** = reject non-compliant requests (current posture); **None** =
   allow them through and log; **Default** follows the zone default (**Block** on

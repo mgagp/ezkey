@@ -71,7 +71,7 @@ Publish **`dist/`** contents to Pages (not the whole monorepo).
 
 ## 3. Deploy to Cloudflare Pages
 
-**Prerequisites:** `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` (see [README.md](README.md)). If you already use a gitignored **`.env`** at the **repository root** for the marketing site deploy script, the same file is **sourced automatically** by `deploy-admin-ui-preview.sh` — you do not need to export the variables again unless you prefer to.
+**Prerequisites:** `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` (see [README.md](README.md)). If you already use a gitignored **`.env`** at the **repository root** for the marketing site deploy script, the same file is **sourced automatically** by `deploy-admin-ui-preview.sh` — you do not need to export the variables again unless you prefer to. On the Rootbeer checkout that file's `VITE_API_BASE_URL` targets the retired exp1 surface. For a community publish, set `EZKEY_SKIP_DOTENV=1` and export the community values ([`docs/lightsail/community-host.md`](../lightsail/community-host.md) § *Window rules*).
 
 Add **`VITE_API_BASE_URL`** in the repo-root `.env` (or export it) before `--build`. Deploy scripts **require** it and exit ≠ 0 if missing — there is no product default hostname. Template: **[`.env.example`](../../.env.example)** at the repo root (commented community examples). Committed Vite mode file [`ezkey-admin-ui/.env.cloudflare`](../../ezkey-admin-ui/.env.cloudflare) also uses commented examples only.
 

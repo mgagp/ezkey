@@ -5,7 +5,7 @@ Public product hostnames (served vs not served, DNS, expected `/` codes): see
 [`../community-host.md`](../community-host.md) § *Product hostnames (ezkey.online)*.
 
 - **Admin UI** — Cloudflare Pages (not a VM container)
-- **APIs / Demo ACME** — Lightsail Docker host behind Caddy
+- **APIs / Demo Login** — Lightsail Docker host behind Caddy
 
 Normative rules: [`../VERSIONING_AND_DEPLOY_TRACEABILITY.md`](../../VERSIONING_AND_DEPLOY_TRACEABILITY.md).
 
@@ -15,21 +15,25 @@ publish — see that doc § *Update procedure*.
 **Traceability lock:** record the **full git SHA**. Docker `*:latest`, npm `0.0.0`, and
 actuator/health with no version string are **not** deploy identity.
 
+**Window rules** (compose flags, `verify-grants.sh` stdin, `--apis-only`, Rootbeer `.env`,
+tenant integrations, Admin UI publish order, Admin UI revocation, manual DNS):
+[`../community-host.md`](../community-host.md) § *Window rules*.
+
 ## Current
 
 | Field | Value |
 |-------|-------|
 | **Surface** | community (ezkey.online) |
-| **Full git SHA** | `c6d89274702f8f80007fb6149d9204b79ba89bdf` |
-| **Short SHA** | `c6d89274` |
-| **Deployed at (UTC)** | 2026-11-15T17:53:00Z |
-| **Operator** | Edgar |
-| **Note** | Backend upgrade 2026-11-15 ~12:53–12:56 ET / America/Toronto (17:53–17:56 UTC) to main `c6d89274` (from `10264a0b`). APIs recreated sequentially (~35 s each). Flyway V25 -> V29. V26 activation tokens: 2 converted, 0 revoked. V28: 4 of 13 tenants marked self-registered. V27: all integrations REPLACE. V29: partition job seeded. Keyset unchanged. JavaMelody collector not updated in this window (still previous image). API Shield schemas re-uploaded for Auth and Integration on the ezkey.online zone. Admin UI (Cloudflare Pages project `admin-ui-ezkey-online`, production branch `main`, API base `https://admin-api.ezkey.online`) published from `c6d8927`. Opt-in SMTP email connector enabled the same day ~19:15 ET (see § Email delivery). Host: `<static-ip ezkey-online-community>`. |
+| **Full git SHA** | `91dc5fe3f43315180b0fff337fa01326a8047db0` |
+| **Short SHA** | `91dc5fe3` |
+| **Deployed at (UTC)** | 2026-11-23T00:06:00Z |
+| **Operator** | supervised window |
+| **Note** | Supervised window 2026-11-22 15:26–19:06 America/Toronto (2026-11-22T20:26Z–2026-11-23T00:06Z), from `c6d89274` (Flyway V29) to `91dc5fe3` (Flyway V31). Keyset unchanged (v1). DB role passwords rotated (#1017) with `scripts/db/rotate-role-passwords.sh` (merged in #1447). Demo Login is deployed and replaces the Acme demo app; the Demo Login integration is in its own tenant. Acme demo app, its volumes, DNS record, and integrations are retired; keys were revoked in the Admin UI (MFA), not by SQL. Admin UI (Cloudflare Pages project `admin-ui-ezkey-online`, production branch `main`, API base `https://admin-api.ezkey.online`) published from `91dc5fe3`. ezkey.org published from `91dc5fe3`. Auth API Shield schema refreshed; mitigation remains Block. `EZKEY_ADMIN_CORS_ALLOWED_ORIGINS` is the Admin UI origin only (`https://admin-ui.ezkey.online`); legacy `EZKEY_EVALUATOR_*` keys removed. Compose on the VM remains three files: `docker-compose.yml` + `docker-compose.javamelody.yml` + `docker-compose.connector-smtp.yml`. Host OS still Amazon Linux 2023.12.20261102 (no OS window). Host: `<static-ip ezkey-online-community>`. |
 
 ## Email delivery (opt-in SMTP connector)
 
 Enabled 2026-11-15 ~19:15 ET / America/Toronto (~2026-11-16T00:15Z), after the `c6d89274`
-API upgrade above. Opt-in
+API upgrade (git history of this file). Opt-in
 ([ADR-0018](../../../product-docs/global/architecture-decisions.md#adr-0018--connector-spi-for-external-services)):
 the on-screen QR stays the path when this connector is absent.
 Runbook: [`../community-host.md`](../community-host.md) § *Email delivery connector (Amazon SES)*.
@@ -49,7 +53,9 @@ Runbook: [`../community-host.md`](../community-host.md) § *Email delivery conne
 
 **Compose on this VM.** Every `docker compose` command uses all three files:
 `docker-compose.yml` + `docker-compose.javamelody.yml` + `docker-compose.connector-smtp.yml`.
-Recreating admin-api without `docker-compose.connector-smtp.yml` drops email delivery with no error.
+The 2026-11-22 window (`91dc5fe3`) kept this set. Recreating admin-api without
+`docker-compose.connector-smtp.yml` drops email delivery with no error. The image line above is
+the 2026-11-15 connector build; the **Current** row is the stack SHA.
 
 **Secrets.** SMTP credentials stay in `connector-smtp.env` (mode 600) on the VM only. The delivery
 token stays in the VM `.env`. Neither file is in git.
@@ -72,7 +78,7 @@ Host OS hygiene lane: [`product-docs/global/hygiene/host-os/README.md`](../../..
 | **Last H2 (AL2023 minor + reboot)** | never |
 | **Last H3 (major / new instance)** | never |
 | **Last pre-intervention snapshot** | not named in this ledger (0 snapshots verified 2026-10-19, before this H1; automatic snapshots off) |
-| **Host OS note** | H1 done 2026-11-02: AL2023.12.20261102, kernel 6.1.189. 2026-11-15 #1177 applied: hybrid PQ key exchange on the operator SSH channel; authentication still classical. |
+| **Host OS note** | H1 done 2026-11-02: AL2023.12.20261102, kernel 6.1.189. 2026-11-15 #1177 applied: hybrid PQ key exchange on the operator SSH channel; authentication still classical. 2026-11-22 app window did not patch the OS (releasever unchanged). |
 
 ## Transport TLS (post-quantum key exchange)
 
@@ -92,6 +98,9 @@ Map: [`V-2026-09-15-post-quantum-crypto-posture`](../../../product-docs/global/v
 | **Caddy** | `v2.11.4`, image `caddy:2-alpine` (floating tag), digest `sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b`; community Caddyfile has no `curves` override (Caddy ≥ 2.10 defaults). |
 | **Not covered** | Local `docker-compose.with-proxy.yml` Caddy is plain HTTP (no TLS hop). Ezkey mobile and PIA/SDK client stacks decide their own hop. Admin SSH channel: see note. |
 | **Admin SSH note** | 2026-11-15 #1177 applied. Hybrid PQ key exchange on the operator SSH channel; authentication still classical. Drop-in `/etc/ssh/sshd_config.d/40-pq-kex.conf` (`root:root` `0600`) on OpenSSH 9.9p1, crypto policy `DEFAULT`. `sshd -T` `kexalgorithms` starts with `mlkem768x25519-sha256`, then `sntrup761x25519-sha512@openssh.com`, then the previous classical list (including `curve25519-sha256`). Classic fallback stays. Rebuilds install the same file from `bootstrap-host.sh`. |
+
+**Probe hostnames.** The 2026-11-03 row names `demo-acme`. That hostname was retired on
+2026-11-22. The next probe uses `demo-login` in its place.
 
 ## Optional tag
 
