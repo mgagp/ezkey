@@ -19,7 +19,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:browser": "playwright test",
+    "test:browser": "playwright test --project=chromium",
+    "test:walk": "playwright test --project=walk-mocked",
     "test:browser:headed": "playwright test --headed",
     "test:browser:debug": "playwright test --debug",
     "test:browser:install": "playwright install chromium"

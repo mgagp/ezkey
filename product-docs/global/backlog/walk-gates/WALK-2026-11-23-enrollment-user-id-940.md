@@ -21,6 +21,7 @@ Canon: [`../../../templates/ui-walk-gate.template.md`](../../../templates/ui-wal
 - Vite dev server (`npx vite`), Admin API mocked with Playwright routes: no backend change in this PR.
 - Data: an application integration and the system integration (administrator MFA); three enrollments (application with and without User ID, system without User ID).
 - Session: Global Admin, injected into `sessionStorage`.
+- Re-run: `ezkey-admin-ui/e2e/walks/enrollment-user-id-940.walk.spec.ts`, `npm run test:walk -- --grep 940` from `ezkey-admin-ui/`.
 
 ## Checklist
 
