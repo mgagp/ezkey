@@ -270,7 +270,7 @@ On macOS, Temurin via SDKMAN is not registered with `/usr/libexec/java_home`. `b
 
 **POSIX vs Windows in Tink tests:** `TinkKeyManager` requires master-key files at mode `600` on macOS/Linux and skips that check on Windows. Tests must write temp keys through `TestMasterKeys` (owner-only permissions). Copying `Files.writeString` without that helper fails on a POSIX first build even when Windows is green.
 
-**Postgres first-boot roles:** `docker/postgres/init/01-create-roles.sh` is bind-mounted into `postgres:18-alpine` and must be executable (`git` mode `100755`). A `644` checkout plus Docker Desktop on macOS fails first init with `/bin/sh: bad interpreter: Permission denied`; Postgres can still become healthy while application roles are missing and the rest of the stack stays `Created`.
+**Postgres first-boot roles:** `docker/postgres/init/01-create-roles.sh` is bind-mounted into `postgres:19-alpine` and must be executable (`git` mode `100755`). A `644` checkout plus Docker Desktop on macOS fails first init with `/bin/sh: bad interpreter: Permission denied`; Postgres can still become healthy while application roles are missing and the rest of the stack stays `Created`.
 
 Without a host JDK, use [`./scripts/build-docker.sh`](../scripts/build-docker.sh) instead ([Docker-only Java validation](#docker-only-java-validation-no-host-jdkmaven)).
 

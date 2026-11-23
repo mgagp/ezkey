@@ -126,7 +126,8 @@ Compose passes `TZ: ${TZ:-UTC}` into services; if `TZ` is unset, behavior stays 
 ## Services
 
 ### PostgreSQL (postgres)
-- **Image**: `postgres:18-alpine`
+- **Image**: `postgres:19-alpine`
+- **Major line change** (for example 18 → 19): an existing data volume is not reusable across majors. Dump and restore onto a fresh volume with the new line's `pg_dump` / `pg_restore`; see [`major-upgrades` § Database](../product-docs/global/hygiene/major-upgrades/README.md#database) (#1421)
 - **Port**: `5432` (internal only)
 - **Database**: `ezkey_db`
 - **Bootstrap superuser**: `postgres` / `${POSTGRES_PASSWORD:-ezkey}` (init and `db-grants` only)

@@ -16,7 +16,7 @@ set -eu
 
 ROOT="$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)"
 CONTAINER="ezkey-b1-upgrade-$$"
-IMAGE="postgres:18-alpine"
+IMAGE="postgres:19-alpine"
 CRYPTO_PASS="b1-upgrade-test-crypto-pass"
 PGPASSWORD_SUPER=ezkey
 

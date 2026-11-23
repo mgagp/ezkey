@@ -49,7 +49,7 @@ x-env-jvm-demo: &env-jvm-demo
 
 services:
   postgres:
-    image: postgres:18-alpine
+    image: postgres:19-alpine
     container_name: ezkey-exp-postgres
     logging: *default-logging
     mem_limit: 384m
@@ -59,7 +59,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-ezkey_db}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ezkey}
-      # PG18 docker image default PGDATA layout; keep classic path for named volume mounts.
+      # Since PG 18 the image defaults PGDATA to /var/lib/postgresql/<major>/docker; keep the classic path for named volume mounts.
       PGDATA: /var/lib/postgresql/data
       EZKEY_DB_MIGRATE_PASSWORD: ${EZKEY_DB_MIGRATE_PASSWORD:-ezkey_migrate}
       EZKEY_DB_ADMIN_PASSWORD: ${EZKEY_DB_ADMIN_PASSWORD:-ezkey_admin}
@@ -106,7 +106,7 @@ services:
     restart: "no"
 
   db-grants:
-    image: postgres:18-alpine
+    image: postgres:19-alpine
     container_name: ezkey-exp-db-grants
     logging: *default-logging
     depends_on:

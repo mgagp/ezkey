@@ -65,7 +65,7 @@ class AuthAttemptAlertPersistedPostgresTest {
 
   @Container @ServiceConnection
   static PostgreSQLContainer postgres =
-      new PostgreSQLContainer("postgres:18-alpine")
+      new PostgreSQLContainer("postgres:19-alpine")
           .withDatabaseName("ezkey_auth_attempt_alert_persisted");
 
   @DynamicPropertySource

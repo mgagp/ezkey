@@ -81,7 +81,7 @@ class PartitionSchedulerPostgresTest {
 
   @Container @ServiceConnection
   static PostgreSQLContainer postgres =
-      new PostgreSQLContainer("postgres:18-alpine").withDatabaseName("ezkey_partition_scheduler");
+      new PostgreSQLContainer("postgres:19-alpine").withDatabaseName("ezkey_partition_scheduler");
 
   @DynamicPropertySource
   static void datasourceProps(DynamicPropertyRegistry registry) {

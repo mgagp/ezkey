@@ -24,7 +24,7 @@ x-ezkey-image-build: &ezkey-image-build
 
 services:
   postgres:
-    image: postgres:18-alpine
+    image: postgres:19-alpine
     container_name: ezkey-postgres
     environment:
       <<: *container-tz
@@ -72,7 +72,7 @@ services:
 
   # Apply DML grants after Flyway (idempotent). Ensures ezkey_crypto when missing (B1).
   db-grants:
-    image: postgres:18-alpine
+    image: postgres:19-alpine
     container_name: ezkey-db-grants
     depends_on:
       migration:
