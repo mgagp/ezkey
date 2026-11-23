@@ -886,6 +886,8 @@ A **follow-up issue (to be created)** should track a non-destructive script mode
 
 **Postgres recreate (when deliberate):** announce the **precise outage time** before starting.
 
+> **PostgreSQL major mismatch (#1421).** Since #1421 PR 1, `docker-compose.yml` pins `postgres:19-alpine`. A recreate with a compose file from that commit onward starts 19 on the existing data volume. If the volume is still 18 (the ezkey.online database stays on 18 until the #1421 lot 2 window), Postgres refuses to start and every API goes down. Until that window has migrated the data (dump/restore onto a fresh volume), do **not** recreate `postgres` from main's compose, and watch for any `up -d` that would recreate it as a side effect (see the `logging:` note in § Rolling upgrade). The steps below assume the compose tag and the volume are on the same major.
+
 1. Backups first (C): `pg_dump -Fc` verified with `pg_restore --list`.
 2. `$C up -d --no-deps --no-build --force-recreate postgres` — data volume kept. Measured ~**6–9 s** for the recreate itself; APIs usually reconnect on their own. Restart one API alone if it does not become healthy. Leave `--remove-orphans` off (Window rules).
 3. A probe that only hits `/` does **not** prove absence of errors on database-reading requests — finish with **human Admin UI login + MFA**.

@@ -259,7 +259,7 @@ Dependabot list as "Java is current."**
    **Pin `2.0.0` adopted 2026-11-02** (layout engine + cleanup default on; Spotless 3.10.4 OK;
    keep cleanup unless a later trial proves otherwise). Refs [#1136](https://github.com/mgagp/ezkey/pull/1136).
 
-Out of this pulse (operator-owned, separate hygiene): Docker image tags (e.g. `postgres:18-alpine`).
+Out of this pulse (operator-owned, separate hygiene): Docker image tags (e.g. `postgres:19-alpine`).
 Do not add a `docker` ecosystem or invent a Compose-image lot unless the operator asks.
 **Maven Temurin build images:** project JDK = **25 LTS** (Marc 2026-10-12; revisit at
 JDK 29 LTS). On `/docker`, Dependabot ignore for `maven` uses Bundler ranges
