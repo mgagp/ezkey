@@ -46,12 +46,28 @@
   function showFailure(message) {
     statusEl.textContent = message;
     statusEl.classList.add("error");
-    redocEl.innerHTML =
-      '<div class="redoc-fallback">' +
-      "<h2>" + copy.unavailableTitle + "</h2>" +
-      "<p>" + message + "</p>" +
-      "<p>" + copy.expectedPrefix + "<code>" + specUrl + "</code></p>" +
-      "</div>";
+
+    // textContent, not innerHTML: message includes error.message, and specUrl
+    // and the title come from the page. CodeQL treats those as untrusted.
+    var fallback = document.createElement("div");
+    fallback.className = "redoc-fallback";
+
+    var heading = document.createElement("h2");
+    heading.textContent = copy.unavailableTitle;
+
+    var detail = document.createElement("p");
+    detail.textContent = message;
+
+    var expected = document.createElement("p");
+    expected.textContent = copy.expectedPrefix;
+    var code = document.createElement("code");
+    code.textContent = specUrl == null ? "" : specUrl;
+    expected.appendChild(code);
+
+    fallback.appendChild(heading);
+    fallback.appendChild(detail);
+    fallback.appendChild(expected);
+    redocEl.replaceChildren(fallback);
   }
 
   async function loadReference() {
