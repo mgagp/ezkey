@@ -688,6 +688,9 @@ class AuthAttemptRespondServiceTest {
             eq(AlertSeverity.WARNING),
             eq("AUTH_ATTEMPT_REJECTED:7"),
             eq("{\"enrollmentId\":7}"));
+    // #940 / #1433: last-used is written only on ACCEPTED. A refusal must not save the enrollment.
+    verify(enrollmentRepository, never()).touchLastUsedAt(any(), any());
+    verify(enrollmentRepository, never()).save(any());
   }
 
   private static AuthAttemptRespondRequest denyRequest() {

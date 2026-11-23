@@ -17,10 +17,10 @@ Do **not** invent `I-*` / `TB-*` per finding.
 
 ## Authority
 
-- Lane: [`product-docs/global/hygiene/corpus-ablation/README.md`](../../product-docs/global/hygiene/corpus-ablation/README.md)
-- Active pass: [`…/2026-08-cursor-plans-pass.md`](../../product-docs/global/hygiene/corpus-ablation/2026-08-cursor-plans-pass.md)
-- Hygiene index: [`product-docs/global/hygiene/README.md`](../../product-docs/global/hygiene/README.md)
-- Hygiene vs program: [`product-docs/methodology/README.md`](../../product-docs/methodology/README.md) § *Three rules worth keeping*
+- Lane: [`product-docs/global/hygiene/corpus-ablation/README.md`](../../../product-docs/global/hygiene/corpus-ablation/README.md)
+- Active pass: [`…/2026-08-cursor-plans-pass.md`](../../../product-docs/global/hygiene/corpus-ablation/2026-08-cursor-plans-pass.md)
+- Hygiene index: [`product-docs/global/hygiene/README.md`](../../../product-docs/global/hygiene/README.md)
+- Hygiene vs program: [`product-docs/methodology/README.md`](../../../product-docs/methodology/README.md) § *Three rules worth keeping*
 - Retained plans: methodology § *Ephemeral scaffold vs. retained plan*
 
 ## Per-document loop (HITL)
@@ -111,7 +111,7 @@ it down there, do not rely on chat memory or a hand-off prompt.
 
 ```text
 corpus-ablation — continue 2026-08 Cursor plans pass.
-Read .cursor/skills/corpus-ablation/SKILL.md, then the pass-log Resume block in
+Read .claude/skills/corpus-ablation/SKILL.md, then the pass-log Resume block in
 product-docs/global/hygiene/corpus-ablation/2026-08-cursor-plans-pass.md.
 One plan per turn. Brief Go as: delete-or-keep + in-pass now + park-inside-Go. Wait for Go.
 ```

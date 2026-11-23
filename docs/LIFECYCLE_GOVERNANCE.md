@@ -206,6 +206,8 @@ Existing enrollments and API keys retain their local state — if the design eve
 
 **Purpose.** An enrollment is a cryptographic credential binding a user's device (or an admin's MFA device) to an integration. It is the core security object — the thing that gets deactivated during investigation and revoked during confirmed compromise.
 
+**Name and User ID.** The Name is the device label shown on the phone; the User ID is the username in the protected application. An integration can target an enrollment by its enrollment ID or by its User ID; only the second needs a User ID, so the Admin UI warns when it is empty but does not require it (Feb. 2026 intent, #940).
+
 **Lifecycle.** Enrollments have the most structured lifecycle in Ezkey, modeled as a finite-state machine with two independent dimensions: a **status** enum (the credential's lifecycle stage) and an **active** flag (the operator's on/off switch for verified enrollments).
 
 ```mermaid

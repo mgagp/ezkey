@@ -61,8 +61,8 @@ changelog.
    months stay comparable.
 8. **Publish bilingually:** create EN + FR HTML for the detailed digest; prepend the index entry on
    `monthly-digest.html` and `fr/monthly-digest.html`; add matching RSS `<item>` at the top of
-   [`monthly-digest.rss`](../../sites/ezkey-org/monthly-digest.rss) and
-   [`fr/monthly-digest.rss`](../../sites/ezkey-org/fr/monthly-digest.rss); add detail URLs to
+   [`monthly-digest.rss`](../../../sites/ezkey-org/monthly-digest.rss) and
+   [`fr/monthly-digest.rss`](../../../sites/ezkey-org/fr/monthly-digest.rss); add detail URLs to
    `sitemap.xml`.
 9. **Hand off to deploy:** Cloudflare preview -> human visual validation -> production.
 

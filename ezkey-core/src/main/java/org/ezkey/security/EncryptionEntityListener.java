@@ -1,6 +1,5 @@
 package org.ezkey.security;
 
-import jakarta.annotation.PostConstruct;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import java.util.Map;
@@ -10,11 +9,7 @@ import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.integration.domain.entity.ApiKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
 import org.springframework.stereotype.Component;
 
 /**
@@ -26,15 +21,18 @@ import org.springframework.stereotype.Component;
  * <p>Currently encrypts/decrypts: Enrollment.integrationPrivateKey,
  * Enrollment.enrollmentProofToken, AuthAttempt.authAttemptProofToken, ApiKey.secretKeyHash.
  *
- * <p>This listener uses a static field to store {@link EncryptionOperations} because JPA entity
- * listeners are not managed by Spring and cannot use dependency injection directly. The runtime
- * implementation is injected via a setter method and also retrieved from ApplicationContext as a
- * fallback.
+ * <p><b>Lazy resolution (Spring Boot 4.2, #1458).</b> Hibernate asks Spring for this listener while
+ * it builds the entity manager factory. The encryption service depends on {@code TinkKeyManager},
+ * which depends on a JPA repository, which needs that same entity manager factory. Resolving {@link
+ * EncryptionOperations} at construction therefore closes a bean cycle. The listener only receives
+ * an {@link ObjectProvider} and hands it to {@link EncryptionOperationsHolder}; the encryption
+ * service is looked up on the first encrypted write or read, once the factory exists. Do not
+ * reintroduce an eager lookup (setter injection, {@code @PostConstruct}).
  *
  * @since 2025
  */
 @Component
-public class EncryptionEntityListener implements ApplicationContextAware {
+public class EncryptionEntityListener {
 
   private static final Logger logger = LoggerFactory.getLogger(EncryptionEntityListener.class);
 
@@ -53,103 +51,22 @@ public class EncryptionEntityListener implements ApplicationContextAware {
           "encryptedAuthAttemptProofToken", "authAttemptProofTokenEncryptionKeyId",
           "secretKeyHash", "secretKeyHashEncryptionKeyId");
 
-  /** Static field for encryption operations used by unmanaged JPA callbacks. */
-  private static EncryptionOperations encryptionOperations;
-
-  private static ApplicationContext applicationContext;
-
   /**
-   * Set the application context (called by Spring).
+   * Registers a lazy source of encryption operations without resolving it.
    *
-   * @param applicationContext the Spring application context
-   * @throws BeansException if context cannot be set
+   * @param encryptionOperationsProvider provider of the runtime encryption operations; may have no
+   *     bean when encryption is not configured
    */
-  @Override
-  public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
-    EncryptionEntityListener.applicationContext = applicationContext;
-  }
-
-  /**
-   * Initialize the encryption operations after Spring context is ready.
-   *
-   * <p>This method tries multiple approaches to get the runtime encryption operations: 1. Direct
-   * injection via setter (preferred) 2. Retrieval from ApplicationContext (fallback)
-   */
-  @PostConstruct
-  public void initializeEncryptionService() {
-    // Try to get from ApplicationContext if not already injected
-    if (encryptionOperations == null && applicationContext != null) {
-      ObjectProvider<EncryptionOperations> provider =
-          applicationContext.getBeanProvider(EncryptionOperations.class);
-      EncryptionOperations operations = provider.getIfAvailable();
-      if (operations != null) {
-        EncryptionEntityListener.encryptionOperations = operations;
-        EncryptionOperationsHolder.set(operations);
-        logger.info("Encryption operations retrieved from ApplicationContext");
-      }
-    }
-
-    // Log final state
-    if (encryptionOperations != null) {
-      logger.info(
-          "EncryptionEntityListener initialized with encryption operations. "
-              + "Encryption available: {}",
-          encryptionOperations.isEncryptionAvailable());
-    } else {
-      logger.warn(
-          "EncryptionEntityListener initialized but encryption operations are null. "
-              + "Encryption will be disabled. "
-              + "This is normal if encryption is disabled or master key is not configured.");
-    }
-  }
-
-  /**
-   * Set the encryption operations (injected by Spring).
-   *
-   * <p>This method is called by Spring's dependency injection framework. The implementation is
-   * stored in a static field and in {@link EncryptionOperationsHolder} for access from unmanaged
-   * JPA entity and listener callbacks.
-   *
-   * @param operations the encryption operations to use (may be null if encryption is disabled)
-   */
-  @Autowired(required = false)
-  public void setEncryptionService(EncryptionOperations operations) {
-    EncryptionEntityListener.encryptionOperations = operations;
-    EncryptionOperationsHolder.set(operations);
-    if (operations != null) {
-      logger.info("Encryption operations injected via @Autowired setter");
-    }
-  }
-
-  /**
-   * Get the encryption operations (with lazy fallback to ApplicationContext).
-   *
-   * @return the encryption operations, or null if not available
-   */
-  private static EncryptionOperations getEncryptionOperations() {
-    EncryptionOperations cachedOperations = encryptionOperations;
-    if (cachedOperations != null) {
-      return cachedOperations;
-    }
-    // Lazy fallback: try to get from ApplicationContext
-    if (applicationContext != null) {
-      ObjectProvider<EncryptionOperations> provider =
-          applicationContext.getBeanProvider(EncryptionOperations.class);
-      EncryptionOperations operations = provider.getIfAvailable();
-      if (operations != null) {
-        encryptionOperations = operations;
-        EncryptionOperationsHolder.set(operations);
-        logger.debug("Encryption operations retrieved from ApplicationContext (lazy)");
-        return operations;
-      }
-    }
-    return null;
+  public EncryptionEntityListener(
+      ObjectProvider<EncryptionOperations> encryptionOperationsProvider) {
+    EncryptionOperationsHolder.setSupplier(encryptionOperationsProvider::getIfAvailable);
+    logger.debug("EncryptionEntityListener registered a lazy encryption operations provider");
   }
 
   @PrePersist
   @PreUpdate
   public void encrypt(Object entity) {
-    EncryptionOperations operations = getEncryptionOperations();
+    EncryptionOperations operations = EncryptionOperationsHolder.get();
 
     if (entity instanceof Enrollment enrollment) {
       encryptField(

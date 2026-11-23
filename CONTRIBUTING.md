@@ -33,7 +33,7 @@ See `product-docs/methodology/README.md` — the whole method fits in that one d
 **2 — Open a GitHub issue**
 Once the idea passes the "title that stands alone" test, open an issue on `mgagp/ezkey`. Apply **all**
 appropriate labels (`lane:*`, `type:*`, `component:*`, `priority:*`, `status:*`) at create time via
-`gh issue create --label ...`. See `.cursor/rules/github-issue-labels.mdc` for the checklist and taxonomy.
+`gh issue create --label ...`. See `.claude/skills/github-issue/SKILL.md` for the checklist and taxonomy.
 
 **3 — Branch from the issue**  
 Create a branch using the convention:

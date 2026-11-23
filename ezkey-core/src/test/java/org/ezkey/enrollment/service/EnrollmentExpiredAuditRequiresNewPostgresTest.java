@@ -14,7 +14,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
-import java.lang.reflect.Field;
 import java.time.OffsetDateTime;
 import org.ezkey.audit.domain.repository.AuditLogRepository;
 import org.ezkey.audit.integrity.AuditChainCheckpointRepository;
@@ -24,7 +23,6 @@ import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.auth.EnrollmentVerifyFailedException;
-import org.ezkey.security.EncryptionEntityListener;
 import org.ezkey.security.EncryptionOperationsHolder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -80,7 +78,7 @@ class EnrollmentExpiredAuditRequiresNewPostgresTest {
   @Autowired private ExpiringCaller expiringCaller;
 
   @BeforeEach
-  void resetRows() throws Exception {
+  void resetRows() {
     clearEncryptionBridge();
     jdbc.execute("CREATE SEQUENCE IF NOT EXISTS ezkey_audit_log_id_seq");
     jdbc.update("DELETE FROM ezkey_audit_log");
@@ -135,10 +133,7 @@ class EnrollmentExpiredAuditRequiresNewPostgresTest {
     return enrollmentRepository.saveAndFlush(enrollment).getEnrollmentId();
   }
 
-  private static void clearEncryptionBridge() throws Exception {
-    Field field = EncryptionEntityListener.class.getDeclaredField("encryptionOperations");
-    field.setAccessible(true);
-    field.set(null, null);
+  private static void clearEncryptionBridge() {
     EncryptionOperationsHolder.clear();
   }
 

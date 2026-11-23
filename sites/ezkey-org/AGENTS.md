@@ -232,7 +232,7 @@ home for **monthly Git-distilled activity recaps** — index excerpt plus option
 replaces the former separate Updates and Field notes lanes.
 
 - **Trigger phrase:** *"time for the monthly digest"* or *"do the monthly activity recap"*.
-  A cold agent should run [`.cursor/skills/monthly-digest/SKILL.md`](../../.cursor/skills/monthly-digest/SKILL.md).
+  A cold agent should run [`.claude/skills/monthly-digest/SKILL.md`](../../.claude/skills/monthly-digest/SKILL.md).
 - **Template:** [`../ezkey-org-editorial/templates/monthly-digest.template.md`](../ezkey-org-editorial/templates/monthly-digest.template.md)
 - **Detail slug:** `monthly-digest-YYYY-MM.html`; meta line:
   `Monthly digest · <Month> <Year>` (FR: `Sommaire mensuel · <Month> <Year>`).

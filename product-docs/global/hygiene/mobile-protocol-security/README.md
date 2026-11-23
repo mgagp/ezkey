@@ -2,7 +2,7 @@
 
 **Method:** this folder is the first topic-lane **instance** of **`assessment-curated`**.  
 Canon: [`../assessment-curated/README.md`](../assessment-curated/README.md). Skill:
-[`.cursor/skills/assessment-curated/SKILL.md`](../../../../.cursor/skills/assessment-curated/SKILL.md).
+[`.claude/skills/assessment-curated/SKILL.md`](../../../../.claude/skills/assessment-curated/SKILL.md).
 
 Lightweight HITL decision track for punctual **non-intrusive** mobile protocol and crypto
 assessments of the Android-first Ezkey reference app and Auth API continuity.
