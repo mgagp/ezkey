@@ -14,7 +14,7 @@ export default defineConfig({
   },
   outputDir: 'test-results/browser/artifacts',
   reporter: [
-    ['list'],
+    ['list', { printSteps: true }],
     ['html', { outputFolder: 'playwright-report', open: 'never' }],
   ],
   use: {
@@ -26,7 +26,17 @@ export default defineConfig({
   },
   projects: [
     {
+      // Device-backed suite: clean-start stack + pre-seeded Demo Device.
       name: 'chromium',
+      testIgnore: 'walks/**',
+      use: {
+        ...devices['Desktop Chrome'],
+      },
+    },
+    {
+      // Walk Gate walks against a mocked Admin API (Vite only, no stack): `npm run test:walk`.
+      name: 'walk-mocked',
+      testMatch: 'walks/**/*.walk.spec.ts',
       use: {
         ...devices['Desktop Chrome'],
       },

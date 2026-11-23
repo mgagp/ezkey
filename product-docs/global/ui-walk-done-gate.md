@@ -26,6 +26,16 @@ Nobody (human or bot) declares a human-UI chantier **complete** without:
 | **Isabelle** | Refuse a green walk if the gate is missing; PASS only with per-row proof. |
 | **K** | When Marc routes via K: fill or demand the gate, then dispatch. Not a mandatory bottleneck. |
 
+## Reproducible walks (Admin UI)
+
+An Admin UI walk lives in the repo as a Playwright spec against a mocked Admin API:
+`ezkey-admin-ui/e2e/walks/*.walk.spec.ts`, run with `npm run test:walk` (no Docker stack). One spec
+per Walk Gate record, one `test.step` per checklist row, EN and FR. A walk script kept only on a
+bot's side or in a scratchpad cannot be re-run, so it does not count as proof. How to write and run
+one: `ezkey-admin-ui/AGENTS.md` § *Walk Gate walks (mocked Admin API, no stack)*. A mocked walk
+covers operability and copy; flows that depend on the backend or the Demo Device still need the
+device-backed suite.
+
 ## Lesson from #570 (base runtime + Integrity honesty)
 
 Symptoms: runtime smoke, then honesty FAIL baseline, then unified PASS — three bars on one thread; artificial #566→#569→walk sequencing; late product/API locks.
