@@ -154,14 +154,15 @@
     # Hard-coded major gate in Admin UI CI job (must move with .nvmrc)
     - { file: .github/workflows/ci.yml, expect: "maj!==24" }
   eol: 2028-04-30 # Maintenance EOL; Active LTS ended 2026-10-20
-  target: "26" # LTS from 2026-10-28 → eligible from 2027-01-28
-  decision: keep
+  target: "26" # LTS since 2026-10-28; eligible now under lab posture (README § Target rule)
+  decision: plan
   security: false
   issue: null
   last_review: 2026-10-19
   notes: >
-    Stay on 24 LTS (Maintenance until 2028-04-30). Node 26 entered LTS 2026-10-28;
-    target-rule eligible after 3 months (~2027-01-28). Admin UI image node:24-alpine;
+    On 24 LTS (Maintenance until 2028-04-30). Node 26 entered LTS 2026-10-28 and is
+    eligible now under lab posture (Marc 2026-11-23); the move needs its own light-path PR
+    (.nvmrc, Admin UI image, CI major gate). Admin UI image node:24-alpine;
     engines >=24 matches .nvmrc / Orval >=22.18.
 
 - id: java-jdk
@@ -313,14 +314,14 @@
   sources:
     - { file: docker/Dockerfile, expect: "maven:3.9-" }
   eol: null # 3.9 still supported (eol:false); 3.10 released 2026-09-27
-  target: "3.9" # 3.10 eligible under target rule ~2026-12-27
-  decision: keep
+  target: "3.10" # eligible now under lab posture (README § Target rule)
+  decision: plan
   security: false
   issue: null
   last_review: 2026-10-19
   notes: >
-    Now on endoflife.date as product maven. Observe 3.10 until ≥3 months old, then
-    light path (Docker image tag). Paired with Temurin 25 in maven:3.9-eclipse-temurin-25.
+    Now on endoflife.date as product maven. 3.10 is eligible now under lab posture
+    (Marc 2026-11-23); light path (Docker image tag) in its own PR. Paired with Temurin 25 in maven:3.9-eclipse-temurin-25.
 
 - id: react
   component: React
