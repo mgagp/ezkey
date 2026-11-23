@@ -72,10 +72,23 @@ function makeClient(): QueryClient {
   return new QueryClient({
     defaultOptions: {
       queries: {retry: false, gcTime: 0},
-      mutations: {retry: false},
+      mutations: {retry: false, gcTime: 0},
     },
   });
 }
+
+/*
+ * Unmount every renderer and clear every QueryClient after each test. Without this, a TanStack
+ * notifyManager timer can render a Probe after the file has finished; Jest then reports "Cannot log
+ * after tests are done" and exits with code 1 although every test passed (CI js-validate).
+ */
+const cleanups: Array<() => void> = [];
+
+afterEach(() => {
+  while (cleanups.length > 0) {
+    cleanups.pop()?.();
+  }
+});
 
 /**
  * Minimal renderHook wrapper backed by react-test-renderer and QueryClientProvider.
@@ -93,14 +106,21 @@ function renderHook<T>(
     return null;
   }
 
+  let tree: ReturnType<typeof create> | undefined;
   act(() => {
-    create(
+    tree = create(
       React.createElement(
         QueryClientProvider,
         {client: queryClient},
         React.createElement(Probe),
       ),
     );
+  });
+  cleanups.push(() => {
+    act(() => {
+      tree?.unmount();
+    });
+    queryClient.clear();
   });
 
   return {result, queryClient};

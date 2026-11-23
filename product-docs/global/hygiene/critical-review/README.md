@@ -10,7 +10,7 @@ canon + prompt template. Tools Stage 2 of the methodology two-stage pattern — 
 replace `cold-agent-plan-review.prompt.md` (that file stays the **autonomous-execution hardening**
 angle, included by reference).
 
-Index: [`../README.md`](../README.md). Skill: [`.cursor/skills/critical-review/SKILL.md`](../../../../.cursor/skills/critical-review/SKILL.md).
+Index: [`../README.md`](../README.md). Skill: [`.claude/skills/critical-review/SKILL.md`](../../../../.claude/skills/critical-review/SKILL.md).
 Prompt: [`../../../templates/critical-review.prompt.md`](../../../templates/critical-review.prompt.md).
 
 ## When to use (proportionate)

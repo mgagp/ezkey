@@ -240,8 +240,12 @@ public class ApiKeyService {
    *   <li>Check expiration if set
    *   <li>Validate secret key against BCrypt hash
    *   <li>Check IP whitelist if configured
-   *   <li>Update last used timestamp
+   *   <li>Check the parent integration (and tenant) is operational
    * </ol>
+   *
+   * <p>Read-only: it does not record {@code lastUsedAt}. The caller records usage with {@link
+   * #recordUsage(String)} after a successful validation, in a separate transaction, so a failure to
+   * record usage can never fail authentication (#1433).
    *
    * <p><b>Performance:</b> Uses BCrypt comparison which is intentionally slow (~100ms) to prevent
    * brute force attacks
@@ -251,7 +255,7 @@ public class ApiKeyService {
    * @param clientIp the client IP address for whitelist validation
    * @return Optional containing the Integration if validation successful, empty otherwise
    */
-  @Transactional
+  @Transactional(readOnly = true)
   public Optional<Integration> validateApiKey(
       String integrationKey, String secretKey, String clientIp) {
 
@@ -304,10 +308,6 @@ public class ApiKeyService {
       return Optional.empty();
     }
 
-    // Update last used timestamp
-    apiKey.setLastUsedAt(OffsetDateTime.now());
-    apiKeyRepository.save(apiKey);
-
     // Check if the parent integration (and its tenant) are operational
     Integration integration = apiKey.getIntegration();
     if (!eligibilityService.isIntegrationOperational(integration)) {
@@ -325,6 +325,26 @@ public class ApiKeyService {
         apiKey.getIntegration().getId());
 
     return Optional.of(apiKey.getIntegration());
+  }
+
+  /**
+   * Records the last use of an active API key (best-effort usage hint).
+   *
+   * <p>Issues a conditional UPDATE that does not touch the optimistic-lock version, so concurrent
+   * requests sharing one key never conflict (#1433). Call it after {@link #validateApiKey}
+   * succeeded, outside that method's transaction; callers must not let a failure here fail the
+   * request (fail-open: the usage hint is not a security control).
+   *
+   * @param integrationKey the public integration key of the validated API key
+   */
+  @Transactional
+  public void recordUsage(String integrationKey) {
+    int updated = apiKeyRepository.touchLastUsedIfActive(integrationKey, OffsetDateTime.now());
+    if (updated == 0) {
+      logger.debug(
+          "Skipped API key last-used update (key no longer active): {}",
+          maskIntegrationKeyForLog(integrationKey));
+    }
   }
 
   /**

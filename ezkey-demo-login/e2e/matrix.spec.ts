@@ -114,9 +114,8 @@ test.describe('outcomes on the device', () => {
   test('06 the user cancels: the request is withdrawn from the device', async ({ page }) => {
     await startLogin(page, 'alice');
     await expect(page.getByTestId('login-waiting')).toBeVisible();
-    // A person takes a moment before cancelling. Cancelling within milliseconds of the start can
-    // collide with the back end's first wait call on the same API key and get a 401: #1433.
-    await page.waitForTimeout(1500);
+    // Cancel at once, while the back end's first wait call is in flight on the same API key: before
+    // #1433 this collided on the key's optimistic lock and the cancel got a 401.
     await page.getByTestId('login-cancel').click();
     await expect(page.getByTestId('login-cancelled')).toBeVisible();
     await shot(page, '06a-cancelled');

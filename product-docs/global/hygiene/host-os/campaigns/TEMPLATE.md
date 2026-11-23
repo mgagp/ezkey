@@ -16,7 +16,8 @@
 |-------|-------|
 | `/etc/system-release` | |
 | Locked `releasever` (before) | |
-| `dnf check-release-update` | none / `2023.x.YYYYMMDD` |
+| `dnf check-release-update` | none / `2023.x.YYYYMMDD` (releases behind: ) |
+| `RELEASE_UPDATE` line | `RELEASE_UPDATE=yes / no / unknown` with `CRITICAL=` and `IMPORTANT=` |
 | Critical / Important (count + packages of interest) | |
 | Kernel (`uname -r`) before | |
 | `needs-restarting -r` before | exit 1 = reboot required / exit 0 = no reboot |
@@ -37,7 +38,7 @@ Command: `./scripts/lightsail/os-patch-check.sh --target community`
 ## Apply
 
 - Commands run (no secrets):
-- Target `releasever` after (H2) or “unchanged” (H1):
+- Target `releasever` after (dated release from the check; H1 and H2):
 - Reboot performed: yes / no
 - Reboot Marc go timestamp (if yes):
 

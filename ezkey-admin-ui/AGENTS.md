@@ -390,6 +390,29 @@ the main Java `docker/docker-compose.yml` / daily `clean-start` (would slow ever
 - Do **not** default to running browser tests for every minor UI text or layout tweak.
 - Keep instrumentation **secondary**. The default path should continue to exercise the real Docker stack and real Demo Device behavior.
 
+### Walk Gate walks (mocked Admin API, no stack)
+
+Julie's Walk Gate (interface operability, EN and FR) is a scripted Playwright walk that runs
+against the Vite dev server with the Admin API mocked. No Docker stack, no Demo Device.
+
+- Run from `ezkey-admin-ui/`: `npm run test:walk` (Playwright project `walk-mocked`; starts or
+  reuses the dev server on 4173). One walk: `npm run test:walk -- --grep 940`.
+- First run after clone: `npm ci`, `npm run generate:api`, `npm run test:browser:install`.
+- Specs: `e2e/walks/*.walk.spec.ts`, one per Walk Gate record under
+  `product-docs/global/backlog/walk-gates/`. Each checklist row is a `test.step('#n …')` with soft
+  asserts, so one run reports every row; full-page captures land in the test output folder (or
+  `EZKEY_PLAYWRIGHT_ARTIFACTS_DIR`).
+- Support: `e2e/support/mock-admin-api.ts` injects a Global Admin session (`sessionStorage`
+  `ezkey_admin_auth`) and the language (`localStorage` `ezkey-admin-ui-lang`), and answers
+  `/api/v1/**` from handlers the spec declares (paged bodies via `paged()`). Requests no handler
+  answers get an empty page and are attached to the report as `unmocked-requests`.
+- Pitfall: labels are uppercased by CSS. Compare `textContent`, not `innerText`.
+- `npm run test:browser` runs only the device-backed project (`chromium`); walks never need the
+  stack.
+- **Not a CI gate** (decision, PR for this harness): walks assert exact operator copy for one
+  slice, so any later copy change would fail an unrelated PR. They are a reproducible record you
+  re-run when the slice is touched again. Revisit if a walk proves stable over several copy edits.
+
 ## React Doctor curated pass
 
 - Keyword for humans and agents: **`doctor-curated`**.

@@ -522,8 +522,8 @@ public class AuthAttemptRespondService {
     }
     authAttempt.setAuthAttemptStatus(newStatus);
     if (newStatus == AuthAttemptStatus.ACCEPTED) {
-      enrollment.setLastUsedAt(OffsetDateTime.now());
-      enrollmentRepository.save(enrollment);
+      // Bulk update: saving the entity would bump @Version on every approval (#940, #1433).
+      enrollmentRepository.touchLastUsedAt(enrollment.getEnrollmentId(), OffsetDateTime.now());
     } else if (newStatus == AuthAttemptStatus.REJECTED) {
       enrollmentAlert.raiseAfterCommit(authAttempt.getEnrollmentId());
     }

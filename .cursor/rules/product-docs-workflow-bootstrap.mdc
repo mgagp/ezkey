@@ -11,4 +11,4 @@ Quick orientation only:
 
 - Prefer **Plan mode** for research, challenge, and comparing alternatives; the methodology is support, not a competing workflow.
 - Closeout: classify **hygiene vs program** before inventing `I-*` / `TB-*` — see the methodology README § *Three rules worth keeping*.
-- GitHub issues: [`.cursor/rules/github-issue-labels.mdc`](github-issue-labels.mdc) — labels at create time.
+- GitHub issues: [`.claude/skills/github-issue/SKILL.md`](../../.claude/skills/github-issue/SKILL.md) — labels at create time.

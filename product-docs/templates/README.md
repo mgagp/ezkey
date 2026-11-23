@@ -9,7 +9,7 @@ ablation note for what used to be here.
 - [tracer-bullet-brief.template.md](tracer-bullet-brief.template.md) — `TB-*` bounded execution slice.
 - [architecture-decision.template.md](architecture-decision.template.md) — `ADR-*` design decision, global or component-scoped.
 - [critical-review.prompt.md](critical-review.prompt.md) — Adversarial / critical-review cloud-agent
-  prompt (Stage 2); skill `.cursor/skills/critical-review/SKILL.md`; canon
+  prompt (Stage 2); skill `.claude/skills/critical-review/SKILL.md`; canon
   `../global/hygiene/critical-review/`.
 - [cold-agent-plan-review.prompt.md](cold-agent-plan-review.prompt.md) — Autonomous-execution
   hardening angle (included by reference from critical-review).

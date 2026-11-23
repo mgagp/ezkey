@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
+import java.util.Map;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.integration.domain.entity.ApiKey;
 import org.junit.jupiter.api.AfterEach;
@@ -20,6 +21,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.beans.factory.support.StaticListableBeanFactory;
 
 /**
  * Unit tests for {@link EncryptionEntityListener}.
@@ -39,8 +41,10 @@ class EncryptionEntityListenerTest {
 
   @BeforeEach
   void setUp() {
-    listener = new EncryptionEntityListener();
-    listener.setEncryptionService(encryptionOperations);
+    listener =
+        new EncryptionEntityListener(
+            new StaticListableBeanFactory(Map.of("encryptionService", encryptionOperations))
+                .getBeanProvider(EncryptionOperations.class));
     when(encryptionOperations.isEncryptionAvailable()).thenReturn(true);
     when(encryptionOperations.isEncrypted(anyString()))
         .thenAnswer(invocation -> {
@@ -51,10 +55,7 @@ class EncryptionEntityListenerTest {
   }
 
   @AfterEach
-  void tearDown() throws Exception {
-    Field field = EncryptionEntityListener.class.getDeclaredField("encryptionOperations");
-    field.setAccessible(true);
-    field.set(null, null);
+  void tearDown() {
     EncryptionOperationsHolder.clear();
   }
 

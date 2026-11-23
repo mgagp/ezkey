@@ -138,6 +138,23 @@ public interface EnrollmentRepository
       @Param("enrollmentId") Integer enrollmentId, @Param("status") EnrollmentStatus status);
 
   /**
+   * Records the last successful authentication of an enrollment without touching its
+   * optimistic-lock version.
+   *
+   * <p>Saving the loaded {@link Enrollment} bumped {@code @Version} on every accepted
+   * authentication, so an Admin UI form opened before the approval failed its next save with an
+   * optimistic-lock error (#940, #1433). {@code lastUsedAt} is a usage hint, not guarded state.
+   *
+   * @param enrollmentId enrollment primary key
+   * @param lastUsedAt last-used timestamp to persist
+   * @return number of rows updated (1 when the enrollment exists)
+   */
+  @Modifying
+  @Query("UPDATE Enrollment e SET e.lastUsedAt = :lastUsedAt WHERE e.enrollmentId = :enrollmentId")
+  int touchLastUsedAt(
+      @Param("enrollmentId") Integer enrollmentId, @Param("lastUsedAt") OffsetDateTime lastUsedAt);
+
+  /**
    * Checks if a device public key hash is already used by a verified enrollment.
    *
    * <p>This method provides security validation to prevent replay attacks and ensure that each

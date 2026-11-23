@@ -635,8 +635,19 @@ assert_stdout_contains "os-patch-check community host" "ezkey-online"
 assert_stdout_contains "os-patch-check read-only label" "[read-only]"
 assert_stdout_contains "os-patch-check mentions check-release-update" "dnf check-release-update"
 assert_stdout_contains "os-patch-check mentions updateinfo" "dnf updateinfo list"
+assert_stdout_contains "os-patch-check mentions updateinfo summary" "updateinfo summary"
+assert_stdout_contains "os-patch-check pins releasever on latest" '--releasever="${query_rel}"'
+assert_stdout_contains "os-patch-check release comparison section" "release comparison (installed vs latest)"
+assert_stdout_contains "os-patch-check summary line" "RELEASE_UPDATE="
 assert_stdout_contains "os-patch-check severity loop" "for sev in Critical Important"
 assert_stdout_contains "os-patch-check one severity per dnf call" '--sec-severity="${sev}"'
+if grep -E -e '--releasever=latest' -e '--releasever latest' "${OUT}"; then
+  echo "FAIL: os-patch-check must not query releasever latest" >&2
+  fail=$((fail + 1))
+else
+  echo "PASS: os-patch-check does not query releasever latest"
+  pass=$((pass + 1))
+fi
 assert_stdout_contains "os-patch-check mentions needs-restarting" "needs-restarting -r"
 assert_stdout_contains "os-patch-check reboot-required message" "reboot is required"
 assert_stdout_contains "os-patch-check no-reboot message" "no reboot required"
@@ -662,6 +673,14 @@ if [[ ! -s "${FAKE_SSH_LOG}" ]]; then
 else
   echo "FAIL: os-patch-check dry-run should not invoke ssh" >&2
   cat "${FAKE_SSH_LOG}" >&2 || true
+  fail=$((fail + 1))
+fi
+
+if bash "${ROOT}/scripts/lightsail/os-patch-check-parse.test.sh"; then
+  echo "PASS: os-patch-check parser fixtures"
+  pass=$((pass + 1))
+else
+  echo "FAIL: os-patch-check parser fixtures" >&2
   fail=$((fail + 1))
 fi
 

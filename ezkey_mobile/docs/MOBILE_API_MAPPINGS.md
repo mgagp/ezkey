@@ -184,6 +184,14 @@ Association pipeline:
 5. Refresh stale installations opportunistically by installation ID so all enrollments sharing the same
 	installation receive the same updated metadata.
 
+Refresh cadence (#1436): Home attempts the refresh at most once per mount, once per change of the
+enrollment set, and once per app resume when at least 5 minutes have passed since the last attempt.
+A failure is never retried immediately, whatever the cause (4xx, 429, 5xx / 530, transport error or
+bad signature): the HTTP status does not reach the caller (`fetchVerifiedInstanceInfo` returns
+`null`), so one cooldown covers every case instead of per-status rules. Transport failure is
+fail-open (host fallback or last good branding stays on screen); a bad signature is fail-closed (the
+response is discarded and the last good branding is kept).
+
 ### Verify Trigger and Ownership
 
 | Trigger point | Screen/hook/service | Preconditions | Notes |

@@ -18,9 +18,22 @@ import static org.ezkey.tests.util.RestAssuredTestConfig.configureForIntegration
 
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.ezkey.tests.security.AbstractSecurityTest;
 import org.ezkey.tests.tags.TestTags;
 import org.ezkey.tests.util.CryptoApiClient.EcP256KeyPair;
@@ -202,6 +215,89 @@ public class ApiKeySecurityTest extends AbstractSecurityTest {
       org.junit.jupiter.api.Assumptions.assumeTrue(
           false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
     }
+  }
+
+  /**
+   * Concurrent requests that share one valid API key must never fail with 401 (#1433).
+   *
+   * <p>Before #1433, each successful validation saved the versioned {@code ApiKey} to record {@code
+   * lastUsedAt}; two validations of the same key at the same moment raced on the optimistic lock
+   * and the loser surfaced as 401. This replays the Demo Login trigger (cancel while other calls
+   * are in flight) with many parallel cancels on one pending attempt, over several rounds. Any
+   * outcome except 401 (and 5xx) is acceptable: the first cancel wins (200), the others see a
+   * finalized attempt (409).
+   */
+  @Test
+  @DisplayName("Parallel requests with one API key never yield 401 (#1433)")
+  public void testParallelRequestsWithOneApiKeyNeverYield401() throws Exception {
+    final int rounds = 5;
+    final int parallel = 16;
+    try {
+      String adminToken = authTokenManager.getAdminToken();
+      configureForAdminApi(dockerStackConfig);
+
+      Integer integrationId = testDataFactory.createIntegration();
+      Integer enrollmentId = createVerifiedEnrollment(integrationId, adminToken);
+      String apiKey = createApiKeyForIntegration(integrationId, adminToken);
+      String authHeader = createApiKeyAuthHeader(apiKey.split(":")[0], apiKey.split(":")[1]);
+      String baseUrl = dockerStackConfig.getIntegrationApiUrl() + "/api/v1/auth-attempts";
+
+      HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
+      ExecutorService pool = Executors.newFixedThreadPool(parallel);
+      Map<Integer, Integer> statusCounts = new TreeMap<>();
+      try {
+        for (int round = 0; round < rounds; round++) {
+          Integer authAttemptId = createAuthAttempt(client, baseUrl, authHeader, enrollmentId);
+          HttpRequest cancel =
+              HttpRequest.newBuilder(URI.create(baseUrl + "/" + authAttemptId + "/cancel"))
+                  .timeout(Duration.ofSeconds(30))
+                  .header("Authorization", authHeader)
+                  .POST(HttpRequest.BodyPublishers.noBody())
+                  .build();
+          CountDownLatch start = new CountDownLatch(1);
+          List<Future<Integer>> results = new ArrayList<>();
+          for (int i = 0; i < parallel; i++) {
+            results.add(
+                pool.submit(() -> {
+                  start.await();
+                  return client.send(cancel, HttpResponse.BodyHandlers.discarding()).statusCode();
+                }));
+          }
+          start.countDown();
+          for (Future<Integer> result : results) {
+            statusCounts.merge(result.get(60, TimeUnit.SECONDS), 1, Integer::sum);
+          }
+        }
+      } finally {
+        pool.shutdownNow();
+      }
+
+      log.info("#1433 parallel cancel status distribution: {}", statusCounts);
+      assertThat(statusCounts)
+          .as("a valid API key must never be rejected under concurrency")
+          .doesNotContainKey(401);
+      assertThat(statusCounts.keySet()).allMatch(status -> status < 500);
+      assertThat(statusCounts).containsKey(200);
+    } catch (IllegalStateException e) {
+      org.junit.jupiter.api.Assumptions.assumeTrue(
+          false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
+    }
+  }
+
+  private Integer createAuthAttempt(
+      HttpClient client, String baseUrl, String authHeader, Integer enrollmentId) throws Exception {
+    HttpRequest create =
+        HttpRequest.newBuilder(URI.create(baseUrl))
+            .timeout(Duration.ofSeconds(30))
+            .header("Authorization", authHeader)
+            .header("Content-Type", "application/json")
+            .POST(
+                HttpRequest.BodyPublishers.ofString(
+                    "{\"enrollmentId\":" + enrollmentId + ",\"challengeRequested\":false}"))
+            .build();
+    HttpResponse<String> response = client.send(create, HttpResponse.BodyHandlers.ofString());
+    assertThat(response.statusCode()).as("create auth attempt").isEqualTo(201);
+    return io.restassured.path.json.JsonPath.from(response.body()).getInt("authAttemptId");
   }
 
   /**

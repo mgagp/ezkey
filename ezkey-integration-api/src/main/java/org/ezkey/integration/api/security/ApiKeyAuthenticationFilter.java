@@ -130,6 +130,7 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
             if (integrationOpt.isPresent()) {
               Integration integration = integrationOpt.get();
               setupApiKeyAuthentication(integration, request);
+              recordApiKeyUsage(username);
 
               logger.info(
                   "✅ API key authentication successful - Integration ID: {}, IP: {}",
@@ -151,6 +152,24 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
     }
 
     filterChain.doFilter(request, response);
+  }
+
+  /**
+   * Records the API key's last use after a successful authentication. Fail-open (#1433): {@code
+   * lastUsedAt} is a usage hint, not a security control, so a failure here is logged and the
+   * request continues authenticated.
+   *
+   * @param integrationKey public integration key of the authenticated API key
+   */
+  private void recordApiKeyUsage(String integrationKey) {
+    try {
+      apiKeyService.recordUsage(integrationKey);
+    } catch (RuntimeException e) { // CHECKSTYLE IGNORE IllegalCatch
+      logger.warn(
+          "API key last-used update failed (authentication unaffected) - Integration Key: {}: {}",
+          ApiKeyService.maskIntegrationKeyForLog(integrationKey),
+          LogSanitizer.sanitizeForLog(e.getMessage()));
+    }
   }
 
   /**

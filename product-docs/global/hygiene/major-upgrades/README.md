@@ -60,9 +60,21 @@ path via a normal PR that updates the registry (same as Dependabot light path).
 
 ## Target rule
 
-The **target** for a line is the **latest LTS** that has been in LTS status for **at least
-3 months**. For products without an LTS label, use the latest stable line released at least
-3 months ago.
+**Lab posture (current, Marc 2026-11-23, #1458).** While Ezkey has no official release and no
+adopter, the **target** for a line is the **latest LTS** (or, without an LTS label, the latest
+stable line) **as soon as it is out**. We upgrade early and fix forward what breaks: a lab
+protects no one by waiting, and a growing gap only makes the eventual upgrade more expensive.
+Spring Boot 4.2 (#1458) is the first case: its bean-cycle break was fixed on 4.1 in #1462 the
+same day instead of after a three-month wait.
+
+What stays in force under lab posture: Marc decides every line change (never autonomous), the
+PR carries the test plan (family floor from the lane README), `security: true` entries get the
+security owner's written opinion, and CI must be green.
+
+**Production posture (returns automatically at the first official release or the first
+adopter).** The target becomes the **latest LTS** that has been in LTS status for **at least
+3 months**; for products without an LTS label, the latest stable line released at least
+3 months ago. Switching back is a one-line edit of this section plus a registry pass.
 
 Declared minimum versions (for example Python `python_requires >= …`) are a **product** decision
 and sit outside this automatic target rule — they still appear in the registry so they are not
@@ -248,4 +260,4 @@ appear in that Monday's Dependabot campaign note when the walk is folded into th
 - Hygiene index: [`../README.md`](../README.md)
 - Sibling triage lane: [`../dependabot/`](../dependabot/) (`dependabot-curated`)
 - Agent rule: root [`AGENTS.md`](../../../../AGENTS.md) § Dependabot curated → *Major upgrades*
-- Skill note: [`.cursor/skills/dependabot-curated/SKILL.md`](../../../../.cursor/skills/dependabot-curated/SKILL.md)
+- Skill note: [`.claude/skills/dependabot-curated/SKILL.md`](../../../../.claude/skills/dependabot-curated/SKILL.md)

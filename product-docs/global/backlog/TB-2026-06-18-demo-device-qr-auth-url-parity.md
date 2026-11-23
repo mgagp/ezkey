@@ -162,8 +162,8 @@ but server ignores it. Fix = mobile parity.
 
 ## Closeout (2026-06-18)
 
-Per [`closeout`](../../../../.cursor/skills/closeout/SKILL.md) after
-[`traceability-sync`](../../../../.cursor/skills/traceability-sync/SKILL.md):
+Per [`closeout`](../../../../.claude/skills/closeout/SKILL.md) after
+[`traceability-sync`](../../../../.claude/skills/traceability-sync/SKILL.md):
 
 ### Completed evidence
 

@@ -26,6 +26,16 @@ Nobody (human or bot) declares a human-UI chantier **complete** without:
 | **Isabelle** | Refuse a green walk if the gate is missing; PASS only with per-row proof. |
 | **K** | When Marc routes via K: fill or demand the gate, then dispatch. Not a mandatory bottleneck. |
 
+## Reproducible walks (Admin UI)
+
+An Admin UI walk lives in the repo as a Playwright spec against a mocked Admin API:
+`ezkey-admin-ui/e2e/walks/*.walk.spec.ts`, run with `npm run test:walk` (no Docker stack). One spec
+per Walk Gate record, one `test.step` per checklist row, EN and FR. A walk script kept only on a
+bot's side or in a scratchpad cannot be re-run, so it does not count as proof. How to write and run
+one: `ezkey-admin-ui/AGENTS.md` § *Walk Gate walks (mocked Admin API, no stack)*. A mocked walk
+covers operability and copy; flows that depend on the backend or the Demo Device still need the
+device-backed suite.
+
 ## Lesson from #570 (base runtime + Integrity honesty)
 
 Symptoms: runtime smoke, then honesty FAIL baseline, then unified PASS — three bars on one thread; artificial #566→#569→walk sequencing; late product/API locks.
@@ -52,3 +62,5 @@ Standing rules:
   - [`backlog/walk-gates/WALK-2026-10-09-integrity-cut3.md`](backlog/walk-gates/WALK-2026-10-09-integrity-cut3.md) — last verdict / micro-dashboard / verify cap (`TBD` SHA until impl PR)
 - Filled Walk Gate (administrator onboarding, #1313):
   - [`backlog/walk-gates/WALK-2026-11-17-admin-onboarding-1313.md`](backlog/walk-gates/WALK-2026-11-17-admin-onboarding-1313.md) — record landing, bind card, Global and Tenant Admin views, EN/FR (PR #1398)
+- Filled Walk Gate (enrollment Name / User ID, #940):
+  - [`backlog/walk-gates/WALK-2026-11-23-enrollment-user-id-940.md`](backlog/walk-gates/WALK-2026-11-23-enrollment-user-id-940.md) — User ID under Name, help, empty-User-ID warning on application integrations only, EN/FR (PR #1455)

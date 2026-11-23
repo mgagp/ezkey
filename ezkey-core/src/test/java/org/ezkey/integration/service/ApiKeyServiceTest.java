@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -326,7 +327,6 @@ class ApiKeyServiceTest {
       // Arrange
       when(apiKeyRepository.findByIntegrationKeyAndActiveTrue("ezkey_ikey_test123"))
           .thenReturn(Optional.of(testApiKey));
-      when(apiKeyRepository.save(any(ApiKey.class))).thenReturn(testApiKey);
 
       // Act
       Optional<Integration> result =
@@ -335,7 +335,7 @@ class ApiKeyServiceTest {
       // Assert
       assertTrue(result.isPresent());
       assertEquals(123, result.get().getId());
-      verify(apiKeyRepository).save(any(ApiKey.class)); // Updates lastUsedAt
+      verify(apiKeyRepository, never()).save(any(ApiKey.class)); // Read-only (#1433)
     }
 
     @Test
@@ -416,7 +416,6 @@ class ApiKeyServiceTest {
       testApiKey.setExpiresAt(OffsetDateTime.now().plusDays(30)); // Expires in 30 days
       when(apiKeyRepository.findByIntegrationKeyAndActiveTrue("ezkey_ikey_test123"))
           .thenReturn(Optional.of(testApiKey));
-      when(apiKeyRepository.save(any(ApiKey.class))).thenReturn(testApiKey);
 
       // Act
       Optional<Integration> result =
@@ -451,7 +450,6 @@ class ApiKeyServiceTest {
       testApiKey.setIpWhitelist(new String[] {"192.168.1.0/24"});
       when(apiKeyRepository.findByIntegrationKeyAndActiveTrue("ezkey_ikey_test123"))
           .thenReturn(Optional.of(testApiKey));
-      when(apiKeyRepository.save(any(ApiKey.class))).thenReturn(testApiKey);
 
       // Act
       Optional<Integration> result =
@@ -469,7 +467,6 @@ class ApiKeyServiceTest {
       testApiKey.setIpWhitelist(new String[] {"192.168.1.100"}); // Exact IP
       when(apiKeyRepository.findByIntegrationKeyAndActiveTrue("ezkey_ikey_test123"))
           .thenReturn(Optional.of(testApiKey));
-      when(apiKeyRepository.save(any(ApiKey.class))).thenReturn(testApiKey);
 
       // Act
       Optional<Integration> result =
@@ -480,21 +477,34 @@ class ApiKeyServiceTest {
     }
 
     @Test
-    @DisplayName("Should update lastUsedAt on successful validation")
-    void validateApiKey_WhenSuccessful_ShouldUpdateLastUsed() {
+    @DisplayName("Successful validation is read-only: no save, no lastUsedAt write (#1433)")
+    void validateApiKey_WhenSuccessful_ShouldNotWrite() {
       // Arrange
       when(apiKeyRepository.findByIntegrationKeyAndActiveTrue("ezkey_ikey_test123"))
           .thenReturn(Optional.of(testApiKey));
 
-      ArgumentCaptor<ApiKey> apiKeyCaptor = ArgumentCaptor.forClass(ApiKey.class);
-      when(apiKeyRepository.save(apiKeyCaptor.capture())).thenReturn(testApiKey);
-
       // Act
-      apiKeyService.validateApiKey("ezkey_ikey_test123", "testSecret", "192.168.1.100");
+      Optional<Integration> result =
+          apiKeyService.validateApiKey("ezkey_ikey_test123", "testSecret", "192.168.1.100");
 
       // Assert
-      ApiKey savedKey = apiKeyCaptor.getValue();
-      assertNotNull(savedKey.getLastUsedAt());
+      assertTrue(result.isPresent());
+      verify(apiKeyRepository, never()).save(any(ApiKey.class));
+      verify(apiKeyRepository, never()).touchLastUsedIfActive(any(), any());
+    }
+
+    @Test
+    @DisplayName("recordUsage issues a version-free conditional update (#1433)")
+    void recordUsage_ShouldTouchLastUsedWithoutSave() {
+      // Arrange
+      when(apiKeyRepository.touchLastUsedIfActive(eq("ezkey_ikey_test123"), any())).thenReturn(1);
+
+      // Act
+      apiKeyService.recordUsage("ezkey_ikey_test123");
+
+      // Assert
+      verify(apiKeyRepository).touchLastUsedIfActive(eq("ezkey_ikey_test123"), any());
+      verify(apiKeyRepository, never()).save(any(ApiKey.class));
     }
   }
 
@@ -806,7 +816,6 @@ class ApiKeyServiceTest {
       testApiKey.setIpWhitelist(new String[] {"192.168.1.0/24"});
       when(apiKeyRepository.findByIntegrationKeyAndActiveTrue("ezkey_ikey_test123"))
           .thenReturn(Optional.of(testApiKey));
-      when(apiKeyRepository.save(any(ApiKey.class))).thenReturn(testApiKey);
 
       // Act & Assert - IPs in range should be accepted
       Optional<Integration> result1 =
@@ -843,7 +852,6 @@ class ApiKeyServiceTest {
       testApiKey.setIpWhitelist(new String[] {"192.168.1.100", "10.0.0.50", "172.16.0.0/16"});
       when(apiKeyRepository.findByIntegrationKeyAndActiveTrue("ezkey_ikey_test123"))
           .thenReturn(Optional.of(testApiKey));
-      when(apiKeyRepository.save(any(ApiKey.class))).thenReturn(testApiKey);
 
       // Act & Assert
       Optional<Integration> result1 =
@@ -865,7 +873,6 @@ class ApiKeyServiceTest {
       testApiKey.setIpWhitelist(null); // No whitelist
       when(apiKeyRepository.findByIntegrationKeyAndActiveTrue("ezkey_ikey_test123"))
           .thenReturn(Optional.of(testApiKey));
-      when(apiKeyRepository.save(any(ApiKey.class))).thenReturn(testApiKey);
 
       // Act
       Optional<Integration> result =

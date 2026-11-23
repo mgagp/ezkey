@@ -26,7 +26,8 @@ export AWS_PROFILE=ezkey-lightsail
 ./scripts/lightsail/target-aware.test.sh
 ```
 
-Read-only Host OS signal (`os-patch-check.sh`, #909): see
+Read-only Host OS signal (`os-patch-check.sh`, #909): installed vs latest AL2023 release and
+cumulative Critical/Important advisories on that latest dated release (`RELEASE_UPDATE=…`). See
 [`product-docs/global/hygiene/host-os/README.md`](../../product-docs/global/hygiene/host-os/README.md).
 Rootbeer-local only; never updates packages.
 

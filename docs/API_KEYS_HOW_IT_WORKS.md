@@ -139,12 +139,12 @@ sequenceDiagram
     Service->>Service: BCrypt verify secret key
     Service->>Service: Validate IP whitelist
     
-    Service->>DB: Update last_used_at
-    DB-->>Service: Success
-    
-    Service-->>Filter: Return Integration
+    Service-->>Filter: Return Integration (read-only transaction)
     
     Filter->>Filter: Setup Security Context<br/>ROLE_ADMIN
+    
+    Filter->>Service: recordUsage(ikey) — own transaction, fail-open
+    Service->>DB: UPDATE last_used_at WHERE integration_key AND active (no version bump)
     
     Note over App,Controller: Business Logic Phase
     Filter->>Controller: Continue with authenticated context
@@ -152,6 +152,13 @@ sequenceDiagram
     Controller->>Controller: Process business logic
     Controller-->>App: Return response
 ```
+
+**`last_used_at` is a usage hint, not guarded state (#1433).** Validation is read-only. After a
+successful validation the filter records usage in its own transaction with a conditional bulk UPDATE
+that does not touch the optimistic-lock version, so concurrent requests sharing one key never
+conflict (previously they raced on `@Version` and the loser got 401). Recording is **fail-open**
+(design principle §17): a failure is logged at WARN and the request stays authenticated.
+`Enrollment.last_used_at` follows the same rule on each accepted authentication (#940).
 
 ### Failed Authentication Flow
 
@@ -288,7 +295,7 @@ graph TD
     N -->|No| O[❌ Return Empty<br/>IP blocked]
     N -->|Yes| M
     
-    M --> P[Update last_used_at]
+    M --> P[Filter records last_used_at<br/>own tx, fail-open]
     P --> Q[✅ Return Integration]
     
     style C fill:#ffebee

@@ -16,6 +16,10 @@ Do not default to MCP browser for every column tweak.
 | Java / list DTO enrichment | `./scripts/build.sh` | Targeted `ezkey-tests` assertion on new field |
 | Admin UI columns / labels only | `npm run build` in `ezkey-admin-ui` | Playwright `@smoke` (see below) |
 | Login / Demo Device interaction | Unit tests + Playwright | Full `./scripts/run-ui-tests.sh` |
+| Walk Gate (operability walk, EN/FR) | `npm run test:walk` in `ezkey-admin-ui` (mocked Admin API, no stack) | — |
+
+Walk Gate walks: specs in `ezkey-admin-ui/e2e/walks/`, harness and conventions in
+`ezkey-admin-ui/AGENTS.md` § *Walk Gate walks (mocked Admin API, no stack)*.
 
 For **operator list slices** (`I-2026-0013` / `I-2026-0014`): prefer **one REST assertion** on the
 enriched list field (stable, no browser) before optional UI smoke.

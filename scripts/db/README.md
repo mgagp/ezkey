@@ -11,6 +11,8 @@ Canonical matrix: [`docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md`](../../docs/DATABA
 | [`test-upgrade-crypto-role.sh`](test-upgrade-crypto-role.sh) | Ephemeral Docker proof: pre-PR volume (no crypto role) → grants succeed (#961 B1) |
 | [`verify-grants.sh`](verify-grants.sh) | Smoke-check allowed/denied privileges; `--docker` + `EZKEY_POSTGRES_CONTAINER`; role-login when `EZKEY_DB_*` passwords are set, else catalog fallback as admin/owner (no passwords on argv) |
 | [`verify-grants.test.sh`](verify-grants.test.sh) | Fake psql/docker lock for #1121: credentials off argv, catalog fallback when any role password is absent, crypto catalog fail-closed |
+| [`rotate-role-passwords.sh`](rotate-role-passwords.sh) | Rotate `ezkey_migrate` / `ezkey_admin` / `ezkey_auth` / `ezkey_integration` and write `EZKEY_DB_*_PASSWORD` into `.env` after COMMIT (#1017). Lightsail operator steps: [`docs/lightsail/community-host.md`](../../docs/lightsail/community-host.md) § D |
+| [`rotate-role-passwords.test.sh`](rotate-role-passwords.test.sh) | Throwaway Postgres rehearsal for the rotation script. Not part of CI |
 
 Docker first-boot role creation: [`docker/postgres/init/01-create-roles.sh`](../../docker/postgres/init/01-create-roles.sh).
 

@@ -5,7 +5,7 @@
 - **Date:** 2026-08-17
 - **Branch:** `hygiene/corpus-ablation-2026-08`
 - **Pass log:** [`2026-08-cursor-plans-pass.md`](2026-08-cursor-plans-pass.md)
-- **Skill:** `.cursor/skills/corpus-ablation/SKILL.md`
+- **Skill:** `.claude/skills/corpus-ablation/SKILL.md`
 - **Operator:** Marc (+ agent)
 
 This is a **hygiene campaign instance**, not an `I-*` / `TB-*`. The pass log stays the working

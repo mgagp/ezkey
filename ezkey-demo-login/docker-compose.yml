@@ -17,6 +17,8 @@ services:
     build:
       context: ..
       dockerfile: ezkey-demo-login/Dockerfile
+      args:
+        HTTPS_PROXY: ${EZKEY_BUILD_HTTPS_PROXY:-}
     image: ezkey-demo-login:local
     environment:
       EZKEY_INTEGRATION_API_URL: ${EZKEY_INTEGRATION_API_URL:-https://integration-api.ezkey.online}

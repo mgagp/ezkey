@@ -238,4 +238,46 @@ describe('HomeScreen', () => {
       tree!.root.findAll(node => node.props.testID === 'ezkey.e2e.home.unusableLocalData').length,
     ).toBeGreaterThan(0);
   });
+  it('does not re-trigger a failed installation refresh while enrollment data is unchanged (#1436)', async () => {
+    const mutate = jest.fn();
+    const enrollmentsResult = (enrollments: unknown[]) =>
+      ({
+        data: {enrollments, broken: [], collectionError: false},
+        isLoading: false,
+        refetch: jest.fn(),
+      }) as never;
+    const render = async (isPending: boolean, enrollments: unknown[]) => {
+      mockUseRefreshInstallationMetadata.mockReturnValue({isPending, mutate} as never);
+      mockUseEnrollments.mockReturnValue(enrollmentsResult(enrollments));
+      await renderer.act(async () => {
+        tree.update(<HomeScreen />);
+      });
+    };
+
+    let tree!: renderer.ReactTestRenderer;
+    mockUseRefreshInstallationMetadata.mockReturnValue({isPending: false, mutate} as never);
+    mockUseEnrollments.mockReturnValue(enrollmentsResult([healthyEnrollment]));
+    await renderer.act(async () => {
+      tree = renderer.create(<HomeScreen />);
+    });
+    expect(mutate).toHaveBeenCalledTimes(1);
+
+    // The refresh fails (no verified instance-info): isPending flips true then false, and a refetch
+    // hands back a new array with unchanged content. None of this may start a new attempt.
+    await render(true, [healthyEnrollment]);
+    await render(false, [healthyEnrollment]);
+    await render(true, [{...healthyEnrollment}]);
+    await render(false, [{...healthyEnrollment}]);
+    expect(mutate).toHaveBeenCalledTimes(1);
+
+    // A change of the enrollment set allows exactly one new attempt.
+    const grown = [
+      healthyEnrollment,
+      {...healthyEnrollment, id: 'iaaaaaaaaaaaaaaaa_e9', enrollmentId: '9'},
+    ];
+    await render(false, grown);
+    await render(true, grown);
+    await render(false, grown);
+    expect(mutate).toHaveBeenCalledTimes(2);
+  });
 });

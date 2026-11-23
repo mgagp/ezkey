@@ -17,7 +17,7 @@ issues per routine item.
 
 Doctor / Dependabot / pentest lanes start from **tool shortlists**. **assessment-curated** starts
 from an operator **mandate** + white-box assessment register, then the same one-finding-at-a-time
-HITL shape. See root [`AGENTS.md`](../../AGENTS.md) for keywords.
+HITL shape. See root [`AGENTS.md`](../../../AGENTS.md) for keywords.
 
 ## Lanes
 
@@ -48,7 +48,8 @@ HITL shape. See root [`AGENTS.md`](../../AGENTS.md) for keywords.
 | [`javamelody/`](javamelody/) | `javamelody-curated` | Live JavaMelody extract after a known workload (typically operational churn) |
 | [`quality-gate/`](quality-gate/) | `quality-gate` | On-demand full-suite + stack-health gate (cloud agent; between merge batches) |
 | [`document-hygiene/`](document-hygiene/) | `document-hygiene-curated` | Legacy document canonicality, discoverability, and archive-vs-delete decisions |
-| [`corpus-ablation/`](corpus-ablation/) | `corpus-ablation` | Cursor plans / prompt scaffolds → canon + discoverability; skill `.cursor/skills/corpus-ablation` (**not scheduled** — pending challenger repositioning, Mathieu 2026-10-19) |
+| [`corpus-ablation/`](corpus-ablation/) | `corpus-ablation` | Cursor plans / prompt scaffolds → canon + discoverability; skill `.claude/skills/corpus-ablation` (**not scheduled** — pending challenger repositioning, Mathieu 2026-10-19) |
+| [`agent-surface/`](agent-surface/) | (on demand) | Review of what a cold agent loads (root `CLAUDE.md` / `AGENTS.md`, Cursor rules, skills): mission → rules → done → evidence, soft 200-line root guardrail |
 | [`critical-review/`](critical-review/) | `critical-review` | Launched adversarial / critical review (fresh cloud agent, forced ≠ author model family, read-only HITL); tools Stage 2 |
 | [`host-os/`](host-os/) | `host-os` (H1/H2/H3) | Community Lightsail host OS hygiene (`ezkey-online`, AL2023); signal `scripts/lightsail/os-patch-check.sh`; **rootbeer-local only** (#909) |
 
@@ -91,11 +92,14 @@ Repo-is-memory decisions (one line + reason):
   distinct GHSA. An empty Dependabot PR queue is not proof the lockfile is free of advisories.
   `package-lock.json` and `yarn.lock` for the same GHSA count once. A row already waiting on
   upstream, with its fallback date still ahead, stays waiting (Marc 2026-11-13).
-- **Host OS H1 monthly Monday (or ≤7 days for Critical/Important kernel/openssh/openssl/glibc)** —
-  community Lightsail stays on a locked AL2023 `releasever`; autonomous rootbeer agent after
-  snapshot; Marc go only if reboot needed (#909).
-- **Host OS H2 quarterly with major-upgrades walk** — AL2023 minor via
-  `dnf upgrade --releasever=…` + reboot; Marc go; snapshot + pg_dump on rootbeer (#909).
+- **Host OS weekly read-only check (Fred)** — `os-patch-check.sh --target community` reports
+  only when a newer dated AL2023 release has Important or Critical advisories (or the probe
+  is `unknown`). Plain `dnf update` on the locked releasever is a no-op and hides those
+  advisories (blind spot found 2026-11-22; Marc chose option 2). No dnf-automatic (#909).
+- **Host OS H1** — `dnf upgrade --releasever=<dated release>` when that check reports;
+  Edgar, snapshot, reboot or docker restart, **Marc go**. Not an autonomous monthly patch (#909).
+- **Host OS H2 quarterly with major-upgrades walk** — same dated `dnf upgrade --releasever=…`
+  (never `latest`) + reboot; Edgar; Marc go; snapshot + pg_dump on rootbeer (#909).
 - **Host OS H3 ad hoc (plan by 2028)** — major / new instance blue-green before AL2023 EOL
   2029-06-30; Marc go, Edgar executes, Christophe posture (#909).
 - **dnf-automatic not adopted on community host** — conflicts with deterministic `releasever`
@@ -106,7 +110,7 @@ Repo-is-memory decisions (one line + reason):
 
 | Procedure | Owner lane | Trigger | Cadence | Signal | Prioritization rule | Human gate |
 |-----------|------------|---------|---------|--------|---------------------|------------|
-| **Dependabot curated** (skill [`.cursor/skills/dependabot-curated`](../../../.cursor/skills/dependabot-curated/SKILL.md); docs [`dependabot/`](dependabot/)) | `dependabot-curated` | Cloud agent / operator keyword | **Weekdays 09:14 ET** light; **Monday** full | Open Dependabot PRs + Java BOM + Mobile RN + Admin UI advisory pulses | **T1–T4**; Orval **O0–O3** (Admin UI ≠ mobile) | Weekday light: autonomous T1–T3 + O0/O1; Monday full HITL default; Marc on T4 / O3 / crypto majors |
+| **Dependabot curated** (skill [`.claude/skills/dependabot-curated`](../../../.claude/skills/dependabot-curated/SKILL.md); docs [`dependabot/`](dependabot/)) | `dependabot-curated` | Cloud agent / operator keyword | **Weekdays 09:14 ET** light; **Monday** full | Open Dependabot PRs + Java BOM + Mobile RN + Admin UI advisory pulses | **T1–T4**; Orval **O0–O3** (Admin UI ≠ mobile) | Weekday light: autonomous T1–T3 + O0/O1; Monday full HITL default; Marc on T4 / O3 / crypto majors |
 | **Mobile `deps:monitor --strict`** (`ezkey_mobile` `yarn deps:monitor --strict`) | `dependabot-curated` (Monday full) | Part of Monday full Mobile RN pulse | **Monday** with full pass | Actionable vs ecosystem-gated deferred | Feeds mobile lots (T1–T4 / Orval grid) | Same as Dependabot curated |
 | **Admin UI advisory pulse** (`ezkey-admin-ui` `npm audit --json`, reduced to distinct GHSA) | `dependabot-curated` (Monday full) | Part of Monday full | **Monday** with full pass | Distinct GHSA vs waiting-upstream table; duplicate lockfile manifests count once | A lot only when the GHSA is new or the fallback date is due | Same as Dependabot curated |
 | **Dependabot opens PRs** ([`.github/dependabot.yml`](../../../.github/dependabot.yml)) | Dependabot app | Schedule | **Daily** Maven + npm; **weekly** Actions + pip (cooldown ~3d patch/minor, ~7d major) | New upgrade PRs | N/A (feeds curated) | None — curation owns merge |
@@ -123,17 +127,18 @@ Repo-is-memory decisions (one line + reason):
 | **Major-upgrades quarterly review** ([`major-upgrades/`](major-upgrades/) `registry.yaml`) | `major-upgrades` | Monday full `dependabot-curated` | **Quarterly** Jan / Apr / Jul / Oct (**October 2026 due now**) | Registry `eol` / `last_review` / `accept_until` | `keep` · `plan` · `follow:` · `accept-risk`; light vs dedicated-issue paths | Fred prepares; Christophe on `security: true`; Patrick build/mobile; **Marc** decides |
 | **Security pentest** (skill + `./scripts/security-pentest-curated.sh`; [`security-pentest/`](security-pentest/)) | `security-pentest-curated` | Operator + Christophe | **Monthly with Christophe** | Schemathesis + ZAP + Nuclei curated shortlist | **P1 / P2 / P3** (charter expected-context) | Christophe + HITL one-finding |
 | **JavaMelody / perf** (`./scripts/javamelody-curated.sh`; [`javamelody/`](javamelody/)) | `javamelody-curated` | After known workload (often post quality-gate churn) | **Monthly with Carl** | Ranked HTTP/SQL/Spring by total time | **P1 / P2 / P3**; high hit-count on churn paths ≠ signal | Carl + HITL one-finding |
-| **Assessment curated** (skill [`.cursor/skills/assessment-curated`](../../../.cursor/skills/assessment-curated/SKILL.md); [`assessment-curated/`](assessment-curated/)) | `assessment-curated` | Operator **mandate** | **On mandate** (not calendar) | Assessment register | Severity / confidence in register; small lot | HITL one-finding; GO = fix + handoff |
+| **Assessment curated** (skill [`.claude/skills/assessment-curated`](../../../.claude/skills/assessment-curated/SKILL.md); [`assessment-curated/`](assessment-curated/)) | `assessment-curated` | Operator **mandate** | **On mandate** (not calendar) | Assessment register | Severity / confidence in register; small lot | HITL one-finding; GO = fix + handoff |
 | **Hardcoded values** ([`hardcoded-values/`](hardcoded-values/)) | `assessment-curated` (instance) | Operator mandate, plus a quarterly delta (`git diff` from the last pass SHA) | **On mandate**, at most **quarterly** (with the document-hygiene quarter). Quiet when nothing is new: no note, no message | Read-only `rg` in the pass note (no doctor script) | Patrick's question; zones (e) → (a) → (b) → (c) → (d); externalize ≤ 10–15% of a shortlist | HITL one lot at a time. Christophe on security properties. Marc on any behavior change. **Not a CI gate** |
-| **Document hygiene** (skill [`.cursor/skills/document-hygiene-curated`](../../../.cursor/skills/document-hygiene-curated/SKILL.md); [`document-hygiene/`](document-hygiene/)) | `document-hygiene-curated` | Operator | **Quarterly** | Legacy / duplicate docs | Keep / fold / archive / delete / retarget | HITL one document at a time |
-| **Corpus ablation** (skill [`.cursor/skills/corpus-ablation`](../../../.cursor/skills/corpus-ablation/SKILL.md); [`corpus-ablation/`](corpus-ablation/)) | `corpus-ablation` | — | **Not scheduled** — pending **challenger** repositioning (Mathieu mandate 2026-10-19) | Ephemeral plans / prompts | Discoverability-preserving Go packages | Mathieu when challenger lands |
-| **Critical review** (skill [`.cursor/skills/critical-review`](../../../.cursor/skills/critical-review/SKILL.md); [`critical-review/`](critical-review/)) | `critical-review` | G1 brief / P0–P1 vision / high-risk plan / PR craft | **Event-driven** (gate), not weekly | ≤10 findings; forced ≠ author model family | Severity in review report | Launcher (Mathieu / Patrick / Christophe) + author HITL |
-| **Monthly digest** (skill [`.cursor/skills/monthly-digest`](../../../.cursor/skills/monthly-digest/SKILL.md)) | Publishing | Month closed | **Monthly** (first week after month end) | Distilled activity digest | N/A (comms, not code shortlist) | Editor / Marc before publish |
+| **Document hygiene** (skill [`.claude/skills/document-hygiene-curated`](../../../.claude/skills/document-hygiene-curated/SKILL.md); [`document-hygiene/`](document-hygiene/)) | `document-hygiene-curated` | Operator | **Quarterly** | Legacy / duplicate docs | Keep / fold / archive / delete / retarget | HITL one document at a time |
+| **Corpus ablation** (skill [`.claude/skills/corpus-ablation`](../../../.claude/skills/corpus-ablation/SKILL.md); [`corpus-ablation/`](corpus-ablation/)) | `corpus-ablation` | — | **Not scheduled** — pending **challenger** repositioning (Mathieu mandate 2026-10-19) | Ephemeral plans / prompts | Discoverability-preserving Go packages | Mathieu when challenger lands |
+| **Critical review** (skill [`.claude/skills/critical-review`](../../../.claude/skills/critical-review/SKILL.md); [`critical-review/`](critical-review/)) | `critical-review` | G1 brief / P0–P1 vision / high-risk plan / PR craft | **Event-driven** (gate), not weekly | ≤10 findings; forced ≠ author model family | Severity in review report | Launcher (Mathieu / Patrick / Christophe) + author HITL |
+| **Monthly digest** (skill [`.claude/skills/monthly-digest`](../../../.claude/skills/monthly-digest/SKILL.md)) | Publishing | Month closed | **Monthly** (first week after month end) | Distilled activity digest | N/A (comms, not code shortlist) | Editor / Marc before publish |
 | **Ops: `check-ezkey-online-hosts`** / **`check-local-mgmt-port-publish`** (`scripts/ops/`; CI jobs) | Ops / CI | CI path filter | Every relevant CI run | Forbidden hosts / mgmt port publish | Fail = fix before merge | Author |
 | **Ops: `docker-log-hygiene`** (`scripts/ops/docker-log-hygiene.sh`) | Ops / Lightsail | Pre-upgrade + after compose up | On community upgrade checklist | Missing `max-size` / `max-file` | Fix before `--remote-up` | Operator on VM |
 | **Ops: `verify-javamelody-non-exposure`** / **`check-javamelody-spring-json`** / **`validate-caddy-observability-regexp`** | Ops / security | After JM or Caddy change; JM deploy smoke | On change + with monthly JM/pentest when JM in scope | Exposure / JSON drift / regexp | Fail = fix | Operator / Christophe |
-| **Host OS H1** (security patch within `releasever`; [`host-os/`](host-os/); `./scripts/lightsail/os-patch-check.sh --target community`) | `host-os` | rootbeer-local agent | **Monthly Monday**, or **≤7 days** when Critical/Important hits kernel / openssh / openssl / glibc | `os-patch-check` + `dnf updateinfo` | Patch within locked releasever; snapshot before apply; rotate older snapshots | Autonomous after snapshot; **Marc go only if reboot needed** |
-| **Host OS H2** (AL2023 minor + reboot; [`host-os/`](host-os/)) | `host-os` | Quarterly with major-upgrades walk | **Quarterly** Jan / Apr / Jul / Oct | `dnf check-release-update` → pin `--releasever=` | Snapshot + pg_dump (rootbeer) before apply; reboot after Marc go | **Marc go**; rootbeer agent executes |
+| **Host OS detect** (weekly read-only; [`host-os/`](host-os/); `./scripts/lightsail/os-patch-check.sh --target community`) | `host-os` | Fred, rootbeer-local | **Weekly** | `RELEASE_UPDATE` line (latest dated release, not the locked repo) | Report only on newer release with Important/Critical, or on `unknown`; quiet when `no` or `yes` with both counts 0 | None (read-only) |
+| **Host OS H1** (dated release with Important/Critical; `dnf upgrade --releasever=<dated>`; [`host-os/`](host-os/)) | `host-os` | Edgar, rootbeer-local | When the weekly check reports | Same signal | Snapshot before apply; rotate older snapshots; reboot or docker restart | **Marc go** |
+| **Host OS H2** (quarterly dated release + reboot; [`host-os/`](host-os/)) | `host-os` | Edgar, rootbeer-local | **Quarterly** Jan / Apr / Jul / Oct | `dnf check-release-update` → pin `--releasever=<dated>` (never `latest`) | Snapshot + pg_dump (rootbeer) before apply; reboot or docker restart | **Marc go** |
 | **Host OS H3** (major / new instance blue-green; [`host-os/`](host-os/)) | `host-os` | Ad hoc | **Plan by 2028** (AL2023 EOL 2029-06-30) | EOL proximity + register `amazon-linux-community` | `create-instance` + `bootstrap-host` + pg_dump restore + static IP move | **Marc go**; Edgar executes; Christophe posture |
 
 Doctor biweekly rotation order (repeat): **Java → mobile → React → …**. Empty high-signal lot → no campaign note.

@@ -15,13 +15,13 @@ linked skill/README). Do **not** invent `I-*` / `TB-*` per routine finding.
 | --- | --- |
 | `doctor-curated` | Admin UI React Doctor curated pass — `AGENTS.md` § Admin UI lint-polish |
 | `java-doctor-curated` | Java SpotBugs/Semgrep/PMD curated pass — `AGENTS.md` § Java doctor-curated |
-| `pam-doctor-curated` | Linux PAM C curated pass (clang-format Google, clang-tidy, cppcheck) — `AGENTS.md` § PAM doctor-curated; skill `.cursor/skills/pam-doctor-curated/SKILL.md` |
+| `pam-doctor-curated` | Linux PAM C curated pass (clang-format Google, clang-tidy, cppcheck) — `AGENTS.md` § PAM doctor-curated; skill `.claude/skills/pam-doctor-curated/SKILL.md` |
 | `mobile-doctor-curated` | Ezkey Mobile static-analysis curated pass — `AGENTS.md` § Mobile doctor-curated |
-| `dependabot-curated` | Near-continuous Dependabot triage (weekday light + Monday full; Orval O0–O3 grid) — `AGENTS.md` § Dependabot curated; skill `.cursor/skills/dependabot-curated/`; policy `product-docs/global/hygiene/dependabot/README.md`. Cursor Cloud: probe `GH_TOKEN` (`gh auth status`); harness “gh read-only” is the default `cursor` identity, not proof the PAT is missing. Platform majors: `AGENTS.md` § *Major upgrades* + `product-docs/global/hygiene/major-upgrades/`. |
-| `security-pentest-curated` | Live API / DAST-style campaigns — `AGENTS.md` § Security pentest curated; skill `.cursor/skills/security-pentest-curated/SKILL.md`; `product-docs/global/hygiene/security-pentest/` |
-| **`assessment-curated`** | Mandate-driven white-box assessment → HITL → handoff — `AGENTS.md` § Assessment curated; canon `product-docs/global/hygiene/assessment-curated/README.md`; skill `.cursor/skills/assessment-curated/SKILL.md` |
-| **`document-hygiene-curated`** | Legacy document canonicality / discoverability / archive-vs-delete — `AGENTS.md` keyword table; canon `product-docs/global/hygiene/document-hygiene/README.md`; skill `.cursor/skills/document-hygiene-curated/SKILL.md` |
-| **`critical-review`** (aliases: adversarial review, revue critique, plan hardening Stage 2) | Launched read-only cloud-agent adversarial review (**forced different model family** from author). Canon `product-docs/global/hygiene/critical-review/README.md`; prompt `product-docs/templates/critical-review.prompt.md`; skill `.cursor/skills/critical-review/SKILL.md`; execution-hardening angle `product-docs/templates/cold-agent-plan-review.prompt.md` |
+| `dependabot-curated` | Near-continuous Dependabot triage (weekday light + Monday full; Orval O0–O3 grid) — `AGENTS.md` § Dependabot curated; skill `.claude/skills/dependabot-curated/`; policy `product-docs/global/hygiene/dependabot/README.md`. Cursor Cloud: probe `GH_TOKEN` (`gh auth status`); harness “gh read-only” is the default `cursor` identity, not proof the PAT is missing. Platform majors: `AGENTS.md` § *Major upgrades* + `product-docs/global/hygiene/major-upgrades/`. |
+| `security-pentest-curated` | Live API / DAST-style campaigns — `AGENTS.md` § Security pentest curated; skill `.claude/skills/security-pentest-curated/SKILL.md`; `product-docs/global/hygiene/security-pentest/` |
+| **`assessment-curated`** | Mandate-driven white-box assessment → HITL → handoff — `AGENTS.md` § Assessment curated; canon `product-docs/global/hygiene/assessment-curated/README.md`; skill `.claude/skills/assessment-curated/SKILL.md` |
+| **`document-hygiene-curated`** | Legacy document canonicality / discoverability / archive-vs-delete — `AGENTS.md` keyword table; canon `product-docs/global/hygiene/document-hygiene/README.md`; skill `.claude/skills/document-hygiene-curated/SKILL.md` |
+| **`critical-review`** (aliases: adversarial review, revue critique, plan hardening Stage 2) | Launched read-only cloud-agent adversarial review (**forced different model family** from author). Canon `product-docs/global/hygiene/critical-review/README.md`; prompt `product-docs/templates/critical-review.prompt.md`; skill `.claude/skills/critical-review/SKILL.md`; execution-hardening angle `product-docs/templates/cold-agent-plan-review.prompt.md` |
 
 Hygiene index: `product-docs/global/hygiene/README.md`. Hygiene vs program:
 `product-docs/methodology/README.md` § *Three rules worth keeping*.
@@ -32,7 +32,7 @@ When the operator says **`assessment-curated`** (or asks for a focused investiga
 doctor/Dependabot/pentest tool lanes):
 
 1. Read `product-docs/global/hygiene/assessment-curated/README.md` and run skill
-   `.cursor/skills/assessment-curated/SKILL.md` when available in the agent.
+   `.claude/skills/assessment-curated/SKILL.md` when available in the agent.
 2. Lock mandate (surface / attention axes / non-goals), write or update an assessment register,
    open a dated campaign note under `product-docs/global/hygiene/<topic-lane>/`.
 3. Walk findings **one at a time** (briefing + code citations + options → HITL reply →

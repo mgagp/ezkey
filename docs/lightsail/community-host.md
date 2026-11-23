@@ -12,7 +12,10 @@ Short runbook for creating a **NEW** Amazon Lightsail VM for the **ezkey.online*
 enrollment in the demo tenant (Admin UI, User ID = username), then
 `docker exec ezkey-exp-demo-login node server/cli.js user add <username> --name "<Name>"` on the VM.
 The Demo Login API key lives in `.env` (`DEMO_LOGIN_INTEGRATION_KEY` / `DEMO_LOGIN_SECRET_KEY`); do
-not put real secrets in this host doc.
+not put real secrets in this host doc. The Demo Login integration belongs to its own tenant.
+Create it as that tenant's admin: a global admin's create lands in the system tenant
+(§ *Window rules*). Deployed 2026-11-22; it replaces the Acme demo app
+([`community/DEPLOYED.md`](community/DEPLOYED.md)).
 
 **Public cutover context (do not invent product language):** publish repositioned **ezkey.org** first; then community host on **ezkey.online**.
 
@@ -74,7 +77,7 @@ aws lightsail get-static-ip \
 | [`create-instance.sh`](../../scripts/lightsail/create-instance.sh) | `create-instances`; dry-run default; `--apply` to create; waits until `running`; refuses existing name |
 | [`open-ports.sh`](../../scripts/lightsail/open-ports.sh) | SSH 22 + HTTPS 443 (`open-instance-public-ports` or `--mode put`); dry-run default |
 | [`bootstrap-host.sh`](../../scripts/lightsail/bootstrap-host.sh) | SSH Phase 0b/0c: Docker + Compose v2 + `docker` group; installs `/etc/ssh/sshd_config.d/40-pq-kex.conf` (#1177); no clean-start / no image push |
-| [`os-patch-check.sh`](../../scripts/lightsail/os-patch-check.sh) | Read-only Host OS signal over SSH (`--target community`); releasever / security updateinfo / reboot hint / `docker ps` (#909) |
+| [`os-patch-check.sh`](../../scripts/lightsail/os-patch-check.sh) | Read-only Host OS signal over SSH (`--target community`); installed vs latest releasever, cumulative Critical/Important on the latest dated release, reboot hint, `docker ps` (#909) |
 | [`delete-instance.sh`](../../scripts/lightsail/delete-instance.sh) | Delete by name; `--apply` requires explicit `--name`; community `ezkey-online` also needs `EZKEY_CONFIRM_DELETE=ezkey-online`; never releases static IPs |
 | [`status.sh`](../../scripts/lightsail/status.sh) | `get-instance` / `--list` → `get-instances` |
 | [`common.sh`](../../scripts/lightsail/common.sh) | Shared defaults and helpers (sourced; not run directly) |
@@ -95,7 +98,7 @@ hostnames in generic defaults. Other docs should **link here** instead of duplic
 | `admin-api.ezkey.online` | Admin API | Caddy on Lightsail | A proxied → `<static-ip ezkey-online-community>` | 401 |
 | `auth-api.ezkey.online` | Auth API (QR URL) | Caddy on Lightsail | A proxied → `<static-ip ezkey-online-community>` | 404 (no `/` route) |
 | `integration-api.ezkey.online` | Integration API | Caddy on Lightsail | A proxied → `<static-ip ezkey-online-community>` | 401 |
-| `demo-login.ezkey.online` | Demo Login (#1430) | Caddy on Lightsail | A proxied → `<static-ip ezkey-online-community>` (to create at the #1430 deployment) | 200 |
+| `demo-login.ezkey.online` | Demo Login (#1430) | Caddy on Lightsail | A proxied → `<static-ip ezkey-online-community>` (created 2026-11-22, manual Cloudflare DNS) | 200 |
 
 Community Caddy site blocks (four hosts only): [`experimental-hybrid/lightsail/Caddyfile.ezkey-online`](../../experimental-hybrid/lightsail/Caddyfile.ezkey-online) (TLS 1.3 Origin CA paths, docs block, reverse_proxy targets). Admin UI is Pages, not Caddy.
 
@@ -111,7 +114,7 @@ environments, or client configs:
 | `auth.ezkey.online` | No DNS; does not exist (use `auth-api.ezkey.online`) |
 | `admin.ezkey.online` | No DNS; does not exist (use `admin-api` / `admin-ui`) |
 | `acme.ezkey.online` | No DNS; does not exist (use `demo-login.ezkey.online`) |
-| `demo-acme.ezkey.online` | Retired with the Demo App Acme (#1430); remove its DNS record at the Demo Login deployment |
+| `demo-acme.ezkey.online` | Retired 2026-11-22 with the Demo App Acme (#1430); DNS record removed in that window |
 | `api.ezkey.online` | No DNS; does not exist |
 | `www.ezkey.online` | CNAME proxied; Cloudflare Single Redirect **301** → `https://ezkey.org/` (not a product origin) |
 
@@ -145,12 +148,12 @@ Do these **after** VM create → ports → Docker bootstrap (below). No secrets 
    ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh \
      --target community --sync-operator-files --remote-up
    # or sync-only, then:
-   # ssh ezkey-online 'cd ~/ezkey/experimental-hybrid/lightsail && docker compose up -d --no-deps --force-recreate caddy'
+   # ssh ezkey-online 'cd ~/ezkey/experimental-hybrid/lightsail && docker compose -f docker-compose.yml -f docker-compose.javamelody.yml -f docker-compose.connector-smtp.yml up -d --no-deps --no-build --force-recreate caddy'
    ```
 3. **Origin CA** — Cloudflare Origin Server cert covering all API + demo hostnames above; place `origin.pem` / `origin-key.pem` in `~/ezkey/experimental-hybrid/lightsail/caddy-certs/` on the VM (`chmod 700` dir, `chmod 600` key). Never commit.
-4. **DNS** — Cloudflare **A** records (orange / proxied) for those API/demo names → **`<static-ip ezkey-online-community>`** (resolve via `get-static-ip` above, or `./scripts/lightsail/status.sh`). Admin UI name points at Pages, not the Lightsail IP.
+4. **DNS** — manual in the Cloudflare dashboard. The operator token does not edit DNS, and `scripts/lightsail/` never change DNS. **A** records (orange / proxied) for those API/demo names → **`<static-ip ezkey-online-community>`** (resolve via `get-static-ip` above, or `./scripts/lightsail/status.sh`). Admin UI name points at Pages, not the Lightsail IP. Record shapes stay in the hostname table above and in [`docs/cloudflare/admin-ui-pages.md`](../cloudflare/admin-ui-pages.md) § *Custom domain DNS*.
 5. **`.env`** — on the VM: copy [`.env.example`](../../experimental-hybrid/lightsail/.env.example) → `.env`, then overlay community URLs/CORS from [`.env.ezkey-online.example`](../../experimental-hybrid/lightsail/.env.ezkey-online.example). **Mode B (Pages cookie)** requires all of:
-   - `EZKEY_ADMIN_CORS_ALLOWED_ORIGINS=https://admin-ui.ezkey.online,https://ezkey.org,https://www.ezkey.org` (UI + community-signup marketing origins)
+   - `EZKEY_ADMIN_CORS_ALLOWED_ORIGINS=https://admin-ui.ezkey.online` (Admin UI origin only; marketing origins and `EZKEY_EVALUATOR_*` left with signup, #1368)
    - `EZKEY_ADMIN_CORS_ALLOW_CREDENTIALS=true`
    - `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_ENABLED=true`
    - UI build: `VITE_ADMIN_AUTH_USE_HTTP_ONLY_SESSION_COOKIE=true`  
@@ -168,7 +171,7 @@ Do these **after** VM create → ports → Docker bootstrap (below). No secrets 
      --target community --include-demo-login --clean-start
    ```
    Or run `./clean-start.sh` on the VM from `~/ezkey/experimental-hybrid/lightsail/` after files are in place (see playbook). For **kept** community DB upgrades, follow **[Non-destructive upgrade (checklist)](#non-destructive-upgrade-checklist)** — do **not** treat `full-exp-environment-upgrade.sh … rolling` / blind `--sync-operator-files --remote-up` as the community default (see that section’s script gap).
-8. **Pages Admin UI** — separate Cloudflare Pages project (or branch) for `admin-ui.ezkey.online` with `VITE_API_BASE_URL=https://admin-api.ezkey.online` and Mode B UI flag above. Not automated by `scripts/lightsail/`.
+8. **Pages Admin UI** — separate Cloudflare Pages project (or branch) for `admin-ui.ezkey.online` with `VITE_API_BASE_URL=https://admin-api.ezkey.online` and Mode B UI flag above. Not automated by `scripts/lightsail/`. Do not source the Rootbeer repo-root `.env` for this build: its `VITE_API_BASE_URL` targets the retired exp1 surface. The Admin UI deploy scripts source that file unless `EZKEY_SKIP_DOTENV=1`. Set `EZKEY_SKIP_DOTENV=1` and export `VITE_API_BASE_URL=https://admin-api.ezkey.online` plus `CLOUDFLARE_PAGES_PROJECT=admin-ui-ezkey-online`. When the window changes the API and the Admin UI, publish the Admin UI as soon as the API is healthy, before user tests (§ *Window rules*).
 9. **API Shield schemas** — community Auth and Integration uploads must target the **ezkey.online** zone. Set `CLOUDFLARE_ZONE_NAME=ezkey.online`. If the repo-root `.env` holds `CLOUDFLARE_ZONE_ID` for the **ezkey.org** zone, unset `CLOUDFLARE_ZONE_ID` before `./scripts/cloudflare/upload-auth-api-schema.sh` or `upload-integration-api-schema.sh` (a zone id overrides the name). Those scripts refuse a resolved zone whose name is not `ezkey.online`. Runbooks: [`docs/cloudflare/auth-api-schema-validation.md`](../cloudflare/auth-api-schema-validation.md), [`docs/cloudflare/integration-api-schema-validation.md`](../cloudflare/integration-api-schema-validation.md).
 
 ---
@@ -180,38 +183,35 @@ Community Pages Admin UI uses **Mode B** (`credentials: 'include'` + HttpOnly se
 ```bash
 EZKEY_ADMIN_CORS_ALLOW_CREDENTIALS=true
 EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_ENABLED=true
-EZKEY_ADMIN_CORS_ALLOWED_ORIGINS=https://admin-ui.ezkey.online,https://ezkey.org,https://www.ezkey.org
+EZKEY_ADMIN_CORS_ALLOWED_ORIGINS=https://admin-ui.ezkey.online
 ```
+
+The allowlist is the Admin UI origin only. Marketing origins and `EZKEY_EVALUATOR_*` left with
+anonymous signup (#1368), removed on the VM 2026-11-22. Do not put them back.
 
 Canon: [`docs/cloudflare/admin-ui-pages.md`](../cloudflare/admin-ui-pages.md), [`docs/admin-ui-security.md`](../admin-ui-security.md). Base [`.env.example`](../../experimental-hybrid/lightsail/.env.example) may still show `false` for lab Bearer mode; community overlay is [`.env.ezkey-online.example`](../../experimental-hybrid/lightsail/.env.ezkey-online.example).
 
 
 
-## Community signup CORS + Admin UI link (do not regress)
+## Admin API CORS (do not regress)
 
-Anonymous evaluator signup from the marketing site (https://ezkey.org/community-signup.html, and www) posts cross-origin to `https://admin-api.ezkey.online`. Two env settings must stay aligned on the community host:
-
-1. **CORS allowlist** — include the Pages Admin UI origin **and** both marketing origins (signup form):
-
-```bash
-EZKEY_ADMIN_CORS_ALLOWED_ORIGINS=https://admin-ui.ezkey.online,https://ezkey.org,https://www.ezkey.org
-```
-
-2. **Post-signup "Open Admin UI" URL** — Spring property `ezkey.evaluator.self-registration.admin-ui-url` (env `EZKEY_EVALUATOR_SELF_REGISTRATION_ADMIN_UI_URL`) and guided tour URL (`EZKEY_EVALUATOR_SELF_REGISTRATION_GUIDED_TOUR_URL`). There is **no product default hostname**; when `enabled=true`, Admin API fails startup if either URL is blank. On community, set both to the public Pages / marketing URLs (**no trailing slash / path** on the Admin UI origin):
+The browser caller of Admin API on this host is the Pages Admin UI. Anonymous evaluator signup
+was retired (#1368). On the VM since 2026-11-22 the allowlist is the Admin UI origin only, and
+the legacy `EZKEY_EVALUATOR_*` keys are absent. Do not restore `https://ezkey.org`,
+`https://www.ezkey.org`, or those keys.
 
 ```bash
-EZKEY_EVALUATOR_SELF_REGISTRATION_ENABLED=true
-EZKEY_EVALUATOR_SELF_REGISTRATION_ADMIN_UI_URL=https://admin-ui.ezkey.online
-EZKEY_EVALUATOR_SELF_REGISTRATION_GUIDED_TOUR_URL=https://ezkey.org/community-guided-tour.html
+EZKEY_ADMIN_CORS_ALLOWED_ORIGINS=https://admin-ui.ezkey.online
 ```
 
-After changing either, recreate **admin-api** only (no full wipe):
+Mode B cookie flags stay `true` (section above). After a change, recreate **admin-api** only,
+with the three live compose files and without `--remove-orphans`:
 
 ```bash
-ssh ezkey-online 'cd ~/ezkey/experimental-hybrid/lightsail && docker compose up -d --no-deps --force-recreate admin-api'
+ssh ezkey-online 'cd ~/ezkey/experimental-hybrid/lightsail && docker compose -f docker-compose.yml -f docker-compose.javamelody.yml -f docker-compose.connector-smtp.yml up -d --no-deps --no-build --force-recreate admin-api'
 ```
 
-Canon overlay: [`.env.ezkey-online.example`](../../experimental-hybrid/lightsail/.env.ezkey-online.example).
+Canon overlay: [`.env.ezkey-online.example`](../../experimental-hybrid/lightsail/.env.ezkey-online.example). Ledger: [`community/DEPLOYED.md`](community/DEPLOYED.md).
 
 ---
 
@@ -444,6 +444,7 @@ agent only — cloud agents have no SSH route). Live Host OS fields:
 - [`product-docs/global/hygiene/host-os/README.md`](../../product-docs/global/hygiene/host-os/README.md) -- Host OS hygiene lane H1/H2/H3 (#909)
 - [ADR-0016](../../product-docs/global/architecture-decisions.md#adr-0016-keyset-blob-single-source-of-truth) + [`community-upgrade-impact.md`](../../product-docs/global/decisions/2026-10-21-keyset-storage-strategy/community-upgrade-impact.md) -- blob-only keyset authority; community in-place upgrade impact (#961)
 - **[Non-destructive upgrade (checklist)](#non-destructive-upgrade-checklist)** -- kept-DB community upgrade runbook (#1020)
+- **[Terminal sessions (tmux)](#terminal-sessions-tmux)** -- detachable shell for long or non-idempotent steps on the community VM (tmux 3.6a, installed 2026-11-22)
 
 ## Observability (JavaMelody) — #846 / memory bounds #749
 
@@ -756,9 +757,55 @@ against the new quota at that time. Until then, every recipient must be a verifi
 
 ---
 
+## Terminal sessions (tmux)
+
+**tmux** is a terminal multiplexer. A session keeps running on the community VM
+after the SSH connection drops (laptop sleep, network blip, closed window).
+Reconnect, then reattach: the same terminal is still there, scrollback included.
+
+**Why on this host.** Long or supervised production steps must survive an SSH
+drop: DB role password rotation, Flyway migrations, and compose recreates.
+tmux **3.6a** was installed with `dnf` on **2026-11-22**. It is the reference
+tool for that work on the community VM.
+
+**When.** Any multi-minute or non-idempotent step on the VM. Name the session
+after the work, never after a secret.
+
+```bash
+tmux new -s <name>
+```
+
+| Action | Keys or command |
+|--------|-----------------|
+| Detach; the session keeps running | `Ctrl-b` then `d` |
+| List sessions | `tmux ls` |
+| Reattach | `tmux attach -t <name>` |
+| Scrollback (`q` leaves copy mode) | `Ctrl-b` then `[` |
+| End the session | `tmux kill-session -t <name>` |
+
+**Logging.** For a transcript, run `script <logfile>` inside the session (`exit`
+stops it), or `tmux pipe-pane -o 'cat >> <logfile>'` (the same command again
+stops the capture). Mode **600** on the file. Delete it after the report is
+written. Never log secret values (role passwords, `.env` contents, key
+material).
+
+**Alternatives.** `screen` also keeps a session across an SSH drop. `nohup` and
+`systemd-run` detach one command without a reattachable terminal or scrollback.
+tmux is the reference: one command set, a live view after reconnect, and
+scrollback for the supervised steps above.
+
+Docs: [tmux wiki](https://github.com/tmux/tmux/wiki) and
+[Getting Started](https://github.com/tmux/tmux/wiki/Getting-Started).
+On the VM, `man 1 tmux` is the command reference for the installed 3.6a
+([published manual](https://man.openbsd.org/tmux)).
+
+---
+
 ## Non-destructive upgrade (checklist)
 
 Controlled in-place upgrade for the **already commissioned** community instance (images and scripts change; the data volume does not). Derived from the 2026-10-25 cutover to `92717a40` ([#961](https://github.com/mgagp/ezkey/issues/961), [ADR-0016](../../product-docs/global/architecture-decisions.md#adr-0016-keyset-blob-single-source-of-truth)). Design companion: [`community-upgrade-impact.md`](../../product-docs/global/decisions/2026-10-21-keyset-storage-strategy/community-upgrade-impact.md).
+
+Supervised steps in this checklist (role password rotation, Flyway migrations, compose recreates) run in a [tmux](#terminal-sessions-tmux) session.
 
 **Placeholders only in this section** — do not paste origin IPs, public hostnames, absolute VM paths, secret values, or `.env` contents into tickets, chat, or git. Use markers such as `<ssh-host>`, `<compose-dir>`, `<admin-api-public-base>`, `<encryption-secrets-volume>`, `<postgres-container>`.
 
@@ -775,6 +822,51 @@ Use `$C` for F, H, and any recreate (including the separate postgres window). Om
 `docker-compose.connector-smtp.yml` makes a recreated admin-api silently lose email delivery.
 Email rollback: recreate admin-api with only the first two files, then remove the connector
 container ([§ Email delivery connector](#email-delivery-connector-amazon-ses--1206-step-7) Rollback).
+
+### Window rules
+
+These hold on every kept-DB window on this VM. The 2026-11-22 cutover is what made them
+explicit. Ledger: [`community/DEPLOYED.md`](community/DEPLOYED.md).
+
+1. **One service, three files.** Recreate with `$C up -d --no-deps --no-build <service>`
+   (add `--force-recreate` when the container must be replaced). Leave `--remove-orphans` off
+   during a window. admin-api and postgres definitions drift across compose files;
+   `--remove-orphans` can remove a container the current invocation does not list.
+   `--remove-orphans` stays on the intentional JavaMelody or connector **disable** paths only,
+   and those paths are outside the window.
+2. **`verify-grants.sh` reads stdin.** `docker exec -i` inside the script consumes stdin. Over
+   SSH, or when the call sits in a pipe, run `./scripts/db/verify-grants.sh --docker </dev/null`.
+3. **`--apis-only` (A1) skips the migration image.** `export-backend-images-to-lightsail.sh` and
+   `full-exp-environment-upgrade.sh --apis-only` do not ship `ezkey-migration`. When the release
+   has a Flyway change, run the migration step (F.2) explicitly before the APIs. `--apis-only`
+   fits a window whose schema did not change.
+4. **Rootbeer repo-root `.env`.** Do not source it wholesale for community work. Its
+   `VITE_API_BASE_URL` targets the retired exp1 surface. `deploy-admin-ui-preview.sh` and
+   `deploy-admin-ui-production.sh` source `$ROOT/.env` unless `EZKEY_SKIP_DOTENV=1`. Set
+   `EZKEY_SKIP_DOTENV=1` and export the community values for that command
+   (`VITE_API_BASE_URL=https://admin-api.ezkey.online`,
+   `CLOUDFLARE_PAGES_PROJECT=admin-ui-ezkey-online`). Schema upload does not read
+   `EZKEY_SKIP_DOTENV`; it skips the file only with `EZKEY_CLOUDFLARE_SKIP_ENV_FILE=1`, and
+   ordered path step 9 still applies (`CLOUDFLARE_ZONE_NAME=ezkey.online`, unset
+   `CLOUDFLARE_ZONE_ID` when the file holds the ezkey.org zone). `deploy-ezkey-org-production.sh`
+   always sources the repo-root `.env` and then takes `CLOUDFLARE_PAGES_PROJECT` (default
+   `ezkey-org`); confirm that name before a community site publish. The VM `.env` is also not
+   sourced (D.4).
+5. **Tenant integration, tenant admin.** An integration created by a global admin lands in the
+   system tenant. Create a tenant's integration while logged in as that tenant's admin. Demo
+   Login is this case: its integration is in the demo tenant.
+6. **Admin UI right after the API.** When the window changes both, publish the Admin UI (and
+   ezkey.org when that tree changed) as soon as the API is healthy, before user tests.
+7. **Revoke in the Admin UI.** Key revocation and integration retirement go through the Admin
+   UI with MFA so the audit log records them. Never update or delete those rows in SQL. Put
+   that click on the window plan; a human completes MFA. The 2026-11-22 Acme retirement used
+   this path.
+8. **DNS is manual.** The operator Cloudflare token does not edit DNS. Change records in the
+   Cloudflare dashboard, using the hostname table and
+   [`docs/cloudflare/admin-ui-pages.md`](../cloudflare/admin-ui-pages.md) § *Custom domain DNS*
+   as the steps (proxied **A** for API and demo names → `<static-ip ezkey-online-community>`;
+   Admin UI is a Pages custom domain). `scripts/lightsail/` never change DNS. The 2026-11-22
+   window created the `demo-login` record and removed `demo-acme` this way.
 
 ### Principle
 
@@ -795,7 +887,7 @@ A **follow-up issue (to be created)** should track a non-destructive script mode
 **Postgres recreate (when deliberate):** announce the **precise outage time** before starting.
 
 1. Backups first (C): `pg_dump -Fc` verified with `pg_restore --list`.
-2. `$C up -d --no-deps --force-recreate postgres` — data volume kept. Measured ~**6–9 s** for the recreate itself; APIs usually reconnect on their own. Restart one API alone if it does not become healthy.
+2. `$C up -d --no-deps --no-build --force-recreate postgres` — data volume kept. Measured ~**6–9 s** for the recreate itself; APIs usually reconnect on their own. Restart one API alone if it does not become healthy. Leave `--remove-orphans` off (Window rules).
 3. A probe that only hits `/` does **not** prove absence of errors on database-reading requests — finish with **human Admin UI login + MFA**.
 4. Checks **G** afterwards, including **verify-grants** with the environment variables described in G.1.
 
@@ -839,6 +931,8 @@ Presence, mode, and metadata only — **never** print key material, blob bytes, 
 3. No blind `--sync-operator-files` (see script gap above). Diff first; apply only after human go. The **announced plan must list the files to change** (from that diff) **and the backup destination**; any file **outside** the announced diff needs a **separate go**.
 4. Do **not** load the live `.env` with `. ./.env` or `source`. Bash runs unquoted words, so a value with spaces (`Ezkey Community`) or a cron expression (`*/20 ...`) is executed as a command. Docker Compose reads the file itself (`--env-file .env`, or the compose-directory default). `verify-grants.sh` parses only the Postgres keys it needs (see G.1). **Never** under `set -x`, and **do not** leave secret values in the session shell. The Docker warning that a **volume already exists but was not created by Docker Compose** is pre-existing and harmless.
 
+**Role password rotation (#1017).** From the compose directory, [`scripts/db/rotate-role-passwords.sh`](../../scripts/db/rotate-role-passwords.sh) `--docker` replaces the four application role passwords (`ezkey_migrate`, `ezkey_admin`, `ezkey_auth`, `ezkey_integration`, keys `EZKEY_DB_MIGRATE_PASSWORD`, `EZKEY_DB_ADMIN_PASSWORD`, `EZKEY_DB_AUTH_PASSWORD`, `EZKEY_DB_INTEGRATION_PASSWORD`) and writes them into `.env` only after one committed `ALTER ROLE` transaction. Run it under [tmux](#terminal-sessions-tmux). Server `log_statement` must already be `none` (exit 4); the session also sets `log_statement=none`, `log_min_duration_statement=-1`, `log_min_error_statement=PANIC`, `log_transaction_sample_rate=0`, and `log_min_duration_sample=-1` before `BEGIN`. The script refuses (exit 8) if a `shared_preload_libraries` entry names `pg_stat_statements`, `pgaudit`, or `auto_explain` (a directory prefix and a trailing `.so` still match). Values stay in mode-600 files and on stdin. Run it in a deliberate window: the script names the APIs to recreate and does not recreate them. Follow § *Window rules* for that recreate. It does not rotate `POSTGRES_PASSWORD` or `ezkey_crypto`. The live ezkey.online rotation ran in the 2026-11-22 window with this script (#1017; script merged in #1447). Ledger: [`community/DEPLOYED.md`](community/DEPLOYED.md).
+
 ### E. Code and images
 
 1. Build on the operator machine or in CI — **no git clone / build on the VM**.
@@ -853,19 +947,20 @@ Wait for healthy before the next recreate. Use `$C` (the three-file compose abov
 1. Run **`db-grants`** first. Lightsail compose defines it as a one-shot (`restart: "no"`, entrypoint `apply-grants.sh`):
 
    ```bash
-   $C up --no-deps db-grants
+   $C up --no-deps --no-build db-grants
    ```
 
    Expect exit **0** and a **“Grants applied”** log line. If a future compose no longer treats the service as a completing one-shot, use `$C run --rm --no-deps db-grants` (or equivalent). On volumes from before ADR-0016, `apply-grants.sh` creates `ezkey_crypto` idempotently when missing (`EZKEY_DB_CRYPTO_PASSWORD` required — #961 B1).
-2. If release notes announce a Flyway migration: run **`migration`** to completion **before** APIs.
+2. If release notes announce a Flyway migration: run **`migration`** to completion **before** APIs. `--apis-only` does not ship that image — run this step explicitly (Window rules).
 3. Recreate **one API at a time** with:
 
    ```bash
    $C up -d --no-deps --no-build --force-recreate <service>
    ```
 
-   Order: **admin-api** first (sole keyset writer under ADR-0016), then **auth-api**, **integration-api**, **demo-login**. Wait until healthy after each (about **18 to 27 s** measured; four windows for #961).
+   Order: **admin-api** first (sole keyset writer under ADR-0016), then **auth-api**, **integration-api**, **demo-login**. Wait until healthy after each (about **18 to 27 s** measured; four windows for #961). Leave `--remove-orphans` off (Window rules).
 4. **Do not** recreate **postgres**, **caddy**, or the JavaMelody **collector** in this API window (postgres: separate window above).
+5. When the plan retires an integration or revokes keys, that click is a human Admin UI action with MFA, after this SHA's API and Admin UI are up. The audit log is the record. Not SQL (Window rules). Plan the slot in the window before it starts.
 
 ### G. Checks
 
@@ -874,10 +969,10 @@ Final login/MFA: **human on their device** (not a bot). Success is recorded in *
 1. From `<compose-dir>` (the directory that holds the live `.env`):
 
    ```bash
-   ./scripts/db/verify-grants.sh --docker
+   ./scripts/db/verify-grants.sh --docker </dev/null
    ```
 
-   Lightsail compose container name is `ezkey-exp-postgres` (script default is `ezkey-postgres`). The script reads **only** the Postgres keys it needs from `./.env` (`PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `EZKEY_DB_*_PASSWORD`, `EZKEY_POSTGRES_CONTAINER`). Pass `--env-file PATH` when the file is not `./.env`. It does **not** `source` or `.` the file and does **not** `eval`: unquoted spaces (`Ezkey Community`) and cron expressions (`*/20 ...`) stay literal. Variables already exported win over the file. **Never** display the values, pass them on argv, or run the script under `set -x`. Role passwords (`EZKEY_DB_*`) are often absent from the community `.env`; when they are unset, the script **falls back** to catalog checks (`has_table_privilege` / `role_table_grants`, including `ezkey_keyset_blob`) as that admin/owner and prints a clear mode message. When all five role passwords are set, it runs the stronger per-role login smoke instead. Success using the **default** superuser password means **rotate it**. Confirm `ezkey_crypto` is **SELECT-only** on `ezkey_keyset_blob` (ADR-0016 / #961).
+   The script's `docker exec -i` reads stdin. Over SSH or in a pipe, the `</dev/null` redirect keeps the session from stalling on that read (Window rules). Lightsail compose container name is `ezkey-exp-postgres` (script default is `ezkey-postgres`). The script reads **only** the Postgres keys it needs from `./.env` (`PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `EZKEY_DB_*_PASSWORD`, `EZKEY_POSTGRES_CONTAINER`). Pass `--env-file PATH` when the file is not `./.env`. It does **not** `source` or `.` the file and does **not** `eval`: unquoted spaces (`Ezkey Community`) and cron expressions (`*/20 ...`) stay literal. Variables already exported win over the file. **Never** display the values, pass them on argv, or run the script under `set -x`. Role passwords (`EZKEY_DB_*`) are often absent from the community `.env`; when they are unset, the script **falls back** to catalog checks (`has_table_privilege` / `role_table_grants`, including `ezkey_keyset_blob`) as that admin/owner and prints a clear mode message. When all five role passwords are set, it runs the stronger per-role login smoke instead. Success using the **default** superuser password means **rotate it**. Confirm `ezkey_crypto` is **SELECT-only** on `ezkey_keyset_blob` (ADR-0016 / #961).
 2. Logs show **“Keyset loaded from database”** (or equivalent) with the **same kid and version** recorded in B. Any **“Materializing new keyset”**, **“Generating new keyset”**, or a **refused API start** (fail-closed) → **stop immediately**. **Never** set `ezkey.encryption.required=false` to get past a start. **If a new keyset was created:** stop, do not start any more API, and decide with the project owner between image rollback and database restore (H.5); do not assume encrypted fields stay readable under a new authority.
 3. After any `audit-hmac.key` mode/owner fix (or when verifying compliance): the restarted API’s log **must** show **“Audit HMAC integrity signing initialized”** (mandatory — wrong owner with 600 can fail silently; confirm in `AuditHmacService`). Report mode/owner only, never content or exact path.
 4. Containers healthy; `org.opencontainers.image.revision` matches the target SHA.
@@ -903,6 +998,7 @@ Record in operator notes / [`community/DEPLOYED.md`](community/DEPLOYED.md) (pub
 - Public ledger: **kid unchanged (yes/no)** and **version N** — exact kid values stay in operator notes only
 - `verify-grants` result, HTTP codes, `audit-hmac.key` compliant/fixed (mode/owner only)
 - Deviations from this checklist
+- Admin UI (and ezkey.org, when that tree changed) published after the API and before user tests, when both changed (Window rules)
 - **Cleanup:** remove window leftovers (probe artefacts, transferred image archive and transfer folder on the VM, image tarball on the operator machine); resync the operator copy of `.env` (gitignored) and add any new variable introduced in D
 
 ---
@@ -961,6 +1057,10 @@ Short operator checklist verified against repo scripts/compose (not live VM obse
    After `up`, confirm rotation with `docker inspect` or
    `bash scripts/ops/docker-log-hygiene.sh --project ezkey-experimental-lightsail`.
    Rotated-file purge needs sudo under `/var/lib/docker/containers`.
+6. **Window rules** — before a kept-DB window, read § *Window rules* (`--no-deps --no-build`,
+   no `--remove-orphans`, `verify-grants.sh </dev/null`, `--apis-only` skips migration,
+   `EZKEY_SKIP_DOTENV=1` for the Rootbeer repo-root `.env`, tenant-admin integration create,
+   Admin UI publish before user tests, revocation in the Admin UI, manual DNS).
 
 ### Log rotation and hygiene (next install)
 

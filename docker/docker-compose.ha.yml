@@ -45,6 +45,8 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
       target: migration
+      args:
+        HTTPS_PROXY: ${EZKEY_BUILD_HTTPS_PROXY:-}
     container_name: ezkey-migration-ha
     depends_on:
       postgres:
@@ -85,6 +87,8 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
       target: admin-api
+      args:
+        HTTPS_PROXY: ${EZKEY_BUILD_HTTPS_PROXY:-}
     container_name: ezkey-admin-api-1
     depends_on:
       postgres:
@@ -141,6 +145,8 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
       target: admin-api
+      args:
+        HTTPS_PROXY: ${EZKEY_BUILD_HTTPS_PROXY:-}
     container_name: ezkey-admin-api-2
     depends_on:
       postgres:
@@ -189,7 +195,7 @@ services:
   # HAProxy for Admin API
   haproxy-admin:
     # Pin tag + digest (Christophe #1134); 3.4 LTS, image 3.4.7 as of 2026-11-02
-    image: haproxy:3.4-alpine@sha256:5312d37032c079c4937d45ef63758852434351f3b425a3703521fd999837abcf
+    image: haproxy:3.4-alpine@sha256:8aa6458a9d22a8364a2d2ee9ce93de0cc4a2789e3cf63f0b44adc972863724d7
     container_name: ezkey-haproxy-admin
     depends_on:
       admin-api-1:
@@ -218,6 +224,8 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
       target: auth-api
+      args:
+        HTTPS_PROXY: ${EZKEY_BUILD_HTTPS_PROXY:-}
     container_name: ezkey-auth-api-1
     depends_on:
       postgres:
@@ -262,6 +270,8 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
       target: auth-api
+      args:
+        HTTPS_PROXY: ${EZKEY_BUILD_HTTPS_PROXY:-}
     container_name: ezkey-auth-api-2
     depends_on:
       postgres:
@@ -303,7 +313,7 @@ services:
   # HAProxy for Auth API
   haproxy-auth:
     # Pin tag + digest (Christophe #1134); 3.4 LTS, image 3.4.7 as of 2026-11-02
-    image: haproxy:3.4-alpine@sha256:5312d37032c079c4937d45ef63758852434351f3b425a3703521fd999837abcf
+    image: haproxy:3.4-alpine@sha256:8aa6458a9d22a8364a2d2ee9ce93de0cc4a2789e3cf63f0b44adc972863724d7
     container_name: ezkey-haproxy-auth
     depends_on:
       auth-api-1:
@@ -332,6 +342,8 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
       target: integration-api
+      args:
+        HTTPS_PROXY: ${EZKEY_BUILD_HTTPS_PROXY:-}
     container_name: ezkey-integration-api-1
     depends_on:
       postgres:
@@ -374,6 +386,8 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
       target: integration-api
+      args:
+        HTTPS_PROXY: ${EZKEY_BUILD_HTTPS_PROXY:-}
     container_name: ezkey-integration-api-2
     depends_on:
       postgres:
@@ -413,7 +427,7 @@ services:
   # HAProxy for Integration API
   haproxy-integration:
     # Pin tag + digest (Christophe #1134); 3.4 LTS, image 3.4.7 as of 2026-11-02
-    image: haproxy:3.4-alpine@sha256:5312d37032c079c4937d45ef63758852434351f3b425a3703521fd999837abcf
+    image: haproxy:3.4-alpine@sha256:8aa6458a9d22a8364a2d2ee9ce93de0cc4a2789e3cf63f0b44adc972863724d7
     container_name: ezkey-haproxy-integration
     depends_on:
       integration-api-1:
@@ -442,6 +456,8 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
       target: crypto-api
+      args:
+        HTTPS_PROXY: ${EZKEY_BUILD_HTTPS_PROXY:-}
     container_name: ezkey-crypto-api-ha
     depends_on:
       postgres:
@@ -482,6 +498,8 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
       target: demo-device
+      args:
+        HTTPS_PROXY: ${EZKEY_BUILD_HTTPS_PROXY:-}
     container_name: ezkey-demo-device-ha
     depends_on:
       haproxy-auth:
@@ -513,6 +531,8 @@ services:
     build:
       context: ..
       dockerfile: ezkey-demo-login/Dockerfile
+      args:
+        HTTPS_PROXY: ${EZKEY_BUILD_HTTPS_PROXY:-}
     container_name: ezkey-demo-login-ha
     depends_on:
       haproxy-integration:
@@ -535,6 +555,8 @@ services:
     build:
       context: ..
       dockerfile: docker/bootstrap-init/Dockerfile
+      args:
+        HTTPS_PROXY: ${EZKEY_BUILD_HTTPS_PROXY:-}
     container_name: ezkey-bootstrap-init-ha
     depends_on:
       haproxy-admin:
