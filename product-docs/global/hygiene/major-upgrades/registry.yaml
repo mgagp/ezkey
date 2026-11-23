@@ -224,7 +224,7 @@
   target: "4.2" # lab posture: latest line as soon as it is out (README § Target rule)
   decision: keep
   security: true
-  issue: null
+  issue: 1471 # Christophe's opinion-only issue for the 4.2 line
   last_review: 2026-11-23
   notes: >
     Patches via Java BOM pulse; line change → light path + short opinion-only security issue.
