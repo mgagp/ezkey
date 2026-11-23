@@ -1,16 +1,15 @@
-import { Fragment, type ChangeEvent, type ReactNode } from 'react';
+import type { ChangeEvent, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { UseFormRegisterReturn } from 'react-hook-form';
 import { Alert } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  ENROLLMENT_IDENTITY_FIELD_ORDER,
   ENROLLMENT_NAME_MAX_LENGTH,
   ENROLLMENT_USER_ID_MAX_LENGTH,
   isEnrollmentUserIdUnset,
   showsEmptyEnrollmentUserIdWarning,
-  type EnrollmentIdentityField,
+  type EnrollmentIntegrationKind,
 } from '@/lib/enrollment-identity';
 
 type IdentityInput = {
@@ -24,26 +23,24 @@ type IdentityInput = {
 };
 
 /**
- * Name, then User ID, on the create and edit forms. Help text explains the two
- * fields. An empty User ID warns on application integrations and still submits.
+ * Name, then User ID, on the create and edit forms. An empty User ID warns
+ * once an application integration is known, and still submits.
  */
 export function EnrollmentIdentityFormFields({
   nameLabel,
   name,
   userId,
   userIdentifier,
-  isSystemIntegration = false,
-  userIdOptional,
+  integrationKind,
 }: {
   nameLabel: string;
   name: IdentityInput;
   userId: IdentityInput;
   userIdentifier: string;
-  isSystemIntegration?: boolean;
-  userIdOptional?: string;
+  integrationKind: EnrollmentIntegrationKind;
 }) {
   const { t } = useTranslation('enrollments');
-  const showWarning = showsEmptyEnrollmentUserIdWarning({ userIdentifier, isSystemIntegration });
+  const showWarning = showsEmptyEnrollmentUserIdWarning(userIdentifier, integrationKind);
   const nameError =
     name.error
     ?? lengthError(name.value, ENROLLMENT_NAME_MAX_LENGTH, t('validation.nameMax', { n: ENROLLMENT_NAME_MAX_LENGTH }));
@@ -54,16 +51,13 @@ export function EnrollmentIdentityFormFields({
       ENROLLMENT_USER_ID_MAX_LENGTH,
       t('validation.userIdMax', { n: ENROLLMENT_USER_ID_MAX_LENGTH }),
     );
+  const userIdDescribedBy = showWarning ? `${userId.id}-help ${userId.id}-warning` : `${userId.id}-help`;
 
-  const fields: Record<EnrollmentIdentityField, ReactNode> = {
-    name: (
-      <>
+  return (
+    <div data-testid="enrollment-identity-fields" className="space-y-4">
+      <div data-testid="enrollment-field-name" className="space-y-1">
         <Label htmlFor={name.id}>{nameLabel}</Label>
-        <p
-          id={`${name.id}-help`}
-          data-testid="enrollment-name-help"
-          className="text-xs text-fg-muted leading-relaxed"
-        >
+        <p id={`${name.id}-help`} data-testid="enrollment-name-help" className="text-xs text-fg-muted leading-relaxed">
           {t('identity.nameHelp')}
         </p>
         <Input
@@ -76,29 +70,25 @@ export function EnrollmentIdentityFormFields({
           error={nameError}
           maxLength={ENROLLMENT_NAME_MAX_LENGTH}
         />
-      </>
-    ),
-    userId: (
-      <>
+      </div>
+      <div data-testid="enrollment-field-userId" className="space-y-1">
         <Label htmlFor={userId.id}>
           {t('identity.userId')}
-          {userIdOptional ? (
-            <span className="text-fg-muted font-normal"> {userIdOptional}</span>
-          ) : null}
+          <span className="text-fg-muted font-normal"> {t('identity.optional')}</span>
         </Label>
         <p
           id={`${userId.id}-help`}
           data-testid="enrollment-user-id-help"
           className="text-xs text-fg-muted leading-relaxed"
         >
-          {t('identity.userIdHelp')}
+          {t(integrationKind === 'system' ? 'identity.userIdHelpSystem' : 'identity.userIdHelp')}
         </p>
         <Input
           {...inputBinding(userId)}
           id={userId.id}
           className={userId.className}
           autoComplete="off"
-          aria-describedby={showWarning ? `${userId.id}-help ${userId.id}-warning` : `${userId.id}-help`}
+          aria-describedby={userIdDescribedBy}
           error={userIdError}
           maxLength={ENROLLMENT_USER_ID_MAX_LENGTH}
         />
@@ -107,17 +97,7 @@ export function EnrollmentIdentityFormFields({
             {t('identity.userIdEmptyWarning')}
           </Alert>
         )}
-      </>
-    ),
-  };
-
-  return (
-    <div data-testid="enrollment-identity-fields" className="space-y-4">
-      {ENROLLMENT_IDENTITY_FIELD_ORDER.map((key) => (
-        <div key={key} data-testid={`enrollment-field-${key}`} className="space-y-1">
-          {fields[key]}
-        </div>
-      ))}
+      </div>
     </div>
   );
 }
@@ -127,48 +107,31 @@ export function EnrollmentIdentityReadout({
   nameLabel,
   name,
   userIdentifier,
-  isSystemIntegration = false,
+  integrationKind,
 }: {
   nameLabel: string;
   name: string;
   userIdentifier: string | null | undefined;
-  isSystemIntegration?: boolean;
+  integrationKind: EnrollmentIntegrationKind;
 }) {
   const { t } = useTranslation('enrollments');
   const unset = isEnrollmentUserIdUnset(userIdentifier);
-  const showWarning = showsEmptyEnrollmentUserIdWarning({ userIdentifier, isSystemIntegration });
 
-  const fields: Record<EnrollmentIdentityField, ReactNode> = {
-    name: (
+  return (
+    <>
       <IdentityRow label={nameLabel} testId="enrollment-field-name">
         <span className="font-medium">{name}</span>
-        <p data-testid="enrollment-name-help" className="text-xs text-fg-muted mt-0.5 leading-relaxed">
-          {t('identity.nameHelp')}
-        </p>
       </IdentityRow>
-    ),
-    userId: (
       <IdentityRow label={t('identity.userId')} testId="enrollment-field-userId">
         <span className="text-fg-muted break-all" data-testid="enrollment-user-id-value">
           {unset ? t('identity.userIdNotSet') : (userIdentifier ?? '').trim()}
         </span>
-        <p data-testid="enrollment-user-id-help" className="text-xs text-fg-muted mt-0.5 leading-relaxed">
-          {t('identity.userIdHelp')}
-        </p>
-        {showWarning && (
+        {showsEmptyEnrollmentUserIdWarning(userIdentifier, integrationKind) && (
           <Alert variant="warning" data-testid="enrollment-user-id-warning" className="mt-2">
             {t('identity.userIdEmptyWarning')}
           </Alert>
         )}
       </IdentityRow>
-    ),
-  };
-
-  return (
-    <>
-      {ENROLLMENT_IDENTITY_FIELD_ORDER.map((key) => (
-        <Fragment key={key}>{fields[key]}</Fragment>
-      ))}
     </>
   );
 }

@@ -46,7 +46,7 @@
     "integration": "Integration *",
     "integrationPlaceholder": "Select an integration...",
     "name": "Enrollment Name *",
-    "namePlaceholder": "e.g. Marie Dupont — iPhone 15",
+    "namePlaceholder": "e.g. Marie's iPhone 15",
     "contactEmail": "Contact Email",
     "contactEmailOptional": "(optional)",
     "contactEmailPlaceholder": "user@garageducoin.ca",
@@ -277,9 +277,11 @@
   },
   "identity": {
     "userId": "User ID",
+    "optional": "(optional)",
     "nameHelp": "Device label shown on the phone.",
-    "userIdHelp": "Username in the protected application. The integration uses it to sign the user in.",
-    "userIdEmptyWarning": "Without a User ID, Demo Login, PAM and other integrations cannot sign this user in.",
+    "userIdHelp": "Username in the protected application. Integrations that find the user by username rely on it.",
+    "userIdHelpSystem": "Optional reference for this administrator enrollment.",
+    "userIdEmptyWarning": "Without a User ID, an integration that finds the user by username cannot sign this user in.",
     "userIdNotSet": "Not set"
   }
 }

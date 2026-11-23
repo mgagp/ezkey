@@ -32,7 +32,6 @@ import { isDemoMode } from '@/lib/demo-mode';
 import { useListDetailPageNavigation } from '@/hooks/use-list-detail-page-navigation';
 import { buildListDetailNavState } from '@/lib/list-detail-navigation';
 import type { ReasonPresetGroupId } from '@/lib/reason-preset-groups';
-import { placeEnrollmentUserIdAfterName } from '@/lib/enrollment-identity';
 import { formatDate } from '@/lib/utils';
 import { DetailPageNav } from '@/components/ui/detail-page-nav';
 import {
@@ -276,7 +275,7 @@ export default function IntegrationDetailPage() {
       },
     };
 
-    return placeEnrollmentUserIdAfterName([
+    return [
       {
         header: tEnrollments('list.columns.id'),
         key: 'enrollmentId',
@@ -290,13 +289,13 @@ export default function IntegrationDetailPage() {
         sortKey: 'enrollmentName',
         render: (r) => <span className="font-medium">{r.enrollmentName}</span>,
       },
-      statusCol,
       {
         header: tEnrollments('identity.userId'),
         key: 'userIdentifier',
         sortKey: 'userIdentifier',
         render: (r) => <EnrollmentUserIdCell value={r.userIdentifier} />,
       },
+      statusCol,
       {
         header: tEnrollments('list.columns.created'),
         key: 'createdAt',
@@ -318,7 +317,7 @@ export default function IntegrationDetailPage() {
         ),
       },
       actionsCol,
-    ]);
+    ];
   }, [tEnrollments]);
 
   const name = integration ? getIntegrationName(integration) : '...';

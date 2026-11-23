@@ -32,10 +32,10 @@ import { enrollmentDemoPresets, isDemoMode } from '@/lib/demo-mode';
 import {
   enrollmentNameField,
   enrollmentUserIdField,
+  enrollmentIntegrationKind,
   enrollmentUserIdForCreate,
   ENROLLMENT_NAME_MAX_LENGTH,
   ENROLLMENT_USER_ID_MAX_LENGTH,
-  placeEnrollmentUserIdAfterName,
 } from '@/lib/enrollment-identity';
 import { buildListDetailNavState } from '@/lib/list-detail-navigation';
 import { isPhoneNumberInputValid, normalizePhoneNumberInput } from '@/lib/phone-number';
@@ -272,11 +272,9 @@ function EnrollmentCreateDialog({
               error: errors.userIdentifier?.message,
             }}
             userIdentifier={watch('userIdentifier') ?? ''}
-            isSystemIntegration={
-              integrations.find((integration) => String(integration.id) === watch('integrationId'))
-                ?.isSystemIntegration === true
-            }
-            userIdOptional={t('create.contactEmailOptional')}
+            integrationKind={enrollmentIntegrationKind(
+              integrations.find((integration) => String(integration.id) === watch('integrationId')),
+            )}
           />
 
           {/* Contact email */}
@@ -767,7 +765,7 @@ export default function EnrollmentsPage() {
       },
     };
 
-    const base: ColumnDef<EnrollmentResponseDto>[] = [
+    return [
       {
         header: t('list.columns.id'),
         key: 'enrollmentId',
@@ -781,16 +779,14 @@ export default function EnrollmentsPage() {
         sortKey: 'enrollmentName',
         render: (r) => <span className="font-medium">{r.enrollmentName}</span>,
       },
+      userIdCol,
       statusCol,
       integrationCol,
-      userIdCol,
       ...(isGlobalAdmin ? [tenantCol] : []),
       createdCol,
       lastUsedCol,
       actionsCol,
     ];
-
-    return placeEnrollmentUserIdAfterName(base);
   }, [isGlobalAdmin, t]);
 
   return (

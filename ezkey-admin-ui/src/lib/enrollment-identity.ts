@@ -6,8 +6,9 @@ import { z } from 'zod';
  * Name is the device label shown on the phone. The column is
  * enrollment_name VARCHAR(64) (schema V1).
  * User ID is the username in the protected application. The column is
- * user_identifier VARCHAR(255) (schema V5). It is not unique, and it is
- * the identifier integrations use to sign the user in.
+ * user_identifier VARCHAR(255) (schema V5). It is not unique. An integration
+ * can target an enrollment by its enrollment ID or by this User ID; only the
+ * second needs it.
  *
  * The update DTO allows a 255-character name, and create validates neither length.
  * The UI follows the columns. An empty User ID stays optional.
@@ -20,11 +21,17 @@ export const ENROLLMENT_NAME_MAX_LENGTH = 64;
 export const ENROLLMENT_USER_ID_MAX_LENGTH = 255;
 
 /**
- * Name, then User ID, on the create form, the edit form, the detail page and the lists.
+ * Integration the enrollment belongs to: an application integration, the
+ * system integration (administrator MFA), or none chosen yet (create form).
  */
-export const ENROLLMENT_IDENTITY_FIELD_ORDER = ['name', 'userId'] as const;
+export type EnrollmentIntegrationKind = 'application' | 'system' | 'none';
 
-export type EnrollmentIdentityField = (typeof ENROLLMENT_IDENTITY_FIELD_ORDER)[number];
+export function enrollmentIntegrationKind(
+  integration: { isSystemIntegration?: boolean | null } | null | undefined,
+): EnrollmentIntegrationKind {
+  if (integration == null) return 'none';
+  return integration.isSystemIntegration === true ? 'system' : 'application';
+}
 
 /** True when the operator has not entered a User ID (blank counts as empty). */
 export function isEnrollmentUserIdUnset(value: string | null | undefined): boolean {
@@ -32,16 +39,14 @@ export function isEnrollmentUserIdUnset(value: string | null | undefined): boole
 }
 
 /**
- * Non-blocking warning for an empty User ID. Application integrations only.
- * The system integration is administrator MFA: Demo Login, PAM and the other
- * integrations do not sign that person in by this field.
+ * Non-blocking warning for an empty User ID, once an application integration
+ * is known. Never before an integration is chosen, never on the system integration.
  */
-export function showsEmptyEnrollmentUserIdWarning(input: {
-  userIdentifier: string | null | undefined;
-  isSystemIntegration?: boolean | null;
-}): boolean {
-  if (input.isSystemIntegration === true) return false;
-  return isEnrollmentUserIdUnset(input.userIdentifier);
+export function showsEmptyEnrollmentUserIdWarning(
+  userIdentifier: string | null | undefined,
+  kind: EnrollmentIntegrationKind,
+): boolean {
+  return kind === 'application' && isEnrollmentUserIdUnset(userIdentifier);
 }
 
 /** Value sent on create. Blank becomes omitted so the API stores null. */
@@ -63,21 +68,4 @@ export function enrollmentUserIdField(maxMessage: string) {
     .max(ENROLLMENT_USER_ID_MAX_LENGTH, maxMessage)
     .optional()
     .or(z.literal(''));
-}
-
-/**
- * Puts the User ID column immediately after Name. Other columns keep their order.
- * Lists that already have that order are returned unchanged.
- */
-export function placeEnrollmentUserIdAfterName<T extends { key: string }>(columns: T[]): T[] {
-  const nameIndex = columns.findIndex((column) => column.key === 'enrollmentName');
-  const userIndex = columns.findIndex((column) => column.key === 'userIdentifier');
-  if (nameIndex < 0 || userIndex < 0 || userIndex === nameIndex + 1) {
-    return columns;
-  }
-  const next = columns.slice();
-  const [userColumn] = next.splice(userIndex, 1);
-  const insertAt = next.findIndex((column) => column.key === 'enrollmentName') + 1;
-  next.splice(insertAt, 0, userColumn);
-  return next;
 }

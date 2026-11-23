@@ -46,7 +46,7 @@
     "integration": "Intégration *",
     "integrationPlaceholder": "Choisir une intégration...",
     "name": "Nom de l'enrôlement *",
-    "namePlaceholder": "ex. Marie Dupont — iPhone 15",
+    "namePlaceholder": "ex. iPhone 15 de Marie",
     "contactEmail": "E-mail de contact",
     "contactEmailOptional": "(optionnel)",
     "contactEmailPlaceholder": "user@garageducoin.ca",
@@ -277,9 +277,11 @@
   },
   "identity": {
     "userId": "Identifiant utilisateur",
+    "optional": "(optionnel)",
     "nameHelp": "Libellé de l'appareil, affiché sur le téléphone.",
-    "userIdHelp": "Nom d'usager dans l'application protégée. L'intégration s'en sert pour connecter l'utilisateur.",
-    "userIdEmptyWarning": "Sans identifiant utilisateur, Demo Login, PAM et les autres intégrations ne pourront pas connecter cet utilisateur.",
+    "userIdHelp": "Nom d'usager dans l'application protégée. Les intégrations qui retrouvent l'utilisateur par son nom d'usager s'en servent.",
+    "userIdHelpSystem": "Référence facultative pour cet enrôlement administrateur.",
+    "userIdEmptyWarning": "Sans identifiant utilisateur, une intégration qui retrouve l'utilisateur par son nom d'usager ne pourra pas le connecter.",
     "userIdNotSet": "Non défini"
   }
 }

@@ -35,7 +35,11 @@ import { authContextDemoPresets, isDemoMode } from '@/lib/demo-mode';
 import { isPhoneNumberInputValid, normalizePhoneNumberInput } from '@/lib/phone-number';
 import { formatChallengeCode, formatCountdown, formatDate } from '@/lib/utils';
 import { enrollmentEditScope, showsContactEmail } from '@/lib/enrollment-edit-scope';
-import { ENROLLMENT_NAME_MAX_LENGTH, ENROLLMENT_USER_ID_MAX_LENGTH } from '@/lib/enrollment-identity';
+import {
+  ENROLLMENT_NAME_MAX_LENGTH,
+  ENROLLMENT_USER_ID_MAX_LENGTH,
+  enrollmentIntegrationKind,
+} from '@/lib/enrollment-identity';
 import { showsEnrollmentQrCard, showsIntegratedDeliveryNotice } from '@/lib/enrollment-bind-preview';
 import { enrollmentActiveToggle } from '@/lib/enrollment-active-toggle';
 import { useCancel, useCreate2, useGetById2 } from '@/generated/admin-api/auth-attempts/auth-attempts';
@@ -753,7 +757,7 @@ export default function EnrollmentDetailPage() {
                     nameLabel={t('detail.infoName')}
                     name={enrollment.enrollmentName ?? ''}
                     userIdentifier={enrollment.userIdentifier}
-                    isSystemIntegration={enrollment.isSystemIntegration === true}
+                    integrationKind={enrollmentIntegrationKind(enrollment)}
                   />
                   <InfoRow label={t('detail.infoStatus')}><EnrollmentStatusBadge status={enrollment.enrollmentStatus} /></InfoRow>
                   <InfoRow label={t('detail.infoActive')}>
@@ -1325,7 +1329,7 @@ export default function EnrollmentDetailPage() {
               className: 'border-2 border-fg/30',
             }}
             userIdentifier={editUserId}
-            isSystemIntegration={enrollment?.isSystemIntegration === true}
+            integrationKind={enrollmentIntegrationKind(enrollment)}
           />
           )}
           {showsContactEmail(enrollment) && (
