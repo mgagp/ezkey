@@ -31,6 +31,8 @@ This folder is the **source of truth** for the static public site served at **ez
 | `robots.txt` | `Allow: /` and `Sitemap:` pointer. |
 | `monthly-digest.rss` / `fr/monthly-digest.rss` | RSS feeds for **Monthly digests**; keep in sync when adding entries (see **AGENTS.md**). |
 | `api-specs/` | Committed OpenAPI JSON copies (from `specs/`) consumed by the public API portal pages; refresh with `./scripts/sync-ezkey-org-api-specs.sh`. |
+| `_headers` | Cloudflare Pages response headers (CSP and related). Deployed with this folder. Zone HSTS still overrides `Strict-Transport-Security` on `ezkey.org`; see [../../docs/cloudflare/ezkey-org-site.md](../../docs/cloudflare/ezkey-org-site.md). |
+| `api-reference.js` | Shared ReDoc CE bootstrap for the six API reference pages (no inline script, so CSP can omit `script-src 'unsafe-inline'`). |
 
 **Locales:** Default URL `/` is English; `/fr/` is French. Hub pages expose `hreflang` alternates; in-page language switches link between paired locales.
 
