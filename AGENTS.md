@@ -111,6 +111,7 @@ sections the work needs.
 | Enrollment bind session | [`MOBILE_APP_STATE_MACHINE.md`](ezkey_mobile/docs/MOBILE_APP_STATE_MACHINE.md) § *Product intent: one bind session* |
 | Lifecycle, eligibility, multi-entity design | [`lifecycle-model.md`](product-docs/global/lifecycle-model.md), then [`LIFECYCLE_GOVERNANCE.md`](docs/LIFECYCLE_GOVERNANCE.md) |
 | Admin UI list, record page, links between them | [`screens-and-wireflow.md`](product-docs/components/admin-ui/screens-and-wireflow.md) § Record anatomy |
+| Android build or install (JDK 17, never the repo JDK 25) | [`ezkey_mobile/AGENTS.md`](ezkey_mobile/AGENTS.md) § *Android debug build*: `./scripts/build-install-debug-clean.sh` |
 | Work inside a module | that module's `AGENTS.md` (Admin UI, Admin API, Core, Mobile, public site…) |
 | Experimental PAM (host sshd lab, not containerised) | [`ezkey-pam/README.md`](ezkey-pam/README.md) |
 | Dismissing or accepting a dependency vulnerability | [`dependabot/README.md`](product-docs/global/hygiene/dependabot/README.md) § *Check upstream before dismissing a vulnerability* |

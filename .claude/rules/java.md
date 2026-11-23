@@ -8,8 +8,9 @@ paths:
 Checkstyle and Spotless enforce most style in `./scripts/build.sh`; these lines save a failed build
 or a review round.
 
-- **Injection:** constructor injection. Use `@Autowired` only where Spring does not construct the
-  object (for example a JPA `EntityListener`); anywhere else, explain why and ask first.
+- **Injection:** constructor injection. `@Autowired` is fine on the one constructor Spring must use
+  when a class has several, and where Spring does not construct the object (for example a JPA
+  `EntityListener`). Never on fields or setters without explaining why and asking first.
 - **Javadoc:** complete on public types and members. On a **class, interface or enum**, never put
   `@param` / `@return` / `@throws` in the type Javadoc (Checkstyle `JavadocType` fails); document
   constructors or methods instead. On a **record**, document every component with `@param` in the

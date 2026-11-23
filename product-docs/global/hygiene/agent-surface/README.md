@@ -25,4 +25,6 @@ and hooks, module `AGENTS.md` files.
 
 ## Passes
 
+GitHub issue: [#1472](https://github.com/mgagp/ezkey/issues/1472).
+
 - 2026-11: [framing](2026-11-23-cadrage.md) · [inventory and decisions](2026-11-23-inventory.md)
