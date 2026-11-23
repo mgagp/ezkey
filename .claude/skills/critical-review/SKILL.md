@@ -35,12 +35,12 @@ class as `assessment-curated` (skill + hygiene canon + prompt).
 | `angle` | no | e.g. product premise, security, operability, autonomous execution |
 
 **Launchers:** Mathieu default (visions, G1 briefs); Patrick (PR craft); Christophe (security);
-Marc on request. Role one-liners: [`product-docs/global/team-roles.md`](../../product-docs/global/team-roles.md).
+Marc on request. Role one-liners: [`product-docs/global/team-roles.md`](../../../product-docs/global/team-roles.md).
 
 ## Procedure
 
 1. Resolve the target: doc → path @ SHA; PR → `git fetch origin pull/<N>/head`, record head SHA.
-2. Fill [`product-docs/templates/critical-review.prompt.md`](../../product-docs/templates/critical-review.prompt.md)
+2. Fill [`product-docs/templates/critical-review.prompt.md`](../../../product-docs/templates/critical-review.prompt.md)
    (parameters + baseline list).
 3. Launch **ONE** cloud agent (fresh session, chosen model/effort ≠ author family), read-only —
    no branch, push, PR, issue, or GitHub comment (disable auto-PR if offered).
@@ -51,10 +51,10 @@ Marc on request. Role one-liners: [`product-docs/global/team-roles.md`](../../pr
 
 ## Authority
 
-- Canon: [`product-docs/global/hygiene/critical-review/README.md`](../../product-docs/global/hygiene/critical-review/README.md)
-- Prompt: [`product-docs/templates/critical-review.prompt.md`](../../product-docs/templates/critical-review.prompt.md)
-- Execution-hardening angle (by reference): [`product-docs/templates/cold-agent-plan-review.prompt.md`](../../product-docs/templates/cold-agent-plan-review.prompt.md)
-- Pattern: [`product-docs/methodology/README.md`](../../product-docs/methodology/README.md) § two-stage
+- Canon: [`product-docs/global/hygiene/critical-review/README.md`](../../../product-docs/global/hygiene/critical-review/README.md)
+- Prompt: [`product-docs/templates/critical-review.prompt.md`](../../../product-docs/templates/critical-review.prompt.md)
+- Execution-hardening angle (by reference): [`product-docs/templates/cold-agent-plan-review.prompt.md`](../../../product-docs/templates/cold-agent-plan-review.prompt.md)
+- Pattern: [`product-docs/methodology/README.md`](../../../product-docs/methodology/README.md) § two-stage
 
 ## If the operator asks how to invoke
 

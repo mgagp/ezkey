@@ -1,7 +1,7 @@
 # Dependabot configuration for automated dependency update PRs.
 # See also: product-docs/global/normative-posture.md (dependency hygiene as operational discipline).
 # Cadence + cooldown policy: product-docs/global/hygiene/dependabot/README.md
-# Curation skill: .cursor/skills/dependabot-curated/SKILL.md
+# Curation skill: .claude/skills/dependabot-curated/SKILL.md
 # Inflow reduction (Marc 2026-10-30): per-directory minor+patch catch-all groups,
 # open-pull-requests-limit 10 -> 5, ignore deferred majors (TypeScript 7 has its own
 # gate; ESLint 10 on mobile waits for the community eslint-comments plugin).

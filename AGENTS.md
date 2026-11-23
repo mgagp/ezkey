@@ -39,7 +39,7 @@ Root [`PRD.md`](PRD.md) is a **stub** that points at `product-intent.md` (canon 
 | Mandate-driven hygiene assessment (HITL + handoff) | Keyword **`assessment-curated`** → [`product-docs/global/hygiene/assessment-curated/README.md`](product-docs/global/hygiene/assessment-curated/README.md) |
 | Legacy document hygiene (canonicality / discoverability / archive-vs-delete) | Keyword **`document-hygiene-curated`** → [`product-docs/global/hygiene/document-hygiene/README.md`](product-docs/global/hygiene/document-hygiene/README.md) |
 | New idea / method | [`product-docs/methodology/README.md`](product-docs/methodology/README.md) — the whole method fits in that one document since the 2026-08 ablation |
-| Plan review / cold-agent hardening (aliases: `critical-review`, adversarial review, revue critique, plan hardening Stage 2) | Canon [`product-docs/global/hygiene/critical-review/README.md`](product-docs/global/hygiene/critical-review/README.md); prompt [`product-docs/templates/critical-review.prompt.md`](product-docs/templates/critical-review.prompt.md); skill [`.cursor/skills/critical-review/SKILL.md`](.cursor/skills/critical-review/SKILL.md); execution-hardening angle [`product-docs/templates/cold-agent-plan-review.prompt.md`](product-docs/templates/cold-agent-plan-review.prompt.md); pattern [`product-docs/methodology/README.md`](product-docs/methodology/README.md) § two-stage |
+| Plan review / cold-agent hardening (aliases: `critical-review`, adversarial review, revue critique, plan hardening Stage 2) | Canon [`product-docs/global/hygiene/critical-review/README.md`](product-docs/global/hygiene/critical-review/README.md); prompt [`product-docs/templates/critical-review.prompt.md`](product-docs/templates/critical-review.prompt.md); skill [`.claude/skills/critical-review/SKILL.md`](.claude/skills/critical-review/SKILL.md); execution-hardening angle [`product-docs/templates/cold-agent-plan-review.prompt.md`](product-docs/templates/cold-agent-plan-review.prompt.md); pattern [`product-docs/methodology/README.md`](product-docs/methodology/README.md) § two-stage |
 | Adopter posture / 3-second test | [`product-docs/global/operator-alignment-guide.md`](product-docs/global/operator-alignment-guide.md) — Ezkey is never the adopter's core business; every human surface must stay simple, fluid, operationally clear |
 | Startup or HA behaviour, locks with transactions, removing an exposed field, test helpers, a CI failure that looks random | [`product-docs/global/hygiene/stabilization-lessons/README.md`](product-docs/global/hygiene/stabilization-lessons/README.md) — rules, evidence and checks from the #1180 / #1259 stabilization |
 | Fail-open vs fail-closed | [`product-docs/global/design-principles.md`](product-docs/global/design-principles.md) §17 — name whether failure continues (observable) or stops at critical boundaries |
@@ -88,7 +88,7 @@ research and comparing alternatives, then position the idea as a `V-*`, `I-*`, o
 (fresh cloud agent, **forced different model family** from the author, read-only) — the main lever
 for AI-factory review quality and continuous improvement of autonomy. Canon:
 [`product-docs/global/hygiene/critical-review/README.md`](product-docs/global/hygiene/critical-review/README.md);
-skill [`.cursor/skills/critical-review/SKILL.md`](.cursor/skills/critical-review/SKILL.md).
+skill [`.claude/skills/critical-review/SKILL.md`](.claude/skills/critical-review/SKILL.md).
 
 For autonomous cold-execution plans and other high-risk slices, Stage 2 also uses the
 execution-hardening angle
@@ -285,331 +285,33 @@ Generated output should be reviewed for obvious scope drift and reported in the 
   recipe in `AGENT_UI_VALIDATION.md` § *Step 4 — MCP browser*. Demo Device handshake notes also
   live in `ezkey-demo-device/AGENTS.md`.
 
-## Admin UI lint-polish keyword
+## Skills (hygiene lanes and recurring procedures)
 
-- For Admin UI React lint or polish passes, the shared keyword is **`doctor-curated`**.
-- Purpose: a **punctual curated pass** sharing the same hygiene operating model as
-  `java-doctor-curated` — React Doctor → P1/P2/P3 shortlist. **Not** a CI gate and **not** a
-  zero-warning campaign.
-- Run the lightweight curated React Doctor workflow from `ezkey-admin-ui/` before broad analysis;
-  details and output files live in `ezkey-admin-ui/AGENTS.md` § React Doctor curated pass.
-- Campaign decision notes (HITL): `product-docs/global/hygiene/react-doctor/` (template + dated
-  pass instances). Index: `product-docs/global/hygiene/README.md`. Do **not** invent `I-*` /
-  `TB-*` / GitHub issues per finding.
-- Before implementing a fix set: interactive HITL (one finding at a time; nest the short
-  project-contextual continuous-learning briefing in each turn), then a dated campaign note, then
-  a **dedicated hygiene branch + PR** — not methodology backlog artifacts. **Put that same short
-  briefing in the PR body** and **link the campaign note** (durable learning trace). After
-  high-signal items, reserve a **modest low-signal allotment** (cheap P2/P3 continuous-improvement
-  wins) so light polish does not wait forever. Full HITL contract: `ezkey-admin-ui/AGENTS.md`
-  § React Doctor curated pass.
+Project skills live in [`.claude/skills/`](.claude/skills/) (read by Claude Code and Cursor). The
+operator starts a lane by saying its keyword or `/keyword`; read the skill before acting. Lane
+skills are punctual curated passes: **not** CI gates, **not** zero-warning campaigns, and no
+`I-*` / `TB-*` / GitHub issue per finding. Before any code change they walk findings **one at a
+time** with the operator (HITL). Hygiene index and cadence:
+[`product-docs/global/hygiene/README.md`](product-docs/global/hygiene/README.md).
 
-## Java doctor-curated keyword
+| Keyword | Use for |
+|---|---|
+| `doctor-curated` | Admin UI React lint / polish pass |
+| `java-doctor-curated` | Java static analysis (SpotBugs, Semgrep, PMD) |
+| `mobile-doctor-curated` | Ezkey Mobile static analysis |
+| `pam-doctor-curated` | Experimental PAM C module (format, clang-tidy, cppcheck, sanitizers) |
+| `dependabot-curated` | Dependabot PR triage and merges; platform majors via [`major-upgrades`](product-docs/global/hygiene/major-upgrades/README.md) |
+| `security-pentest-curated` | Live local-stack DAST / OpenAPI fuzzing |
+| `javamelody-curated` | Performance pass on JavaMelody counters after a known workload |
+| `quality-gate` | On-demand full-suite and stack-health gate |
+| `assessment-curated` | Mandate-driven white-box assessment → HITL → handoff |
+| `document-hygiene-curated` | Legacy document canonicality / archive-vs-delete |
+| `critical-review` | Read-only adversarial review by a different model family |
+| `corpus-ablation` | Prune ephemeral scaffolds into canon |
+| `monthly-digest` | Monthly activity digest for ezkey.org |
 
-- For Java (and adjacent) static-analysis hygiene, the shared keyword is **`java-doctor-curated`**.
-- Purpose: a **punctual curated pass** mirroring Admin UI `doctor-curated` — SpotBugs + Semgrep
-  (pinned pack) + narrow PMD (design/maintainability) → P1/P2/P3 shortlist. **Not** a CI gate and
-  **not** a zero-warning campaign. Sibling lane: Admin UI `doctor-curated` above.
-- Default command from repo root (Git Bash on Windows):
-
-```bash
-./scripts/java-doctor-curated.sh
-```
-
-  Optional: `--skip-compile` when target classes already exist; `--modules csv` to narrow scope.
-  On Windows + Semgrep Docker, the script confines `MSYS_NO_PATHCONV=1` to the Docker subshell and
-  uses a slim scan workspace under `logs/java-doctor/scan-workspace`.
-- Outputs under `logs/java-doctor/` (gitignored):
-  - `java-doctor.curated.md` — human-readable shortlist + planning contract
-  - `java-doctor.curated.json` — machine-readable summary
-  - `raw/` — SpotBugs/PMD XML + Semgrep JSON inputs
-- Config under `config/java-doctor/` (pinned Semgrep pack, narrow PMD ruleset, suppressions).
-- Default modules: `ezkey-core`, `ezkey-core-security`, `ezkey-admin-api`, `ezkey-auth-api`,
-  `ezkey-integration-api`.
-- Campaign decision notes (HITL): `product-docs/global/hygiene/java-doctor/` (template + dated
-  pass instances). Do **not** invent `I-*` / `TB-*` / GitHub issues per finding.
-
-### HITL contract (mandatory for cold agents)
-
-When the operator asks for a **`java-doctor-curated`** improvement pass:
-
-1. Run the script; read `logs/java-doctor/java-doctor.curated.md`.
-2. Propose a **small prioritized lot** (usually 3–6 items), not a zero-warning campaign. A short
-   numbered **overview** of the lot is fine (rule + location hint only).
-3. **Before any code change — interactive HITL loop (mandatory):** do **not** replace the dialogue
-   with one dense options matrix that asks for a bulk reply (`1A, 2B, 3B…`). After the overview,
-   **iterate explicitly, one finding at a time**: what the tool said, where to look in source,
-   hypothesis, options, open question — then **wait** for the operator’s Go / No-Go / suppress /
-   skip / clarifying questions on **that** item before presenting the next. The point of HITL here
-   is shared code review and refinement, not a single synthetic table. A compact decision table may
-   appear later in the **campaign note** after decisions are made — not as the primary briefing.
-4. **Fuzzy signal rule:** if the finding cannot be tied clearly to source without opening bytecode,
-   **skip** — do not invent a problem. Prefer suppress-with-reason only when the pattern is
-   understood and intentionally accepted.
-5. **If it ain't broken, don't fix it:** when diagnosis is **clear** but the flagged code is
-   harmless local over-defense (redundant guards obvious within a few nearby lines), **leave the
-   code** and suppress with reason. Do not “perfect” it: extra characterization tests and
-   crypto-adjacent churn for zero product gain is a witch-hunt, not hygiene. Clarity of the
-   finding does **not** oblige a rewrite.
-6. Record decisions in a dated campaign note under `product-docs/global/hygiene/java-doctor/`
-   (copy `TEMPLATE.md`). Machine-facing suppressions go in `config/java-doctor/suppressions.json`
-   (and SpotBugs exclude when class-level).
-7. Only then implement accepted fixes on a **dedicated hygiene branch + PR**; put the same short
-   briefing in the PR body; link the campaign note. Modest low-signal allotment after high-signal
-   items is allowed when the operator agrees.
-8. Security-sensitive zones (Tink keyset, HMAC keys, login/logout, encryption listeners): require
-   careful counter-analysis; characterization / complementary tests before refactor when behavio
-   might change. If the chosen decision is leave+suppress, skip those tests.
-
-- Authority: `product-docs/global/java-doctor-curated-evaluation-2026-07-11.md`,
-  `I-2026-07-11-java-doctor-curated-hygiene`, `TB-2026-07-11-java-doctor-curated-mvp`,
-  `product-docs/global/hygiene/java-doctor/README.md`.
-
-## PAM doctor-curated keyword
-
-- For the Linux PAM module (`ezkey-pam/src`), the shared keyword is **`pam-doctor-curated`**.
-- Purpose: a **punctual curated pass** in the same family as `java-doctor-curated` — clang-format
-  (Google preset) drift + clang-tidy (analyzer / bugprone / CERT) + cppcheck
-  (warning / performance / portability) → P1/P2/P3 shortlist. **Not** a CI gate and **not** a
-  zero-warning campaign. The macOS install track is out of this pass.
-- Skill: [`.cursor/skills/pam-doctor-curated/SKILL.md`](.cursor/skills/pam-doctor-curated/SKILL.md).
-- Default command from repo root (Git Bash on Windows):
-
-```bash
-./scripts/pam-doctor-curated.sh
-```
-
-  Optional: `--offline` to re-curate an existing `logs/pam-doctor/raw/` without the container.
-  The scan runs in Docker (`ubuntu:24.04`) so the Linux PAM, curl, and cJSON headers are present.
-- Outputs under `logs/pam-doctor/` (gitignored):
-  - `pam-doctor.curated.md` — deduped shortlist grouped by rule
-  - `pam-doctor.curated.json` — machine-readable summary
-  - `raw/` — clang-format TSV, cppcheck text, clang-tidy text, tool versions
-- Config: `ezkey-pam/.clang-format`, `ezkey-pam/.clang-tidy`, `config/pam-doctor/`.
-- Campaign notes: `product-docs/global/hygiene/pam-doctor/`. Do **not** invent `I-*` / `TB-*` /
-  GitHub issues per finding. On demand (experimental module); not part of the Java → mobile →
-  React biweekly rotation.
-- Runtime axis (existing `make test` harnesses, not a CI gate): `./scripts/pam-doctor-sanitizers.sh`
-  runs AddressSanitizer and UndefinedBehaviorSanitizer, then Valgrind Memcheck, in Docker
-  (`ubuntu:24.04`, same image default as the static pass). `--skip-valgrind` skips Memcheck.
-  A finding that needs a source or behavior change waits for one-at-a-time HITL. Do not edit
-  `ezkey-pam/src` from a sanitizer log alone. Fuzzing stays out of this command.
-
-### HITL contract (mandatory for cold agents)
-
-When the operator asks for a **`pam-doctor-curated`** improvement pass:
-
-1. Run the script; read `logs/pam-doctor/pam-doctor.curated.md`.
-2. Propose a **small prioritized lot** (usually 3–6 rule groups), not a zero-warning campaign.
-3. **Before any code change — one finding at a time.** Wait for fix / suppress / skip on that
-   item before presenting the next. A format-only apply (`clang-format -i` on `ezkey-pam/src`)
-   still waits for an explicit go.
-4. Fuzzy signal: skip. Harmless over-defense: leave it and suppress with a reason. Do not add
-   tests for a leave.
-5. Record the pass from `product-docs/global/hygiene/pam-doctor/TEMPLATE.md`.
-6. Accepted fixes: name the existing `make test` harness and extend it only when the decision
-   is not already pinned. Auth decision, cancel, conf secrets, TLS verify, and the signal
-   handler need a counter-read before a refactor.
-
-## Dependabot curated keyword
-
-- For near-continuous Dependabot dependency-update triage, the shared keyword is
-  **`dependabot-curated`**.
-- Purpose: **maximum agent autonomy for minimum risk** — classify open Dependabot PRs into
-  risk-tiered lots (T1 patch → T4 major/disruptor; Orval **O0–O3**), decide them via weekday-light
-  autonomy or Monday HITL / opt-in autonomous validation, merge existing Dependabot PRs, and close
-  with proportional tests + a short daily log or Monday campaign note. **Not** silent auto-merge
-  and **not** a full `I-*` / `TB-*` program for routine bumps. Sibling hygiene lanes:
-  `doctor-curated` and `java-doctor-curated` above.
-- Skill: [`.cursor/skills/dependabot-curated/SKILL.md`](.cursor/skills/dependabot-curated/SKILL.md)
-  (canonical **Orval risk grid**, cadence, concurrency).
-- Standing policy: [`product-docs/global/hygiene/dependabot/README.md`](product-docs/global/hygiene/dependabot/README.md).
-- **Cadence:** Dependabot daily (Maven + npm) with cooldown; weekday **light** pass (T1–T3 + Orval
-  O0/O1; silent when empty); **Monday full** at **09:14 ET** (BOM + Mobile RN pulses with
-  `yarn deps:monitor --strict` + Admin UI advisory pulse + holds + campaign note). Cadence index:
-  [`product-docs/global/hygiene/README.md`](product-docs/global/hygiene/README.md)
-  § *Cadence & automation*.
-  **One owning pass per day** — back off if concurrent merges (~30 min) or another in-flight pass.
-- **Cursor Cloud `GH_TOKEN`:** the harness read-only `gh` note is the default `cursor`/`ghs_`
-  identity. If env `GH_TOKEN` is set, probe `gh auth status` (never print the secret) and use that
-  PAT to squash-merge Dependabot PRs and to comment/close superseded PRs after a hygiene PR lands.
-  Do **not** invent a hygiene branch solely because `gh` was labeled read-only. Kickoff line and
-  identity table: skill § *Cloud GitHub identities*; rule
-  [`.cursor/rules/cloud-gh-token.mdc`](.cursor/rules/cloud-gh-token.mdc).
-- Campaign notes: `product-docs/global/hygiene/dependabot/` (`TEMPLATE.md`, `daily-log.md`, dated
-  pass instances). Index: `product-docs/global/hygiene/README.md`.
-- **Primary axis:** SemVer risk + known disruptors. **Secondary axis:** ecosystem / surface
-  (Maven, Admin UI, mobile, SDK, Actions). Defer disruptive bumps with a PR comment and, when
-  investigation cost must persist, a single `I-*` (e.g. TypeScript 7 → later release train).
-  Long-lived parks use GitHub label **`deferred:later-train`** (see dependabot hygiene README) so
-  routine passes skip HITL on those PRs.
-- Config: [`.github/dependabot.yml`](.github/dependabot.yml) (daily Maven/npm, cooldown, groups).
-  Do not invent methodology backlog for the Dependabot habit itself.
-
-### Major upgrades (registry first)
-
-- **Major upgrade** = an endoflife.date line change OR a semver major (JDK, Node, PostgreSQL,
-  HAProxy, Caddy, base images, Spring Boot line, React Native line, Gradle/AGP/Kotlin, TS, Vite).
-  Registry: `product-docs/global/hygiene/major-upgrades/registry.yaml` (platforms, not libraries —
-  crypto/auth library majors on npm/Maven stay under `dependabot-curated` T4 + security owner;
-  exception: libs whose majors Dependabot ignores under the Gradle ecosystem, #712 — e.g.
-  Conscrypt, AndroidX Biometric — stay in the register).
-- **Light path** — line change that is a semver minor (often opened by Dependabot): update the
-  registry entry (`current`, `sources`, `eol`, `last_review`) in the same PR and put the test plan
-  (family floor from the lane README) in the PR body. If Dependabot did **not** open it (e.g.
-  Kotlin pin, Rocky `ARG`), open a normal PR that updates the registry the same way.
-- **Light path + `security: true`** — short **opinion-only** issue linked to the **existing** PR
-  (collect Christophe's written opinion); test plan stays in the PR body. Do **not** require an
-  issue-with-test-plan before the PR when Dependabot (or a light-path PR) already exists.
-- **Dedicated issue with test plan before the PR** — reserved for semver majors, PostgreSQL data
-  migrations, and the React Native line (labels per `github-issue-labels`). Security owner's
-  written opinion goes in that issue when `security: true`; link it in `notes`.
-- Never autonomous (T4); Marc decides. Do not remove the Dependabot major-ignore rules.
-- `accept-risk` on a `security: true` entry requires `accept_until` (max 6 months).
-
-### HITL contract (default for cold agents)
-
-When the operator asks for a **`dependabot-curated`** pass:
-
-1. Determine **pass type** (weekday light vs Monday full); run **concurrency** check (skill §
-   *Concurrency*). List open Dependabot PRs (`gh pr list --author "app/dependabot" --state open`).
-   Probe Cursor Cloud `GH_TOKEN` (`gh auth status`; never print the secret) before choosing
-   hygiene-branch vs merging the existing Dependabot PRs.
-2. Peel off any PR labeled `deferred:*`. **Monday full only:** run the **Java BOM pulse**, the
-   **Mobile RN pulse**, and the **Admin UI advisory pulse** (skill §§), plus the **Dismissed-alert
-   check**. Weekday light skips those pulses; empty actionable queue → silent exit.
-3. Classify remaining PRs T1–T4; Orval via **Orval risk grid** (Admin UI and mobile separately).
-   Propose **3–6 lots** (overview only).
-4. **Weekday light:** default autonomy on T1–T3 + Orval O0/O1; pause on T4 / O2–O3 / crypto majors.
-   **Monday full — interactive HITL** unless autonomy waived: iterate **one lot at a time** → wait
-   for Go / No-Go / hold / defer. Do not replace this with a bulk options matrix.
-5. **Autonomous validation mode** (opt-in on Monday; default scope on weekday light): proceed on
-   allowed tiers without waiting; **still merge the existing Dependabot PRs** in each lot. Run the
-   proportional closeout ladder and present evidence. Hygiene-branch re-apply only for explicit
-   single-PR review or unmergeable Dependabot branches + companion fixes. Details: skill §
-   *Autonomous validation mode*.
-6. On Go / autonomous proceed: merge each green Dependabot PR in the lot individually. On defer:
-   comment; apply `deferred:later-train` when the PR should stay out of routine lots; optional one
-   `I-*` if the investigation should not be lost.
-7. Session closeout proportional to pass type and highest accepted tier (always `./scripts/build.sh`
-   when Java/Maven touched; stack / functional / Playwright per skill ladder).
-8. **Monday full:** write a dated campaign note (copy `TEMPLATE.md`). **Weekday with activity:**
-   append a short section to `daily-log.md`.
-
-## Mobile doctor-curated keyword
-
-- For Ezkey Mobile (`ezkey_mobile/`) static-analysis hygiene, the shared keyword is
-  **`mobile-doctor-curated`**.
-- Purpose: punctual curated pass — react-doctor + Semgrep (Ezkey mobile pack) + Detekt, plus an
-  iOS lane on macOS (SwiftLint curated set + Periphery) → P1/P2/P3 shortlist. **Not** a CI gate and **not** a zero-warning campaign.
-- Default command from `ezkey_mobile/` (Git Bash on Windows):
-
-```bash
-yarn doctor:curated
-# or
-./scripts/mobile-doctor-curated.sh
-```
-
-- Outputs under `ezkey_mobile/logs/mobile-doctor/` (gitignored):
-  - `mobile-doctor.curated.md` — human-readable shortlist + planning contract
-  - `mobile-doctor.curated.json` — machine-readable summary
-  - `raw/` — analyzer inputs
-- Config: `ezkey_mobile/config/mobile-doctor/suppressions.json`
-- Campaign notes: `product-docs/global/hygiene/mobile-doctor/`
-- HITL and operating rules: `ezkey_mobile/AGENTS.md` § Mobile doctor-curated pass
-- Authority: `product-docs/global/mobile-doctor-curated-evaluation-2026-07-11.md`,
-  `I-2026-07-11-mobile-doctor-curated-hygiene`, `TB-2026-07-11-mobile-doctor-curated-mvp`
-
-## Security pentest curated keyword
-
-- For live local Docker-stack DAST / OpenAPI fuzzing hygiene, the shared keyword is
-  **`security-pentest-curated`**.
-- Purpose: punctual curated pass — Schemathesis + OpenAPI-aware ZAP + first-party Nuclei →
-  P1/P2/P3 shortlist against `--prod-safe --with-proxy` Caddy ports. **Not** a CI gate and **not** a
-  zero-warning campaign. Sibling lanes: `java-doctor-curated`, `doctor-curated`.
-- Skill: [`.cursor/skills/security-pentest-curated/SKILL.md`](.cursor/skills/security-pentest-curated/SKILL.md)
-- Default command from repo root (Git Bash on Windows):
-
-```bash
-./scripts/security-pentest-curated.sh
-```
-
-  Preflight / dry-run: `./scripts/security-pentest-curated-preflight.sh`,
-  `./scripts/security-pentest-curated.sh --dry-run`. Details: `scripts/README.md`.
-- Config: `config/security-pentest/`. Outputs under `logs/security-pentest/` (gitignored).
-- Campaign notes: `product-docs/global/hygiene/security-pentest/`
-- HITL: same one-finding loop as java-doctor — small lot, wait per finding, suppress with reason.
-  Do **not** invent `I-*` / `TB-*` per finding. Do not re-lot Auth device **200** + domain
-  `FAILED` (charter § expected-context; pass-04).
-- Authority: `product-docs/global/security-pentest-tool-evaluation-2026-07-12.md`,
-  `I-2026-07-12-security-pentest-curated-hygiene`, `TB-2026-07-12-security-pentest-curated-mvp`
-
-## JavaMelody curated keyword
-
-- For live local Docker-stack JavaMelody extracts after a **known workload**, the shared keyword is
-  **`javamelody-curated`**.
-- Purpose: punctual performance pass — freeze collector XML → filter Actuator/scrape noise → rank
-  HTTP/SQL/Spring by total time → small P1/P2/P3 HITL lot. **Not** a CI gate and **not** a
-  zero-warning campaign. Sibling lanes: `java-doctor-curated`, `security-pentest-curated`.
-- Default command from repo root (Git Bash on Windows):
-
-```bash
-./scripts/javamelody-curated.sh
-```
-
-  Re-parse a frozen dump without HTTP: `./scripts/javamelody-curated.sh --offline`.
-- Do **not** clean-start until `logs/javamelody/raw/` holds the current counters (in-memory
-  per-request stats are lost on API restart).
-- Outputs under `logs/javamelody/` (gitignored):
-  - `javamelody.curated.md` — human-readable shortlist + workload-bias banner
-  - `javamelody.curated.json` — machine-readable summary
-  - `raw/` — collector XML + lastValue dumps
-- Config: `config/javamelody/` (noise paths, expected-hot churn routes).
-- Campaign notes: `product-docs/global/hygiene/javamelody/`
-- HITL: same one-finding loop as java-doctor — small lot, wait per finding. High hit count on
-  churn protocol paths is **not** a signal; look for mean, SQL-per-request, errors, or pool wait.
-  Integration API silence under operational churn is **coverage**, not health. Do **not** invent
-  `I-*` / `TB-*` per finding.
-
-## Quality gate keyword
-
-- On-demand full-suite + stack-health gate: **`quality-gate`**. Canon:
-  [`product-docs/global/hygiene/quality-gate/README.md`](product-docs/global/hygiene/quality-gate/README.md)
-  (`./scripts/quality-gate.sh`; exit **0** GO · **1** NO-GO · **2** bad args ·
-  **3** GO with reservations · **4** INCONCLUSIVE (HA invalid / skipped phase); #747/#748).
-
-## Assessment curated keyword
-
-- For **mandate-driven white-box hygiene** (focused investigation → assessment register →
-  one-finding HITL → handoff), the shared keyword is **`assessment-curated`**.
-- Purpose: punctual deep look when OSS doctor/pentest shortlists are the wrong entry signal (e.g.
-  mobile crypto/protocol, Java transactional boundaries). **Not** a methodology program lane and
-  **not** a substitute for `doctor-curated` / `dependabot-curated` / `security-pentest-curated` /
-  `javamelody-curated` / `quality-gate`.
-- Method canon: [`product-docs/global/hygiene/assessment-curated/README.md`](product-docs/global/hygiene/assessment-curated/README.md)
-- Cursor skill: [`.cursor/skills/assessment-curated/SKILL.md`](.cursor/skills/assessment-curated/SKILL.md)
-- Copilot mirror: `.github/copilot-instructions.md` § Assessment curated
-- Campaign template + handoff template live next to the method README.
-- Topic-lane instance (first): `product-docs/global/hygiene/mobile-protocol-security/`
-- Do **not** invent `I-*` / `TB-*` / GitHub issues per finding; promote only when the operator
-  funds a program-sized redesign.
-
-### HITL contract (mandatory for cold agents)
-
-When the operator asks for an **`assessment-curated`** pass:
-
-1. Lock mandate: surface, attention axes, non-goals.
-2. Produce or update a durable assessment register with a small lot (usually 3–6).
-3. Open/amend a dated campaign note under `product-docs/global/hygiene/<lane>/`.
-4. **One finding at a time:** briefing with code citations + observation scenario + options →
-   wait for a HITL reply → decision → handoff if `fix`. **GO means `fix` + write the handoff;
-   it does not mean “next finding” and does not start coding** unless the operator also says
-   implement now. Do not ask a bare “GO / No-Go.” Canon: assessment-curated README § *HITL
-   replies*. Then amend the campaign note.
-5. Delete completed handoffs on closeout; consolidate PR links into the campaign note.
-6. If the operator only asks **how to invoke** / how to phrase a kickoff: summarize
-   `product-docs/global/hygiene/assessment-curated/README.md` § **How to invoke (operator cheat sheet)**
-   (paste-ready examples). Do not start a full assessment unless they also give a mandate.
+Opening a GitHub issue: use the `github-issue` skill (five mandatory label groups, verified after
+create).
 
 ## UI Test Autonomy
 
@@ -655,44 +357,9 @@ program slice whether an issue helps — retroactive issues are valid.
 
 ## GitHub issues — labels mandatory on create
 
-When opening a GitHub issue (operator request, program slice visibility, or retroactive board
-anchor):
-
-**Review existing labels first.** Before creating an issue, list the repo labels
-(`gh label list`, or `GET /repos/{owner}/{repo}/labels`) and apply every label that fits.
-Create a new label only when none of the existing ones fit, and justify that new label in the
-issue body.
-
-**Tool-agnostic:** the five label groups (lane, type, component, priority, status) are mandatory
-**regardless of creation tool** — `gh`, GitHub MCP/API, Cursor app, or web UI. Prefer attaching
-labels in the same create call when the tool supports it. After create, **re-read the issue and
-add any missing labels** before reporting the URL; MCP/Cursor/web creates often omit labels even
-when intended. See [`.cursor/rules/github-issue-labels.mdc`](.cursor/rules/github-issue-labels.mdc).
-
-1. Apply **all five label groups** (lane, type, component, priority, status) at create time when
-   the client allows it (e.g. `gh issue create --label ...`, API `labels`, issue-form defaults).
-2. Verify with `gh issue view <N> --json labels` (or MCP/API equivalent) and patch gaps before
-   reporting the issue URL.
-3. Record `#NNN` (and label list) in `I-*` / `TB-*` metadata.
-
-An unlabeled issue is **incomplete** — same severity as missing TB traceability.
-
-- Keep scope small and local: high-signal fixes first, no broad refactor campaign.
-- Use issue + branch + iterative PR as the default visibility path.
-- Prefer these labels for this lane when applicable:
-  - lane:c
-  - type:refactor (or type:chore for tooling-only work)
-  - component:<target component>
-  - priority:p1/p2 according to triage
-  - status:ready once coding can start
-
-Windows shell note for GitHub CLI reliability:
-
-- In some PowerShell sessions, gh may not resolve from PATH.
-- If `gh` is not found, use the absolute executable path:
-  - C:\Program Files\GitHub CLI\gh.exe
-- Recommended pre-check before issue/PR automation:
-  - `gh auth status` (or equivalent call via the absolute path above)
+Every new issue carries the five label groups (lane, type, component, priority, status), checked
+after create: see the [`github-issue`](.claude/skills/github-issue/SKILL.md) skill. An unlabeled
+issue is incomplete.
 
 ## Git commit on Windows (agent shell)
 

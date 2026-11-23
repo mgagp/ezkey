@@ -54,7 +54,7 @@ Chronologie confirmée dans l'historique du dépôt :
 
 Références canon : `product-docs/global/hygiene/README.md` (les quatre lanes + mobile),
 `AGENTS.md` racine (§ doctor-curated, java-doctor-curated, dependabot-curated),
-`.cursor/skills/dependabot-curated/SKILL.md`, `ezkey_mobile/scripts/README.md`
+`.claude/skills/dependabot-curated/SKILL.md`, `ezkey_mobile/scripts/README.md`
 (§ quality-pipeline, lane A/B triage).
 
 La méthode Dependabot légère mentionnée par le mainteneur a bien laissé une trace : skill

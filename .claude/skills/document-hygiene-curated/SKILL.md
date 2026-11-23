@@ -36,10 +36,10 @@ change that protects canonicality and discoverability.
 
 ## Authority
 
-- Lane notes: [`product-docs/global/hygiene/document-hygiene/README.md`](../../product-docs/global/hygiene/document-hygiene/README.md)
-- Campaign template: [`product-docs/global/hygiene/document-hygiene/TEMPLATE.md`](../../product-docs/global/hygiene/document-hygiene/TEMPLATE.md)
-- Hygiene index: [`product-docs/global/hygiene/README.md`](../../product-docs/global/hygiene/README.md)
-- Methodology: [`product-docs/methodology/README.md`](../../product-docs/methodology/README.md) § *Three rules worth keeping*
+- Lane notes: [`product-docs/global/hygiene/document-hygiene/README.md`](../../../product-docs/global/hygiene/document-hygiene/README.md)
+- Campaign template: [`product-docs/global/hygiene/document-hygiene/TEMPLATE.md`](../../../product-docs/global/hygiene/document-hygiene/TEMPLATE.md)
+- Hygiene index: [`product-docs/global/hygiene/README.md`](../../../product-docs/global/hygiene/README.md)
+- Methodology: [`product-docs/methodology/README.md`](../../../product-docs/methodology/README.md) § *Three rules worth keeping*
 - Root keyword: `AGENTS.md` keyword table
 - Copilot mirror: `.github/copilot-instructions.md` § Code hygiene keywords
 
@@ -87,7 +87,7 @@ earn its keep as an actual entry path.
 
 ```text
 document-hygiene-curated — review one legacy document.
-Read .cursor/skills/document-hygiene-curated/SKILL.md, then the lane README and the target
+Read .claude/skills/document-hygiene-curated/SKILL.md, then the lane README and the target
 file. Apply the decision criteria: canonicality, discoverability, residual value, archive
 sufficiency, habilitation fit. One document per turn. Wait for Go.
 ```

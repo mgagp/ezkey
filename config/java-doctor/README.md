@@ -10,5 +10,5 @@ Pinned analyzer inputs for `./scripts/java-doctor-curated.sh` (keyword `java-doc
 | `suppressions.json` | Curator rule suppressions with written reasons |
 | Campaign HITL notes | `product-docs/global/hygiene/java-doctor/` (template + dated passes) |
 
-See root `AGENTS.md` § Java doctor-curated (including HITL contract) and
+See the [`java-doctor-curated` skill](../../.claude/skills/java-doctor-curated/SKILL.md) (including the HITL contract) and
 `product-docs/global/java-doctor-curated-evaluation-2026-07-11.md`.

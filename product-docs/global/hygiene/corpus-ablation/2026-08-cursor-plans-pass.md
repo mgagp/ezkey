@@ -6,7 +6,7 @@
   delete the plan when essence is captured or already shipped
 - **Parking:** deferred adjacent findings only — burn down when the source doc is opened or at
   campaign closeout
-- **Skill:** `.cursor/skills/corpus-ablation/SKILL.md`
+- **Skill:** `.claude/skills/corpus-ablation/SKILL.md`
 - **Closeout note:** [`2026-08-17-cursor-plans-closeout.md`](2026-08-17-cursor-plans-closeout.md)
 
 ## Resume (cold start — do not wait for a hand-off prompt)
@@ -381,7 +381,7 @@ Not unfinished documentary work. Grouped in
 - **Go** = the **single best package** for corpus realignment **including discoverability**: delete
   when liquidable, **plus** cheap in-pass fixes when warranted, **plus** parking `P-NNN` rows for
   deferred adjacent edits (parking is part of Go, not optional flavoring). Skill:
-  `.cursor/skills/corpus-ablation/SKILL.md`.
+  `.claude/skills/corpus-ablation/SKILL.md`.
 - **Discoverability:** each iteration must ask whether a cold agent would find the design signal
   without the plan; prefer 2–4 line pointers over ADR / retained analysis.
 - Append new parking rows at end of each iteration when a finding is deferred inside Go.

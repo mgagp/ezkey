@@ -12,7 +12,7 @@ body:
       value: |
         Use this for documentation gaps or corrections. After submit, ensure a `component:*`
         label is set. Labeling rules:
-        [.cursor/rules/github-issue-labels.mdc](https://github.com/mgagp/ezkey/blob/main/.cursor/rules/github-issue-labels.mdc).
+        [.claude/skills/github-issue/SKILL.md](https://github.com/mgagp/ezkey/blob/main/.claude/skills/github-issue/SKILL.md).
   - type: dropdown
     id: component
     attributes:

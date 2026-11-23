@@ -5,7 +5,7 @@
 # decisions use the github-script action context/API only.
 #
 # If type:, lane:, or component: is missing → ensure status:needs-challenge and
-# comment with a link to .cursor/rules/github-issue-labels.mdc.
+# comment with a link to .claude/skills/github-issue/SKILL.md.
 # If author is cursor[bot] → also ensure security:vuln-scanner (label already
 # exists in this repo; no create-if-missing).
 name: Issue label hygiene
@@ -61,7 +61,7 @@ jobs:
               if (missingLane) missing.push('lane:*');
               if (missingComponent) missing.push('component:*');
               const ruleUrl =
-                'https://github.com/mgagp/ezkey/blob/main/.cursor/rules/github-issue-labels.mdc';
+                'https://github.com/mgagp/ezkey/blob/main/.claude/skills/github-issue/SKILL.md';
               const body = [
                 'This issue is missing one or more mandatory label groups: `' +
                   missing.join('`, `') +

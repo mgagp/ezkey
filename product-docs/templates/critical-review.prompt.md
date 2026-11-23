@@ -4,7 +4,7 @@ Fill placeholders and send to a **fresh** cloud agent on a **forced different mo
 the artifact's author (mandatory), high effort, read-only. Canon:
 [critical-review hygiene](https://github.com/mgagp/ezkey/blob/main/product-docs/global/hygiene/critical-review/README.md).
 Skill:
-[critical-review skill](https://github.com/mgagp/ezkey/blob/main/.cursor/skills/critical-review/SKILL.md).
+[critical-review skill](https://github.com/mgagp/ezkey/blob/main/.claude/skills/critical-review/SKILL.md).
 
 For the **autonomous-execution hardening** angle only, also apply
 [`cold-agent-plan-review.prompt.md`](cold-agent-plan-review.prompt.md) by reference.
