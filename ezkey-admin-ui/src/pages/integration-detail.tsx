@@ -10,6 +10,7 @@ import { AppShell } from '@/components/layout/app-shell';
 import { ContextHelp } from '@/components/ui/context-help';
 import { type ColumnDef } from '@/components/data-table/data-table';
 import { PaginatedTable } from '@/components/data-table/paginated-table';
+import { EnrollmentUserIdCell } from '@/components/feature/enrollment-identity-fields';
 import { EnrollmentListLifecycleDialog, type EnrollmentLifecycleAction } from '@/components/feature/enrollment-list-lifecycle-dialog';
 import { EnrollmentStatusBadge } from '@/components/feature/enrollment-status-badge';
 import { Alert } from '@/components/ui/alert';
@@ -288,20 +289,13 @@ export default function IntegrationDetailPage() {
         sortKey: 'enrollmentName',
         render: (r) => <span className="font-medium">{r.enrollmentName}</span>,
       },
-      statusCol,
       {
-        header: tEnrollments('list.columns.userIdentifier'),
+        header: tEnrollments('identity.userId'),
         key: 'userIdentifier',
         sortKey: 'userIdentifier',
-        render: (r) => (
-          <span
-            className="text-xs text-fg-muted max-w-[10rem] truncate block"
-            title={r.userIdentifier ?? undefined}
-          >
-            {r.userIdentifier ?? '—'}
-          </span>
-        ),
+        render: (r) => <EnrollmentUserIdCell value={r.userIdentifier} />,
       },
+      statusCol,
       {
         header: tEnrollments('list.columns.created'),
         key: 'createdAt',

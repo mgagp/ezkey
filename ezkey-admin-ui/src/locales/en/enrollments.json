@@ -20,7 +20,6 @@
     "columns": {
       "id": "ID",
       "name": "Name",
-      "userIdentifier": "User ID",
       "status": "Status",
       "active": "Active",
       "integration": "Integration",
@@ -47,14 +46,12 @@
     "integration": "Integration *",
     "integrationPlaceholder": "Select an integration...",
     "name": "Enrollment Name *",
-    "namePlaceholder": "e.g. Marie Dupont — iPhone 15",
+    "namePlaceholder": "e.g. Marie's iPhone 15",
     "contactEmail": "Contact Email",
     "contactEmailOptional": "(optional)",
     "contactEmailPlaceholder": "user@garageducoin.ca",
     "contactPhone": "Contact Phone",
     "contactPhonePlaceholder": "+1 514 555 1234",
-    "userIdentifier": "User Identifier",
-    "userIdentifierPlaceholder": "Internal reference (HR ID, username…)",
     "challengeRequired": "Require challenge code on each authentication",
     "cancel": "Cancel",
     "submit": "Create Enrollment",
@@ -97,6 +94,7 @@
     "selectIntegration": "Select an integration",
     "nameRequired": "Name is required",
     "nameMax": "Max {{n}} characters",
+    "userIdMax": "Max {{n}} characters",
     "invalidEmail": "Invalid email address",
     "invalidPhone": "Use an international phone number with country code (example: +1 514 555 1234)",
     "invitationExpiryRequired": "Choose a date and time when using a custom invitation deadline.",
@@ -118,7 +116,6 @@
     "challengeNotRequired": "Not required",
     "infoContactEmail": "Contact Email",
     "infoContactPhone": "Contact Phone",
-    "infoUserId": "User ID",
     "infoVerified": "Verified",
     "infoKeyTier": "Device key storage",
     "infoLastUsed": "Last Used",
@@ -141,7 +138,6 @@
     "editName": "Enrollment name",
     "editContactEmail": "Contact email",
     "editContactPhone": "Contact phone",
-    "editUserIdentifier": "User identifier",
     "editChallengeRequired": "Require challenge on each authentication",
     "editExpiresAt": "Invitation expiry (bind/verify)",
     "editExpiresHint": "Applies to the pending invitation window, not a separate post-verification lifetime.",
@@ -278,5 +274,14 @@
     "doneCancelled": "Cancelled. The test authentication was cancelled.",
     "runAnotherTest": "Run Another Test",
     "close": "Close"
+  },
+  "identity": {
+    "userId": "User ID",
+    "optional": "(optional)",
+    "nameHelp": "Device label shown on the phone.",
+    "userIdHelp": "Username in the protected application. Integrations that find the user by username rely on it.",
+    "userIdHelpSystem": "Optional reference for this administrator enrollment.",
+    "userIdEmptyWarning": "Without a User ID, an integration that finds the user by username cannot sign this user in.",
+    "userIdNotSet": "Not set"
   }
 }

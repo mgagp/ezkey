@@ -7,6 +7,7 @@ import { AppShell } from '@/components/layout/app-shell';
 import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
 import { ReasonFieldRow } from '@/components/feature/reason-field-row';
 import { DevicePrivateKeyTierBadge } from '@/components/feature/device-private-key-tier-badge';
+import { EnrollmentIdentityFormFields, EnrollmentIdentityReadout } from '@/components/feature/enrollment-identity-fields';
 import { EnrollmentStatusBadge } from '@/components/feature/enrollment-status-badge';
 import { AdminEnrollmentOwner } from '@/components/feature/admin-enrollment-owner';
 import { AdminFkLink } from '@/components/feature/fk-detail-links';
@@ -34,6 +35,11 @@ import { authContextDemoPresets, isDemoMode } from '@/lib/demo-mode';
 import { isPhoneNumberInputValid, normalizePhoneNumberInput } from '@/lib/phone-number';
 import { formatChallengeCode, formatCountdown, formatDate } from '@/lib/utils';
 import { enrollmentEditScope, showsContactEmail } from '@/lib/enrollment-edit-scope';
+import {
+  ENROLLMENT_NAME_MAX_LENGTH,
+  ENROLLMENT_USER_ID_MAX_LENGTH,
+  enrollmentIntegrationKind,
+} from '@/lib/enrollment-identity';
 import { showsEnrollmentQrCard, showsIntegratedDeliveryNotice } from '@/lib/enrollment-bind-preview';
 import { enrollmentActiveToggle } from '@/lib/enrollment-active-toggle';
 import { useCancel, useCreate2, useGetById2 } from '@/generated/admin-api/auth-attempts/auth-attempts';
@@ -747,7 +753,12 @@ export default function EnrollmentDetailPage() {
                 )}
                 <dl className="space-y-3">
                   <InfoRow label={t('detail.infoId')}><span className="font-mono">{enrollment.enrollmentId}</span></InfoRow>
-                  <InfoRow label={t('detail.infoName')}><span className="font-medium">{enrollment.enrollmentName}</span></InfoRow>
+                  <EnrollmentIdentityReadout
+                    nameLabel={t('detail.infoName')}
+                    name={enrollment.enrollmentName ?? ''}
+                    userIdentifier={enrollment.userIdentifier}
+                    integrationKind={enrollmentIntegrationKind(enrollment)}
+                  />
                   <InfoRow label={t('detail.infoStatus')}><EnrollmentStatusBadge status={enrollment.enrollmentStatus} /></InfoRow>
                   <InfoRow label={t('detail.infoActive')}>
                     <Badge variant={enrollment.enrollmentActive ? 'success' : 'muted'}>
@@ -805,9 +816,6 @@ export default function EnrollmentDetailPage() {
                   )}
                   <InfoRow label={t('detail.infoContactPhone')}>
                     <span className="text-fg-muted">{enrollment.contactPhoneNumber ?? '—'}</span>
-                  </InfoRow>
-                  <InfoRow label={t('detail.infoUserId')}>
-                    <span className="text-fg-muted break-all">{enrollment.userIdentifier ?? '—'}</span>
                   </InfoRow>
                   <InfoRow label={t('detail.infoCreated')}>
                     <span className="text-fg-muted">{enrollment.createdAt ? formatDate(enrollment.createdAt) : '—'}</span>
@@ -1306,17 +1314,23 @@ export default function EnrollmentDetailPage() {
             </p>
           )}
           {!editContactEmailOnly && (
-          <div className="space-y-1.5">
-            <Label htmlFor="edit-name">{t('detail.editName')}</Label>
-            <Input
-              id="edit-name"
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              className="border-2 border-fg/30"
-              maxLength={255}
-              autoComplete="off"
-            />
-          </div>
+          <EnrollmentIdentityFormFields
+            nameLabel={t('detail.editName')}
+            name={{
+              id: 'edit-name',
+              value: editName,
+              onChange: setEditName,
+              className: 'border-2 border-fg/30',
+            }}
+            userId={{
+              id: 'edit-user-id',
+              value: editUserId,
+              onChange: setEditUserId,
+              className: 'border-2 border-fg/30',
+            }}
+            userIdentifier={editUserId}
+            integrationKind={enrollmentIntegrationKind(enrollment)}
+          />
           )}
           {showsContactEmail(enrollment) && (
           <div className="space-y-1.5">
@@ -1360,17 +1374,6 @@ export default function EnrollmentDetailPage() {
             {editPhone.trim() !== '' && !isPhoneNumberInputValid(editPhone) && (
               <p className="text-xs text-error">{t('validation.invalidPhone')}</p>
             )}
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="edit-user-id">{t('detail.editUserIdentifier')}</Label>
-            <Input
-              id="edit-user-id"
-              value={editUserId}
-              onChange={(e) => setEditUserId(e.target.value)}
-              className="border-2 border-fg/30"
-              maxLength={255}
-              autoComplete="off"
-            />
           </div>
           <label className="flex items-start gap-3 cursor-pointer select-none p-3 border-2 border-fg/20">
             <input
@@ -1433,7 +1436,12 @@ export default function EnrollmentDetailPage() {
               isLoading={updateMutation.isPending}
               disabled={
                 !editContactEmailOnly
-                && (!editName.trim() || (editPhone.trim() !== '' && !isPhoneNumberInputValid(editPhone)))
+                && (
+                  !editName.trim()
+                  || editName.length > ENROLLMENT_NAME_MAX_LENGTH
+                  || editUserId.trim().length > ENROLLMENT_USER_ID_MAX_LENGTH
+                  || (editPhone.trim() !== '' && !isPhoneNumberInputValid(editPhone))
+                )
               }
             >
               {t('detail.editSave')}
