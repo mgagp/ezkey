@@ -33,12 +33,12 @@ is a **human mandate + white-box assessment**, not an OSS linter shortlist.
 
 ## Authority
 
-- Method canon: [`product-docs/global/hygiene/assessment-curated/README.md`](../../product-docs/global/hygiene/assessment-curated/README.md)
-- Campaign template: [`…/TEMPLATE.md`](../../product-docs/global/hygiene/assessment-curated/TEMPLATE.md)
-- Handoff template: [`…/HANDOFF-TEMPLATE.md`](../../product-docs/global/hygiene/assessment-curated/HANDOFF-TEMPLATE.md)
-- Hygiene index: [`product-docs/global/hygiene/README.md`](../../product-docs/global/hygiene/README.md)
-- Hygiene vs program: [`product-docs/methodology/README.md`](../../product-docs/methodology/README.md) § *Three rules worth keeping*
-- Root keyword: `AGENTS.md` § Assessment curated
+- Method canon: [`product-docs/global/hygiene/assessment-curated/README.md`](../../../product-docs/global/hygiene/assessment-curated/README.md)
+- Campaign template: [`…/TEMPLATE.md`](../../../product-docs/global/hygiene/assessment-curated/TEMPLATE.md)
+- Handoff template: [`…/HANDOFF-TEMPLATE.md`](../../../product-docs/global/hygiene/assessment-curated/HANDOFF-TEMPLATE.md)
+- Hygiene index: [`product-docs/global/hygiene/README.md`](../../../product-docs/global/hygiene/README.md)
+- Hygiene vs program: [`product-docs/methodology/README.md`](../../../product-docs/methodology/README.md) § *Three rules worth keeping*
+- Root skills table: `AGENTS.md` § Skills
 - Copilot mirror: `.github/copilot-instructions.md` § Assessment curated
 
 ## Procedure
@@ -80,6 +80,6 @@ is a **human mandate + white-box assessment**, not an OSS linter shortlist.
 ## If the operator asks how to invoke
 
 Quote or paraphrase **How to invoke (operator cheat sheet)** from
-[`product-docs/global/hygiene/assessment-curated/README.md`](../../product-docs/global/hygiene/assessment-curated/README.md)
+[`product-docs/global/hygiene/assessment-curated/README.md`](../../../product-docs/global/hygiene/assessment-curated/README.md)
 (minimal kickoff, recommended kickoff with mandate lines, and one concrete example). Keep the
 answer short; do not expand into a full methodology lecture.

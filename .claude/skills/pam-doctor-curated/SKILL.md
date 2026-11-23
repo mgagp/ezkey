@@ -27,7 +27,7 @@ gate and **not** a zero-warning campaign.
 
 ## Authority
 
-- Keyword: root `AGENTS.md` § PAM doctor-curated
+- Root skills table: `AGENTS.md` § Skills
 - Tooling: `config/pam-doctor/README.md`, `ezkey-pam/.clang-format`, `ezkey-pam/.clang-tidy`
 - Campaign notes: `product-docs/global/hygiene/pam-doctor/`
 - Command: `./scripts/pam-doctor-curated.sh` from the repo root

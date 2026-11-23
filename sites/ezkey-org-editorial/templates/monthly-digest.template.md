@@ -40,7 +40,7 @@ Subject palette (include only the active ones, in this order):
 - Backend & API contracts
 - The rest worth mentioning: SDK, test/Docker infrastructure, public site, security/integrity
 
-See the procedure and distillation rules in .cursor/skills/monthly-digest/SKILL.md
+See the procedure and distillation rules in .claude/skills/monthly-digest/SKILL.md
 ezkey-org:exclude-end -->
 
 <!-- Meta line rendered on the detail page: "Monthly digest · <Month> <Year>" -->

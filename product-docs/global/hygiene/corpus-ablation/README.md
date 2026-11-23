@@ -16,7 +16,7 @@ disappear once the substance is canonized.
 
 ## Invoke
 
-- Cursor skill: [`.cursor/skills/corpus-ablation/SKILL.md`](../../../.cursor/skills/corpus-ablation/SKILL.md)
+- Skill: [`.claude/skills/corpus-ablation/SKILL.md`](../../../../.claude/skills/corpus-ablation/SKILL.md)
   (keyword **`corpus-ablation`**)
 - Active parking / Done / **Resume** log: [`2026-08-cursor-plans-pass.md`](2026-08-cursor-plans-pass.md)
   (cold start: read the Resume block — a pasted hand-off is optional)

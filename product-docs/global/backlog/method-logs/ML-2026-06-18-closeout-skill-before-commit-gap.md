@@ -63,7 +63,7 @@ Avoid new ceremony layers. Strengthen **triggers and discoverability** only:
 
 ## Follow-up applied (2026-06-18)
 
-- [x] Update `.cursor/skills/closeout/SKILL.md`
+- [x] Update `.claude/skills/closeout/SKILL.md`
 - [x] Update `product-docs/methodology/minimum-viable-method.md`
 - [x] Update `product-docs/methodology/session-start-guide.md`
 - [x] Update root `AGENTS.md` § program slice exit

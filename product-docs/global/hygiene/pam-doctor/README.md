@@ -20,7 +20,7 @@ The macOS install track is out of this lane.
 
 - Hygiene index: [`../README.md`](../README.md)
 - Keyword contract: root [`AGENTS.md`](../../../../AGENTS.md) § PAM doctor-curated
-- Skill: [`.cursor/skills/pam-doctor-curated/SKILL.md`](../../../../.cursor/skills/pam-doctor-curated/SKILL.md)
+- Skill: [`.claude/skills/pam-doctor-curated/SKILL.md`](../../../../.claude/skills/pam-doctor-curated/SKILL.md)
 - Layout and checks: [`config/pam-doctor/README.md`](../../../../config/pam-doctor/README.md)
 - Machine suppressions: [`config/pam-doctor/suppressions.json`](../../../../config/pam-doctor/suppressions.json)
 - GitHub: [#1269](https://github.com/mgagp/ezkey/issues/1269)

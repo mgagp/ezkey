@@ -30,7 +30,7 @@ In these situations, apply a two-stage hardening pattern:
    **`critical-review`** (aliases: adversarial review, revue critique, plan hardening) — see
    [critical-review hygiene canon](https://github.com/mgagp/ezkey/blob/main/product-docs/global/hygiene/critical-review/README.md)
    and
-   [critical-review skill](https://github.com/mgagp/ezkey/blob/main/.cursor/skills/critical-review/SKILL.md)
+   [critical-review skill](https://github.com/mgagp/ezkey/blob/main/.claude/skills/critical-review/SKILL.md)
    (source-project paths; not part of the published methodology pack).
    Open a **fresh** read-only cloud-agent session on a **forced different model family** from the
    author's (mandatory) and submit the draft using
@@ -168,7 +168,7 @@ corpus itself, not only to code.
 An optional visibility layer, not a second source of truth — the artifact above remains canonical.
 When you open an issue, apply all five label groups (`lane:*`, `type:*`, `component:*`,
 `priority:*`, `status:*`) at create time; in the source repository this is enforced by
-`.cursor/rules/github-issue-labels.mdc`. Link back to the `I-*`/`TB-*` in the issue body instead
+`.claude/skills/github-issue/SKILL.md`. Link back to the `I-*`/`TB-*` in the issue body instead
 of duplicating its content.
 
 ## Templates

@@ -248,4 +248,4 @@ appear in that Monday's Dependabot campaign note when the walk is folded into th
 - Hygiene index: [`../README.md`](../README.md)
 - Sibling triage lane: [`../dependabot/`](../dependabot/) (`dependabot-curated`)
 - Agent rule: root [`AGENTS.md`](../../../../AGENTS.md) § Dependabot curated → *Major upgrades*
-- Skill note: [`.cursor/skills/dependabot-curated/SKILL.md`](../../../../.cursor/skills/dependabot-curated/SKILL.md)
+- Skill note: [`.claude/skills/dependabot-curated/SKILL.md`](../../../../.claude/skills/dependabot-curated/SKILL.md)

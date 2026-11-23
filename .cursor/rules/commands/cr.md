@@ -7,7 +7,7 @@
 >
 > For adversarial / critical review (visions, G1 briefs, Stage 2), use keyword **`critical-review`**:
 > canon [`product-docs/global/hygiene/critical-review/README.md`](../../../product-docs/global/hygiene/critical-review/README.md),
-> skill [`.cursor/skills/critical-review/SKILL.md`](../../skills/critical-review/SKILL.md),
+> skill [`.claude/skills/critical-review/SKILL.md`](../../../.claude/skills/critical-review/SKILL.md),
 > prompt [`product-docs/templates/critical-review.prompt.md`](../../../product-docs/templates/critical-review.prompt.md).
 >
 > For the autonomous-execution hardening angle only:

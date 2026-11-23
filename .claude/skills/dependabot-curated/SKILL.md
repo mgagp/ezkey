@@ -22,7 +22,7 @@ This is **hygiene**, not a methodology lane — the same weight class as `doctor
 bump is disruptive and deliberately deferred (investigation cost should not be lost).
 
 Standing policy (cadence table, Orval pointer, reporting): 
-[`product-docs/global/hygiene/dependabot/README.md`](../../product-docs/global/hygiene/dependabot/README.md).
+[`product-docs/global/hygiene/dependabot/README.md`](../../../product-docs/global/hygiene/dependabot/README.md).
 **Canonical Orval O0–O3 grid:** this skill § *Orval risk grid*.
 
 ## Cadence
@@ -32,22 +32,22 @@ full pass (keep, tune, or roll back).
 
 | Pass | When | Scope | Reporting |
 |------|------|-------|-----------|
-| **Weekday light** | **Weekdays 09:14 ET** (Mon–Fri) | T1–T3 lots + Orval **O0/O1** only (Admin UI and mobile **separately**). Skip Java BOM pulse, Mobile RN pulse, Admin UI advisory pulse, and holds/deferral deep review. **Silent when the actionable queue is empty** (no file write). | Short append-only dated section in [`daily-log.md`](../../product-docs/global/hygiene/dependabot/daily-log.md) **only when something was merged/held/deferred** |
-| **Monday full** | **Monday 09:14 ET** (or first working day of the week) | Full pass: T1–T4, Orval O0–O3, **Java BOM pulse**, **Mobile RN pulse** (`yarn deps:monitor --strict`), **Admin UI advisory pulse** (`npm audit --json`, reduced to distinct GHSA), holds review, ecosystem-gate check | One consolidated campaign note `YYYY-MM-DD-pass-N.md` from [`TEMPLATE.md`](../../product-docs/global/hygiene/dependabot/TEMPLATE.md); may summarize the prior week's daily-log entries |
+| **Weekday light** | **Weekdays 09:14 ET** (Mon–Fri) | T1–T3 lots + Orval **O0/O1** only (Admin UI and mobile **separately**). Skip Java BOM pulse, Mobile RN pulse, Admin UI advisory pulse, and holds/deferral deep review. **Silent when the actionable queue is empty** (no file write). | Short append-only dated section in [`daily-log.md`](../../../product-docs/global/hygiene/dependabot/daily-log.md) **only when something was merged/held/deferred** |
+| **Monday full** | **Monday 09:14 ET** (or first working day of the week) | Full pass: T1–T4, Orval O0–O3, **Java BOM pulse**, **Mobile RN pulse** (`yarn deps:monitor --strict`), **Admin UI advisory pulse** (`npm audit --json`, reduced to distinct GHSA), holds review, ecosystem-gate check | One consolidated campaign note `YYYY-MM-DD-pass-N.md` from [`TEMPLATE.md`](../../../product-docs/global/hygiene/dependabot/TEMPLATE.md); may summarize the prior week's daily-log entries |
 
 **2026-10-19:** clock fixed at **09:14 ET** and Monday full requires `yarn deps:monitor --strict`
 (Marc hygiene-cadence approval; avoids collision with code-scanning triage at **10:15 ET**).
 **2026-11-13:** Monday full adds the **Admin UI advisory pulse**. `npm install` had reported 10
 moderate for one `minimatch` advisory already on the waiting-upstream table
 (GHSA-g3hv-75wg-m249, alerts 260 and 289). An empty PR queue had hidden it.
-Authority: [`product-docs/global/hygiene/README.md`](../../product-docs/global/hygiene/README.md)
+Authority: [`product-docs/global/hygiene/README.md`](../../../product-docs/global/hygiene/README.md)
 § *Cadence & automation*.
 
 Dependabot itself opens PRs on a **daily** schedule for Maven and npm (Admin UI, SDK JS, mobile),
 with a **cooldown** (~3 days patch/minor, ~7 days major) and `open-pull-requests-limit: 10` per
 ecosystem (stay current; no smoothing). GitHub Actions and pip stay **weekly**; pip uses the same
 3/3/7 cooldown, Actions uses `default-days: 3` only (Dependabot schema has no semver keys for
-`github-actions`). Config: [`.github/dependabot.yml`](../../.github/dependabot.yml).
+`github-actions`). Config: [`.github/dependabot.yml`](../../../.github/dependabot.yml).
 
 **Default autonomy for weekday light:** proceed on T1–T3 and Orval O0/O1 without per-lot Go when
 the operator kickoff says `dependabot-curated` (light / weekday / autonomous). Still pause on T4,
@@ -84,11 +84,11 @@ Provenance: double run on 2026-10-05 and a parallel Orval cloud agent.
 
 ## Authority
 
-- Lane notes: [`product-docs/global/hygiene/dependabot/README.md`](../../product-docs/global/hygiene/dependabot/README.md)
-- Campaign template: [`product-docs/global/hygiene/dependabot/TEMPLATE.md`](../../product-docs/global/hygiene/dependabot/TEMPLATE.md)
-- Hygiene vs program: [`product-docs/methodology/README.md`](../../product-docs/methodology/README.md) § *Three rules worth keeping*
-- Dependabot config: [`.github/dependabot.yml`](../../.github/dependabot.yml)
-- Root keyword: `AGENTS.md` § Dependabot curated
+- Lane notes: [`product-docs/global/hygiene/dependabot/README.md`](../../../product-docs/global/hygiene/dependabot/README.md)
+- Campaign template: [`product-docs/global/hygiene/dependabot/TEMPLATE.md`](../../../product-docs/global/hygiene/dependabot/TEMPLATE.md)
+- Hygiene vs program: [`product-docs/methodology/README.md`](../../../product-docs/methodology/README.md) § *Three rules worth keeping*
+- Dependabot config: [`.github/dependabot.yml`](../../../.github/dependabot.yml)
+- Root skills table: `AGENTS.md` § Skills
 
 ## Risk taxonomy
 
@@ -280,7 +280,7 @@ Admin UI lockfile.
 
 Tink / ShedLock / ipaddress now live in parent properties (`tink.version`, `shedlock.version`,
 `ipaddress.version`). Do not re-propose that lift; see
-[`product-docs/global/hygiene/dependabot/handoff-centralize-core-pins.md`](../../product-docs/global/hygiene/dependabot/handoff-centralize-core-pins.md).
+[`product-docs/global/hygiene/dependabot/handoff-centralize-core-pins.md`](../../../product-docs/global/hygiene/dependabot/handoff-centralize-core-pins.md).
 
 ## Mobile RN pulse
 
@@ -324,7 +324,7 @@ UI Orval). **Do not treat an empty Dependabot mobile list as "mobile is current.
 
 Do **not** invent a Docker or Gradle Dependabot ecosystem for mobile unless already patterned
 in-repo. Authority: lane
-[`product-docs/global/hygiene/dependabot/README.md`](../../product-docs/global/hygiene/dependabot/README.md)
+[`product-docs/global/hygiene/dependabot/README.md`](../../../product-docs/global/hygiene/dependabot/README.md)
 § *Mobile RN pulse*.
 
 ## npm audit reduction
@@ -371,7 +371,7 @@ A moderate advisory that exists only on the lint toolchain stays a recorded row 
 date. It does not become a CI gate.
 
 Authority: lane
-[`product-docs/global/hygiene/dependabot/README.md`](../../product-docs/global/hygiene/dependabot/README.md)
+[`product-docs/global/hygiene/dependabot/README.md`](../../../product-docs/global/hygiene/dependabot/README.md)
 § *Admin UI advisory pulse*.
 
 ## Autonomous validation mode
@@ -537,7 +537,7 @@ Record completion (or N/A) in the campaign note validation table (Monday) or the
 
 Platform, runtime, and base-image **line** changes (endoflife.date support line or semver major)
 are **not** routine Dependabot lots. They live in
-[`product-docs/global/hygiene/major-upgrades/`](../../product-docs/global/hygiene/major-upgrades/)
+[`product-docs/global/hygiene/major-upgrades/`](../../../product-docs/global/hygiene/major-upgrades/)
 (`registry.yaml` + lane README). On the **Monday full** pass in January / April / July / October,
 include a short register walk (Fred prepares; Christophe opinion on `security: true`; Patrick on
 build/mobile plans; Marc decides).
@@ -551,9 +551,9 @@ build/mobile plans; Marc decides).
 - Crypto/auth **library** majors on npm/Maven stay T4 here. Exception in the register: libs whose
   majors Dependabot ignores (Gradle ecosystem, #712) — e.g. Conscrypt, AndroidX Biometric.
 - Monthly endoflife.date check workflow:
-  [`.github/workflows/endoflife-check.yml`](../../.github/workflows/endoflife-check.yml)
+  [`.github/workflows/endoflife-check.yml`](../../../.github/workflows/endoflife-check.yml)
   (first Monday ~14:30 UTC; standing `hygiene` issue).
-- Full agent contract: root `AGENTS.md` § Dependabot curated → *Major upgrades*.
+- Full agent contract: [`product-docs/global/hygiene/major-upgrades/README.md`](../../../product-docs/global/hygiene/major-upgrades/README.md).
 
 ## Deferred labels
 
@@ -569,7 +569,7 @@ gh label create "deferred:later-train" --description "…" --color "6E7781"
 gh label create "deferred:rn-upgrade" --description "…" --color "B76E3F"
 ```
 
-Standing parked set is recorded in [`product-docs/global/hygiene/dependabot/README.md`](../../product-docs/global/hygiene/dependabot/README.md).
+Standing parked set is recorded in [`product-docs/global/hygiene/dependabot/README.md`](../../../product-docs/global/hygiene/dependabot/README.md).
 
 ## Windows shell notes
 

@@ -127,8 +127,8 @@ Example assessment: [`../../../docs/security/mobile-protocol-crypto-assessment-2
 
 ## Agent entrypoints
 
-- Cursor skill: [`.cursor/skills/assessment-curated/SKILL.md`](../../../.cursor/skills/assessment-curated/SKILL.md)
-- Root keyword: `AGENTS.md` § Assessment curated
+- Skill: [`.claude/skills/assessment-curated/SKILL.md`](../../../../.claude/skills/assessment-curated/SKILL.md)
+- Root skills table: `AGENTS.md` § Skills
 - Copilot mirror: `.github/copilot-instructions.md` § Assessment curated
 
 ## How to invoke (operator cheat sheet)

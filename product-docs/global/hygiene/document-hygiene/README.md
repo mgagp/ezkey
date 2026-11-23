@@ -19,9 +19,9 @@ prefer delete over leaving a stub unless the stub itself materially improves dis
 
 ## Invoke
 
-- Cursor skill: [`.cursor/skills/document-hygiene-curated/SKILL.md`](../../../.cursor/skills/document-hygiene-curated/SKILL.md)
+- Skill: [`.claude/skills/document-hygiene-curated/SKILL.md`](../../../../.claude/skills/document-hygiene-curated/SKILL.md)
    (keyword **`document-hygiene-curated`**)
-- Root pointer: [`AGENTS.md`](../../../AGENTS.md) keyword table
+- Root pointer: [`AGENTS.md`](../../../../AGENTS.md) keyword table
 
 ## Discovery criteria
 

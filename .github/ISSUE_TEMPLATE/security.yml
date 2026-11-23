@@ -26,7 +26,7 @@ body:
         credentials, or undisclosed vulns.
 
         Labeling rules:
-        [.cursor/rules/github-issue-labels.mdc](https://github.com/mgagp/ezkey/blob/main/.cursor/rules/github-issue-labels.mdc).
+        [.claude/skills/github-issue/SKILL.md](https://github.com/mgagp/ezkey/blob/main/.claude/skills/github-issue/SKILL.md).
   - type: checkboxes
     id: not-sensitive
     attributes:

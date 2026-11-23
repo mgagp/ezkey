@@ -9,7 +9,6 @@ These Cursor rules are `alwaysApply: true` and platform-neutral, so Claude Code 
 @.cursor/rules/cold-start-context.mdc
 @.cursor/rules/product-docs-workflow-bootstrap.mdc
 @.cursor/rules/project-values-analysis.mdc
-@.cursor/rules/github-issue-labels.mdc
 @.cursor/rules/manual-exploratory-test-summaries.mdc
 @.cursor/rules/voice-dictation.mdc
 
@@ -33,7 +32,7 @@ changes.
 
 - The shell is zsh/bash on macOS: ignore the Windows-only sections of `AGENTS.md`
   (Git Bash launcher, PowerShell quoting, `git-commit.sh` / `git-pr.sh` file-based flow) and the
-  Windows rules (`*-windows*.mdc`, `shell-preferences.mdc` launcher parts, `cloud-gh-token.mdc`).
+  Windows rules (`*-windows*.mdc`, `shell-preferences.mdc` launcher parts).
   Plain `git commit` with a HEREDOC and `gh pr create --body-file` are fine here.
 - iOS work (issue #152, ADR-MOB-0005) happens in the worktree `~/w/ezkey-ios` on branch
   `feature/152-mobile-ios`. Start with `ezkey_mobile/AGENTS.md`.

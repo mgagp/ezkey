@@ -28,7 +28,7 @@ curation does not collide with code-scanning triage at **10:15 ET**; Monday full
 as “current.” Index: [`../README.md`](../README.md) § *Cadence & automation*.
 
 Authority: skill
-[`.cursor/skills/dependabot-curated/SKILL.md`](../../../.cursor/skills/dependabot-curated/SKILL.md)
+[`.claude/skills/dependabot-curated/SKILL.md`](../../../../.claude/skills/dependabot-curated/SKILL.md)
 §§ *Cadence*, *Concurrency*, *Orval risk grid*.
 
 ### Reporting (least noise)
@@ -164,8 +164,8 @@ Companion hygiene for Dependabot `#1055`: see the springdoc 3.2.0 companion PR (
 Platform / runtime / base-image **line** changes are tracked in
 [`../major-upgrades/`](../major-upgrades/) (`registry.yaml`). They are reviewed on the full Monday
 pass in January / April / July / October (not weekday light). Light path vs dedicated issue,
-`security: true` opinion-only issue on light path, and test-plan floors: lane README + root
-`AGENTS.md` § *Major upgrades*. Crypto/auth **library** majors on npm/Maven stay in this
+`security: true` opinion-only issue on light path, and test-plan floors: the major-upgrades lane
+README. Crypto/auth **library** majors on npm/Maven stay in this
 Dependabot lane (T4); Gradle-ecosystem libs Dependabot ignores (#712) live in the register.
 Monthly endoflife.date check:
 [`.github/workflows/endoflife-check.yml`](../../../../.github/workflows/endoflife-check.yml)
@@ -484,8 +484,8 @@ or OSV advisory applies to the Boot-managed versions (logback 1.5.38, Jackson 3 
 ## Related
 
 - Hygiene index: [`../README.md`](../README.md)
-- Keyword contract: root [`AGENTS.md`](../../../AGENTS.md) § Dependabot curated
-- Skill: [`.cursor/skills/dependabot-curated/SKILL.md`](../../../.cursor/skills/dependabot-curated/SKILL.md)
+- Keyword contract: root [`AGENTS.md`](../../../../AGENTS.md) § Dependabot curated
+- Skill: [`.claude/skills/dependabot-curated/SKILL.md`](../../../../.claude/skills/dependabot-curated/SKILL.md)
 - Dependabot config: [`.github/dependabot.yml`](../../../.github/dependabot.yml)
 - Hygiene vs program: [`../../methodology/decisions/2026-06-06-methodological-closeout-vs-code-hygiene.md`](../../methodology/decisions/2026-06-06-methodological-closeout-vs-code-hygiene.md)
 - Sibling lanes: [`../react-doctor/`](../react-doctor/), [`../java-doctor/`](../java-doctor/)
