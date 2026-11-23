@@ -62,7 +62,7 @@ Lockfile: committed [`ezkey-admin-ui/package-lock.json`](../ezkey-admin-ui/packa
 ```
 
 Single portable entrypoint; auto-detects canonical JDK 25 on the maintainer Windows workstation
-when `JAVA_HOME` is unset (see [`maven-build.mdc`](../.cursor/rules/maven-build.mdc)).
+when `JAVA_HOME` is unset (see [`DEVELOPMENT.md`](DEVELOPMENT.md) § *Reliable Local Maven Validation*).
 
 **Admin UI:**
 
@@ -78,7 +78,7 @@ For production-like UI bundle checks, see [`ezkey-admin-ui/AGENTS.md`](../ezkey-
 
 ## Maven build warnings observed (JDK 25 baseline)
 
-When running [`scripts/build.sh`](../scripts/build.sh) with **`JAVA_HOME` set to JDK 25** (see [`jdk-25-windows-workstation.mdc`](../.cursor/rules/jdk-25-windows-workstation.mdc)), the reactor completes successfully. Remaining noise to track outside this hygiene pass:
+When running [`scripts/build.sh`](../scripts/build.sh) with **`JAVA_HOME` set to JDK 25** (see [`windows-agent-shell.mdc`](../.cursor/rules/windows-agent-shell.mdc)), the reactor completes successfully. Remaining noise to track outside this hygiene pass:
 
 | Warning | Notes |
 | --- | --- |

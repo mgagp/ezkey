@@ -153,3 +153,17 @@ rule says never without asking), Spring Boot 3.5.3 (actual 4.1.2), React Native 
 4. **PR 4+ — module guides** (wave 3) with per-module `CLAUDE.md` `@AGENTS.md`.
 5. **Step 5 (hooks):** only candidate is a label check after `gh issue create`; decide after PR 2.
 6. **Step 8 (validation):** cold-agent A/B after PR 2, then `critical-review`.
+
+## Results
+
+| Measure | Baseline (main @ `ab18f6ff3`) | After PR 1 ([#1463](https://github.com/mgagp/ezkey/pull/1463)) + PR 2 |
+|---|---|---|
+| Claude Code, loaded at launch (`CLAUDE.md` + imports) | 943 lines · 68 KB | 218 lines · 16 KB |
+| Root `AGENTS.md` (soft guardrail 200) | 785 lines · 57 KB | 161 lines |
+| Cursor, always-applied (`AGENTS.md` + `alwaysApply` rules) | 1 472 lines · 93 KB (19 rules) | 189 lines · 14 KB (1 rule) |
+| `.cursor/rules/` | 23 files | 4 (`java` pointer, `openapi-specs` scoped, `windows-agent-shell`, `agent-ui-closeout-validation`) |
+| Project skills visible to Claude Code | 0 | 14 |
+
+Measured with `wc -l -c` on the files each tool loads at session start. Still open: `/doctor`
+before/after (operator, CLI), the cold-agent A/B (step 8) and the parked items (PR 3
+`dependabot-curated` split, wave 3 module guides, step 5 hook decision).

@@ -45,7 +45,7 @@ If you need assistance translating documentation to English:
 ### Formatting
 
 - Use proper Markdown syntax
-- Follow the project's style guide (see [.github/copilot-instructions.md](.github/copilot-instructions.md))
+- Follow the project conventions in [`AGENTS.md`](../AGENTS.md) and the module `AGENTS.md` files
 - Use UTF-8 encoding without BOM
 - Use LF (Unix) line endings
 

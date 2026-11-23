@@ -123,13 +123,12 @@ When briefing, prefer: “Decision on `ID`: **GO** (fix + handoff), **defer**, *
 ## First instance
 
 Mobile protocol / crypto: [`../mobile-protocol-security/`](../mobile-protocol-security/)  
-Example assessment: [`../../../docs/security/mobile-protocol-crypto-assessment-2026-07.md`](../../../docs/security/mobile-protocol-crypto-assessment-2026-07.md)
+Example assessment: [`../../../docs/security/mobile-protocol-crypto-assessment-2026-07.md`](../../../../docs/security/mobile-protocol-crypto-assessment-2026-07.md)
 
 ## Agent entrypoints
 
 - Skill: [`.claude/skills/assessment-curated/SKILL.md`](../../../../.claude/skills/assessment-curated/SKILL.md)
 - Root skills table: `AGENTS.md` § Skills
-- Copilot mirror: `.github/copilot-instructions.md` § Assessment curated
 
 ## How to invoke (operator cheat sheet)
 

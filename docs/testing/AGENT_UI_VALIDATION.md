@@ -234,7 +234,7 @@ One sentence is enough for an agent session:
 > **Closeout validation:** clean-start, API tests for [slice], update-specs, optional UI smoke
 > [integrations + enrollments] via `admin.docker`.
 
-Cursor rule: [`.cursor/rules/agent-ui-closeout-validation.mdc`](../.cursor/rules/agent-ui-closeout-validation.mdc).
+Cursor rule: [`.cursor/rules/agent-ui-closeout-validation.mdc`](../../.cursor/rules/agent-ui-closeout-validation.mdc).
 
 GitHub program issue: [#236](https://github.com/mgagp/ezkey/issues/236) — add a short comment with
 test classes run and smoke result when closing a slice.
@@ -264,7 +264,7 @@ Prefer `data-testid` on pages being touched in the operator-lists program:
 
 ## Related docs
 
-- [`.cursor/rules/agent-ui-closeout-validation.mdc`](../.cursor/rules/agent-ui-closeout-validation.mdc) — closeout trigger for agents
-- [`ezkey-admin-ui/AGENTS.md`](../ezkey-admin-ui/AGENTS.md) — Playwright, MCP notes
-- [`ezkey-tests/AGENTS.md`](../ezkey-tests/AGENTS.md) — functional test philosophy
-- [`product-docs/global/admin-ui-paginated-screens-matrix.md`](../product-docs/global/admin-ui-paginated-screens-matrix.md) — operator list targets
+- [`.cursor/rules/agent-ui-closeout-validation.mdc`](../../.cursor/rules/agent-ui-closeout-validation.mdc) — closeout trigger for agents
+- [`ezkey-admin-ui/AGENTS.md`](../../ezkey-admin-ui/AGENTS.md) — Playwright, MCP notes
+- [`ezkey-tests/AGENTS.md`](../../ezkey-tests/AGENTS.md) — functional test philosophy
+- [`product-docs/global/admin-ui-paginated-screens-matrix.md`](../../product-docs/global/admin-ui-paginated-screens-matrix.md) — operator list targets
