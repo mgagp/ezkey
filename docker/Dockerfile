@@ -96,7 +96,7 @@ RUN --mount=type=cache,target=/root/.m2,id=maven-cache,sharing=shared \
 # ============================================
 # Stage 2: Runtime image for migration service
 # ============================================
-FROM eclipse-temurin:25-jre-alpine@sha256:e1898fd6a11fc965a994d8ace186fd3585aeb636cf8f05f47a723fcfee0b0918 AS migration
+FROM eclipse-temurin:25-jre-alpine@sha256:69c2a26e9894016e274c880fa542956d005b3755f84db765145185e87405bd89 AS migration
 RUN addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring
 ARG OCI_IMAGE_REVISION=unknown
 LABEL org.opencontainers.image.revision=${OCI_IMAGE_REVISION}
@@ -108,7 +108,7 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # ============================================
 # Stage 3: Runtime image for admin-api service
 # ============================================
-FROM eclipse-temurin:25-jre-alpine@sha256:e1898fd6a11fc965a994d8ace186fd3585aeb636cf8f05f47a723fcfee0b0918 AS admin-api
+FROM eclipse-temurin:25-jre-alpine@sha256:69c2a26e9894016e274c880fa542956d005b3755f84db765145185e87405bd89 AS admin-api
 # Create non-root user and pre-create all required directories with correct ownership at build time
 RUN apk add --no-cache curl && \
     addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring && \
@@ -131,7 +131,7 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # ============================================
 # Stage 4: Runtime image for auth-api service
 # ============================================
-FROM eclipse-temurin:25-jre-alpine@sha256:e1898fd6a11fc965a994d8ace186fd3585aeb636cf8f05f47a723fcfee0b0918 AS auth-api
+FROM eclipse-temurin:25-jre-alpine@sha256:69c2a26e9894016e274c880fa542956d005b3755f84db765145185e87405bd89 AS auth-api
 # Create non-root user and pre-create all required directories with correct ownership at build time
 RUN apk add --no-cache curl && \
     addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring && \
@@ -154,7 +154,7 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # ============================================
 # Stage 5: Runtime image for integration-api service
 # ============================================
-FROM eclipse-temurin:25-jre-alpine@sha256:e1898fd6a11fc965a994d8ace186fd3585aeb636cf8f05f47a723fcfee0b0918 AS integration-api
+FROM eclipse-temurin:25-jre-alpine@sha256:69c2a26e9894016e274c880fa542956d005b3755f84db765145185e87405bd89 AS integration-api
 # Create non-root user and pre-create all required directories with correct ownership at build time
 RUN apk add --no-cache curl && \
     addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring && \
@@ -177,7 +177,7 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # ============================================
 # Stage 6: Runtime image for crypto-api service
 # ============================================
-FROM eclipse-temurin:25-jre-alpine@sha256:e1898fd6a11fc965a994d8ace186fd3585aeb636cf8f05f47a723fcfee0b0918 AS crypto-api
+FROM eclipse-temurin:25-jre-alpine@sha256:69c2a26e9894016e274c880fa542956d005b3755f84db765145185e87405bd89 AS crypto-api
 # Create non-root user and pre-create all required directories with correct ownership at build time
 RUN apk add --no-cache curl && \
     addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring && \
@@ -200,7 +200,7 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # ============================================
 # Stage 6: Runtime image for demo-device service
 # ============================================
-FROM eclipse-temurin:25-jre-alpine@sha256:e1898fd6a11fc965a994d8ace186fd3585aeb636cf8f05f47a723fcfee0b0918 AS demo-device
+FROM eclipse-temurin:25-jre-alpine@sha256:69c2a26e9894016e274c880fa542956d005b3755f84db765145185e87405bd89 AS demo-device
 # Create non-root user and pre-create data directory with correct ownership at build time
 RUN apk add --no-cache curl && \
     addgroup -S -g 101 spring && adduser -S -u 100 -G spring spring && \
