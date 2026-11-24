@@ -834,8 +834,11 @@ explicit. Ledger: [`community/DEPLOYED.md`](community/DEPLOYED.md).
    `--remove-orphans` can remove a container the current invocation does not list.
    `--remove-orphans` stays on the intentional JavaMelody or connector **disable** paths only,
    and those paths are outside the window.
-2. **`verify-grants.sh` reads stdin.** `docker exec -i` inside the script consumes stdin. Over
-   SSH, or when the call sits in a pipe, run `./scripts/db/verify-grants.sh --docker </dev/null`.
+2. **`verify-grants.sh` reads stdin and needs the container name.** `docker exec -i` inside the
+   script consumes stdin. Over SSH, or when the call sits in a pipe, run
+   `EZKEY_POSTGRES_CONTAINER=ezkey-exp-postgres ./scripts/db/verify-grants.sh --docker </dev/null`.
+   Without that variable the script targets the lab container name and reports false grant
+   failures (G.1).
 3. **`--apis-only` (A1) skips the migration image.** `export-backend-images-to-lightsail.sh` and
    `full-exp-environment-upgrade.sh --apis-only` do not ship `ezkey-migration`. When the release
    has a Flyway change, run the migration step (F.2) explicitly before the APIs. `--apis-only`
@@ -886,12 +889,56 @@ A **follow-up issue (to be created)** should track a non-destructive script mode
 
 **Postgres recreate (when deliberate):** announce the **precise outage time** before starting.
 
-> **PostgreSQL major mismatch (#1421).** Since #1421 PR 1, `docker-compose.yml` pins `postgres:19-alpine`. A recreate with a compose file from that commit onward starts 19 on the existing data volume. If the volume is still 18 (the ezkey.online database stays on 18 until the #1421 lot 2 window), Postgres refuses to start and every API goes down. Until that window has migrated the data (dump/restore onto a fresh volume), do **not** recreate `postgres` from main's compose, and watch for any `up -d` that would recreate it as a side effect (see the `logging:` note in § Rolling upgrade). If it happens anyway (`database files are incompatible with server`), put the `postgres` image back to `postgres:18-alpine` and recreate: the data is intact. **Never** run `down -v` to "fix" it: that wipes the database and the encryption-secrets volume. The steps below assume the compose tag and the volume are on the same major.
+> **Same major only.** The steps below recreate `postgres` on its existing data volume. That is safe only when the compose image tag and the data volume are on the **same** PostgreSQL major. A different major refuses to start (`database files are incompatible with server`) and every API goes down. A major change is never a recreate: see [§ PostgreSQL major upgrades](#postgresql-major-upgrades-1421). **Never** run `down -v` to "fix" a refused start: that wipes the database and the encryption-secrets volume.
 
 1. Backups first (C): `pg_dump -Fc` verified with `pg_restore --list`.
 2. `$C up -d --no-deps --no-build --force-recreate postgres` — data volume kept. Measured ~**6–9 s** for the recreate itself; APIs usually reconnect on their own. Restart one API alone if it does not become healthy. Leave `--remove-orphans` off (Window rules).
 3. A probe that only hits `/` does **not** prove absence of errors on database-reading requests — finish with **human Admin UI login + MFA**.
 4. Checks **G** afterwards, including **verify-grants** with the environment variables described in G.1.
+
+### PostgreSQL major upgrades (#1421)
+
+**Target posture.** The repository's Lightsail compose pins `postgres:19-alpine` for both
+`postgres` and `db-grants` and keeps the named data volume `postgres-data`. On the community
+host, the stock three-file `$C` is the normal path (in place since the 2026-11-24 volume name
+alignment), and a same-major `postgres` recreate on that volume (steps above) is the documented
+path. The repository does not carry a permanent
+override, an `external: true` volume, or a major-suffixed volume name. Decision: Marc, 2026-11-24,
+[#1421](https://github.com/mgagp/ezkey/issues/1421): no migration-specific override survives the
+upgrade. Reason: a fresh install from main and a regular upgrade then use the same compose files
+as the live host, with no migration-specific step.
+
+**History (2026-11-24).** The ezkey.online database moved from PostgreSQL 18 to 19 in a
+supervised window (#1421 lot 2, after #1474): dump/restore onto a new volume declared by a
+temporary host-only override, because Docker cannot rename a volume. The same day, a separate
+volume name alignment window (10:23:48–10:25:42 America/Toronto, **1 min 54 s**) copied the
+PostgreSQL 19 data back into the stock `postgres-data` volume and removed the override. The host
+now runs main's stock three-file `$C` with `postgres:19-alpine` on `postgres-data`. A first
+alignment attempt at 10:19 was rolled back (1 min 53 s) on a false `verify-grants.sh` failure:
+the script defaulted to the lab container name (see G.1). The pre-alignment backup volumes, the
+previous compose file backup, and the pre-alignment snapshot are kept until a separate cleanup
+go. Ledger: [`community/DEPLOYED.md`](community/DEPLOYED.md).
+
+**Next major (for example 19 → 20).** Reuse the 2026-11-24 window shape, adapted to the three
+compose files:
+
+1. Dedicated issue and announced window; explicit human go; Lightsail snapshot **first**.
+2. `pg_dump -Fc` of `ezkey_db` and `pg_dumpall --globals-only`, taken with the **new** major's
+   client (for example a throwaway container on the new image), verified with `pg_restore --list`.
+   Dumps stay on the host or in an operator-only folder (mode 600), never in git.
+3. Restore onto a **new**, empty volume with the new image. **Never** point the new image at the
+   previous major's volume. `PGDATA` stays `/var/lib/postgresql/data`.
+4. `db-grants` moves to the same tag as `postgres`.
+5. Start the stack; Flyway should be a no-op on the restored schema. A Flyway "newer than
+   verified" warning for a new PostgreSQL line is expected and is not a failure (see the
+   registry notes).
+6. Checks G, verify-grants, human Admin UI login + MFA, then update the ledger.
+7. Bring the data back under the stock name `postgres-data` so no override remains on the host.
+   Docker cannot rename volumes: preserve the previous major's data in a backup volume, then copy
+   the new data into `postgres-data`. The previous data stays the fallback.
+8. **Never** `down -v`; do not delete the previous volume or the snapshot in the same window.
+
+Generic floor for every component: [`major-upgrades/README.md`](../../product-docs/global/hygiene/major-upgrades/README.md) § Database.
 
 ### A. Preconditions
 
@@ -971,10 +1018,10 @@ Final login/MFA: **human on their device** (not a bot). Success is recorded in *
 1. From `<compose-dir>` (the directory that holds the live `.env`):
 
    ```bash
-   ./scripts/db/verify-grants.sh --docker </dev/null
+   EZKEY_POSTGRES_CONTAINER=ezkey-exp-postgres ./scripts/db/verify-grants.sh --docker </dev/null
    ```
 
-   The script's `docker exec -i` reads stdin. Over SSH or in a pipe, the `</dev/null` redirect keeps the session from stalling on that read (Window rules). Lightsail compose container name is `ezkey-exp-postgres` (script default is `ezkey-postgres`). The script reads **only** the Postgres keys it needs from `./.env` (`PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `EZKEY_DB_*_PASSWORD`, `EZKEY_POSTGRES_CONTAINER`). Pass `--env-file PATH` when the file is not `./.env`. It does **not** `source` or `.` the file and does **not** `eval`: unquoted spaces (`Ezkey Community`) and cron expressions (`*/20 ...`) stay literal. Variables already exported win over the file. **Never** display the values, pass them on argv, or run the script under `set -x`. Role passwords (`EZKEY_DB_*`) are often absent from the community `.env`; when they are unset, the script **falls back** to catalog checks (`has_table_privilege` / `role_table_grants`, including `ezkey_keyset_blob`) as that admin/owner and prints a clear mode message. When all five role passwords are set, it runs the stronger per-role login smoke instead. Success using the **default** superuser password means **rotate it**. Confirm `ezkey_crypto` is **SELECT-only** on `ezkey_keyset_blob` (ADR-0016 / #961).
+   The script's `docker exec -i` reads stdin. Over SSH or in a pipe, the `</dev/null` redirect keeps the session from stalling on that read (Window rules). Lightsail compose container name is `ezkey-exp-postgres`; the script default is the lab name `ezkey-postgres`. **Always** set `EZKEY_POSTGRES_CONTAINER=ezkey-exp-postgres` on this host: without it the script prints `No such container` and then grant `FAIL` lines that are false failures (this rolled back the first 2026-11-24 volume alignment attempt). The script reads **only** the Postgres keys it needs from `./.env` (`PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `EZKEY_DB_*_PASSWORD`, `EZKEY_POSTGRES_CONTAINER`). Pass `--env-file PATH` when the file is not `./.env`. It does **not** `source` or `.` the file and does **not** `eval`: unquoted spaces (`Ezkey Community`) and cron expressions (`*/20 ...`) stay literal. Variables already exported win over the file. **Never** display the values, pass them on argv, or run the script under `set -x`. Role passwords (`EZKEY_DB_*`) are often absent from the community `.env`; when they are unset, the script **falls back** to catalog checks (`has_table_privilege` / `role_table_grants`, including `ezkey_keyset_blob`) as that admin/owner and prints a clear mode message. When all five role passwords are set, it runs the stronger per-role login smoke instead. Success using the **default** superuser password means **rotate it**. Confirm `ezkey_crypto` is **SELECT-only** on `ezkey_keyset_blob` (ADR-0016 / #961).
 2. Logs show **“Keyset loaded from database”** (or equivalent) with the **same kid and version** recorded in B. Any **“Materializing new keyset”**, **“Generating new keyset”**, or a **refused API start** (fail-closed) → **stop immediately**. **Never** set `ezkey.encryption.required=false` to get past a start. **If a new keyset was created:** stop, do not start any more API, and decide with the project owner between image rollback and database restore (H.5); do not assume encrypted fields stay readable under a new authority.
 3. After any `audit-hmac.key` mode/owner fix (or when verifying compliance): the restarted API’s log **must** show **“Audit HMAC integrity signing initialized”** (mandatory — wrong owner with 600 can fail silently; confirm in `AuditHmacService`). Report mode/owner only, never content or exact path.
 4. Containers healthy; `org.opencontainers.image.revision` matches the target SHA.
@@ -1087,10 +1134,10 @@ Follow the canon checklist in [`docs/OPERATIONAL.md`](../OPERATIONAL.md) § Post
 
 Canon and “what it never does”: [`docs/OPERATIONAL.md`](../OPERATIONAL.md) § Log rotation and hygiene.
 
-**Note (stale refs checked on `main`):** this runbook no longer contains a `TODO:223` marker or an
-`EZKEY_POSTGRES_CONTAINER` reference. Lab scripts under `scripts/lab/` default that env var to
-`ezkey-postgres`; the Lightsail compose Postgres container is `ezkey-exp-postgres` — do not assume
-the lab default on this host.
+**Note (stale refs checked on `main`):** this runbook no longer contains a `TODO:223` marker.
+Lab scripts under `scripts/lab/` and `scripts/db/verify-grants.sh` default
+`EZKEY_POSTGRES_CONTAINER` to `ezkey-postgres`; the Lightsail compose Postgres container is
+`ezkey-exp-postgres` — set the variable explicitly on this host (G.1).
 
 ## Naming lock (Audrey/Marc)
 
