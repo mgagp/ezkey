@@ -467,6 +467,26 @@ inventory and improvement plan:
 | `dart-sdk` | `ezkey_dart/**` or workflows | Experimental Dart SDK offline gate in a pinned `dart` image: `ezkey_dart/scripts/test.sh` (format check, `analyze --fatal-infos`, unit tests). The live-stack suite `ezkey_dart/scripts/e2e.sh` stays local ([`ezkey_dart/README.md`](../ezkey_dart/README.md) §6) |
 | `ci-gate` | Always | Aggregate pass/fail for the jobs above |
 
+**Docker image builds in CI reuse the runner's Maven repository.** `ha-smoke` and `connectors` build
+the images, whose Maven step starts from an empty BuildKit cache and would download everything from
+Maven Central. Central sometimes throttles GitHub runner IPs with HTTP 429: on 2026-11-23 the
+first request (the Spring Boot BOM) failed `ha-smoke` on a nightly `main` run and twice on #1458.
+Both jobs therefore run `scripts/ci-seed-docker-maven-cache.sh` first. It copies `~/.m2/repository`
+(restored by `actions/setup-java` in `connectors`; restore-only `actions/cache` in `ha-smoke`, so that
+job never writes the cache) into the BuildKit cache `id=maven-cache`, without our own `org/ezkey`
+artifacts. Fail-open: with nothing restored, the build downloads as before. Never pass `--no-cache` to
+these builds: it also discards BuildKit cache mounts.
+
+Two rules keep that cache useful (#1475). `ha-smoke` restores by `restore-keys` prefix with the exact
+path string setup-java uses (`/home/runner/.m2/repository`), because the cache version is a hash of
+that string and the expression `hashFiles()` does not reproduce setup-java's key. And setup-java keeps
+the **first** cache saved for a key: `maven-dependency-submission.yml`, which only resolves the graph,
+has its own key, otherwise its 42 MB repository wins on `main` and every PR restores almost nothing.
+Measured on #1475: 730 MB restored, 288 MB seeded; the image's `clean package` step then made 4
+requests to Central. The `dependency:go-offline` step before it still fetches plugins the runner never
+used (about 1,200 files), but it is tolerant (`|| true`), so a 429 there does not stop the build.
+To check a run: `grep -E "Cache restored from|Cache not found|seeded:"` in the job log.
+
 CI checks that the Admin UI’s committed OpenAPI copy matches `specs/admin-api/`, but it does **not**
 guarantee that copy matches the real running Admin API — refresh the committed spec by hand with
 `./scripts/update-specs.sh` against a live stack.
