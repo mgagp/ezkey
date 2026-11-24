@@ -3,11 +3,12 @@
 ## Metadata
 
 - **ID:** `I-2026-07-17-desktop-authenticator-reference-app`
-- **Status:** `incubating`
+- **Status:** `parked` (2026-11-24, see [Parking decision](#parking-decision-2026-11-24))
 - **Priority:** `P3`
 - **Created at:** `2026-07-17`
-- **Updated at:** `2026-07-18`
-- **Last reviewed at:** `2026-07-18`
+- **Updated at:** `2026-11-24`
+- **Last reviewed at:** `2026-11-24`
+- **GitHub issue:** `#1491`
 - **Progression markers:** `P3-polish`
 - **Component tags:** `desktop-authenticator`, `demo-device`, `auth-api`, `docs`, `mobile` (parity reference)
 - **Lane:** `A`
@@ -87,6 +88,32 @@ Promote to `ready` when:
 - Strategic posture confirmed for four critical capability questions (non-exportability pragmatism, opportunistic user verification, attestation as extension point, and runtime downgrade signaling).
 - Stack decision locked (Tauri), MVP hardening baseline clarified (encryption at rest mandatory; non-exportability best effort; posture signaling and downgrade warning mandatory), and packaging posture clarified (Windows first).
 - Remaining promotion blockers: convert these decisions into an explicit first-cut acceptance checklist and confirm post-Windows packaging order.
+
+## Parking decision (2026-11-24)
+
+**Parked by Marc (#1491).** Parked, not dropped: the analysis above stays valid.
+
+**Positioning.**
+
+- The canonical reference participant is the mobile app (`ezkey_mobile`): it is the protocol proof and the final product for the strongest case. The demo device serves evaluation only.
+- A desktop client is not a fundamental canonical reference. Its role is an example: a conforming third-party authenticator built on the authenticator SDK (`ezkey_dart`) shows that the protocol can be taken up with a functional, credible SDK, and an adopter can use it as is within its documented technical limits.
+
+**Why park now.**
+
+- The first third-party consumer of `ezkey_dart`, the Open Authenticator fork `mgagp/openauthenticator` (Flutter; see [`V-2026-10-27-third-party-authenticator-integration-kit`](../../vision/V-2026-10-27-third-party-authenticator-integration-kit.md)), builds for desktop (Windows today) and has already built most of what this idea scoped:
+  - one key store contract on every platform, the role this idea gives to `SecureKeyProvider`, with one adapter per platform below it (Android Keystore; Windows CNG on the TPM; Apple Secure Enclave planned);
+  - the key's protection tier read back from the key itself and shown with platform-neutral labels, which covers this idea's posture signaling and downgrade warning;
+  - a platform joins only with a hardware key store (Linux stays out for now), instead of a software fallback that could be read as equivalent.
+- An in-house Tauri app would add a fourth client stack (Rust and React) for a single maintainer, and implement the same native key stores a second time.
+- The remaining desktop gap is the same for any desktop client: enrolling on a device that cannot scan the invitation. It is an Ezkey protocol question first, also open for a phone that shows its own invitation.
+
+**What stays useful.** The contract-first boundary, capability discovery, honest posture copy and the mobile / demo-device UX anchors are guidance for any desktop participant, a third-party one included. The four grill-session files remain the references.
+
+**Re-entry triggers.**
+
+1. No installable, signed desktop build of a conforming authenticator is available to adopters.
+2. An adopter needs a desktop authenticator under a permissive license that it can rebrand (Open Authenticator is GPL-3.0; Ezkey and `ezkey_dart` are MIT).
+3. Once the path for a device that cannot scan is defined, it cannot be delivered in a third-party desktop client.
 
 ## Links
 
