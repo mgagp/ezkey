@@ -482,13 +482,18 @@ jobs:
 
       # Image builds download every Maven dependency inside Docker. Central sometimes throttles
       # runner IPs (HTTP 429 on the Spring Boot BOM: main 2026-11-23, #1458), so seed the BuildKit
-      # Maven cache from the repository the backend job caches. Restore only: this job never writes
-      # that cache. Same key as actions/setup-java (cache: maven); restore-keys falls back to the
-      # latest cache when the poms changed. A miss leaves the build downloading as before.
+      # Maven cache from the repository that backend / licenses-drift cache through
+      # actions/setup-java (cache: maven). Restore only: this job never writes that cache.
+      # - `path` must be the exact string setup-java uses (os.homedir() + /.m2/repository): the
+      #   cache "version" is a hash of it, and a different spelling (~/.m2/...) finds nothing,
+      #   not even by prefix (seen on #1475).
+      # - The expression hashFiles() does not reproduce setup-java's key (a43c… vs f5e7… on the
+      #   same poms, #1475), so the restore relies on restore-keys: the newest setup-java maven
+      #   cache of this ref, else of main. A miss leaves the build downloading as before.
       - name: Restore the backend Maven repository (restore only)
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
-          path: ~/.m2/repository
+          path: /home/runner/.m2/repository
           key: setup-java-${{ runner.os }}-x64-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
             setup-java-${{ runner.os }}-x64-maven-

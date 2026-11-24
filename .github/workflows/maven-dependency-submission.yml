@@ -48,6 +48,12 @@ jobs:
           java-version: '25'
           distribution: 'temurin'
           cache: maven
+          # Own cache key (this file is in the hash). This job only resolves the dependency graph,
+          # and setup-java keeps the first cache saved for a key: sharing the CI key let this small
+          # repository (42 MB) win on main and starve every PR's backend and image builds (#1475).
+          cache-dependency-path: |
+            **/pom.xml
+            .github/workflows/maven-dependency-submission.yml
 
       - name: Confirm JDK 25
         run: |
