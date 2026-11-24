@@ -29,7 +29,7 @@ Runtime “can this entity be used?” is **`EntityEligibilityService`** (`org.e
 inline `!tenant.getActive()` or lifecycle-status checks. Methods: `isXxxOperational()` /
 `ensureXxxOperational()`. Parent-chain blocking has no persistent cascade. Operator canon:
 [`docs/LIFECYCLE_GOVERNANCE.md`](../docs/LIFECYCLE_GOVERNANCE.md). Boot apps that inject this bean
-must include `org.ezkey.service` in `scanBasePackages`.
+must include `org.ezkey.service` in `scanBasePackages` (rule for any new core package: [`.claude/rules/java.md`](../.claude/rules/java.md)).
 
 ## Contact phone numbers
 
@@ -255,5 +255,4 @@ High-volume tables `ezkey_audit_log` and `ezkey_auth_attempt` are **range-partit
   the JVM/JDBC session time zone. A failure is recorded as alert `PARTITION_CREATION_FAILED`.
   There is no DEFAULT partition.
 
-Authoritative detail: `docs/DATABASE_PARTITIONING_IMPLEMENTATION.md` (§ Flyway greenfield patterns),
-`.cursor/rules/flyway-partitioned-tables.mdc`.
+Authoritative detail: `docs/DATABASE_PARTITIONING_IMPLEMENTATION.md` (§ Flyway greenfield patterns).

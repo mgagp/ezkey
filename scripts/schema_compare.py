@@ -16,7 +16,7 @@ Usage:
 
 Requires `pg_dump` on PATH (e.g. from PostgreSQL client tools), or set PG_DUMP_CMD
 to a full command prefix such as:
-  docker run --rm -i -e PGPASSWORD=ezkey postgres:18-alpine pg_dump
+  docker run --rm -i -e PGPASSWORD=ezkey postgres:19-alpine pg_dump
 """
 
 from __future__ import annotations
@@ -74,7 +74,7 @@ def main() -> int:
     parser.add_argument(
         "--pg-dump",
         nargs="+",
-        help="Optional pg_dump command prefix (e.g. docker run --rm -i postgres:18-alpine pg_dump). "
+        help="Optional pg_dump command prefix (e.g. docker run --rm -i postgres:19-alpine pg_dump). "
         "If omitted, uses PG_DUMP env or plain `pg_dump`.",
     )
     parser.add_argument(

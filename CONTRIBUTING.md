@@ -20,7 +20,7 @@ These values guide feature analysis, design, and implementation across the proje
 - **product-docs/global/product-intent.md** — Product intent (canonical); root **PRD.md** is a stub
 - **docs/ENDPOINT.md** — API endpoints and behaviour (section-scoped)
 - **AGENTS.md** (root and per-module) — Cold-start compass and agent patterns
-- **.github/copilot-instructions.md** — Code style and conventions for AI-assisted development
+- **.claude/skills/** and **.claude/rules/** — Agent skills and scoped rules (shared by Claude Code and Cursor)
 
 ## Contribution workflow
 
@@ -56,8 +56,7 @@ On Windows agent shells (PowerShell), do **not** pass the PR title/body inline t
 2. Run `./scripts/git-pr.sh` from Git Bash (or
    `& "C:\Program Files\Git\bin\bash.exe" -lc './scripts/git-pr.sh'` from PowerShell).
 
-See `AGENTS.md` § *GitHub pull request on Windows (agent shell)* and
-`.cursor/rules/git-pr-windows.mdc`.
+See `.cursor/rules/windows-agent-shell.mdc`.
 
 ## Responses to issues
 

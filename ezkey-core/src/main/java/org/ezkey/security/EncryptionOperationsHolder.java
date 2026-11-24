@@ -10,7 +10,10 @@
 
 package org.ezkey.security;
 
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Holds the current {@link EncryptionOperations} implementation for JPA entities and listeners.
@@ -24,6 +27,11 @@ import java.util.function.Supplier;
  * cycle (Spring Boot 4.2, #1458). The supplier is asked on the first {@link #get()} — that is, the
  * first time an encrypted field is written or read — and its first non-null answer is cached.
  *
+ * <p>When a supplier is registered but answers null (no {@link EncryptionOperations} bean: broken
+ * wiring in the APIs, where {@code EncryptionService} is always a bean), the holder logs one WARN
+ * per registered supplier. Encrypted fields are then stored and returned as plaintext, so that
+ * state must stay observable (#1471 security opinion, follow-up to #1462).
+ *
  * @since 2025
  */
 public final class EncryptionOperationsHolder {
@@ -31,6 +39,11 @@ public final class EncryptionOperationsHolder {
   private static volatile EncryptionOperations encryptionOperations;
 
   private static volatile Supplier<EncryptionOperations> encryptionOperationsSupplier;
+
+  private static final Logger logger = LoggerFactory.getLogger(EncryptionOperationsHolder.class);
+
+  /** Ensures the "supplier answered null" WARN is logged once per registered supplier. */
+  private static final AtomicBoolean NULL_RESOLUTION_WARNED = new AtomicBoolean();
 
   private EncryptionOperationsHolder() {}
 
@@ -53,6 +66,7 @@ public final class EncryptionOperationsHolder {
   public static void setSupplier(Supplier<EncryptionOperations> supplier) {
     encryptionOperationsSupplier = supplier;
     encryptionOperations = null;
+    NULL_RESOLUTION_WARNED.set(false);
   }
 
   /**
@@ -72,6 +86,11 @@ public final class EncryptionOperationsHolder {
     EncryptionOperations resolved = supplier.get();
     if (resolved != null) {
       encryptionOperations = resolved;
+    } else if (NULL_RESOLUTION_WARNED.compareAndSet(false, true)) {
+      logger.warn(
+          "No EncryptionOperations bean is available: encrypted fields will be stored and read as"
+              + " plaintext. Expected only when at-rest encryption is not wired (tests); in the"
+              + " APIs this means broken wiring.");
     }
     return resolved;
   }
@@ -80,5 +99,6 @@ public final class EncryptionOperationsHolder {
   public static void clear() {
     encryptionOperations = null;
     encryptionOperationsSupplier = null;
+    NULL_RESOLUTION_WARNED.set(false);
   }
 }

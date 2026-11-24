@@ -1,6 +1,6 @@
 # Stabilization lessons
 
-What the November 2026 stabilization around #1180 and #1259, and the #1321 gate, taught us about analysis, design, tests and code structure. Read this before you touch startup code, HA behaviour, an exposure rule, a test helper, or a CI failure that looks random.
+What the November 2026 stabilization around #1180 and #1259, and the #1321 gate, taught us about analysis, design, tests and code structure. Read this before you touch startup code, HA behaviour, an exposure rule, a test helper, a CI cache, or a CI failure that looks random.
 
 Each lesson states a rule, the evidence behind it, and a check you can run. Candidates not yet reproduced are in #1267.
 
@@ -63,6 +63,12 @@ Each lesson states a rule, the evidence behind it, and a check you can run. Cand
 **16. A shared fixture belongs to the whole suite.** A test that adds state to the Demo Device, the seed, or any resource other tests read must not change what they select. Before adding one, find who else reads that resource. Before closing, run the full suite in its default order on a clean-start, not the new test or a filtered subset.
 - Evidence: #1271 added `admin-onboarding-bind-material.spec.ts`, which runs first alphabetically and binds more enrollments to the Demo Device. The login helper took the first row of the list, so the five `@device-backed` tests after it watched the wrong enrollment. The PR reported 6 of 6 while the suite had 8. CI does not run Playwright, so the weekly gate found it four days later (#1321). The helper now watches every row.
 - Check: `grep -rn 'first()' ezkey-admin-ui/e2e/support`, then `./ezkey-admin-ui/scripts/run-ui-tests.sh` with no `--grep`.
+
+## CI infrastructure
+
+**17. A green job proves nothing about a cache: read the restore and seed lines.** A CI runner starts cold every time; only what a cache step restores survives. Check that the cache was hit and how big it was, not only that the job passed.
+- Evidence: the first run of #1475 was green while `ha-smoke` logged "Cache not found" and seeded nothing. It passed only because Maven Central did not throttle that time. Two silent causes: the restore path was spelled `~/.m2/repository` while setup-java saves `/home/runner/.m2/repository` (the cache version is a hash of that string), and the `main` cache was 42 MB because `maven-dependency-submission` saved first under the same key (setup-java never overwrites a key). After both fixes: 730 MB restored, 288 MB seeded, and the image's `package` step made 4 requests to Central instead of all of them.
+- Check: in the job log, `grep -E "Cache restored from|Cache not found|seeded:"`; list caches with `gh api repos/mgagp/ezkey/actions/caches` (key, ref, size). Docker builds keep their own cache (BuildKit `id=maven-cache`), apart from the runner's: `--no-cache` empties it. Details in [`docs/DEVELOPMENT.md`](../../../../docs/DEVELOPMENT.md) § Continuous Integration.
 
 ## Code structure
 

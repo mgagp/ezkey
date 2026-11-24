@@ -1,0 +1,28 @@
+---
+description: Windows PowerShell agent shells — Git Bash launcher, commit and PR helpers, JDK 25 path
+alwaysApply: true
+---
+
+# Windows PowerShell agent shells only (ignore on macOS, Linux and Git Bash)
+
+Repo scripts are Bash. When the agent shell is PowerShell:
+
+- **Launch Bash explicitly:** `& "C:\Program Files\Git\bin\bash.exe" -lc '<command>'`. Never bare
+  `bash` and never `C:\Windows\System32\bash.exe` (WSL). Check: `uname -a` shows `MINGW`/`MSYS`.
+- **Build:** `& "C:\Program Files\Git\bin\bash.exe" -lc './scripts/build.sh'`. No `.cmd` / `.bat` /
+  `.ps1` wrappers for repo tooling (keepers: `ezkey_mobile/android/gradlew.bat`, interim
+  `ezkey_mobile/scripts/*.ps1` Maestro harnesses).
+- **JDK 25** on the maintainer workstation: `C:\Tools\jdk-25.0.3+9` (`/c/Tools/jdk-25.0.3+9`);
+  `build.sh` probes it when `JAVA_HOME` is unset. `release version 25 not supported` means the wrong
+  JDK. Mobile Android uses JDK 17, never this one (see `ezkey_mobile/AGENTS.md`).
+- **Commit:** message text must never cross a shell boundary (PowerShell re-parses `( ) " ' # ! < >`,
+  and conventional prefixes always contain `()`). `git add <paths>`, write the message to
+  `.ezkey/commit-msg.txt` with the file tool, then
+  `& "C:\Program Files\Git\bin\bash.exe" -lc './scripts/git-commit.sh'`. No inline `-m`, HEREDOC
+  or `&&` chains from PowerShell. If Cursor injects a `--trailer "… <…>"`, turn off Commit
+  Attribution (Cursor Settings → Agents → Attribution).
+- **Pull request:** push, write `.ezkey/pr-title.txt` and `.ezkey/pr-body.md` with the file tool,
+  then `& "C:\Program Files\Git\bin\bash.exe" -lc './scripts/git-pr.sh'` (options: `--draft`,
+  `--base <branch>`). `gh` missing from PATH: `C:\Program Files\GitHub CLI\gh.exe`.
+- **Fast-forward:** `./scripts/git-ff-only.sh [upstream]` through Git Bash. No rebase, no merge
+  commit, no push; stop on the first error and relay it.

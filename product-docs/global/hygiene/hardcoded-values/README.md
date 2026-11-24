@@ -51,7 +51,7 @@ value. A parameter needs a credible requester, a use case, and an issue. That ap
 in this lane README. It is not copied into `AGENTS.md`.
 
 The code-review checklist line that said "All configurable values use environment variables"
-([`cr.md`](../../../../.cursor/rules/commands/cr.md)) is reworded to this posture: values an
+(`.cursor/rules/commands/cr.md`, retired in 2026-11) was reworded to this posture: values an
 operator has a legitimate reason to change are externalized; other values stay in code.
 
 ## Scope

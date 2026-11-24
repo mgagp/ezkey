@@ -270,7 +270,9 @@ On macOS, Temurin via SDKMAN is not registered with `/usr/libexec/java_home`. `b
 
 **POSIX vs Windows in Tink tests:** `TinkKeyManager` requires master-key files at mode `600` on macOS/Linux and skips that check on Windows. Tests must write temp keys through `TestMasterKeys` (owner-only permissions). Copying `Files.writeString` without that helper fails on a POSIX first build even when Windows is green.
 
-**Postgres first-boot roles:** `docker/postgres/init/01-create-roles.sh` is bind-mounted into `postgres:18-alpine` and must be executable (`git` mode `100755`). A `644` checkout plus Docker Desktop on macOS fails first init with `/bin/sh: bad interpreter: Permission denied`; Postgres can still become healthy while application roles are missing and the rest of the stack stays `Created`.
+**Postgres first-boot roles:** `docker/postgres/init/01-create-roles.sh` is bind-mounted into `postgres:19-alpine` and must be executable (`git` mode `100755`). A `644` checkout plus Docker Desktop on macOS fails first init with `/bin/sh: bad interpreter: Permission denied`; Postgres can still become healthy while application roles are missing and the rest of the stack stays `Created`.
+
+**Postgres major line change (18 → 19, #1421):** a data volume created by the previous major is not readable by the new one. After pulling a change that moves the `postgres` image to a new major, `./docker/start.sh` on the old `postgres-data` volume leaves Postgres failing to start (`database files are incompatible with server`). Run clean-start (wipes the volume), or dump and restore first if the local data matters (see `docker/README.md`).
 
 Without a host JDK, use [`./scripts/build-docker.sh`](../scripts/build-docker.sh) instead ([Docker-only Java validation](#docker-only-java-validation-no-host-jdkmaven)).
 
@@ -464,6 +466,26 @@ inventory and improvement plan:
 | `mobile-ios` | iOS native surface (`ezkey_mobile/ios/**`, `package.json`, `yarn.lock`, `Gemfile*`, `scripts/ios-*.sh`), its reusable workflow, or `ci.yml`; PRs and nightly only | Calls reusable [`.github/workflows/ezkey-mobile-ios.yml`](../.github/workflows/ezkey-mobile-ios.yml) on `macos-26`: `yarn ios:lint` (swift-format + SwiftLint, strict), `pod install`, `yarn ios:test` (simulator build + XCTest) |
 | `dart-sdk` | `ezkey_dart/**` or workflows | Experimental Dart SDK offline gate in a pinned `dart` image: `ezkey_dart/scripts/test.sh` (format check, `analyze --fatal-infos`, unit tests). The live-stack suite `ezkey_dart/scripts/e2e.sh` stays local ([`ezkey_dart/README.md`](../ezkey_dart/README.md) §6) |
 | `ci-gate` | Always | Aggregate pass/fail for the jobs above |
+
+**Docker image builds in CI reuse the runner's Maven repository.** `ha-smoke` and `connectors` build
+the images, whose Maven step starts from an empty BuildKit cache and would download everything from
+Maven Central. Central sometimes throttles GitHub runner IPs with HTTP 429: on 2026-11-23 the
+first request (the Spring Boot BOM) failed `ha-smoke` on a nightly `main` run and twice on #1458.
+Both jobs therefore run `scripts/ci-seed-docker-maven-cache.sh` first. It copies `~/.m2/repository`
+(restored by `actions/setup-java` in `connectors`; restore-only `actions/cache` in `ha-smoke`, so that
+job never writes the cache) into the BuildKit cache `id=maven-cache`, without our own `org/ezkey`
+artifacts. Fail-open: with nothing restored, the build downloads as before. Never pass `--no-cache` to
+these builds: it also discards BuildKit cache mounts.
+
+Two rules keep that cache useful (#1475). `ha-smoke` restores by `restore-keys` prefix with the exact
+path string setup-java uses (`/home/runner/.m2/repository`), because the cache version is a hash of
+that string and the expression `hashFiles()` does not reproduce setup-java's key. And setup-java keeps
+the **first** cache saved for a key: `maven-dependency-submission.yml`, which only resolves the graph,
+has its own key, otherwise its 42 MB repository wins on `main` and every PR restores almost nothing.
+Measured on #1475: 730 MB restored, 288 MB seeded; the image's `clean package` step then made 4
+requests to Central. The `dependency:go-offline` step before it still fetches plugins the runner never
+used (about 1,200 files), but it is tolerant (`|| true`), so a 429 there does not stop the build.
+To check a run: `grep -E "Cache restored from|Cache not found|seeded:"` in the job log.
 
 CI checks that the Admin UI’s committed OpenAPI copy matches `specs/admin-api/`, but it does **not**
 guarantee that copy matches the real running Admin API — refresh the committed spec by hand with

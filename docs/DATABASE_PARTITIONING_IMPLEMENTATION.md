@@ -384,8 +384,7 @@ A FK without `ON DELETE` semantics would block purge; `CASCADE` would destroy op
    snapshot-without-FK when the row must outlive purge.
 4. Ask whether the referencing row must **outlive** audit partition purge → snapshot without FK.
 
-See also: `ezkey-core/AGENTS.md` (§ Partitioned tables and Flyway),
-`.cursor/rules/flyway-partitioned-tables.mdc`.
+See also: `ezkey-core/AGENTS.md` (§ Partitioned tables and Flyway).
 
 ---
 

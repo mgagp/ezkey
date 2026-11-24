@@ -588,7 +588,7 @@ describe('TOKEN / Java class names / UUID', () => {
 
   it('does not score uname arch triples as opaque-token', () => {
     const line =
-      'LOG:  starting PostgreSQL 18.6 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0)';
+      'LOG:  starting PostgreSQL 19.0 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit';
     const r = detectSecrets(line);
     assert.equal(r.kinds.includes('opaque-token'), false, `kinds=${r.kinds}`);
     assert.match(sanitize(line), /x86_64-pc-linux-musl/);

@@ -2122,7 +2122,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:17
+        image: postgres:19-alpine
         env:
           POSTGRES_PASSWORD: ezkey
           POSTGRES_DB: ezkey_test
