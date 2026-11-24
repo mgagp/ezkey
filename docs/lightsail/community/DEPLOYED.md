@@ -93,12 +93,12 @@ Host OS hygiene lane: [`product-docs/global/hygiene/host-os/README.md`](../../..
 |-------|-------|
 | **Blueprint / line** | Amazon Linux 2023 (`amazon_linux_2023`) |
 | **releasever (locked)** | `2023.12.20261120` |
-| **Kernel (`uname -r`)** | `6.1.190` |
+| **Kernel (`uname -r`)** | `6.1.190-237.442` |
 | **Last H1 (security patch)** | 2026-11-23 |
 | **Last H2 (AL2023 minor + reboot)** | never |
 | **Last H3 (major / new instance)** | never |
 | **Last pre-intervention snapshot** | `pre-h1-20261123` (manual, before the 2026-11-23 H1; automatic snapshots off). A separate snapshot preceded the 2026-11-24 PostgreSQL 19 window (§ PostgreSQL). |
-| **Host OS note** | H1 done 2026-11-02: AL2023.12.20261102, kernel 6.1.189. 2026-11-15 #1177 applied: hybrid PQ key exchange on the operator SSH channel; authentication still classical. 2026-11-22 app window did not patch the OS (releasever unchanged). H1 done 2026-11-23: AL2023.12.20261102 / kernel 6.1.189 → AL2023.12.20261120 / kernel 6.1.190, outage 08:08:52–08:12:03 America/Toronto (**3 min 11 s**), snapshot `pre-h1-20261123`. |
+| **Host OS note** | H1 done 2026-11-02: AL2023.12.20261102, kernel 6.1.189. 2026-11-15 #1177 applied: hybrid PQ key exchange on the operator SSH channel; authentication still classical. 2026-11-22 app window did not patch the OS (releasever unchanged). H1 done 2026-11-23: AL2023.12.20261102 / kernel 6.1.189-236.400 → AL2023.12.20261120 / kernel 6.1.190-237.442, outage 11:08:52–11:12:03 America/Toronto (2026-11-23T16:08:52Z–16:12:03Z, **3 min 11 s**), snapshot `pre-h1-20261123`. |
 
 ## Transport TLS (post-quantum key exchange)
 
