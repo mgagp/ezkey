@@ -13,7 +13,7 @@ x-container-tz: &container-tz
 
 services:
   postgres:
-    image: postgres:18-alpine
+    image: postgres:19-alpine
     container_name: ezkey-postgres-ha
     environment:
       <<: *container-tz
@@ -62,7 +62,7 @@ services:
     restart: "no"
 
   db-grants:
-    image: postgres:18-alpine
+    image: postgres:19-alpine
     container_name: ezkey-db-grants-ha
     depends_on:
       migration:

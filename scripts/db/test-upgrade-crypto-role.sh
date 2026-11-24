@@ -1,7 +1,7 @@
 #!/bin/sh
 # Patrick B1 / #961 — upgrade path on a pre-PR Postgres volume (no ezkey_crypto).
 #
-# Spins an ephemeral Postgres 18 container, creates only the legacy four roles
+# Spins an ephemeral Postgres container (image below), creates only the legacy four roles
 # (simulating a volume initialized from main before ADR-0016), then proves:
 #   1) apply-grants.sql alone fails (role missing)
 #   2) apply-grants.sh (ensure + grants) succeeds with EZKEY_DB_CRYPTO_PASSWORD
@@ -16,7 +16,7 @@ set -eu
 
 ROOT="$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)"
 CONTAINER="ezkey-b1-upgrade-$$"
-IMAGE="postgres:18-alpine"
+IMAGE="postgres:19-alpine"
 CRYPTO_PASS="b1-upgrade-test-crypto-pass"
 PGPASSWORD_SUPER=ezkey
 

@@ -42,7 +42,7 @@ class AdminTokenActivationPurposeMigrationPostgresTest {
 
   @Container
   static PostgreSQLContainer postgres =
-      new PostgreSQLContainer("postgres:18-alpine").withDatabaseName("ezkey_it");
+      new PostgreSQLContainer("postgres:19-alpine").withDatabaseName("ezkey_it");
 
   @BeforeEach
   void createV25ShapedTables() throws SQLException {

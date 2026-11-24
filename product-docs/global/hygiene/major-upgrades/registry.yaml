@@ -239,17 +239,17 @@
   component: PostgreSQL
   owner: fred
   eol_slug: postgresql
-  current: "18"
+  current: "19"
   sources:
-    - { file: docker/docker-compose.yml, expect: "postgres:18-alpine" }
-    - { file: docker/docker-compose.ha.yml, expect: "postgres:18-alpine" }
-    - { file: experimental-hybrid/lightsail/docker-compose.yml, expect: "postgres:18-alpine" }
-  eol: 2030-11-14
+    - { file: docker/docker-compose.yml, expect: "postgres:19-alpine" }
+    - { file: docker/docker-compose.ha.yml, expect: "postgres:19-alpine" }
+    - { file: experimental-hybrid/lightsail/docker-compose.yml, expect: "postgres:19-alpine" }
+  eol: 2031-11-19
   target: "19"
-  decision: plan
+  decision: keep
   security: true
   issue: 1421
-  last_review: 2026-11-20
+  last_review: 2026-11-23
   notes: >
     Any major = dedicated issue + dump/restore; db-grants image tag must move with postgres.
     Flyway, pgJDBC, and Hibernate follow the Spring Boot BOM; no flyway.version override unless
@@ -257,7 +257,8 @@
     PG 19 (#1421) accepts the calculated risk that Flyway's supported-databases matrix
     (https://documentation.red-gate.com/flyway/getting-started-with-flyway/system-requirements/supported-databases-and-versions,
     updated 2026-10-26, lists PostgreSQL through 18) does not yet list 19, because Ezkey SQL
-    is basic/standard.
+    is basic/standard. Pins moved to 19 in the #1421 PR 1 (2026-11-23); the community
+    instance migrates in a separate ops window (dump/restore, #1421 lot 2).
 
 - id: caddy
   component: Caddy (exposed on Lightsail)

@@ -1,7 +1,7 @@
 # Ezkey Database Migrations
 
 **Migration Tool:** Flyway  
-**Database:** PostgreSQL 17+  
+**Database:** PostgreSQL 19 (`postgres:19-alpine` in Compose and Testcontainers)  
 **Version:** 2.0 (Passwordless-Only)
 
 ---

@@ -69,7 +69,7 @@ class IntegrityAsyncJobPostgresTest {
 
   @Container @ServiceConnection
   static PostgreSQLContainer postgres =
-      new PostgreSQLContainer("postgres:18-alpine").withDatabaseName("ezkey_it");
+      new PostgreSQLContainer("postgres:19-alpine").withDatabaseName("ezkey_it");
 
   @DynamicPropertySource
   static void datasourceProps(DynamicPropertyRegistry registry) {
