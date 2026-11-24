@@ -28,7 +28,7 @@ tenant integrations, Admin UI publish order, Admin UI revocation, manual DNS):
 | **Short SHA** | `91dc5fe3` |
 | **Deployed at (UTC)** | 2026-11-23T00:06:00Z |
 | **Operator** | supervised window |
-| **Note** | Supervised window 2026-11-22 15:26–19:06 America/Toronto (2026-11-22T20:26Z–2026-11-23T00:06Z), from `c6d89274` (Flyway V29) to `91dc5fe3` (Flyway V31). Keyset unchanged (v1). DB role passwords rotated (#1017) with `scripts/db/rotate-role-passwords.sh` (merged in #1447). Demo Login is deployed and replaces the Acme demo app; the Demo Login integration is in its own tenant. Acme demo app, its volumes, DNS record, and integrations are retired; keys were revoked in the Admin UI (MFA), not by SQL. Admin UI (Cloudflare Pages project `admin-ui-ezkey-online`, production branch `main`, API base `https://admin-api.ezkey.online`) published from `91dc5fe3`. ezkey.org published from `91dc5fe3`. Auth API Shield schema refreshed; mitigation remains Block. `EZKEY_ADMIN_CORS_ALLOWED_ORIGINS` is the Admin UI origin only (`https://admin-ui.ezkey.online`); legacy `EZKEY_EVALUATOR_*` keys removed. Compose on the VM remained three files: `docker-compose.yml` + `docker-compose.javamelody.yml` + `docker-compose.connector-smtp.yml` (see § PostgreSQL for the transitional fourth file since 2026-11-24). Host OS was Amazon Linux 2023.12.20261102 during that window (no OS window; see § Host OS for the later H1). Stack SHA unchanged by the 2026-11-23 H1 and the 2026-11-24 PostgreSQL 19 window. Host: `<static-ip ezkey-online-community>`. |
+| **Note** | Supervised window 2026-11-22 15:26–19:06 America/Toronto (2026-11-22T20:26Z–2026-11-23T00:06Z), from `c6d89274` (Flyway V29) to `91dc5fe3` (Flyway V31). Keyset unchanged (v1). DB role passwords rotated (#1017) with `scripts/db/rotate-role-passwords.sh` (merged in #1447). Demo Login is deployed and replaces the Acme demo app; the Demo Login integration is in its own tenant. Acme demo app, its volumes, DNS record, and integrations are retired; keys were revoked in the Admin UI (MFA), not by SQL. Admin UI (Cloudflare Pages project `admin-ui-ezkey-online`, production branch `main`, API base `https://admin-api.ezkey.online`) published from `91dc5fe3`. ezkey.org published from `91dc5fe3`. Auth API Shield schema refreshed; mitigation remains Block. `EZKEY_ADMIN_CORS_ALLOWED_ORIGINS` is the Admin UI origin only (`https://admin-ui.ezkey.online`); legacy `EZKEY_EVALUATOR_*` keys removed. Compose on the VM remained three files: `docker-compose.yml` + `docker-compose.javamelody.yml` + `docker-compose.connector-smtp.yml` (a transitional fourth file was used 2026-11-24 between the PostgreSQL 19 window and the volume name alignment; see § PostgreSQL). Host OS was Amazon Linux 2023.12.20261102 during that window (no OS window; see § Host OS for the later H1). Stack SHA unchanged by the 2026-11-23 H1 and the 2026-11-24 PostgreSQL 19 window. Host: `<static-ip ezkey-online-community>`. |
 
 ## Email delivery (opt-in SMTP connector)
 
@@ -77,11 +77,13 @@ Major line change 18 → 19 ([#1421](https://github.com/mgagp/ezkey/issues/1421)
 | **Keyset** | Unchanged (version 1). The kid value stays in operator notes. |
 | **Checks** | Public API probes healthy after the window; functional tests by Isabelle and Marc passed. |
 | **Stack SHA** | Unchanged (`91dc5fe3`); see **Current**. |
-| **Open step** | Volume name alignment back to the stock `postgres-data` (removes the transitional host-only window override, so the stock three-file compose applies again). Separate ops step with its own go; not done yet. |
+| **Volume name alignment** | Done 2026-11-24, 10:23:48–10:25:42 America/Toronto (2026-11-24T15:23:48Z–15:25:42Z), **1 min 54 s**: PostgreSQL 19 data copied back into the stock `postgres-data` volume; temporary host-only override removed. A first attempt at 10:19 was rolled back (1 min 53 s) on a false `verify-grants.sh` failure (lab container name default; set `EZKEY_POSTGRES_CONTAINER=ezkey-exp-postgres`). |
+| **Leftovers** | Pre-alignment backup volumes, the previous compose file backup, and snapshot `pre-pgvol-align-20261124-1505` are kept until a separate cleanup go. |
 
-**Compose on this VM until that alignment.** The three files above plus the host-only PostgreSQL 19
-window override (not in git). Do not sync `docker-compose.yml` from main and recreate `postgres`
-without it.
+**Compose on this VM.** Main's stock three files (`docker-compose.yml` +
+`docker-compose.javamelody.yml` + `docker-compose.connector-smtp.yml`), `postgres:19-alpine` on
+`postgres-data`, no override. Decision: no migration-specific override survives the upgrade
+(Marc, 2026-11-24, [#1421](https://github.com/mgagp/ezkey/issues/1421)).
 
 ## Host OS
 
