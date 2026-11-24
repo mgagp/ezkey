@@ -214,18 +214,18 @@
   notes: "Outside 6-month warn window; move with RN toolchain. eol_slug→temurin."
 
 - id: spring-boot
-  component: Spring Boot (Framework 7.0.x / Hibernate 7.4.x / Security 7.1.x via Boot)
+  component: Spring Boot (Framework 7.1.x / Hibernate 7.4.x / Security 7.2.x via Boot)
   owner: fred
   eol_slug: spring-boot
-  current: "4.1"
+  current: "4.2"
   sources:
-    - { file: pom.xml, expect: "<spring-boot.version>4.1." }
-  eol: 2027-07-31
-  target: "4.2" # now: the ≥ 3-month wait was dropped (Marc 2026-11-23, see notes)
-  decision: plan
+    - { file: pom.xml, expect: "<spring-boot.version>4.2." }
+  eol: 2027-12-31
+  target: "4.2" # lab posture: latest line as soon as it is out (README § Target rule)
+  decision: keep
   security: true
-  issue: null
-  last_review: 2026-10-19
+  issue: 1471 # Christophe's opinion-only issue for the 4.2 line
+  last_review: 2026-11-23
   notes: >
     Patches via Java BOM pulse; line change → light path + short opinion-only security issue.
     Flyway, pgJDBC, and Hibernate follow this BOM; no flyway.version override unless a real
@@ -233,7 +233,8 @@
     4.2 (Dependabot #1458) goes now, not after a 3-month soak: Ezkey is a lab with no official
     release and no adopter yet, so we move fast and rework if needed (Marc 2026-11-23). The
     entityManagerFactory ↔ EncryptionEntityListener bean cycle seen under 4.2 is fixed on 4.1
-    first (lazy EncryptionOperations lookup).
+    first (lazy EncryptionOperations lookup, #1462). 4.2.0 landed via #1458 (released
+    2026-11-20; OSS support until 2027-12-31).
 
 - id: postgresql
   component: PostgreSQL
