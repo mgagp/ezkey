@@ -72,7 +72,7 @@
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<spring-boot.version>4.2.0</spring-boot.version>
 		<mapstruct.version>1.6.3</mapstruct.version>
-		<springdoc.version>3.2.0</springdoc.version>
+		<springdoc.version>3.2.1</springdoc.version>
 		<!-- SpotBugs engine + Maven plugin (report-only via java-doctor-curated; not a build gate) -->
 		<spotbugs.version>4.10.5</spotbugs.version>
 		<spotbugs-maven-plugin.version>4.10.5.0</spotbugs-maven-plugin.version>
@@ -81,7 +81,7 @@
 		<pmd.version>3.28.0</pmd.version>
 		<jacoco.version>0.8.16</jacoco.version>
 		<zxing.version>3.5.4</zxing.version>
-		<spotless.version>3.11.0</spotless.version>
+		<spotless.version>3.12.0</spotless.version>
 		<!-- Nested Spotless pin; Dependabot typically misses the plugin XML. Pulse in dependabot-curated. -->
 		<!-- 2.0.0 (2026-10-30): new layout engine; cleanup pass on by default (Spotless 3.10.4 supports <cleanup>). -->
 		<google-java-format.version>2.0.0</google-java-format.version>
