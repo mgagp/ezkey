@@ -2,16 +2,28 @@
 
 ## Language Policy
 
-**All Markdown documentation in the Ezkey project MUST be written in English.**
+**English is the official language of the Ezkey repository.**
 
-This policy applies to:
-- README files
-- Architecture documentation (docs/ folder)
-- API documentation
-- Contributing guides
-- Issue and pull request descriptions
-- Code comments in Markdown format
-- Any other Markdown files (.md) in the project
+This policy applies to everything written for the repository and its contributors:
+- README files and the documentation corpus (`docs/`, `product-docs/`, module docs)
+- Methodology artifacts (`I-*`, `TB-*`, visions, briefs, walk gates, hygiene lanes)
+- Agent guides, rules and skills (`AGENTS.md`, `CLAUDE.md`, `.claude/`, `.cursor/`)
+- GitHub issues, pull request titles, descriptions and review comments
+- Commit messages
+- Source code identifiers and code comments, in every language
+- Any other Markdown file (`.md`) in the project
+
+It applies whatever language the author speaks or dictates in: a maintainer dictating in French
+still produces English issues, PRs and docs.
+
+### What this policy does not cover
+
+- **Product localization:** user-facing strings shipped in French (Admin UI and mobile `fr`
+  locales, the French mirror of the public site and monthly digest) are product content, not
+  repository documentation.
+- **Existing French content:** documents, issues and PRs already written in French are accepted as
+  they are. Do not translate or rewrite them just to apply this policy; switch to English when the
+  content is next substantially reworked.
 
 ### Rationale
 
@@ -22,16 +34,13 @@ This policy applies to:
 
 ### Enforcement
 
-- Pull requests containing Markdown documentation in languages other than English will not be merged
-- Reviewers should check that all new or modified Markdown files are in English
-- Use automated checks where possible to enforce this policy
+- Reviewers check that new or modified content in scope is in English
+- Agents (Claude Code, Cursor) find this rule through the root [`AGENTS.md`](../AGENTS.md)
 
 ### Exceptions
 
-There are **no exceptions** to this rule. All documentation must be in English, regardless of:
-- The contributor's native language
-- The target audience
-- The specific module or component
+An exception requires the maintainer's explicit go for a given item, recorded where the item lives
+(for example in the PR description).
 
 ### Getting Help
 
@@ -66,4 +75,4 @@ If you need assistance translating documentation to English:
 
 ---
 
-**Remember: English is mandatory for all Markdown documentation in Ezkey.**
+**Remember: English is the language of the Ezkey repository.**
