@@ -163,6 +163,22 @@ cat >"${BIN}/docker" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 log="${FAKE_DOCKER_LOG:?}"
+
+# FAKE_DOCKER_STATE: running (default), stopped, or missing. Logged as INSPECT so
+# assert_docker_name_only keeps checking only exec calls.
+if [[ "${1:-}" == "inspect" ]]; then
+  printf 'INSPECT %q\n---\n' "${!#}" >>"${log}"
+  case "${FAKE_DOCKER_STATE:-running}" in
+    running) echo "true" ;;
+    stopped) echo "false" ;;
+    *)
+      echo "Error: No such container: ${!#}" >&2
+      exit 1
+      ;;
+  esac
+  exit 0
+fi
+
 {
   printf 'ARGV'
   for arg in "$@"; do
@@ -605,5 +621,25 @@ fi
 assert_docker_name_only "${CASE_DOCKER}" \
   "compose-sentinel-9f3a" "migrate-sentinel-9f3a" "admin-sentinel-9f3a" \
   "auth-sentinel-9f3a" "integration-sentinel-9f3a" "sek rit=with&meta;"
+
+for state in missing stopped; do
+  echo "== docker mode stops on a ${state} container before any grant check (#1490) =="
+  new_case "container-${state}"
+  if run_verify "${CASE_OUT}" "${CASE_ERR}" \
+    FAKE_PSQL_LOG="${CASE_PSQL}" \
+    FAKE_DOCKER_LOG="${CASE_DOCKER}" \
+    FAKE_DOCKER_STATE="${state}" \
+    --docker; then
+    fail "${state} container should exit non-zero"
+  fi
+  assert_stdout_has "${CASE_ERR}" "container not found or not running: ezkey-postgres"
+  assert_stdout_has "${CASE_ERR}" "EZKEY_POSTGRES_CONTAINER"
+  assert_file_lacks "${CASE_ERR}" "FAIL:"
+  assert_file_lacks "${CASE_OUT}" "FAIL:"
+  assert_file_lacks "${CASE_DOCKER}" "ARGV exec"
+  if [[ -s "${CASE_PSQL}" ]]; then
+    fail "${state} container: psql must not run"
+  fi
+done
 
 echo "verify-grants credential and catalog locks passed."
