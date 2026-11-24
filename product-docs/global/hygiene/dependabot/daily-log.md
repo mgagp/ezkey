@@ -302,3 +302,16 @@ Append-only residual for **weekday light** `dependabot-curated` passes.
 - Orval pin in `ezkey-admin-ui/AGENTS.md` synced 8.45.0 → 8.47.0 (the line was already stale at 8.46.0 before this pass)
 - HAProxy compose comment still says "image 3.4.7 as of 2026-11-02". Digest bump only; comment left as-is
 - Admin UI `npm run dev` on port 5173 was left running across the lockfile update. Restart it so it picks up vite 8.3.7, resolvers 7.0.3, and Orval 8.47.0
+
+## 2026-11-24
+
+- Pass: targeted (Marc: process and close #1480, #1483, #1486 from the Mac). GitHub write: `gh` as mgagp. No `--admin`. Concurrency: the Dependabot Docker digest merges (#1481, #1482, #1484, #1485) landed about 30 minutes before the pass
+- Merged (squash):
+  - #1483 `@babel/runtime` 7.29.15 (T1) `ec5634135`, by the repository auto-merge. Dependabot moved only the direct pin and left 7.29.14 for `^7.25.0`, so both copies were in the license snapshot. Companion commit: `yarn dedupe @babel/runtime` and snapshot refresh
+  - #1486 `@tanstack/react-query` 5.108.2 (T1) `6af0c8cce`, by the repository auto-merge. Snapshot conflict after #1483 resolved by regenerating
+  - #1480 springdoc 3.2.1 and Spotless 3.12.0 `49a9e2452`, merged by Marc. A patch number, but springdoc 3.2.1 moves swagger-core 2.2 to 3.0 and drops Jackson 2 from the Admin API jar
+- Validation:
+  - Mobile, each PR on Node 24: lint, tsc, jest 533/533, `license:ci`; `api:drift` before the final #1486 merge of `main`. CI green. No phone smoke
+  - #1480: `./scripts/build-docker.sh --check-only` green; CI `backend`, `ha-smoke`, `ci-gate` green. Isolated stack (separate compose project and ports): Admin, Auth, and Integration `/api-docs` identical to the committed specs (0 lines), so no client regeneration. Swagger UI 200 on all three
+  - Not run: Rest Assured functional suite and Playwright
+- Bot commits left the `pull_request` runs `action_required`; merging `main` into each branch and pushing started attributed CI without a run approval
