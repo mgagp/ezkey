@@ -97,7 +97,7 @@ Compose passes `TZ: ${TZ:-UTC}` into services; if `TZ` is unset, behavior stays 
 │                                                 │
 │  ┌──────────────┐    ┌──────────────┐         │
 │  │  PostgreSQL  │    │  Migration   │         │
-│  │     17       │◄───│    Job       │         │
+│  │     19       │◄───│    Job       │         │
 │  └──────┬───────┘    └──────────────┘         │
 │         │                                       │
 │         ├──► ┌──────────────┐                 │
