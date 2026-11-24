@@ -341,8 +341,9 @@ updates:
   # Omitted: /ezkey-pam (FROM ${ROCKY_IMAGE} — ARG not parsed) and
   # /ezkey-auth-api (local ezkey-auth-api-native + busybox:latest floating tag).
   # Majors are a manual choice (Java/Node LTS, Postgres data, HAProxy LTS):
-  # single-number tags (25-jre-alpine, 22-alpine, 18-alpine) only receive majors
-  # (temurin→27 non-LTS, node→26 vs .nvmrc 24, postgres 19 breaks data, haproxy→3.x).
+  # single-number tags (25-jre-alpine, 22-alpine, <pg-major>-alpine) only receive majors
+  # (temurin→27 non-LTS, node→26 vs .nvmrc 24, a Postgres major cannot start on an
+  # existing data volume, haproxy→3.x). The semver-major ignore below covers them.
   - package-ecosystem: "docker"
     directories:
       - "/docker"

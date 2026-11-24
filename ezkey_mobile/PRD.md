@@ -186,7 +186,8 @@ sequenceDiagram
 - React Native 0.76+, TypeScript, React Navigation 7, React Query 5.
 - `react-native-vision-camera` (QR), `react-native-permissions`, `@react-native-async-storage/async-storage`, secure storage module.
 - Node.js LTS (20.x) and Yarn 4/Berry.
-- Fastlane (build automation) in later phase.
+- Build automation: Android goes through GitHub Actions and the existing scripts, not Fastlane
+  (`I-2026-11-24-mobile-android-release-pipeline`); Fastlane is re-evaluated with iOS.
 
 ## 10. Risks & Mitigations
 - **Changing ngrok endpoint** – Abstract base URL in config and support remote override.

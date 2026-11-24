@@ -138,6 +138,11 @@ export EZKEY_PLAY_SERVICE_ACCOUNT_JSON="/c/Users/marcg/.gradle/ezkey-play-publis
 
 Optional flags: `--dry-run` (auth + list tracks/versionCodes, delete edit, no commit), `--status draft|completed` (default `draft`), `--release-name` (override the default `'<versionCode> (<versionName>)'`), `--allow-same-version-name` (accepted, no longer required: the same `versionName` warns and continues). The script refuses any track other than `internal` and refuses an AAB whose `versionCode` is not strictly greater than the highest `versionCode` already on any track. On Windows Git Bash set `EZKEY_PYTHON` if `python3` is the Microsoft Store stub. (Why the proto-manifest fix: AAB `base/manifest/AndroidManifest.xml` is aapt2 protobuf `XmlNode`, not binary AXML — the first upload dry-run failed until the reader handled that format.)
 
+**Automation direction:** moving this build-and-upload sequence to a GitHub Actions workflow
+(internal track only, promotion stays human) is captured in
+[`I-2026-11-24-mobile-android-release-pipeline`](../../product-docs/global/backlog/ideas/I-2026-11-24-mobile-android-release-pipeline.md).
+Until it lands, the commands above on Rootbeer are the release path.
+
 ### Track hygiene
 
 Each track has one active release; a new upload on that track replaces the previous active release. Older bundles remain in Console history and cannot be deleted — that is normal. Keep tracks tidy on purpose: **alpha** (closed testing) may still serve vc3 `3 (0.1.0-alpha)` to its testers while **internal** moves ahead — either promote the current internal build to alpha or pause/stop alpha when it is unused (Marc’s call). Promotion is **not** automated by `play-upload-internal.sh` (internal-only by design).
