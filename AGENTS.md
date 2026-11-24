@@ -43,6 +43,9 @@ Values for every analysis and design ([`design-principles.md`](product-docs/glob
 
 - **The repo is the memory.** A decision that changes behaviour, a contract, a constraint or how we
   work lands in its owning doc in the same PR: one line + reason + issue #. Chat-only is unrecorded.
+- **English is the repo language:** issues, PRs, commits, code, comments, docs and methodology are
+  written in English, even when the maintainer dictates in French; existing French stays as is.
+  Scope and exceptions: [`.github/DOCUMENTATION_GUIDELINES.md`](.github/DOCUMENTATION_GUIDELINES.md).
 - **Code goes through PRs.** Local test hosts build and test only. Merge only on the owner's
   explicit go.
 - **Controller change = contract change** until proven otherwise: review request and response
