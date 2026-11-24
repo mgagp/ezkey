@@ -7,7 +7,7 @@
 - **Status:** `draft`
 - **Lane:** program (SDK contract + new canonical docs + first external consumer; not hygiene)
 - **Created at:** `2026-10-27`
-- **Updated at:** `2026-11-03` (SDK 0.3.0 landing, #1068)
+- **Updated at:** `2026-11-24` (the first consumer's role beyond Android, #1491)
 - **Captured by:** Marc (owner)
 - **Priority:** to be set by Marc at triage
 - **First consumer:** the Open Authenticator fork `mgagp/openauthenticator` (Flutter, Android first)
@@ -100,6 +100,21 @@ Read-only review on 2026-10-27, re-verified and filed as
 - **Polling:** the reference app is strictly user-initiated pull. The SDK's `pollPending` /
   `watchPending` fit an approvals screen; the contract should state the bound (visible screen
   only, no background loop).
+
+## The first consumer's role beyond Android (2026-11-24)
+
+- **Not a second reference.** The canonical reference participant stays `ezkey_mobile`: protocol
+  proof and final product for the strongest case. The demo device serves evaluation only. The
+  first consumer is the example that a third-party authenticator can take up the protocol through
+  `ezkey_dart` and this kit, and that an adopter can use it as is within its documented limits.
+- **Desktop.** This example replaces an in-house desktop reference app:
+  `I-2026-07-17-desktop-authenticator-reference-app` is parked (#1491). The fork's desktop and Apple
+  ports keep one key store contract on every platform, read the key's protection tier back from
+  the key, and enable a platform only when it has a hardware key store and a way to enroll in
+  release builds.
+- **What the kit owes it next:** the enrollment path for a device that cannot scan the
+  invitation (a desktop with no camera, or a phone that shows its own invitation), then the
+  conformance checklist of step 3.
 
 ## Gradual path (milestones)
 
