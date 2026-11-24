@@ -817,6 +817,14 @@ Supervised steps in this checklist (role password rotation, Flyway migrations, c
 C="docker compose -f docker-compose.yml -f docker-compose.javamelody.yml -f docker-compose.connector-smtp.yml"
 ```
 
+> **Transitional (2026-11-24, until the volume name alignment).** After the PostgreSQL 19
+> window ([#1421](https://github.com/mgagp/ezkey/issues/1421) lot 2), the live host also needs a
+> fourth, host-only window override that points `postgres` at the PostgreSQL 19 image and data
+> volume. Until the volume name alignment in
+> [§ PostgreSQL major upgrades](#postgresql-major-upgrades-1421) is done, append that override to
+> `$C`. Once the alignment is done, this note is obsolete and the three files above are the whole
+> set again.
+
 Use `$C` for F, H, and any recreate (including the separate postgres window). Omitting
 `docker-compose.javamelody.yml` drops `JAVAMELODY_*` on recreate. Omitting
 `docker-compose.connector-smtp.yml` makes a recreated admin-api silently lose email delivery.
@@ -886,12 +894,63 @@ A **follow-up issue (to be created)** should track a non-destructive script mode
 
 **Postgres recreate (when deliberate):** announce the **precise outage time** before starting.
 
-> **PostgreSQL major mismatch (#1421).** Since #1421 PR 1, `docker-compose.yml` pins `postgres:19-alpine`. A recreate with a compose file from that commit onward starts 19 on the existing data volume. If the volume is still 18 (the ezkey.online database stays on 18 until the #1421 lot 2 window), Postgres refuses to start and every API goes down. Until that window has migrated the data (dump/restore onto a fresh volume), do **not** recreate `postgres` from main's compose, and watch for any `up -d` that would recreate it as a side effect (see the `logging:` note in § Rolling upgrade). If it happens anyway (`database files are incompatible with server`), put the `postgres` image back to `postgres:18-alpine` and recreate: the data is intact. **Never** run `down -v` to "fix" it: that wipes the database and the encryption-secrets volume. The steps below assume the compose tag and the volume are on the same major.
+> **Same major only.** The steps below recreate `postgres` on its existing data volume. That is safe only when the compose image tag and the data volume are on the **same** PostgreSQL major. A different major refuses to start (`database files are incompatible with server`) and every API goes down. A major change is never a recreate: see [§ PostgreSQL major upgrades](#postgresql-major-upgrades-1421). **Never** run `down -v` to "fix" a refused start: that wipes the database and the encryption-secrets volume.
 
 1. Backups first (C): `pg_dump -Fc` verified with `pg_restore --list`.
 2. `$C up -d --no-deps --no-build --force-recreate postgres` — data volume kept. Measured ~**6–9 s** for the recreate itself; APIs usually reconnect on their own. Restart one API alone if it does not become healthy. Leave `--remove-orphans` off (Window rules).
 3. A probe that only hits `/` does **not** prove absence of errors on database-reading requests — finish with **human Admin UI login + MFA**.
 4. Checks **G** afterwards, including **verify-grants** with the environment variables described in G.1.
+
+### PostgreSQL major upgrades (#1421)
+
+**Target posture.** The repository's Lightsail compose pins `postgres:19-alpine` for both
+`postgres` and `db-grants` and keeps the named data volume `postgres-data`. On the community
+host, the stock three-file `$C` is the normal path, and a same-major `postgres` recreate on that
+volume (steps above) is again the documented path. The repository does not carry a permanent
+override, an `external: true` volume, or a major-suffixed volume name. Decision: Marc, 2026-11-24,
+[#1421](https://github.com/mgagp/ezkey/issues/1421): no migration-specific override survives the
+upgrade. Reason: a fresh install from main and a regular upgrade then use the same compose files
+as the live host, with no migration-specific step.
+
+**History (2026-11-24).** The ezkey.online database moved from PostgreSQL 18 to 19 in a
+supervised window (#1421 lot 2, after #1474). Docker cannot rename a volume, so the data was
+restored onto a **new** volume declared by a host-only window override, and the previous
+`postgres-data` volume (PostgreSQL 18 data) was left untouched as the fallback. Ledger:
+[`community/DEPLOYED.md`](community/DEPLOYED.md).
+
+> **Transitional caution (until the volume name alignment).** While the live data still sits on
+> the window volume, syncing `docker-compose.yml` from main **without** the window override and
+> then recreating `postgres` (or any `up -d` that recreates it as a side effect, see the `logging:`
+> note in § Rolling upgrade) would point the PostgreSQL 19 image at the old `postgres-data`
+> volume, which holds PostgreSQL 18 data. Postgres refuses to start and every API goes down. Keep
+> the override on every compose command until the alignment below is done.
+>
+> **Volume name alignment** (planned; separate ops step, explicit human go, fresh backups and
+> snapshot first): stop the stack; preserve the PostgreSQL 18 contents of `postgres-data` in a
+> backup volume; copy the PostgreSQL 19 data into `postgres-data`; drop the override; start with
+> the stock `$C`; then checks G. Nothing is deleted in that window; removing the old volumes is a
+> later step with its own go. This note becomes obsolete after the alignment.
+
+**Next major (for example 19 → 20).** Reuse the 2026-11-24 window shape, adapted to the three
+compose files:
+
+1. Dedicated issue and announced window; explicit human go; Lightsail snapshot **first**.
+2. `pg_dump -Fc` of `ezkey_db` and `pg_dumpall --globals-only`, taken with the **new** major's
+   client (for example a throwaway container on the new image), verified with `pg_restore --list`.
+   Dumps stay on the host or in an operator-only folder (mode 600), never in git.
+3. Restore onto a **new**, empty volume with the new image. **Never** point the new image at the
+   previous major's volume. `PGDATA` stays `/var/lib/postgresql/data`.
+4. `db-grants` moves to the same tag as `postgres`.
+5. Start the stack; Flyway should be a no-op on the restored schema. A Flyway "newer than
+   verified" warning for a new PostgreSQL line is expected and is not a failure (see the
+   registry notes).
+6. Checks G, verify-grants, human Admin UI login + MFA, then update the ledger.
+7. Bring the data back under the stock name `postgres-data` so no override remains on the host.
+   Docker cannot rename volumes: preserve the previous major's data in a backup volume, then copy
+   the new data into `postgres-data`. The previous data stays the fallback.
+8. **Never** `down -v`; do not delete the previous volume or the snapshot in the same window.
+
+Generic floor for every component: [`major-upgrades/README.md`](../../product-docs/global/hygiene/major-upgrades/README.md) § Database.
 
 ### A. Preconditions
 

@@ -28,7 +28,7 @@ tenant integrations, Admin UI publish order, Admin UI revocation, manual DNS):
 | **Short SHA** | `91dc5fe3` |
 | **Deployed at (UTC)** | 2026-11-23T00:06:00Z |
 | **Operator** | supervised window |
-| **Note** | Supervised window 2026-11-22 15:26–19:06 America/Toronto (2026-11-22T20:26Z–2026-11-23T00:06Z), from `c6d89274` (Flyway V29) to `91dc5fe3` (Flyway V31). Keyset unchanged (v1). DB role passwords rotated (#1017) with `scripts/db/rotate-role-passwords.sh` (merged in #1447). Demo Login is deployed and replaces the Acme demo app; the Demo Login integration is in its own tenant. Acme demo app, its volumes, DNS record, and integrations are retired; keys were revoked in the Admin UI (MFA), not by SQL. Admin UI (Cloudflare Pages project `admin-ui-ezkey-online`, production branch `main`, API base `https://admin-api.ezkey.online`) published from `91dc5fe3`. ezkey.org published from `91dc5fe3`. Auth API Shield schema refreshed; mitigation remains Block. `EZKEY_ADMIN_CORS_ALLOWED_ORIGINS` is the Admin UI origin only (`https://admin-ui.ezkey.online`); legacy `EZKEY_EVALUATOR_*` keys removed. Compose on the VM remains three files: `docker-compose.yml` + `docker-compose.javamelody.yml` + `docker-compose.connector-smtp.yml`. Host OS still Amazon Linux 2023.12.20261102 (no OS window). Host: `<static-ip ezkey-online-community>`. |
+| **Note** | Supervised window 2026-11-22 15:26–19:06 America/Toronto (2026-11-22T20:26Z–2026-11-23T00:06Z), from `c6d89274` (Flyway V29) to `91dc5fe3` (Flyway V31). Keyset unchanged (v1). DB role passwords rotated (#1017) with `scripts/db/rotate-role-passwords.sh` (merged in #1447). Demo Login is deployed and replaces the Acme demo app; the Demo Login integration is in its own tenant. Acme demo app, its volumes, DNS record, and integrations are retired; keys were revoked in the Admin UI (MFA), not by SQL. Admin UI (Cloudflare Pages project `admin-ui-ezkey-online`, production branch `main`, API base `https://admin-api.ezkey.online`) published from `91dc5fe3`. ezkey.org published from `91dc5fe3`. Auth API Shield schema refreshed; mitigation remains Block. `EZKEY_ADMIN_CORS_ALLOWED_ORIGINS` is the Admin UI origin only (`https://admin-ui.ezkey.online`); legacy `EZKEY_EVALUATOR_*` keys removed. Compose on the VM remained three files: `docker-compose.yml` + `docker-compose.javamelody.yml` + `docker-compose.connector-smtp.yml` (see § PostgreSQL for the transitional fourth file since 2026-11-24). Host OS was Amazon Linux 2023.12.20261102 during that window (no OS window; see § Host OS for the later H1). Stack SHA unchanged by the 2026-11-23 H1 and the 2026-11-24 PostgreSQL 19 window. Host: `<static-ip ezkey-online-community>`. |
 
 ## Email delivery (opt-in SMTP connector)
 
@@ -63,6 +63,26 @@ token stays in the VM `.env`. Neither file is in git.
 **Rollback.** Recreate admin-api with only `docker-compose.yml` and `docker-compose.javamelody.yml`,
 then remove the connector container. Integrated delivery resumes.
 
+## PostgreSQL
+
+Major line change 18 → 19 ([#1421](https://github.com/mgagp/ezkey/issues/1421) lot 2, after
+#1474). Runbook: [`../community-host.md`](../community-host.md) § *PostgreSQL major upgrades (#1421)*.
+
+| Field | Value |
+|-------|-------|
+| **Line** | PostgreSQL 19, image `postgres:19-alpine` |
+| **Window** | 2026-11-24, supervised; API outage 08:18:12–08:29:42 America/Toronto (2026-11-24T13:18:12Z–13:29:42Z), **11 min 30 s** |
+| **Method** | Lightsail snapshot first; `pg_dump -Fc` of `ezkey_db` and `pg_dumpall --globals-only` with the PostgreSQL 19 client; restore onto a **fresh** volume on `postgres:19-alpine`. The previous PostgreSQL 18 volume is kept as the fallback. Dumps stay off git. |
+| **Flyway** | Schema already at V31: no-op on restart. Flyway 12.4.0 logged the expected warning that PostgreSQL 19.0 is newer than its latest verified version; not a failure. |
+| **Keyset** | Unchanged (version 1). The kid value stays in operator notes. |
+| **Checks** | Public API probes healthy after the window; functional tests by Isabelle and Marc passed. |
+| **Stack SHA** | Unchanged (`91dc5fe3`); see **Current**. |
+| **Open step** | Volume name alignment back to the stock `postgres-data` (removes the transitional host-only window override, so the stock three-file compose applies again). Separate ops step with its own go; not done yet. |
+
+**Compose on this VM until that alignment.** The three files above plus the host-only PostgreSQL 19
+window override (not in git). Do not sync `docker-compose.yml` from main and recreate `postgres`
+without it.
+
 ## Host OS
 
 Host OS hygiene lane: [`product-docs/global/hygiene/host-os/README.md`](../../../product-docs/global/hygiene/host-os/README.md)
@@ -72,13 +92,13 @@ Host OS hygiene lane: [`product-docs/global/hygiene/host-os/README.md`](../../..
 | Field | Value |
 |-------|-------|
 | **Blueprint / line** | Amazon Linux 2023 (`amazon_linux_2023`) |
-| **releasever (locked)** | `2023.12.20261102` |
-| **Kernel (`uname -r`)** | `6.1.189` |
-| **Last H1 (security patch)** | 2026-11-02 |
+| **releasever (locked)** | `2023.12.20261120` |
+| **Kernel (`uname -r`)** | `6.1.190-237.442` |
+| **Last H1 (security patch)** | 2026-11-23 |
 | **Last H2 (AL2023 minor + reboot)** | never |
 | **Last H3 (major / new instance)** | never |
-| **Last pre-intervention snapshot** | not named in this ledger (0 snapshots verified 2026-10-19, before this H1; automatic snapshots off) |
-| **Host OS note** | H1 done 2026-11-02: AL2023.12.20261102, kernel 6.1.189. 2026-11-15 #1177 applied: hybrid PQ key exchange on the operator SSH channel; authentication still classical. 2026-11-22 app window did not patch the OS (releasever unchanged). |
+| **Last pre-intervention snapshot** | `pre-h1-20261123` (manual, before the 2026-11-23 H1; automatic snapshots off). A separate snapshot preceded the 2026-11-24 PostgreSQL 19 window (§ PostgreSQL). |
+| **Host OS note** | H1 done 2026-11-02: AL2023.12.20261102, kernel 6.1.189. 2026-11-15 #1177 applied: hybrid PQ key exchange on the operator SSH channel; authentication still classical. 2026-11-22 app window did not patch the OS (releasever unchanged). H1 done 2026-11-23: AL2023.12.20261102 / kernel 6.1.189-236.400 → AL2023.12.20261120 / kernel 6.1.190-237.442, outage 11:08:52–11:12:03 America/Toronto (2026-11-23T16:08:52Z–16:12:03Z, **3 min 11 s**), snapshot `pre-h1-20261123`. |
 
 ## Transport TLS (post-quantum key exchange)
 

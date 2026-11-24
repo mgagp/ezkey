@@ -250,7 +250,7 @@
   decision: keep
   security: true
   issue: 1421
-  last_review: 2026-11-23
+  last_review: 2026-11-24
   notes: >
     Any major = dedicated issue + dump/restore; db-grants image tag must move with postgres.
     Flyway, pgJDBC, and Hibernate follow the Spring Boot BOM; no flyway.version override unless
@@ -258,8 +258,11 @@
     PG 19 (#1421) accepts the calculated risk that Flyway's supported-databases matrix
     (https://documentation.red-gate.com/flyway/getting-started-with-flyway/system-requirements/supported-databases-and-versions,
     updated 2026-10-26, lists PostgreSQL through 18) does not yet list 19, because Ezkey SQL
-    is basic/standard. Pins moved to 19 in the #1421 PR 1 (2026-11-23); the community
-    instance migrates in a separate ops window (dump/restore, #1421 lot 2).
+    is basic/standard. Pins moved to 19 in the #1421 PR 1 (#1474, 2026-11-23). Community
+    lot 2 done 2026-11-24: dump/restore onto a fresh volume (#1421, ledger
+    docs/lightsail/community/DEPLOYED.md). In that window Flyway 12.4.0 warned that
+    PostgreSQL 19.0 is newer than its latest verified version (18) and succeeded (V31
+    no-op): a warning, not a hard failure. Issue 1421 stays as the historical reference.
 
 - id: caddy
   component: Caddy (exposed on Lightsail)

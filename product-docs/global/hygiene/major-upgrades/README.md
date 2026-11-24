@@ -16,7 +16,7 @@ there is no committed dashboard and no generated index.
 A **major upgrade** is:
 
 1. a **support-line change** as defined by [endoflife.date](https://endoflife.date) (for example
-   Node 24 → 26, PostgreSQL 18 → 19, HAProxy 2.9 → 3.4), **or**
+   Node 24 → 26, PostgreSQL 19 → 20, HAProxy 2.9 → 3.4), **or**
 2. a **semver major** when the component is not on endoflife.date (fallback for Android Gradle
    Plugin, TypeScript, Vite, and similar).
 
@@ -206,14 +206,24 @@ rehearsal is dump / restore.
 The **`db-grants`** service uses the same Postgres image tag
 (`docker/docker-compose.yml` ~64) and **must move together** with `postgres` on every line bump.
 
+**Lesson from 2026-11-24 (PostgreSQL 18 → 19, #1421).** Never point the new image at the
+previous major's volume: Postgres refuses to start. Docker cannot rename a volume, so a restore
+onto a new volume leaves the data under a non-stock name. To keep the stock name
+(`postgres-data`), preserve the previous major's data in a backup volume, then copy the new data
+into `postgres-data`; the previous data stays the fallback and no override file outlives the
+window. Community host procedure:
+[`docs/lightsail/community-host.md`](../../../../docs/lightsail/community-host.md) § PostgreSQL
+major upgrades.
+
 **BOM-managed libraries posture.** Flyway, pgJDBC, and Hibernate follow the versions managed by
 the Spring Boot BOM. Do not set a `flyway.version` override unless a real obligation requires it
 (blocking bug, security, or hard incompatibility). A hand pin drifts from the Spring train and can
-be incompatible with it; the posture is to wait for that train. The PostgreSQL 19 plan (#1421,
-Marc 2026-11-20) accepts the calculated risk that
+be incompatible with it; the posture is to wait for that train. The PostgreSQL 19 upgrade (#1421,
+decision Marc 2026-11-20, done 2026-11-24) accepted the calculated risk that
 [Flyway's supported-databases matrix](https://documentation.red-gate.com/flyway/getting-started-with-flyway/system-requirements/supported-databases-and-versions)
-(updated 2026-10-26, PostgreSQL through 18) does not yet list 19, because Ezkey's SQL is basic
-and standard.
+(updated 2026-10-26, PostgreSQL through 18) did not yet list 19, because Ezkey's SQL is basic
+and standard. In the community window Flyway logged a "newer than verified" warning and
+succeeded; that warning is accepted (see the `postgresql` notes in `registry.yaml`).
 
 ### React Native line
 
