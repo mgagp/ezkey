@@ -116,7 +116,7 @@ sections the work needs.
 | Experimental PAM (host sshd lab, not containerised) | [`ezkey-pam/README.md`](ezkey-pam/README.md) |
 | Dismissing or accepting a dependency vulnerability | [`dependabot/README.md`](product-docs/global/hygiene/dependabot/README.md) § *Check upstream before dismissing a vulnerability* |
 | Answering reports (14-day promise) | [`report-intake/README.md`](product-docs/global/hygiene/report-intake/README.md) |
-| Startup or HA, locks with transactions, removing an exposed field, test helpers, CI that looks random | [`stabilization-lessons/README.md`](product-docs/global/hygiene/stabilization-lessons/README.md) |
+| Startup or HA, locks with transactions, removing an exposed field, test helpers, CI caches, CI that looks random | [`stabilization-lessons/README.md`](product-docs/global/hygiene/stabilization-lessons/README.md) |
 | Strategic positioning, public copy | [`PROJECT_POSITIONING.md`](docs/PROJECT_POSITIONING.md) |
 | Public alpha label, what is deployed | [`VERSIONING_AND_DEPLOY_TRACEABILITY.md`](docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md), [`DEPLOYED.md`](docs/lightsail/community/DEPLOYED.md) |
 | Test hosts, stack ports, ngrok | [`LOCAL_STACK_PORTS.md`](docs/LOCAL_STACK_PORTS.md) (Rootbeer runs one fixed-port stack; one ngrok session at a time) |

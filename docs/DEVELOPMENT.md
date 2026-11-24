@@ -480,6 +480,10 @@ path string setup-java uses (`/home/runner/.m2/repository`), because the cache v
 that string and the expression `hashFiles()` does not reproduce setup-java's key. And setup-java keeps
 the **first** cache saved for a key: `maven-dependency-submission.yml`, which only resolves the graph,
 has its own key, otherwise its 42 MB repository wins on `main` and every PR restores almost nothing.
+Measured on #1475: 730 MB restored, 288 MB seeded; the image's `clean package` step then made 4
+requests to Central. The `dependency:go-offline` step before it still fetches plugins the runner never
+used (about 1,200 files), but it is tolerant (`|| true`), so a 429 there does not stop the build.
+To check a run: `grep -E "Cache restored from|Cache not found|seeded:"` in the job log.
 
 CI checks that the Admin UI’s committed OpenAPI copy matches `specs/admin-api/`, but it does **not**
 guarantee that copy matches the real running Admin API — refresh the committed spec by hand with
