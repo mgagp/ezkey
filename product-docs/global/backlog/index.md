@@ -92,6 +92,7 @@ remains orthogonal to the closed September operability program. Wave B closeout:
 | `I-2026-07-26-tink-native-keyset-blob-envelope` | Tink-native keyset blob envelope | `done` | `P2` | `core-security`, `core`, `admin-api`, `auth-api`, `integration-api`, `infra`, `docs`, `crypto` | `2026-08-02` |
 | `I-2026-08-02-mobile-exit-experimental-messaging` | Mobile: exit experimental release messaging | `active` | `P2` | `mobile`, `docs` | `2026-08-14` |
 | `I-2026-08-02-mobile-play-official-compliance-gate` | Mobile: Play official release compliance gate | `active` | `P2` | `mobile`, `docs` | `2026-08-14` |
+| `I-2026-11-24-mobile-android-release-pipeline` | Mobile: automated Android build and Play internal upload pipeline | `captured` | `P2` (proposed) | `mobile`, `ci`, `docs`, `security` | `2026-11-24` |
 | `I-2026-08-02-mobile-client-update-mechanism` | Mobile: client app-update mechanism | `active` | `P3` | `mobile`, `docs` | `2026-08-14` |
 | `I-2026-08-02-mobile-installation-version-and-compat-discovery` | Mobile: installation product-version and compatibility discovery | `incubating` | `P3` | `mobile`, `auth-api`, `admin-api`, `core`, `docs`, `security` | `2026-08-02` |
 | `I-2026-08-09-mobile-signed-instance-info-integrity` | Mobile: signed Public Instance Info integrity | `active` | `P2` | `mobile`, `auth-api`, `core`, `docs`, `security` | `2026-08-25` |
