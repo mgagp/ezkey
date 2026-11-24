@@ -1,7 +1,7 @@
 # JavaMelody collector server (opt-in local Docker diagnostics).
 # Official executable WAR: https://github.com/javamelody/javamelody/releases
 # Base is tag@sha256 of the multi-arch index so Dependabot can bump tag and digest.
-FROM eclipse-temurin:21-jre-alpine@sha256:ac05c3c42b7c2f1a52c9bd52f01041fa1958231b15ebeae7420429cbc5baf474
+FROM eclipse-temurin:21-jre-alpine@sha256:5d7689f47d670aca766b9503a70bccc2d73b4eb9221ae8f714ae958313c4ce70
 
 # Align with parent POM javamelody.version (APIs use javamelody-spring-boot4-starter).
 ARG JAVAMELODY_VERSION=2.9.0
