@@ -24,11 +24,13 @@ tenant integrations, Admin UI publish order, Admin UI revocation, manual DNS):
 | Field | Value |
 |-------|-------|
 | **Surface** | community (ezkey.online) |
-| **Full git SHA** | `91dc5fe3f43315180b0fff337fa01326a8047db0` |
-| **Short SHA** | `91dc5fe3` |
-| **Deployed at (UTC)** | 2026-11-23T00:06:00Z |
+| **Full git SHA** | `f7d798ae930f4c9f8c673c712b76c68db1ac7fd8` |
+| **Short SHA** | `f7d798ae` |
+| **Deployed at (UTC)** | 2026-11-24T19:58:13Z |
 | **Operator** | supervised window |
-| **Note** | Supervised window 2026-11-22 15:26–19:06 America/Toronto (2026-11-22T20:26Z–2026-11-23T00:06Z), from `c6d89274` (Flyway V29) to `91dc5fe3` (Flyway V31). Keyset unchanged (v1). DB role passwords rotated (#1017) with `scripts/db/rotate-role-passwords.sh` (merged in #1447). Demo Login is deployed and replaces the Acme demo app; the Demo Login integration is in its own tenant. Acme demo app, its volumes, DNS record, and integrations are retired; keys were revoked in the Admin UI (MFA), not by SQL. Admin UI (Cloudflare Pages project `admin-ui-ezkey-online`, production branch `main`, API base `https://admin-api.ezkey.online`) published from `91dc5fe3`. ezkey.org published from `91dc5fe3`. Auth API Shield schema refreshed; mitigation remains Block. `EZKEY_ADMIN_CORS_ALLOWED_ORIGINS` is the Admin UI origin only (`https://admin-ui.ezkey.online`); legacy `EZKEY_EVALUATOR_*` keys removed. Compose on the VM remained three files: `docker-compose.yml` + `docker-compose.javamelody.yml` + `docker-compose.connector-smtp.yml` (a transitional fourth file was used 2026-11-24 between the PostgreSQL 19 window and the volume name alignment; see § PostgreSQL). Host OS was Amazon Linux 2023.12.20261102 during that window (no OS window; see § Host OS for the later H1). Stack SHA unchanged by the 2026-11-23 H1 and the 2026-11-24 PostgreSQL 19 window. Host: `<static-ip ezkey-online-community>`. |
+| **Note** | Supervised window 2026-11-24 14:25–14:58 America/Toronto (2026-11-24T19:25Z–19:58Z), from `91dc5fe3` to `f7d798ae`, one go per step. Scope: Spring Boot 4.1.2 → 4.2.0 (Spring Framework 7.1.0, Flyway 12.11.0), Temurin 25 JRE base digest refresh, #1462 lazy EncryptionOperations, #1448 Integration API concurrent API key fix, #1455 enrollment Name / User ID (Admin UI). No Flyway migration (still V31), no `.env`, Caddyfile, or compose change, no OpenAPI change (API Shield schemas not re-uploaded). The Rootbeer lab CleanStart stack was rebuilt on the same SHA first (PostgreSQL 19, Flyway V31, keyset and HMAC checks green). Snapshot `pre-f7d798ae-20261124-1925` (name in UTC) first; `.env` and the three compose files backed up as `*.bak.pre-f7d798ae` (mode 600); images tagged `:rollback-pre-f7d798ae` (migration, admin-api, auth-api, integration-api at `91dc5fe3`; connector-smtp at `c6d89274`; demo-login at `91dc5fe3`). Images built on the operator machine with the revision label and shipped with `export-backend-images-to-lightsail.sh --target community` (connector included, no `--apis-only`, no `--remote-up`, no `--sync-operator-files`). Order: db-grants (exit 0), migration (exit 0, no-op), then one service at a time with `--no-deps --no-build --force-recreate`: admin-api **34.3 s**, auth-api **31.7 s**, integration-api **32.0 s**, connector-smtp **31.5 s** (time to healthy; email delivery only for the connector). Keyset unchanged (version 1, same kid). `verify-grants.sh` passed with `EZKEY_POSTGRES_CONTAINER=ezkey-exp-postgres`. Public probes on canon (admin-api 401, auth-api 404, integration-api 401, demo-login `/healthz` 200, Admin UI `/` and `/login` 200). Admin UI (Pages project `admin-ui-ezkey-online`) published from `f7d798ae` as deployment `17e34806` (previous `b5e55858`, `91dc5fe3`); headers and CSP unchanged; operator login and MFA passed. ezkey.org not republished (no site change since #1453, already live). Not changed in this window: demo-login stays at `91dc5fe3` (no code change), JavaMelody collector stays on its 2026-11-15 build (Temurin 21 base refresh deferred to its own step), postgres and caddy not recreated. Compose on the VM: the three files. Host: `<static-ip ezkey-online-community>`. |
+
+**Previous window (`91dc5fe3`).** Supervised window 2026-11-22 15:26–19:06 America/Toronto (2026-11-22T20:26Z–2026-11-23T00:06Z), from `c6d89274` (Flyway V29) to `91dc5fe3` (Flyway V31). Keyset unchanged (v1). DB role passwords rotated (#1017) with `scripts/db/rotate-role-passwords.sh` (merged in #1447). Demo Login is deployed and replaces the Acme demo app; the Demo Login integration is in its own tenant. Acme demo app, its volumes, DNS record, and integrations are retired; keys were revoked in the Admin UI (MFA), not by SQL. Admin UI (Cloudflare Pages project `admin-ui-ezkey-online`, production branch `main`, API base `https://admin-api.ezkey.online`) published from `91dc5fe3`. ezkey.org published from `91dc5fe3`. Auth API Shield schema refreshed; mitigation remains Block. `EZKEY_ADMIN_CORS_ALLOWED_ORIGINS` is the Admin UI origin only (`https://admin-ui.ezkey.online`); legacy `EZKEY_EVALUATOR_*` keys removed. Compose on the VM remained three files: `docker-compose.yml` + `docker-compose.javamelody.yml` + `docker-compose.connector-smtp.yml` (a transitional fourth file was used 2026-11-24 between the PostgreSQL 19 window and the volume name alignment; see § PostgreSQL). Host OS was Amazon Linux 2023.12.20261102 during that window (no OS window; see § Host OS for the later H1). Stack SHA unchanged by the 2026-11-23 H1 and the 2026-11-24 PostgreSQL 19 window. Host: `<static-ip ezkey-online-community>`.
 
 ## Email delivery (opt-in SMTP connector)
 
@@ -42,7 +44,7 @@ Runbook: [`../community-host.md`](../community-host.md) § *Email delivery conne
 |-------|-------|
 | **Overlay** | `docker-compose.connector-smtp.yml` |
 | **Service** | `ezkey-exp-connector-smtp` |
-| **Image** | `ezkey-connector-smtp`, built from `c6d89274702f8f80007fb6149d9204b79ba89bdf` (`c6d89274`) |
+| **Image** | `ezkey-connector-smtp`, built from `f7d798ae930f4c9f8c673c712b76c68db1ac7fd8` (`f7d798ae`), recreated alone 2026-11-24 (31.5 s); previous build `c6d89274` kept as `:rollback-pre-f7d798ae` |
 | **Version** | `0.2.0-SNAPSHOT` |
 | **Contract** | v1 |
 | **Template** | `enrollment-qr` (en, fr) |
@@ -55,7 +57,7 @@ Runbook: [`../community-host.md`](../community-host.md) § *Email delivery conne
 `docker-compose.yml` + `docker-compose.javamelody.yml` + `docker-compose.connector-smtp.yml`.
 The 2026-11-22 window (`91dc5fe3`) kept this set. Recreating admin-api without
 `docker-compose.connector-smtp.yml` drops email delivery with no error. The image line above is
-the 2026-11-15 connector build; the **Current** row is the stack SHA.
+the 2026-11-24 connector build; the **Current** row is the stack SHA.
 
 **Secrets.** SMTP credentials stay in `connector-smtp.env` (mode 600) on the VM only. The delivery
 token stays in the VM `.env`. Neither file is in git.
@@ -73,10 +75,10 @@ Major line change 18 → 19 ([#1421](https://github.com/mgagp/ezkey/issues/1421)
 | **Line** | PostgreSQL 19, image `postgres:19-alpine` |
 | **Window** | 2026-11-24, supervised; API outage 08:18:12–08:29:42 America/Toronto (2026-11-24T13:18:12Z–13:29:42Z), **11 min 30 s** |
 | **Method** | Lightsail snapshot first; `pg_dump -Fc` of `ezkey_db` and `pg_dumpall --globals-only` with the PostgreSQL 19 client; restore onto a **fresh** volume on `postgres:19-alpine`. The previous PostgreSQL 18 volume is kept as the fallback. Dumps stay off git. |
-| **Flyway** | Schema already at V31: no-op on restart. Flyway 12.4.0 logged the expected warning that PostgreSQL 19.0 is newer than its latest verified version; not a failure. |
+| **Flyway** | Schema already at V31: no-op on restart. Flyway 12.4.0 logged the expected warning that PostgreSQL 19.0 is newer than its latest verified version; not a failure. Flyway 12.11.0 (Spring Boot 4.2.0, `f7d798ae` window) still logs it; accepted. Posture: follow the Flyway version Spring Boot manages, no separate pin. Check the schema with `installed_rank` (31). |
 | **Keyset** | Unchanged (version 1). The kid value stays in operator notes. |
 | **Checks** | Public API probes healthy after the window; functional tests by Isabelle and Marc passed. |
-| **Stack SHA** | Unchanged (`91dc5fe3`); see **Current**. |
+| **Stack SHA** | Unchanged (`91dc5fe3`) by this window; moved to `f7d798ae` in the 2026-11-24 afternoon app window, see **Current**. |
 | **Volume name alignment** | Done 2026-11-24, 10:23:48–10:25:42 America/Toronto (2026-11-24T15:23:48Z–15:25:42Z), **1 min 54 s**: PostgreSQL 19 data copied back into the stock `postgres-data` volume; temporary host-only override removed. A first attempt at 10:19 was rolled back (1 min 53 s) on a false `verify-grants.sh` failure (lab container name default; set `EZKEY_POSTGRES_CONTAINER=ezkey-exp-postgres`). |
 | **Leftovers** | Pre-alignment backup volumes, the previous compose file backup, and snapshot `pre-pgvol-align-20261124-1505` are kept until a separate cleanup go. |
 
