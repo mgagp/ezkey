@@ -28,7 +28,11 @@ import {StoredEnrollment} from '../services/storage/enrollmentStorage';
 import {env} from '../config/env';
 import {readIsDebugBuild} from '../config/buildFlavor';
 import {integrationKeyAlgorithmBindError} from '../utils/integrationKeyAlgorithm';
-import {buildInstallation, resolveEnrollmentAuthUrl} from '../utils/installationMetadata';
+import {
+  buildInstallation,
+  getInstallationHost,
+  resolveEnrollmentAuthUrl,
+} from '../utils/installationMetadata';
 import {deriveLocalEnrollmentId} from '../utils/localEnrollmentIdentity';
 import {isControlledEnrollmentBypassAvailable} from '../utils/controlledEnrollmentBypass';
 import {logEnrollmentSeedIngest} from '../utils/enrollmentSeedLogRedaction';
@@ -129,6 +133,11 @@ export type EnrollmentWizardState = {
   controlledBypassUsed: boolean;
   controlledBypassSeedInput: string;
   // Derived UI helpers
+  /**
+   * Host (plus non-default port) of the Auth API this enrollment is bound to, shown at the
+   * challenge stage for every seed source (#1185). Same resolution as the verify call.
+   */
+  serverHost: string | undefined;
   primaryLabel: string;
   secondaryLabel: string;
   primaryDisabled: boolean;
@@ -574,6 +583,9 @@ export function useEnrollmentWizard(popToTop: () => void): EnrollmentWizardState
 
   const hasDraft = Boolean(draft);
   const controlledBypassUsed = seedSource === 'controlled-bypass';
+  const serverHost = hasDraft
+    ? getInstallationHost(resolveEnrollmentAuthUrl(authUrl))
+    : undefined;
   const challengeMissing = hasDraft && enrollmentChallenge.trim().length !== 6;
   const primaryDisabled =
     (hasDraft && isSubmitting) || (!hasDraft && isBinding) || challengeMissing;
@@ -601,6 +613,7 @@ export function useEnrollmentWizard(popToTop: () => void): EnrollmentWizardState
     controlledBypassAvailable,
     controlledBypassUsed,
     controlledBypassSeedInput,
+    serverHost,
     primaryLabel,
     secondaryLabel,
     primaryDisabled,

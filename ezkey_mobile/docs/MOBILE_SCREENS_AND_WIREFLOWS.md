@@ -108,7 +108,7 @@ in memory, collects the six-digit challenge, then persists the record only after
 | Content block | What it shows/collects | Data source |
 | --- | --- | --- |
 | Scan stage | CTA to open scanner, camera-permission guidance, bind errors; hidden after a successful bind | Local wizard state |
-| Enrollment info card | Purpose title, Account row (never Device), Role for admin MFA; hide tenant/integration when they equal the installation | Trusted bind response draft via `enrollmentDisplay` |
+| Enrollment info card | Purpose title, Account row (never Device), Role for admin MFA; hide tenant/integration when they equal the installation. A **Server** row shows the host of the Auth API the draft is bound to (plus the port when it is not the default), for every seed source, camera included, so the user sees where they enroll before typing the challenge (#1185) | Trusted bind response draft via `enrollmentDisplay`; server from the resolved bind URL (`getInstallationHost`) |
 | Challenge stage | Six-box challenge input | User input |
 | Primary/secondary actions | Open scanner, complete enrollment, cancel, learn more. Before a draft exists they sit in the bottom footer. Once a draft exists, **Cancel** and **Complete enrollment** sit directly under the six boxes, so they stay above the number pad (#1082). | Local wizard state |
 
@@ -211,7 +211,7 @@ for request context and respond submission, then returns control to Enrollment D
 | Field/concept | Home | Enrollment Wizard | Enrollment Detail | Pending Authentication | Supporting screens |
 | --- | --- | --- | --- | --- | --- |
 | `installation.name` | Shown in installation headers | Not primary, but derived server shown optionally | Shown | Not normally shown except fallback identity context | No |
-| `installation.host` | Optional host hint in installation header | Optional server URL in info card | Optional host hint | No | No |
+| `installation.host` | Optional host hint in installation header | Server row in info card at the challenge stage (host, plus non-default port; #1185) | Optional host hint | No | No |
 | `tenantName` | Shown in grouping headers when distinct from the installation and the group is not admin-MFA-only | Shown in info card after bind when distinct | Shown when distinct | Shown as fallback identity when distinct | Danger Zone shows a minimal tenant line |
 | `tenantDescription` | Shown under the tenant section name when the section is visible | Shown under the tenant name after bind | Shown under the tenant name when the tenant is shown | No | No |
 | `integrationName` | Shown on enrollment cards | Shown in info card after bind | Shown | Shown in enrollment box | Danger Zone context line; title fallback if no enrollment/device name |

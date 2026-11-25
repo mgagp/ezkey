@@ -32,6 +32,7 @@ const wizardState = (overrides: Partial<ReturnType<typeof useEnrollmentWizard>> 
     controlledBypassAvailable: false,
     controlledBypassUsed: false,
     controlledBypassSeedInput: '',
+    serverHost: undefined,
     primaryLabel: 'Open scanner',
     secondaryLabel: 'Cancel',
     primaryDisabled: false,
@@ -91,5 +92,40 @@ describe('EnrollmentWizardScreen accessibility', () => {
     });
 
     expect(announce).toHaveBeenCalledWith('QR code expired');
+  });
+});
+
+describe('EnrollmentWizardScreen challenge stage server (#1185)', () => {
+  const draft = {
+    id: 'local-1',
+    integrationId: '7',
+    integrationName: 'Acme portal',
+    enrollmentProofToken: 'token-abc',
+    integrationPublicKey: 'pubkey',
+  } as ReturnType<typeof useEnrollmentWizard>['draft'];
+
+  const serverHostNodes = (tree: renderer.ReactTestRenderer) =>
+    tree.root.findAll(
+      node =>
+        node.props.testID === 'ezkey.e2e.enrollmentWizard.serverHost' &&
+        typeof node.type === 'string',
+    );
+
+  it('shows the server host next to the challenge input', async () => {
+    mockUseEnrollmentWizard.mockReturnValue(
+      wizardState({draft, hasDraft: true, serverHost: 'auth.example.com:8443'}),
+    );
+    const tree = await render();
+
+    const nodes = serverHostNodes(tree);
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].props.children).toBe('auth.example.com:8443');
+  });
+
+  it('omits the server row when no host is resolved', async () => {
+    mockUseEnrollmentWizard.mockReturnValue(wizardState({draft, hasDraft: true}));
+    const tree = await render();
+
+    expect(serverHostNodes(tree)).toHaveLength(0);
   });
 });
