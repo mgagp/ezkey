@@ -1672,9 +1672,9 @@ Creates a pending enrollment (`CREATED`) for an integration. Returns identifiers
 | Field | Required | Notes |
 | ----- | -------- | ----- |
 | `integrationId` | yes | Target integration |
-| `name` | yes | Enrollment display name |
+| `name` | yes | Enrollment display name, 1 to 64 characters after trimming (#1457) |
 | `authAttemptChallengeRequired` | no | Default false |
-| `contactEmail`, `contactPhoneNumber`, `userIdentifier` | no | Optional metadata |
+| `contactEmail`, `contactPhoneNumber`, `userIdentifier` | no | Optional metadata; `userIdentifier` at most 255 characters (#1457) |
 | `expiresAt` | no | ISO-8601 UTC instant; invitation expires after this time during the **pending** bind/verify phase only. Must be strictly in the future when provided. When omitted, the server sets expiry using `ezkey.enrollment.pending-expiration-days` (**default 7**). Use instance property `0` to disable default pending expiry (explicit `expiresAt` still honored). |
 
 **Example:**
@@ -1832,9 +1832,10 @@ Content-Type: application/json
 - 409: Optimistic lock conflict — resource was modified, re-fetch and retry; or `admin-enrollment`: `contactEmail` cannot be set or cleared on an administrator's MFA enrollment (#1313)
 
 **Constraints:**
-- `enrollmentName`: must be unique per integration for VERIFIED status
+- `enrollmentName`: 1 to 64 characters after trimming (a blank value is rejected); must be unique per integration for VERIFIED status
 - `expiresAt`: must be in the future if provided; semantics are invitation/bind/verify only (see above)
-- `userIdentifier`: optional; trimmed; empty string after trim clears to null
+- `userIdentifier`: optional; at most 255 characters; trimmed; empty string after trim clears to null
+- A longer `enrollmentName` or `userIdentifier` (create or update) returns a `validation-failed` 400 naming the field, before any write (#1457)
 - Only VERIFIED and active enrollments can be updated
 
 #### **DELETE /api/v1/enrollments/{id}** (Delete Enrollment)

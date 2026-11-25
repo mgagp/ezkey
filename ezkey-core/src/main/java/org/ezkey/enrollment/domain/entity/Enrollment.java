@@ -74,7 +74,7 @@ public class Enrollment implements Reencryptable {
   private Integer integrationId;
 
   /** Human-readable name for the enrollment. Used for display purposes in user interfaces. */
-  @Column(name = "enrollment_name", nullable = false)
+  @Column(name = "enrollment_name", nullable = false, length = 64)
   private String enrollmentName;
 
   /**
