@@ -318,6 +318,35 @@ class EzkeyAppControllerOutcomeTest {
   }
 
   @Test
+  @DisplayName("Deny with an empty challenge field is sent without a challenge (#1466)")
+  void denyWithEmptyChallengeIsSent() {
+    storeOpenClaim();
+    loadRecordAndSign();
+    AuthAttemptRespondResponseDto denied = approvedResponse();
+    denied.authAttemptResult(AuthAttemptRespondResponseDto.AuthAttemptResultEnum.DENIED);
+    when(authApiService.respond(any(), anyString())).thenReturn(Mono.just(denied));
+    when(cryptoService.validateSignature(anyString(), anyString(), anyString())).thenReturn(true);
+
+    String view =
+        controller.respondToAuth(
+            ENROLLMENT_ID,
+            AUTH_ATTEMPT_ID,
+            false,
+            "",
+            PROOF_TOKEN,
+            false,
+            new ConcurrentModel(),
+            session);
+
+    ArgumentCaptor<AuthAttemptRespondRequestDto> sent =
+        ArgumentCaptor.forClass(AuthAttemptRespondRequestDto.class);
+    verify(authApiService).respond(sent.capture(), anyString());
+    assertThat(sent.getValue().getAuthAttemptAccepted()).isFalse();
+    assertThat(sent.getValue().getAuthAttemptChallengeResponse()).isNull();
+    assertThat(view).isEqualTo("phone/ezkey/auth_result");
+  }
+
+  @Test
   @DisplayName("leave never approves, even when approved=true is posted")
   void leaveForcesDeny() {
     loadRecordAndSign();

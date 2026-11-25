@@ -49,6 +49,7 @@ server `detail`, exception text, URLs, or hosts.
 | Respond 503 `integration-signing-unavailable` or 429 | Same request again with a banner (`retryMessage`); the session claim is kept |
 | Respond 200, result signature missing or invalid | `unconfirmed` result (mobile Q2/Q9), Back only |
 | Respond sent, then transport failure or other 5xx | `uncertain` result (mobile Q10), Back only |
+| Deny on a request that requires a challenge code | Sent with the code field empty (`formnovalidate`); the code only gates Approve, like mobile (#1466) |
 | Leaving the request screen | The exit control (`demo-device-auth-back` on `auth_pending`) sends a **Deny**, then returns to the list whatever the outcome (mobile Q3); the hint line says so |
 
 The session claim is cleared on every outcome except the retryable ones above. Agents approving an

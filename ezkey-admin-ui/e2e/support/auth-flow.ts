@@ -54,15 +54,13 @@ async function openDemoDevicePendingRequest(demoPage: Page): Promise<void> {
 async function startPasswordlessLogin(
   adminPage: Page,
   username: string = testEnv.adminUsername,
+  requireChallenge = false,
 ): Promise<void> {
   await adminPage.goto('/login');
   await expect(adminPage.getByTestId('login-page')).toBeVisible();
   await adminPage.getByTestId('login-username-input').fill(username);
 
-  const challengeToggle = adminPage.getByTestId('login-challenge-toggle');
-  if (await challengeToggle.isChecked()) {
-    await challengeToggle.uncheck();
-  }
+  await adminPage.getByTestId('login-challenge-toggle').setChecked(requireChallenge);
 
   await adminPage.getByTestId('login-submit-button').click();
   await expect(adminPage.getByTestId('login-waiting-state')).toBeVisible({ timeout: 20_000 });
@@ -96,12 +94,21 @@ export async function loginAsEnrolledAdmin(
 export async function loginViaDemoDevice(
   adminPage: Page,
   context: BrowserContext,
-  decision: 'approve' | 'deny'
+  decision: 'approve' | 'deny',
+  options: { requireChallenge?: boolean } = {},
 ): Promise<Page> {
-  await startPasswordlessLogin(adminPage);
+  const requireChallenge = options.requireChallenge ?? false;
+  await startPasswordlessLogin(adminPage, testEnv.adminUsername, requireChallenge);
+  if (requireChallenge) {
+    await expect(adminPage.getByTestId('login-challenge-panel')).toBeVisible();
+  }
 
   const demoPage = await context.newPage();
   await openDemoDevicePendingRequest(demoPage);
+  if (requireChallenge) {
+    // #1466: the code field stays empty; only Approve needs it.
+    await expect(demoPage.getByTestId('demo-device-challenge-input')).toHaveValue('');
+  }
 
   if (decision === 'approve') {
     await demoPage.getByTestId('demo-device-approve-button').click();

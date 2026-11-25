@@ -127,3 +127,14 @@ test('@elective @device-backed denying on Demo Device surfaces the retry path', 
 
   await demoPage.close();
 });
+
+test('@elective @device-backed denying a challenge-code request needs no code (#1466)', async ({
+  page,
+  context,
+}) => {
+  const demoPage = await loginViaDemoDevice(page, context, 'deny', { requireChallenge: true });
+
+  await expect(page.getByTestId('login-rejected-state')).toBeVisible();
+
+  await demoPage.close();
+});

@@ -195,7 +195,8 @@
 
           <div class="btn-group" style="margin: 16px 0 0 0;">
             <button type="submit" name="approved" value="true" class="btn btn-approve" data-testid="demo-device-approve-button">Approve</button>
-            <button type="submit" name="approved" value="false" class="btn btn-deny" data-testid="demo-device-deny-button">Deny</button>
+            <!-- The code only serves Approve: Deny skips the required check (#1466). -->
+            <button type="submit" name="approved" value="false" class="btn btn-deny" data-testid="demo-device-deny-button" formnovalidate>Deny</button>
           </div>
           <div class="leave-hint" data-testid="demo-device-leave-declines-hint" th:text="${leaveHint}">Leaving this screen declines the request.</div>
         </form>
