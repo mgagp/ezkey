@@ -29,6 +29,9 @@
 #   LIGHTSAIL_SSH_HOST   explicit OpenSSH Host alias (alternative to --target)
 #   LIGHTSAIL_TARGET     community (optional if inferred from host or --target)
 #   EZKEY_CONFIRM_WIPE   must be ezkey-online for community full / --clean-start
+#   EZKEY_ENABLE_JAVA_MELODY / EZKEY_DISABLE_JAVA_MELODY  inherited by the export script: ship and
+#                        apply, or remove, the JavaMelody collector overlay (#893; see --help)
+#   EZKEY_ENABLE_CONNECTOR_SMTP / EZKEY_DISABLE_CONNECTOR_SMTP  same contract for the SMTP connector
 #   EXPORT_DIR           passed through to export script (default: docker/export)
 #   OCI_IMAGE_REVISION   git SHA stamped as org.opencontainers.image.revision on compose builds
 #                        (#814; defaults to `git rev-parse HEAD` when unset)
@@ -98,6 +101,15 @@ SSH target (required when exporting — no silent default; #812):
   --ui-preview      Use deploy-admin-ui-preview.sh (default when not using preset full)
   --ui-production   Use deploy-admin-ui-production.sh
   --ui-build        Pass --build to the deploy script
+
+Optional overlays (environment, inherited by export-backend-images-to-lightsail.sh with --export):
+  EZKEY_ENABLE_JAVA_MELODY=true   Build ezkey-javamelody-collector locally (tag pinned in
+                                  lightsail/docker-compose.javamelody.yml), ship it, and apply that
+                                  overlay on --remote-up / --clean-start (never built on the VM).
+  EZKEY_DISABLE_JAVA_MELODY=true  Remove a running collector on --remote-up (--remove-orphans).
+                                  Without either, --remote-up stops if the collector is running.
+  EZKEY_ENABLE_CONNECTOR_SMTP / EZKEY_DISABLE_CONNECTOR_SMTP  Same contract for the SMTP connector
+                                  (enable is refused with --clean-start).
 
 Preset "full" enables:
   --build --export --clean-start --remove-remote-tars --deploy-ui --ui-production --ui-build

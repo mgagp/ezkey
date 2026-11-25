@@ -340,6 +340,54 @@ for m in pat.finditer(text):
 PY
 }
 
+# JavaMelody collector tag pinned by the Lightsail overlay (#893 N3). The overlay is the
+# single source: the export builds and ships ezkey-javamelody-collector:<tag> and the VM's
+# compose runs that same image (pull_policy: never). Accepted forms of the one image: line:
+#   image: ezkey-javamelody-collector:2.9.0
+#   image: "ezkey-javamelody-collector:${JAVAMELODY_VERSION:-2.9.0}"   (the default is shipped;
+#                                     the VM must not override JAVAMELODY_VERSION)
+# Quotes and a trailing comment are tolerated. Anything else (no default, another variable,
+# several image: lines) dies instead of guessing a tag the VM would not run.
+lightsail_javamelody_collector_version_from_overlay() {
+  local overlay="$1"
+  local version
+  if [[ ! -f "${overlay}" ]]; then
+    lightsail_die "JavaMelody overlay missing: ${overlay}"
+  fi
+  version="$(
+    python3 - "${overlay}" <<'PY'
+import re, sys
+path = sys.argv[1]
+text = open(path, encoding="utf-8").read()
+pat = re.compile(
+    r"""^\s*image:\s*(?P<q>["']?)ezkey-javamelody-collector:(?P<tag>[^\s"'#]+)(?P=q)\s*(?:#.*)?$""",
+    re.MULTILINE,
+)
+tags = [m.group("tag") for m in pat.finditer(text)]
+if len(tags) != 1:
+    sys.stderr.write(
+        f"expected exactly one 'image: ezkey-javamelody-collector:<tag>' line in {path}, found {len(tags)}\n"
+    )
+    raise SystemExit(1)
+tag = tags[0]
+m = re.fullmatch(r"\$\{JAVAMELODY_VERSION:?-(?P<default>[^}]+)\}", tag)
+if m:
+    tag = m.group("default")
+elif "$" in tag:
+    sys.stderr.write(
+        f"unsupported collector tag '{tag}' in {path}: pin a literal tag or "
+        "${JAVAMELODY_VERSION:-<version>} so the shipped image matches what the VM runs\n"
+    )
+    raise SystemExit(1)
+if not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}", tag):
+    sys.stderr.write(f"invalid collector tag '{tag}' in {path}\n")
+    raise SystemExit(1)
+print(tag)
+PY
+  )" || lightsail_die "could not resolve the JavaMelody collector tag from ${overlay}"
+  printf '%s\n' "${version}"
+}
+
 lightsail_print_defaults() {
   cat <<EOF
 Defaults (env overrides):

@@ -1007,6 +1007,77 @@ else
   pass=$((pass + 1))
 fi
 
+# Collector tag parsing (#893 N3): the overlay's image: line is the single source.
+JM_TAG_DIR="${TMP}/jm-tag"
+mkdir -p "${JM_TAG_DIR}"
+jm_tag_case() {
+  # $1 = name, $2 = expected tag ("" = must die), $3 = overlay body
+  local name="$1" expected="$2" body="$3" got
+  printf '%s\n' "${body}" >"${JM_TAG_DIR}/overlay.yml"
+  if got="$(source "${COMMON}" && lightsail_javamelody_collector_version_from_overlay "${JM_TAG_DIR}/overlay.yml" 2>"${ERR}")"; then
+    if [[ -n "${expected}" && "${got}" == "${expected}" ]]; then
+      echo "PASS: JM tag ${name}"
+      pass=$((pass + 1))
+    else
+      echo "FAIL: JM tag ${name} (got '${got}', expected '${expected:-a failure}')" >&2
+      fail=$((fail + 1))
+    fi
+  elif [[ -z "${expected}" ]] && grep -q 'could not resolve the JavaMelody collector tag' "${ERR}"; then
+    echo "PASS: JM tag ${name} refused"
+    pass=$((pass + 1))
+  else
+    echo "FAIL: JM tag ${name} (unexpected failure)" >&2
+    cat "${ERR}" >&2 || true
+    fail=$((fail + 1))
+  fi
+}
+jm_tag_case "repo overlay" "2.9.0" "$(cat "${JM_OVERLAY}")"
+jm_tag_case "literal" "2.9.1" "    image: ezkey-javamelody-collector:2.9.1"
+jm_tag_case "double-quoted + comment" "2.9.1" '    image: "ezkey-javamelody-collector:2.9.1"  # pinned'
+jm_tag_case "single-quoted" "2.9.1" "    image: 'ezkey-javamelody-collector:2.9.1'"
+jm_tag_case "variable with default" "2.10.0" '    image: ezkey-javamelody-collector:${JAVAMELODY_VERSION:-2.10.0}'
+jm_tag_case "variable with plain - default" "2.10.0" '    image: "ezkey-javamelody-collector:${JAVAMELODY_VERSION-2.10.0}"'
+jm_tag_case "variable without default" "" '    image: ezkey-javamelody-collector:${JAVAMELODY_VERSION}'
+jm_tag_case "other variable" "" '    image: ezkey-javamelody-collector:${JM_TAG:-2.9.0}'
+jm_tag_case "no image line" "" "    pull_policy: never"
+jm_tag_case "two image lines" "" "$(printf '    image: ezkey-javamelody-collector:2.9.0\n    image: ezkey-javamelody-collector:2.9.1')"
+JAVAMELODY_VERSION=9.9.9 jm_tag_case "operator env does not change the tag" "2.9.0" "$(cat "${JM_OVERLAY}")"
+
+# Export fails closed when the overlay tag cannot be resolved (no guessed image shipped).
+JM_BAD_LIGHTSAIL="${TMP}/jm-bad-lightsail"
+cp -R "${ROOT}/experimental-hybrid/lightsail" "${JM_BAD_LIGHTSAIL}"
+sed -i.bak -E 's#(image: ezkey-javamelody-collector:).*#\1${JAVAMELODY_VERSION}#' \
+  "${JM_BAD_LIGHTSAIL}/docker-compose.javamelody.yml"
+JM_BAD_ROOT="${TMP}/jm-bad-root"
+mkdir -p "${JM_BAD_ROOT}/experimental-hybrid" "${JM_BAD_ROOT}/scripts"
+ln -s "${ROOT}/experimental-hybrid/scripts" "${JM_BAD_ROOT}/experimental-hybrid/scripts"
+mv "${JM_BAD_LIGHTSAIL}" "${JM_BAD_ROOT}/experimental-hybrid/lightsail"
+ln -s "${ROOT}/scripts/lightsail" "${JM_BAD_ROOT}/scripts/lightsail"
+ln -s "${ROOT}/docker" "${JM_BAD_ROOT}/docker"
+rm -f "${JM_BAD_ROOT}/experimental-hybrid/lightsail/docker-compose.javamelody.yml.bak"
+assert_fail "export JM refuses an unresolvable collector tag" \
+  env EZKEY_ENABLE_JAVA_MELODY=true \
+    bash "${JM_BAD_ROOT}/experimental-hybrid/scripts/export-backend-images-to-lightsail.sh" \
+    --target community --dry-run --apis-only
+assert_stderr_contains "export JM unresolvable tag message" "could not resolve the JavaMelody collector tag"
+if grep -qF 'docker save' "${OUT}"; then
+  echo "FAIL: export must not reach docker save with an unresolvable collector tag" >&2
+  fail=$((fail + 1))
+else
+  echo "PASS: export stops before docker save on an unresolvable collector tag"
+  pass=$((pass + 1))
+fi
+
+# full-exp-environment-upgrade.sh documents and forwards the JM switch (#893 N2).
+assert_ok "upgrade help documents JM switch" bash "${UPGRADE}" --help
+assert_stdout_contains "upgrade help EZKEY_ENABLE_JAVA_MELODY" "EZKEY_ENABLE_JAVA_MELODY=true"
+assert_stdout_contains "upgrade help EZKEY_DISABLE_JAVA_MELODY" "EZKEY_DISABLE_JAVA_MELODY=true"
+assert_ok "upgrade rolling dry-run forwards JM enable to export" \
+  env EZKEY_ENABLE_JAVA_MELODY=true \
+    bash "${UPGRADE}" --target community rolling --dry-run
+assert_stdout_contains "upgrade JM dry-run ships collector" "docker save ezkey-javamelody-collector:2.9.0"
+assert_stdout_contains "upgrade JM dry-run applies overlay" "docker-compose.javamelody.yml"
+
 # Conflicting enable+disable fails early
 assert_fail "export JM enable+disable conflict fails" \
   env EZKEY_ENABLE_JAVA_MELODY=true EZKEY_DISABLE_JAVA_MELODY=true \
