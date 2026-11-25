@@ -11,6 +11,8 @@
 #   EZKEY_DB_MIGRATE_PASSWORD, EZKEY_DB_ADMIN_PASSWORD, EZKEY_DB_AUTH_PASSWORD,
 #   EZKEY_DB_INTEGRATION_PASSWORD, EZKEY_DB_CRYPTO_PASSWORD — optional role logins
 #   EZKEY_POSTGRES_CONTAINER — docker container name (default: ezkey-postgres)
+#     --docker exits 2 with "container not found or not running" before any grant
+#     check when that container is absent or stopped (#1490).
 #
 # Env file: when `./.env` exists (or `--env-file PATH` is set), only the keys above
 # plus PGHOST / PGPORT / PGDATABASE are read, as literal text. Unquoted spaces and
@@ -195,6 +197,15 @@ CRYPTO_PASS="${EZKEY_DB_CRYPTO_PASSWORD:-}"
 
 if [[ "${DOCKER_MODE}" -eq 1 ]]; then
   CONTAINER="${EZKEY_POSTGRES_CONTAINER:-ezkey-postgres}"
+  # Stop before any grant check: a missing container would otherwise surface as
+  # grant FAIL lines that read like a privilege regression (#1490).
+  container_running="$(docker inspect --type container -f '{{.State.Running}}' \
+    "${CONTAINER}" 2>/dev/null || true)"
+  if [[ "${container_running}" != "true" ]]; then
+    echo "error: container not found or not running: ${CONTAINER}" >&2
+    echo "hint: set EZKEY_POSTGRES_CONTAINER to the Postgres container name (community host: ezkey-exp-postgres)" >&2
+    exit 2
+  fi
 fi
 
 VERIFY_OUT="$(mktemp "${TMPDIR:-/tmp}/ezkey-verify-grants.out.XXXXXX")"

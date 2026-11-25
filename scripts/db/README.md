@@ -9,8 +9,8 @@ Canonical matrix: [`docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md`](../../docs/DATABA
 | [`apply-grants.sql`](apply-grants.sql) | Idempotent runtime DML grants and default privileges |
 | [`apply-grants.sh`](apply-grants.sh) | Superuser wrapper: ensure crypto role + grants; `--docker` / `--in-container`; **requires** `EZKEY_DB_CRYPTO_PASSWORD` |
 | [`test-upgrade-crypto-role.sh`](test-upgrade-crypto-role.sh) | Ephemeral Docker proof: pre-PR volume (no crypto role) → grants succeed (#961 B1) |
-| [`verify-grants.sh`](verify-grants.sh) | Smoke-check allowed/denied privileges; `--docker` + `EZKEY_POSTGRES_CONTAINER`; role-login when `EZKEY_DB_*` passwords are set, else catalog fallback as admin/owner (no passwords on argv) |
-| [`verify-grants.test.sh`](verify-grants.test.sh) | Fake psql/docker lock for #1121: credentials off argv, catalog fallback when any role password is absent, crypto catalog fail-closed |
+| [`verify-grants.sh`](verify-grants.sh) | Smoke-check allowed/denied privileges; `--docker` + `EZKEY_POSTGRES_CONTAINER` (exits 2 with *container not found or not running* before any grant check, #1490); role-login when `EZKEY_DB_*` passwords are set, else catalog fallback as admin/owner (no passwords on argv) |
+| [`verify-grants.test.sh`](verify-grants.test.sh) | Fake psql/docker lock for #1121: credentials off argv, catalog fallback when any role password is absent, crypto catalog fail-closed, missing or stopped container stops early (#1490) |
 | [`rotate-role-passwords.sh`](rotate-role-passwords.sh) | Rotate `ezkey_migrate` / `ezkey_admin` / `ezkey_auth` / `ezkey_integration` and write `EZKEY_DB_*_PASSWORD` into `.env` after COMMIT (#1017). Lightsail operator steps: [`docs/lightsail/community-host.md`](../../docs/lightsail/community-host.md) § D |
 | [`rotate-role-passwords.test.sh`](rotate-role-passwords.test.sh) | Throwaway Postgres rehearsal for the rotation script. Not part of CI |
 
