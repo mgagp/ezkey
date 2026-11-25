@@ -32,7 +32,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import org.ezkey.admin.config.AdminOperationsRateLimitProperties;
 import org.ezkey.admin.dto.request.ApiKeyCreateRequestDto;
+import org.ezkey.admin.dto.request.ApiKeyUpdateRequestDto;
 import org.ezkey.admin.dto.response.ApiKeyCreateResponseDto;
 import org.ezkey.admin.dto.response.ApiKeyResponseDto;
 import org.ezkey.admin.security.AccessControlService;
@@ -42,6 +44,7 @@ import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.audit.support.AuditEntityFkResolver;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.exception.RateLimitExceededException;
 import org.ezkey.exception.TenantInactiveException;
 import org.ezkey.integration.domain.entity.ApiKey;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
@@ -120,6 +123,8 @@ class ApiKeyControllerTest {
 
   @Mock private EnrollmentRepository auditFkEnrollmentRepository;
 
+  private AdminOperationsRateLimitProperties rateLimitProperties;
+
   private ApiKeyController controller;
 
   @BeforeEach
@@ -137,11 +142,13 @@ class ApiKeyControllerTest {
           integration.setName("Acme Integration");
           return List.of(integration);
         });
+    rateLimitProperties = new AdminOperationsRateLimitProperties();
     controller =
         new ApiKeyController(
             apiKeyService,
             apiKeyRepository,
             adminOpsRateLimitService,
+            rateLimitProperties,
             adminRepository,
             accessControlService,
             auditLogService,
@@ -571,6 +578,83 @@ class ApiKeyControllerTest {
 
       assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
       verify(apiKeyService, never()).revokeApiKey(anyInt(), any(EzkeyAdmin.class));
+    }
+  }
+
+  @Nested
+  @DisplayName("429 limits come from AdminOperationsRateLimitProperties (#1315)")
+  class RateLimitFromConfigurationTests {
+
+    @Test
+    @DisplayName("create: non-default limit and window are reported")
+    void createReportsConfiguredLimit() {
+      rateLimitProperties.getApiKeyCreate().setRequests(2);
+      rateLimitProperties.getApiKeyCreate().setWindowMinutes(4);
+      when(adminOpsRateLimitService.canCreateApiKey("john.doe")).thenReturn(false);
+      ApiKeyCreateRequestDto request = new ApiKeyCreateRequestDto(123, "Test API Key", null, null);
+
+      RateLimitExceededException ex =
+          org.junit.jupiter.api.Assertions.assertThrows(
+              RateLimitExceededException.class,
+              () -> controller.createApiKey(request, httpServletRequest));
+
+      assertLimit(ex, "API_KEY_CREATE", 2, 4);
+      verify(apiKeyService, never()).createApiKey(anyInt(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("update: non-default limit and window are reported")
+    void updateReportsConfiguredLimit() {
+      rateLimitProperties.getApiKeyUpdate().setRequests(7);
+      rateLimitProperties.getApiKeyUpdate().setWindowMinutes(3);
+      when(apiKeyService.getApiKey(42)).thenReturn(Optional.of(createMockApiKey(42)));
+      when(adminOpsRateLimitService.canUpdateApiKey("john.doe")).thenReturn(false);
+      ApiKeyUpdateRequestDto request = new ApiKeyUpdateRequestDto(0L, null, "Updated");
+
+      RateLimitExceededException ex =
+          org.junit.jupiter.api.Assertions.assertThrows(
+              RateLimitExceededException.class,
+              () -> controller.updateApiKey(42, request, httpServletRequest));
+
+      assertLimit(ex, "API_KEY_UPDATE", 7, 3);
+    }
+
+    @Test
+    @DisplayName("revoke: non-default limit and window are reported")
+    void revokeReportsConfiguredLimit() {
+      rateLimitProperties.getApiKeyRevoke().setRequests(1);
+      rateLimitProperties.getApiKeyRevoke().setWindowMinutes(60);
+      when(apiKeyService.getApiKey(42)).thenReturn(Optional.of(createMockApiKey(42)));
+      when(adminOpsRateLimitService.canRevokeApiKey("john.doe")).thenReturn(false);
+
+      RateLimitExceededException ex =
+          org.junit.jupiter.api.Assertions.assertThrows(
+              RateLimitExceededException.class,
+              () -> controller.revokeApiKey(42, null, httpServletRequest));
+
+      assertLimit(ex, "API_KEY_REVOKE", 1, 60);
+      verify(apiKeyService, never()).revokeApiKey(anyInt(), any(EzkeyAdmin.class));
+    }
+
+    @Test
+    @DisplayName("defaults are unchanged: 5/15, 20/15, 10/15, 3/30")
+    void defaultsAreUnchanged() {
+      AdminOperationsRateLimitProperties defaults = new AdminOperationsRateLimitProperties();
+      assertEquals(5, defaults.getApiKeyCreate().getRequests());
+      assertEquals(15, defaults.getApiKeyCreate().getWindowMinutes());
+      assertEquals(20, defaults.getApiKeyUpdate().getRequests());
+      assertEquals(15, defaults.getApiKeyUpdate().getWindowMinutes());
+      assertEquals(10, defaults.getApiKeyRevoke().getRequests());
+      assertEquals(15, defaults.getApiKeyRevoke().getWindowMinutes());
+      assertEquals(3, defaults.getEnrollmentReset().getRequests());
+      assertEquals(30, defaults.getEnrollmentReset().getWindowMinutes());
+    }
+
+    private void assertLimit(
+        RateLimitExceededException ex, String operation, int limit, int windowMinutes) {
+      assertEquals(operation, ex.getOperation());
+      assertEquals(limit, ex.getLimit());
+      assertEquals(windowMinutes, ex.getWindowSizeMinutes());
     }
   }
 

@@ -30,6 +30,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.ezkey.admin.config.AdminOperationsRateLimitProperties;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.dto.request.ApiKeyCreateRequestDto;
 import org.ezkey.admin.dto.request.ApiKeyUpdateRequestDto;
@@ -126,6 +127,7 @@ public class ApiKeyController {
   private final ApiKeyService apiKeyService;
   private final ApiKeyRepository apiKeyRepository;
   private final AdminOperationsRateLimitService adminOpsRateLimitService;
+  private final AdminOperationsRateLimitProperties adminOpsRateLimitProperties;
   private final EzkeyAdminRepository adminRepository;
   private final AccessControlService accessControlService;
   private final AuditLogService auditLogService;
@@ -139,6 +141,8 @@ public class ApiKeyController {
    * @param apiKeyService the API key service
    * @param apiKeyRepository the API key repository for paginated list queries
    * @param adminOpsRateLimitService the admin operations rate limiting service
+   * @param adminOpsRateLimitProperties the configured admin operation limits, reported in 429
+   *     responses (#1315)
    * @param adminRepository the admin repository for loading admin entities
    * @param accessControlService the access control service for tenant scoping validation
    * @param auditLogService the audit log service for security monitoring
@@ -150,6 +154,7 @@ public class ApiKeyController {
       ApiKeyService apiKeyService,
       ApiKeyRepository apiKeyRepository,
       AdminOperationsRateLimitService adminOpsRateLimitService,
+      AdminOperationsRateLimitProperties adminOpsRateLimitProperties,
       EzkeyAdminRepository adminRepository,
       AccessControlService accessControlService,
       AuditLogService auditLogService,
@@ -159,6 +164,7 @@ public class ApiKeyController {
     this.apiKeyService = apiKeyService;
     this.apiKeyRepository = apiKeyRepository;
     this.adminOpsRateLimitService = adminOpsRateLimitService;
+    this.adminOpsRateLimitProperties = adminOpsRateLimitProperties;
     this.adminRepository = adminRepository;
     this.accessControlService = accessControlService;
     this.auditLogService = auditLogService;
@@ -241,7 +247,12 @@ public class ApiKeyController {
     // Check rate limiting for admin operations
     String adminId = currentAdmin.getUsername();
     if (!adminOpsRateLimitService.canCreateApiKey(adminId)) {
-      throw new RateLimitExceededException("API_KEY_CREATE", 5, 0, 15);
+      var createLimit = adminOpsRateLimitProperties.getApiKeyCreate();
+      throw new RateLimitExceededException(
+          "API_KEY_CREATE",
+          createLimit.getRequests(),
+          createLimit.getRequests(),
+          createLimit.getWindowMinutes());
     }
 
     try {
@@ -579,7 +590,12 @@ public class ApiKeyController {
     // Check rate limiting for admin operations
     String adminId = currentAdmin.getUsername();
     if (!adminOpsRateLimitService.canUpdateApiKey(adminId)) {
-      throw new RateLimitExceededException("API_KEY_UPDATE", 20, 0, 15);
+      var updateLimit = adminOpsRateLimitProperties.getApiKeyUpdate();
+      throw new RateLimitExceededException(
+          "API_KEY_UPDATE",
+          updateLimit.getRequests(),
+          updateLimit.getRequests(),
+          updateLimit.getWindowMinutes());
     }
 
     try {
@@ -769,7 +785,12 @@ public class ApiKeyController {
     // Check rate limiting for admin operations
     String adminId = currentAdmin.getUsername();
     if (!adminOpsRateLimitService.canRevokeApiKey(adminId)) {
-      throw new RateLimitExceededException("API_KEY_REVOKE", 10, 0, 15);
+      var revokeLimit = adminOpsRateLimitProperties.getApiKeyRevoke();
+      throw new RateLimitExceededException(
+          "API_KEY_REVOKE",
+          revokeLimit.getRequests(),
+          revokeLimit.getRequests(),
+          revokeLimit.getWindowMinutes());
     }
 
     boolean revoked = apiKeyService.revokeApiKey(keyId, currentAdmin);

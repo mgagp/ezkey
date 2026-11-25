@@ -29,6 +29,7 @@ import static org.mockito.Mockito.when;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Optional;
+import org.ezkey.admin.config.AdminOperationsRateLimitProperties;
 import org.ezkey.admin.exception.EnrollmentLinkedAsAdminException;
 import org.ezkey.admin.security.AccessControlService;
 import org.ezkey.admin.security.AdminOperationsRateLimitService;
@@ -176,6 +177,7 @@ class AuditReasonPropagationTest {
             apiKeyService,
             apiKeyRepository,
             adminOpsRateLimitService,
+            new AdminOperationsRateLimitProperties(),
             adminRepository,
             accessControlService,
             auditLogService,
@@ -216,6 +218,7 @@ class AuditReasonPropagationTest {
             apiKeyService,
             apiKeyRepository,
             adminOpsRateLimitService,
+            new AdminOperationsRateLimitProperties(),
             adminRepository,
             accessControlService,
             auditLogService,

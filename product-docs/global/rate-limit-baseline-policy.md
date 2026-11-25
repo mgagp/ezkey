@@ -98,6 +98,9 @@ Reference: [`ezkey-integration-api/CONFIGURATION.md`](../../ezkey-integration-ap
 
 Service-level limits (Bucket4j); keyed by admin id or recovery token as implemented per call site.
 
+The 429 problem detail reports the configured limit and window, and `Retry-After` is the configured
+window in seconds (buckets refill the whole window at once, so it is a safe upper bound) (#1315).
+
 | Operation | Controller / flow | Family | Default (Java) | Docker profile (typical) | Sensitivity |
 |-----------|-------------------|--------|----------------|--------------------------|-------------|
 | API key create | `ApiKeyController` | A | 5 / 15 min | 5 / 15 min | high |
