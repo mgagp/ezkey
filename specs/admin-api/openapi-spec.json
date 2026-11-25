@@ -1689,7 +1689,7 @@
             }
           },
           "409": {
-            "description": "A PENDING encryption key already exists, key rotation is inactive on this instance, or the keyset was modified concurrently (CAS loss — retry is safe)",
+            "description": "A PENDING encryption key already exists, key rotation is inactive on this instance, or the keyset was modified concurrently (CAS loss — retry is safe). A keyset storage failure is a 500, not a 409",
             "content": {
               "*/*": {
                 "schema": {
@@ -1699,7 +1699,7 @@
             }
           },
           "500": {
-            "description": "Key rotation failed",
+            "description": "Key rotation failed, including a keyset storage failure (audited as REENCRYPTION_FAILED; do not retry until storage is healthy)",
             "content": {
               "*/*": {
                 "schema": {
