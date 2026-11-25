@@ -33,7 +33,15 @@ describe('useSensitiveScreen', () => {
     nativeSet.mockReset();
   });
 
-  afterEach(() => {
+  /* Unmounted after each test so no Probe outlives it (#1401). */
+  const mounted: renderer.ReactTestRenderer[] = [];
+
+  afterEach(async () => {
+    await renderer.act(async () => {
+      while (mounted.length > 0) {
+        mounted.pop()?.unmount();
+      }
+    });
     Object.defineProperty(Platform, 'OS', {configurable: true, writable: true, value: originalOs});
   });
 
@@ -58,7 +66,7 @@ describe('useSensitiveScreen', () => {
   it('follows blur and focus so other screens stay capturable', async () => {
     const navigation = createNavigation(true);
     await renderer.act(async () => {
-      renderer.create(<Probe navigation={navigation} />);
+      mounted.push(renderer.create(<Probe navigation={navigation} />));
     });
 
     navigation.listeners.blur.forEach(cb => cb());
@@ -71,7 +79,7 @@ describe('useSensitiveScreen', () => {
   it('does not enable protections when mounted unfocused', async () => {
     const navigation = createNavigation(false);
     await renderer.act(async () => {
-      renderer.create(<Probe navigation={navigation} />);
+      mounted.push(renderer.create(<Probe navigation={navigation} />));
     });
 
     expect(nativeSet).not.toHaveBeenCalled();
@@ -83,7 +91,7 @@ describe('useSensitiveScreen', () => {
     nativeMessage.mockReset();
     const navigation = createNavigation(true);
     await renderer.act(async () => {
-      renderer.create(<Probe navigation={navigation} />);
+      mounted.push(renderer.create(<Probe navigation={navigation} />));
     });
 
     expect(nativeSet).toHaveBeenLastCalledWith(true);

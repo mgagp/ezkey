@@ -104,6 +104,13 @@ const mockGoBack = jest.fn();
 const mockSaveEnrollmentMutateAsync = jest.fn();
 let alertSpy: jest.SpyInstance;
 
+/*
+ * Renderers mounted by renderHook, unmounted in afterEach so no Probe outlives its test (#1401).
+ * A Probe left mounted can log an act(...) warning after Jest has finished the file ("Cannot log
+ * after tests are done", exit 1 although every test passed).
+ */
+const mountedTrees: Array<ReturnType<typeof create>> = [];
+
 function renderHook(popToTop = mockPopToTop): {result: {current: EnrollmentWizardState}} {
   const result = {current: null as unknown as EnrollmentWizardState};
 
@@ -113,7 +120,7 @@ function renderHook(popToTop = mockPopToTop): {result: {current: EnrollmentWizar
   }
 
   act(() => {
-    create(React.createElement(Probe));
+    mountedTrees.push(create(React.createElement(Probe)));
   });
 
   return {result};
@@ -187,6 +194,11 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  act(() => {
+    while (mountedTrees.length > 0) {
+      mountedTrees.pop()?.unmount();
+    }
+  });
   alertSpy.mockRestore();
 });
 
