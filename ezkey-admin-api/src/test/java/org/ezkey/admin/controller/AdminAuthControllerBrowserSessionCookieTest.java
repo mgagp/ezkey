@@ -98,7 +98,9 @@ class AdminAuthControllerBrowserSessionCookieTest {
             adminRepository,
             browserSessionCookieProperties,
             sessionCookieService,
-            csrfTokenService);
+            csrfTokenService,
+            new org.ezkey.admin.service.QrCodePayloadService(
+                new org.ezkey.config.QrCodeProperties()));
     when(httpRequest.getHeader("X-Forwarded-For")).thenReturn(null);
     when(httpRequest.getRemoteAddr()).thenReturn("127.0.0.1");
     when(httpRequest.getHeader("User-Agent")).thenReturn("JUnit");

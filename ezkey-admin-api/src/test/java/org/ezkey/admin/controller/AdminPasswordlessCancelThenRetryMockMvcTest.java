@@ -95,7 +95,9 @@ class AdminPasswordlessCancelThenRetryMockMvcTest {
             adminRepository,
             browserSessionCookieProperties,
             sessionCookieService,
-            csrfTokenService);
+            csrfTokenService,
+            new org.ezkey.admin.service.QrCodePayloadService(
+                new org.ezkey.config.QrCodeProperties()));
 
     when(browserSessionCookieProperties.isBrowserSessionCookieEnabled()).thenReturn(false);
     when(adminRepository.findByUsername(anyString())).thenReturn(java.util.Optional.empty());

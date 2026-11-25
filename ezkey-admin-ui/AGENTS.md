@@ -231,9 +231,9 @@ Login, sidebar, and header About use unauthenticated `GET /api/v1/public/instanc
 (`usePublicInstanceInfo`) — `instanceName`, `instanceDescription`, `aboutUrl`,
 `authApiPublicBaseUrl` from `ezkey.organization.*` / `ezkey.qr.auth-base-url`. Bootstrap applies
 organization name/description to system tenant/integration display names (flags identify system
-rows, not the literal `"Ezkey System"`). Client-generated recovery QR must keep
-`VITE_QR_AUTH_BASE_URL` aligned with server `ezkey.qr.auth-base-url` — see
-[`docs/ADMIN_UI_RECOVERY.md`](../docs/ADMIN_UI_RECOVERY.md).
+rows, not the literal `"Ezkey System"`). Activation and recovery QR come from the server's `enrollmentCode` (#1494); only without
+`ezkey.qr.auth-base-url` does the browser compose them, with `VITE_QR_AUTH_BASE_URL` as fallback —
+see [`docs/ADMIN_UI_RECOVERY.md`](../docs/ADMIN_UI_RECOVERY.md).
 
 ### Role-based feature gating
 

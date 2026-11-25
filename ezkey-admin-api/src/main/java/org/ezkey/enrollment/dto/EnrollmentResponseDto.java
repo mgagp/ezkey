@@ -86,6 +86,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * @param ownerAdminId Administrator who owns this MFA enrollment (one administrator, one
  *     enrollment, #1313); set only on detail responses (GET and PATCH by ID) for a Global Admin
  *     caller, null otherwise
+ * @param enrollmentCode The exact JSON of the enrollment QR code, for an authenticator that cannot
+ *     scan (#1494); set only on detail responses while the proof token is returned and the Auth API
+ *     address is configured, null otherwise
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.enrollment.domain.entity.Enrollment
@@ -213,4 +216,56 @@ public record EnrollmentResponseDto(
                     + " caller; null otherwise, including for an enrollment no administrator owns",
             nullable = true,
             example = "7")
-        Integer ownerAdminId) {}
+        Integer ownerAdminId,
+    @Schema(
+            description =
+                "Enrollment code: the exact JSON the enrollment QR code holds"
+                    + " ({enrollmentProofToken, authUrl}), for an authenticator that cannot scan."
+                    + " Set only on detail responses (GET and PATCH by ID), while the proof token"
+                    + " is returned and ezkey.qr.auth-base-url is configured; null otherwise. It"
+                    + " never contains the challenge code (#1494)",
+            nullable = true)
+        String enrollmentCode) {
+
+  /**
+   * Returns a copy of this response with the given enrollment code (#1494).
+   *
+   * @param code the enrollment code JSON, or null
+   * @return a copy carrying {@code code} as {@link #enrollmentCode()}
+   */
+  public EnrollmentResponseDto withEnrollmentCode(String code) {
+    return new EnrollmentResponseDto(
+        enrollmentId,
+        version,
+        integrationId,
+        enrollmentName,
+        enrollmentStatus,
+        enrollmentActive,
+        enrollmentChallenge,
+        enrollmentProofToken,
+        authAttemptChallengeRequired,
+        devicePrivateKeyStorageTier,
+        verifiedAt,
+        expiresAt,
+        createdAt,
+        createdByAdminId,
+        createdByAdminUsername,
+        lastUsedAt,
+        contactEmail,
+        contactPhoneNumber,
+        userIdentifier,
+        deactivatedAt,
+        deactivatedByAdminId,
+        deactivatedByAdminUsername,
+        revokedAt,
+        revokedByAdminId,
+        revokedByAdminUsername,
+        integrationName,
+        tenantId,
+        tenantName,
+        isSystemIntegration,
+        operational,
+        ownerAdminId,
+        code);
+  }
+}

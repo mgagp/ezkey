@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check, Copy, QrCode } from 'lucide-react';
+import { QrCode } from 'lucide-react';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { EnrollmentCodeBlock } from '@/components/feature/enrollment-code-block';
 import { useGetAdminOnboarding } from '@/generated/admin-api/administrator-provisioning/administrator-provisioning';
 import type { AdminResponseDto } from '@/generated/admin-api/model';
 import { fetchBlobUrl } from '@/lib/api-client';
@@ -12,6 +13,7 @@ import { fetchBlobUrl } from '@/lib/api-client';
 interface AdminOnboardingShape {
   enrollmentProofToken?: string | null;
   enrollmentChallenge?: number | null;
+  enrollmentCode?: string | null;
 }
 
 /**
@@ -37,7 +39,6 @@ export function AdminBindCard({
   const [revealed, setRevealed] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
-  const [tokenCopied, setTokenCopied] = useState(false);
   const qrExpected = enrollmentStatus === 'CREATED';
 
   const { data: rawOnboarding, isFetching, isError } = useGetAdminOnboarding<AdminOnboardingShape>(
@@ -70,17 +71,6 @@ export function AdminBindCard({
       // The enrollment moved on (409): the JSON response says what is still available.
     } finally {
       setQrLoading(false);
-    }
-  };
-
-  const handleCopyToken = async () => {
-    if (proofToken == null || proofToken === '') return;
-    try {
-      await navigator.clipboard.writeText(proofToken);
-      setTokenCopied(true);
-      setTimeout(() => setTokenCopied(false), 2000);
-    } catch {
-      /* ignore clipboard API errors */
     }
   };
 
@@ -132,19 +122,9 @@ export function AdminBindCard({
           </div>
         )}
 
+        {/* #1494: the enrollment code rides the same audited reveal as the token. */}
         {proofToken != null && (
-          <div className="space-y-1.5" data-testid="admin-bind-token">
-            <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted">
-              {t('bindCard.proofToken')}
-            </p>
-            <div className="border-2 border-fg p-3 font-mono text-xs break-all bg-bg leading-relaxed">
-              {proofToken}
-            </div>
-            <Button variant="secondary" size="sm" onClick={() => void handleCopyToken()} className="gap-1.5">
-              {tokenCopied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
-              {tokenCopied ? t('onboarding.copied') : t('bindCard.copyToken')}
-            </Button>
-          </div>
+          <EnrollmentCodeBlock code={onboarding?.enrollmentCode} testId="admin-bind-code" />
         )}
 
         {onboarding && proofToken == null && challenge == null && (

@@ -16,6 +16,7 @@ import static org.mockito.Mockito.when;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.ezkey.admin.constants.AdminAuditConstants;
+import org.ezkey.admin.dto.response.AdminOnboardingResponseDto;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.service.AdminProvisioningService;
 import org.ezkey.admin.service.AdminProvisioningService.OnboardingCredentialsResult;
@@ -108,11 +109,15 @@ class AdminProvisioningControllerBindMaterialAuditTest {
   void json_atCreated_writesOneRow() {
     when(provisioningService.getAdminOnboarding(any(), any()))
         .thenReturn(result(TOKEN, CHALLENGE, EnrollmentStatus.CREATED));
+    String code = "{\"enrollmentProofToken\":\"" + TOKEN + "\"}";
+    when(qrCodePayloadService.composeEnrollmentCode(TOKEN)).thenReturn(code);
 
     ResponseEntity<?> response =
         controller.getAdminOnboarding(TARGET_ADMIN_ID, authentication, httpRequest);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    // #1494: the enrollment code rides the same audited reveal as the token.
+    assertThat(((AdminOnboardingResponseDto) response.getBody()).enrollmentCode()).isEqualTo(code);
     assertRevealRow(capturedRow(), "json");
   }
 
@@ -122,8 +127,10 @@ class AdminProvisioningControllerBindMaterialAuditTest {
     when(provisioningService.getAdminOnboarding(any(), any()))
         .thenReturn(result(null, CHALLENGE, EnrollmentStatus.BOUND));
 
-    controller.getAdminOnboarding(TARGET_ADMIN_ID, authentication, httpRequest);
+    ResponseEntity<?> response =
+        controller.getAdminOnboarding(TARGET_ADMIN_ID, authentication, httpRequest);
 
+    assertThat(((AdminOnboardingResponseDto) response.getBody()).enrollmentCode()).isNull();
     assertRevealRow(capturedRow(), "json");
   }
 

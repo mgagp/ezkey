@@ -684,9 +684,12 @@ Content-Type: application/json
   "username": "pending.admin",
   "enrollmentId": 123,
   "enrollmentProofToken": "ezkey_proof_…",
-  "enrollmentChallenge": 123456
+  "enrollmentChallenge": 123456,
+  "enrollmentCode": "{\"enrollmentProofToken\":\"ezkey_proof_…\",\"authUrl\":\"https://auth.example.com\"}"
 }
 ```
+
+`enrollmentCode` is the exact JSON of the enrollment QR code; null when `ezkey.qr.auth-base-url` is not set (#1494).
 
 Recovery codes are generated server-side when the first enrollment exists but are **omitted** from
 this unauthenticated response. Reveal or regenerate them later from an authenticated admin-management
@@ -776,9 +779,12 @@ Content-Type: application/json
   "enrollmentProofToken": "new-token-xyz789...",
   "enrollmentChallenge": 654321,
   "integrationId": 1,
-  "message": "Enrollment reset successfully. Old device unbound. Use these credentials to bind new device."
+  "message": "Enrollment reset successfully. Old device unbound. Use these credentials to bind new device.",
+  "enrollmentCode": "{\"enrollmentProofToken\":\"new-token-xyz789...\",\"authUrl\":\"https://auth.example.com\"}"
 }
 ```
+
+`enrollmentCode` is the exact JSON of the new enrollment QR code; null when `ezkey.qr.auth-base-url` is not set (#1494).
 
 **Usage Flow:**
 1. Use recovery code to get recovery token (30 min validity)
@@ -1259,6 +1265,8 @@ created with `onboardingMode = ACTIVATION_CODE` remain in `PENDING_ACTIVATION` w
 | `BOUND` | `null` | Value (confirm who you are speaking to before giving it) |
 | Any other status | `null` | `null` |
 
+**Enrollment code ([#1494](https://github.com/mgagp/ezkey/issues/1494)):** `enrollmentCode` is the exact JSON of the onboarding QR code (`{enrollmentProofToken, authUrl}`, from the same composer), for an authenticator that cannot scan. It is present only with `enrollmentProofToken` and only when `ezkey.qr.auth-base-url` is set; it never contains the challenge, and it rides the same audited reveal.
+
 An admin who lost their device uses the reset flow, not this GET. `GET /api/v1/admins/{id}` exposes `enrollmentStatus`.
 
 **Audit ([#1313](https://github.com/mgagp/ezkey/issues/1313)):** a response that carries a proof token or a challenge writes one `ADMIN_BIND_MATERIAL_REVEALED` audit row (caller, target administrator, enrollment, time, client IP; never the material). This endpoint and `/onboarding/qrcode` are the only API source of an administrator's bind material; the `/enrollments` endpoints never return it. Same rule in both onboarding modes: after an activation code was used and before a device binds, another authorized administrator can still reveal the QR, under this audit.
@@ -1684,6 +1692,8 @@ Authorization: Bearer ezkey_admin_token...
 ```
 
 **Response (high level):** Returns the full enrollment record including integration display fields where applicable (`integrationName`, `isSystemIntegration`), client-reported `devicePrivateKeyStorageTier` when set at verify (`NONE`, `STANDARD`, `STRONG`; not independently verified by the server — see `docs/MOBILE_DEVELOPER_GUIDE.md`), and lifecycle audit timestamps such as `createdAt`, `createdByAdminId`, `deactivatedAt`, `deactivatedByAdminId`, `revokedAt`, and `revokedByAdminId` when set.
+
+**Enrollment code (#1494):** detail responses (`GET` and `PATCH` by id) add `enrollmentCode`, the exact JSON of the enrollment QR code (`{enrollmentProofToken, authUrl}`, composed by the same `QrCodePayloadService`), for an authenticator that cannot scan. It is present only when `enrollmentProofToken` is returned and `ezkey.qr.auth-base-url` is set (null otherwise, so the Admin UI says why it offers no copy), and it never contains the challenge. Search does not return it.
 
 **Bind material (#1180):** `enrollmentProofToken` is returned only while `CREATED`, and `enrollmentChallenge` only while `CREATED` or `BOUND` (verify follows bind, and the operator may still have to give the code); both are null otherwise, and always null for an administrator's MFA enrollment (#1313). Integration and device public keys are never returned: protocol actors get them from Auth API bind and verify, and the server verifies device signatures from the stored entity. `GET` and search share this rule.
 

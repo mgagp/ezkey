@@ -107,6 +107,7 @@ public interface EnrollmentAdminMapper {
   @Mapping(target = "deactivatedByAdminUsername", ignore = true)
   @Mapping(target = "revokedByAdminUsername", ignore = true)
   @Mapping(target = "ownerAdminId", ignore = true)
+  @Mapping(target = "enrollmentCode", ignore = true)
   @Mapping(
       target = "operational",
       expression =
@@ -219,7 +220,8 @@ public interface EnrollmentAdminMapper {
         tenantName,
         isSystem,
         operational,
-        ownerAdminId);
+        ownerAdminId,
+        null);
   }
 
   /**

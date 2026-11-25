@@ -156,6 +156,9 @@ class EnrollmentControllerAdminEnrollmentTest {
     assertThat(body.enrollmentChallenge()).isNull();
     assertThat(body.isSystemIntegration()).isTrue();
     assertThat(body.ownerAdminId()).isEqualTo(OWNER_ADMIN_ID);
+    // #1494: the enrollment code is never composed from an administrator's token here.
+    assertThat(body.enrollmentCode()).isNull();
+    verify(qrCodePayloadService, never()).composeEnrollmentCode("admin-proof-token");
   }
 
   @Test
@@ -201,6 +204,8 @@ class EnrollmentControllerAdminEnrollmentTest {
     when(accessControlService.canAccessEnrollment(auth, ENROLLMENT_ID)).thenReturn(true);
     when(enrollmentService.getById(ENROLLMENT_ID)).thenReturn(adminEnrollment);
     when(integrationRepository.findById(2)).thenReturn(Optional.of(ordinary));
+    when(qrCodePayloadService.composeEnrollmentCode("admin-proof-token"))
+        .thenReturn("{\"enrollmentProofToken\":\"admin-proof-token\"}");
 
     ResponseEntity<EnrollmentResponseDto> response = controller.getById(ENROLLMENT_ID);
 
@@ -209,6 +214,8 @@ class EnrollmentControllerAdminEnrollmentTest {
     assertThat(body.enrollmentProofToken()).isEqualTo("admin-proof-token");
     assertThat(body.enrollmentChallenge()).isEqualTo(123456);
     assertThat(body.ownerAdminId()).isNull();
+    // #1494: the enrollment code comes from the server composer, from the token served.
+    assertThat(body.enrollmentCode()).isEqualTo("{\"enrollmentProofToken\":\"admin-proof-token\"}");
     verify(adminRepository, never()).findByEnrollmentId(any());
   }
 

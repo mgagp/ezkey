@@ -95,4 +95,27 @@ public class QrCodePayloadService {
       throw new IllegalStateException("Failed to compose QR code payload", e);
     }
   }
+
+  /**
+   * Composes the enrollment code: the text an operator copies for an authenticator that cannot scan
+   * (#1494).
+   *
+   * <p>It is exactly the QR payload ({@link #composePayload(String)}), so the copied text and the
+   * QR code never differ. It is offered only when {@code ezkey.qr.auth-base-url} is configured:
+   * without {@code authUrl}, an authenticator that receives pasted text has no way to find the Auth
+   * API, so the caller gets {@code null} and the Admin UI says why instead of offering a copy.
+   *
+   * @param enrollmentProofToken the enrollment proof token, or null when the caller may not see it
+   * @return the enrollment code JSON, or null when there is no token or no Auth API address
+   */
+  public String composeEnrollmentCode(String enrollmentProofToken) {
+    if (enrollmentProofToken == null || enrollmentProofToken.isBlank()) {
+      return null;
+    }
+    String authBaseUrl = qrCodeProperties.getAuthBaseUrl();
+    if (authBaseUrl == null || authBaseUrl.isBlank()) {
+      return null;
+    }
+    return composePayload(enrollmentProofToken);
+  }
 }

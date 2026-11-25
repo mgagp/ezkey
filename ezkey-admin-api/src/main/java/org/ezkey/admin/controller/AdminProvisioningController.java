@@ -755,7 +755,9 @@ public class AdminProvisioningController {
               result.enrollmentId(),
               result.enrollmentProofToken(),
               result.enrollmentChallenge(),
-              result.recoveryCodes());
+              result.recoveryCodes(),
+              // #1494: null whenever the token is (CREATED only, audited reveal, #1313).
+              qrCodePayloadService.composeEnrollmentCode(result.enrollmentProofToken()));
 
       if (result.revealsBindMaterial()) {
         AdminBindMaterialRevealAudit.json(auditLogService, httpRequest, principal, id, result);

@@ -28,6 +28,8 @@ import java.util.List;
  * @param enrollmentProofToken Enrollment proof token shown once for device binding
  * @param enrollmentChallenge Enrollment challenge code shown once for device binding
  * @param recoveryCodes Recovery codes are intentionally omitted from this bootstrap response
+ * @param enrollmentCode The exact JSON of the enrollment QR code, for an authenticator that cannot
+ *     scan (#1494); null without a proof token or without a configured Auth API address
  * @since 2025
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -51,14 +53,23 @@ public record AdminActivationResponseDto(
                 "Recovery codes are intentionally omitted from this unauthenticated activation"
                     + " response and must be revealed later through an authenticated recovery-code"
                     + " management flow")
-        List<String> recoveryCodes) {
+        List<String> recoveryCodes,
+    @Schema(
+            description =
+                "Enrollment code: the exact JSON the enrollment QR code holds"
+                    + " ({enrollmentProofToken, authUrl}), for an authenticator that cannot scan."
+                    + " Present only with the proof token and when ezkey.qr.auth-base-url is"
+                    + " configured; never contains the challenge code (#1494)",
+            nullable = true)
+        String enrollmentCode) {
 
   public static AdminActivationResponseDto success(
       String username,
       Integer enrollmentId,
       String enrollmentProofToken,
       Integer enrollmentChallenge,
-      List<String> recoveryCodes) {
+      List<String> recoveryCodes,
+      String enrollmentCode) {
     return new AdminActivationResponseDto(
         true,
         "Activation successful. Bind the first device now. Recovery codes remain deferred.",
@@ -66,10 +77,11 @@ public record AdminActivationResponseDto(
         enrollmentId,
         enrollmentProofToken,
         enrollmentChallenge,
-        recoveryCodes);
+        recoveryCodes,
+        enrollmentCode);
   }
 
   public static AdminActivationResponseDto error(String message) {
-    return new AdminActivationResponseDto(false, message, null, null, null, null, null);
+    return new AdminActivationResponseDto(false, message, null, null, null, null, null, null);
   }
 }

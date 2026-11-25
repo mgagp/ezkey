@@ -215,17 +215,76 @@
   }
 
   /**
+   * Fills the token field from a parsed payload and remembers its Auth API URL.
+   *
+   * @param {{ enrollmentProofToken: string, authUrl?: string }} payload parsed payload
+   * @param {string} successText status shown to the user
+   */
+  function applyPayload(payload, successText) {
+    var tokenEl = document.getElementById('enrollmentProofToken');
+    var warnEl = document.getElementById('qrImportWarning');
+    var successEl = document.getElementById('qrImportSuccess');
+    var configuredBase = document.body.getAttribute('data-auth-api-base') || '';
+    if (warnEl) {
+      warnEl.textContent = '';
+      warnEl.style.display = 'none';
+    }
+    if (tokenEl) {
+      tokenEl.value = payload.enrollmentProofToken;
+    }
+    rememberQrAuthApiBaseUrl(payload.authUrl || '');
+    syncAuthApiBaseUrlField();
+    if (successEl) {
+      successEl.textContent = successText;
+      successEl.style.display = 'block';
+    }
+    var warn = authUrlMismatchWarning(configuredBase, payload.authUrl);
+    if (warn && warnEl) {
+      warnEl.textContent = warn;
+      warnEl.style.display = 'block';
+    }
+  }
+
+  /**
+   * #1494: the Admin UI copies the enrollment code (the QR JSON), not the bare token. When the
+   * token field holds that JSON, read it like a decoded QR.
+   *
+   * @returns {boolean} false when the field holds JSON that is not an enrollment code
+   */
+  function applyPastedEnrollmentCode() {
+    var tokenEl = document.getElementById('enrollmentProofToken');
+    var errEl = document.getElementById('qrImportError');
+    if (errEl) {
+      errEl.textContent = '';
+      errEl.style.display = 'none';
+    }
+    if (!tokenEl || String(tokenEl.value).trim().charAt(0) !== '{') {
+      return true;
+    }
+    try {
+      applyPayload(
+        parseQrPayload(tokenEl.value),
+        'Enrollment code read. Review the fields below, then tap Start Enrollment.',
+      );
+      return true;
+    } catch (e) {
+      if (errEl) {
+        errEl.textContent = 'This is not an enrollment code: ' + (e.message || String(e));
+        errEl.style.display = 'block';
+      }
+      return false;
+    }
+  }
+
+  /**
    * @param {Blob} blob
    * @returns {Promise<void>}
    */
   function processImageBlob(blob) {
-    var tokenEl = document.getElementById('enrollmentProofToken');
     var errEl = document.getElementById('qrImportError');
     var warnEl = document.getElementById('qrImportWarning');
     var successEl = document.getElementById('qrImportSuccess');
     var previewEl = document.getElementById('qrImportPreview');
-    var body = document.body;
-    var configuredBase = body.getAttribute('data-auth-api-base') || '';
 
     if (errEl) {
       errEl.textContent = '';
@@ -254,22 +313,10 @@
             'No QR code found in the image. Try a sharper screenshot or enter the token manually.',
           );
         }
-        var payload = parseQrPayload(data);
-        if (tokenEl) {
-          tokenEl.value = payload.enrollmentProofToken;
-        }
-        rememberQrAuthApiBaseUrl(payload.authUrl || '');
-        syncAuthApiBaseUrlField();
-        if (successEl) {
-          successEl.textContent =
-            'QR decoded. Review the fields below, then tap Start Enrollment.';
-          successEl.style.display = 'block';
-        }
-        var warn = authUrlMismatchWarning(configuredBase, payload.authUrl);
-        if (warn && warnEl) {
-          warnEl.textContent = warn;
-          warnEl.style.display = 'block';
-        }
+        applyPayload(
+          parseQrPayload(data),
+          'QR decoded. Review the fields below, then tap Start Enrollment.',
+        );
       })
       .catch(function (e) {
         if (errEl) {
@@ -291,8 +338,19 @@
 
     syncAuthApiBaseUrlField();
 
+    var tokenInput = document.getElementById('enrollmentProofToken');
+    if (tokenInput) {
+      tokenInput.addEventListener('input', function () {
+        applyPastedEnrollmentCode();
+      });
+    }
+
     if (form) {
-      form.addEventListener('submit', function () {
+      form.addEventListener('submit', function (e) {
+        if (!applyPastedEnrollmentCode()) {
+          e.preventDefault();
+          return;
+        }
         syncAuthApiBaseUrlField();
       });
     }

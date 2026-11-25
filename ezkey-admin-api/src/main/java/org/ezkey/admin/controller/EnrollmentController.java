@@ -1037,7 +1037,7 @@ public class EnrollmentController {
 
   /**
    * Maps a single enrollment for detail responses (GET/PATCH) with integration and admin username
-   * labels.
+   * labels, and the enrollment code when the proof token is returned (#1494).
    *
    * @param enrollment enrollment entity
    * @param integration integration context, or null
@@ -1045,11 +1045,15 @@ public class EnrollmentController {
    */
   private EnrollmentResponseDto mapEnrollmentDetailResponse(
       Enrollment enrollment, Integration integration) {
-    return enrollmentMapper.toResponseWithIntegrationAndAdminUsernames(
-        enrollment,
-        integration,
-        resolveAdminUsernames(enrollment),
-        resolveOwnerAdminId(enrollment, integration));
+    EnrollmentResponseDto detail =
+        enrollmentMapper.toResponseWithIntegrationAndAdminUsernames(
+            enrollment,
+            integration,
+            resolveAdminUsernames(enrollment),
+            resolveOwnerAdminId(enrollment, integration));
+    // #1494: composed from the token the mapper already let through, so it follows #1180 / #1313.
+    return detail.withEnrollmentCode(
+        qrCodePayloadService.composeEnrollmentCode(detail.enrollmentProofToken()));
   }
 
   /**

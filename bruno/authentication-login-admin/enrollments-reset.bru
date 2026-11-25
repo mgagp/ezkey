@@ -44,6 +44,18 @@ script:post-response {
           expect(jsonData).to.have.property('integrationId');
       });
       
+      // #1494: the enrollment code is the QR JSON. Null without a proof token or without
+      // ezkey.qr.auth-base-url; when present it holds exactly the token and authUrl.
+      test("Enrollment code, when present, is the QR JSON with no challenge", function () {
+          if (jsonData.enrollmentCode != null) {
+              var code = JSON.parse(jsonData.enrollmentCode);
+              expect(Object.keys(code).sort()).to.deep.equal(['authUrl', 'enrollmentProofToken']);
+              expect(code.enrollmentProofToken).to.equal(jsonData.enrollmentProofToken);
+          } else if (jsonData.enrollmentProofToken == null) {
+              expect(jsonData.enrollmentCode == null).to.be.true;
+          }
+      });
+
       test("Reset successful", function () {
           expect(jsonData.success).to.be.true;
       });
@@ -70,6 +82,7 @@ docs {
   - `enrollmentId`: The enrollment ID (same as before, but credentials are new)
   - `enrollmentProofToken`: New enrollment proof token for binding
   - `enrollmentChallenge`: New enrollment challenge code for verification
+  - `enrollmentCode`: The exact JSON of the new enrollment QR code (`{enrollmentProofToken, authUrl}`); null when `ezkey.qr.auth-base-url` is not set (#1494)
   - `integrationId`: Integration ID for reference
   - `message`: "Enrollment reset successfully. Old device unbound. Use these credentials to bind new device."
   

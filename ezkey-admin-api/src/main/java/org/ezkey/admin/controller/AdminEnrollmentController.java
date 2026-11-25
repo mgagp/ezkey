@@ -24,6 +24,7 @@ import org.ezkey.admin.dto.response.EnrollmentResetResponseDto;
 import org.ezkey.admin.exception.AuthenticationException;
 import org.ezkey.admin.security.AdminOperationsRateLimitService;
 import org.ezkey.admin.service.AdminRecoveryService;
+import org.ezkey.admin.service.QrCodePayloadService;
 import org.ezkey.admin.util.AuditHelper;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
@@ -70,16 +71,19 @@ public class AdminEnrollmentController {
   private final AdminOperationsRateLimitService adminOpsRateLimitService;
   private final AdminOperationsRateLimitProperties adminOpsRateLimitProperties;
   private final AuditLogService auditLogService;
+  private final QrCodePayloadService qrCodePayloadService;
 
   public AdminEnrollmentController(
       AdminRecoveryService recoveryService,
       AdminOperationsRateLimitService adminOpsRateLimitService,
       AdminOperationsRateLimitProperties adminOpsRateLimitProperties,
-      AuditLogService auditLogService) {
+      AuditLogService auditLogService,
+      QrCodePayloadService qrCodePayloadService) {
     this.recoveryService = recoveryService;
     this.adminOpsRateLimitService = adminOpsRateLimitService;
     this.adminOpsRateLimitProperties = adminOpsRateLimitProperties;
     this.auditLogService = auditLogService;
+    this.qrCodePayloadService = qrCodePayloadService;
   }
 
   /**
@@ -214,10 +218,13 @@ public class AdminEnrollmentController {
 
       EnrollmentResetResponseDto response =
           EnrollmentResetResponseDto.success(
-              resetEnrollment.getEnrollmentId(),
-              resetEnrollment.getEnrollmentProofToken(),
-              resetEnrollment.getEnrollmentChallenge(),
-              resetEnrollment.getIntegrationId());
+                  resetEnrollment.getEnrollmentId(),
+                  resetEnrollment.getEnrollmentProofToken(),
+                  resetEnrollment.getEnrollmentChallenge(),
+                  resetEnrollment.getIntegrationId())
+              .withEnrollmentCode(
+                  qrCodePayloadService.composeEnrollmentCode(
+                      resetEnrollment.getEnrollmentProofToken()));
 
       logger.warn(
           "✅ Enrollment reset successful for admin: {} (enrollmentId: {})",

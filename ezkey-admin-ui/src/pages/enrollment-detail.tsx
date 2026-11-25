@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
-import { Check, Copy, Eye, EyeOff, ListOrdered, Pencil, Power, PowerOff, QrCode, ShieldOff, Trash2, Zap } from 'lucide-react';
+import { ListOrdered, Pencil, Power, PowerOff, QrCode, ShieldOff, Trash2, Zap } from 'lucide-react';
 import { AppShell } from '@/components/layout/app-shell';
 import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
+import { EnrollmentCodeBlock } from '@/components/feature/enrollment-code-block';
 import { ReasonFieldRow } from '@/components/feature/reason-field-row';
 import { DevicePrivateKeyTierBadge } from '@/components/feature/device-private-key-tier-badge';
 import { EnrollmentIdentityFormFields, EnrollmentIdentityReadout } from '@/components/feature/enrollment-identity-fields';
@@ -439,8 +440,6 @@ export default function EnrollmentDetailPage() {
       pathPrefix: '/enrollments',
     });
 
-  const [tokenVisible, setTokenVisible] = useState(false);
-  const [tokenCopied, setTokenCopied] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
@@ -600,17 +599,6 @@ export default function EnrollmentDetailPage() {
       if (qrCodeUrl) URL.revokeObjectURL(qrCodeUrl);
     };
   }, [qrCodeUrl]);
-
-  const handleCopyToken = async () => {
-    if (!enrollment?.enrollmentProofToken) return;
-    try {
-      await navigator.clipboard.writeText(enrollment.enrollmentProofToken);
-      setTokenCopied(true);
-      setTimeout(() => setTokenCopied(false), 2000);
-    } catch {
-      // ignore clipboard API errors
-    }
-  };
 
   const handleToggleQr = async () => {
     if (qrCodeUrl) {
@@ -895,43 +883,18 @@ export default function EnrollmentDetailPage() {
                 </IntegratedDeliveryNotice>
               )}
 
-              {/* Proof token: API returns it only while CREATED (#1180) */}
+              {/* Enrollment code (#1494): shown where the proof token is, so only while CREATED (#1180) */}
               {enrollment.enrollmentProofToken && (
                 <Card data-testid="enrollment-token-card">
                   <CardHeader>
                     <CardTitle>
-                      <Tooltip content={t('detail.help.proofToken')}>
-                        <span>{t('detail.enrollmentToken')}</span>
+                      <Tooltip content={t('detail.help.enrollmentCode')}>
+                        <span>{t('common:enrollmentCode.label')}</span>
                       </Tooltip>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <p className="text-xs text-fg-muted">
-                      {t('detail.tokenHint')}
-                    </p>
-                    <div className="border-2 border-fg p-3 font-mono text-xs break-all bg-bg leading-relaxed">
-                      {tokenVisible ? enrollment.enrollmentProofToken : '•'.repeat(20) + ' …'}
-                    </div>
-                    <div className="flex gap-2 flex-wrap">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => setTokenVisible(!tokenVisible)}
-                        className="gap-1.5"
-                      >
-                        {tokenVisible ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-                        {tokenVisible ? t('detail.hide') : t('detail.reveal')}
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={handleCopyToken}
-                        className="gap-1.5"
-                      >
-                        {tokenCopied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
-                        {tokenCopied ? t('detail.copied') : t('detail.copy')}
-                      </Button>
-                    </div>
+                    <EnrollmentCodeBlock code={enrollment.enrollmentCode} showLabel={false} />
                   </CardContent>
                 </Card>
               )}

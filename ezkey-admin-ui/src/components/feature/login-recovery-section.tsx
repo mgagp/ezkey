@@ -20,6 +20,7 @@ import {
 } from '@/lib/recovery-session';
 import { enrollmentPayloadToQrDataUrl } from '@/lib/enrollment-qr-data-url';
 import { buildEnrollmentQrPayloadJson } from '@/lib/enrollment-qr-payload';
+import { EnrollmentCodeBlock } from '@/components/feature/enrollment-code-block';
 import { formatCountdown } from '@/lib/utils';
 import type { AdminRecoveryResponseDto } from '@/generated/admin-api/model';
 import type { EnrollmentResetResponseDto } from '@/generated/admin-api/model';
@@ -60,7 +61,6 @@ export function LoginRecoverySection({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [resetting, setResetting] = useState(false);
-  const [tokenCopied, setTokenCopied] = useState(false);
   const [enrollmentIdCopied, setEnrollmentIdCopied] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [qrState, setQrState] = useState<QrRenderState>({
@@ -81,14 +81,22 @@ export function LoginRecoverySection({
     }
 
     const proof = String(proofToken);
-    const key = `${enrollmentId}:${proof}:${authApiPublicBaseUrl ?? ''}`;
+    // #1494: the server's enrollment code, when present, is the QR content (one composer).
+    const serverCode = resetResult?.enrollmentCode ?? null;
+    const key = `${enrollmentId}:${proof}:${serverCode ?? authApiPublicBaseUrl ?? ''}`;
     return {
       invalid: false,
       key,
       enrollmentId,
       proof,
+      serverCode,
     } as const;
-  }, [resetResult?.enrollmentId, resetResult?.enrollmentProofToken, authApiPublicBaseUrl]);
+  }, [
+    resetResult?.enrollmentId,
+    resetResult?.enrollmentProofToken,
+    resetResult?.enrollmentCode,
+    authApiPublicBaseUrl,
+  ]);
 
   const recoverySchema = useMemo(
     () =>
@@ -155,10 +163,8 @@ export function LoginRecoverySection({
     });
     void (async () => {
       try {
-        const json = buildEnrollmentQrPayloadJson(
-          qrInput.proof,
-          authApiPublicBaseUrl,
-        );
+        const json =
+          qrInput.serverCode ?? buildEnrollmentQrPayloadJson(qrInput.proof, authApiPublicBaseUrl);
         const url = await enrollmentPayloadToQrDataUrl(json);
         if (!cancelled) {
           setQrState({
@@ -251,18 +257,6 @@ export function LoginRecoverySection({
       setErrorMessage(getTranslatedApiError(err, t, t('login:recovery.resetFailed')));
     } finally {
       setResetting(false);
-    }
-  };
-
-  const handleCopyToken = async () => {
-    const token = resetResult?.enrollmentProofToken;
-    if (token == null || token === '') return;
-    try {
-      await navigator.clipboard.writeText(String(token));
-      setTokenCopied(true);
-      setTimeout(() => setTokenCopied(false), 2000);
-    } catch {
-      /* ignore */
     }
   };
 
@@ -380,18 +374,10 @@ export function LoginRecoverySection({
                     </Button>
                   </div>
                 )}
-                <div className="space-y-1.5">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted">
-                    {t('login:recovery.enrollmentProofToken')}
-                  </p>
-                  <div className="border-2 border-fg p-2 font-mono text-[11px] break-all bg-bg leading-relaxed max-h-32 overflow-y-auto">
-                    {String(resetResult.enrollmentProofToken)}
-                  </div>
-                  <Button variant="secondary" size="sm" onClick={handleCopyToken} className="gap-1.5">
-                    {tokenCopied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
-                    {tokenCopied ? t('login:recovery.copied') : t('login:recovery.copyToken')}
-                  </Button>
-                </div>
+                <EnrollmentCodeBlock
+                  code={resetResult.enrollmentCode}
+                  testId="login-recovery-enrollment-code"
+                />
               </div>
             </details>
             <p className="text-xs text-fg-muted leading-snug">{t('login:recovery.thenPasswordless')}</p>

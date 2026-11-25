@@ -32,6 +32,8 @@ import java.util.List;
  * @param enrollmentProofToken Enrollment proof token (shown once - save securely)
  * @param enrollmentChallenge Enrollment challenge code (6 digits, shown once - save securely)
  * @param recoveryCodes List of recovery codes (shown once, single-use - save securely)
+ * @param enrollmentCode The exact JSON of the enrollment QR code, for an authenticator that cannot
+ *     scan (#1494); null without a proof token or without a configured Auth API address
  * @author Ezkey contributors
  * @since 2025
  */
@@ -58,4 +60,12 @@ public record AdminOnboardingResponseDto(
     @Schema(
             description = "List of recovery codes (shown once, single-use - save securely)",
             example = "[\"1234-5678-9012-3456-7890-1234-5678-9012\"]")
-        List<String> recoveryCodes) {}
+        List<String> recoveryCodes,
+    @Schema(
+            description =
+                "Enrollment code: the exact JSON the enrollment QR code holds"
+                    + " ({enrollmentProofToken, authUrl}), for an authenticator that cannot scan."
+                    + " Present only with the proof token and when ezkey.qr.auth-base-url is"
+                    + " configured; never contains the challenge code (#1494)",
+            nullable = true)
+        String enrollmentCode) {}

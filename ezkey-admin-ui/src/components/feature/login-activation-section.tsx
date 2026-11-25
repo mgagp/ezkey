@@ -13,6 +13,7 @@ import { fetchApi } from '@/lib/api-client';
 import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { enrollmentPayloadToQrDataUrl } from '@/lib/enrollment-qr-data-url';
 import { buildEnrollmentQrPayloadJson } from '@/lib/enrollment-qr-payload';
+import { EnrollmentCodeBlock } from '@/components/feature/enrollment-code-block';
 
 interface AdminActivationResponseShape {
   success?: boolean;
@@ -21,6 +22,7 @@ interface AdminActivationResponseShape {
   enrollmentId?: number;
   enrollmentProofToken?: string;
   enrollmentChallenge?: number;
+  enrollmentCode?: string;
 }
 
 interface LoginActivationSectionProps {
@@ -68,7 +70,6 @@ export function LoginActivationSection({
     useState<AdminActivationResponseShape | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [tokenCopied, setTokenCopied] = useState(false);
   const [enrollmentIdCopied, setEnrollmentIdCopied] = useState(false);
   const [qrState, setQrState] = useState<QrRenderState>({
     key: null,
@@ -93,16 +94,20 @@ export function LoginActivationSection({
     }
 
     const proof = String(proofToken);
-    const key = `${enrollmentId}:${proof}:${authApiPublicBaseUrl ?? ''}`;
+    // #1494: the server's enrollment code, when present, is the QR content (one composer).
+    const serverCode = activationResult?.enrollmentCode ?? null;
+    const key = `${enrollmentId}:${proof}:${serverCode ?? authApiPublicBaseUrl ?? ''}`;
     return {
       invalid: false,
       key,
       enrollmentId,
       proof,
+      serverCode,
     } as const;
   }, [
     activationResult?.enrollmentId,
     activationResult?.enrollmentProofToken,
+    activationResult?.enrollmentCode,
     authApiPublicBaseUrl,
     showEnroll,
   ]);
@@ -124,10 +129,8 @@ export function LoginActivationSection({
     });
     void (async () => {
       try {
-        const payload = buildEnrollmentQrPayloadJson(
-          qrInput.proof,
-          authApiPublicBaseUrl,
-        );
+        const payload =
+          qrInput.serverCode ?? buildEnrollmentQrPayloadJson(qrInput.proof, authApiPublicBaseUrl);
         const url = await enrollmentPayloadToQrDataUrl(payload);
         if (!cancelled) {
           setQrState({
@@ -183,18 +186,6 @@ export function LoginActivationSection({
       setErrorMessage(getTranslatedApiError(err, t, t('login:activation.activateFailed')));
     } finally {
       setSubmitting(false);
-    }
-  };
-
-  const handleCopyToken = async () => {
-    const token = activationResult?.enrollmentProofToken;
-    if (token == null || token === '') return;
-    try {
-      await navigator.clipboard.writeText(String(token));
-      setTokenCopied(true);
-      setTimeout(() => setTokenCopied(false), 2000);
-    } catch {
-      // ignore clipboard errors
     }
   };
 
@@ -307,30 +298,10 @@ export function LoginActivationSection({
                   </div>
                 )}
 
-                <div className="space-y-1.5">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted">
-                    {t('login:activation.enrollmentProofToken')}
-                  </p>
-                  <div className="border-2 border-fg p-2 font-mono text-[11px] break-all bg-bg leading-relaxed max-h-32 overflow-y-auto">
-                    {String(activationResult?.enrollmentProofToken)}
-                  </div>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => void handleCopyToken()}
-                    className="gap-1.5"
-                  >
-                    {tokenCopied ? (
-                      <Check className="size-3.5 text-success" />
-                    ) : (
-                      <Copy className="size-3.5" />
-                    )}
-                    {tokenCopied
-                      ? t('login:activation.copied')
-                      : t('login:activation.copyToken')}
-                  </Button>
-                </div>
+                <EnrollmentCodeBlock
+                  code={activationResult?.enrollmentCode}
+                  testId="login-activation-enrollment-code"
+                />
               </div>
             </details>
 

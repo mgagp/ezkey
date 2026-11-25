@@ -5,6 +5,7 @@ import i18n from 'i18next';
 import { I18nextProvider, initReactI18next } from 'react-i18next';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import enAdmins from '@/locales/en/admins.json';
+import enCommon from '@/locales/en/common.json';
 import enEnrollments from '@/locales/en/enrollments.json';
 import { AdminBindCard } from './admin-bind-card';
 
@@ -25,7 +26,7 @@ function i18nEn() {
   const instance = i18n.createInstance();
   void instance.use(initReactI18next).init({
     lng: 'en',
-    resources: { en: { admins: enAdmins, enrollments: enEnrollments } },
+    resources: { en: { admins: enAdmins, enrollments: enEnrollments, common: enCommon } },
   });
   return instance;
 }
@@ -39,7 +40,11 @@ function renderCard(enrollmentStatus: 'CREATED' | 'BOUND') {
 }
 
 /** Behaves like the Orval hook: returns data only while the query is enabled. */
-function onboardingReturns(data: { enrollmentProofToken: string | null; enrollmentChallenge: number | null }) {
+function onboardingReturns(data: {
+  enrollmentProofToken: string | null;
+  enrollmentChallenge: number | null;
+  enrollmentCode?: string | null;
+}) {
   mocks.useGetAdminOnboarding.mockImplementation(
     (_id: number, options: { query: { enabled: boolean } }) => ({
       data: options.query.enabled ? data : undefined,
@@ -69,7 +74,11 @@ describe('AdminBindCard (#1313)', () => {
   });
 
   it('loads nothing secret until the operator clicks Show QR', async () => {
-    onboardingReturns({ enrollmentProofToken: 'token-abc', enrollmentChallenge: 123456 });
+    onboardingReturns({
+      enrollmentProofToken: 'token-abc',
+      enrollmentChallenge: 123456,
+      enrollmentCode: '{"enrollmentProofToken":"token-abc","authUrl":"https://auth.example.test"}',
+    });
     renderCard('CREATED');
 
     expect(screen.getByTestId('admin-bind-in-person').textContent).toContain('Ezkey never sends');
@@ -85,7 +94,26 @@ describe('AdminBindCard (#1313)', () => {
     expect(mocks.fetchBlobUrl).toHaveBeenCalledWith('/api/v1/admins/7/onboarding/qrcode');
     expect(screen.getByTestId('admin-bind-qr')).toBeTruthy();
     expect(screen.getByTestId('admin-bind-challenge').textContent).toBe('123456');
-    expect(screen.getByTestId('admin-bind-token').textContent).toContain('token-abc');
+    // #1494: the enrollment code is offered after the reveal, masked until shown.
+    expect(screen.getByTestId('admin-bind-code-value').textContent).not.toContain('token-abc');
+    fireEvent.click(screen.getByTestId('admin-bind-code-reveal'));
+    expect(screen.getByTestId('admin-bind-code-value').textContent).toBe(
+      '{"enrollmentProofToken":"token-abc","authUrl":"https://auth.example.test"}',
+    );
+  });
+
+  it('says why there is no enrollment code when the Auth API address is not configured', async () => {
+    onboardingReturns({ enrollmentProofToken: 'token-abc', enrollmentChallenge: 123456, enrollmentCode: null });
+    renderCard('CREATED');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('admin-bind-reveal'));
+    });
+
+    expect(screen.queryByTestId('admin-bind-code-copy')).toBeNull();
+    expect(screen.getByTestId('admin-bind-code-unavailable').textContent).toContain(
+      'ezkey.qr.auth-base-url',
+    );
   });
 
   it('at BOUND asks for the code only, with the guard warning and no QR', async () => {
@@ -100,7 +128,8 @@ describe('AdminBindCard (#1313)', () => {
     expect(mocks.fetchBlobUrl).not.toHaveBeenCalled();
     expect(screen.getByTestId('admin-bind-bound-warning')).toBeTruthy();
     expect(screen.getByTestId('admin-bind-challenge').textContent).toBe('654321');
-    expect(screen.queryByTestId('admin-bind-token')).toBeNull();
+    expect(screen.queryByTestId('admin-bind-code')).toBeNull();
+    expect(screen.queryByTestId('admin-bind-code-unavailable')).toBeNull();
   });
 
   it('hides the material again on a second click', async () => {

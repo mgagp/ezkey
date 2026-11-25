@@ -89,7 +89,8 @@ class EnrollmentResetResponseDtoTest {
             TEST_PROOF_TOKEN,
             TEST_CHALLENGE,
             TEST_INTEGRATION_ID,
-            "Custom message");
+            "Custom message",
+            null);
 
     // Assert
     assertThat(dto.success()).isTrue();
@@ -106,7 +107,8 @@ class EnrollmentResetResponseDtoTest {
     // Arrange
     EnrollmentResetResponseDto dto =
         EnrollmentResetResponseDto.success(
-            TEST_ENROLLMENT_ID, TEST_PROOF_TOKEN, TEST_CHALLENGE, TEST_INTEGRATION_ID);
+                TEST_ENROLLMENT_ID, TEST_PROOF_TOKEN, TEST_CHALLENGE, TEST_INTEGRATION_ID)
+            .withEnrollmentCode("{\"enrollmentProofToken\":\"" + TEST_PROOF_TOKEN + "\"}");
 
     // Act
     String toString = dto.toString();
@@ -114,6 +116,7 @@ class EnrollmentResetResponseDtoTest {
     // Assert
     assertThat(toString)
         .contains("EnrollmentResetResponseDto")
+        .contains("enrollmentCode=[PROTECTED]")
         .contains("success=true")
         .contains("enrollmentId=" + TEST_ENROLLMENT_ID)
         .contains("enrollmentProofToken='[PROTECTED]'")

@@ -385,7 +385,7 @@ network URL.**
 
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
-| `ezkey.qr.auth-base-url` | `String` | *(null)* | requis [docker] | Public Auth API base URL embedded in QR code payloads (e.g. `https://ezkey.acme.com:8080`). When absent, `authUrl` is omitted from QR codes and the mobile app falls back to its own default. |
+| `ezkey.qr.auth-base-url` | `String` | *(null)* | requis [docker] | Public Auth API base URL embedded in QR code payloads (e.g. `https://ezkey.acme.com:8080`). When absent, `authUrl` is omitted from QR codes and the mobile app falls back to its own default, and the Admin API returns no `enrollmentCode` to copy (#1494). |
 
 ---
 

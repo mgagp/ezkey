@@ -47,6 +47,7 @@ import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.security.AdminSessionCookieService;
 import org.ezkey.admin.service.AdminAuthService;
 import org.ezkey.admin.service.AdminProvisioningService;
+import org.ezkey.admin.service.QrCodePayloadService;
 import org.ezkey.admin.util.AuditHelper;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
@@ -111,6 +112,8 @@ public class AdminAuthController {
 
   private final AdminCsrfTokenService csrfTokenService;
 
+  private final QrCodePayloadService qrCodePayloadService;
+
   public AdminAuthController(
       AdminAuthService authService,
       AdminProvisioningService provisioningService,
@@ -121,7 +124,8 @@ public class AdminAuthController {
       EzkeyAdminRepository adminRepository,
       AdminBrowserSessionCookieProperties browserSessionCookieProperties,
       AdminSessionCookieService sessionCookieService,
-      AdminCsrfTokenService csrfTokenService) {
+      AdminCsrfTokenService csrfTokenService,
+      QrCodePayloadService qrCodePayloadService) {
     this.authService = authService;
     this.provisioningService = provisioningService;
     this.recoveryService = recoveryService;
@@ -132,6 +136,7 @@ public class AdminAuthController {
     this.browserSessionCookieProperties = browserSessionCookieProperties;
     this.sessionCookieService = sessionCookieService;
     this.csrfTokenService = csrfTokenService;
+    this.qrCodePayloadService = qrCodePayloadService;
   }
 
   /**
@@ -178,7 +183,8 @@ public class AdminAuthController {
               result.enrollment() != null ? result.enrollment().getEnrollmentId() : null,
               result.enrollmentProofToken(),
               result.enrollmentChallenge(),
-              null);
+              null,
+              qrCodePayloadService.composeEnrollmentCode(result.enrollmentProofToken()));
 
       rateLimitFilter.recordSuccessfulAttempt(context.clientIp());
 

@@ -74,3 +74,4 @@ Standing rules:
   - [`backlog/walk-gates/WALK-2026-11-17-admin-onboarding-1313.md`](backlog/walk-gates/WALK-2026-11-17-admin-onboarding-1313.md) — record landing, bind card, Global and Tenant Admin views, EN/FR (PR #1398)
 - Filled Walk Gate (enrollment Name / User ID, #940):
   - [`backlog/walk-gates/WALK-2026-11-23-enrollment-user-id-940.md`](backlog/walk-gates/WALK-2026-11-23-enrollment-user-id-940.md) — User ID under Name, help, empty-User-ID warning on application integrations only, EN/FR (PR #1455)
+  - [`backlog/walk-gates/WALK-2026-11-25-enrollment-code-1494.md`](backlog/walk-gates/WALK-2026-11-25-enrollment-code-1494.md) — copy the enrollment code (the QR JSON, server-composed) on the record, the administrator bind card, activation and recovery, EN/FR (#1494)

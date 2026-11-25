@@ -82,5 +82,14 @@
     "ariaPreset": "Présélection de période",
     "ariaFrom": "Date de début",
     "ariaTo": "Date de fin"
+  },
+  "enrollmentCode": {
+    "label": "Code d'enrôlement",
+    "hint": "Pour un authentificateur qui ne peut pas scanner : collez-y ce texte. Le code défi de liaison à 6 chiffres n'y figure pas : transmettez-le par un autre canal.",
+    "show": "Afficher",
+    "hide": "Masquer",
+    "copy": "Copier le code d'enrôlement",
+    "copied": "Copié !",
+    "unavailable": "Aucun code d'enrôlement à copier : cette instance n'a pas d'adresse publique d'Auth API (ezkey.qr.auth-base-url), donc le texte ne pourrait pas dire quel serveur utiliser. Scannez plutôt le code QR."
   }
 }
