@@ -70,6 +70,13 @@ meant to be linked from trust-facing material without inflating the top-level pi
   respond paths can hint that an id is a live `READ` attempt. That gap is **not** equalized: the
   same existence signal is already available from sequential auth-attempt ids. Documented; no
   latency padding.
+- **Decision (#1465, security review):** On admin sign-in, `/passwordless-wait` reports an
+  `INVALID` attempt as 400 `authentication/challenge-mismatch` ("the code entered on the device did
+  not match"), not `invalid-signature`. `INVALID` exists only after a valid device signature, the
+  reader is the initiator holding the waiter secret (who displays the code), and the outcome type
+  was already distinct, so naming it adds no disclosure and no enumeration oracle. The detail never
+  carries digits; audit action `login_mfa_challenge_mismatch`. Device-side and pre-ownership
+  minimal disclosure above is unchanged.
 - **Decision (#895, Christophe + Patrick M1/M2):** Wall-clock expiry after `expiresAt` maps to
   **409** `auth-attempt-expired` so Demo Device / PAM / mobile can show a clear expired message.
   That typed problem is emitted **only after** enrollment load and device-signature (ownership)

@@ -733,15 +733,24 @@ If `is_bound = false`:
 3. Approve the login request
 4. Timeout is 5 minutes - retry if expired
 
-### Problem: "Challenge value mismatch"
+### Problem: "The code entered on the device did not match"
 
-**Cause:** Wrong challenge code entered on device
+**Response:** HTTP 400, `type = https://ezkey.io/problems/authentication/challenge-mismatch`
+(before #1465 this case was misreported as `invalid-signature`).
+
+**Cause:** The device answered with a valid signature, but the challenge code entered on it did not
+match. An invalid device signature never reaches this outcome: it keeps the attempt `READ` and gets
+the generic Auth API 409 (#912).
 
 **Solution:**
-1. Check challenge code from `/login` response
-2. Enter exact code on device (6 digits)
-3. Case sensitive: ensure correct digits
-4. Auth attempt marked INVALID - create new login request
+1. Start a new sign-in: the attempt is terminal (`INVALID`)
+2. Enter on the device the code shown on the sign-in screen (2 digits by default,
+   `ezkey.core.auth-attempt.challenge-digits`)
+3. Several wrong codes or refusals in a short window pause sign-in for a few minutes (cooldown, #992)
+
+**Disclosure:** Only the initiator holding the waiter secret sees this outcome, and it already
+received a distinct type for it; naming the mismatch adds no information. The detail never echoes
+the expected or entered digits (written security review on #1465).
 
 ### Problem: "Invalid recovery code"
 

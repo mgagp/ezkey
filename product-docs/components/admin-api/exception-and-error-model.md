@@ -58,7 +58,7 @@ Exceptions to RFC 9457:
 | Login rate limit exceeded | 429 | generic 429 text (legacy) | IP audit entry. |
 | Device rejected login | 400 | `authentication/auth-rejected` | `login_mfa_rejected`. |
 | Login attempt expired | 408 | `authentication/auth-timeout` | `login_mfa_expired`. |
-| Invalid signature | 400 | `authentication/invalid-signature` | audited. |
+| Wrong code entered on device | 400 | `authentication/challenge-mismatch` | `login_mfa_challenge_mismatch` (#1465). |
 | Integration name duplicate | 400 | `admin/invalid-argument` | as applicable. |
 | System tenant update | 400 | `tenant/not-allowed` | optional. |
 | Delete integration with enrollments | 409 | `integration/delete-has-enrollments` | optional. |

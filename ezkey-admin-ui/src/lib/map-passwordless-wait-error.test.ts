@@ -1,5 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import i18n from 'i18next';
+import '@/i18n';
 import { ApiError } from './api-client';
+import { getTranslatedApiError } from './api-error-i18n';
 import { mapPasswordlessWaitError } from './map-passwordless-wait-error';
 
 const FALLBACK = 'fallback';
@@ -65,17 +68,40 @@ describe('mapPasswordlessWaitError', () => {
     });
   });
 
-  it('maps invalid-signature to error with detail', () => {
+  it('maps challenge-mismatch to error with detail (#1465)', () => {
     const err = apiError(400, {
-      type: 'https://ezkey.io/problems/authentication/invalid-signature',
-      title: 'Invalid Signature',
+      type: 'https://ezkey.io/problems/authentication/challenge-mismatch',
+      title: 'Challenge Mismatch',
       status: 400,
-      detail: 'Device signature validation failed',
+      detail: 'The code entered on the device did not match',
     });
     expect(mapPasswordlessWaitError(err, FALLBACK, CONNECTION_LOST)).toEqual({
       outcome: 'error',
-      message: 'Device signature validation failed',
+      message: 'The code entered on the device did not match',
     });
+  });
+
+  afterEach(async () => {
+    await i18n.changeLanguage('en');
+  });
+
+  it.each([
+    ['en', 'The code entered on your device did not match. Select Try Again and enter the code shown on this screen.'],
+    ['fr', "Le code saisi sur votre appareil ne correspondait pas. Sélectionnez Réessayer et saisissez le code affiché à l'écran."],
+  ])('shows honest challenge-mismatch copy in %s, without digits (#1465)', async (lang, expected) => {
+    await i18n.changeLanguage(lang);
+    const t = i18n.t.bind(i18n);
+    const err = apiError(400, {
+      type: 'https://ezkey.io/problems/authentication/challenge-mismatch',
+      title: 'Challenge Mismatch',
+      status: 400,
+      detail: 'The code entered on the device did not match',
+    });
+    const mapped = mapPasswordlessWaitError(err, FALLBACK, CONNECTION_LOST, (e, fb) =>
+      getTranslatedApiError(e, t, fb),
+    );
+    expect(mapped).toEqual({ outcome: 'error', message: expected });
+    expect(expected).not.toMatch(/\d/);
   });
 
   it('maps generic ApiError to error with getApiErrorMessage', () => {

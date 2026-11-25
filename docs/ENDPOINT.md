@@ -660,8 +660,8 @@ Errors use `Content-Type: application/problem+json` (or JSON with the same field
 |------|-----------------------------|-----------------|
 | 400 | `.../authentication/auth-rejected` | Authentication Rejected |
 | 400 | `.../authentication/auth-expired` | Authentication Expired |
-| 400 | `.../authentication/invalid-signature` | Invalid Signature |
-| 401 | `.../authentication/invalid-credentials` | Authentication failed (invalid/missing waiter secret, challenge mismatch, or attempt already consumed) |
+| 400 | `.../authentication/challenge-mismatch` | Challenge Mismatch (the device signed, but the code entered on it did not match; attempt is terminal `INVALID`, start a new sign-in; replaces `invalid-signature`, #1465) |
+| 401 | `.../authentication/invalid-credentials` | Authentication failed (invalid/missing waiter secret, `challengeCode` in the request missing or not matching the attempt, or attempt already consumed) |
 | 408 | `.../authentication/auth-timeout` | Authentication Timeout |
 
 **Example (device denied):**
@@ -686,7 +686,7 @@ The client should use `detail` (then `title`) for user-facing messages, not assu
 - `challengeCode` prevents enumeration attacks (proof of legitimate login initiation)
 - Blocking HTTP call: the server waits up to the minimum of 300 seconds and (remaining attempt lifetime + small slack). **Applied** create TTL: per-request floor **15**, hard ceiling **120** (`min(request|default, 120)` since #895). Property `ezkey.core.auth-attempt.ttl-seconds` default **120** (Bean Validation **30–600**; startup clamp **>120 → 120**, so effective configured default **30–120**). On Cloudflare Free (`ezkey.org`, `ezkey.online`, including the community instance) the origin is cut at **100 seconds** (HTTP **524**, not raisable; see `product-docs/global/product-intent.md`). A blocking wait can therefore end at the proxy while a default 120-second attempt is still valid. Noted for that deployment (#834 Question 12); the default is not changed here.
 - Device must enter matching challenge code before approval
-- Invalid challenge on device marks attempt as INVALID
+- Invalid challenge on device marks attempt as INVALID (only after a valid device signature, #912); `/passwordless-wait` then returns 400 `challenge-mismatch`. The detail never carries digits (#1465 security review)
 
 ---
 

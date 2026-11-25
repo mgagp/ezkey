@@ -5,7 +5,7 @@
     "no-enrollment": "Aucun appareil enrôlé n'est disponible pour ce compte.",
     "auth-expired": "La tentative d'authentification a expiré. Veuillez réessayer.",
     "auth-rejected": "L'authentification a été refusée sur votre appareil.",
-    "invalid-signature": "La signature de l'appareil n'a pas pu être vérifiée.",
+    "challenge-mismatch": "Le code saisi sur votre appareil ne correspondait pas. Sélectionnez Réessayer et saisissez le code affiché à l'écran.",
     "auth-timeout": "Aucune réponse de votre appareil dans les délais. Veuillez réessayer."
   },
   "admin": {
