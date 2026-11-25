@@ -130,7 +130,8 @@ INTRODUCED → ENABLED → PRIMARY → ENABLED → DISABLED
      `TinkKeyManager` logs it at ERROR, discards staging and reloads the same way, then throws
      `IOException`, never `KeysetCasConflictException`. `POST /rotate` answers 500 with a
      `REENCRYPTION_FAILED` / `ERROR` audit row (not 409 "Retry is safe"); the scheduled jobs keep
-     their ERROR path (#1506)
+     their ERROR log and audit row, and promotion rolls its tick back quietly instead of letting
+     the exception escape the scheduler (#1506)
 
 5. **Database metadata synchronization** (same outer transaction as the blob flush when using
    `KeyRotationService.introduceNewKey` / promote paths)

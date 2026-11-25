@@ -336,7 +336,11 @@ public class KeyRotationService {
                       .toJson())
               .errorMessage(e.getMessage())
               .build());
-      throw new RuntimeException("Failed to promote key in Tink keyset", e);
+      // The keyset write failed: roll the scheduled transaction back quietly (the audit row above
+      // is written in its own transaction) and let checkAndPromotePendingKeys log one ERROR,
+      // instead of an uncaught exception escaping the scheduler every tick (#1506).
+      markCurrentTransactionRollbackOnly();
+      throw new IllegalStateException("Failed to promote key in Tink keyset", e);
     }
 
     // STEP 2: Demote all current PRIMARY keys to ENABLED in database
@@ -486,10 +490,10 @@ public class KeyRotationService {
   }
 
   /**
-   * True when a keyset CAS failure is an ordinary lost race (a peer committed first), as opposed to
-   * a persistence failure that {@code TinkKeyManager} also wraps as {@link
-   * KeysetCasConflictException} (database outage, missing master AEAD...), which must stay an
-   * operational failure (#1018).
+   * True when a keyset CAS failure is an ordinary lost race (a peer committed first). Since #1506
+   * {@code TinkKeyManager} raises {@link KeysetCasConflictException} only for that case and reports
+   * other persistence failures as {@code IOException}; this check stays as a guard so a future
+   * wrapper of another cause keeps the ERROR path (#1018).
    */
   private static boolean isLostCasRace(KeysetCasConflictException e) {
     return e.getCause() instanceof OptimisticLockingFailureException;
@@ -588,7 +592,9 @@ public class KeyRotationService {
    * <p><b>Transaction boundary:</b> this public overload is the Admin API proxy entry. It delegates
    * to {@link #introduceNewKey(String, boolean)} on {@code this}, so the two-arg annotation does
    * not apply on this path. When {@link #checkAndRotate()} calls this overload on {@code this},
-   * both annotations are unused and the scheduler transaction is shared.
+   * both annotations are unused and the scheduler transaction is shared. {@code rollbackFor =
+   * Exception.class}: a keyset persist {@code IOException} rolls back and reaches the caller as
+   * itself, not as {@code UnexpectedRollbackException} (#1506).
    *
    * @param createdBy identifier of who/what triggered the rotation (SYSTEM or admin username)
    * @return the new key ID (will be PRIMARY after sync window expires)
@@ -596,7 +602,7 @@ public class KeyRotationService {
    * @throws PendingEncryptionKeyExistsException if a PENDING key already exists (default workflow)
    * @throws Exception if rotation fails
    */
-  @Transactional
+  @Transactional(rollbackFor = Exception.class)
   public long introduceNewKey(String createdBy) throws GeneralSecurityException, IOException {
     return introduceNewKey(createdBy, false);
   }
@@ -613,7 +619,7 @@ public class KeyRotationService {
    *     PENDING key already exists
    * @throws Exception if rotation fails
    */
-  @Transactional
+  @Transactional(rollbackFor = Exception.class)
   public long introduceNewKey(String createdBy, boolean immediatePromotion)
       throws GeneralSecurityException, IOException {
     if (!isRotationEnabled()) {
