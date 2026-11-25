@@ -104,8 +104,7 @@ class GlobalExceptionHandlerLoggingTest {
     ServletWebRequest request = new ServletWebRequest(httpRequest);
 
     handler.handleNoHandlerFoundException(
-        new NoHandlerFoundException(
-            "GE\r\nT", "/missing\r\ninjected\u001B[31m", new HttpHeaders()),
+        new NoHandlerFoundException("GE\r\nT", "/missing\r\ninjected\u001B[31m", new HttpHeaders()),
         request);
 
     String joined = joinedMessages();
