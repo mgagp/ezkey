@@ -315,3 +315,13 @@ Append-only residual for **weekday light** `dependabot-curated` passes.
   - #1480: `./scripts/build-docker.sh --check-only` green; CI `backend`, `ha-smoke`, `ci-gate` green. Isolated stack (separate compose project and ports): Admin, Auth, and Integration `/api-docs` identical to the committed specs (0 lines), so no client regeneration. Swagger UI 200 on all three
   - Not run: Rest Assured functional suite and Playwright
 - Bot commits left the `pull_request` runs `action_required`; merging `main` into each branch and pushing started attributed CI without a run approval
+
+## 2026-11-25
+
+Weekday light pass (Hygiene pass), 09:15 ET. Queue: 2 Dependabot PRs open. Concurrency check: last merge on `main` at 20:50 ET the day before (#1507), no agent on these PRs.
+
+- Merged (squash):
+  - #1502 `i18next` 27.2.3 (mobile-minor-patch, T1) `54c82e28`, by the repository auto-merge at 09:44 ET.
+- Unblocked: auto-merge had been armed since 20:05 ET the day before with CI green, but the PR stayed `blocked` because it was 5 commits behind `main`. This pass ran update-branch, CI reran green, and auto-merge fired.
+- Validation: full CI on the updated head `b4538be8` (mobile js-validate, android-jvm-unit-tests, android-16kb-alignment, ios-xctest, ci-gate) green. No phone smoke (tracked, not blocking, #627 pattern).
+- Held: #1415 mobile-rn-core (`deferred:rn-upgrade`, skipped by the light pass).
