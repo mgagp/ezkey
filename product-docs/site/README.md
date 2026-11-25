@@ -27,6 +27,9 @@ Publication boundary:
 - Public docs may mention source-project hooks as context, but they must not depend on those
   surfaces as live public links.
 - The build audits public Markdown links and fails if a published document escapes that boundary.
+  CI runs this build (job `product-docs` in `ci.yml`) on any `product-docs/**` change (#1402).
+  To point a published document at a delivery artifact, use an absolute GitHub URL
+  (`https://github.com/mgagp/ezkey/blob/main/product-docs/global/...`), as the methodology README does.
 
 The build also produces a generated **download pack** (reference copy + workspace starter) under
 `product-docs/site/.generated/downloads/` during preparation and `product-docs/site/dist/downloads/`
