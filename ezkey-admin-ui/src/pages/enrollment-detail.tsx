@@ -1375,25 +1375,27 @@ export default function EnrollmentDetailPage() {
               <p className="text-xs text-error">{t('validation.invalidPhone')}</p>
             )}
           </div>
-          <label className="flex items-start gap-3 cursor-pointer select-none p-3 border-2 border-fg/20">
-            <input
-              type="checkbox"
-              className="mt-0.5 size-4 accent-accent"
-              checked={editChallenge}
-              onChange={(e) => setEditChallenge(e.target.checked)}
-              aria-describedby="edit-challenge-help"
-            />
-            <span>
-              <span className="block text-sm font-bold">{t('detail.editChallengeRequired')}</span>
-              <span
-                id="edit-challenge-help"
-                data-testid="enrollment-challenge-help"
-                className="block text-xs text-fg-muted mt-0.5 leading-relaxed"
-              >
-                {t('create.challengeRequiredHelp')}
-              </span>
-            </span>
-          </label>
+          <div className="p-3 border-2 border-fg/20">
+            <label className="flex items-start gap-3 cursor-pointer select-none">
+              <input
+                id="edit-challenge"
+                type="checkbox"
+                className="mt-0.5 size-4 accent-accent"
+                checked={editChallenge}
+                onChange={(e) => setEditChallenge(e.target.checked)}
+                aria-describedby="edit-challenge-help"
+              />
+              <span className="text-sm font-bold">{t('detail.editChallengeRequired')}</span>
+            </label>
+            {/* Outside the label: reading or selecting the help must not flip the setting. */}
+            <p
+              id="edit-challenge-help"
+              data-testid="enrollment-challenge-help"
+              className="pl-7 text-xs text-fg-muted mt-0.5 leading-relaxed"
+            >
+              {t('create.challengeRequiredHelp')}
+            </p>
+          </div>
           <div className="space-y-1.5">
             <Label htmlFor="edit-expires">{t('detail.editExpiresAt')}</Label>
             <p className="text-xs text-fg-muted">{t('detail.editExpiresHint')}</p>

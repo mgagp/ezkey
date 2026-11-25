@@ -33,10 +33,12 @@ const copy = {
   en: {
     help: 'Ezkey enforces it on every authentication for this enrollment, whatever the integration requests. When off, the integration can still request one.',
     create: /new enrollment|create enrollment/i,
+    editLabel: 'Require challenge on each authentication',
   },
   fr: {
     help: "Ezkey l'impose à chaque authentification de cet enrôlement, quoi que demande l'intégration. Désactivé, l'intégration peut quand même en demander un.",
-    create: /nouvel enrôlement|créer un enrôlement|nouvel/i,
+    create: /nouvel enrôlement|créer un enrôlement/i,
+    editLabel: 'Exiger un défi à chaque authentification',
   },
 } satisfies Record<WalkLocale, unknown>;
 
@@ -75,7 +77,9 @@ for (const locale of ['en', 'fr'] as const) {
     await check(1, 'create: help under the checkbox, tied to it, no product name or length', async () => {
       await describedHelp(createBox, createHelp);
       const [box, help] = [await createBox.boundingBox(), await createHelp.boundingBox()];
-      expect.soft(box && help && help.y > box.y).toBe(true);
+      expect.soft(box, 'checkbox box').not.toBeNull();
+      expect.soft(help, 'help box').not.toBeNull();
+      if (box && help) expect.soft(help.y, 'help starts below the checkbox').toBeGreaterThanOrEqual(box.y + box.height);
     });
     await check(2, 'create: label still toggles the checkbox', async () => {
       await expect.soft(createBox).not.toBeChecked();
@@ -90,15 +94,17 @@ for (const locale of ['en', 'fr'] as const) {
     await page.getByTestId('enrollment-edit-metadata').click();
     const editDialog = page.getByRole('dialog');
     await expect(editDialog).toBeVisible();
-    const editBox = editDialog.locator('input[type="checkbox"][aria-describedby="edit-challenge-help"]');
+    const editBox = editDialog.locator('#edit-challenge');
     const editHelp = editDialog.getByTestId('enrollment-challenge-help');
 
     await check(3, 'edit: same help under the checkbox, tied to it', async () => {
       await expect.soft(editBox).toBeChecked();
       await describedHelp(editBox, editHelp);
     });
-    await check(4, 'edit: clicking the help text toggles the checkbox (one label)', async () => {
+    await check(4, 'edit: clicking the help leaves the setting alone; the label toggles it', async () => {
       await editHelp.click();
+      await expect.soft(editBox).toBeChecked();
+      await editDialog.getByText(T.editLabel, { exact: true }).click();
       await expect.soft(editBox).not.toBeChecked();
     });
     await shot('02-edit');
