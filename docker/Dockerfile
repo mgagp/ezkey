@@ -35,7 +35,7 @@ COPY ezkey-connectors/ezkey-connector-smtp/pom.xml ./ezkey-connectors/ezkey-conn
 # BuildKit cache mount: id=maven-cache is a *cache ID* inside BuildKit, not the Docker named volume.
 # Using BuildKit cache mount - cache persists between builds and is shared across parallel builds
 # This step downloads dependencies and caches them for subsequent builds
-# Using -pl to explicitly list modules (excludes ezkey-tests which uses Karate/TestContainers)
+# Using -pl to explicitly list modules (excludes ezkey-tests: functional suite run against the Docker stack, not part of the image)
 RUN --mount=type=cache,target=/root/.m2,id=maven-cache,sharing=shared \
     echo "📦 Downloading Maven dependencies (using BuildKit cache)..." && \
     mvn-proxy dependency:go-offline -Pno-checkstyle -B \
@@ -65,7 +65,7 @@ COPY THIRD-PARTY.txt ./THIRD-PARTY.txt
 # Build all modules in one go (this creates all JARs)
 # Using BuildKit cache mount - cache persists between builds and is shared across parallel builds
 # Dependencies from previous step are reused from cache, significantly speeding up builds
-# Using -pl to explicitly list modules to build (excludes ezkey-tests which uses Karate/TestContainers)
+# Using -pl to explicitly list modules to build (excludes ezkey-tests: functional suite run against the Docker stack, not part of the image)
 # -am (also-make) ensures dependencies are built, -amd (also-make-dependents) not needed here
 RUN --mount=type=cache,target=/root/.m2,id=maven-cache,sharing=shared \
     echo "🔨 Building all modules (using cached dependencies)..." && \
