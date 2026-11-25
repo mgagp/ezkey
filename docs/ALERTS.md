@@ -19,6 +19,9 @@ re-using the immutable audit chain as an alert queue.
 - Alert lifecycle actions emit audit log entries (`ALERT_RAISED` on first creation, `ALERT_RESOLVED`
   on resolution) so the audit chain still records what happened — but the alert itself is **not** an
   audit row.
+- `ALERT_RAISED` and `ALERT_RESOLVED` rows carry no `tenant_id`, even when a tenant event raised the
+  alert (for example `AUTH_ATTEMPT_REJECTED`): alerts are an instance signal for Global Admins, so
+  these rows stay out of the Tenant Admin audit view (decision, #1477).
 
 ## Storage
 

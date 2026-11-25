@@ -9037,8 +9037,11 @@
             "example": 123456
           },
           "recoveryCodes": {
-            "type": "array",
-            "description": "Recovery codes are intentionally omitted from this unauthenticated activation response and must be revealed later through an authenticated recovery-code management flow",
+            "type": [
+              "array",
+              "null"
+            ],
+            "description": "Always null: no recovery codes exist at activation. The administrator issues the initial set after the first sign-in (POST /api/v1/admins/{id}/recovery-codes/issue-initial) (#1477)",
             "items": {
               "type": "string"
             }
@@ -11141,42 +11144,42 @@
   },
   "x-tagGroups": [
     {
+      "name": "Getting started",
       "tags": [
         "Public",
         "Admin Authentication"
-      ],
-      "name": "Getting started"
+      ]
     },
     {
+      "name": "Tenant and integration setup",
       "tags": [
         "Tenants",
         "Integrations",
         "Enrollments",
         "API Keys"
-      ],
-      "name": "Tenant and integration setup"
+      ]
     },
     {
+      "name": "MFA operations",
       "tags": [
         "Auth Attempts",
         "Admin Enrollment Management"
-      ],
-      "name": "MFA operations"
+      ]
     },
     {
+      "name": "Administration",
       "tags": [
         "Administrator Provisioning"
-      ],
-      "name": "Administration"
+      ]
     },
     {
+      "name": "Platform operations",
       "tags": [
         "Audit Logs",
         "Encryption Keys",
         "Alerts",
         "Dashboard"
-      ],
-      "name": "Platform operations"
+      ]
     }
   ]
 }
