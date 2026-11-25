@@ -7490,6 +7490,7 @@
             "type": "string",
             "description": "Human-readable name for the enrollment",
             "example": "John's iPhone",
+            "maxLength": 64,
             "minLength": 1
           },
           "authAttemptChallengeRequired": {
@@ -7507,7 +7508,9 @@
           },
           "userIdentifier": {
             "type": "string",
-            "description": "Optional user identifier from the integrating application"
+            "description": "Optional user identifier from the integrating application",
+            "maxLength": 255,
+            "minLength": 0
           },
           "expiresAt": {
             "type": "string",
@@ -8909,7 +8912,7 @@
             "type": "string",
             "description": "Human-readable name for the enrollment",
             "example": "John's iPhone",
-            "maxLength": 255,
+            "maxLength": 64,
             "minLength": 0
           },
           "contactEmail": {
@@ -11040,42 +11043,42 @@
   },
   "x-tagGroups": [
     {
-      "name": "Getting started",
       "tags": [
         "Public",
         "Admin Authentication"
-      ]
+      ],
+      "name": "Getting started"
     },
     {
-      "name": "Tenant and integration setup",
       "tags": [
         "Tenants",
         "Integrations",
         "Enrollments",
         "API Keys"
-      ]
+      ],
+      "name": "Tenant and integration setup"
     },
     {
-      "name": "MFA operations",
       "tags": [
         "Auth Attempts",
         "Admin Enrollment Management"
-      ]
+      ],
+      "name": "MFA operations"
     },
     {
-      "name": "Administration",
       "tags": [
         "Administrator Provisioning"
-      ]
+      ],
+      "name": "Administration"
     },
     {
-      "name": "Platform operations",
       "tags": [
         "Audit Logs",
         "Encryption Keys",
         "Alerts",
         "Dashboard"
-      ]
+      ],
+      "name": "Platform operations"
     }
   ]
 }

@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.time.OffsetDateTime;
 
 /**
@@ -41,11 +42,13 @@ import java.time.OffsetDateTime;
  * <p><b>License:</b> MIT
  *
  * @param integrationId The integration ID to which this enrollment belongs (required)
- * @param name Human-readable name for the enrollment (e.g., "John's iPhone")
+ * @param name Human-readable name for the enrollment (e.g., "John's iPhone"); 1 to 64 characters,
+ *     the {@code enrollment_name} column width
  * @param authAttemptChallengeRequired Whether authentication attempts require challenge validation
  * @param contactEmail Optional contact email for the end-user
  * @param contactPhoneNumber Optional contact phone number for the end-user
- * @param userIdentifier Optional user identifier from the integrating application
+ * @param userIdentifier Optional user identifier from the integrating application; at most 255
+ *     characters, the {@code user_identifier} column width
  * @param expiresAt Optional invitation expiry for the pending bind/verify window; must be in the
  *     future when provided
  * @author Ezkey contributors
@@ -72,9 +75,11 @@ public record EnrollmentCreateRequestDto(
     @Schema(
             description = "Human-readable name for the enrollment",
             example = "John's iPhone",
+            maxLength = 64,
             requiredMode = RequiredMode.REQUIRED)
         @NotNull(message = "Enrollment name is required")
         @NotBlank(message = "Enrollment name cannot be blank")
+        @Size(min = 1, max = 64, message = "Enrollment name must be 1 to 64 characters")
         String name,
     /**
      * Indicates whether authentication attempts require challenge validation. When true, auth
@@ -99,7 +104,10 @@ public record EnrollmentCreateRequestDto(
      * Optional reference to the integrating app's user (username, user_id). Unique per integration
      * for lookup. Enables future auth attempt creation by userIdentifier.
      */
-    @Schema(description = "Optional user identifier from the integrating application")
+    @Schema(
+            description = "Optional user identifier from the integrating application",
+            maxLength = 255)
+        @Size(max = 255, message = "User identifier must not exceed 255 characters")
         String userIdentifier,
     /**
      * Optional expiration for the pending enrollment invitation (bind/verify window only). When

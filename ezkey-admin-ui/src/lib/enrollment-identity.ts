@@ -10,8 +10,8 @@ import { z } from 'zod';
  * can target an enrollment by its enrollment ID or by this User ID; only the
  * second needs it.
  *
- * The update DTO allows a 255-character name, and create validates neither length.
- * The UI follows the columns. An empty User ID stays optional.
+ * The Admin API validates the same widths on create and update (#1457).
+ * An empty User ID stays optional.
  */
 
 /** Device label column width. */

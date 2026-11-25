@@ -1,0 +1,39 @@
+meta {
+  name: create - name too long
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/enrollments
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "integrationId": {{integrationId}},
+      "name": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn",
+      "authAttemptChallengeRequired": false
+  }
+}
+
+script:post-response {
+  test("Status code is 400", function () {
+      expect(res.getStatus()).to.equal(400);
+  });
+
+  test("Validation problem names the name field", function () {
+      var jsonData = res.getBody();
+      expect(jsonData.type).to.equal("https://ezkey.io/problems/admin/validation-failed");
+      expect(jsonData.detail).to.equal("name: Enrollment name must be 1 to 64 characters");
+  });
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Sends a 65-character `name`. The `enrollment_name` column holds 64, so bean validation rejects the request with a `validation-failed` 400 before any write (#1457). Nothing is created.
+}

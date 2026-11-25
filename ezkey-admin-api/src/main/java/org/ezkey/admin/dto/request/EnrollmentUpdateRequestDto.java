@@ -45,7 +45,8 @@ import java.time.OffsetDateTime;
  *
  * @param version optimistic lock version from GET response (optional; when provided, enforces
  *     concurrency check)
- * @param enrollmentName new enrollment name (must be unique per integration for VERIFIED status)
+ * @param enrollmentName new enrollment name, at most 64 characters (must be unique per integration
+ *     for VERIFIED status)
  * @param contactEmail new contact email for the end-user
  * @param contactPhoneNumber new contact phone number for the end-user
  * @param expiresAt new expiration timestamp (must be in future; null = no expiration)
@@ -70,8 +71,9 @@ public record EnrollmentUpdateRequestDto(
     @Schema(
             description = "Human-readable name for the enrollment",
             example = "John's iPhone",
+            maxLength = 64,
             requiredMode = RequiredMode.NOT_REQUIRED)
-        @Size(max = 255, message = "Enrollment name must not exceed 255 characters")
+        @Size(max = 64, message = "Enrollment name must not exceed 64 characters")
         String enrollmentName,
     @Schema(
             description =
@@ -101,6 +103,7 @@ public record EnrollmentUpdateRequestDto(
         Boolean authAttemptChallengeRequired,
     @Schema(
             description = "Optional user identifier from the integrating application",
+            maxLength = 255,
             requiredMode = RequiredMode.NOT_REQUIRED)
         @Size(max = 255, message = "User identifier must not exceed 255 characters")
         String userIdentifier,
