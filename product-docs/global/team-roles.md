@@ -1,13 +1,13 @@
 # Verification functions
 
-The project names **functions**, not personas. Each function is a check that an issue states as an
+The project names **functions** first. Each function is a check that an issue states as an
 acceptance line and a PR backs with proof (a command, a skill run, a recorded review). It is played
 by the session doing the work, by an independent Claude Code pass, or by **Marc**, who owns every
 decision and every merge. How Claude Code runs them: [`CLAUDE.md`](../../CLAUDE.md) § *Verification
 functions in Claude Code*.
 
-| Function | What it checks | How it runs | Former name |
-|----------|----------------|-------------|-------------|
+| Function | What it checks | How it runs | Grokbot alias |
+|----------|----------------|-------------|---------------|
 | Engineering review | Structure, craft, uniform practice; for a mode change, the width (process → API → UI) | `/code-review` on the diff, independent of the author | Patrick |
 | Security review | Trust boundaries, honesty of claims against `SECURITY_POSTURE`, fail-open vs fail-closed, secrets and logs | `/security-review` or a read-only sub-agent with a written mandate; accepted findings have a reproduction | Christophe |
 | Interface gate | Every touched human surface: keep / adapt / hide, no dead end, nothing duplicated from another surface | A numbered checklist with "must NOT" rows, written before the PR is called ready | Julie |
@@ -21,8 +21,10 @@ functions in Claude Code*.
 | Coordination | Routing and framing across work items | The project coordinator session | Mathieu, K |
 | Communication, editorial | Public site, video, articles; conservative claims | Outside code work | Audrey, Clémentine |
 
-Older records (issues, closed PRs, campaign notes, walk records, visions) use the former names: read
-them as the function in the same row and leave them as written. New text uses the function only
-(Marc, 2026-11-24: the personas were Cursor / Grokbot bots and no longer fit the project).
+**Naming rule** (Marc, 2026-11-24): new issues, PRs, comments and docs lead with the function
+("security review needed: …"). Grokbot keeps its named bots for a few more months, so add the alias
+in parentheses only where a named bot must act on the item ("security review (Christophe)"), at most
+once per item. Older records, lab papers included, stay as written: read a name as the function in
+its row. The aim is a neutral reflex that still routes to the right bot.
 
 See also [`AGENTS.md`](../../AGENTS.md) § *Rules*.

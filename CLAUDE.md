@@ -15,9 +15,9 @@ comment so the next agent finds it. First used on #1455.
 
 ## Verification functions in Claude Code
 
-[`product-docs/global/team-roles.md`](product-docs/global/team-roles.md) lists the functions (and
-the former persona names older records use). New issues and PRs name the function, never a persona.
-In Claude Code they run like this:
+[`product-docs/global/team-roles.md`](product-docs/global/team-roles.md) lists the functions and
+their Grokbot aliases. Lead with the function; follow its naming rule. In Claude Code they run like
+this:
 
 - **Engineering review:** the `/code-review` skill on the PR diff. When the author is this session,
   that run is the independent pass; the author does not self-approve.
