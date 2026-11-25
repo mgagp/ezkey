@@ -223,7 +223,7 @@ Canon overlay: [`.env.ezkey-online.example`](../../experimental-hybrid/lightsail
 
 **Access log scope and RCAs (#832, Marc 2026-11-25):** the proxy access log stays limited to admin auth (`/api/v1/admin/auth/*`, the #833 C1 block above). An RCA on that path relies on it; any other path still has no proxy access log, so say so in the RCA. Wider logging and the rest of #832 phase 2 (HSTS, timeouts, health checks, Authenticated Origin Pulls, metrics) wait for a decision with Cloudflare.
 
-**Caddy image and CI (#832):** the caddy service is pinned by `tag@sha256` (same reference as the Admin UI runtime image; Dependabot bumps both). CI job `lightsail` runs [`check-caddyfiles.sh`](../../scripts/ops/check-caddyfiles.sh) (`caddy fmt` + `caddy validate`, throwaway certs) on every repo Caddyfile with that exact image. A digest change reaches the host only on a deliberate upgrade (`docker compose pull caddy`, then recreate caddy) with the operator's go.
+**Caddy image and CI (#832):** the caddy service is pinned by `tag@sha256` to the image the host runs (v2.11.4, the digest recorded in [`DEPLOYED.md`](community/DEPLOYED.md)); Dependabot proposes digest bumps. CI job `lightsail` runs [`check-caddyfiles.sh`](../../scripts/ops/check-caddyfiles.sh) (`caddy fmt` + `caddy validate`, throwaway certs) on every repo Caddyfile with that exact image. Merging a digest bump changes the host on the next compose sync (`--sync-operator-files`, rolling upgrade): treat it as a Caddy upgrade, with the operator's go, then rerun `tls-pq-probe.sh` and update `DEPLOYED.md`.
 
 ---
 

@@ -40,19 +40,23 @@ fi
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/ezkey-caddyfiles.XXXXXX")"
 trap 'rm -rf "${WORK}"' EXIT
 mkdir -p "${WORK}/certs"
-openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes -days 1 \
+if ! openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
   -subj /CN=caddy-validate.invalid \
-  -keyout "${WORK}/certs/origin-key.pem" -out "${WORK}/certs/origin.pem" 2>/dev/null
+  -keyout "${WORK}/certs/origin-key.pem" -out "${WORK}/certs/origin.pem" >"${WORK}/openssl.err" 2>&1; then
+  echo "FAIL: could not create throwaway certs with openssl" >&2
+  cat "${WORK}/openssl.err" >&2
+  exit 1
+fi
 chmod 0644 "${WORK}/certs/"*.pem
 
 echo "Pulling ${CADDY_IMAGE}..."
 pulled=0
-for attempt in 1 2 3 4; do
+for attempt in 1 2 3; do
   if docker pull -q "${CADDY_IMAGE}" >/dev/null; then
     pulled=1
     break
   fi
-  sleep $((attempt * 10))
+  [[ "${attempt}" -lt 3 ]] && sleep $((attempt * 10))
 done
 if [[ "${pulled}" -ne 1 ]]; then
   echo "FAIL: could not pull ${CADDY_IMAGE}" >&2
@@ -72,7 +76,7 @@ for rel in "${FILES[@]}"; do
   if ! docker run --rm -v "${f}:/etc/caddy/Caddyfile:ro" "${CADDY_IMAGE}" \
     caddy fmt --diff /etc/caddy/Caddyfile >"${WORK}/fmt.out" 2>&1; then
     echo "FAIL fmt: ${rel} (fix with: caddy fmt --overwrite)" >&2
-    grep -E '^[-+] ' "${WORK}/fmt.out" >&2 || cat "${WORK}/fmt.out" >&2
+    grep -E '^[-+]' "${WORK}/fmt.out" >&2 || cat "${WORK}/fmt.out" >&2
     fail=1
   fi
   echo "→ caddy validate ${rel}"

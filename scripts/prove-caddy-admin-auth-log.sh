@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prove Caddy 2.10.x admin-api access-log posture for #833 C1:
+# Prove the Caddy admin-api access-log posture for #833 C1 (production image):
 # - caddy validate on the real Caddyfile.ezkey-online (with temp Origin certs)
 # - runtime proof derived from that file's log + log_skip block (not a divergent inline copy)
 # - no token/CSRF/cookie/waiterSecret/code in logs; non-auth /api/v1/admin/tenants skipped
@@ -8,7 +8,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CADDYFILE_SRC="${ROOT}/experimental-hybrid/lightsail/Caddyfile.ezkey-online"
 WORKDIR="${TMPDIR:-/tmp}/ezkey-caddy-auth-log-proof-$$"
-IMAGE="${CADDY_IMAGE:-caddy:2.10.2-alpine}"
+# Default: the digest-pinned caddy image of the production compose (#832).
+PROD_CADDY_IMAGE="$(sed -n 's/^[[:space:]]*image:[[:space:]]*\(caddy:[^[:space:]]*\).*/\1/p' \
+  "${ROOT}/experimental-hybrid/lightsail/docker-compose.yml" | head -n 1)"
+IMAGE="${CADDY_IMAGE:-${PROD_CADDY_IMAGE}}"
 CONTAINER="ezkey-caddy-auth-log-proof-$$"
 ARTIFACT_DIR="${ARTIFACT_DIR:-/opt/cursor/artifacts}"
 LOG_CAPTURE="${ARTIFACT_DIR}/caddy-admin-auth-log-proof.log"
