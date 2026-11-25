@@ -37,4 +37,24 @@ public final class AuthAttemptAuditConstants {
    */
   public static final String AUTH_ATTEMPT_RESPOND_SIGNATURE_REJECTED =
       "auth_attempt_respond_signature_rejected";
+
+  /** Respond processed with result {@code APPROVED} (#1314). */
+  public static final String AUTH_ATTEMPT_APPROVED = "auth_attempt_approved";
+
+  /** Respond processed with result {@code DENIED} (#1314). */
+  public static final String AUTH_ATTEMPT_DENIED = "auth_attempt_denied";
+
+  /**
+   * Respond processed with result {@code FAILED}: accept after a valid device signature, but the
+   * challenge response was missing or did not match; the attempt is now {@code INVALID} (#1314).
+   * Event details must never include the entered code.
+   */
+  public static final String AUTH_ATTEMPT_CHALLENGE_FAILED = "auth_attempt_challenge_failed";
+
+  /**
+   * Respond returned a result the audit mapping does not expect ({@code EXPIRED} or none). Not
+   * reachable today: wall-clock expiry throws before a result is built (#895, #1314).
+   */
+  public static final String AUTH_ATTEMPT_RESPOND_UNEXPECTED_RESULT =
+      "auth_attempt_respond_unexpected_result";
 }
