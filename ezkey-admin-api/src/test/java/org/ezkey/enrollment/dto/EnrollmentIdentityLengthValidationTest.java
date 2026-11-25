@@ -97,4 +97,28 @@ class EnrollmentIdentityLengthValidationTest {
   void updateRejectsUserIdentifierOver255() {
     assertThat(invalidFields(update(null, "u".repeat(256)))).containsExactly("userIdentifier");
   }
+
+  @Test
+  @DisplayName("create: surrounding whitespace is trimmed before the bound is checked")
+  void createTrimsBeforeChecking() {
+    EnrollmentCreateRequestDto dto = create(" " + "n".repeat(64) + "\n", " alice ");
+    assertThat(invalidFields(dto)).isEmpty();
+    assertThat(dto.name()).hasSize(64);
+    assertThat(dto.userIdentifier()).isEqualTo("alice");
+  }
+
+  @Test
+  @DisplayName("update: surrounding whitespace is trimmed before the bound is checked")
+  void updateTrimsBeforeChecking() {
+    EnrollmentUpdateRequestDto dto = update("n".repeat(64) + " ", null);
+    assertThat(invalidFields(dto)).isEmpty();
+    assertThat(dto.enrollmentName()).hasSize(64);
+  }
+
+  @Test
+  @DisplayName("update: a blank Name is rejected; an absent Name is not")
+  void updateRejectsBlankName() {
+    assertThat(invalidFields(update("   ", null))).containsExactly("enrollmentName");
+    assertThat(invalidFields(update(null, null))).isEmpty();
+  }
 }

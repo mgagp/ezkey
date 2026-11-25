@@ -102,8 +102,7 @@ class EnrollmentIdentityLengthWebMvcTest {
                 .with(tenantAdmin()))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.type").value(VALIDATION_FAILED))
-        .andExpect(
-            jsonPath("$.detail").value("name: Enrollment name must be 1 to 64 characters"));
+        .andExpect(jsonPath("$.detail").value("name: Enrollment name must be 1 to 64 characters"));
     verifyNoInteractions(enrollmentService);
   }
 
@@ -140,7 +139,7 @@ class EnrollmentIdentityLengthWebMvcTest {
         .andExpect(jsonPath("$.type").value(VALIDATION_FAILED))
         .andExpect(
             jsonPath("$.detail")
-                .value("enrollmentName: Enrollment name must not exceed 64 characters"));
+                .value("enrollmentName: Enrollment name must be 1 to 64 characters"));
     verifyNoInteractions(enrollmentUpdateService);
   }
 }

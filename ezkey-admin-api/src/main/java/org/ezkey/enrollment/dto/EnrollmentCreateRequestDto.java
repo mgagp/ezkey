@@ -119,4 +119,14 @@ public record EnrollmentCreateRequestDto(
                     + " future when set. Omit to use ezkey.enrollment.pending-expiration-days.",
             example = "2026-12-31T23:59:59Z")
         @Future(message = "expiresAt must be in the future")
-        OffsetDateTime expiresAt) {}
+        OffsetDateTime expiresAt) {
+
+  /**
+   * Trims {@code name} and {@code userIdentifier} before validation, so the length bounds apply to
+   * the value that is stored (#1457).
+   */
+  public EnrollmentCreateRequestDto {
+    name = name != null ? name.trim() : null;
+    userIdentifier = userIdentifier != null ? userIdentifier.trim() : null;
+  }
+}

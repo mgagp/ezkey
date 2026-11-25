@@ -45,8 +45,8 @@ import java.time.OffsetDateTime;
  *
  * @param version optimistic lock version from GET response (optional; when provided, enforces
  *     concurrency check)
- * @param enrollmentName new enrollment name, at most 64 characters (must be unique per integration
- *     for VERIFIED status)
+ * @param enrollmentName new enrollment name, 1 to 64 characters after trimming (must be unique per
+ *     integration for VERIFIED status)
  * @param contactEmail new contact email for the end-user
  * @param contactPhoneNumber new contact phone number for the end-user
  * @param expiresAt new expiration timestamp (must be in future; null = no expiration)
@@ -73,7 +73,7 @@ public record EnrollmentUpdateRequestDto(
             example = "John's iPhone",
             maxLength = 64,
             requiredMode = RequiredMode.NOT_REQUIRED)
-        @Size(max = 64, message = "Enrollment name must not exceed 64 characters")
+        @Size(min = 1, max = 64, message = "Enrollment name must be 1 to 64 characters")
         String enrollmentName,
     @Schema(
             description =
@@ -118,4 +118,14 @@ public record EnrollmentUpdateRequestDto(
                 "When true, clears invitation expiry (expiresAt). Ignored if expiresAt is set to a"
                     + " non-null instant in the same request.",
             requiredMode = RequiredMode.NOT_REQUIRED)
-        Boolean clearExpiresAt) {}
+        Boolean clearExpiresAt) {
+
+  /**
+   * Trims {@code enrollmentName} and {@code userIdentifier} before validation, so the length bounds
+   * and the name uniqueness check apply to the value that is stored (#1457).
+   */
+  public EnrollmentUpdateRequestDto {
+    enrollmentName = enrollmentName != null ? enrollmentName.trim() : null;
+    userIdentifier = userIdentifier != null ? userIdentifier.trim() : null;
+  }
+}

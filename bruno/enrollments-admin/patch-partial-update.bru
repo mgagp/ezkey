@@ -51,9 +51,9 @@ docs {
   
   **Body fields (all optional except include only what you change):**
   - `version`: from GET — optimistic locking (409 if stale)
-  - `enrollmentName` (at most 64 characters), `contactEmail`, `contactPhoneNumber`, `expiresAt` (future ISO-8601; invitation window semantics), `authAttemptChallengeRequired`, `userIdentifier` (at most 255 characters)
+  - `enrollmentName` (1 to 64 characters after trimming), `contactEmail`, `contactPhoneNumber`, `expiresAt` (future ISO-8601; invitation window semantics), `authAttemptChallengeRequired`, `userIdentifier` (at most 255 characters)
 
-  **Lengths (#1457):** a longer `enrollmentName` or `userIdentifier` returns a `validation-failed` 400 that names the field; nothing is written.
+  **Lengths (#1457):** a blank or longer `enrollmentName`, or a longer `userIdentifier`, returns a `validation-failed` 400 that names the field; nothing is written.
   
   **Note:** `expiresAt` in PATCH refers to the pending invitation window, not a separate post-verify lifetime.
   

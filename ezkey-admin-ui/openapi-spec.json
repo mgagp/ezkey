@@ -8913,7 +8913,7 @@
             "description": "Human-readable name for the enrollment",
             "example": "John's iPhone",
             "maxLength": 64,
-            "minLength": 0
+            "minLength": 1
           },
           "contactEmail": {
             "type": "string",
