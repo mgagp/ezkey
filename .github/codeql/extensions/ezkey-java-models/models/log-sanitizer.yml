@@ -3,5 +3,5 @@ extensions:
       pack: codeql/java-all
       extensible: barrierModel
     data:
-      # Return value of LogSanitizer.sanitizeForLog is safe for log sinks (CR/LF neutralized).
+      # Return value of LogSanitizer.sanitizeForLog is safe for log sinks (ISO control, U+2028/U+2029 and format characters neutralized, #951).
       - ["org.ezkey.util", "LogSanitizer", true, "sanitizeForLog", "(String)", "", "ReturnValue", "log-injection", "manual"]
