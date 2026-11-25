@@ -424,7 +424,7 @@ public class EzkeyAppController {
   }
 
   /**
-   * Neutralizes CR/LF and bounds length for a ProblemDetail {@code type} log fragment.
+   * Neutralizes control characters and bounds length for a ProblemDetail {@code type} log fragment.
    *
    * @param type raw type URI from the server
    * @return sanitized, truncated value safe for a single log line

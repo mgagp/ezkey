@@ -99,9 +99,7 @@ class GlobalExceptionHandlerLoggingTest {
   @Test
   @DisplayName("NoHandlerFound DEBUG neutralizes CR/LF and ESC in method and URL (LogSanitizer)")
   void noHandlerFoundDebugSanitizesMethodAndUrl() {
-    MockHttpServletRequest httpRequest = new MockHttpServletRequest();
-    httpRequest.setRequestURI("/missing\r\ninjected");
-    ServletWebRequest request = new ServletWebRequest(httpRequest);
+    ServletWebRequest request = new ServletWebRequest(new MockHttpServletRequest());
 
     handler.handleNoHandlerFoundException(
         new NoHandlerFoundException("GE\r\nT", "/missing\r\ninjected\u001B[31m", new HttpHeaders()),

@@ -60,6 +60,12 @@ class LogSanitizerTest {
     assertEquals("a_b", LogSanitizer.sanitizeForLog("a" + (char) codePoint + "b"));
   }
 
+  @ParameterizedTest(name = "Format character U+{0}")
+  @ValueSource(ints = {0x200B, 0x200D, 0x200E, 0x202A, 0x202E, 0x2066, 0x2069, 0xFEFF})
+  void sanitizeForLog_replacesBidiAndZeroWidthFormatCharacters(int codePoint) {
+    assertEquals("a_b", LogSanitizer.sanitizeForLog("a" + (char) codePoint + "b"));
+  }
+
   @Test
   void sanitizeForLog_keepsPrintableUnicodeAndSurrogatePairs() {
     String value = "élève café 日本 🔑 user@example.org ~";
