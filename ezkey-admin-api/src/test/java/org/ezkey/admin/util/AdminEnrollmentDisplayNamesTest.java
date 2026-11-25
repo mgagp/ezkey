@@ -11,10 +11,13 @@
 package org.ezkey.admin.util;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
 
 class AdminEnrollmentDisplayNamesTest {
+
+  private static final int MAX = AdminEnrollmentDisplayNames.MAX_ENROLLMENT_NAME_LENGTH;
 
   @Test
   void personDisplayNameJoinsFirstAndLast() {
@@ -54,8 +57,6 @@ class AdminEnrollmentDisplayNamesTest {
     assertThat(name).doesNotContain("MFA");
   }
 
-  private static final int MAX = AdminEnrollmentDisplayNames.MAX_ENROLLMENT_NAME_LENGTH;
-
   @Test
   void personDisplayNameKeepsExactly64Characters() {
     String first = "A".repeat(31);
@@ -88,13 +89,30 @@ class AdminEnrollmentDisplayNamesTest {
   }
 
   @Test
-  void personDisplayNameNeverSplitsSurrogatePair() {
-    // U+1F600 is one character for PostgreSQL VARCHAR, two UTF-16 units in Java.
+  void personDisplayNameCountsUtf16UnitsAndNeverSplitsSurrogatePair() {
+    // U+1F600 is two UTF-16 units: the edit validation (@Size, String.length) must accept the
+    // result.
     String emoji = "\uD83D\uDE00";
     String name =
         AdminEnrollmentDisplayNames.personDisplayName("A".repeat(63) + emoji + "Z", null, "u");
-    assertThat(name).isEqualTo("A".repeat(63) + emoji);
-    assertThat(name.codePointCount(0, name.length())).isEqualTo(MAX);
+    assertThat(name).isEqualTo("A".repeat(63));
+    String fits = AdminEnrollmentDisplayNames.personDisplayName("A".repeat(62) + emoji, null, "u");
+    assertThat(fits).hasSize(MAX).isEqualTo("A".repeat(62) + emoji);
+  }
+
+  @Test
+  void personDisplayNameNeverDropsAnAccentFromItsLetter() {
+    // Decomposed e + U+0301 straddling the limit is one grapheme: it goes whole.
+    String name =
+        AdminEnrollmentDisplayNames.personDisplayName("A".repeat(63) + "e\u0301", null, "u");
+    assertThat(name).isEqualTo("A".repeat(63));
+  }
+
+  @Test
+  void uniqueEnrollmentNameRejectsUsernameThatLeavesNoRoomForTheName() {
+    assertThatThrownBy(
+            () -> AdminEnrollmentDisplayNames.uniqueEnrollmentName("Marie", "u".repeat(61), true))
+        .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test

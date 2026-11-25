@@ -10,6 +10,9 @@
 
 package org.ezkey.admin.util;
 
+import java.text.BreakIterator;
+import java.util.Locale;
+
 /**
  * Builds the authenticator-facing {@code enrollmentName} for Global and Tenant Admin MFA.
  *
@@ -27,7 +30,10 @@ package org.ezkey.admin.util;
  */
 public final class AdminEnrollmentDisplayNames {
 
-  /** Column limit of {@code ezkey_enrollment.enrollment_name}, in characters (code points). */
+  /**
+   * Limit of {@code ezkey_enrollment.enrollment_name} ({@code VARCHAR(64)}), applied as UTF-16
+   * units like the enrollment edit validation.
+   */
   public static final int MAX_ENROLLMENT_NAME_LENGTH = 64;
 
   private AdminEnrollmentDisplayNames() {
@@ -75,6 +81,7 @@ public final class AdminEnrollmentDisplayNames {
    * @param personNameTaken true when a VERIFIED enrollment already uses {@code personDisplayName}
    * @return name to persist on the enrollment, at most {@link #MAX_ENROLLMENT_NAME_LENGTH}
    *     characters
+   * @throws IllegalArgumentException if the suffix alone leaves no room for the person name
    */
   public static String uniqueEnrollmentName(
       String personDisplayName, String username, boolean personNameTaken) {
@@ -87,28 +94,34 @@ public final class AdminEnrollmentDisplayNames {
       return person;
     }
     String suffix = " (" + user + ")";
-    int personBudget = MAX_ENROLLMENT_NAME_LENGTH - codePointLength(suffix);
+    int personBudget = MAX_ENROLLMENT_NAME_LENGTH - suffix.length();
     if (personBudget < 1) {
-      // Unreachable with the 50-character username limit; never emit an over-long value.
-      return truncate(user, MAX_ENROLLMENT_NAME_LENGTH);
+      // Unreachable with the 50-character username limit (V1 VARCHAR(50), API 3-50).
+      throw new IllegalArgumentException("Username too long for an enrollment name suffix");
     }
     return truncate(person, personBudget) + suffix;
   }
 
   /**
-   * Keeps at most {@code maxCodePoints} code points (never splits a surrogate pair), then trims
-   * trailing whitespace left at the cut.
+   * Keeps at most {@code maxChars} UTF-16 units, cut on a grapheme boundary (no split surrogate
+   * pair, accent or emoji sequence), then trims trailing whitespace left at the cut.
+   *
+   * <p>UTF-16 units, not code points: {@code EnrollmentUpdateRequestDto} and the Admin UI count
+   * {@code String.length()}, so a generated name must pass them when sent back unchanged. A value
+   * within 64 UTF-16 units is also within PostgreSQL's 64-character column.
    */
-  private static String truncate(String value, int maxCodePoints) {
-    if (codePointLength(value) <= maxCodePoints) {
+  private static String truncate(String value, int maxChars) {
+    if (value.length() <= maxChars) {
       return value;
     }
-    int end = value.offsetByCodePoints(0, maxCodePoints);
+    BreakIterator graphemes = BreakIterator.getCharacterInstance(Locale.ROOT);
+    graphemes.setText(value);
+    int end = graphemes.preceding(maxChars + 1);
+    if (end <= 0) {
+      // One grapheme longer than the budget: fall back to a surrogate-safe cut.
+      end = Character.isLowSurrogate(value.charAt(maxChars)) ? maxChars - 1 : maxChars;
+    }
     return value.substring(0, end).stripTrailing();
-  }
-
-  private static int codePointLength(String value) {
-    return value.codePointCount(0, value.length());
   }
 
   private static String normalize(String value) {
