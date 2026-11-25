@@ -134,7 +134,7 @@ docs {
   
   **Status Codes:**
   - 200: Authentication successful or pending (login DTO)
-  - 400 / 401 / 408: Problem Details (invalid credentials, timeout, device rejected, `challenge-mismatch` when the code entered on the device did not match)
+  - 400 / 401 / 408: Problem Details (invalid credentials, timeout, device rejected)
   - 429: Rate limit exceeded — empty body, `Retry-After` in seconds (per IP and per-instance backstop)
   - 500: Problem Details
 }

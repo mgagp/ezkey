@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import i18n from 'i18next';
 import '@/i18n';
 import { ApiError } from './api-client';
@@ -79,6 +79,10 @@ describe('mapPasswordlessWaitError', () => {
       outcome: 'error',
       message: 'The code entered on the device did not match',
     });
+  });
+
+  afterEach(async () => {
+    await i18n.changeLanguage('en');
   });
 
   it.each([

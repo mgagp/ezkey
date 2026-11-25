@@ -42,6 +42,7 @@ import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminLifecycleStatus;
 import org.ezkey.integration.domain.repository.AdminTokenRepository;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.security.SensitiveDataHasher;
+import org.ezkey.util.LogSanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -313,7 +314,7 @@ public class AdminAuthService {
         // INVALID is set only after a valid device signature, on challenge mismatch (#912, #1465)
         logger.warn(
             "❌ Passwordless auth INVALID (challenge code mismatch on device) for admin: {}",
-            admin.getUsername());
+            LogSanitizer.sanitizeForLog(admin.getUsername()));
         throw new AdminChallengeMismatchException();
       } else if ("EXPIRED".equals(status)) {
         logger.warn(
@@ -454,7 +455,7 @@ public class AdminAuthService {
       // INVALID is set only after a valid device signature, on challenge mismatch (#912, #1465)
       logger.warn(
           "❌ Passwordless auth INVALID (challenge code mismatch on device) for admin: {}",
-          admin.getUsername());
+          LogSanitizer.sanitizeForLog(admin.getUsername()));
       throw new AdminChallengeMismatchException();
     } else if ("EXPIRED".equals(status)) {
       logger.warn(

@@ -741,7 +741,8 @@ the generic Auth API 409 (#912).
 
 **Solution:**
 1. Start a new sign-in: the attempt is terminal (`INVALID`)
-2. Enter on the device the 2-digit code shown on the sign-in screen
+2. Enter on the device the code shown on the sign-in screen (2 digits by default,
+   `ezkey.core.auth-attempt.challenge-digits`)
 3. Several wrong codes or refusals in a short window pause sign-in for a few minutes (cooldown, #992)
 
 **Disclosure:** Only the initiator holding the waiter secret sees this outcome, and it already
