@@ -55,6 +55,7 @@ class AdminEnrollmentControllerSecurityWebMvcTest {
   @MockitoBean private AdminRecoveryService recoveryService;
   @MockitoBean private AdminOperationsRateLimitService adminOpsRateLimitService;
   @MockitoBean private AuditLogService auditLogService;
+  @MockitoBean private org.ezkey.admin.service.QrCodePayloadService qrCodePayloadService;
 
   /** Non-default enrollment reset limit: 7 per 2 minutes (defaults are 3 per 30). */
   @TestConfiguration

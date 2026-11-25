@@ -50,6 +50,18 @@ script:post-response {
           expect(jsonData).to.have.property('contactPhoneNumber');
           expect(jsonData).to.have.property('userIdentifier');
       });
+      // #1494: the enrollment code is the QR JSON. Null without a proof token or without
+      // ezkey.qr.auth-base-url; when present it holds exactly the token and authUrl.
+      test("Enrollment code, when present, is the QR JSON with no challenge", function () {
+          if (jsonData.enrollmentCode != null) {
+              var code = JSON.parse(jsonData.enrollmentCode);
+              expect(Object.keys(code).sort()).to.deep.equal(['authUrl', 'enrollmentProofToken']);
+              expect(code.enrollmentProofToken).to.equal(jsonData.enrollmentProofToken);
+          } else if (jsonData.enrollmentProofToken == null) {
+              expect(jsonData.enrollmentCode == null).to.be.true;
+          }
+      });
+
       if (jsonData.expiresAt != null) {
           test("expiresAt is string when present", function () {
               expect(jsonData.expiresAt).to.be.a('string');
@@ -85,6 +97,7 @@ docs {
   - `contactPhoneNumber`: Optional contact phone number for end-user in canonical E.164 format (null if not provided)
   - `userIdentifier`: Optional user identifier from integrating app (null if not provided)
   - `expiresAt`: Optional expiration for pending phase (ISO-8601); set when ezkey.enrollment.pending-expiration-days is configured; null otherwise
+  - `enrollmentCode`: The exact JSON of the enrollment QR code (`{enrollmentProofToken, authUrl}`), for an authenticator that cannot scan; null without a proof token or when `ezkey.qr.auth-base-url` is not set (#1494)
   - `ownerAdminId`: For an administrator's MFA enrollment and a Global Admin caller, the administrator who owns it (link back to the admin record); null otherwise (#1313)
   
   **Administrator MFA enrollment (#1313):** `enrollmentProofToken` and `enrollmentChallenge` are null in every status, and `contactEmail` stays null. The single source of an administrator's bind material is `GET /api/v1/admins/{id}/onboarding*`.

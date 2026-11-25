@@ -84,7 +84,9 @@ class AdminAuthControllerPasswordlessAuditTest {
             adminRepository,
             browserSessionCookieProperties,
             sessionCookieService,
-            csrfTokenService);
+            csrfTokenService,
+            new org.ezkey.admin.service.QrCodePayloadService(
+                new org.ezkey.config.QrCodeProperties()));
     when(browserSessionCookieProperties.isBrowserSessionCookieEnabled()).thenReturn(false);
     when(httpRequest.getHeader("X-Forwarded-For")).thenReturn(null);
     when(httpRequest.getRemoteAddr()).thenReturn("127.0.0.1");

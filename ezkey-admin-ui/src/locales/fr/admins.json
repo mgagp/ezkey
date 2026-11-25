@@ -46,8 +46,6 @@
     "hideCode": "Masquer le code de liaison",
     "qrCodeAlt": "QR code d'enrôlement de l'administrateur",
     "bindingChallenge": "Code de défi de liaison",
-    "proofToken": "Jeton de preuve d'enrôlement (saisie manuelle)",
-    "copyToken": "Copier le jeton",
     "errorLoad": "Impossible de charger le matériel de liaison.",
     "noLongerAvailable": "Cet enrôlement est terminé ou fermé : son matériel de liaison n'est plus disponible."
   },

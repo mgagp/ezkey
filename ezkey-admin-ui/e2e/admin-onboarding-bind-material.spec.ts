@@ -82,7 +82,6 @@ test('@elective @device-backed admin onboarding: creation lands on the record wi
   await expect(record).toContainText(username);
   const bindCard = page.getByTestId('admin-bind-card');
   const reveal = page.getByTestId('admin-bind-reveal');
-  const token = page.getByTestId('admin-bind-token');
   const code = page.getByTestId('admin-bind-challenge');
   const qr = page.getByTestId('admin-bind-qr');
   const boundWarning = page.getByTestId('admin-bind-bound-warning');
@@ -93,14 +92,20 @@ test('@elective @device-backed admin onboarding: creation lands on the record wi
   expect(onboardingCalls).toEqual([]);
   await reveal.click();
   await expect(qr).toBeVisible();
-  await expect(token).toBeVisible();
   await expect(boundWarning).toBeHidden();
   expect(onboardingCalls.some((url) => url.endsWith('/onboarding'))).toBe(true);
   expect(onboardingCalls.some((url) => url.endsWith('/onboarding/qrcode'))).toBe(true);
 
   const material = await page.request.get(`/api/v1/admins/${adminId}/onboarding`, { headers });
-  const { enrollmentId, enrollmentProofToken, enrollmentChallenge } = await material.json();
-  await expect(token).toContainText(enrollmentProofToken);
+  const { enrollmentId, enrollmentProofToken, enrollmentChallenge, enrollmentCode } =
+    await material.json();
+  // #1494: the enrollment code needs ezkey.qr.auth-base-url; without it the card says why.
+  if (enrollmentCode) {
+    await page.getByTestId('admin-bind-code-reveal').click();
+    await expect(page.getByTestId('admin-bind-code-value')).toHaveText(enrollmentCode);
+  } else {
+    await expect(page.getByTestId('admin-bind-code-unavailable')).toBeVisible();
+  }
   await expect(code).toHaveText(String(enrollmentChallenge));
 
   // P3: Global Admin goes to the enrollment record and back.
@@ -129,7 +134,7 @@ test('@elective @device-backed admin onboarding: creation lands on the record wi
   await reveal.click();
   await expect(code).toHaveText(String(enrollmentChallenge));
   await expect(boundWarning).toBeVisible();
-  await expect(token).toBeHidden();
+  await expect(page.getByTestId('admin-bind-code')).toBeHidden();
   await expect(qr).toBeHidden();
 
   const verify = await context.request.post(

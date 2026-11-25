@@ -146,10 +146,8 @@
     "toastUpdated": "Enrôlement mis à jour.",
     "errorUpdate": "Échec de la mise à jour de l'enrôlement.",
     "errorConflict": "L'enrôlement a été modifié entre-temps. Actualisez la page et réessayez.",
-    "enrollmentToken": "Jeton d'enrôlement",
-    "credentialsPreviewNotice": "Livraison intégrée : cet écran affiche le jeton de preuve, le défi de liaison et le code QR dans l'interface d'administration pour qu'Ezkey fonctionne sans adaptateur courriel ni SMS. Pour une assurance plus forte, vous pouvez les séparer sur vos propres canaux (par exemple, envoyer une capture du QR par courriel et le défi à six chiffres par SMS ou messagerie). Si un connecteur de livraison est configuré, cet écran peut aussi envoyer le QR par courriel ; le défi de liaison passe toujours par un autre canal.",
+    "credentialsPreviewNotice": "Livraison intégrée : cet écran affiche le code d'enrôlement, le défi de liaison et le code QR dans l'interface d'administration pour qu'Ezkey fonctionne sans adaptateur courriel ni SMS. Pour une assurance plus forte, vous pouvez les séparer sur vos propres canaux (par exemple, envoyer une capture du QR par courriel et le défi à six chiffres par SMS ou messagerie). Si un connecteur de livraison est configuré, cet écran peut aussi envoyer le QR par courriel ; le défi de liaison passe toujours par un autre canal.",
     "boundChallengeWarning": "Un appareil a déjà scanné cet enrôlement. Confirmez à qui vous parlez avant de donner ce code.",
-    "tokenHint": "Partagez ce jeton avec l'utilisateur pour configurer l'application mobile EZKey.",
     "hide": "Masquer",
     "reveal": "Afficher",
     "copy": "Copier",
@@ -173,7 +171,7 @@
     "yesDelete": "Oui, supprimer",
     "revokedAlert": "Cet enrôlement a été révoqué définitivement.",
     "help": {
-      "proofToken": "Jeton cryptographique utilisé par l'appareil mobile pour se lier à cet enrôlement.",
+      "enrollmentCode": "Le texte exact du code QR (jeton de preuve et adresse de l'Auth API), pour un authentificateur qui ne peut pas scanner. Disponible seulement jusqu'à la liaison d'un appareil.",
       "bindingChallengeCode": "Code à usage unique que l'appareil doit saisir pour terminer l'enrôlement."
     },
     "testAuthBlockedTooltip": "L'authentification est actuellement bloquée — l'intégration ou le tenant est inactif.",

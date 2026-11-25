@@ -35,6 +35,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * @param enrollmentChallenge New enrollment challenge code for verification (null on error)
  * @param integrationId Integration ID for reference (null on error)
  * @param message Response message
+ * @param enrollmentCode The exact JSON of the enrollment QR code, for an authenticator that cannot
+ *     scan (#1494); null without a proof token or without a configured Auth API address
  * @author Ezkey contributors
  * @since 2025
  */
@@ -56,7 +58,15 @@ public record EnrollmentResetResponseDto(
             example =
                 "Enrollment reset successfully. Old device unbound. Use these credentials to bind"
                     + " new device.")
-        String message) {
+        String message,
+    @Schema(
+            description =
+                "Enrollment code: the exact JSON the enrollment QR code holds"
+                    + " ({enrollmentProofToken, authUrl}), for an authenticator that cannot scan."
+                    + " Present only with the proof token and when ezkey.qr.auth-base-url is"
+                    + " configured; never contains the challenge code (#1494)",
+            nullable = true)
+        String enrollmentCode) {
 
   /**
    * Factory method for successful enrollment reset.
@@ -82,7 +92,25 @@ public record EnrollmentResetResponseDto(
         enrollmentChallenge,
         integrationId,
         "Enrollment reset successfully. Old device unbound. Use these credentials to bind new"
-            + " device.");
+            + " device.",
+        null);
+  }
+
+  /**
+   * Returns a copy of this response with the given enrollment code (#1494).
+   *
+   * @param code the enrollment code JSON, or null
+   * @return a copy carrying {@code code} as {@link #enrollmentCode()}
+   */
+  public EnrollmentResetResponseDto withEnrollmentCode(String code) {
+    return new EnrollmentResetResponseDto(
+        success,
+        enrollmentId,
+        enrollmentProofToken,
+        enrollmentChallenge,
+        integrationId,
+        message,
+        code);
   }
 
   /**
@@ -95,7 +123,7 @@ public record EnrollmentResetResponseDto(
    * @return an error response DTO
    */
   public static EnrollmentResetResponseDto error(String message) {
-    return new EnrollmentResetResponseDto(false, null, null, null, null, message);
+    return new EnrollmentResetResponseDto(false, null, null, null, null, message, null);
   }
 
   /**
@@ -122,6 +150,8 @@ public record EnrollmentResetResponseDto(
         + ", message='"
         + message
         + '\''
+        + ", enrollmentCode="
+        + (enrollmentCode != null ? "[PROTECTED]" : "null")
         + '}';
   }
 }

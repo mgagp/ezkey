@@ -82,5 +82,14 @@
     "ariaPreset": "Date range preset",
     "ariaFrom": "From date",
     "ariaTo": "To date"
+  },
+  "enrollmentCode": {
+    "label": "Enrollment code",
+    "hint": "For an authenticator that cannot scan: paste this text in it. The 6-digit binding challenge is not in it: give it through another channel.",
+    "show": "Show",
+    "hide": "Hide",
+    "copy": "Copy enrollment code",
+    "copied": "Copied!",
+    "unavailable": "No enrollment code to copy: this instance has no public Auth API address (ezkey.qr.auth-base-url), so the text could not say which server to use. Scan the QR code instead."
   }
 }

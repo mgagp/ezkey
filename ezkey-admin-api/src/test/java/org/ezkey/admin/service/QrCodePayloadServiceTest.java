@@ -13,6 +13,7 @@ package org.ezkey.admin.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.ezkey.config.QrCodeProperties;
@@ -179,6 +180,44 @@ class QrCodePayloadServiceTest {
       // Assert
       JsonNode json = objectMapper.readTree(payload);
       assertFalse(json.has("enrollmentId"), "enrollmentId is not part of the invitation");
+    }
+  }
+
+  @Nested
+  @DisplayName("Enrollment code (#1494)")
+  class EnrollmentCode {
+
+    @Test
+    @DisplayName("Should equal the QR payload when auth-base-url is configured")
+    void composeEnrollmentCode_withAuthUrl_equalsQrPayload() {
+      QrCodeProperties properties = new QrCodeProperties();
+      properties.setAuthBaseUrl("https://auth.example.test");
+      QrCodePayloadService service = new QrCodePayloadService(properties);
+
+      assertEquals(
+          service.composePayload("proof-token-xyz"),
+          service.composeEnrollmentCode("proof-token-xyz"));
+    }
+
+    @Test
+    @DisplayName("Should be null when auth-base-url is not configured")
+    void composeEnrollmentCode_withoutAuthUrl_isNull() {
+      QrCodeProperties properties = new QrCodeProperties();
+      properties.setAuthBaseUrl("  ");
+      QrCodePayloadService service = new QrCodePayloadService(properties);
+
+      assertNull(service.composeEnrollmentCode("proof-token-xyz"));
+    }
+
+    @Test
+    @DisplayName("Should be null when the caller has no proof token")
+    void composeEnrollmentCode_withoutToken_isNull() {
+      QrCodeProperties properties = new QrCodeProperties();
+      properties.setAuthBaseUrl("https://auth.example.test");
+      QrCodePayloadService service = new QrCodePayloadService(properties);
+
+      assertNull(service.composeEnrollmentCode(null));
+      assertNull(service.composeEnrollmentCode(""));
     }
   }
 }

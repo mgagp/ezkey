@@ -11,6 +11,7 @@
 package org.ezkey.admin.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -30,7 +31,9 @@ import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.security.AdminSessionCookieService;
 import org.ezkey.admin.service.AdminAuthService;
 import org.ezkey.admin.service.AdminProvisioningService;
+import org.ezkey.admin.service.QrCodePayloadService;
 import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.config.QrCodeProperties;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminLifecycleStatus;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
@@ -61,8 +64,13 @@ class AdminAuthControllerActivationTest {
 
   private AdminAuthController controller;
 
+  private QrCodePayloadService qrCodePayloadService;
+
   @BeforeEach
   void setUp() {
+    QrCodeProperties qrCodeProperties = new QrCodeProperties();
+    qrCodeProperties.setAuthBaseUrl("https://auth.example.test");
+    qrCodePayloadService = new QrCodePayloadService(qrCodeProperties);
     controller =
         new AdminAuthController(
             authService,
@@ -74,7 +82,8 @@ class AdminAuthControllerActivationTest {
             adminRepository,
             browserSessionCookieProperties,
             sessionCookieService,
-            csrfTokenService);
+            csrfTokenService,
+            qrCodePayloadService);
     when(httpRequest.getRemoteAddr()).thenReturn("127.0.0.1");
   }
 
@@ -116,6 +125,9 @@ class AdminAuthControllerActivationTest {
     assertEquals(123, body.enrollmentId());
     assertEquals("ezkey_proof_demo", body.enrollmentProofToken());
     assertEquals(null, body.recoveryCodes());
+    // #1494: the copied text is the QR payload itself, and never carries the challenge.
+    assertEquals(qrCodePayloadService.composePayload("ezkey_proof_demo"), body.enrollmentCode());
+    assertFalse(body.enrollmentCode().contains("654321"));
     verify(auditLogService).log(any());
   }
 

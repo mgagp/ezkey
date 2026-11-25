@@ -8622,6 +8622,13 @@
             "type": "string",
             "description": "Response message",
             "example": "Enrollment reset successfully. Old device unbound. Use these credentials to bind new device."
+          },
+          "enrollmentCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Enrollment code: the exact JSON the enrollment QR code holds ({enrollmentProofToken, authUrl}), for an authenticator that cannot scan. Present only with the proof token and when ezkey.qr.auth-base-url is configured; never contains the challenge code (#1494)"
           }
         }
       },
@@ -8878,6 +8885,13 @@
             "items": {
               "type": "string"
             }
+          },
+          "enrollmentCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Enrollment code: the exact JSON the enrollment QR code holds ({enrollmentProofToken, authUrl}), for an authenticator that cannot scan. Present only with the proof token and when ezkey.qr.auth-base-url is configured; never contains the challenge code (#1494)"
           }
         }
       },
@@ -9116,6 +9130,13 @@
             "format": "int32",
             "description": "Administrator who owns this MFA enrollment (one administrator, one enrollment). Set only on detail responses (GET and PATCH by ID) for a Global Admin caller; null otherwise, including for an enrollment no administrator owns",
             "example": 7
+          },
+          "enrollmentCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Enrollment code: the exact JSON the enrollment QR code holds ({enrollmentProofToken, authUrl}), for an authenticator that cannot scan. Set only on detail responses (GET and PATCH by ID), while the proof token is returned and ezkey.qr.auth-base-url is configured; null otherwise. It never contains the challenge code (#1494)"
           }
         }
       },
@@ -11019,42 +11040,42 @@
   },
   "x-tagGroups": [
     {
+      "name": "Getting started",
       "tags": [
         "Public",
         "Admin Authentication"
-      ],
-      "name": "Getting started"
+      ]
     },
     {
+      "name": "Tenant and integration setup",
       "tags": [
         "Tenants",
         "Integrations",
         "Enrollments",
         "API Keys"
-      ],
-      "name": "Tenant and integration setup"
+      ]
     },
     {
+      "name": "MFA operations",
       "tags": [
         "Auth Attempts",
         "Admin Enrollment Management"
-      ],
-      "name": "MFA operations"
+      ]
     },
     {
+      "name": "Administration",
       "tags": [
         "Administrator Provisioning"
-      ],
-      "name": "Administration"
+      ]
     },
     {
+      "name": "Platform operations",
       "tags": [
         "Audit Logs",
         "Encryption Keys",
         "Alerts",
         "Dashboard"
-      ],
-      "name": "Platform operations"
+      ]
     }
   ]
 }

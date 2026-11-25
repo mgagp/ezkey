@@ -46,8 +46,6 @@
     "hideCode": "Hide binding code",
     "qrCodeAlt": "Administrator enrollment QR code",
     "bindingChallenge": "Binding challenge code",
-    "proofToken": "Enrollment proof token (manual entry)",
-    "copyToken": "Copy token",
     "errorLoad": "Could not load the binding material.",
     "noLongerAvailable": "This enrollment is complete or closed, so its binding material is no longer available."
   },

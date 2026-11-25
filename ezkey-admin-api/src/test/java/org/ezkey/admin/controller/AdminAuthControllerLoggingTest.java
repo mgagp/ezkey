@@ -92,7 +92,9 @@ class AdminAuthControllerLoggingTest {
             adminRepository,
             browserSessionCookieProperties,
             sessionCookieService,
-            csrfTokenService);
+            csrfTokenService,
+            new org.ezkey.admin.service.QrCodePayloadService(
+                new org.ezkey.config.QrCodeProperties()));
 
     when(httpRequest.getHeader("X-Forwarded-For")).thenReturn(null);
     when(httpRequest.getRemoteAddr()).thenReturn(INJECTED_IP);

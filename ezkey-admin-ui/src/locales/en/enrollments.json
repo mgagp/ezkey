@@ -146,10 +146,8 @@
     "toastUpdated": "Enrollment updated.",
     "errorUpdate": "Failed to update enrollment.",
     "errorConflict": "Someone else changed this enrollment. Refresh and try again.",
-    "enrollmentToken": "Enrollment Token",
-    "credentialsPreviewNotice": "Integrated delivery: this screen shows the enrollment proof token, binding challenge, and QR in the Admin UI so Ezkey works without email or SMS adapters. For stronger assurance, you may split them across your own channels (for example, email a screenshot of the QR and send the 6-digit binding challenge by SMS or chat). When a delivery connector is configured, this screen can also send the QR by email; the binding challenge still goes through another channel.",
+    "credentialsPreviewNotice": "Integrated delivery: this screen shows the enrollment code, binding challenge, and QR in the Admin UI so Ezkey works without email or SMS adapters. For stronger assurance, you may split them across your own channels (for example, email a screenshot of the QR and send the 6-digit binding challenge by SMS or chat). When a delivery connector is configured, this screen can also send the QR by email; the binding challenge still goes through another channel.",
     "boundChallengeWarning": "A device has already scanned this enrollment. Confirm who you are speaking to before giving this code.",
-    "tokenHint": "Share this token with the user to set up their EZKey mobile app.",
     "hide": "Hide",
     "reveal": "Reveal",
     "copy": "Copy",
@@ -173,7 +171,7 @@
     "yesDelete": "Yes, Delete",
     "revokedAlert": "This enrollment has been permanently revoked.",
     "help": {
-      "proofToken": "Cryptographic token used by the mobile device to bind to this enrollment.",
+      "enrollmentCode": "The exact text of the QR code (proof token and Auth API address), for an authenticator that cannot scan. Available only until a device binds.",
       "bindingChallengeCode": "One-time code the device must enter to complete enrollment."
     },
     "testAuthBlockedTooltip": "Authentication is currently blocked — the integration or tenant is inactive.",

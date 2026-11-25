@@ -32,6 +32,18 @@ script:post-response {
           expect(jsonData).to.have.property('enrollmentChallenge');
       });
 
+      // #1494: the enrollment code is the QR JSON. Null without a proof token or without
+      // ezkey.qr.auth-base-url; when present it holds exactly the token and authUrl.
+      test("Enrollment code, when present, is the QR JSON with no challenge", function () {
+          if (jsonData.enrollmentCode != null) {
+              var code = JSON.parse(jsonData.enrollmentCode);
+              expect(Object.keys(code).sort()).to.deep.equal(['authUrl', 'enrollmentProofToken']);
+              expect(code.enrollmentProofToken).to.equal(jsonData.enrollmentProofToken);
+          } else if (jsonData.enrollmentProofToken == null) {
+              expect(jsonData.enrollmentCode == null).to.be.true;
+          }
+      });
+
       if (jsonData.enrollmentId !== undefined && jsonData.enrollmentId !== null) {
           bru.setEnvVar("enrollmentId", jsonData.enrollmentId);
       }
@@ -52,6 +64,9 @@ docs {
   This is **not** `POST /api/v1/admins/{id}/activate` (operator reactivation of a deactivated
   admin). It is also **not** recovery (`POST /recover`). Recovery codes are omitted from this
   unauthenticated response.
+
+  The response carries `enrollmentCode`, the exact JSON of the enrollment QR code
+  (`{enrollmentProofToken, authUrl}`), or null when `ezkey.qr.auth-base-url` is not set (#1494).
 
   Replace `activationCode` with a live unused code from Global Admin provisioning.
 

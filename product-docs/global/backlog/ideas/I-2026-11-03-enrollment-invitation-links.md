@@ -203,9 +203,13 @@ field and FSM entry that slice 1 extends. Tracked as
   `scripts/assert-release-production-clean-env.sh`). #254 put "permanent product path" out of
   scope: deferred, not rejected. Its pipeline is already the product one: `normalizeSeedPayload`
   → `parseQrPayload` → `performBinding`, with redacted logging (`logEnrollmentSeedIngest`).
-- **Nothing to paste today:** the Admin UI copies the raw proof token only, which no
-  authenticator accepts alone (no id, no server). Lot 0 needs a "copy enrollment code" (the QR
-  JSON) next to it.
+- **Admin UI side done ([#1494](https://github.com/mgagp/ezkey/issues/1494), 2026-11-25):** the
+  Admin API composes the enrollment code (`enrollmentCode`, the exact QR JSON, from
+  `QrCodePayloadService`) on the four responses that carry the proof token, and the Admin UI
+  copies it in place of "Copy token". Marc chose server composition over a client copy of the
+  composer, so lot 0 did take a small contract change. No code without `ezkey.qr.auth-base-url`
+  (the screen says why). The Demo Device token field accepts the pasted code, so nothing needs
+  the bare token any more.
 - **Doc drift it closes:** `product-docs/components/mobile/screens-and-wireflow.md` claims "QR-first
   with manual fallback", while release builds have none (also stated in
   `V-2026-10-07-multi-tenant-closed-testing-demo-app` tester sheet).
