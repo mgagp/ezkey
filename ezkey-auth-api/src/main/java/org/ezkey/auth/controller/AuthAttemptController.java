@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.ezkey.audit.constants.AuthAttemptAuditConstants;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
@@ -399,9 +400,9 @@ public class AuthAttemptController {
 
   /**
    * Audit action, status and fixed detail for a processed respond, derived from the result the
-   * server computed, not from the decision the device sent (#1314). A wrong challenge code on
-   * accept yields FAILED and is audited as {@code auth_attempt_challenge_failed} / FAILURE. Details
-   * are fixed strings: the code entered on the device is never written to the audit row.
+   * server computed, not from the decision the device sent (#1314). A wrong or missing challenge
+   * code on accept yields FAILED and is audited as {@code auth_attempt_challenge_failed} / FAILURE.
+   * Details are fixed strings: the code entered on the device is never written to the audit row.
    *
    * @param action audit event action
    * @param status audit event status
@@ -411,25 +412,33 @@ public class AuthAttemptController {
 
     private static RespondAuditOutcome of(AuthenticationResult result) {
       if (result == null) {
-        return new RespondAuditOutcome(
-            "auth_attempt_respond_failed", EventStatus.FAILURE, "Respond returned no result");
+        return unexpected("none");
       }
       return switch (result) {
         case APPROVED ->
             new RespondAuditOutcome(
-                "auth_attempt_approved", EventStatus.SUCCESS, "User approved authentication");
+                AuthAttemptAuditConstants.AUTH_ATTEMPT_APPROVED,
+                EventStatus.SUCCESS,
+                "User approved authentication");
         case DENIED ->
             new RespondAuditOutcome(
-                "auth_attempt_denied", EventStatus.SUCCESS, "User denied authentication");
+                AuthAttemptAuditConstants.AUTH_ATTEMPT_DENIED,
+                EventStatus.SUCCESS,
+                "User denied authentication");
         case FAILED ->
             new RespondAuditOutcome(
-                "auth_attempt_challenge_failed",
+                AuthAttemptAuditConstants.AUTH_ATTEMPT_CHALLENGE_FAILED,
                 EventStatus.FAILURE,
-                "Challenge code entered on the device did not match");
-        case EXPIRED ->
-            new RespondAuditOutcome(
-                "auth_attempt_respond_failed", EventStatus.FAILURE, "Respond result EXPIRED");
+                "Challenge response missing or did not match");
+        case EXPIRED -> unexpected("EXPIRED");
       };
+    }
+
+    private static RespondAuditOutcome unexpected(String result) {
+      return new RespondAuditOutcome(
+          AuthAttemptAuditConstants.AUTH_ATTEMPT_RESPOND_UNEXPECTED_RESULT,
+          EventStatus.FAILURE,
+          "Unexpected respond result: " + result);
     }
   }
 

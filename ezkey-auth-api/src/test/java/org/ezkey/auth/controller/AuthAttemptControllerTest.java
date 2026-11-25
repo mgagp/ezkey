@@ -539,9 +539,20 @@ class AuthAttemptControllerTest {
     assertThat(row.getEventAction()).isEqualTo("auth_attempt_challenge_failed");
     assertThat(row.getEventStatus()).isEqualTo(EventStatus.FAILURE);
     assertThat(row.getEventDetails())
-        .isEqualTo("Challenge code entered on the device did not match")
+        .isEqualTo("Challenge response missing or did not match")
         .doesNotContain(String.valueOf(respondRequestDto.authAttemptChallengeResponse()));
     assertThat(row.getErrorMessage()).isNull();
+  }
+
+  @Test
+  @DisplayName(
+      "respond audit: an unexpected result (EXPIRED) gets its own action, not the exception one")
+  void respondAudit_WhenExpiredResult_ShouldLogUnexpectedResult() throws Exception {
+    AuditLog row = respondAndCaptureAudit(true, AuthenticationResult.EXPIRED);
+
+    assertThat(row.getEventAction()).isEqualTo("auth_attempt_respond_unexpected_result");
+    assertThat(row.getEventStatus()).isEqualTo(EventStatus.FAILURE);
+    assertThat(row.getEventDetails()).isEqualTo("Unexpected respond result: EXPIRED");
   }
 
   private AuditLog respondAndCaptureAudit(boolean accepted, AuthenticationResult result)
