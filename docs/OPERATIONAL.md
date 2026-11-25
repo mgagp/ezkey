@@ -697,6 +697,8 @@ logging:
 
 Never set `org.springframework.web=DEBUG` in shared profiles: MVC body dumps can expose proof tokens and signatures (#752). Hibernate 6 bind parameters use `org.hibernate.orm.jdbc.bind` (the legacy `BasicBinder` logger has no effect). Keep it at WARN — TRACE would log SQL bind values.
 
+As a second line of defense, secret-bearing types print `[PROTECTED]` in `toString()` (challenges, proof tokens, signatures, private keys, bearer and waiter secrets). A reflection guard per module fails the build on a leak: `AuthApiDtoToStringMaskingTest`, `AdminApiDtoToStringMaskingTest`, `IntegrationApiDtoToStringMaskingTest` and `CoreToStringMaskingTest` (#752, #756). The public `integrationKey` of an API key is not a secret and stays visible.
+
 For safe request-line diagnostics without body dumps, use:
 
 ```properties

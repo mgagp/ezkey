@@ -28,4 +28,28 @@ public record EnrollmentInstanceInfoResponse(
     String instanceName,
     String instanceDescription,
     String aboutUrl,
-    String instanceInfoPayloadSignedByIntegration) {}
+    String instanceInfoPayloadSignedByIntegration) {
+
+  /**
+   * Same layout as the default record {@code toString()}, with the signature masked (#756).
+   *
+   * @return string representation without the signature value
+   */
+  @Override
+  public String toString() {
+    return "EnrollmentInstanceInfoResponse["
+        + "enrollmentId="
+        + enrollmentId
+        + ", authApiPublicBaseUrl="
+        + authApiPublicBaseUrl
+        + ", instanceName="
+        + instanceName
+        + ", instanceDescription="
+        + instanceDescription
+        + ", aboutUrl="
+        + aboutUrl
+        + ", instanceInfoPayloadSignedByIntegration="
+        + (instanceInfoPayloadSignedByIntegration != null ? "[PROTECTED]" : "null")
+        + ']';
+  }
+}

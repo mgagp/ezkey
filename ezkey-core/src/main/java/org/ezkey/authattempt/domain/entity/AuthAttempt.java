@@ -439,7 +439,7 @@ public class AuthAttempt implements Reencryptable {
         + ", authAttemptStatus="
         + authAttemptStatus
         + ", authAttemptChallenge="
-        + authAttemptChallenge
+        + (authAttemptChallenge != null ? "[PROTECTED]" : "null")
         + ", contextTitle='"
         + contextTitle
         + '\''

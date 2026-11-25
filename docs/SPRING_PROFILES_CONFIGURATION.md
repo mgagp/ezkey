@@ -64,7 +64,7 @@ For Linux/macOS host installs, use [`scripts/generate-master-key.sh`](../scripts
 
 ### Admin API (`ezkey-admin-api`)
 
-- **`toString()` masking:** keep `org.springframework.web` at INFO here too. As a second line of defense, secret-bearing Admin API records (recovery codes, activation codes, proof tokens, challenges, bearer and waiter secrets) print `[PROTECTED]`; `AdminApiDtoToStringMaskingTest` fails the build when one leaks (#756).
+- **`toString()` masking:** keep `org.springframework.web` at INFO here too. As a second line of defense, secret-bearing Admin API records (recovery codes, activation codes, proof tokens, challenges, bearer and waiter secrets) print `[PROTECTED]`; `AdminApiDtoToStringMaskingTest` fails the build when one leaks (#756). Core and Integration API have their own guards: see [OPERATIONAL.md § Log Configuration](OPERATIONAL.md#log-configuration).
 
 #### Docker Profile (`application-docker.properties`)
 - **Port:** 9080

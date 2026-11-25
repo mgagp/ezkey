@@ -87,4 +87,28 @@ public record AuthAttemptCreateResponseDto(
             description = "Context message echoed back (null if not provided)",
             example = "Authorize payment batch #1497 to Acme Corp for $1,400",
             requiredMode = RequiredMode.NOT_REQUIRED)
-        String contextMessage) {}
+        String contextMessage) {
+
+  /**
+   * Same layout as the default record {@code toString()}, with the challenge masked (#756).
+   *
+   * @return string representation without the challenge value
+   */
+  @Override
+  public String toString() {
+    return "AuthAttemptCreateResponseDto["
+        + "authAttemptId="
+        + authAttemptId
+        + ", authAttemptChallenge="
+        + (authAttemptChallenge != null ? "[PROTECTED]" : "null")
+        + ", timeoutSeconds="
+        + timeoutSeconds
+        + ", expiresAt="
+        + expiresAt
+        + ", contextTitle="
+        + contextTitle
+        + ", contextMessage="
+        + contextMessage
+        + ']';
+  }
+}

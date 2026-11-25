@@ -43,8 +43,8 @@ import org.springframework.core.type.filter.RegexPatternTypeFilter;
  * its type can carry a value (see {@link #isValueCarrier}) and its name matches a marker (tokens,
  * signatures, challenges, codes, keys and related words); exclusions are exact names or exact
  * suffixes applied only after a marker match. Masking with {@code [PROTECTED]} or omitting the
- * member both pass. Same approach as the auth-api guard (#752); integration-api and core follow in
- * their own changes.
+ * member both pass. Same approach as the auth-api guard (#752); integration-api and core have their
+ * own guards.
  *
  * @since 2026
  */
