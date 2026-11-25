@@ -124,4 +124,34 @@ public class DeliveryConnectorProperties {
   public void setInstanceDailyCap(int instanceDailyCap) {
     this.instanceDailyCap = instanceDailyCap;
   }
+
+  /**
+   * Masks the bearer token (#756): a debug log of the bound properties must not reveal it.
+   *
+   * @return string representation without the token value
+   */
+  @Override
+  public String toString() {
+    return "DeliveryConnectorProperties{"
+        + "url='"
+        + url
+        + '\''
+        + ", token="
+        + (token == null ? "null" : token.isEmpty() ? "''" : "[PROTECTED]")
+        + ", plainHttpPrivateNetwork="
+        + plainHttpPrivateNetwork
+        + ", connectTimeout="
+        + connectTimeout
+        + ", readTimeout="
+        + readTimeout
+        + ", healthTimeout="
+        + healthTimeout
+        + ", healthCacheTtl="
+        + healthCacheTtl
+        + ", tenantDailyCap="
+        + tenantDailyCap
+        + ", instanceDailyCap="
+        + instanceDailyCap
+        + '}';
+  }
 }

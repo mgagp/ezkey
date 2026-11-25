@@ -53,4 +53,30 @@ public record AdminActivationCodeReissueResponseDto(
             description = "Summary message for the operator",
             example =
                 "New activation code generated. Previous unused activation codes no longer work.")
-        String message) {}
+        String message) {
+
+  /**
+   * Same layout as the default record {@code toString()}, with secret values masked (#756).
+   *
+   * @return string representation without secret values
+   */
+  @Override
+  public String toString() {
+    return "AdminActivationCodeReissueResponseDto["
+        + "adminId="
+        + adminId
+        + ", username="
+        + username
+        + ", activationCode="
+        + (activationCode != null ? "[PROTECTED]" : "null")
+        + ", activationCodeExpiresAt="
+        + activationCodeExpiresAt
+        + ", invalidatedPreviousTokens="
+        + invalidatedPreviousTokens
+        + ", deactivatedActiveTokenCount="
+        + deactivatedActiveTokenCount
+        + ", message="
+        + message
+        + ']';
+  }
+}
