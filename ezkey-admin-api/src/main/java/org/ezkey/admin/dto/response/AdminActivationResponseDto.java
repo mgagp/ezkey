@@ -50,9 +50,10 @@ public record AdminActivationResponseDto(
         Integer enrollmentChallenge,
     @Schema(
             description =
-                "Recovery codes are intentionally omitted from this unauthenticated activation"
-                    + " response and must be revealed later through an authenticated recovery-code"
-                    + " management flow")
+                "Always null: no recovery codes exist at activation. The administrator issues"
+                    + " the initial set after the first sign-in (POST"
+                    + " /api/v1/admins/{id}/recovery-codes/issue-initial) (#1477)",
+            nullable = true)
         List<String> recoveryCodes,
     @Schema(
             description =

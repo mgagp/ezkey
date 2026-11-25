@@ -101,7 +101,8 @@ public record AdminProvisioningResponseDto(
         OffsetDateTime createdAt,
     @Schema(
             description =
-                "Single-use recovery codes are intentionally omitted from bootstrap responses and"
-                    + " must be revealed later through an authenticated recovery-code"
-                    + " management flow.")
+                "Always null: no recovery codes are created at provisioning or activation. The"
+                    + " administrator issues the initial set after the first sign-in (POST"
+                    + " /api/v1/admins/{id}/recovery-codes/issue-initial) (#1477)",
+            nullable = true)
         List<String> recoveryCodes) {}
