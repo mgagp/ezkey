@@ -31,7 +31,7 @@ public enum AlertResolutionReason {
    */
   HEARTBEAT_RESTORED,
 
-  /** Resolved manually by an administrator (reserved; no producer in the current iteration). */
+  /** Resolved manually by an administrator. */
   MANUAL,
 
   /**

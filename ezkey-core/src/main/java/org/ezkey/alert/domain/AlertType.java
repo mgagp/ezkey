@@ -45,8 +45,8 @@ public enum AlertType {
 
   /**
    * A device rejected an authentication attempt after a valid signature. Deduped per enrollment.
-   * Payload is the enrollment id only. Resolved manually by a Global Admin; there is no automatic
-   * resolution.
+   * Payload is the enrollment id only. Resolved manually by an administrator with visibility on the
+   * underlying enrollment; there is no automatic resolution.
    */
   AUTH_ATTEMPT_REJECTED,
 
@@ -54,5 +54,14 @@ public enum AlertType {
    * Monthly partition creation for {@code ezkey_auth_attempt} or {@code ezkey_audit_log} failed.
    * One open alert for the instance. Resolved when a later run creates the horizon.
    */
-  PARTITION_CREATION_FAILED
+  PARTITION_CREATION_FAILED;
+
+  /**
+   * Whether this alert type can be resolved manually by an administrator.
+   *
+   * @return true when manual resolution is allowed
+   */
+  public boolean supportsManualResolution() {
+    return this == AUTH_ATTEMPT_REJECTED;
+  }
 }

@@ -155,4 +155,46 @@ class AlertServiceTest {
     verify(alertRepository, never()).save(any(Alert.class));
     verify(auditLogService, never()).log(any(AuditLog.class));
   }
+
+  @Test
+  void resolveOpenById_whenOpenRowExists_setsResolvedAndStoresAuditReason() {
+    Alert existing = new Alert();
+    existing.setAlertId(41L);
+    existing.setAlertType(AlertType.AUTH_ATTEMPT_REJECTED);
+    existing.setSeverity(AlertSeverity.WARNING);
+    existing.setStatus(AlertStatus.OPEN);
+    existing.setDedupeKey("AUTH_ATTEMPT_REJECTED:41");
+
+    when(alertRepository.findByAlertIdAndStatus(41L, AlertStatus.OPEN))
+        .thenReturn(Optional.of(existing));
+    when(alertRepository.save(any(Alert.class))).thenAnswer(i -> i.getArgument(0));
+
+    Optional<Alert> result =
+        alertService.resolveOpenById(
+            41L, AlertResolutionReason.MANUAL, 7, "Operator confirmed follow-up complete");
+
+    assertThat(result).isPresent();
+    assertThat(result.get().getStatus()).isEqualTo(AlertStatus.RESOLVED);
+    assertThat(result.get().getResolutionReason()).isEqualTo(AlertResolutionReason.MANUAL);
+    assertThat(result.get().getResolvedByAdminId()).isEqualTo(7);
+
+    ArgumentCaptor<AuditLog> auditCaptor = ArgumentCaptor.forClass(AuditLog.class);
+    verify(auditLogService, times(1)).log(auditCaptor.capture());
+    assertThat(auditCaptor.getValue().getEventType()).isEqualTo(EventType.ALERT_RESOLVED);
+    assertThat(auditCaptor.getValue().getReason())
+        .isEqualTo("Operator confirmed follow-up complete");
+  }
+
+  @Test
+  void resolveOpenById_whenNoOpenRow_isNoOp() {
+    when(alertRepository.findByAlertIdAndStatus(51L, AlertStatus.OPEN))
+        .thenReturn(Optional.empty());
+
+    Optional<Alert> result =
+        alertService.resolveOpenById(51L, AlertResolutionReason.MANUAL, 3, "note");
+
+    assertThat(result).isEmpty();
+    verify(alertRepository, never()).save(any(Alert.class));
+    verify(auditLogService, never()).log(any(AuditLog.class));
+  }
 }

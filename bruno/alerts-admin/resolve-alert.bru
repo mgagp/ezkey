@@ -1,0 +1,48 @@
+meta {
+  name: resolve alert
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url_admin_api}}/api/v1/alerts/{{alertId}}/resolve
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "note": "Operator follow-up complete; false positive confirmed."
+  }
+}
+
+script:post-response {
+  test("Status code is 200, 404 or 409", function () {
+      expect([200, 404, 409]).to.include(res.getStatus());
+  });
+
+  if (res.getStatus() === 200) {
+      var jsonData = res.getBody();
+      expect(jsonData).to.have.property('alertId');
+      expect(jsonData).to.have.property('status');
+      expect(jsonData.status).to.equal('RESOLVED');
+      expect(jsonData).to.have.property('resolutionReason');
+      expect(jsonData.resolutionReason).to.equal('MANUAL');
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Resolves an OPEN manual-resolvable alert (currently `AUTH_ATTEMPT_REJECTED`).
+  
+  Optional request body field `note` (max 500 chars) is recorded in the audit trail.
+  
+  **Responses:**
+  - `200` when resolution succeeds
+  - `404` when the alert is not found or not visible
+  - `409` when the alert type is automatic-resolution or already resolved
+}
+

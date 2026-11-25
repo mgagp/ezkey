@@ -538,6 +538,23 @@ Empty body (servlet filter). `Retry-After` is seconds until the per-IP or per-in
 
 **GET /api/v1/dashboard/overview** — Single aggregated payload for the Admin UI landing page: integration and enrollment stats, auth-attempt 24h totals (including pending), recent audit activity, and (Global Admin) optional open operator alerts such as audit-chain follow-ups. Tenant Admins receive tenant-scoped stats; Global Admins receive instance-wide stats. Prefer this over parallel `size=1` list/`count` storms. Related: `GET /api/v1/auth-attempts/pending-count` (Admin-only) when a live pending tally is needed outside the overview. Widget badge semantics: [`product-docs/components/admin-ui/dashboard-widget-signal-model.md`](../product-docs/components/admin-ui/dashboard-widget-signal-model.md).
 
+### Alerts
+
+**Base path:** `http://localhost:9080/api/v1/alerts` (Admin API).
+
+- **GET /api/v1/alerts** — paginated alert list with optional filters `status`, `alertType`,
+  `severity`, `dedupeKey`, `createdAfter`, `createdBefore`, plus `page`, `size`, `sort`.
+  Default sort: `createdAt,desc`. **Global Admin only**.
+- **GET /api/v1/alerts/{alertId}** — alert detail by id. **Global Admin only**.
+- **POST /api/v1/alerts/{alertId}/resolve** — manual resolution endpoint for open alerts whose
+  type supports manual closure (currently `AUTH_ATTEMPT_REJECTED`). Optional body:
+  `{ "note": "optional short note" }` (max 500 chars, stored in audit trail).
+  - `200` resolved.
+  - `404` not found or not visible to caller.
+  - `409` automatic-resolution type or already resolved.
+  Visibility for manual resolution follows alert scope: Global Admin can resolve any visible manual
+  alert; Tenant Admin can resolve a manual alert tied to an enrollment visible in their tenant.
+
 ### Audit log and chain checkpoint APIs
 
 **Base path:** `http://localhost:9080/api/v1/audit-logs` (Admin API). Global Admin only for chain and integrity endpoints.
