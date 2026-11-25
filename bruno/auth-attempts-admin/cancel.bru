@@ -32,6 +32,12 @@ script:post-response {
       test("Status is EXPIRED after cancellation", function () {
           expect(jsonData.authAttemptStatus).to.equal('EXPIRED');
       });
+      
+      test("Single-attempt response carries the display labels like GET by id (#1477)", function () {
+          expect(jsonData.integrationName, 'integrationName').to.be.a('string');
+          expect(jsonData.enrollmentName, 'enrollmentName').to.be.a('string');
+          expect(jsonData.integrationId, 'integrationId').to.be.a('number');
+      });
   }
   
   if (res.getStatus() === 400) {

@@ -19,6 +19,7 @@ import org.ezkey.admin.config.AdminBrowserSessionCookieProperties;
 import org.ezkey.admin.config.AdminRecoveryProperties;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.dto.AdminAuthAuditContext;
+import org.ezkey.admin.dto.request.AdminLoginRequestDto;
 import org.ezkey.admin.dto.request.AdminPasswordlessWaitRequestDto;
 import org.ezkey.admin.dto.response.AdminLoginResponseDto;
 import org.ezkey.admin.exception.AdminAuthenticationExpiredException;
@@ -47,7 +48,10 @@ import org.mockito.quality.Strictness;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-/** Verifies audit logging for {@link AdminAuthController#passwordlessWait} outcomes. */
+/**
+ * Verifies audit logging for the two-call admin login: {@link AdminAuthController#login} pending
+ * and {@link AdminAuthController#passwordlessWait} outcomes.
+ */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class AdminAuthControllerPasswordlessAuditTest {
@@ -94,6 +98,32 @@ class AdminAuthControllerPasswordlessAuditTest {
   }
 
   @Test
+  @DisplayName("login pending emits login_mfa_requested audit with the authAttemptId (#1477)")
+  void loginPending_emitsMfaRequestedAuditWithAuthAttemptId() {
+    AdminLoginRequestDto request = new AdminLoginRequestDto("admin1", false, false);
+    when(authService.authenticate(request))
+        .thenReturn(
+            AdminLoginResponseDto.pendingPasswordless(
+                10,
+                7,
+                "admin1",
+                "GLOBAL_ADMIN",
+                "Confirm on your device",
+                java.time.OffsetDateTime.now().plusMinutes(2),
+                "secret123"));
+
+    ResponseEntity<AdminLoginResponseDto> response =
+        controller.login(request, httpRequest, httpResponse);
+
+    assertEquals(HttpStatus.OK, response.getStatusCode());
+    verify(auditLogService).log(auditCaptor.capture());
+    AuditLog log = auditCaptor.getValue();
+    assertEquals(EventType.ADMIN_LOGIN, log.getEventType());
+    assertEquals(AdminAuditConstants.LOGIN_MFA_REQUESTED, log.getEventAction());
+    assertEquals(Integer.valueOf(10), log.getAuthAttemptId());
+  }
+
+  @Test
   @DisplayName("passwordlessWait success emits login_mfa_session_issued SUCCESS audit")
   void success_emitsSessionIssuedAudit() {
     when(authService.findAuditContextForAuthAttempt(10)).thenReturn(Optional.of(auditCtx));
@@ -119,6 +149,7 @@ class AdminAuthControllerPasswordlessAuditTest {
     assertEquals(AdminAuditConstants.LOGIN_MFA_SESSION_ISSUED, log.getEventAction());
     assertEquals(EventStatus.SUCCESS, log.getEventStatus());
     assertEquals(Integer.valueOf(42), log.getAdminId());
+    assertEquals(Integer.valueOf(10), log.getAuthAttemptId());
   }
 
   @Test
@@ -139,6 +170,7 @@ class AdminAuthControllerPasswordlessAuditTest {
     AuditLog log = auditCaptor.getValue();
     assertEquals(AdminAuditConstants.LOGIN_MFA_EXPIRED, log.getEventAction());
     assertEquals(EventStatus.FAILURE, log.getEventStatus());
+    assertEquals(Integer.valueOf(10), log.getAuthAttemptId());
   }
 
   @Test
@@ -198,5 +230,8 @@ class AdminAuthControllerPasswordlessAuditTest {
     AuditLog log = auditCaptor.getValue();
     assertEquals(AdminAuditConstants.LOGIN_MFA_EXPIRED, log.getEventAction());
     assertEquals(EventStatus.FAILURE, log.getEventStatus());
+    // Unknown attempt: the caller-supplied id stays out of auth_attempt_id (#1477)
+    assertEquals(null, log.getAuthAttemptId());
+    assertEquals("Unresolved authAttemptId: 99", log.getEventDetails());
   }
 }

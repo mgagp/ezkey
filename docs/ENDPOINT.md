@@ -466,6 +466,15 @@ Content-Type: application/json
 }
 ```
 
+**Browser session cookie mode (`ezkey.admin.auth.browser-session-cookie-enabled=true`):** the
+JSON body **omits** `token`. The session arrives in the HttpOnly cookie `EZKEY_ADMIN_SESSION`
+(`Set-Cookie` on this response), with a non-secret `csrfToken`. A browser sends the cookie and
+puts `csrfToken` in `X-CSRF-TOKEN` on `POST`, `PUT`, `PATCH` and `DELETE`. A non-browser client
+(script, CLI, Bruno) reads the cookie value from `Set-Cookie` and sends it as
+`Authorization: Bearer <value>`; Bearer requests need no CSRF token. The community instance runs
+in this mode. See [admin-ui-security.md](admin-ui-security.md) and
+[`ezkey-admin-api/CONFIGURATION.md`](../ezkey-admin-api/CONFIGURATION.md) §12 (#1477).
+
 **Request (Two-Call Mode with Challenge):**
 ```http
 POST /api/v1/admin/auth/login
@@ -493,7 +502,7 @@ Content-Type: application/json
 
 **Pending `expiresAt`:** Matches the stored authentication attempt’s expiry (`ezkey.core.auth-attempt.ttl-seconds`, default 120 seconds). Use it for countdown timers; it is not a fixed five-minute window.
 
-**Audit (pending):** When `status` is `pending`, Ezkey records `event_action` `login_mfa_requested` with **SUCCESS** (MFA request created — not a full session yet). Legacy rows may show `login_pending`; see [AUDIT_ADMIN_LOGIN_ACTIONS.md](AUDIT_ADMIN_LOGIN_ACTIONS.md).
+**Audit (pending):** When `status` is `pending`, Ezkey records `event_action` `login_mfa_requested` with **SUCCESS** (MFA request created — not a full session yet), carrying the `authAttemptId` of the response (#1477). Legacy rows may show `login_pending`; see [AUDIT_ADMIN_LOGIN_ACTIONS.md](AUDIT_ADMIN_LOGIN_ACTIONS.md).
 
 **Failure Responses:**
 ```json
@@ -582,7 +591,7 @@ See [AUDIT_LOG_INTEGRITY.md](AUDIT_LOG_INTEGRITY.md) for integrity verification,
 - **No passwords** - phishing resistant, cannot be stolen
 - Device-bound credentials (private key never leaves device)
 - Optional challenge code for high-security scenarios
-- Bearer token expires after 24 hours
+- Session token lifetime is **2 hours, sliding**: each validated request pushes `expiresAt` to now + 2 h (`ezkey.admin.token.expiration-hours`, default `2`). Recovery and activation tokens never slide (SEC-021). (#1477)
 - Cryptographic signatures prevent forgery
 - IP-based rate limiting prevents brute force attacks
 
@@ -617,6 +626,9 @@ Content-Type: application/json
 }
 ```
 
+The same browser-session-cookie rule as `/login` applies: in that mode `token` is omitted and the
+session is in `Set-Cookie` (see the note under `/login` above).
+
 **Failure Responses (RFC 9457 Problem Details):**
 
 Errors use `Content-Type: application/problem+json` (or JSON with the same fields). Common cases for `/passwordless-wait`:
@@ -643,7 +655,7 @@ Errors use `Content-Type: application/problem+json` (or JSON with the same field
 The client should use `detail` (then `title`) for user-facing messages, not assume a transport failure.
 (**Admin / Integration API only; device clients: contract section 7.**)
 
-**Audit:** Each call to `/passwordless-wait` that reaches a terminal outcome writes an `ADMIN_LOGIN` audit row with a distinct `event_action` (for example `login_mfa_session_issued`, `login_mfa_expired`, `login_mfa_rejected`). See [AUDIT_ADMIN_LOGIN_ACTIONS.md](AUDIT_ADMIN_LOGIN_ACTIONS.md) for the full list and SIEM notes.
+**Audit:** Each call to `/passwordless-wait` that reaches a terminal outcome writes an `ADMIN_LOGIN` audit row with a distinct `event_action` (for example `login_mfa_session_issued`, `login_mfa_expired`, `login_mfa_rejected`), carrying the request's `authAttemptId` (#1477). See [AUDIT_ADMIN_LOGIN_ACTIONS.md](AUDIT_ADMIN_LOGIN_ACTIONS.md) for the full list and SIEM notes.
 
 **Security Notes:**
 - `waiterSecret` capability token prevents replay and session hijacking by requiring the unguessable CSPRNG secret returned only to the initial `/login` caller.
@@ -691,9 +703,12 @@ Content-Type: application/json
 
 `enrollmentCode` is the exact JSON of the enrollment QR code; null when `ezkey.qr.auth-base-url` is not set (#1494).
 
-Recovery codes are generated server-side when the first enrollment exists but are **omitted** from
-this unauthenticated response. Reveal or regenerate them later from an authenticated admin-management
-flow (`POST /api/v1/admins/{id}/recovery-codes/regenerate`). See [LIFECYCLE_GOVERNANCE.md](LIFECYCLE_GOVERNANCE.md) §3.5.
+**No recovery codes are created at activation** (`recoveryCodes` stays null and the admin reads
+`hasRecoveryCodes = false`). Until a set is issued, the administrator has no emergency access. After
+the first authenticated sign-in, issue the initial set with
+`POST /api/v1/admins/{id}/recovery-codes/issue-initial` (Admin UI: *Issue initial recovery codes*);
+later sets use `POST /api/v1/admins/{id}/recovery-codes/regenerate`. See
+[LIFECYCLE_GOVERNANCE.md](LIFECYCLE_GOVERNANCE.md) §3.5. (#1477)
 
 **Failure:** **403** for invalid, expired, or unusable codes (neutral client-safe message). **400**
 when activation cannot proceed in the current state.
@@ -1090,8 +1105,9 @@ Administrator provisioning endpoints allow GlobalAdmins and TenantAdmins to crea
   one-time activation code instead of immediate enrollment bootstrap data.
 - In `IMMEDIATE`, the creation response returns basic admin information plus the first
   `enrollmentId`. Enrollment proof token and challenge are **not** in this response; they are
-  retrieved via GET `/api/v1/admins/{id}/onboarding`. Recovery codes are generated server-side but
-  intentionally remain deferred from bootstrap responses.
+  retrieved via GET `/api/v1/admins/{id}/onboarding`. No recovery codes are created at
+  provisioning or activation; the initial set is issued after the first authenticated sign-in
+  (`POST /api/v1/admins/{id}/recovery-codes/issue-initial`) (#1477).
 - In `ACTIVATION_CODE`, the creation response returns `lifecycleStatus`, `onboardingMode`,
   `activationCode`, and `activationCodeExpiresAt`; `enrollmentId` and `recoveryCodes` stay null
   until the activation code is consumed and the first enrollment exists.
