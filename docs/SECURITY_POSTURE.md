@@ -59,6 +59,12 @@ meant to be linked from trust-facing material without inflating the top-level pi
   never the signature). `markAsInvalid` remains only for post-ownership failures (e.g. wrong
   challenge) and is conditional on status still `READ` (atomic `updateStatusIfCurrent`). Sequential
   ids aggravate enumeration but are not required once an id is known.
+- **Decision (#1314):** The `AUTH_ATTEMPT_RESPOND` audit row follows the result the server
+  computed, not the decision the device sent: `APPROVED` → `auth_attempt_approved`, `DENIED` →
+  `auth_attempt_denied` (both SUCCESS), `FAILED` on a wrong challenge after accept →
+  `auth_attempt_challenge_failed` / FAILURE. The detail is a fixed sentence and never carries the
+  code entered on the device. Same intent as the admin sign-in action `login_mfa_challenge_mismatch`
+  (#1465). The signed response (#844) is unchanged.
 - **Decision (ADR-0019):** The enrollment invitation (QR, deep link, paste) carries `enrollmentProofToken` and optional `authUrl`. It does not carry `enrollmentId`. Bind resolves the row by the unique proof-token hash and returns the id. A leftover `enrollmentId` key in an already-printed QR is ignored. Read-once `CREATED` to `BOUND` still requires the token.
 - **Decision (#1024):** `POST /api/v1/enrollments/verify` does not invalidate, expire, or otherwise change the enrollment until the device signature verifies over the server-built payload (`enrollmentProofToken|enrollmentId|challengeResponse|devicePublicKey`). Security rests on the secrecy of the proof token stored on the enrollment (encrypted at rest), not on the device public key. That key is still supplied in the request and is the verification key, because this call is where the device introduces it. A keypair the caller generates produces a verifying signature only when they already know the stored token, which is part of the server-built payload. Unknown id, a non-`BOUND` row, and a signature that does not verify share one refusal and leave the row unchanged. After that proof, a wrong challenge or a device key already used on a verified enrollment still invalidates (one-shot). Verify is rate-limited per client IP only. The previous unkeyed verify backstop (docker 50 requests / 5 minutes, beside 5 requests / 5 minutes per IP) could be filled by about ten source addresses and then reject every verify on the instance. Bind and enrolled instance-info keep their per-instance backstop.
 - **Decision (#912 C1):** The respond per-`authAttemptId` budget (default 1 / 5 min) is consumed

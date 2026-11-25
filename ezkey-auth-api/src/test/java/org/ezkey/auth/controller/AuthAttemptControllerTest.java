@@ -10,6 +10,7 @@
 
 package org.ezkey.auth.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -20,6 +21,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.ezkey.audit.domain.EventStatus;
+import org.ezkey.audit.domain.EventType;
+import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.integrity.AuditChainHeartbeatGuardService;
 import org.ezkey.auth.config.SecurityConfig;
 import org.ezkey.auth.config.TrustedProxyConfig;
@@ -42,6 +46,7 @@ import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -500,5 +505,73 @@ class AuthAttemptControllerTest {
         .andExpect(jsonPath("$.path").value("/api/v1/auth-attempts/respond"));
 
     verify(authAttemptService, never()).respond(any(AuthAttemptRespondRequest.class), any());
+  }
+
+  // ===== RESPOND AUDIT FOLLOWS THE RESULT (#1314) =====
+
+  @Test
+  @DisplayName("respond audit: APPROVED result is audited auth_attempt_approved / SUCCESS")
+  void respondAudit_WhenApproved_ShouldLogApprovedSuccess() throws Exception {
+    AuditLog row = respondAndCaptureAudit(true, AuthenticationResult.APPROVED);
+
+    assertThat(row.getEventAction()).isEqualTo("auth_attempt_approved");
+    assertThat(row.getEventStatus()).isEqualTo(EventStatus.SUCCESS);
+    assertThat(row.getEventDetails()).isEqualTo("User approved authentication");
+  }
+
+  @Test
+  @DisplayName("respond audit: DENIED result is audited auth_attempt_denied / SUCCESS")
+  void respondAudit_WhenDenied_ShouldLogDeniedSuccess() throws Exception {
+    AuditLog row = respondAndCaptureAudit(false, AuthenticationResult.DENIED);
+
+    assertThat(row.getEventAction()).isEqualTo("auth_attempt_denied");
+    assertThat(row.getEventStatus()).isEqualTo(EventStatus.SUCCESS);
+    assertThat(row.getEventDetails()).isEqualTo("User denied authentication");
+  }
+
+  @Test
+  @DisplayName(
+      "respond audit: accept with a wrong challenge (FAILED) is audited"
+          + " auth_attempt_challenge_failed / FAILURE, without the entered code")
+  void respondAudit_WhenAcceptedButChallengeFailed_ShouldLogChallengeFailed() throws Exception {
+    AuditLog row = respondAndCaptureAudit(true, AuthenticationResult.FAILED);
+
+    assertThat(row.getEventAction()).isEqualTo("auth_attempt_challenge_failed");
+    assertThat(row.getEventStatus()).isEqualTo(EventStatus.FAILURE);
+    assertThat(row.getEventDetails())
+        .isEqualTo("Challenge code entered on the device did not match")
+        .doesNotContain(String.valueOf(respondRequestDto.authAttemptChallengeResponse()));
+    assertThat(row.getErrorMessage()).isNull();
+  }
+
+  private AuditLog respondAndCaptureAudit(boolean accepted, AuthenticationResult result)
+      throws Exception {
+    AuthAttemptRespondRequestDto dto =
+        new AuthAttemptRespondRequestDto(
+            respondRequestDto.authAttemptId(),
+            respondRequestDto.authAttemptProofTokenSignedByDevice(),
+            respondRequestDto.authAttemptChallengeResponse(),
+            accepted);
+    respondRequest.setAuthAttemptAccepted(accepted);
+    respondResponse.setResult(result);
+    when(authAttemptMapper.toAuthAttemptRespondRequest(any(AuthAttemptRespondRequestDto.class)))
+        .thenReturn(respondRequest);
+    when(authAttemptService.respond(any(AuthAttemptRespondRequest.class), any()))
+        .thenReturn(respondResponse);
+    when(authAttemptMapper.toAuthAttemptRespondResponseDto(respondResponse))
+        .thenReturn(respondResponseDto);
+
+    mockMvc
+        .perform(
+            post(BASE_URL + "/respond")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(dto)))
+        .andExpect(status().isOk());
+
+    ArgumentCaptor<AuditLog> captor = ArgumentCaptor.forClass(AuditLog.class);
+    verify(auditLogService, times(1)).log(captor.capture());
+    AuditLog row = captor.getValue();
+    assertThat(row.getEventType()).isEqualTo(EventType.AUTH_ATTEMPT_RESPOND);
+    return row;
   }
 }
