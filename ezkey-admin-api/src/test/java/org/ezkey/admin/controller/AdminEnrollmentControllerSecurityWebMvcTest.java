@@ -10,12 +10,16 @@
 
 package org.ezkey.admin.controller;
 
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.ezkey.admin.config.AdminCorsTestFilterBeans;
+import org.ezkey.admin.config.AdminOperationsRateLimitProperties;
 import org.ezkey.admin.config.SecurityConfig;
 import org.ezkey.admin.config.TrustedProxyConfig;
 import org.ezkey.admin.security.AdminOperationsRateLimitService;
@@ -24,7 +28,9 @@ import org.ezkey.audit.service.AuditLogService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -35,7 +41,12 @@ import org.springframework.test.web.servlet.MockMvc;
  * @since 2026
  */
 @WebMvcTest(controllers = AdminEnrollmentController.class)
-@Import({SecurityConfig.class, AdminCorsTestFilterBeans.class, TrustedProxyConfig.class})
+@Import({
+  SecurityConfig.class,
+  AdminCorsTestFilterBeans.class,
+  TrustedProxyConfig.class,
+  AdminEnrollmentControllerSecurityWebMvcTest.NonDefaultRateLimit.class
+})
 @DisplayName("AdminEnrollmentController reset security contract")
 class AdminEnrollmentControllerSecurityWebMvcTest {
 
@@ -44,6 +55,38 @@ class AdminEnrollmentControllerSecurityWebMvcTest {
   @MockitoBean private AdminRecoveryService recoveryService;
   @MockitoBean private AdminOperationsRateLimitService adminOpsRateLimitService;
   @MockitoBean private AuditLogService auditLogService;
+
+  /** Non-default enrollment reset limit: 7 per 2 minutes (defaults are 3 per 30). */
+  @TestConfiguration
+  static class NonDefaultRateLimit {
+    @Bean
+    AdminOperationsRateLimitProperties adminOperationsRateLimitProperties() {
+      AdminOperationsRateLimitProperties properties = new AdminOperationsRateLimitProperties();
+      properties.getEnrollmentReset().setRequests(7);
+      properties.getEnrollmentReset().setWindowMinutes(2);
+      return properties;
+    }
+  }
+
+  @Test
+  @DisplayName("429 reports the configured reset limit and derives Retry-After from it (#1315)")
+  void rateLimitedResetUsesConfiguredLimitAndRetryAfter() throws Exception {
+    when(adminOpsRateLimitService.canResetEnrollment(anyString())).thenReturn(false);
+
+    mockMvc
+        .perform(
+            post("/api/v1/admin/enrollments/reset")
+                .header("Authorization", "Bearer ezkey_recovery_test-token")
+                .contentType(APPLICATION_JSON)
+                .content("{\"enrollmentId\":1,\"reason\":\"device lost and rotating enrollment\"}"))
+        .andExpect(status().isTooManyRequests())
+        .andExpect(header().string("Retry-After", "120"))
+        .andExpect(
+            jsonPath("$.detail")
+                .value(
+                    "Rate limit exceeded for operation 'ENROLLMENT_RESET': 7/7 operations in"
+                        + " 2-minute window"));
+  }
 
   @Test
   @DisplayName("Missing Authorization header returns 401 ProblemDetail")

@@ -16,6 +16,7 @@ import org.ezkey.util.LogSanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -111,12 +112,26 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(RateLimitExceededException.class)
   public ResponseEntity<ProblemDetail> handleRateLimitExceededException(
       RateLimitExceededException ex, WebRequest request) {
-    return problemResponse(
-        HttpStatus.TOO_MANY_REQUESTS,
-        AdminApiProblemCatalog.TYPE_RATE_LIMIT_EXCEEDED,
-        AdminApiProblemCatalog.TITLE_TOO_MANY_REQUESTS,
-        ex.getMessage(),
-        request);
+    ResponseEntity<ProblemDetail> response =
+        problemResponse(
+            HttpStatus.TOO_MANY_REQUESTS,
+            AdminApiProblemCatalog.TYPE_RATE_LIMIT_EXCEEDED,
+            AdminApiProblemCatalog.TITLE_TOO_MANY_REQUESTS,
+            ex.getMessage(),
+            request);
+    return ResponseEntity.status(response.getStatusCode())
+        .header(HttpHeaders.RETRY_AFTER, retryAfterSeconds(ex))
+        .body(response.getBody());
+  }
+
+  /**
+   * {@code Retry-After} for an admin-operation limit: the configured window in seconds (#1315).
+   *
+   * <p>The buckets refill the whole window at once ({@code refillIntervally}), so the window is a
+   * safe upper bound: a client that waits that long is never refused again for the same burst.
+   */
+  static String retryAfterSeconds(RateLimitExceededException ex) {
+    return String.valueOf(Math.max(1L, ex.getWindowSizeMinutes() * 60L));
   }
 
   /**

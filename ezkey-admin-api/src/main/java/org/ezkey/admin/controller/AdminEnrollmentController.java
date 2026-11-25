@@ -17,6 +17,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.ezkey.admin.audit.RecoveryAuditDetails;
+import org.ezkey.admin.config.AdminOperationsRateLimitProperties;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.dto.request.EnrollmentResetRequestDto;
 import org.ezkey.admin.dto.response.EnrollmentResetResponseDto;
@@ -67,14 +68,17 @@ public class AdminEnrollmentController {
 
   private final AdminRecoveryService recoveryService;
   private final AdminOperationsRateLimitService adminOpsRateLimitService;
+  private final AdminOperationsRateLimitProperties adminOpsRateLimitProperties;
   private final AuditLogService auditLogService;
 
   public AdminEnrollmentController(
       AdminRecoveryService recoveryService,
       AdminOperationsRateLimitService adminOpsRateLimitService,
+      AdminOperationsRateLimitProperties adminOpsRateLimitProperties,
       AuditLogService auditLogService) {
     this.recoveryService = recoveryService;
     this.adminOpsRateLimitService = adminOpsRateLimitService;
+    this.adminOpsRateLimitProperties = adminOpsRateLimitProperties;
     this.auditLogService = auditLogService;
   }
 
@@ -163,7 +167,12 @@ public class AdminEnrollmentController {
                         "rate_limited",
                         "Too many enrollment reset attempts"))
                 .build());
-        throw new RateLimitExceededException("ENROLLMENT_RESET", 3, 0, 30);
+        var resetLimit = adminOpsRateLimitProperties.getEnrollmentReset();
+        throw new RateLimitExceededException(
+            "ENROLLMENT_RESET",
+            resetLimit.getRequests(),
+            resetLimit.getRequests(),
+            resetLimit.getWindowMinutes());
       }
 
       logger.warn(

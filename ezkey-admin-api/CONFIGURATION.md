@@ -188,6 +188,8 @@ ezkey.admin.rate-limit.backstop.passwordless-wait.window-minutes=1
 
 **Description:** rate limiting for authenticated admin operations (API key creation, revocation,
 update, enrollment reset). Keyed per admin session, not by IP.
+A refusal returns 429 whose detail names the configured limit and window, with `Retry-After` set to
+the configured window in seconds (#1315).
 
 **Defined in:** `AdminOperationsRateLimitProperties`
 
