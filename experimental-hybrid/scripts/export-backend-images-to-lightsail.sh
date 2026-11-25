@@ -205,27 +205,10 @@ fi
 JAVAMELODY_OVERLAY="${LIGHTSAIL_LOCAL_DIR}/docker-compose.javamelody.yml"
 JAVAMELODY_COLLECTOR_IMAGE=""
 JAVAMELODY_VERSION=""
+# Tag comes from the overlay's image: line, the single source (#893 N3; see common.sh).
 resolve_javamelody_collector_image() {
   local overlay="$1"
-  local img_line version
-  if [[ ! -f "${overlay}" ]]; then
-    echo "error: JavaMelody overlay missing: ${overlay}" >&2
-    exit 1
-  fi
-  img_line="$(grep -E '^\s*image:\s*ezkey-javamelody-collector:[^[:space:]]+' "${overlay}" | head -n1 || true)"
-  if [[ -z "${img_line}" ]]; then
-    echo "error: could not parse ezkey-javamelody-collector image from ${overlay}" >&2
-    exit 1
-  fi
-  version="${img_line##*:}"
-  version="${version//[[:space:]]/}"
-  version="${version//\"/}"
-  version="${version//\'/}"
-  if [[ -z "${version}" ]]; then
-    echo "error: empty JAVAMELODY_VERSION parsed from ${overlay}" >&2
-    exit 1
-  fi
-  JAVAMELODY_VERSION="${version}"
+  JAVAMELODY_VERSION="$(lightsail_javamelody_collector_version_from_overlay "${overlay}")"
   JAVAMELODY_COLLECTOR_IMAGE="ezkey-javamelody-collector:${JAVAMELODY_VERSION}"
 }
 
