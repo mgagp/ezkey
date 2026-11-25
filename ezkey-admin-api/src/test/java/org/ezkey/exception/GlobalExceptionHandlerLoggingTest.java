@@ -5,7 +5,8 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Test: GlobalExceptionHandlerLoggingTest
- * Description: Request path CR/LF must be neutralized in Admin API exception logs (#801).
+ * Description: Request path control characters must be neutralized in Admin API exception logs
+ *              (#801, #951).
  */
 
 package org.ezkey.exception;
@@ -21,9 +22,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.context.request.ServletWebRequest;
+import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
@@ -91,6 +94,26 @@ class GlobalExceptionHandlerLoggingTest {
     assertThat(joined).doesNotContain("\r");
     assertThat(joined).doesNotContain("\ninjected");
     assertThat(joined).contains("/api/v1/admins__injected");
+  }
+
+  @Test
+  @DisplayName("NoHandlerFound DEBUG neutralizes CR/LF and ESC in method and URL (LogSanitizer)")
+  void noHandlerFoundDebugSanitizesMethodAndUrl() {
+    MockHttpServletRequest httpRequest = new MockHttpServletRequest();
+    httpRequest.setRequestURI("/missing\r\ninjected");
+    ServletWebRequest request = new ServletWebRequest(httpRequest);
+
+    handler.handleNoHandlerFoundException(
+        new NoHandlerFoundException(
+            "GE\r\nT", "/missing\r\ninjected\u001B[31m", new HttpHeaders()),
+        request);
+
+    String joined = joinedMessages();
+    assertThat(joined).contains("No handler");
+    assertThat(joined).doesNotContain("\r");
+    assertThat(joined).doesNotContain("\u001B");
+    assertThat(joined).doesNotContain("\ninjected");
+    assertThat(joined).contains("GE__T /missing__injected_[31m");
   }
 
   private String joinedMessages() {
