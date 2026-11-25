@@ -1,4 +1,4 @@
-# Aggregate CI for Admin UI, Java backend, mobile, and the Python CLI.
+# Aggregate CI for Admin UI, Java backend, mobile, the Python CLI and the methodology site.
 #
 # Path-filtered jobs avoid wasted runners; a final always-running `ci-gate` job
 # is the single check intended to become required on `main` (no "Expected —
@@ -54,6 +54,7 @@ jobs:
       ezkey-jenkins: ${{ steps.resolve.outputs.ezkey-jenkins }}
       connectors: ${{ steps.resolve.outputs.connectors }}
       quality-gate: ${{ steps.resolve.outputs.quality-gate }}
+      product-docs: ${{ steps.resolve.outputs.product-docs }}
       workflows: ${{ steps.resolve.outputs.workflows }}
       heavy: ${{ steps.resolve.outputs.heavy }}
     steps:
@@ -124,6 +125,9 @@ jobs:
               - 'scripts/lib/quality-gate-*.mjs'
               - 'scripts/lib/quality-gate-*.sh'
               - 'config/quality-gate/**'
+            # Methodology site and its publication boundary audit (#1402).
+            product-docs:
+              - 'product-docs/**'
             mobile:
               - 'ezkey_mobile/**'
               - '.github/workflows/ezkey-mobile-unit-tests.yml'
@@ -189,7 +193,7 @@ jobs:
           if [[ "$event" == "schedule" ]] &&
             (( $(date +%s) - $(git log -1 --format=%ct) > 86400 )); then
             for suite in admin-ui demo-login backend mobile mobile-ios cli-python ezkey-pam lightsail \
-              dart-sdk ezkey-jenkins connectors quality-gate workflows; do
+              dart-sdk ezkey-jenkins connectors quality-gate product-docs workflows; do
               echo "$suite=false" >> "$GITHUB_OUTPUT"
             done
             echo "Nightly: no commit on main in the last 24 h, nothing to run"
@@ -206,6 +210,7 @@ jobs:
             echo "ezkey-jenkins=true" >> "$GITHUB_OUTPUT"
             echo "connectors=true" >> "$GITHUB_OUTPUT"
             echo "quality-gate=true" >> "$GITHUB_OUTPUT"
+            echo "product-docs=true" >> "$GITHUB_OUTPUT"
             echo "workflows=true" >> "$GITHUB_OUTPUT"
             echo "Forced all suites ($event)"
           else
@@ -221,6 +226,7 @@ jobs:
             echo "ezkey-jenkins=${{ steps.filter.outputs.ezkey-jenkins }}" >> "$GITHUB_OUTPUT"
             echo "connectors=${{ steps.filter.outputs.connectors }}" >> "$GITHUB_OUTPUT"
             echo "quality-gate=${{ steps.filter.outputs.quality-gate }}" >> "$GITHUB_OUTPUT"
+            echo "product-docs=${{ steps.filter.outputs.product-docs }}" >> "$GITHUB_OUTPUT"
             echo "workflows=${{ steps.filter.outputs.workflows }}" >> "$GITHUB_OUTPUT"
           fi
 
@@ -732,6 +738,36 @@ jobs:
       - name: Quality-gate secrets unit tests
         run: node --test scripts/lib/quality-gate-secrets.test.mjs
 
+  # Methodology site static build (#1402): runs the publication boundary audit, so a link
+  # from published canon into global/ or components/ fails the PR instead of breaking silently.
+  product-docs:
+    name: product-docs
+    needs: changes
+    if: needs.changes.outputs.product-docs == 'true' || needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: product-docs/site
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7 — Node from root .nvmrc (24 LTS)
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+          cache-dependency-path: product-docs/site/package-lock.json
+
+      - name: npm ci
+        run: npm ci
+
+      - name: Build (includes the publication boundary audit)
+        run: npm run build
+
   # macOS build and harnesses only (#1199): Docker stub suites stay on Linux, and no module is
   # installed. Same triggers as ezkey-pam.
   ezkey-pam-macos:
@@ -762,7 +798,7 @@ jobs:
   # failure or cancellation of any needed job fails the gate.
   ci-gate:
     name: ci-gate
-    needs: [changes, admin-ui, demo-login, backend, version-alignment, licenses-drift, ha-smoke, mobile, mobile-ios, cli-python, ezkey-pam, ezkey-pam-macos, lightsail, dart-sdk, ezkey-jenkins, connectors, quality-gate]
+    needs: [changes, admin-ui, demo-login, backend, version-alignment, licenses-drift, ha-smoke, mobile, mobile-ios, cli-python, ezkey-pam, ezkey-pam-macos, lightsail, dart-sdk, ezkey-jenkins, connectors, quality-gate, product-docs]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -787,6 +823,7 @@ jobs:
           echo "ezkey-jenkins=${{ needs.ezkey-jenkins.result }}"
           echo "connectors=${{ needs.connectors.result }}"
           echo "quality-gate=${{ needs.quality-gate.result }}"
+          echo "product-docs=${{ needs.product-docs.result }}"
 
           if [[ "${{ needs.changes.result }}" != "success" ]]; then
             echo "::error::changes job did not succeed (${{ needs.changes.result }})"
@@ -809,7 +846,8 @@ jobs:
             "dart-sdk:${{ needs.dart-sdk.result }}" \
             "ezkey-jenkins:${{ needs.ezkey-jenkins.result }}" \
             "connectors:${{ needs.connectors.result }}" \
-            "quality-gate:${{ needs.quality-gate.result }}"; do
+            "quality-gate:${{ needs.quality-gate.result }}" \
+            "product-docs:${{ needs.product-docs.result }}"; do
             name="${pair%%:*}"
             result="${pair#*:}"
             case "$result" in

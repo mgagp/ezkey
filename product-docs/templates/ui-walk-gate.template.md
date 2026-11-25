@@ -2,7 +2,7 @@
 
 Copy into a `WALK-*` record under `product-docs/global/backlog/walk-gates/`. A copy-only change on one
 screen takes a three-to-five-row checklist in the PR description instead (sizing:
-[`ui-walk-done-gate.md`](../global/ui-walk-done-gate.md) § *Sizing the gate*).
+[`ui-walk-done-gate.md`](https://github.com/mgagp/ezkey/blob/main/product-docs/global/ui-walk-done-gate.md#sizing-the-gate) § *Sizing the gate*).
 **Delete sections that do not apply.** Empty sections are not a gate.
 
 Scope: **any human UI surface** (Admin UI, demo apps, tester pages, mobile copy).

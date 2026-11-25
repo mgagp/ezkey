@@ -465,6 +465,7 @@ inventory and improvement plan:
 | `mobile` | `ezkey_mobile/**`, its reusable workflow, or `ci.yml` | Calls reusable [`.github/workflows/ezkey-mobile-unit-tests.yml`](../.github/workflows/ezkey-mobile-unit-tests.yml): Yarn validate, Android JVM unit tests, **16 KB APK alignment** (PRs and nightly only) |
 | `mobile-ios` | iOS native surface (`ezkey_mobile/ios/**`, `package.json`, `yarn.lock`, `Gemfile*`, `scripts/ios-*.sh`), its reusable workflow, or `ci.yml`; PRs and nightly only | Calls reusable [`.github/workflows/ezkey-mobile-ios.yml`](../.github/workflows/ezkey-mobile-ios.yml) on `macos-26`: `yarn ios:lint` (swift-format + SwiftLint, strict), `pod install`, `yarn ios:test` (simulator build + XCTest) |
 | `dart-sdk` | `ezkey_dart/**` or workflows | Experimental Dart SDK offline gate in a pinned `dart` image: `ezkey_dart/scripts/test.sh` (format check, `analyze --fatal-infos`, unit tests). The live-stack suite `ezkey_dart/scripts/e2e.sh` stays local ([`ezkey_dart/README.md`](../ezkey_dart/README.md) §6) |
+| `product-docs` | `product-docs/**` or `ci.yml` | Methodology site: Node from root `.nvmrc`; `npm ci` and `npm run build` in `product-docs/site`, which runs the publication boundary audit. Added because the build broke silently for two weeks (#1402) |
 | `ci-gate` | Always | Aggregate pass/fail for the jobs above |
 
 **Docker image builds in CI reuse the runner's Maven repository.** `ha-smoke` and `connectors` build
