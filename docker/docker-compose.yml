@@ -12,7 +12,8 @@ x-container-tz: &container-tz
   TZ: ${TZ:-UTC}
 
 # OCI image revision (#814): full git SHA from OCI_IMAGE_REVISION (rolling upgrade exports it).
-# Not the full #740 surface (no git.properties / actuator/info).
+# Admin API and Auth API images also set EZKEY_BUILD_REVISION from it: public instance-info
+# exposes the short SHA (gitShortSha, #1477). "unknown" is exposed as null.
 x-ezkey-image-build: &ezkey-image-build
   context: ..
   dockerfile: docker/Dockerfile

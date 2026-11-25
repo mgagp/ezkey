@@ -6,4 +6,8 @@ export interface PublicInstanceInfo {
   instanceName: string;
   instanceDescription: string | null;
   aboutUrl: string | null;
+  /** Product SemVer of the backend build (#1477). */
+  productVersion: string | null;
+  /** 7-character git SHA of the backend image; null when not stamped (#1477). */
+  gitShortSha: string | null;
 }

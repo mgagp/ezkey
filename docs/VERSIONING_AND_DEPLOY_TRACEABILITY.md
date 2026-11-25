@@ -99,11 +99,18 @@ release-looking local coordinate.
 
 Spring Boot APIs generate `META-INF/build-info.properties` and expose product SemVer on
 management `/actuator/info` (`build.version`). Env dumps stay off (`management.info.env.enabled=false`).
+The Admin API and Auth API also return that SemVer and the short SHA of the image on public
+`GET /api/v1/public/instance-info` (`productVersion`, `gitShortSha`).
 Admin UI chrome stays **Public alpha · \<sha7\>** (do not show bare `v0.2.0`); `package.json`
 version is aligned for tooling only.
 
 **Trace:** POM / npm / SDK / Android / CLI alignment + CI divergence check —
 [#1211](https://github.com/mgagp/ezkey/issues/1211) step 2.
+
+**Trace:** Public instance-info exposes `productVersion` and `gitShortSha` (no actuator, no env
+dump on the public port) — an outside validator could not tie API responses to a build after a
+migration; the repository is public, so the SHA discloses nothing new — Marc, 2026-11-25,
+[#1477](https://github.com/mgagp/ezkey/issues/1477) finding 8.
 
 ## Product claims (operator / public)
 
@@ -149,6 +156,7 @@ As operated today (Seb read-only inventory of ezkey.online):
 | **Admin UI** | **Cloudflare Pages** (not a Lightsail container) | Record the **git SHA of the tree that was built and published** to Pages. Pages deploy id alone is not enough unless mapped back to that SHA. |
 | **APIs / Demo Login** | Lightsail Docker VM | Images tagged `*:latest` are **not** deploy traceability. Ledger must record the **full git SHA** that produced (or was intended for) those images. Rolling / compose builds also stamp OCI `org.opencontainers.image.revision` via `OCI_IMAGE_REVISION` (#814; see [`experimental-hybrid/BACKEND_ROLLING_UPDATE.md`](../experimental-hybrid/BACKEND_ROLLING_UPDATE.md)). |
 | **API health / actuator** | same VM | Management `/actuator/info` exposes `build.version` (product SemVer) when the stack is built from this tree; live deploy SOOT remains the SHA ledger. Demo Login (Node) has no Actuator. |
+| **Public build identity** | Admin API and Auth API | `GET /api/v1/public/instance-info` returns `productVersion` (build-info SemVer) and `gitShortSha` (7 characters, from `OCI_IMAGE_REVISION` via `EZKEY_BUILD_REVISION`); `null` when the image was not stamped. Lets an outside validator tie a response to a build; the ledger stays the SOOT. |
 
 Closing the pre-convention gap: until the first post-publish ledger row exists, live SHA is
 **unknown** even if containers are `latest`. The procedure below is how that gap is closed.

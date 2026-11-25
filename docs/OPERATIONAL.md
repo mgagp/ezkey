@@ -203,6 +203,7 @@ ezkey.organization.about-url=https://www.example.com/about-ezkey
 | `EZKEY_ORGANIZATION_DESCRIPTION` | `ezkey.organization.description` | Instance blurb; seeds system tenant description; `instanceDescription` on instance-info |
 | `EZKEY_ORGANIZATION_ABOUT_URL` | `ezkey.organization.about-url` | Optional “About / learn more” link; `aboutUrl` on `GET /api/v1/public/instance-info` (Admin API and Auth API) |
 | `EZKEY_QR_AUTH_BASE_URL` | `ezkey.qr.auth-base-url` | Public Auth API base URL embedded as `authUrl` in enrollment QR JSON and returned as `authApiPublicBaseUrl` from `GET /api/v1/public/instance-info` (Admin API and Auth API) |
+| `EZKEY_BUILD_REVISION` | `ezkey.build.revision` | Set by the Admin API and Auth API images from `OCI_IMAGE_REVISION`; `gitShortSha` on instance-info, `null` when the image was not stamped (#1477) |
 
 **Use Cases:**
 - **Single Organization**: Default "Ezkey System" for internal use

@@ -118,6 +118,8 @@ RUN apk add --no-cache curl && \
     chown -R spring:spring /app /etc/ezkey /var/lib/ezkey
 ARG OCI_IMAGE_REVISION=unknown
 LABEL org.opencontainers.image.revision=${OCI_IMAGE_REVISION}
+# Short SHA on public instance-info (#1477): ezkey.build.revision; "unknown" is exposed as null.
+ENV EZKEY_BUILD_REVISION=${OCI_IMAGE_REVISION}
 WORKDIR /app
 COPY --chown=spring:spring --from=build /build/ezkey-admin-api/target/*.jar app.jar
 COPY --chown=spring:spring --from=build /build/ezkey-admin-api/config ./config
@@ -141,6 +143,8 @@ RUN apk add --no-cache curl && \
     chown -R spring:spring /app /etc/ezkey
 ARG OCI_IMAGE_REVISION=unknown
 LABEL org.opencontainers.image.revision=${OCI_IMAGE_REVISION}
+# Short SHA on public instance-info (#1477): ezkey.build.revision; "unknown" is exposed as null.
+ENV EZKEY_BUILD_REVISION=${OCI_IMAGE_REVISION}
 WORKDIR /app
 COPY --chown=spring:spring --from=build /build/ezkey-auth-api/target/*.jar app.jar
 COPY --chown=spring:spring --from=build /build/ezkey-auth-api/config ./config

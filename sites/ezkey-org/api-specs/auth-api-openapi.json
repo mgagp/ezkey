@@ -854,6 +854,22 @@
             ],
             "description": "Optional URL for About / learn more (e.g. company instance page)",
             "example": "https://www.example.com/about-ezkey"
+          },
+          "productVersion": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Product SemVer of the backend build that answered (Maven build-info); null when build-info is absent",
+            "example": "0.2.0-SNAPSHOT"
+          },
+          "gitShortSha": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Short git SHA (7 hex characters) of the deployed tree, from the image build revision; null when the image was not stamped",
+            "example": "91dc5fe"
           }
         }
       }
