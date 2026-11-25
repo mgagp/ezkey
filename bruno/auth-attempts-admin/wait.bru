@@ -41,6 +41,12 @@ script:post-response {
           var validStatuses = ['PENDING', 'READ', 'INVALID', 'REJECTED', 'ACCEPTED', 'EXPIRED'];
           expect(validStatuses).to.include(jsonData.status);
       });
+      
+      test("Single-attempt response carries the display labels like GET by id (#1477)", function () {
+          expect(jsonData.authAttempt.integrationName, 'integrationName').to.be.a('string');
+          expect(jsonData.authAttempt.enrollmentName, 'enrollmentName').to.be.a('string');
+          expect(jsonData.authAttempt.integrationId, 'integrationId').to.be.a('number');
+      });
   }
 }
 
@@ -65,7 +71,7 @@ docs {
   - `polling` (optional, default: 2): Polling interval in seconds (1-60)
   
   **Response (200 OK):**
-  - `authAttempt`: Complete authentication attempt data
+  - `authAttempt`: Complete authentication attempt data, with the same `integrationId`, `integrationName`, `enrollmentName`, `tenantId` and `tenantName` labels as GET by id (#1477)
   - `status`: Calculated status (PENDING, READ, INVALID, REJECTED, ACCEPTED, EXPIRED)
   - `completed`: Whether authentication process is complete
   - `timeoutReached`: Whether wait ended due to timeout

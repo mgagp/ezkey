@@ -190,24 +190,12 @@ public interface AuthAttemptAdminApiMapper {
   AuthAttemptWaitRequest toAuthAttemptWaitRequest(AuthAttemptWaitRequestDto request);
 
   /**
-   * Converts an AuthAttemptWaitResponse domain object to an AuthAttemptWaitResponseDto.
-   *
-   * <p>This method maps all fields from the domain object to the response DTO, preparing it for
-   * return to the API client.
-   *
-   * @param response the AuthAttemptWaitResponse to convert
-   * @return the corresponding AuthAttemptWaitResponseDto
-   * @see AuthAttemptWaitResponse
-   * @see AuthAttemptWaitResponseDto
-   */
-  AuthAttemptWaitResponseDto toAuthAttemptWaitResponseDto(AuthAttemptWaitResponse response);
-
-  /**
    * Creates an AuthAttemptWaitResponseDto from its components.
    *
    * <p>This method constructs the wait response DTO from the authentication attempt data and
-   * calculated status information. It provides a clean way to build the response for the wait
-   * endpoint.
+   * calculated status information. The wait endpoint passes a labelled attempt DTO ({@link
+   * #toDtoWithLabels}) so the response carries the same labels as GET by ID (#1477). It provides a
+   * clean way to build the response for the wait endpoint.
    *
    * @param authAttempt the authentication attempt DTO
    * @param status the calculated status string

@@ -31,7 +31,7 @@ The Ezkey Admin API implements **passwordless-only authentication** and eliminat
 - ✅ **Device-bound credentials** - Private key material remains on the device
 - ✅ **Cryptographic signatures** - Ezkey's own passwordless authentication model
 - ✅ **Recovery codes** - 106-bit entropy emergency access (paranoia-level)
-- ✅ **Bearer token management** - 24-hour tokens with rotation
+- ✅ **Bearer token management** - 2-hour sliding session tokens with rotation
 - ✅ **Rate limiting** - IP-based protection against brute force
 
 ### Authentication Modes
@@ -103,7 +103,7 @@ flowchart TB
 | Layer | Component | Purpose |
 |-------|-----------|---------|
 | **1. Authentication** | Passwordless Crypto | Verify identity via device signature |
-| **2. Authorization** | Bearer Tokens | Access control (24h expiry) |
+| **2. Authorization** | Bearer Tokens | Access control (2 h sliding expiry) |
 | **3. Rate Limiting** | IP-based limits | Prevent brute force (5/min) |
 | **4. Recovery** | Single-use codes | Emergency access (106-bit entropy) |
 | **5. Audit** | Database logging | Complete authentication trail |
@@ -558,10 +558,13 @@ POST /api/v1/admin/auth/login
 **Token Properties:**
 ```
 Format:    ezkey_[UUID without hyphens]
-Lifetime:  24 hours
+Lifetime:  2 hours, sliding (ezkey.admin.token.expiration-hours, default 2)
 Storage:   PostgreSQL (ezkey_admin_tokens table)
 Fields:    bearer_token, admin_id, expires_at, active
 ```
+
+Each validated request on a SESSION token pushes `expires_at` to now + `expiration-hours`.
+Recovery and activation tokens keep their absolute TTL and never slide (SEC-021). (#1477)
 
 **Token States:**
 - **ACTIVE + NOT EXPIRED:** Valid for API access

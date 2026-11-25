@@ -440,6 +440,7 @@ public class AdminAuthController {
                   adminTenantId)
               .eventStatus(EventStatus.SUCCESS)
               .adminId(resolveAdminId(request.username()))
+              .authAttemptId(response.authAttemptId())
               .eventDetails("Username: " + request.username() + ", MFA request created")
               .build());
 
@@ -672,6 +673,7 @@ public class AdminAuthController {
     ClientContext context = ClientContext.from(httpRequest);
     Optional<AdminAuthAuditContext> auditCtx =
         authService.findAuditContextForAuthAttempt(request.authAttemptId());
+    Integer attemptId = request.authAttemptId();
 
     try {
       AdminLoginResponseDto response =
@@ -687,6 +689,7 @@ public class AdminAuthController {
                       ctx.tenantId())
                   .eventStatus(EventStatus.SUCCESS)
                   .adminId(ctx.adminId())
+                  .authAttemptId(request.authAttemptId())
                   .eventDetails("Username: " + ctx.username())
                   .build()));
 
@@ -694,32 +697,40 @@ public class AdminAuthController {
       return ResponseEntity.ok(wrapWithSessionCookie(response, httpResponse));
     } catch (AdminAuthenticationExpiredException e) {
       logPasswordlessMfaFailure(
-          auditCtx, context, AdminAuditConstants.LOGIN_MFA_EXPIRED, e.getMessage());
+          auditCtx, context, attemptId, AdminAuditConstants.LOGIN_MFA_EXPIRED, e.getMessage());
       throw e;
     } catch (AdminAuthenticationRejectedException e) {
       logPasswordlessMfaFailure(
-          auditCtx, context, AdminAuditConstants.LOGIN_MFA_REJECTED, e.getMessage());
+          auditCtx, context, attemptId, AdminAuditConstants.LOGIN_MFA_REJECTED, e.getMessage());
       throw e;
     } catch (AdminAuthenticationTimeoutException e) {
       logPasswordlessMfaFailure(
-          auditCtx, context, AdminAuditConstants.LOGIN_MFA_TIMEOUT, e.getMessage());
+          auditCtx, context, attemptId, AdminAuditConstants.LOGIN_MFA_TIMEOUT, e.getMessage());
       throw e;
     } catch (AdminChallengeMismatchException e) {
       logPasswordlessMfaFailure(
-          auditCtx, context, AdminAuditConstants.LOGIN_MFA_CHALLENGE_MISMATCH, e.getMessage());
+          auditCtx,
+          context,
+          attemptId,
+          AdminAuditConstants.LOGIN_MFA_CHALLENGE_MISMATCH,
+          e.getMessage());
       throw e;
     } catch (AdminAuthenticationException e) {
       if (e.getMessage() != null && e.getMessage().contains("Invalid challenge")) {
         logPasswordlessMfaFailure(
-            auditCtx, context, AdminAuditConstants.LOGIN_MFA_INVALID_CHALLENGE, e.getMessage());
+            auditCtx,
+            context,
+            attemptId,
+            AdminAuditConstants.LOGIN_MFA_INVALID_CHALLENGE,
+            e.getMessage());
       } else {
         logPasswordlessMfaUnexpected(
-            auditCtx, context, AdminAuditConstants.LOGIN_MFA_ERROR, e.getMessage());
+            auditCtx, context, attemptId, AdminAuditConstants.LOGIN_MFA_ERROR, e.getMessage());
       }
       throw e;
     } catch (IllegalArgumentException e) {
       logPasswordlessMfaUnexpected(
-          auditCtx, context, AdminAuditConstants.LOGIN_MFA_ERROR, e.getMessage());
+          auditCtx, context, attemptId, AdminAuditConstants.LOGIN_MFA_ERROR, e.getMessage());
       throw e;
     }
   }
@@ -759,9 +770,23 @@ public class AdminAuthController {
     return ResponseEntity.noContent().build();
   }
 
+  /**
+   * Describes a caller-supplied auth attempt id that does not resolve to an admin login attempt.
+   *
+   * <p>The id is kept out of the {@code auth_attempt_id} column so an unauthenticated caller cannot
+   * link an admin-login row to an unrelated attempt (#1477).
+   *
+   * @param authAttemptId the id from the request body
+   * @return event details naming the unresolved id
+   */
+  private static String unresolvedAttemptDetails(Integer authAttemptId) {
+    return "Unresolved authAttemptId: " + authAttemptId;
+  }
+
   private void logPasswordlessMfaFailure(
       Optional<AdminAuthAuditContext> auditCtx,
       ClientContext context,
+      Integer authAttemptId,
       String action,
       String message) {
     auditCtx.ifPresentOrElse(
@@ -770,12 +795,14 @@ public class AdminAuthController {
                 AuditHelper.createAdminAudit(context, EventType.ADMIN_LOGIN, action, ctx.tenantId())
                     .eventStatus(EventStatus.FAILURE)
                     .adminId(ctx.adminId())
+                    .authAttemptId(authAttemptId)
                     .errorMessage(message)
                     .build()),
         () ->
             auditLogService.log(
                 AuditHelper.createAdminAudit(context, EventType.ADMIN_LOGIN, action, null)
                     .eventStatus(EventStatus.FAILURE)
+                    .eventDetails(unresolvedAttemptDetails(authAttemptId))
                     .errorMessage(message)
                     .build()));
   }
@@ -783,6 +810,7 @@ public class AdminAuthController {
   private void logPasswordlessMfaUnexpected(
       Optional<AdminAuthAuditContext> auditCtx,
       ClientContext context,
+      Integer authAttemptId,
       String action,
       String message) {
     auditCtx.ifPresentOrElse(
@@ -791,11 +819,16 @@ public class AdminAuthController {
                 AuditHelper.createAdminAudit(context, EventType.ADMIN_LOGIN, action, ctx.tenantId())
                     .eventStatus(EventStatus.ERROR)
                     .adminId(ctx.adminId())
+                    .authAttemptId(authAttemptId)
                     .errorMessage(message)
                     .build()),
         () ->
             auditLogService.log(
-                AuditHelper.logError(context, EventType.ADMIN_LOGIN, action, message)));
+                AuditHelper.createAdminAudit(context, EventType.ADMIN_LOGIN, action, null)
+                    .eventStatus(EventStatus.ERROR)
+                    .eventDetails(unresolvedAttemptDetails(authAttemptId))
+                    .errorMessage(message)
+                    .build()));
   }
 
   /**

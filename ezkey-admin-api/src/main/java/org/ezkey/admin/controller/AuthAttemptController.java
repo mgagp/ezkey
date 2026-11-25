@@ -64,6 +64,7 @@ import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -303,14 +304,7 @@ public class AuthAttemptController {
           Integer id) {
     try {
       AuthAttempt authAttempt = authAttemptService.getById(id);
-      Enrollment enrollment =
-          authAttempt.getEnrollmentId() != null
-              ? enrollmentRepository.findById(authAttempt.getEnrollmentId()).orElse(null)
-              : null;
-      Integration integration = resolveIntegrationForEnrollment(enrollment);
-      AuthAttemptDto response =
-          authAttemptMapper.toDtoWithLabels(authAttempt, enrollment, integration);
-      return ResponseEntity.ok(response);
+      return ResponseEntity.ok(toLabelledDto(authAttempt));
     } catch (ResourceNotFoundException e) {
       return ResponseEntity.notFound().build();
     }
@@ -654,7 +648,7 @@ public class AuthAttemptController {
               .eventDetails("Auth Type: BEARER_TOKEN, Status: EXPIRED")
               .build());
 
-      AuthAttemptDto response = authAttemptMapper.toDto(cancelledAttempt);
+      AuthAttemptDto response = toLabelledDto(cancelledAttempt);
       return ResponseEntity.ok(response);
 
     } catch (ResourceNotFoundException e) {
@@ -788,9 +782,15 @@ public class AuthAttemptController {
       // Call service for polling logic
       AuthAttemptWaitResponse response = authAttemptService.waitForResponse(id, request);
 
-      // Convert to response DTO
+      // Convert to response DTO, with the same display labels as GET by ID (#1477)
       AuthAttemptWaitResponseDto responseDto =
-          authAttemptMapper.toAuthAttemptWaitResponseDto(response);
+          authAttemptMapper.buildAuthAttemptWaitResponseDto(
+              toLabelledDto(response.getAuthAttempt()),
+              response.getStatus(),
+              response.getCompleted(),
+              response.getTimeoutReached(),
+              response.getWaitDuration(),
+              response.getCompletedAt());
 
       return ResponseEntity.ok(responseDto);
 
@@ -944,6 +944,37 @@ public class AuthAttemptController {
       Integration integration = resolveIntegrationForEnrollment(enrollment, integrationsById);
       return authAttemptMapper.toDtoWithLabels(attempt, enrollment, integration);
     });
+  }
+
+  /**
+   * Converts a single auth attempt to a DTO with enrollment, integration and tenant labels.
+   *
+   * <p>Used by GET by ID, wait and cancel so the single-attempt responses carry the same fields the
+   * OpenAPI schema announces (#1477). Labels are display data: if their lookup fails, the response
+   * falls back to the attempt without labels (WARN log) rather than turning a completed wait or
+   * cancel into a 500.
+   *
+   * @param authAttempt the auth attempt, or null
+   * @return the labelled DTO, or null when the attempt is null
+   */
+  private AuthAttemptDto toLabelledDto(AuthAttempt authAttempt) {
+    if (authAttempt == null) {
+      return null;
+    }
+    try {
+      Enrollment enrollment =
+          authAttempt.getEnrollmentId() != null
+              ? enrollmentRepository.findById(authAttempt.getEnrollmentId()).orElse(null)
+              : null;
+      Integration integration = resolveIntegrationForEnrollment(enrollment);
+      return authAttemptMapper.toDtoWithLabels(authAttempt, enrollment, integration);
+    } catch (DataAccessException e) {
+      logger.warn(
+          "Label lookup failed for auth attempt {}; returning it without labels",
+          authAttempt.getAuthAttemptId(),
+          e);
+      return authAttemptMapper.toDto(authAttempt);
+    }
   }
 
   /**

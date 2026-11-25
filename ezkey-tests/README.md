@@ -67,7 +67,7 @@ This module provides comprehensive security-focused end-to-end testing for Ezkey
 
 - Java 25 or higher
 - Maven 3.6+
-- Docker (for TestContainers)
+- Docker (for the local stack started by `clean-start.sh`)
 
 ## Quick Start
 

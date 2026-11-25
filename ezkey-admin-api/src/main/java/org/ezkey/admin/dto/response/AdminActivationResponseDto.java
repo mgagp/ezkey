@@ -18,8 +18,8 @@ import java.util.List;
  * Response DTO for first-time administrator activation.
  *
  * <p>Contains the first enrollment binding credentials returned when the pending administrator is
- * activated. Recovery codes are generated server-side at first activation but are not revealed in
- * this unauthenticated bootstrap response.
+ * activated. No recovery codes are created at activation; the admin issues an initial set after the
+ * first authenticated sign-in (#1477).
  *
  * @param success Indicates whether activation succeeded
  * @param message Response message
@@ -27,7 +27,7 @@ import java.util.List;
  * @param enrollmentId Enrollment ID created during activation
  * @param enrollmentProofToken Enrollment proof token shown once for device binding
  * @param enrollmentChallenge Enrollment challenge code shown once for device binding
- * @param recoveryCodes Recovery codes are intentionally omitted from this bootstrap response
+ * @param recoveryCodes Always null: no recovery codes exist at activation (#1477)
  * @param enrollmentCode The exact JSON of the enrollment QR code, for an authenticator that cannot
  *     scan (#1494); null without a proof token or without a configured Auth API address
  * @since 2025

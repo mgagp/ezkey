@@ -174,6 +174,8 @@ missing or unsigned audit rows. Posture:
   `entityManager.refresh(...)`, id + micros-truncated `created_at` set before HMAC compute.
 - **Real-DB round trip** via the existing functional elective `AuditIntegrityElectiveTest`
   (Docker, real PostgreSQL) — **no Testcontainers** added to `ezkey-core` (stay within the stack).
+  *Amendment 2026-11-25 (#1446): practice changed after this note; Testcontainers is now the
+  unit-level real-Postgres tier. Current rule: [`docs/DEVELOPMENT.md`](../../../../docs/DEVELOPMENT.md) § Continuous Integration.*
 - **Elevated gate:** functional suite + `AuditIntegrityElectiveTest` on a clean-start stack under
   tightened grants is a **required** closeout gate for this slice (not on-demand only), because of
   the silent-swallow behavior.

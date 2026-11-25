@@ -19,6 +19,18 @@ Ezkey records **Admin API** authentication steps in the audit log (`event_type` 
 | `login_failure` | FAILURE | Unexpected response status from `/login` (should be rare). |
 | `login_pending` | SUCCESS | **Legacy** — older rows only; new pending flows use `login_mfa_requested`. |
 
+## Correlation with the auth attempt
+
+Every `ADMIN_LOGIN` row of the two-call flow carries `auth_attempt_id` (#1477):
+`login_mfa_requested` takes the `authAttemptId` returned by `/login`, and the `/passwordless-wait`
+rows (`login_mfa_session_issued` and every `login_mfa_*` failure or error) take the
+`authAttemptId` of the request when it resolves to an admin login attempt. When it does not
+(unknown id, or an attempt that is not an admin login), the column stays null and
+`event_details` reads `Unresolved authAttemptId: <id>`, so an unauthenticated caller cannot tie an
+admin-login row to an unrelated attempt. A SIEM joins them to the `AUTH_ATTEMPT_PENDING` and
+`AUTH_ATTEMPT_RESPOND` rows of the same attempt on that field instead of on time. Rows written
+before this change have it null. `login_success` (single-call) and `login_failure` do not carry it.
+
 ## Semantics: SUCCESS vs FAILURE vs ERROR
 
 - **SUCCESS** — The audited **step** completed as intended (including `login_mfa_requested`: the server accepted creation of the MFA request).
