@@ -221,6 +221,10 @@ Canon overlay: [`.env.ezkey-online.example`](../../experimental-hybrid/lightsail
 
 **Caddy admin-api access log (#833 C1):** site-level `log` with `format filter` (delete all request/response headers; strip query keys `token` / `proof` / `challenge` / `waiterSecret` / `code`) plus `log_skip` for paths outside `/api/v1/admin/auth/*`. Do **not** write `log @matcher` — Caddy treats that token as a logger name and logs every route. Container stdout is still under Compose `x-logging` (`max-size: 20m`, `max-file: 3`) — see § Docker `json-file` log rotation below. Runtime proof: `scripts/prove-caddy-admin-auth-log.sh` (derives the HTTP proof site from the real Caddyfile log block).
 
+**Access log scope and RCAs (#832, Marc 2026-11-25):** the proxy access log stays limited to admin auth (`/api/v1/admin/auth/*`, the #833 C1 block above). An RCA on that path relies on it; any other path still has no proxy access log, so say so in the RCA. Wider logging and the rest of #832 phase 2 (HSTS, timeouts, health checks, Authenticated Origin Pulls, metrics) wait for a decision with Cloudflare.
+
+**Caddy image and CI (#832):** the caddy service is pinned by `tag@sha256` (same reference as the Admin UI runtime image; Dependabot bumps both). CI job `lightsail` runs [`check-caddyfiles.sh`](../../scripts/ops/check-caddyfiles.sh) (`caddy fmt` + `caddy validate`, throwaway certs) on every repo Caddyfile with that exact image. A digest change reaches the host only on a deliberate upgrade (`docker compose pull caddy`, then recreate caddy) with the operator's go.
+
 ---
 
 ## Operator sequence (Git Bash on Windows) — VM lifecycle
@@ -618,7 +622,7 @@ echo 'OK: init-parameters applied (system-actions off, CSRF on, transform set; n
 ```
 
 Local regex / Caddyfile parse + smoke + **per-site import** check (no live host):
-`./scripts/ops/validate-caddy-observability-regexp.sh`
+`./scripts/ops/validate-caddy-observability-regexp.sh`. Format and validate only (also in CI): `./scripts/ops/check-caddyfiles.sh`.
 
 JSON lock divergence check (nine embedded `SPRING_APPLICATION_JSON` copies vs base):
 `./scripts/ops/check-javamelody-spring-json.sh`

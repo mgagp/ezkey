@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Validate Caddyfile syntax (including the #846 path_regexp observability deny)
-# against Caddy 2.10.x via the official Docker image, then smoke the regexp with
+# against the Caddy image the community host runs (official Docker image), then smoke the regexp with
 # case / double-slash / semicolon path variants.
 #
 # Also verifies every site block imports the file's observability-deny snippet
@@ -13,8 +13,15 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-# Pin digest (Caddy 2.10 alpine) — override with CADDY_VALIDATE_IMAGE if needed.
-CADDY_IMAGE="${CADDY_VALIDATE_IMAGE:-caddy:2.10-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d}"
+# Default: the digest-pinned caddy image of the production compose (#832); override with
+# CADDY_VALIDATE_IMAGE if needed.
+PROD_CADDY_IMAGE="$(sed -n 's/^[[:space:]]*image:[[:space:]]*\(caddy:[^[:space:]]*\).*/\1/p' \
+  "${REPO_ROOT}/experimental-hybrid/lightsail/docker-compose.yml" | head -n 1)"
+CADDY_IMAGE="${CADDY_VALIDATE_IMAGE:-${PROD_CADDY_IMAGE}}"
+if [[ -z "${CADDY_IMAGE}" ]]; then
+  echo "error: no caddy image in experimental-hybrid/lightsail/docker-compose.yml" >&2
+  exit 1
+fi
 EXPECTED_REGEXP='(?i)^/+(monitoring|actuator)([/;].*)?$'
 
 FILES=(
@@ -34,7 +41,7 @@ if ! docker info >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "Pulling ${CADDY_IMAGE} (Caddy 2.10 regex validation, digest-pinned)..."
+echo "Pulling ${CADDY_IMAGE} (regex validation, digest-pinned)..."
 docker pull "${CADDY_IMAGE}" >/dev/null
 
 # Every site block (not a snippet) must import the observability deny snippet.
@@ -172,7 +179,7 @@ cat >"${SMOKE_CADDYFILE}" <<EOF
 }
 EOF
 
-echo "→ live Caddy 2.10 smoke (case / // / ; variants)"
+echo "→ live Caddy smoke (case / // / ; variants)"
 docker rm -f caddy-obs-regexp-smoke >/dev/null 2>&1 || true
 docker run -d --name caddy-obs-regexp-smoke \
   -p 127.0.0.1:8888:8888 \
