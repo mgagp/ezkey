@@ -392,7 +392,7 @@ the main Java `docker/docker-compose.yml` / daily `clean-start` (would slow ever
 
 ### Walk Gate walks (mocked Admin API, no stack)
 
-Julie's Walk Gate (interface operability, EN and FR) is a scripted Playwright walk that runs
+The scripted walk (interface gate executed, EN and FR) is a Playwright walk that runs
 against the Vite dev server with the Admin API mocked. No Docker stack, no Demo Device.
 
 - Run from `ezkey-admin-ui/`: `npm run test:walk` (Playwright project `walk-mocked`; starts or

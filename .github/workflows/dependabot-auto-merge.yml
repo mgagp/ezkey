@@ -1,6 +1,6 @@
 # Auto-merge Dependabot semver-PATCH PRs once required checks are green.
 # Decision: Marc 2026-10-30 (hygiene inflow reduction). Exclusions: crypto libs
-# (Christophe reviews), Docker / docker-compose images, Gradle / Android Gradle,
+# (security review), Docker / docker-compose images, Gradle / Android Gradle,
 # RN-core / vision-camera groups, and any PR labelled deferred:* or hitl*.
 #
 # Safety: `gh pr merge --auto` only waits if `main` REQUIRES status checks. If no
@@ -49,7 +49,7 @@ jobs:
           case "$ECOSYSTEM" in docker|docker_compose|docker-compose|gradle) reason="ecosystem=$ECOSYSTEM";; esac
           case "$GROUP" in mobile-rn-core|mobile-vision-camera|android-gradle-*|docker-*|compose-*) reason="group=$GROUP";; esac
           if echo "$LABELS" | grep -Eiq '(^|,)(deferred:|hitl)'; then reason="labels=$LABELS"; fi
-          # Crypto libraries: never auto-merged (Christophe reviews).
+          # Crypto libraries: never auto-merged (security review).
           # Keep list in sync with skill + hygiene README wording (exact tokens).
           if echo "$DEPS" | grep -Eiq 'tink|bouncycastle|bcprov|bcpkix|bcutil|conscrypt|crypto|sha256|sha2|sodium|@noble/|jose|jsonwebtoken|jwt|keychain|biometric'; then
             reason="crypto deps=$DEPS"

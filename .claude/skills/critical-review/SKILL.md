@@ -34,8 +34,8 @@ class as `assessment-curated` (skill + hygiene canon + prompt).
 | `model` + `effort` | yes | **≠ author model family** (mandatory); high effort |
 | `angle` | no | e.g. product premise, security, operability, autonomous execution |
 
-**Launchers:** Mathieu default (visions, G1 briefs); Patrick (PR craft); Christophe (security);
-Marc on request. Role one-liners: [`product-docs/global/team-roles.md`](../../../product-docs/global/team-roles.md).
+**Launchers:** the coordinator by default (visions, G1 briefs); engineering review (PR craft);
+security review (security); Marc on request. Verification functions: [`product-docs/global/team-roles.md`](../../../product-docs/global/team-roles.md).
 
 ## Procedure
 

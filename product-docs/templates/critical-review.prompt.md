@@ -45,15 +45,15 @@ Then only what the target needs: {{TIER2 list}}.
 
 ### Vision / G1 brief — mandatory specialist angles (retro #726)
 When the target is a vision or G1 brief, report on these even if the artifact is silent:
-- **Operability / real tester journey** (Julie): adopter posture (never core business, 3-second
+- **Operability / real tester journey** (interface gate): adopter posture (never core business, 3-second
   test); keep/adapt/hide pass on existing UI content for a new mode; visual composition.
-- **Pre-existing conditions & concurrency** (Patrick): `path:line` inventory of waits/long-polls
+- **Pre-existing conditions & concurrency** (engineering review): `path:line` inventory of waits/long-polls
   and cadences; client/SDK timeouts; proxy timeouts (Cloudflare, Caddy); TTLs; concurrency; rate
   limits; dependency loggers and effective log level; error-detection contract (classify by
   exception type, not message; fail-open/closed per design-principles §17).
-- **Security** (Christophe): "never logged" proven on runtime output of all containers; caller
+- **Security** (security review): "never logged" proven on runtime output of all containers; caller
   values that are logged → sanitizer.
-- **Host** (Edgar): ≤5 lines marked `[live]` or `[repo]`; header-trust marked `[repo]` blocks GO
+- **Host** (deploy): ≤5 lines marked `[live]` or `[repo]`; header-trust marked `[repo]` blocks GO
   until proven live.
 - Verify brief sections when present: **Vision lock trace** table (unmapped lock blocks G1);
   **Pre-existing conditions touched**.

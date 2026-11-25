@@ -13,20 +13,27 @@ before coding: **objective**, **quality criteria**, **what done means** (always 
 explicit merge go) and **constraints** (scope, contract, worktree). Record the frame in a PR
 comment so the next agent finds it. First used on #1455.
 
-## Team roles in Claude Code
+## Verification functions in Claude Code
 
-[`product-docs/global/team-roles.md`](product-docs/global/team-roles.md) roles were Cursor bots;
-in Claude Code they are played like this (adopted on #1455, 2026-11-23):
+[`product-docs/global/team-roles.md`](product-docs/global/team-roles.md) lists the functions and
+their Grokbot aliases. Lead with the function; follow its naming rule. In Claude Code they run like
+this:
 
-- **Patrick** (engineering review): the `/code-review` skill on the PR diff. When the author is
-  this session, that run is the independent pass; the author does not self-approve.
-- **Christophe** (security review): a read-only sub-agent with a written mandate (disclosure,
-  honesty of claims against the backend, validation framed as a control or not, injection,
-  system-integration isolation). Its findings are posted in the PR by the main session.
-- **Julie** (Walk Gate): a scripted Playwright walk (EN and FR), recorded under
-  `product-docs/global/backlog/walk-gates/` and indexed in `ui-walk-done-gate.md`.
+- **Engineering review:** the `/code-review` skill on the PR diff. When the author is this session,
+  that run is the independent pass; the author does not self-approve.
+- **Security review:** `/security-review` or a read-only sub-agent with a written mandate
+  (disclosure, honesty of claims against the backend, validation framed as a control or not,
+  injection, system-integration isolation). Its findings are posted in the PR by the main session.
+- **Interface gate and scripted walk:** the gate is a numbered checklist written before the PR is
+  called ready; the walk is a Playwright spec (EN and FR) that executes it. Sizing and records:
+  `product-docs/global/ui-walk-done-gate.md`.
+- **Product decision:** a "Decision needed" line with a recommended option; Marc decides.
 - Sub-agents are the same model family as the author. Where the `critical-review` canon requires
   a different family (P0/P1 visions, G1 briefs), keep that review in Cursor.
+
+In an issue or PR, a short **Verifications** block lists the functions that apply, each with its
+check (for example: `/code-review`; a security mandate in two to four lines; `npm run test:walk --
+--grep <n>`; the decision Marc must take; what happens outside the PR, such as a deploy).
 
 ## Claude Code cloud sessions
 

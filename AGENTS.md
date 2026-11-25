@@ -68,6 +68,9 @@ Values for every analysis and design ([`design-principles.md`](product-docs/glob
   `critical-review` (different model family) before the gate, and every brief maps each vision lock
   to a section or an explicit deferral.
 - **Terminology:** *phase* only for the methodology workflow; *milestone* for product progress.
+- **Functions, not personas:** issues, PRs and docs name the check (engineering review, security
+  review, interface gate, scripted walk, product decision…); a Grokbot alias goes in parentheses
+  only where that bot must act. Table and rule: [`team-roles.md`](product-docs/global/team-roles.md).
 - **Dictation:** the maintainer dictates; read phonetic near-misses as project terms (Kadi /
   Caddie → Caddy, iziki / easy key → Ezkey, Light sail → Lightsail, Wisp → Wispr).
 
@@ -123,7 +126,7 @@ sections the work needs.
 | Strategic positioning, public copy | [`PROJECT_POSITIONING.md`](docs/PROJECT_POSITIONING.md) |
 | Public alpha label, what is deployed | [`VERSIONING_AND_DEPLOY_TRACEABILITY.md`](docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md), [`DEPLOYED.md`](docs/lightsail/community/DEPLOYED.md) |
 | Test hosts, stack ports, ngrok | [`LOCAL_STACK_PORTS.md`](docs/LOCAL_STACK_PORTS.md) (Rootbeer runs one fixed-port stack; one ngrok session at a time) |
-| Named reviewers and operators | [`team-roles.md`](product-docs/global/team-roles.md) |
+| Verification functions (reviews, walk, decisions) | [`team-roles.md`](product-docs/global/team-roles.md) |
 | Publishing the methodology product | [`product-docs/GOVERNANCE.md`](product-docs/GOVERNANCE.md) § Methodology publication boundary |
 
 ## Skills (hygiene lanes and recurring procedures)
