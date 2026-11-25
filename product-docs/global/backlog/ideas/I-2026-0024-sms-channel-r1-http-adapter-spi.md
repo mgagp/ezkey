@@ -3,10 +3,10 @@
 ## Metadata
 
 - **ID:** `I-2026-0024`
-- **Status:** `incubating`
-- **Priority:** `P2`
+- **Status:** `parked` (Marc, 2026-11-25: reasons and reopen signals in [`TB-2026-11-24-sms-challenge-connector`](../TB-2026-11-24-sms-challenge-connector.md))
+- **Priority:** `P3`
 - **Created at:** `2026-05-19`
-- **Updated at:** `2026-11-04`
+- **Updated at:** `2026-11-25`
 - **Last reviewed at:** `2026-11-04`
 - **Phase tags:** `P1-operability`
 - **Component tags:** `admin-api`, `admin-ui`, `infra`, `docs`, peripheral (`ezkey-sms-twilio`)
