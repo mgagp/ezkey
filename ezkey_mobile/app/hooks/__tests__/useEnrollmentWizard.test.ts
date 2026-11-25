@@ -53,6 +53,8 @@ jest.mock('../../utils/integrationKeyAlgorithm', () => ({
 jest.mock('../../utils/installationMetadata', () => ({
   buildInstallation: jest.fn(),
   resolveEnrollmentAuthUrl: jest.fn(),
+  getInstallationHost: jest.requireActual('../../utils/installationMetadata')
+    .getInstallationHost,
 }));
 
 jest.mock('../../config/env', () => ({
@@ -356,6 +358,30 @@ describe('handleQrScanned — invalid QR', () => {
     expect(alertSpy).toHaveBeenCalledTimes(1);
     expect(result.current.scannerVisible).toBe(false);
     expect(result.current.hasDraft).toBe(false);
+  });
+});
+
+describe('serverHost (#1185)', () => {
+  it('is undefined before a draft exists', () => {
+    mockResolveEnrollmentAuthUrl.mockReturnValue('https://auth.example.com');
+    const {result} = renderHook();
+
+    expect(result.current.serverHost).toBeUndefined();
+  });
+
+  it('shows the host of the resolved Auth URL once the draft is bound', async () => {
+    mockResolveEnrollmentAuthUrl.mockReturnValue('https://auth.example.com');
+    const {result} = await renderHookWithDraft();
+
+    expect(mockResolveEnrollmentAuthUrl).toHaveBeenCalledWith('https://auth.example.com');
+    expect(result.current.serverHost).toBe('auth.example.com');
+  });
+
+  it('keeps a non-default port and drops the path', async () => {
+    mockResolveEnrollmentAuthUrl.mockReturnValue('https://auth.example.com:8443/ezkey');
+    const {result} = await renderHookWithDraft();
+
+    expect(result.current.serverHost).toBe('auth.example.com:8443');
   });
 });
 

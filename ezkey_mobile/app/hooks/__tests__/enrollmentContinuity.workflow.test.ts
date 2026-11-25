@@ -51,6 +51,8 @@ jest.mock('../../utils/integrationKeyAlgorithm', () => ({
 jest.mock('../../utils/installationMetadata', () => ({
   buildInstallation: jest.fn(),
   resolveEnrollmentAuthUrl: jest.fn(),
+  getInstallationHost: jest.requireActual('../../utils/installationMetadata')
+    .getInstallationHost,
 }));
 
 jest.mock('../../config/env', () => ({

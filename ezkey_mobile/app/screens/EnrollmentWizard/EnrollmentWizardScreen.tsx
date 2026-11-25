@@ -134,7 +134,11 @@ const EnrollmentInfoCard: React.FC<EnrollmentInfoCardProps> = ({
             <View style={styles.infoDivider} />
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>{t('enrollmentWizard.server')}</Text>
-              <Text style={styles.infoValueSmall}>{serverUrl}</Text>
+              <Text
+                testID="ezkey.e2e.enrollmentWizard.serverHost"
+                style={styles.infoValueSmall}>
+                {serverUrl}
+              </Text>
             </View>
           </>
         ) : null}
@@ -167,6 +171,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
     controlledBypassAvailable,
     controlledBypassUsed,
     controlledBypassSeedInput,
+    serverHost,
     primaryLabel,
     secondaryLabel,
     primaryDisabled,
@@ -313,7 +318,12 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
                   </Text>
                 </View>
               ) : null}
-              <EnrollmentInfoCard draft={draft} compact />
+              <EnrollmentInfoCard
+                draft={draft}
+                showServerUrl
+                serverUrl={serverHost}
+                compact
+              />
             </>
           ) : null}
         </View>
