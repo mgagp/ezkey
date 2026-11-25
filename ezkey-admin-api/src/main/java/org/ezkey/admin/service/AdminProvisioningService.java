@@ -628,11 +628,12 @@ public class AdminProvisioningService {
    * Consumes a one-time activation code and creates the first enrollment for a pending admin.
    *
    * <p>This is the deferred counterpart to immediate onboarding. It validates the one-time token,
-   * generates recovery codes, creates the first enrollment, marks the admin active, and deactivates
-   * the presented activation token plus any other outstanding activation code of the same admin.
+   * creates the first enrollment, marks the admin active, and deactivates the presented activation
+   * token plus any other outstanding activation code of the same admin. No recovery codes are
+   * created here: the admin issues an initial set after the first authenticated sign-in (#1477).
    *
    * @param activationCode the one-time activation code
-   * @return provisioning result with first enrollment credentials and recovery codes
+   * @return provisioning result with first enrollment credentials (recovery codes are null)
    */
   @Transactional
   public ProvisioningResult activatePendingAdmin(String activationCode) {

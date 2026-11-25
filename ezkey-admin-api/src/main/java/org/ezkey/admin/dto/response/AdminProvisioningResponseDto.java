@@ -20,9 +20,9 @@ import java.util.List;
  * <p>This DTO contains basic information about the newly created administrator. Enrollment proof
  * token and challenge are still retrieved via GET /api/v1/admins/{id}/onboarding.
  *
- * <p><b>Recovery codes:</b> Recovery codes are generated server-side when the first enrollment is
- * created, but plain recovery codes are intentionally omitted from this bootstrap response. They
- * should be revealed later through an authenticated recovery-code management flow.
+ * <p><b>Recovery codes:</b> No recovery codes are created at provisioning or activation, so this
+ * field is null in bootstrap responses. The initial set is issued after the first authenticated
+ * sign-in ({@code POST /api/v1/admins/{id}/recovery-codes/issue-initial}) (#1477).
  *
  * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *
