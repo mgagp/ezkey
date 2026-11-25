@@ -3584,7 +3584,7 @@
             }
           },
           "400": {
-            "description": "Bad Request - Device denied, signature failed, or challenge invalid. Returns RFC 9457 ProblemDetail with specific error type URI.",
+            "description": "Bad Request - Device denied, attempt expired, or the code entered on the device did not match (challenge-mismatch). Returns RFC 9457 ProblemDetail with specific error type URI.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -3751,7 +3751,7 @@
             }
           },
           "400": {
-            "description": "Bad Request - Authentication failed with temporal issues (expired, rejected, invalid signature). Returns RFC 9457 ProblemDetail with specific error type URI.",
+            "description": "Bad Request - Authentication failed with temporal issues (expired, rejected, challenge mismatch on device). Returns RFC 9457 ProblemDetail with specific error type URI.",
             "content": {
               "application/problem+json": {
                 "schema": {
