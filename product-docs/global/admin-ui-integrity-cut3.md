@@ -374,6 +374,7 @@ Repo-as-memory for Patrick CHANGES + Christophe minors (PR 2 micro-dashboard):
 - **#693 deep-link TZ** — `initialCheckRange` uses `integrityExclusiveApiParamsToDisplayRange` + `effectiveTimeZoneId` (not browser-local Instant→date). Reason: exclusive `createdBefore` otherwise shows +1 day. Deep-link wins over job→picker sync when both apply.
 - **#695 type-filter phantom gap** — when `cpType` is set, timeline skips inventing orange undeclared-gap rows between filtered neighbors. Reason: REGULARs that fill the span are hidden by the API filter; real gaps still show unfiltered. No backend change.
 - **#696 picker after reload** — finished job scope → picker via `integrityFinishedJobScopeToDisplayRange` (same exclusive→inclusive helper). Reason: Verify must re-check the range on screen, not a silent “Last 7 days” default.
+- **#795 n2 Revérifier window** (decision Marc 2026-11-25) — Revérifier re-runs the window of the verdict shown in the strip, never the Vérifier picker. A rolling 24 h verdict (24 h long and not a calendar day in the display zone: auto-run, nightly, a previous Revérifier) re-runs the 24 h ending now; any other verdict re-runs its exact scope; no verdict scope yet falls back to the auto-run default (last 24 h). Reason: the button sits on the verdict, so it must re-check what the verdict says. Helper `integrityReverifyInstantRange`; walk `e2e/walks/integrity-reverify-795.walk.spec.ts` (EN/FR).
 
 ---
 

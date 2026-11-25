@@ -14,6 +14,8 @@ import {
   integrityMicroDashboardSource,
   integrityMicroDashboardSpinnerActive,
   integrityReverifyDisabled,
+  integrityReverifyInstantRange,
+  isRolling24hIntegrityScope,
   integrityRunningPollDelayMs,
   integrityRunningPollShouldHalt,
   integrityVerifyActionDisabled,
@@ -538,41 +540,85 @@ describe('applyIntegrityAsyncJobChange', () => {
 
 describe('integrityReverifyDisabled (Christophe m2)', () => {
   it('disables while chainLoading even when the slot is idle', () => {
-    expect(
-      integrityReverifyDisabled({
-        asyncStartsBlocked: false,
-        chainLoading: true,
-        rangeFrom: '2026-10-01',
-        rangeTo: '2026-10-02',
-      }),
-    ).toBe(true);
+    expect(integrityReverifyDisabled({ asyncStartsBlocked: false, chainLoading: true })).toBe(true);
   });
 
-  it('enables only when idle, not loading, and range is set', () => {
+  it('enables only when idle and not loading; the picker no longer matters (#795 n2)', () => {
+    expect(integrityReverifyDisabled({ asyncStartsBlocked: false, chainLoading: false })).toBe(false);
+    expect(integrityReverifyDisabled({ asyncStartsBlocked: true, chainLoading: false })).toBe(true);
+  });
+});
+
+describe('integrityReverifyInstantRange (#795 n2)', () => {
+  const now = new Date('2026-11-25T18:00:00.000Z');
+  const tz = 'America/Toronto';
+
+  it('rolls a 24 h auto-run verdict forward to the 24 h ending now', () => {
+    const verdict = job({
+      trigger: 'AUTO',
+      scopeFrom: '2026-11-24T09:13:27.000Z',
+      scopeTo: '2026-11-25T09:13:27.000Z',
+    });
+    expect(integrityReverifyInstantRange(verdict, tz, now)).toEqual({
+      from: '2026-11-24T18:00:00.000Z',
+      to: '2026-11-25T18:00:00.000Z',
+    });
+  });
+
+  it('rolls a 24 h nightly or manual re-verify verdict forward too', () => {
+    for (const trigger of ['NIGHTLY', 'MANUAL'] as const) {
+      const verdict = job({
+        trigger,
+        scopeFrom: '2026-11-24T07:00:00.000Z',
+        scopeTo: '2026-11-25T07:00:00.000Z',
+      });
+      expect(integrityReverifyInstantRange(verdict, tz, now)).toEqual(
+        defaultAutoVerifyInstantRange(now),
+      );
+    }
+  });
+
+  it('re-runs a calendar-day verdict ("Yesterday") exactly, not the last 24 h', () => {
+    // 2026-11-24 in Toronto (EST, UTC-5): midnight to midnight, 24 h long.
+    const verdict = job({
+      trigger: 'MANUAL',
+      scopeFrom: '2026-11-24T05:00:00.000Z',
+      scopeTo: '2026-11-25T05:00:00.000Z',
+    });
+    expect(integrityReverifyInstantRange(verdict, tz, now)).toEqual({
+      from: '2026-11-24T05:00:00.000Z',
+      to: '2026-11-25T05:00:00.000Z',
+    });
+  });
+
+  it('re-runs a multi-day verdict exactly', () => {
+    const verdict = job({
+      scopeFrom: '2026-11-17T05:00:00.000Z',
+      scopeTo: '2026-11-25T05:00:00.000Z',
+    });
+    expect(integrityReverifyInstantRange(verdict, tz, now)).toEqual({
+      from: '2026-11-17T05:00:00.000Z',
+      to: '2026-11-25T05:00:00.000Z',
+    });
+  });
+
+  it('falls back to the last 24 h when no verdict scope is shown', () => {
+    expect(integrityReverifyInstantRange(null, tz, now)).toEqual(defaultAutoVerifyInstantRange(now));
     expect(
-      integrityReverifyDisabled({
-        asyncStartsBlocked: false,
-        chainLoading: false,
-        rangeFrom: '2026-10-01',
-        rangeTo: '2026-10-02',
-      }),
+      integrityReverifyInstantRange(job({ scopeFrom: undefined, scopeTo: undefined }), tz, now),
+    ).toEqual(defaultAutoVerifyInstantRange(now));
+  });
+});
+
+describe('isRolling24hIntegrityScope', () => {
+  it('is false for an unparsable scope', () => {
+    expect(isRolling24hIntegrityScope('nope', '2026-11-25T05:00:00.000Z', 'UTC')).toBe(false);
+  });
+
+  it('is false for a UTC calendar day when the display zone is UTC', () => {
+    expect(
+      isRolling24hIntegrityScope('2026-11-24T00:00:00.000Z', '2026-11-25T00:00:00.000Z', 'UTC'),
     ).toBe(false);
-    expect(
-      integrityReverifyDisabled({
-        asyncStartsBlocked: true,
-        chainLoading: false,
-        rangeFrom: '2026-10-01',
-        rangeTo: '2026-10-02',
-      }),
-    ).toBe(true);
-    expect(
-      integrityReverifyDisabled({
-        asyncStartsBlocked: false,
-        chainLoading: false,
-        rangeFrom: '',
-        rangeTo: '2026-10-02',
-      }),
-    ).toBe(true);
   });
 });
 
