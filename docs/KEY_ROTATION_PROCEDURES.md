@@ -118,6 +118,16 @@ INTRODUCED → ENABLED → PRIMARY → ENABLED → DISABLED
      metadata/audit after flush must not leave an orphan live primary (#961 R2 / Patrick B2)
    - On CAS loss: discard staging, reload blob, fail closed with `KeysetCasConflictException`
      (no orphan primary)
+   - A lost CAS race (a peer committed first: version pre-check or Hibernate `@Version`) is
+     ordinary in HA, not an operational failure. `POST /rotate` returns 409 (#961 Lot 3). The
+     scheduled jobs roll their transaction back quietly and log one WARN of their own without a
+     stack trace, next to `TinkKeyManager`'s CAS WARN; promotion retries on the next tick, rotation
+     on the next scheduled run (daily by default). No `REENCRYPTION_FAILED` audit event and no
+     dedicated audit type: the lost attempt is only in the application log, accepted because it
+     has no consequence (#1018). A persistence failure that `TinkKeyManager` also wraps as
+     `KeysetCasConflictException` (database outage, missing master AEAD) keeps its ERROR log (plus
+     `REENCRYPTION_FAILED` for the rotation job), and a failed blob reload after a lost race logs
+     an ERROR from `TinkKeyManager`
 
 5. **Database metadata synchronization** (same outer transaction as the blob flush when using
    `KeyRotationService.introduceNewKey` / promote paths)
@@ -152,7 +162,7 @@ Configure alerts for:
 - Rotation failure (exception logged)
 - Database sync failure
 - Missing audit logs
-- Keyset CAS / blob persist failure
+- Keyset blob persist failure (a lost CAS race alone is a WARN, not an alert; see step 4)
 
 ### Manual Key Rotation
 
