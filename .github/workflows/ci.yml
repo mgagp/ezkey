@@ -162,6 +162,12 @@ jobs:
               - 'docker/docker-compose.docker-dev.yml'
               - 'docs/lightsail/**'
               - 'docs/LOCAL_STACK_PORTS.md'
+              # Caddy: fmt + validate on every Caddyfile, image from the production compose (#832).
+              - 'experimental-hybrid/lightsail/Caddyfile.ezkey-online'
+              - 'docker/caddy/Caddyfile'
+              - 'docker/docker-compose.with-proxy.yml'
+              - 'ezkey-admin-ui/docker/Caddyfile'
+              - 'scripts/ops/check-caddyfiles.sh'
             dart-sdk:
               - 'ezkey_dart/**'
             ezkey-jenkins:
@@ -645,6 +651,9 @@ jobs:
 
       - name: ezkey.online hostname allowlist unit tests
         run: ./scripts/ops/check-ezkey-online-hosts.test.sh
+
+      - name: Caddyfiles (caddy fmt + caddy validate, production image)
+        run: ./scripts/ops/check-caddyfiles.sh
 
   # Experimental Dart SDK: offline gate only (format, analyze, unit tests) in the
   # pinned official Dart image. The live-stack suite (ezkey_dart/scripts/e2e.sh) stays local.
