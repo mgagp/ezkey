@@ -121,18 +121,28 @@ public final class OpenApiPresentationCustomizer implements OpenApiCustomizer {
 
   private static List<Map<String, Object>> buildTagGroups() {
     return List.of(
-        Map.of("name", "Getting started", "tags", List.of(TAG_PUBLIC, TAG_ADMIN_AUTH)),
-        Map.of(
-            "name",
+        tagGroup("Getting started", TAG_PUBLIC, TAG_ADMIN_AUTH),
+        tagGroup(
             "Tenant and integration setup",
-            "tags",
-            List.of(TAG_TENANTS, TAG_INTEGRATIONS, TAG_ENROLLMENTS, TAG_API_KEYS)),
-        Map.of("name", "MFA operations", "tags", List.of(TAG_AUTH_ATTEMPTS, TAG_ADMIN_ENROLLMENT)),
-        Map.of("name", "Administration", "tags", List.of(TAG_ADMIN_PROVISIONING)),
-        Map.of(
-            "name",
-            "Platform operations",
-            "tags",
-            List.of(TAG_AUDIT_LOGS, TAG_ENCRYPTION_KEYS, TAG_ALERTS, TAG_DASHBOARD)));
+            TAG_TENANTS,
+            TAG_INTEGRATIONS,
+            TAG_ENROLLMENTS,
+            TAG_API_KEYS),
+        tagGroup("MFA operations", TAG_AUTH_ATTEMPTS, TAG_ADMIN_ENROLLMENT),
+        tagGroup("Administration", TAG_ADMIN_PROVISIONING),
+        tagGroup(
+            "Platform operations", TAG_AUDIT_LOGS, TAG_ENCRYPTION_KEYS, TAG_ALERTS, TAG_DASHBOARD));
+  }
+
+  /**
+   * One ReDoc tag group with a fixed key order ({@code name}, then {@code tags}). {@code Map.of}
+   * iteration order changes between JVM runs, which made each {@code update-specs} run reorder the
+   * generated spec (#1506 observation).
+   */
+  private static Map<String, Object> tagGroup(String name, String... tags) {
+    Map<String, Object> group = new LinkedHashMap<>();
+    group.put("name", name);
+    group.put("tags", List.of(tags));
+    return group;
   }
 }
