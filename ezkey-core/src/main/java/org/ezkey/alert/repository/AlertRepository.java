@@ -39,6 +39,15 @@ public interface AlertRepository
   Optional<Alert> findByDedupeKeyAndStatus(String dedupeKey, AlertStatus status);
 
   /**
+   * Returns the alert with the given id and status.
+   *
+   * @param alertId alert identifier
+   * @param status status to match
+   * @return matching alert when present
+   */
+  Optional<Alert> findByAlertIdAndStatus(Long alertId, AlertStatus status);
+
+  /**
    * Returns alerts matching the given status, ordered by creation time descending. Used by the
    * dashboard "recent open alerts" widget.
    *

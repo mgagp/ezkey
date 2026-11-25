@@ -76,7 +76,7 @@
     },
     {
       "name": "Alerts",
-      "description": "Operator-facing alert subsystem (Global Admin only). Surfaces internal Ezkey signals such as undeclared audit chain gaps; resolved automatically by the matching producer workflow."
+      "description": "Operator-facing alert subsystem. List/detail are Global Admin only; manual resolution is available for supported alert types within caller visibility."
     },
     {
       "name": "Dashboard",
@@ -2905,6 +2905,78 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiKeyCreateResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/alerts/{alertId}/resolve": {
+      "post": {
+        "tags": [
+          "Alerts"
+        ],
+        "summary": "Manually resolve alert",
+        "description": "Resolves an OPEN alert when its type supports manual resolution. Returns 409 for automatic-resolution types or already-resolved alerts. Tenant Admins can resolve only alerts visible in their tenant scope.",
+        "operationId": "resolveAlert",
+        "parameters": [
+          {
+            "name": "alertId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlertResolveRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Alert resolved",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Alert not found or not visible",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Alert cannot be manually resolved",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertResponseDto"
                 }
               }
             }
@@ -8512,6 +8584,88 @@
           }
         }
       },
+      "AlertResolveRequestDto": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          }
+        }
+      },
+      "AlertResponseDto": {
+        "type": "object",
+        "description": "Operator-facing alert (read model).",
+        "properties": {
+          "alertId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "alertType": {
+            "type": "string",
+            "enum": [
+              "AUDIT_CHAIN_GAP_PENDING",
+              "AUDIT_CHAIN_HEARTBEAT_STALE",
+              "AUDIT_INTEGRITY_RUPTURE",
+              "AUTH_ATTEMPT_REJECTED",
+              "PARTITION_CREATION_FAILED"
+            ]
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "INFO",
+              "WARNING",
+              "CRITICAL"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "RESOLVED"
+            ]
+          },
+          "dedupeKey": {
+            "type": "string"
+          },
+          "payload": {
+            "type": "string",
+            "description": "Producer-defined JSON payload (string). Shape depends on alertType; clients aware of the type render structured fields, others fall back to raw display."
+          },
+          "occurrenceCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastSeenAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resolvedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resolvedByAdminId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "resolutionReason": {
+            "type": "string",
+            "enum": [
+              "GAP_DECLARED",
+              "HEARTBEAT_RESTORED",
+              "MANUAL",
+              "INTEGRITY_RUPTURE_CONCILIATED",
+              "PARTITION_HORIZON_RESTORED"
+            ]
+          }
+        }
+      },
       "AdminCreateRequestDto": {
         "type": "object",
         "description": "Request DTO for creating an administrator",
@@ -10875,78 +11029,6 @@
           "content",
           "page"
         ]
-      },
-      "AlertResponseDto": {
-        "type": "object",
-        "description": "Operator-facing alert (read model).",
-        "properties": {
-          "alertId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "alertType": {
-            "type": "string",
-            "enum": [
-              "AUDIT_CHAIN_GAP_PENDING",
-              "AUDIT_CHAIN_HEARTBEAT_STALE",
-              "AUDIT_INTEGRITY_RUPTURE",
-              "AUTH_ATTEMPT_REJECTED",
-              "PARTITION_CREATION_FAILED"
-            ]
-          },
-          "severity": {
-            "type": "string",
-            "enum": [
-              "INFO",
-              "WARNING",
-              "CRITICAL"
-            ]
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "OPEN",
-              "RESOLVED"
-            ]
-          },
-          "dedupeKey": {
-            "type": "string"
-          },
-          "payload": {
-            "type": "string",
-            "description": "Producer-defined JSON payload (string). Shape depends on alertType; clients aware of the type render structured fields, others fall back to raw display."
-          },
-          "occurrenceCount": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "lastSeenAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "resolvedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "resolvedByAdminId": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "resolutionReason": {
-            "type": "string",
-            "enum": [
-              "GAP_DECLARED",
-              "HEARTBEAT_RESTORED",
-              "MANUAL",
-              "INTEGRITY_RUPTURE_CONCILIATED",
-              "PARTITION_HORIZON_RESTORED"
-            ]
-          }
-        }
       },
       "PagedModelAlertResponseDto": {
         "type": "object",

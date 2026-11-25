@@ -84,9 +84,9 @@ public final class OpenApiPresentationCustomizer implements OpenApiCustomizer {
               TAG_ENCRYPTION_KEYS, "Encryption key lifecycle management and rotation operations"),
           Map.entry(
               TAG_ALERTS,
-              "Operator-facing alert subsystem (Global Admin only). Surfaces internal Ezkey"
-                  + " signals such as undeclared audit chain gaps; resolved automatically by the"
-                  + " matching producer workflow."),
+              "Operator-facing alert subsystem. List/detail are Global Admin only; manual"
+                  + " resolution is available for supported alert types within caller"
+                  + " visibility."),
           Map.entry(TAG_DASHBOARD, "Dashboard overview and aggregated stats for Admin UI"));
 
   @Override

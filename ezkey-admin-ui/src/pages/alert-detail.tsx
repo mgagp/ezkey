@@ -2,13 +2,16 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { ExternalLink, Loader2 } from 'lucide-react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AppShell } from '@/components/layout/app-shell';
 import { Alert as UiAlert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DetailPageNav } from '@/components/ui/detail-page-nav';
+import { Textarea } from '@/components/ui/textarea';
 import { EntryHmacBadge } from '@/components/feature/entry-hmac-badge';
-import { useGetAlert } from '@/generated/admin-api/alerts/alerts';
+import { getGetAlertQueryKey, useGetAlert } from '@/generated/admin-api/alerts/alerts';
 import { useListDetailPageNavigation } from '@/hooks/use-list-detail-page-navigation';
 import {
   checkChainIntegrity,
@@ -31,7 +34,10 @@ import {
   entryViolationDisplayState,
   saveIntegrityInvestigationSession,
 } from '@/lib/integrity-investigation-session';
+import { fetchApi } from '@/lib/api-client';
+import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { formatDate } from '@/lib/utils';
+import { useToast } from '@/context/use-toast';
 
 function EntryViolationContent({ violation }: { violation: EntryIntegrityViolation }) {
   const { t } = useTranslation(['alerts']);
@@ -525,6 +531,9 @@ export default function AlertDetailPage() {
   const { t } = useTranslation(['alerts', 'common']);
   const { alertId } = useParams<{ alertId: string }>();
   const id = Number(alertId);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [manualResolveNote, setManualResolveNote] = useState('');
 
   const { nav: alertListNav, goPrev: goPrevAlert, goNext: goNextAlert, showEndOfPageHint: showAlertListEndHint } =
     useListDetailPageNavigation({
@@ -564,6 +573,32 @@ export default function AlertDetailPage() {
       ruptureId: rupturePayload?.ruptureId,
     });
   }, [canDeepLinkReconcile, id, rupturePayload?.ruptureId]);
+
+  const canManualResolve = alert?.status === 'OPEN' && alert.alertType === 'AUTH_ATTEMPT_REJECTED';
+
+  const manualResolveMutation = useMutation({
+    mutationFn: async () =>
+      fetchApi<AlertResponseDto>(`/api/v1/alerts/${id}/resolve`, {
+        method: 'POST',
+        body: JSON.stringify({
+          note: manualResolveNote.trim() || undefined,
+        }),
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: getGetAlertQueryKey(id) });
+      await queryClient.invalidateQueries({ queryKey: ['/api/v1/alerts'] });
+      await queryClient.invalidateQueries({ queryKey: ['alerts'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/v1/dashboard/overview'] });
+      setManualResolveNote('');
+      toast(t('alerts:detail.manualResolveSuccess'), 'success');
+    },
+    onError: (error) => {
+      toast(
+        getTranslatedApiError(error, t, t('alerts:detail.manualResolveError')),
+        'error',
+      );
+    },
+  });
 
   return (
     <AppShell
@@ -682,6 +717,36 @@ export default function AlertDetailPage() {
                     <p className="text-xs text-fg-muted">
                       {t('alerts:reconcileDialog.openHint')}
                     </p>
+                  </div>
+                )}
+                {canManualResolve && (
+                  <div className="mt-4 pt-4 border-t-2 border-fg/10 space-y-2">
+                    <p className="text-xs font-bold uppercase tracking-wider text-fg-muted">
+                      {t('alerts:detail.manualResolveHeading')}
+                    </p>
+                    <p className="text-xs text-fg-muted">
+                      {t('alerts:detail.manualResolveDescription')}
+                    </p>
+                    <label className="text-xs font-medium">
+                      {t('alerts:detail.manualResolveNoteLabel')}
+                    </label>
+                    <Textarea
+                      value={manualResolveNote}
+                      onChange={(e) => setManualResolveNote(e.target.value)}
+                      maxLength={500}
+                      rows={3}
+                      placeholder={t('alerts:detail.manualResolveNotePlaceholder')}
+                    />
+                    <p className="text-xs text-fg-muted">
+                      {t('alerts:detail.manualResolveNoteHint')}
+                    </p>
+                    <Button
+                      size="sm"
+                      onClick={() => manualResolveMutation.mutate()}
+                      isLoading={manualResolveMutation.isPending}
+                    >
+                      {t('alerts:detail.manualResolveAction')}
+                    </Button>
                   </div>
                 )}
               </CardContent>

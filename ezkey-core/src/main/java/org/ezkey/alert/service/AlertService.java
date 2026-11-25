@@ -146,7 +146,7 @@ public class AlertService {
       return alertRepository.save(concurrent);
     }
 
-    emitAuditEntry(EventType.ALERT_RAISED, saved, null);
+    emitAuditEntry(EventType.ALERT_RAISED, saved, null, null);
     logger.info(
         "Alert raised: id={} type={} severity={} dedupeKey={}",
         saved.getAlertId(),
@@ -181,7 +181,43 @@ public class AlertService {
     alert.setResolutionReason(reason);
     alert.setResolvedByAdminId(adminId);
     Alert saved = alertRepository.save(alert);
-    emitAuditEntry(EventType.ALERT_RESOLVED, saved, adminId);
+    emitAuditEntry(EventType.ALERT_RESOLVED, saved, adminId, null);
+    logger.info(
+        "Alert resolved: id={} type={} dedupeKey={} reason={} adminId={}",
+        saved.getAlertId(),
+        saved.getAlertType(),
+        saved.getDedupeKey(),
+        reason,
+        adminId);
+    return Optional.of(saved);
+  }
+
+  /**
+   * Transitions the OPEN alert with the given id to {@code RESOLVED}.
+   *
+   * @param alertId identifier of the alert to resolve
+   * @param reason structured resolution reason
+   * @param adminId resolving admin id, or {@code null} for system-driven resolution
+   * @param resolutionNote optional operator note persisted in the audit row reason field
+   * @return the resolved alert when one was transitioned, otherwise empty
+   */
+  @Transactional
+  public Optional<Alert> resolveOpenById(
+      Long alertId, AlertResolutionReason reason, Integer adminId, String resolutionNote) {
+    if (alertId == null || reason == null) {
+      throw new IllegalArgumentException("alertId and reason are required");
+    }
+    Optional<Alert> open = alertRepository.findByAlertIdAndStatus(alertId, AlertStatus.OPEN);
+    if (open.isEmpty()) {
+      return Optional.empty();
+    }
+    Alert alert = open.get();
+    alert.setStatus(AlertStatus.RESOLVED);
+    alert.setResolvedAt(OffsetDateTime.now(ZoneOffset.UTC));
+    alert.setResolutionReason(reason);
+    alert.setResolvedByAdminId(adminId);
+    Alert saved = alertRepository.save(alert);
+    emitAuditEntry(EventType.ALERT_RESOLVED, saved, adminId, resolutionNote);
     logger.info(
         "Alert resolved: id={} type={} dedupeKey={} reason={} adminId={}",
         saved.getAlertId(),
@@ -318,7 +354,8 @@ public class AlertService {
     return alertRepository.findAll(spec, effective);
   }
 
-  private void emitAuditEntry(EventType eventType, Alert alert, Integer adminId) {
+  private void emitAuditEntry(
+      EventType eventType, Alert alert, Integer adminId, String resolutionNote) {
     String details =
         "{"
             + "\"alertId\":"
@@ -348,6 +385,7 @@ public class AlertService {
             .eventStatus(EventStatus.SUCCESS)
             .apiName(ApiName.ADMIN_API)
             .adminId(adminId)
+            .reason(resolutionNote)
             .eventDetails(details)
             .build();
     auditLogService.log(entry);

@@ -29,11 +29,17 @@ catches `DataIntegrityViolationException` and re-reads the existing OPEN row.
 
 ## API
 
-All endpoints require Global Admin (`GLOBAL_ADMIN`). Tenant Admins receive `403`.
+List and detail endpoints require Global Admin (`GLOBAL_ADMIN`). Manual resolution is available to
+authenticated admins (`ROLE_ADMIN`) only when the target alert is visible in their scope.
 
 - `GET /api/v1/alerts` — paginated list with optional filters: `status`, `alertType`, `severity`,
   `dedupeKey`, `createdAfter`, `createdBefore`. Default sort: `createdAt,desc`. Default page size: 20.
 - `GET /api/v1/alerts/{alertId}` — single alert detail.
+- `POST /api/v1/alerts/{alertId}/resolve` — manual resolution for open manual-resolvable alerts
+  (today: `AUTH_ATTEMPT_REJECTED`) with optional body `{ "note": "..." }`.
+  - `200` when resolved.
+  - `404` when not found or not visible to caller.
+  - `409` for automatic-resolution types or already-resolved alerts.
 
 The Admin UI exposes both via the **Alerts** page (Global Admin only) at `/alerts` and a detail
 view at `/alerts/{alertId}`. The Dashboard **open-alert count banner** (B3) links to `/alerts`.
@@ -47,7 +53,7 @@ Producers include **automated lifecycle checks** (`AuditChainScheduler`) and **c
 | `AUDIT_CHAIN_GAP_PENDING` | `AuditChainScheduler` detects an undeclared temporal gap (`window_start`/`window_end` holes) spanning completed audit epochs | `"AUDIT_CHAIN_GAP_PENDING:" + anchorCheckpointId` | `WARNING` | Global Admin declares the gap (`POST /api/v1/audit-logs/lifecycle/declare-gap`). Auto-resolution reason `GAP_DECLARED`. |
 | `AUDIT_CHAIN_HEARTBEAT_STALE` | `AuditChainHeartbeatGuardService` observes peripheral-ready fail-closing because Admin API checkpoints stalled past grace semantics | Stable singleton **`AUDIT_CHAIN_HEARTBEAT_STALE`** (see [`AuditChainHeartbeatGuardService`](../ezkey-core/src/main/java/org/ezkey/audit/integrity/AuditChainHeartbeatGuardService.java)) | `WARNING` | A fresh advancing checkpoint restores heartbeat; subsystem auto-resolves with reason `HEARTBEAT_RESTORED`. Operators subsequently close **`RECOVERED_PENDING_DECLARATION`** incidents via lifecycle APIs. |
 | `AUDIT_INTEGRITY_RUPTURE` | `RetroactiveIntegrityValidationService` (nightly scheduler or operator `POST …/integrity-validation/run`) detects per-entry HMAC or checkpoint chain rupture | Incident fingerprint via `IntegrityRuptureIncidentFingerprint` (not raw `windowStart` epoch) | `CRITICAL` | Global Admin reconciles via `POST /api/v1/audit-logs/lifecycle/reconcile-integrity-rupture` (reason **`INTEGRITY_RUPTURE_CONCILIATED`**). Blocked while `AUDIT_CHAIN_HEARTBEAT_STALE` is OPEN. |
-| `AUTH_ATTEMPT_REJECTED` | Device deny after a valid signature (`AuthAttemptRespondService`, conditional update returns 1 and status becomes `REJECTED`), and a challenge-mismatch `INVALID` (`AuthAttemptTxHelper.markAsInvalid` when the conditional update returns 1). Same dedupe key for both. Raised after the status transaction commits; a failure to record the alert does not roll the status back. Supersession and cancel do not raise it: they write `EXPIRED` only from `PENDING` or `READ`, so a superseded or cancelled attempt never carries a counted status and never arms this alert. | `AUTH_ATTEMPT_REJECTED:<enrollmentId>` | `WARNING` | Manual (`MANUAL`). No automatic resolution. Payload is `{"enrollmentId":N}` only. No challenge digits. |
+| `AUTH_ATTEMPT_REJECTED` | Device deny after a valid signature (`AuthAttemptRespondService`, conditional update returns 1 and status becomes `REJECTED`), and a challenge-mismatch `INVALID` (`AuthAttemptTxHelper.markAsInvalid` when the conditional update returns 1). Same dedupe key for both. Raised after the status transaction commits; a failure to record the alert does not roll the status back. Supersession and cancel do not raise it: they write `EXPIRED` only from `PENDING` or `READ`, so a superseded or cancelled attempt never carries a counted status and never arms this alert. | `AUTH_ATTEMPT_REJECTED:<enrollmentId>` | `WARNING` | Manual (`MANUAL`) via `POST /api/v1/alerts/{alertId}/resolve`. No automatic resolution. Payload is `{"enrollmentId":N}` only. No challenge digits. |
 | `PARTITION_CREATION_FAILED` | `PartitionSchedulerService` (Admin API startup and the daily job) could not create or verify the monthly partition horizon for `ezkey_auth_attempt` and `ezkey_audit_log` | Stable singleton **`PARTITION_CREATION_FAILED`** | `CRITICAL` | The next clean run of the same horizon resolves it with reason `PARTITION_HORIZON_RESTORED`. |
 
 `PARTITION_CREATION_FAILED` payload (JSON string): `monthsAhead`, `from`, `to` (`yyyy-MM`), `failedTargets`, `error` (root exception class name only). The last-run row `PARTITION_CREATION` stores the same class name in `last_error_summary`. The dashboard does not show that class name: it reads `partitionHorizon` (`from`, `to`, `monthsAhead`, `failedTargets`, `targets`) parsed from the scope string.

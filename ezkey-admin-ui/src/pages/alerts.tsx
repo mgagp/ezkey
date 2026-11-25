@@ -236,6 +236,9 @@ export default function AlertsPage() {
               <option value="AUDIT_INTEGRITY_RUPTURE">
                 {t('alerts:type.AUDIT_INTEGRITY_RUPTURE')}
               </option>
+              <option value="AUTH_ATTEMPT_REJECTED">
+                {t('alerts:type.AUTH_ATTEMPT_REJECTED')}
+              </option>
               <option value="PARTITION_CREATION_FAILED">
                 {t('alerts:type.PARTITION_CREATION_FAILED')}
               </option>
