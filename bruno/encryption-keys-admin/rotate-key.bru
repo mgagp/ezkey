@@ -25,7 +25,7 @@ script:post-response {
       bru.setEnvVar("newPrimaryKeyId", jsonData.newPrimaryKeyId);
       test("Rotation successful", function () {
           expect(jsonData.newPrimaryKeyId).to.be.a('number');
-          expect(jsonData.message).to.include('successfully');
+          expect(jsonData.message).to.include('PENDING');
       });
   }
 }
@@ -35,5 +35,8 @@ settings {
 }
 
 docs {
-  Manually triggers encryption key rotation. This creates a new primary key and demotes the old primary key to ENABLED status. Useful for emergency rotations or testing. ⚠️ Use with caution in production.
+  Manually triggers encryption key rotation. This introduces a new key with PENDING status; it is promoted to primary automatically once the synchronization window elapses. Useful for emergency rotations or testing. ⚠️ Use with caution in production.
+  
+  - 409: a PENDING key already exists, rotation is inactive, or another node changed the keyset first (lost CAS race; retry is safe).
+  - 500: rotation failed, including a keyset storage failure (audited as REENCRYPTION_FAILED; fix storage before retrying, #1506).
 }

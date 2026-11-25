@@ -41,6 +41,7 @@ import com.google.crypto.tink.TinkJsonProtoKeysetFormat;
 import com.google.crypto.tink.aead.AeadConfig;
 import com.google.crypto.tink.subtle.AesGcmJce;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -55,6 +56,7 @@ import org.ezkey.config.TinkProperties;
 import org.ezkey.security.domain.entity.KeysetBlob;
 import org.ezkey.security.domain.repository.EncryptionKeyRepository;
 import org.ezkey.security.domain.repository.KeysetBlobRepository;
+import org.ezkey.security.exception.KeysetCasConflictException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -127,6 +129,10 @@ class KeysetBlobOnlyInvariantTest {
     KeysetBlobRepository repository = versionedRepository(storedBlob);
 
     TinkKeyManager manager = initializeManager(masterKeyPath, keysetPath, repository, true);
+    Logger tinkLogger = (Logger) LoggerFactory.getLogger(TinkKeyManager.class);
+    ListAppender<ILoggingEvent> logCapture = new ListAppender<>();
+    logCapture.start();
+    tinkLogger.addAppender(logCapture);
     try {
       long primaryBefore = manager.getCurrentPrimaryKeyId();
       long versionBefore = storedBlob.get().getVersion();
@@ -137,10 +143,12 @@ class KeysetBlobOnlyInvariantTest {
       when(repository.saveAndFlush(any(KeysetBlob.class)))
           .thenThrow(new DataAccessResourceFailureException("simulated CAS/persist failure"));
 
-      IllegalStateException thrown = assertThrows(IllegalStateException.class, manager::rotateKey);
+      // #1506: a storage outage is a persist failure (IOException, ERROR), never a
+      // KeysetCasConflictException that callers would present as a retryable 409.
+      IOException thrown = assertThrows(IOException.class, manager::rotateKey);
       assertTrue(
-          thrown.getMessage().contains("CAS") || thrown.getCause() != null,
-          "failure must surface as CAS/persist failure, not silent success");
+          thrown.getCause() instanceof DataAccessResourceFailureException,
+          "persist failure must keep the storage cause, not silent success");
 
       assertEquals(
           primaryBefore,
@@ -148,6 +156,53 @@ class KeysetBlobOnlyInvariantTest {
           "live primary must not install when CAS/persist fails");
       assertEquals(versionBefore, storedBlob.get().getVersion());
       assertArrayEquals(envelopeBefore, storedBlob.get().getKeysetData());
+      assertTrue(
+          logCapture.list.stream()
+              .anyMatch(event ->
+                  event.getLevel() == Level.ERROR
+                      && event.getFormattedMessage().contains("Keyset persist failed")),
+          "a persist failure must be logged at ERROR (#1506)");
+      assertFalse(
+          logCapture.list.stream()
+              .anyMatch(event -> event.getFormattedMessage().contains("CAS failed for keyset")),
+          "a persist failure must not be logged as a benign CAS loss (#1506)");
+    } finally {
+      tinkLogger.detachAppender(logCapture);
+      manager.shutdownKeysetCheckExecutor();
+    }
+  }
+
+  @Test
+  @DisplayName(
+      "#1506: add-pending and promote surface a storage outage as IOException, not a CAS conflict")
+  void persistFailure_addPendingAndPromote_throwIoExceptionNotCasConflict(@TempDir Path tempDir)
+      throws Exception {
+    Path masterKeyPath = tempDir.resolve("master.key");
+    Path keysetPath = tempDir.resolve("keyset.json.encrypted");
+    TestMasterKeys.write(masterKeyPath);
+
+    AtomicReference<KeysetBlob> storedBlob = new AtomicReference<>();
+    KeysetBlobRepository repository = versionedRepository(storedBlob);
+
+    TinkKeyManager manager = initializeManager(masterKeyPath, keysetPath, repository, true);
+    try {
+      long pendingKeyId = manager.addKeyWithoutPromotion();
+      long primaryBefore = manager.getCurrentPrimaryKeyId();
+      long versionBefore = storedBlob.get().getVersion();
+
+      when(repository.save(any(KeysetBlob.class)))
+          .thenThrow(new DataAccessResourceFailureException("simulated persist outage"));
+      when(repository.saveAndFlush(any(KeysetBlob.class)))
+          .thenThrow(new DataAccessResourceFailureException("simulated persist outage"));
+
+      IOException addFailure = assertThrows(IOException.class, manager::addKeyWithoutPromotion);
+      assertInstanceOf(DataAccessResourceFailureException.class, addFailure.getCause());
+      IOException promoteFailure =
+          assertThrows(IOException.class, () -> manager.promoteToPrimary(pendingKeyId));
+      assertInstanceOf(DataAccessResourceFailureException.class, promoteFailure.getCause());
+
+      assertEquals(primaryBefore, manager.getCurrentPrimaryKeyId());
+      assertEquals(versionBefore, storedBlob.get().getVersion());
     } finally {
       manager.shutdownKeysetCheckExecutor();
     }
@@ -181,7 +236,10 @@ class KeysetBlobOnlyInvariantTest {
       when(repository.save(any(KeysetBlob.class))).thenAnswer(peerWinsCas);
       when(repository.saveAndFlush(any(KeysetBlob.class))).thenAnswer(peerWinsCas);
 
-      assertThrows(IllegalStateException.class, manager::rotateKey);
+      // Real optimistic-lock loss stays a KeysetCasConflictException (409 on POST /rotate).
+      KeysetCasConflictException conflict =
+          assertThrows(KeysetCasConflictException.class, manager::rotateKey);
+      assertInstanceOf(OptimisticLockingFailureException.class, conflict.getCause());
       assertTrue(peerInstalled.get(), "peer blob must be present for the post-CAS reload");
       assertEquals(
           peer.primaryKeyId(),
@@ -409,7 +467,7 @@ class KeysetBlobOnlyInvariantTest {
             return Optional.ofNullable(storedBlob.get());
           });
 
-      assertThrows(IllegalStateException.class, manager::rotateKey);
+      assertThrows(IOException.class, manager::rotateKey);
       assertEquals(
           primaryBefore,
           manager.getCurrentPrimaryKeyId(),

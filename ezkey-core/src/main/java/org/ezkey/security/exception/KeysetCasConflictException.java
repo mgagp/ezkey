@@ -12,6 +12,9 @@ package org.ezkey.security.exception;
  * <p>Callers must treat this as fail-closed: discard staging, reload the committed blob, and do not
  * serve an orphan in-memory primary. Used by {@code TinkKeyManager} online rotation (#961 n2).
  *
+ * <p>Raised only when the cause is an {@code OptimisticLockingFailureException} (a concurrent
+ * writer won, so a retry is safe). Other persist failures surface as {@code IOException} (#1506).
+ *
  * @since 2026
  */
 public class KeysetCasConflictException extends IllegalStateException {
