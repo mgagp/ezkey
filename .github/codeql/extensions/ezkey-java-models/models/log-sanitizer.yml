@@ -5,3 +5,5 @@ extensions:
     data:
       # Return value of LogSanitizer.sanitizeForLog is safe for log sinks (ISO control, U+2028/U+2029 and format characters neutralized, #951).
       - ["org.ezkey.util", "LogSanitizer", true, "sanitizeForLog", "(String)", "", "ReturnValue", "log-injection", "manual"]
+      # Demo device mirror of the same helper.
+      - ["org.ezkey.demo.device.util", "LogSanitizer", true, "sanitizeForLog", "(String)", "", "ReturnValue", "log-injection", "manual"]

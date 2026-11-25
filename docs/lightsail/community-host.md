@@ -665,7 +665,6 @@ trial record: [`TB-2026-11-06`](../../product-docs/global/backlog/TB-2026-11-06-
 | SMTP endpoint | `email-smtp.ca-central-1.amazonaws.com:587`, STARTTLS |
 | Sender | `no-reply@mail.ezkey.org`, display name `Ezkey Community` (one sender per connector) |
 | Caps | 50 per UTC day for the instance (Admin API), 50 in the connector as a second stop; tenant cap unchanged (50) |
-| Self-registered tenants | Never send (`409 self-registered-tenant`, capability hidden) — V28 |
 | Files on the VM | `docker-compose.connector-smtp.yml` (synced), `connector-smtp.env` (secrets, mode 600, never synced), `EZKEY_CONNECTOR_DELIVERY_TOKEN` in `.env` |
 | Memory | 256m ceiling (~111 MiB measured idle). With #749 limits and JavaMelody the ceilings reach ~3904m |
 
@@ -740,11 +739,10 @@ DKIM `PASS` (`mail.ezkey.org`), DMARC `PASS`.
 
 1. `$C ps connector-smtp`: healthy, no published port (`docker port ezkey-exp-connector-smtp` prints nothing).
 2. `docker stats --no-stream` and `free -m`: memory headroom on the host after the connector starts.
-3. As a Tenant Admin of a non-self-registered tenant: the enrollment screen offers *Send by email*;
+3. As a Tenant Admin: the enrollment screen offers *Send by email*;
    send to a **verified** recipient; expect `accepted` and the email in the inbox.
-4. As the admin of a self-registered tenant: no send button; the API answers `409 self-registered-tenant`.
-5. `docker logs ezkey-exp-connector-smtp`: one `Delivery <id>: accepted` line, no address, no secret.
-6. SES console → Account dashboard: the send counter moved.
+4. `docker logs ezkey-exp-connector-smtp`: one `Delivery <id>: accepted` line, no address, no secret.
+5. SES console → Account dashboard: the send counter moved.
 
 ### Rollback
 
