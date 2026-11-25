@@ -154,6 +154,11 @@ jobs:
           # package; sdkmanager then fails with "Failed to find package 'tools'".
           packages: platform-tools
 
+      # NDK from the Actions cache, or sdkmanager with retry (#1403); Gradle would otherwise
+      # download it on every run.
+      - name: Android NDK (cached)
+        uses: ./.github/actions/android-ndk
+
       - name: Run Android unit tests
         working-directory: ezkey_mobile/android
         run: |
@@ -261,15 +266,19 @@ jobs:
         working-directory: ezkey_mobile
         run: yarn install --immutable
 
-      - name: Set up Android SDK (NDK r28 + build-tools for zipalign -P 16)
+      - name: Set up Android SDK (build-tools for zipalign -P 16)
         uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4
         with:
           packages: >
             platform-tools
             platforms;android-36
             build-tools;36.0.0
-            ndk;28.1.13356709
             cmake;3.22.1
+
+      # Same NDK and cache key as android-jvm-unit-tests (#1403); the version comes from
+      # ndkVersion in android/build.gradle.
+      - name: Android NDK (cached)
+        uses: ./.github/actions/android-ndk
 
       - name: Assemble release APK
         working-directory: ezkey_mobile
