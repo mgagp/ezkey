@@ -1827,6 +1827,37 @@ def _report_orphan_api_key(api_key_id) -> None:
     )
 
 
+def _save_api_key_to_config(config, api_key_id, integration_key, secret_key, *, delivered):
+    """
+    Persist the new key pair for ``--save-key``.
+
+    Returns False when the save fails. The key already exists on the server and
+    was delivered through the other channel, so the caller exits non-zero to
+    keep a script from assuming the config holds it (#1048).
+    """
+    config.set_api_key(integration_key, secret_key)
+    try:
+        config.save(global_config=True)
+    except SecureFileSymlinkError as exc:
+        OutputUtils.error(str(exc))
+        _report_unsaved_api_key(api_key_id, delivered)
+        return False
+    except OSError as exc:
+        OutputUtils.error(f"Failed to save API key to config: {exc}")
+        _report_unsaved_api_key(api_key_id, delivered)
+        return False
+    OutputUtils.success("API key saved to config")
+    return True
+
+
+def _report_unsaved_api_key(api_key_id, delivered):
+    """Tell the operator where the key is; creating another would leave this one active."""
+    OutputUtils.info(
+        f"The API key was created and {delivered}. Keep it from there, or revoke it "
+        f"before creating another: ezkey admin api-key revoke --id {api_key_id}"
+    )
+
+
 @api_key_group.command('create')
 @click.option('--integration-id', required=True, type=int, help='Integration ID for the API key')
 @click.option('--description', help='Description of the API key (e.g., "Production Server")')
@@ -1925,7 +1956,9 @@ def create_api_key(
 
     try:
         response = http_client.post(url, json_data=json_data)
-    except Exception:
+    except BaseException:
+        # BaseException: Ctrl-C during the POST must not leave the reserved
+        # empty file (or the --force temp) behind.
         if out_slot is not None:
             out_slot.abort()
         raise
@@ -1973,13 +2006,11 @@ def create_api_key(
                 "It will not be shown again."
             )
 
-            if save_key:
-                config.set_api_key(integration_key, secret_key)
-                try:
-                    config.save(global_config=True)
-                    OutputUtils.success("API key saved to config")
-                except SecureFileSymlinkError as exc:
-                    OutputUtils.error(str(exc))
+            if save_key and not _save_api_key_to_config(
+                config, api_key_id, integration_key, secret_key,
+                delivered="written to the file above",
+            ):
+                ctx.exit(1)
             return
 
         OutputUtils.success("✅ API key created successfully!")
@@ -1996,17 +2027,17 @@ def create_api_key(
             OutputUtils.info(f"IP Whitelist: {', '.join(data['ipWhitelist'])}")
 
         # Save API key to config if requested
+        saved = True
         if save_key:
-            config.set_api_key(integration_key, secret_key)
-            try:
-                config.save(global_config=True)
-                OutputUtils.success("API key saved to config")
-            except SecureFileSymlinkError as exc:
-                OutputUtils.error(str(exc))
+            saved = _save_api_key_to_config(
+                config, api_key_id, integration_key, secret_key, delivered="shown above"
+            )
 
         if pretty_print:
             OutputUtils.info("")
             OutputUtils.output_json(data)
+        if not saved:
+            ctx.exit(1)
     else:
         if out_slot is not None:
             out_slot.abort()

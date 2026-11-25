@@ -33,6 +33,7 @@ from .screens import (
   TenantsScreen,
 )
 from .api_client import ApiClient
+from .config_persist import try_save_config
 
 log = logging.getLogger(__name__)
 
@@ -91,11 +92,13 @@ class EzkeyAdminApp:
       self.config.set_bearer_token(legacy_token)
 
       local_config_path = Path.cwd() / "ezkey.json"
-      if local_config_path.exists():
-        self.config.save(global_config=False)
+      to_local = local_config_path.exists()
+      if try_save_config(self.config, global_config=not to_local) is not None:
+        # Keep the legacy file so the token is not lost; use it for this session.
+        return legacy_token
+      if to_local:
         log.info("Migrated bearer token to local config (./ezkey.json)")
       else:
-        self.config.save(global_config=True)
         log.info("Migrated bearer token to global config (~/.ezkey/ezkey.json)")
 
       try:
@@ -244,10 +247,21 @@ class EzkeyAdminTUI(App):
       self.config.clear_admin_type()
       self.config.clear_last_auth_time()
       local_config_path = Path.cwd() / "ezkey.json"
+      reasons = []
       if local_config_path.exists():
-        self.config.save(global_config=False)
-      self.config.save(global_config=True)
-      self.exit()
+        reasons.append(try_save_config(self.config, global_config=False))
+      reasons.append(try_save_config(self.config, global_config=True))
+      reasons = [reason for reason in reasons if reason]
+      if not reasons:
+        self.exit()
+      else:
+        # Printed after the TUI closes; a notification would vanish with it.
+        self.exit(
+            message=(
+                "Logged out, but the previous token may still be in ezkey.json. "
+                + " ".join(reasons)
+            ),
+        )
 
   def handle_auth_error(self) -> None:
     """Handle authorization failures by prompting re-auth."""

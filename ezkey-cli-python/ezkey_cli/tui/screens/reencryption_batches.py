@@ -15,6 +15,8 @@ from textual.containers import Vertical
 from textual.events import Key
 from pathlib import Path
 import logging
+
+from ..config_persist import save_config
 import math
 
 log = logging.getLogger(__name__)
@@ -256,8 +258,8 @@ class ReencryptionBatchesScreen(Screen):
     config.set("pageSize", self.page_size)
     local_config_path = Path.cwd() / "ezkey.json"
     if local_config_path.exists():
-      config.save(global_config=False)
-    config.save(global_config=True)
+      save_config(self.app, config, global_config=False)
+    save_config(self.app, config, global_config=True)
 
   def _get_saved_page_size(self, config) -> int:
     """Get saved page size from config, with type normalization."""

@@ -155,8 +155,9 @@ class ConfigManager:
         except SecureFileSymlinkError:
             # Clear operator message; do not chain the low-level path traceback.
             raise SecureFileSymlinkError(
-                "ezkey.json is a symbolic link; replace it with a regular file "
-                "or use --out-file"
+                f"{config_path} is a symbolic link; configuration was not saved. "
+                "Replace it with a regular file (a symlinked ~/.ezkey directory "
+                "is fine)."
             ) from None
 
     def get_all(self) -> Dict[str, Any]:

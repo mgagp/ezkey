@@ -14,6 +14,8 @@ from textual.containers import Vertical, Horizontal
 from textual.reactive import reactive
 import logging
 
+from ..config_persist import save_config
+
 log = logging.getLogger(__name__)
 
 
@@ -352,12 +354,8 @@ class ReAuthScreen(ModalScreen):
           self.config.set_token_expires_at(expires_at)
           log.debug(f"Saved token expiration: {expires_at}")
 
-      from pathlib import Path
-      local_config_path = Path.cwd() / "ezkey.json"
-      if local_config_path.exists():
-        self.config.save(global_config=False)
-      else:
-        self.config.save(global_config=False)
+      # A refused save (symlinked ezkey.json) is notified; the token stays in memory.
+      save_config(self.app, self.config, global_config=False)
 
       self.api_client.bearer_token = token
       self.api_client.headers["Authorization"] = f"Bearer {token}"
