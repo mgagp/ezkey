@@ -63,7 +63,7 @@ Errors arrive as RFC 9457 Problem Details. UI translates them through `getTransl
 | `authentication.auth-rejected` | `errors.authentication.auth-rejected` | Inline alert; allow retry. |
 | `authentication.auth-expired` | `errors.authentication.auth-expired` | Inline alert; reset form. |
 | `authentication.auth-timeout` | `errors.authentication.auth-timeout` | Inline alert; allow retry. |
-| `authentication.invalid-signature` | `errors.authentication.invalid-signature` | Inline alert; allow retry. |
+| `authentication.challenge-mismatch` | `errors.authentication.challenge-mismatch` | Inline alert; allow retry (#1465). |
 
 Rate-limit responses (HTTP 429) are handled separately; the UI surfaces a friendly message with the `Retry-After` value when provided.
 

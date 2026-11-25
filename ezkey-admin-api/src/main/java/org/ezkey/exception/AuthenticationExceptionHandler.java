@@ -16,7 +16,7 @@ import org.ezkey.admin.exception.AdminAuthenticationException;
 import org.ezkey.admin.exception.AdminAuthenticationExpiredException;
 import org.ezkey.admin.exception.AdminAuthenticationRejectedException;
 import org.ezkey.admin.exception.AdminAuthenticationTimeoutException;
-import org.ezkey.admin.exception.AdminDeviceSignatureInvalidException;
+import org.ezkey.admin.exception.AdminChallengeMismatchException;
 import org.ezkey.admin.exception.AdminNoEnrollmentException;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
@@ -44,7 +44,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  *       in {@link org.ezkey.admin.service.AdminAuthService}
  *   <li><b>AdminAuthenticationExpiredException (400):</b> Authentication attempt expired
  *   <li><b>AdminAuthenticationRejectedException (400):</b> Device explicitly rejected the request
- *   <li><b>AdminDeviceSignatureInvalidException (400):</b> Device signature validation failed
+ *   <li><b>AdminChallengeMismatchException (400):</b> The code entered on the device did not match
  *   <li><b>AdminAuthenticationTimeoutException (408):</b> No device response within timeout period
  * </ul>
  *
@@ -96,7 +96,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * @see AdminNoEnrollmentException
  * @see AdminAuthenticationExpiredException
  * @see AdminAuthenticationRejectedException
- * @see AdminDeviceSignatureInvalidException
+ * @see AdminChallengeMismatchException
  * @see AdminAuthenticationTimeoutException
  */
 @RestControllerAdvice
@@ -293,11 +293,12 @@ public class AuthenticationExceptionHandler extends ExceptionHandlerBase {
   }
 
   /**
-   * Handles AdminDeviceSignatureInvalidException and returns HTTP 400 Bad Request.
+   * Handles AdminChallengeMismatchException and returns HTTP 400 Bad Request.
    *
-   * <p>Triggered when device signature validation fails during authentication.
+   * <p>Triggered when the admin login attempt ended {@code INVALID}: the device signature was
+   * valid, but the code entered on the device did not match (#1465).
    *
-   * <p><b>HTTP Status:</b> 400 Bad Request (Cryptographic validation failure)
+   * <p><b>HTTP Status:</b> 400 Bad Request
    *
    * <p><b>Response Format:</b> RFC 9457 ProblemDetail
    *
@@ -305,27 +306,27 @@ public class AuthenticationExceptionHandler extends ExceptionHandlerBase {
    *
    * <pre>{@code
    * {
-   * "type": "https://ezkey.io/problems/authentication/invalid-signature",
-   * "title": "Invalid Signature",
+   * "type": "https://ezkey.io/problems/authentication/challenge-mismatch",
+   * "title": "Challenge Mismatch",
    * "status": 400,
-   * "detail": "Device signature validation failed",
+   * "detail": "The code entered on the device did not match",
    * "path": "/api/v1/admin/auth/passwordless-wait"
    * }
    * }</pre>
    *
-   * @param ex the AdminDeviceSignatureInvalidException that was thrown
+   * @param ex the AdminChallengeMismatchException that was thrown
    * @param request the HTTP servlet request for path extraction
    * @return ResponseEntity containing ProblemDetail and HTTP 400 status
-   * @since 2025
+   * @since 2026
    */
-  @ExceptionHandler(AdminDeviceSignatureInvalidException.class)
-  public ResponseEntity<ProblemDetail> handleAdminDeviceSignatureInvalidException(
-      AdminDeviceSignatureInvalidException ex, HttpServletRequest request) {
+  @ExceptionHandler(AdminChallengeMismatchException.class)
+  public ResponseEntity<ProblemDetail> handleAdminChallengeMismatchException(
+      AdminChallengeMismatchException ex, HttpServletRequest request) {
     return buildProblemDetail(
         ex,
         HttpStatus.BAD_REQUEST,
-        "https://ezkey.io/problems/authentication/invalid-signature",
-        "Invalid Signature",
+        "https://ezkey.io/problems/authentication/challenge-mismatch",
+        "Challenge Mismatch",
         request);
   }
 

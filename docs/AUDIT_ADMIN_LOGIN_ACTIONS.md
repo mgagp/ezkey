@@ -12,8 +12,9 @@ Ezkey records **Admin API** authentication steps in the audit log (`event_type` 
 | `login_mfa_expired` | FAILURE | `/passwordless-wait` ended: attempt expired or was superseded. |
 | `login_mfa_rejected` | FAILURE | Device rejected the request. |
 | `login_mfa_timeout` | FAILURE | No device response within the wait window (HTTP 408 class outcome). |
-| `login_mfa_invalid_signature` | FAILURE | Device signature validation failed. |
-| `login_mfa_invalid_challenge` | FAILURE | Challenge code did not match (challenge flow). |
+| `login_mfa_challenge_mismatch` | FAILURE | The device signed a response, but the code entered on it did not match (attempt `INVALID`, HTTP 400 `challenge-mismatch`, #1465). |
+| `login_mfa_invalid_signature` | FAILURE | **Legacy** — older rows only: the same wrong-code-on-device case, mislabelled before #1465. |
+| `login_mfa_invalid_challenge` | FAILURE | The `challengeCode` sent to `/passwordless-wait` was missing, unexpected or did not match the attempt (HTTP 401, before any device outcome). |
 | `login_mfa_error` | ERROR | Unexpected processing failure (including bad `authAttemptId` / admin link when applicable). |
 | `login_failure` | FAILURE | Unexpected response status from `/login` (should be rare). |
 | `login_pending` | SUCCESS | **Legacy** — older rows only; new pending flows use `login_mfa_requested`. |

@@ -11,6 +11,7 @@
 package org.ezkey.admin.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -23,6 +24,7 @@ import java.util.Optional;
 import org.ezkey.admin.config.AdminTokenRotationProperties;
 import org.ezkey.admin.exception.AdminAuthenticationException;
 import org.ezkey.admin.exception.AdminAuthenticationExpiredException;
+import org.ezkey.admin.exception.AdminChallengeMismatchException;
 import org.ezkey.authattempt.domain.AuthAttemptWaitResponse;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
@@ -114,6 +116,24 @@ class AdminAuthServiceWaitChallengeEnforcementTest {
         () -> adminAuthService.waitForPasswordlessAuth(17, 222333, VALID_SECRET));
 
     verify(authAttemptService).waitForResponse(eq(17), any());
+  }
+
+  @Test
+  @DisplayName("waitForPasswordlessAuth maps INVALID to challenge mismatch without digits (#1465)")
+  void waitMapsInvalidToChallengeMismatch() {
+    AuthAttempt attempt = buildAttempt(18, 11, 47);
+    when(authAttemptRepository.findById(18)).thenReturn(Optional.of(attempt));
+    when(adminRepository.findByEnrollmentId(11)).thenReturn(Optional.of(buildAdmin()));
+    when(authAttemptService.waitForResponse(eq(18), any()))
+        .thenReturn(buildWaitResponse(attempt, "INVALID"));
+
+    AdminChallengeMismatchException exception =
+        assertThrows(
+            AdminChallengeMismatchException.class,
+            () -> adminAuthService.waitForPasswordlessAuth(18, 47, VALID_SECRET));
+
+    assertEquals(AdminChallengeMismatchException.DETAIL, exception.getMessage());
+    assertFalse(exception.getMessage().matches(".*\\d.*"), "detail must not carry digits");
   }
 
   private AuthAttempt buildAttempt(Integer id, Integer enrollmentId, Integer challenge) {

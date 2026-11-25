@@ -72,10 +72,17 @@ public final class AdminAuditConstants {
   /** Audit action when no device response was received within the wait window. */
   public static final String LOGIN_MFA_TIMEOUT = "login_mfa_timeout";
 
-  /** Audit action when device signature validation failed on /passwordless-wait. */
-  public static final String LOGIN_MFA_INVALID_SIGNATURE = "login_mfa_invalid_signature";
+  /**
+   * Audit action when the device signed a response but the code entered on it did not match (the
+   * attempt ended {@code INVALID}). Before #1465 this case was recorded as {@code
+   * login_mfa_invalid_signature}; older rows keep that value.
+   */
+  public static final String LOGIN_MFA_CHALLENGE_MISMATCH = "login_mfa_challenge_mismatch";
 
-  /** Audit action when the challenge code did not match (challenge flow). */
+  /**
+   * Audit action when the challenge code sent by the client to /passwordless-wait was missing,
+   * unexpected or did not match the attempt (HTTP 401, before any device outcome).
+   */
   public static final String LOGIN_MFA_INVALID_CHALLENGE = "login_mfa_invalid_challenge";
 
   /** Audit action for unexpected errors during /passwordless-wait. */

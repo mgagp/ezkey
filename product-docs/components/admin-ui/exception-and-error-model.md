@@ -63,12 +63,12 @@ This document defines how the Admin UI handles errors coming from the Admin API 
 - **Audit.** Server-side.
 - **Related workflow.** [`functional-flows.md#ex-login-timeout`](functional-flows.md#ex-login-timeout).
 
-### `invalid-signature`
+### `challenge-mismatch`
 
 - **Category.** Authentication.
-- **Trigger.** Cryptographic signature verification fails on the server.
-- **Externalization.** HTTP 400 with `type = https://ezkey.io/problems/authentication/invalid-signature`.
-- **UI response.** Inline alert; usually indicates a device or backend issue that the operator cannot self-recover.
+- **Trigger.** The device signed its answer, but the code entered on it did not match the sign-in code (attempt `INVALID`). Replaces `invalid-signature`, which misreported this case (#1465).
+- **Externalization.** HTTP 400 with `type = https://ezkey.io/problems/authentication/challenge-mismatch`.
+- **UI response.** Inline alert that names the mismatch and the next step (Try Again, enter the code shown); never shows digits.
 
 ### `duplicate-integration-name`
 

@@ -38,7 +38,7 @@ import org.ezkey.admin.exception.AdminAuthenticationException;
 import org.ezkey.admin.exception.AdminAuthenticationExpiredException;
 import org.ezkey.admin.exception.AdminAuthenticationRejectedException;
 import org.ezkey.admin.exception.AdminAuthenticationTimeoutException;
-import org.ezkey.admin.exception.AdminDeviceSignatureInvalidException;
+import org.ezkey.admin.exception.AdminChallengeMismatchException;
 import org.ezkey.admin.exception.AuthenticationException;
 import org.ezkey.admin.security.AdminAuthRequestAttributes;
 import org.ezkey.admin.security.AdminCsrfTokenService;
@@ -289,8 +289,8 @@ public class AdminAuthController {
    *             attempt superseded or expired before device response
    *         <li>{@code https://ezkey.io/problems/authentication/auth-rejected} - Device explicitly
    *             rejected the authentication request
-   *         <li>{@code https://ezkey.io/problems/authentication/invalid-signature} - Device
-   *             signature validation failed
+   *         <li>{@code https://ezkey.io/problems/authentication/challenge-mismatch} - The code
+   *             entered on the device did not match (attempt ended INVALID)
    *       </ul>
    *   <li><b>408 Request Timeout:</b>
    *       <ul>
@@ -342,7 +342,7 @@ public class AdminAuthController {
    * @throws AdminAuthenticationException (401) if login is not permitted or credentials are invalid
    * @throws AdminAuthenticationExpiredException (400) if auth attempt is superseded or expired
    * @throws AdminAuthenticationRejectedException (400) if device rejects authentication
-   * @throws AdminDeviceSignatureInvalidException (400) if device signature validation fails
+   * @throws AdminChallengeMismatchException (400) if the code entered on the device did not match
    * @throws AdminAuthenticationTimeoutException (408) if no device response within timeout
    * @since 2025
    */
@@ -365,8 +365,8 @@ public class AdminAuthController {
             responseCode = "400",
             description =
                 "Bad Request - Authentication failed with temporal issues (expired, rejected,"
-                    + " invalid signature). Returns RFC 9457 ProblemDetail with specific error type"
-                    + " URI."),
+                    + " challenge mismatch on device). Returns RFC 9457 ProblemDetail with specific"
+                    + " error type URI."),
         @ApiResponse(
             responseCode = "401",
             description =
@@ -609,8 +609,8 @@ public class AdminAuthController {
    *             attempt superseded or expired
    *         <li>{@code https://ezkey.io/problems/authentication/auth-rejected} - Device rejected
    *             the request
-   *         <li>{@code https://ezkey.io/problems/authentication/invalid-signature} - Device
-   *             signature validation failed
+   *         <li>{@code https://ezkey.io/problems/authentication/challenge-mismatch} - The code
+   *             entered on the device did not match (attempt ended INVALID)
    *       </ul>
    *   <li><b>408 Request Timeout:</b>
    *       <ul>
@@ -625,7 +625,7 @@ public class AdminAuthController {
    * @throws AdminAuthenticationException (401) if challenge code is invalid
    * @throws AdminAuthenticationExpiredException (400) if auth attempt is superseded or expired
    * @throws AdminAuthenticationRejectedException (400) if device rejects authentication
-   * @throws AdminDeviceSignatureInvalidException (400) if device signature validation fails
+   * @throws AdminChallengeMismatchException (400) if the code entered on the device did not match
    * @throws AdminAuthenticationTimeoutException (408) if no device response within timeout
    * @since 2025
    */
@@ -645,7 +645,8 @@ public class AdminAuthController {
         @ApiResponse(
             responseCode = "400",
             description =
-                "Bad Request - Device denied, signature failed, or challenge invalid. "
+                "Bad Request - Device denied, attempt expired, or the code entered on the device"
+                    + " did not match (challenge-mismatch). "
                     + "Returns RFC 9457 ProblemDetail with specific error type URI."),
         @ApiResponse(
             responseCode = "401",
@@ -703,9 +704,9 @@ public class AdminAuthController {
       logPasswordlessMfaFailure(
           auditCtx, context, AdminAuditConstants.LOGIN_MFA_TIMEOUT, e.getMessage());
       throw e;
-    } catch (AdminDeviceSignatureInvalidException e) {
+    } catch (AdminChallengeMismatchException e) {
       logPasswordlessMfaFailure(
-          auditCtx, context, AdminAuditConstants.LOGIN_MFA_INVALID_SIGNATURE, e.getMessage());
+          auditCtx, context, AdminAuditConstants.LOGIN_MFA_CHALLENGE_MISMATCH, e.getMessage());
       throw e;
     } catch (AdminAuthenticationException e) {
       if (e.getMessage() != null && e.getMessage().contains("Invalid challenge")) {

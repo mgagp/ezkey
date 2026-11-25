@@ -72,7 +72,7 @@ Outcome mapping:
 | Device approved | 200 | Session token response | `login_mfa_session_issued`. |
 | Device rejected | 400 | `authentication/auth-rejected` | `login_mfa_rejected`. |
 | Attempt expired | 408 | `authentication/auth-timeout` | `login_mfa_expired`. |
-| Invalid signature | 400 | `authentication/invalid-signature` | audited. |
+| Wrong code entered on device | 400 | `authentication/challenge-mismatch` | `login_mfa_challenge_mismatch` (#1465). |
 
 ### Constraints and Invariants
 

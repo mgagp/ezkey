@@ -23,6 +23,7 @@ import org.ezkey.admin.dto.request.AdminPasswordlessWaitRequestDto;
 import org.ezkey.admin.dto.response.AdminLoginResponseDto;
 import org.ezkey.admin.exception.AdminAuthenticationExpiredException;
 import org.ezkey.admin.exception.AdminAuthenticationRejectedException;
+import org.ezkey.admin.exception.AdminChallengeMismatchException;
 import org.ezkey.admin.security.AdminCsrfTokenService;
 import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.security.AdminSessionCookieService;
@@ -157,6 +158,26 @@ class AdminAuthControllerPasswordlessAuditTest {
 
     verify(auditLogService).log(auditCaptor.capture());
     assertEquals(AdminAuditConstants.LOGIN_MFA_REJECTED, auditCaptor.getValue().getEventAction());
+  }
+
+  @Test
+  @DisplayName("passwordlessWait challenge mismatch emits login_mfa_challenge_mismatch (#1465)")
+  void challengeMismatch_emitsChallengeMismatchAudit() {
+    when(authService.findAuditContextForAuthAttempt(10)).thenReturn(Optional.of(auditCtx));
+    when(authService.waitForPasswordlessAuth(10, 7, "secret123"))
+        .thenThrow(new AdminChallengeMismatchException());
+
+    try {
+      controller.passwordlessWait(
+          new AdminPasswordlessWaitRequestDto(10, 7, "secret123"), httpRequest, httpResponse);
+    } catch (AdminChallengeMismatchException e) {
+      // expected
+    }
+
+    verify(auditLogService).log(auditCaptor.capture());
+    AuditLog log = auditCaptor.getValue();
+    assertEquals(AdminAuditConstants.LOGIN_MFA_CHALLENGE_MISMATCH, log.getEventAction());
+    assertEquals(EventStatus.FAILURE, log.getEventStatus());
   }
 
   @Test

@@ -26,7 +26,7 @@ import org.ezkey.admin.exception.AdminAuthenticationException;
 import org.ezkey.admin.exception.AdminAuthenticationExpiredException;
 import org.ezkey.admin.exception.AdminAuthenticationRejectedException;
 import org.ezkey.admin.exception.AdminAuthenticationTimeoutException;
-import org.ezkey.admin.exception.AdminDeviceSignatureInvalidException;
+import org.ezkey.admin.exception.AdminChallengeMismatchException;
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
 import org.ezkey.authattempt.domain.AuthAttemptCreateResponse;
 import org.ezkey.authattempt.domain.AuthAttemptWaitRequest;
@@ -120,7 +120,8 @@ public class AdminAuthService {
    *     401; generic message — see SEC-006)
    * @throws AdminAuthenticationExpiredException if auth attempt expired (HTTP 400)
    * @throws AdminAuthenticationRejectedException if device rejected (HTTP 400)
-   * @throws AdminDeviceSignatureInvalidException if signature invalid (HTTP 400)
+   * @throws AdminChallengeMismatchException if the code entered on the device did not match (HTTP
+   *     400)
    * @throws AdminAuthenticationTimeoutException if no device response (HTTP 408)
    */
   public AdminLoginResponseDto authenticate(AdminLoginRequestDto request) {
@@ -163,7 +164,8 @@ public class AdminAuthService {
    * @throws AdminAuthenticationException if credentials invalid or login not permitted (HTTP 401)
    * @throws AdminAuthenticationExpiredException if auth expired (HTTP 400)
    * @throws AdminAuthenticationRejectedException if device rejected (HTTP 400)
-   * @throws AdminDeviceSignatureInvalidException if signature invalid (HTTP 400)
+   * @throws AdminChallengeMismatchException if the code entered on the device did not match (HTTP
+   *     400)
    * @throws AdminAuthenticationTimeoutException if timeout (HTTP 408)
    * @since 2025
    */
@@ -308,10 +310,11 @@ public class AdminAuthService {
         throw new AdminAuthenticationRejectedException(
             "Device rejected the authentication request");
       } else if ("INVALID".equals(status)) {
+        // INVALID is set only after a valid device signature, on challenge mismatch (#912, #1465)
         logger.warn(
-            "❌ Passwordless auth invalid (signature/challenge failed) for admin: {}",
+            "❌ Passwordless auth INVALID (challenge code mismatch on device) for admin: {}",
             admin.getUsername());
-        throw new AdminDeviceSignatureInvalidException("Device signature validation failed");
+        throw new AdminChallengeMismatchException();
       } else if ("EXPIRED".equals(status)) {
         logger.warn(
             "⏱️ Passwordless auth expired for admin: {} after {}s (superseded or expired)",
@@ -448,8 +451,11 @@ public class AdminAuthService {
       logger.warn("❌ Passwordless auth rejected by device for admin: {}", admin.getUsername());
       throw new AdminAuthenticationRejectedException("Device rejected the authentication request");
     } else if ("INVALID".equals(status)) {
-      logger.warn("❌ Passwordless auth invalid for admin: {}", admin.getUsername());
-      throw new AdminDeviceSignatureInvalidException("Device signature validation failed");
+      // INVALID is set only after a valid device signature, on challenge mismatch (#912, #1465)
+      logger.warn(
+          "❌ Passwordless auth INVALID (challenge code mismatch on device) for admin: {}",
+          admin.getUsername());
+      throw new AdminChallengeMismatchException();
     } else if ("EXPIRED".equals(status)) {
       logger.warn(
           "⏱️ Passwordless auth expired for admin: {} after {}s (superseded or expired)",
