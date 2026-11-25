@@ -459,7 +459,7 @@ inventory and improvement plan:
 |-----|--------------|----------------|
 | `changes` | Always | Path filter outputs (one per suite, plus `workflows` = `ci.yml` and `heavy` = not a push); all forced on `workflow_dispatch` and nightly |
 | `admin-ui` | `ezkey-admin-ui/**`, `specs/**`, or a `ci.yml` change | `cmp` of `specs/admin-api/openapi-spec.json` vs `ezkey-admin-ui/openapi-spec.json`; Node from root `.nvmrc` (24 LTS); `npm ci`; `generate:api`; `tsc -b`; lint; Vitest; `vite build`; no-demo assert on `dist/` |
-| `backend` | Java reactor paths / root `pom.xml` / `scripts/build.sh` / `.mvn/**` / `docker/**` or workflows | JDK 25; install `checkstyle-config`; `spotless:check`; Checkstyle; full-reactor `install -DskipTests` (so `ezkey-tests` **compiles**); `test -pl '!ezkey-tests'` (H2 unit tests; **does not run** the Docker `ezkey-tests` suite) |
+| `backend` | Java reactor paths / root `pom.xml` / `scripts/build.sh` / `.mvn/**` / `docker/**` or workflows | JDK 25; install `checkstyle-config`; `spotless:check`; Checkstyle; full-reactor `install -DskipTests` (so `ezkey-tests` **compiles**); `test -pl '!ezkey-tests'` (H2 unit tests plus the Testcontainers real-Postgres classes, since the runner has Docker; **does not run** the Docker `ezkey-tests` suite) |
 | `ha-smoke` | Same path filter as `backend` (or `ci.yml`); PRs and nightly only | Live HA clean-start + HTTP probes through each HAProxy LB (and crypto management); expect documented status codes, never 503 (#905). On failure it prints the state and logs of unhealthy or restarted containers before teardown (#1259). Script: `scripts/ci-ha-lb-smoke.sh` |
 | `connectors` | `ezkey-connectors/**`, the Admin API delivery port, its functional tests and `scripts/ci-connector-scenarios.sh` (or `ci.yml`); PRs and nightly only | Mock connector unit tests, then the Docker delivery scenarios and the log canary (#1206) |
 | `mobile` | `ezkey_mobile/**`, its reusable workflow, or `ci.yml` | Calls reusable [`.github/workflows/ezkey-mobile-unit-tests.yml`](../.github/workflows/ezkey-mobile-unit-tests.yml): Yarn validate, Android JVM unit tests, **16 KB APK alignment** (PRs and nightly only) |
@@ -467,6 +467,17 @@ inventory and improvement plan:
 | `dart-sdk` | `ezkey_dart/**` or workflows | Experimental Dart SDK offline gate in a pinned `dart` image: `ezkey_dart/scripts/test.sh` (format check, `analyze --fatal-infos`, unit tests). The live-stack suite `ezkey_dart/scripts/e2e.sh` stays local ([`ezkey_dart/README.md`](../ezkey_dart/README.md) §6) |
 | `product-docs` | `product-docs/**` or `ci.yml` | Methodology site: Node from root `.nvmrc`; `npm ci` and `npm run build` in `product-docs/site`, which runs the publication boundary audit. Added because the build broke silently for two weeks (#1402) |
 | `ci-gate` | Always | Aggregate pass/fail for the jobs above |
+
+**Testcontainers is the unit-level real-Postgres tier** (decision #1446, 2026-11-25). A test that
+must prove behaviour H2 cannot reproduce (CAS and row locks, Flyway migrations, concurrency,
+`REQUIRES_NEW` and after-commit transactions, partitions) goes in a `*PostgresTest` class in the
+owning module (`ezkey-core`, `ezkey-core-security`), annotated
+`@Testcontainers(disabledWithoutDocker = true)`. Wider flows against the running services stay in
+`ezkey-tests` (Docker stack). Reason: narrow proofs stay next to the code and run in every
+`backend` job, without a stack. **Accepted:** without a Docker daemon these classes are skipped
+silently and `./scripts/build.sh` stays green; CI runners have Docker, so `ci-gate` always runs
+them. Locally, start Docker before relying on a green build for a change those tests cover. This
+supersedes the "no Testcontainers" line of `I-2026-07-18` (kept as written).
 
 **Docker image builds in CI reuse the runner's Maven repository.** `ha-smoke` and `connectors` build
 the images, whose Maven step starts from an empty BuildKit cache and would download everything from
