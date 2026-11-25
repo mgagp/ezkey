@@ -14,6 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -24,6 +26,8 @@ import java.util.Optional;
 import org.ezkey.admin.config.AdminSecurityProperties;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.exception.AuthenticationException;
+import org.ezkey.admin.util.AdminEnrollmentDisplayNames;
+import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.integration.domain.AdminTokenPurpose;
@@ -144,6 +148,91 @@ class AdminProvisioningActivationCompletionTest {
     verify(recoveryService, never()).generateRecoveryCodes();
     verify(tokenRepository).save(any(AdminToken.class));
     verify(tokenRepository).deactivateTokensForAdminByPurpose(7, AdminTokenPurpose.ACTIVATION);
+  }
+
+  @Test
+  @DisplayName("activatePendingAdmin caps a 100+100 person name at the enrollment column limit")
+  void activatePendingAdminTruncatesLongPersonName() {
+    String username = "long.name.admin";
+    Enrollment saved = activateWithNames(username, "A".repeat(100), "B".repeat(100), List.of());
+
+    assertEquals("A".repeat(64), saved.getEnrollmentName());
+    verify(enrollmentRepository)
+        .findByIntegrationIdAndEnrollmentNameAndStatus(
+            99, "A".repeat(64), EnrollmentStatus.VERIFIED);
+  }
+
+  @Test
+  @DisplayName("activatePendingAdmin keeps the (username) suffix whole when a long name is taken")
+  void activatePendingAdminKeepsUsernameSuffixWhenTruncating() {
+    String username = "u".repeat(50);
+    Enrollment taken = new Enrollment();
+    taken.setEnrollmentName("A".repeat(64));
+    taken.setActive(true);
+
+    Enrollment saved =
+        activateWithNames(username, "A".repeat(100), "B".repeat(100), List.of(taken));
+
+    String name = saved.getEnrollmentName();
+    assertEquals(AdminEnrollmentDisplayNames.MAX_ENROLLMENT_NAME_LENGTH, name.length());
+    assertEquals("A".repeat(11) + " (" + username + ")", name);
+  }
+
+  private Enrollment activateWithNames(
+      String username, String firstName, String lastName, List<Enrollment> personNameHits) {
+    Tenant tenant = new Tenant("Acme", "acme");
+    tenant.setTenantId(2);
+    tenant.setActive(true);
+
+    Integration integration = new Integration();
+    integration.setId(99);
+    integration.setLifecycleStatus(IntegrationLifecycleStatus.ACTIVE);
+
+    EzkeyAdmin admin = new EzkeyAdmin(username, AdminType.TENANT_ADMIN);
+    admin.setAdminId(8);
+    admin.setTenant(tenant);
+    admin.setActive(true);
+    admin.setFirstName(firstName);
+    admin.setLastName(lastName);
+    admin.setLifecycleStatus(AdminLifecycleStatus.PENDING_ACTIVATION);
+
+    String activationCode = AdminAuditConstants.ACTIVATION_TOKEN_PREFIX + "longname123";
+    String tokenHash = SensitiveDataHasher.sha256Hex(activationCode);
+    AdminToken token =
+        new AdminToken(
+            tokenHash,
+            admin,
+            admin.getAdminType().name(),
+            OffsetDateTime.now().plusDays(1),
+            AdminTokenPurpose.ACTIVATION);
+    token.setActive(true);
+    token.setTenant(tenant);
+
+    when(tokenRepository.findByBearerTokenHashAndActiveTrueWithRelations(tokenHash))
+        .thenReturn(Optional.of(token));
+    when(integrationRepository.findByIsSystemIntegrationTrueAndLifecycleStatus(
+            IntegrationLifecycleStatus.ACTIVE))
+        .thenReturn(Optional.of(integration));
+    when(signatureService.generateEd25519KeyPair())
+        .thenReturn(new Ed25519KeyPair("privb64", "pubb64"));
+    when(signatureService.generateProofToken()).thenReturn("ezkey_proof_demo");
+    when(signatureService.generateSecureChallenge(6)).thenReturn(654321);
+    when(enrollmentRepository.findByIntegrationIdAndEnrollmentNameAndStatus(
+            anyInt(), any(String.class), eq(EnrollmentStatus.VERIFIED)))
+        .thenAnswer(invocation ->
+            "A".repeat(64).equals(invocation.getArgument(1)) ? personNameHits : List.of());
+    when(enrollmentRepository.save(any(Enrollment.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+    when(adminRepository.save(any(EzkeyAdmin.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+    when(tokenRepository.save(any(AdminToken.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    AdminProvisioningService.ProvisioningResult result =
+        service.activatePendingAdmin(activationCode);
+
+    assertNotNull(result.enrollment());
+    return result.enrollment();
   }
 
   @Test
