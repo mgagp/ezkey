@@ -17,7 +17,7 @@ runs:
       id: ndk
       shell: bash
       run: |
-        version="$(sed -n 's/^[[:space:]]*ndkVersion[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' ezkey_mobile/android/build.gradle)"
+        version="$(sed -n 's/^[[:space:]]*ndkVersion[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' ezkey_mobile/android/build.gradle | head -n1)"
         if [ -z "$version" ]; then
           echo "::error::ndkVersion not found in ezkey_mobile/android/build.gradle"
           exit 1
@@ -44,16 +44,21 @@ runs:
         NDK_VERSION: ${{ steps.ndk.outputs.version }}
         NDK_DIR: ${{ steps.ndk.outputs.dir }}
       run: |
-        # Three attempts, each capped at 10 minutes so a stalled download cannot eat the job timeout.
+        # Three attempts of at most 5 minutes each (a warm-runner install takes ~20 s): the worst
+        # case (~16 min) stays well inside the 30-minute android-jvm-unit-tests timeout.
+        sdk="$(dirname "$(dirname "${NDK_DIR}")")"
+        log="${RUNNER_TEMP}/sdkmanager-ndk.log"
         for attempt in 1 2 3; do
           echo "Installing ndk;${NDK_VERSION} (attempt ${attempt}/3)"
-          if timeout 600 sdkmanager --install "ndk;${NDK_VERSION}" > /dev/null \
+          if timeout 300 sdkmanager --install "ndk;${NDK_VERSION}" > "$log" 2>&1 \
             && grep -q "^Pkg.Revision *= *${NDK_VERSION}$" "${NDK_DIR}/source.properties" 2>/dev/null; then
             echo "NDK ${NDK_VERSION} installed in ${NDK_DIR}"
             exit 0
           fi
           echo "::warning::NDK install attempt ${attempt} failed; removing partial files"
-          rm -rf "${NDK_DIR}"
+          tail -n 20 "$log" || true
+          # Drop the partial NDK and sdkmanager's download staging so the next attempt starts clean.
+          rm -rf "${NDK_DIR}" "${sdk}/.temp" "${sdk}/.downloadIntermediates"
           [ "$attempt" -lt 3 ] && sleep $((attempt * 20))
         done
         echo "::error::NDK ${NDK_VERSION} install failed after 3 attempts"
