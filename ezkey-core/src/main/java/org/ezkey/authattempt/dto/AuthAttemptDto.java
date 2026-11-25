@@ -131,4 +131,42 @@ public record AuthAttemptDto(
             description = "Tenant display name (admin list enrichment)",
             example = "Acme Corp",
             requiredMode = RequiredMode.NOT_REQUIRED)
-        String tenantName) {}
+        String tenantName) {
+
+  /**
+   * Same layout as the default record {@code toString()}, with the challenge masked (#756).
+   *
+   * @return string representation without the challenge value
+   */
+  @Override
+  public String toString() {
+    return "AuthAttemptDto["
+        + "authAttemptId="
+        + authAttemptId
+        + ", enrollmentId="
+        + enrollmentId
+        + ", authAttemptStatus="
+        + authAttemptStatus
+        + ", authAttemptChallenge="
+        + (authAttemptChallenge != null ? "[PROTECTED]" : "null")
+        + ", createdAt="
+        + createdAt
+        + ", expiresAt="
+        + expiresAt
+        + ", contextTitle="
+        + contextTitle
+        + ", contextMessage="
+        + contextMessage
+        + ", integrationId="
+        + integrationId
+        + ", integrationName="
+        + integrationName
+        + ", enrollmentName="
+        + enrollmentName
+        + ", tenantId="
+        + tenantId
+        + ", tenantName="
+        + tenantName
+        + ']';
+  }
+}

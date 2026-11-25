@@ -468,11 +468,8 @@ public class AdminToken {
     return "AdminToken{"
         + "tokenId="
         + tokenId
-        + ", bearerTokenHash='"
-        + (bearerTokenHash != null && bearerTokenHash.length() > 8
-            ? bearerTokenHash.substring(0, 8) + "..."
-            : "***")
-        + '\''
+        + ", bearerTokenHash="
+        + (bearerTokenHash != null ? "[PROTECTED]" : "null")
         + ", adminType='"
         + adminType
         + '\''

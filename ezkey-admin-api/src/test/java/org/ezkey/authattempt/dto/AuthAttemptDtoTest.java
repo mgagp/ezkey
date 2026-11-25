@@ -291,7 +291,7 @@ class AuthAttemptDtoTest {
   }
 
   @Test
-  @DisplayName("Should verify toString contains all field values")
+  @DisplayName("Should verify toString keeps fields and masks the challenge")
   void shouldVerifyToString() {
     // Arrange
     AuthAttemptDto dto =
@@ -313,11 +313,12 @@ class AuthAttemptDtoTest {
     // Act
     String toString = dto.toString();
 
-    // Assert - Record toString includes all field values
+    // Assert - toString keeps the non-secret fields and masks the challenge (#756)
     assertThat(toString).contains("authAttemptId=" + TEST_AUTH_ATTEMPT_ID);
     assertThat(toString).contains("enrollmentId=" + TEST_ENROLLMENT_ID);
     assertThat(toString).contains("authAttemptStatus=" + TEST_STATUS);
-    assertThat(toString).contains("authAttemptChallenge=" + TEST_CHALLENGE);
+    assertThat(toString).contains("authAttemptChallenge=[PROTECTED]");
+    assertThat(toString).doesNotContain(String.valueOf(TEST_CHALLENGE));
   }
 
   @Test
