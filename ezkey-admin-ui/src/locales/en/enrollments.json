@@ -53,6 +53,7 @@
     "contactPhone": "Contact Phone",
     "contactPhonePlaceholder": "+1 514 555 1234",
     "challengeRequired": "Require challenge code on each authentication",
+    "challengeRequiredHelp": "Ezkey enforces it on every authentication for this enrollment, whatever the integration requests. When off, the integration can still request one.",
     "cancel": "Cancel",
     "submit": "Create Enrollment",
     "errorCreate": "Failed to create enrollment. Please try again.",

@@ -53,6 +53,7 @@
     "contactPhone": "Téléphone de contact",
     "contactPhonePlaceholder": "+1 514 555 1234",
     "challengeRequired": "Exiger un code défi à chaque authentification",
+    "challengeRequiredHelp": "Ezkey l'impose à chaque authentification de cet enrôlement, quoi que demande l'intégration. Désactivé, l'intégration peut quand même en demander un.",
     "cancel": "Annuler",
     "submit": "Créer l'enrôlement",
     "errorCreate": "Échec de la création de l'enrôlement. Veuillez réessayer.",
