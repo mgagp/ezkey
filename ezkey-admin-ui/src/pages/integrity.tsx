@@ -40,6 +40,7 @@ import {
   installIntegrityJobAfterStart,
   integrityFinishedJobScopeToDisplayRange,
   integrityReverifyDisabled,
+  integrityReverifyInstantRange,
   integrityVerifyActionDisabled,
   integrityWindowDaysToHours,
   isIntegrityChainStatusNonGreen,
@@ -1455,13 +1456,14 @@ function IntegrityPanel({
         active
         pickerRange={checkRange}
         verdictDisplayRange={verdictDisplayRange}
-        onReverify={() => void runChainCheck({ trigger: 'MANUAL' })}
-        reverifyDisabled={integrityReverifyDisabled({
-          asyncStartsBlocked,
-          chainLoading,
-          rangeFrom: checkRange.from,
-          rangeTo: checkRange.to,
-        })}
+        onReverify={() =>
+          void runChainCheck({
+            // #795 n2: the displayed verdict's window, not the Vérifier picker.
+            instantRange: integrityReverifyInstantRange(asyncJob, effectiveTimeZoneId),
+            trigger: 'MANUAL',
+          })
+        }
+        reverifyDisabled={integrityReverifyDisabled({ asyncStartsBlocked, chainLoading })}
         reverifyDisabledReason={asyncStartsDisabledReason}
         showOpenRemediate={showOpenRemediate}
         onOpenRemediate={() => selectAtelierMode('remediate')}

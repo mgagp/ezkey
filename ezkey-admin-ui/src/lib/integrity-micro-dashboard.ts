@@ -7,7 +7,10 @@
  * @since 2026
  */
 
-import { integrityExclusiveApiParamsToDisplayRange } from '@/lib/date-range-presets';
+import {
+  integrityExclusiveApiParamsToDisplayRange,
+  integrityExclusiveDateRangeToApiParams,
+} from '@/lib/date-range-presets';
 import {
   isIntegrityAsyncEscapeStatus,
   type IntegrityAsyncJobAcceptedResponse,
@@ -444,25 +447,80 @@ export function integrityWindowDaysToHours(days: number): number {
 }
 
 /**
+ * True when an Instant scope is a rolling 24 h window: exactly 24 h long and not
+ * the exclusive midnight bounds of a calendar day in the effective timezone (a
+ * Vérifier picker "one day" range is also 24 h, but stays a fixed day). Not the
+ * job trigger: a rolling Revérifier is MANUAL like a picker run. Accepted edge:
+ * a rolling window starting exactly on local midnight (to the millisecond) is
+ * read as a calendar day and re-run as is.
+ *
+ * @param scopeFrom inclusive ISO Instant
+ * @param scopeTo exclusive ISO Instant
+ * @param timeZoneId effective display timezone id
+ * @returns whether Revérifier should roll the window forward to now (#795 n2)
+ */
+export function isRolling24hIntegrityScope(
+  scopeFrom: string,
+  scopeTo: string,
+  timeZoneId: string | undefined,
+): boolean {
+  const fromMs = new Date(scopeFrom).getTime();
+  const toMs = new Date(scopeTo).getTime();
+  if (Number.isNaN(fromMs) || Number.isNaN(toMs)) {
+    return false;
+  }
+  if (toMs - fromMs !== INTEGRITY_AUTO_VERIFY_WINDOW_MS) {
+    return false;
+  }
+  const day = integrityExclusiveApiParamsToDisplayRange(scopeFrom, scopeTo, timeZoneId);
+  const calendar = integrityExclusiveDateRangeToApiParams(day.from, day.to, timeZoneId);
+  const calendarAligned =
+    new Date(calendar.createdAfter).getTime() === fromMs
+    && new Date(calendar.createdBefore).getTime() === toMs;
+  return !calendarAligned;
+}
+
+/**
+ * Instant window Revérifier starts (#795 n2, decision Marc 2026-11-25): the
+ * window of the verdict shown in the strip, never the Vérifier picker. A
+ * rolling 24 h verdict (auto-run, nightly, a previous Revérifier) re-runs the
+ * 24 h ending at {@code now}; any other verdict re-runs its exact scope. No
+ * verdict with a scope yet: the auto-run default (last 24 h).
+ *
+ * @param job verdict shown in the micro-dashboard (or null)
+ * @param timeZoneId effective display timezone id
+ * @param now reference instant (defaults to current time)
+ * @returns ISO Instant `{ from, to }` for `POST …/jobs`
+ */
+export function integrityReverifyInstantRange(
+  job: IntegrityAsyncJobResponse | null | undefined,
+  timeZoneId: string | undefined,
+  now: Date = new Date(),
+): { from: string; to: string } {
+  if (job?.scopeFrom == null || job.scopeTo == null) {
+    return defaultAutoVerifyInstantRange(now);
+  }
+  if (isRolling24hIntegrityScope(job.scopeFrom, job.scopeTo, timeZoneId)) {
+    return defaultAutoVerifyInstantRange(now);
+  }
+  return { from: job.scopeFrom, to: job.scopeTo };
+}
+
+/**
  * Whether Revérifier must stay disabled (Christophe m2 / #788).
  * Includes {@code chainLoading} so the control stays off while POST …/jobs
  * is in flight — not only while the slot shows RUNNING.
  *
- * @param args slot + POST-in-flight + picker bounds
+ * Picker bounds no longer matter: Revérifier runs the verdict window (#795 n2).
+ *
+ * @param args slot + POST-in-flight
  * @returns true when the micro-dashboard Re-verify button is disabled
  */
 export function integrityReverifyDisabled(args: {
   asyncStartsBlocked: boolean;
   chainLoading: boolean;
-  rangeFrom?: string;
-  rangeTo?: string;
 }): boolean {
-  return (
-    args.asyncStartsBlocked
-    || args.chainLoading
-    || !args.rangeFrom
-    || !args.rangeTo
-  );
+  return args.asyncStartsBlocked || args.chainLoading;
 }
 
 /**
