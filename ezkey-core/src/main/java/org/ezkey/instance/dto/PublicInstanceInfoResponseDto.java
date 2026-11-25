@@ -24,6 +24,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * @param instanceName instance / organization display name
  * @param instanceDescription optional instance description
  * @param aboutUrl optional About / learn-more URL
+ * @param productVersion product SemVer of the running backend build, when known (#1477)
+ * @param gitShortSha short git SHA of the deployed tree, when the image was stamped (#1477)
  */
 @Schema(
     description =
@@ -47,4 +49,18 @@ public record PublicInstanceInfoResponseDto(
             description = "Optional URL for About / learn more (e.g. company instance page)",
             nullable = true,
             example = "https://www.example.com/about-ezkey")
-        String aboutUrl) {}
+        String aboutUrl,
+    @Schema(
+            description =
+                "Product SemVer of the backend build that answered (Maven build-info);"
+                    + " null when build-info is absent",
+            nullable = true,
+            example = "0.2.0-SNAPSHOT")
+        String productVersion,
+    @Schema(
+            description =
+                "Short git SHA (7 hex characters) of the deployed tree, from the image build"
+                    + " revision; null when the image was not stamped",
+            nullable = true,
+            example = "91dc5fe")
+        String gitShortSha) {}

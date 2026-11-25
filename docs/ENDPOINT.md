@@ -174,6 +174,8 @@ Returns the same read-only JSON as the Admin API public instance-info (see **§2
 | `instanceName` | `ezkey.organization.name` | Instance / organization display name |
 | `instanceDescription` | `ezkey.organization.description` | Human-facing blurb for this **deployment** |
 | `aboutUrl` | `ezkey.organization.about-url` | Optional link for “Learn more”; `null` when unset |
+| `productVersion` | `META-INF/build-info.properties` | Product SemVer of the backend build that answered (e.g. `0.2.0-SNAPSHOT`); `null` without build-info (#1477) |
+| `gitShortSha` | `ezkey.build.revision` (image `OCI_IMAGE_REVISION`) | 7-character git SHA of the deployed tree; `null` when the image was not stamped (#1477). The live ledger stays the source of truth: [`VERSIONING_AND_DEPLOY_TRACEABILITY.md`](VERSIONING_AND_DEPLOY_TRACEABILITY.md) |
 
 Configure these properties on the Auth API process (e.g. `EZKEY_QR_AUTH_BASE_URL`, `EZKEY_ORGANIZATION_ABOUT_URL` in Docker) so the response matches operator expectations and the Admin API when both are deployed.
 
@@ -407,6 +409,8 @@ vs enrolled instance-info).
 | `instanceName` | `ezkey.organization.name` | Instance / organization display name |
 | `instanceDescription` | `ezkey.organization.description` | Human-facing blurb for this **deployment** (not the logged-in role); may appear on login / About |
 | `aboutUrl` | `ezkey.organization.about-url` | Optional link for “Learn more”; `null` when unset |
+| `productVersion` | `META-INF/build-info.properties` | Product SemVer of the backend build that answered (e.g. `0.2.0-SNAPSHOT`); `null` without build-info (#1477) |
+| `gitShortSha` | `ezkey.build.revision` (image `OCI_IMAGE_REVISION`) | 7-character git SHA of the deployed tree; `null` when the image was not stamped (#1477). The live ledger stays the source of truth: [`VERSIONING_AND_DEPLOY_TRACEABILITY.md`](VERSIONING_AND_DEPLOY_TRACEABILITY.md) |
 
 **Example (200 OK):**
 
@@ -415,7 +419,9 @@ vs enrolled instance-info).
   "authApiPublicBaseUrl": "https://auth.example.com:8080",
   "instanceName": "Acme Corporation",
   "instanceDescription": "Acme Corp Ezkey MFA Instance",
-  "aboutUrl": "https://www.example.com/about-ezkey"
+  "aboutUrl": "https://www.example.com/about-ezkey",
+  "productVersion": "0.2.0-SNAPSHOT",
+  "gitShortSha": "91dc5fe"
 }
 ```
 

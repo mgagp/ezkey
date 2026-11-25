@@ -36,6 +36,7 @@ instance metadata. Applications that depend on ezkey-core declare these properti
 | `ezkey.organization.description` | `EZKEY_ORGANIZATION_DESCRIPTION` | `Ezkey MFA instance for your organization` | optionnel |
 | `ezkey.organization.about-url` | `EZKEY_ORGANIZATION_ABOUT_URL` | *(null)* | optionnel |
 | `ezkey.qr.auth-base-url` | `EZKEY_QR_AUTH_BASE_URL` | *(null)* | requis [docker] |
+| `ezkey.build.revision` | `EZKEY_BUILD_REVISION` | *(empty)* | optionnel (set by the image) |
 | `ezkey.enrollment.pending-expiration-days` | — | `7` | optionnel |
 | `ezkey.database.partition.scheduler.enabled` | — | `true` | optionnel |
 | `ezkey.database.partition.scheduler.cron` | — | `0 0 1 * * ?` | optionnel |
@@ -375,6 +376,21 @@ progression.
 
 ---
 
+### Build identity (`ezkey.build.*`)
+
+**Description:** identity of the running backend build, exposed on public
+`GET /api/v1/public/instance-info` (Admin API and Auth API) so that an outside validator can tell
+which build answered (#1477). `productVersion` comes from `META-INF/build-info.properties` (Maven
+`build-info` goal), not from this prefix.
+
+**Defined in:** `PublicInstanceInfoService` (`@Value`)
+
+| Property | Type | Default | Obligation | Description |
+|---|---|---|---|---|
+| `ezkey.build.revision` | `String` | *(empty)* | optionnel (set by the image) | Full git SHA of the deployed tree. The Admin API and Auth API Docker images set `EZKEY_BUILD_REVISION` from the `OCI_IMAGE_REVISION` build argument (#814). Only a 7 to 64 character hex value (SHA-1 or SHA-256) is used, cut to 7 characters as `gitShortSha`; anything else (empty, `unknown`) gives `null`. Not a secret: the repository is public. |
+
+---
+
 ### QR Code (`ezkey.qr.*`)
 
 **Description:** controls the content embedded in enrollment QR codes. The `auth-base-url` is the
@@ -468,6 +484,7 @@ is not set in that profile (Java class default applies).
 | `ezkey.organization.description` | `EZKEY_ORGANIZATION_DESCRIPTION` | Set in `docker-compose.yml`. |
 | `ezkey.organization.about-url` | `EZKEY_ORGANIZATION_ABOUT_URL` | Set in `docker-compose.yml`. |
 | `ezkey.qr.auth-base-url` | `EZKEY_QR_AUTH_BASE_URL` | Public Auth API URL for mobile QR. |
+| `ezkey.build.revision` | `EZKEY_BUILD_REVISION` | Set by the Dockerfile from `OCI_IMAGE_REVISION`; do not set by hand. |
 
 > The master key and HMAC key files are not passed as env vars — they are mounted via the
 > `encryption-secrets` Docker volume at `/etc/ezkey/`.

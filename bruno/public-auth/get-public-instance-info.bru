@@ -34,6 +34,17 @@ script:post-response {
       test("Response contains aboutUrl (nullable)", function () {
           expect(jsonData).to.have.property('aboutUrl');
       });
+
+      test("Response contains productVersion (nullable, #1477)", function () {
+          expect(jsonData).to.have.property('productVersion');
+      });
+
+      test("gitShortSha is null or 7 hex characters (#1477)", function () {
+          expect(jsonData).to.have.property('gitShortSha');
+          if (jsonData.gitShortSha !== null) {
+              expect(jsonData.gitShortSha).to.match(/^[0-9a-f]{7}$/);
+          }
+      });
   }
 }
 
@@ -54,6 +65,8 @@ docs {
   - `instanceDescription` (string): from `ezkey.organization.description`
   - `aboutUrl` (string | null): from `ezkey.organization.about-url` when set
   - `authApiPublicBaseUrl` (string | null): from `ezkey.qr.auth-base-url`; same value as `authUrl` in enrollment QR JSON when configured
+  - `productVersion` (string | null): product SemVer from build-info (#1477)
+  - `gitShortSha` (string | null): 7-character git SHA of the image (`OCI_IMAGE_REVISION`); null when not stamped (#1477)
   
   **Status codes:**
   - 200: OK

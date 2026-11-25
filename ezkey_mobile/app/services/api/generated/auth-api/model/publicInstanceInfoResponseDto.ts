@@ -38,4 +38,14 @@ export interface PublicInstanceInfoResponseDto {
      * @nullable
      */
   aboutUrl?: string | null;
+  /**
+     * Product SemVer of the backend build that answered (Maven build-info); null when build-info is absent
+     * @nullable
+     */
+  productVersion?: string | null;
+  /**
+     * Short git SHA (7 hex characters) of the deployed tree, from the image build revision; null when the image was not stamped
+     * @nullable
+     */
+  gitShortSha?: string | null;
 }

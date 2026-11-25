@@ -8,7 +8,7 @@ Central registry for all `ezkey.*` configuration properties across the backend m
 
 | Module | CONFIGURATION.md | Role |
 |---|---|---|
-| `ezkey-core` | [ezkey-core/CONFIGURATION.md](../../ezkey-core/CONFIGURATION.md) | Shared library — defines all `ezkey.encryption.*`, `ezkey.audit.*`, `ezkey.organization.*`, `ezkey.qr.*`, `ezkey.enrollment.*`, and `ezkey.core.*` prefixes |
+| `ezkey-core` | [ezkey-core/CONFIGURATION.md](../../ezkey-core/CONFIGURATION.md) | Shared library — defines all `ezkey.encryption.*`, `ezkey.audit.*`, `ezkey.organization.*`, `ezkey.qr.*`, `ezkey.enrollment.*`, `ezkey.build.*` and `ezkey.core.*` prefixes |
 | `ezkey-admin-api` | [ezkey-admin-api/CONFIGURATION.md](../../ezkey-admin-api/CONFIGURATION.md) | Defines `ezkey.admin.*` (including `ezkey.admin.cors.*`, `ezkey.admin.auth.*`), `ezkey.admin-operations.*`, `ezkey.security.admin.*`, `ezkey.trusted-proxies.*`, `ezkey.auth-attempt.expiry-scheduler.*` |
 | `ezkey-auth-api` | [ezkey-auth-api/CONFIGURATION.md](../../ezkey-auth-api/CONFIGURATION.md) | Defines `ezkey.rate-limit.*`, `ezkey.trusted-proxies.*`; inherits core prefixes |
 | `ezkey-integration-api` | [ezkey-integration-api/CONFIGURATION.md](../../ezkey-integration-api/CONFIGURATION.md) | Defines `ezkey.api-key.rate-limit.*`, `ezkey.trusted-proxies.*`; inherits core prefixes |
@@ -41,6 +41,7 @@ Central registry for all `ezkey.*` configuration properties across the backend m
 | `ezkey.encryption` | `ezkey-core` (`TinkProperties`) | admin-api, auth-api, integration-api, crypto-api | [core §encryption](../../ezkey-core/CONFIGURATION.md#encryption-at-rest-ezkeyencryption) |
 | `ezkey.qr` | `ezkey-core` (`QrCodeProperties`) | admin-api, auth-api | [core §qr](../../ezkey-core/CONFIGURATION.md#qr-code-ezkeyqr) |
 | `ezkey.organization` | `ezkey-core` (`OrganizationProperties`) | admin-api, auth-api | [core §org](../../ezkey-core/CONFIGURATION.md#organization-ezkeyorganization) |
+| `ezkey.build` | `ezkey-core` (`PublicInstanceInfoService`, `@Value`) | admin-api, auth-api | [core §build](../../ezkey-core/CONFIGURATION.md#build-identity-ezkeybuild) |
 | `ezkey.core` | `ezkey-core` (`EzkeyCoreProperties`) | admin-api, auth-api | [core §core](../../ezkey-core/CONFIGURATION.md#core-crypto--auth-attempt-ezkeycore) |
 | `ezkey.enrollment` | `ezkey-core` (`EnrollmentProperties`) | admin-api | [core §enrollment](../../ezkey-core/CONFIGURATION.md#enrollment-ezkeyenrollment) |
 | `ezkey.database.partition` | `ezkey-core` (`PartitionSchedulerService`) | admin-api | [core §partition scheduler](../../ezkey-core/CONFIGURATION.md#partition-scheduler-ezkeydatabasepartitionscheduler) |
@@ -72,6 +73,7 @@ Central registry for all `ezkey.*` configuration properties across the backend m
 | `ezkey.audit.archive.*` | ✓ | — | — | — |
 | `ezkey.organization.*` | ✓ | ✓ | — | — |
 | `ezkey.qr.*` | ✓ | ✓ | — | — |
+| `ezkey.build.*` | ✓ | ✓ | — | — |
 | `ezkey.enrollment.*` | ✓ | — | — | — |
 | `ezkey.database.partition.*` | ✓ | — | — | — |
 | `ezkey.core.*` | ✓ | ✓ | — | — |
@@ -102,6 +104,7 @@ Central registry for all `ezkey.*` configuration properties across the backend m
 | `EZKEY_ORGANIZATION_NAME` | `ezkey.organization.name` | admin-api and auth-api docker profile |
 | `EZKEY_ORGANIZATION_DESCRIPTION` | `ezkey.organization.description` | admin-api and auth-api docker profile |
 | `EZKEY_ORGANIZATION_ABOUT_URL` | `ezkey.organization.about-url` | admin-api and auth-api docker profile |
+| `EZKEY_BUILD_REVISION` | `ezkey.build.revision` | admin-api and auth-api images (`ENV` from `OCI_IMAGE_REVISION`, #1477) |
 | `EZKEY_RUNTIME_PROFILE` | *(ops key; `base` appends Spring profile `docker-base`)* | clean-start / `docker/start.sh` / Lightsail `.env` — [docker/README.md](../../docker/README.md) § Runtime profiles |
 | `EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE` | `ezkey.admin.mfa.bootstrap.credentials-output-mode` | admin-api docker profile |
 | `EZKEY_ADMIN_MFA_BOOTSTRAP_ENROLLMENT_EXPIRATION_HOURS` | `ezkey.admin.mfa.bootstrap.enrollment-expiration-hours` | admin-api docker profile |
