@@ -513,7 +513,24 @@ public class AdminAuthService {
   }
 
   /** Result of issuing a bearer token: entity (with hash stored) and plain token for the client. */
-  private record TokenIssueResult(AdminToken token, String plainToken) {}
+  private record TokenIssueResult(AdminToken token, String plainToken) {
+
+    /**
+     * Masks the plain token and shows the entity by id only (#756): AdminToken's own {@code
+     * toString()} prints a prefix of the token hash.
+     *
+     * @return string representation without secret values
+     */
+    @Override
+    public String toString() {
+      return "TokenIssueResult["
+          + "tokenId="
+          + (token != null ? token.getTokenId() : null)
+          + ", plainToken="
+          + (plainToken != null ? "[PROTECTED]" : "null")
+          + ']';
+    }
+  }
 
   /**
    * Generate a new bearer token and persist only its SHA-256 hash to database.

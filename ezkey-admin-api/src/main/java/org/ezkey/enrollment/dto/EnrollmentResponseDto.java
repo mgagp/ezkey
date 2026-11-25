@@ -268,4 +268,79 @@ public record EnrollmentResponseDto(
         ownerAdminId,
         code);
   }
+
+  /**
+   * Same layout as the default record {@code toString()}, with secret values masked (#756).
+   *
+   * @return string representation without secret values
+   */
+  @Override
+  public String toString() {
+    return "EnrollmentResponseDto["
+        + "enrollmentId="
+        + enrollmentId
+        + ", version="
+        + version
+        + ", integrationId="
+        + integrationId
+        + ", enrollmentName="
+        + enrollmentName
+        + ", enrollmentStatus="
+        + enrollmentStatus
+        + ", enrollmentActive="
+        + enrollmentActive
+        + ", enrollmentChallenge="
+        + (enrollmentChallenge != null ? "[PROTECTED]" : "null")
+        + ", enrollmentProofToken="
+        + (enrollmentProofToken != null ? "[PROTECTED]" : "null")
+        + ", authAttemptChallengeRequired="
+        + authAttemptChallengeRequired
+        + ", devicePrivateKeyStorageTier="
+        + devicePrivateKeyStorageTier
+        + ", verifiedAt="
+        + verifiedAt
+        + ", expiresAt="
+        + expiresAt
+        + ", createdAt="
+        + createdAt
+        + ", createdByAdminId="
+        + createdByAdminId
+        + ", createdByAdminUsername="
+        + createdByAdminUsername
+        + ", lastUsedAt="
+        + lastUsedAt
+        + ", contactEmail="
+        + contactEmail
+        + ", contactPhoneNumber="
+        + contactPhoneNumber
+        + ", userIdentifier="
+        + userIdentifier
+        + ", deactivatedAt="
+        + deactivatedAt
+        + ", deactivatedByAdminId="
+        + deactivatedByAdminId
+        + ", deactivatedByAdminUsername="
+        + deactivatedByAdminUsername
+        + ", revokedAt="
+        + revokedAt
+        + ", revokedByAdminId="
+        + revokedByAdminId
+        + ", revokedByAdminUsername="
+        + revokedByAdminUsername
+        + ", integrationName="
+        + integrationName
+        + ", tenantId="
+        + tenantId
+        + ", tenantName="
+        + tenantName
+        + ", isSystemIntegration="
+        + isSystemIntegration
+        + ", operational="
+        + operational
+        + ", ownerAdminId="
+        + ownerAdminId
+        + ", enrollmentCode="
+        + (enrollmentCode != null ? "[PROTECTED]" : "null")
+        + ']';
+  }
 }

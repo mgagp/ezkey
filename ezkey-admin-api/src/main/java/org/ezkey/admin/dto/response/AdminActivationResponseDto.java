@@ -84,4 +84,31 @@ public record AdminActivationResponseDto(
   public static AdminActivationResponseDto error(String message) {
     return new AdminActivationResponseDto(false, message, null, null, null, null, null, null);
   }
+
+  /**
+   * Same layout as the default record {@code toString()}, with secret values masked (#756).
+   *
+   * @return string representation without secret values
+   */
+  @Override
+  public String toString() {
+    return "AdminActivationResponseDto["
+        + "success="
+        + success
+        + ", message="
+        + message
+        + ", username="
+        + username
+        + ", enrollmentId="
+        + enrollmentId
+        + ", enrollmentProofToken="
+        + (enrollmentProofToken != null ? "[PROTECTED]" : "null")
+        + ", enrollmentChallenge="
+        + (enrollmentChallenge != null ? "[PROTECTED]" : "null")
+        + ", recoveryCodes="
+        + (recoveryCodes != null ? "[PROTECTED]" : "null")
+        + ", enrollmentCode="
+        + (enrollmentCode != null ? "[PROTECTED]" : "null")
+        + ']';
+  }
 }

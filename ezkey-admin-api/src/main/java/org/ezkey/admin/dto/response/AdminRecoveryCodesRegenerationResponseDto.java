@@ -51,4 +51,28 @@ public record AdminRecoveryCodesRegenerationResponseDto(
     @Schema(
             description = "Summary message for the operator",
             example = "New recovery codes generated. Previous unused codes are no longer valid.")
-        String message) {}
+        String message) {
+
+  /**
+   * Same layout as the default record {@code toString()}, with secret values masked (#756).
+   *
+   * @return string representation without secret values
+   */
+  @Override
+  public String toString() {
+    return "AdminRecoveryCodesRegenerationResponseDto["
+        + "adminId="
+        + adminId
+        + ", username="
+        + username
+        + ", recoveryCodes="
+        + (recoveryCodes != null ? "[PROTECTED]" : "null")
+        + ", codesCount="
+        + codesCount
+        + ", invalidatedPreviousCodes="
+        + invalidatedPreviousCodes
+        + ", message="
+        + message
+        + ']';
+  }
+}

@@ -113,7 +113,8 @@ public record ApiKeyCreateResponseDto(
         + ", integrationKey='"
         + integrationKey
         + '\''
-        + ", secretKey='***MASKED***'"
+        + ", secretKey="
+        + (secretKey != null ? "[PROTECTED]" : "null")
         + ", description='"
         + description
         + '\''

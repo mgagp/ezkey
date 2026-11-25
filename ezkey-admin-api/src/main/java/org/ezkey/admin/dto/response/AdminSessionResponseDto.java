@@ -48,4 +48,30 @@ public record AdminSessionResponseDto(
             description =
                 "Non-secret CSRF token to send in X-CSRF-TOKEN for cookie-authenticated unsafe"
                     + " requests")
-        String csrfToken) {}
+        String csrfToken) {
+
+  /**
+   * Same layout as the default record {@code toString()}, with secret values masked (#756).
+   *
+   * @return string representation without secret values
+   */
+  @Override
+  public String toString() {
+    return "AdminSessionResponseDto["
+        + "username="
+        + username
+        + ", adminType="
+        + adminType
+        + ", expiresAt="
+        + expiresAt
+        + ", adminId="
+        + adminId
+        + ", tenantId="
+        + tenantId
+        + ", tenantName="
+        + tenantName
+        + ", csrfToken="
+        + (csrfToken != null ? "[PROTECTED]" : "null")
+        + ']';
+  }
+}

@@ -104,4 +104,46 @@ public record AdminProvisioningResponseDto(
                 "Single-use recovery codes are intentionally omitted from bootstrap responses and"
                     + " must be revealed later through an authenticated recovery-code"
                     + " management flow.")
-        List<String> recoveryCodes) {}
+        List<String> recoveryCodes) {
+
+  /**
+   * Same layout as the default record {@code toString()}, with secret values masked (#756).
+   *
+   * @return string representation without secret values
+   */
+  @Override
+  public String toString() {
+    return "AdminProvisioningResponseDto["
+        + "adminId="
+        + adminId
+        + ", username="
+        + username
+        + ", email="
+        + email
+        + ", phoneNumber="
+        + phoneNumber
+        + ", firstName="
+        + firstName
+        + ", lastName="
+        + lastName
+        + ", adminType="
+        + adminType
+        + ", tenantId="
+        + tenantId
+        + ", enrollmentId="
+        + enrollmentId
+        + ", lifecycleStatus="
+        + lifecycleStatus
+        + ", onboardingMode="
+        + onboardingMode
+        + ", activationCode="
+        + (activationCode != null ? "[PROTECTED]" : "null")
+        + ", activationCodeExpiresAt="
+        + activationCodeExpiresAt
+        + ", createdAt="
+        + createdAt
+        + ", recoveryCodes="
+        + (recoveryCodes != null ? "[PROTECTED]" : "null")
+        + ']';
+  }
+}
