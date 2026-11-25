@@ -1381,8 +1381,18 @@ export default function EnrollmentDetailPage() {
               className="mt-0.5 size-4 accent-accent"
               checked={editChallenge}
               onChange={(e) => setEditChallenge(e.target.checked)}
+              aria-describedby="edit-challenge-help"
             />
-            <span className="text-sm font-bold">{t('detail.editChallengeRequired')}</span>
+            <span>
+              <span className="block text-sm font-bold">{t('detail.editChallengeRequired')}</span>
+              <span
+                id="edit-challenge-help"
+                data-testid="enrollment-challenge-help"
+                className="block text-xs text-fg-muted mt-0.5 leading-relaxed"
+              >
+                {t('create.challengeRequiredHelp')}
+              </span>
+            </span>
           </label>
           <div className="space-y-1.5">
             <Label htmlFor="edit-expires">{t('detail.editExpiresAt')}</Label>

@@ -528,6 +528,10 @@ Agents using the embedded browser tools should mirror the **same sequencing as P
 - **UI:** Header includes a help icon; optional `HelpInlineButton` on specific pages (e.g. integrations list). Use `useHelp()` for `openHelp` / `closeHelp`.
 - **Demo-only paragraphs:** optional `demoExtra` per topic; shown only when demo mode is on and the string is non-empty.
 - **Three help surfaces:** hover `Tooltip` (`components/ui/tooltip.tsx`) for one-sentence domain terms; click `ContextHelp` for short section concepts; `HelpDrawer` for topic-scale guidance. Explain Ezkey vocabulary (statuses, HMAC, key tiers) — not standard UI labels or labeled buttons. Tooltip/ContextHelp strings live in locale namespaces (`*help*` / `help.*` keys), same FR+EN parity rule.
+- **Copy states backend guarantees only (#981):** help text describes what the backend enforces, checked
+  in the server code before it is written. It never names a specific integration (PAM/SSH, Jenkins,
+  SDK…) and never links a repository path; each client's behaviour lives in that integration's own
+  docs. Do not hard-code values the backend owns (for example the challenge-code length).
 
 ## Visual Identity: Neo-Brutalism (subtle)
 
