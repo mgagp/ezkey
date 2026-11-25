@@ -148,6 +148,10 @@ ezkey admin api-key create \
 # ⚠️ Without --out-file: save the secret key displayed — it is shown only once
 #    (BCrypt hash only is stored; there is no retrieve-secret API).
 # Mode 600 is POSIX best-effort; on Windows the file inherits folder ACLs.
+# --save-key writes ~/.ezkey/ezkey.json. A symlinked ~/.ezkey directory is accepted
+# (dotfile managers); a symlinked ezkey.json file is refused. The key is still created
+# and delivered, and the command exits 1 so a script does not assume it was saved.
+# Use a regular file or --out-file. The TUI shows the same refusal and keeps going.
 ```
 
 **Use API Key:**

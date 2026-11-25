@@ -26,6 +26,7 @@ import org.ezkey.security.domain.entity.EncryptionKey;
 import org.ezkey.security.domain.entity.EncryptionKey.KeyStatus;
 import org.ezkey.security.domain.repository.EncryptionKeyRepository;
 import org.ezkey.security.exception.EncryptionLifecycleDisabledException;
+import org.ezkey.security.exception.KeysetCasConflictException;
 import org.ezkey.security.exception.PendingEncryptionKeyExistsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,10 +35,13 @@ import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.Order;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.NoTransactionException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
@@ -252,6 +256,18 @@ public class KeyRotationService {
       for (EncryptionKey pendingKey : pendingKeys) {
         promotePendingToPrimary(pendingKey);
       }
+    } catch (KeysetCasConflictException e) {
+      if (isLostCasRace(e)) {
+        // HA: another node changed the keyset first; benign, retried on the next tick (#1018).
+        markCurrentTransactionRollbackOnly();
+        logger.warn(
+            "Pending key promotion lost keyset CAS race to a concurrent writer; will retry on the"
+                + " next tick: {}",
+            e.getMessage());
+      } else {
+        logger.error("Failed to check/promote pending keys: {}", e.getMessage());
+        logger.debug("Pending key promotion error", e);
+      }
     } catch (DataAccessException | IllegalStateException e) {
       logger.error("Failed to check/promote pending keys: {}", e.getMessage());
       logger.debug("Pending key promotion error", e);
@@ -431,24 +447,67 @@ public class KeyRotationService {
       }
     } catch (PendingEncryptionKeyExistsException e) {
       logger.info("Rotation skipped: {}", e.getMessage());
+    } catch (KeysetCasConflictException e) {
+      if (isLostCasRace(e)) {
+        // HA: another Admin API node won the keyset CAS race. Harmless (the keyset stays
+        // consistent and nothing was added by this node). WARN without stack trace, no
+        // REENCRYPTION_FAILED audit (#1018; same treatment as POST /rotate in #961 Lot 3).
+        markCurrentTransactionRollbackOnly();
+        logger.warn(
+            "Scheduled key rotation lost keyset CAS race to a concurrent writer; nothing was"
+                + " added, will retry on the next scheduled run: {}",
+            e.getMessage());
+      } else {
+        recordScheduledRotationFailure(e);
+      }
     } catch (GeneralSecurityException
         | IOException
         | DataAccessException
         | IllegalStateException e) {
-      logger.error("Failed to check/perform key rotation", e);
-      auditLogService.log(
-          AuditLog.builder()
-              .eventType(EventType.REENCRYPTION_FAILED)
-              .eventAction("scheduled_rotation_check")
-              .eventStatus(EventStatus.ERROR)
-              .apiName(ApiName.ADMIN_API)
-              .ipAddress("127.0.0.1")
-              .eventDetails(
-                  AuditDetailsBuilder.builder()
-                      .errorSummary("Scheduled rotation check failed: " + e.getMessage())
-                      .toJson())
-              .errorMessage(e.getMessage())
-              .build());
+      recordScheduledRotationFailure(e);
+    }
+  }
+
+  private void recordScheduledRotationFailure(Exception e) {
+    logger.error("Failed to check/perform key rotation", e);
+    auditLogService.log(
+        AuditLog.builder()
+            .eventType(EventType.REENCRYPTION_FAILED)
+            .eventAction("scheduled_rotation_check")
+            .eventStatus(EventStatus.ERROR)
+            .apiName(ApiName.ADMIN_API)
+            .ipAddress("127.0.0.1")
+            .eventDetails(
+                AuditDetailsBuilder.builder()
+                    .errorSummary("Scheduled rotation check failed: " + e.getMessage())
+                    .toJson())
+            .errorMessage(e.getMessage())
+            .build());
+  }
+
+  /**
+   * True when a keyset CAS failure is an ordinary lost race (a peer committed first), as opposed to
+   * a persistence failure that {@code TinkKeyManager} also wraps as {@link
+   * KeysetCasConflictException} (database outage, missing master AEAD...), which must stay an
+   * operational failure (#1018).
+   */
+  private static boolean isLostCasRace(KeysetCasConflictException e) {
+    return e.getCause() instanceof OptimisticLockingFailureException;
+  }
+
+  /**
+   * Rolls back the scheduled job's transaction quietly after a lost CAS race. A Hibernate
+   * {@code @Version} conflict raised through the repository proxy already marks the outer
+   * transaction rollback-only; returning normally would then fail the commit with {@code
+   * UnexpectedRollbackException} (an ERROR with stack trace from the scheduler). A local
+   * rollback-only flag makes the commit a silent rollback. Nothing outside a proxied transaction
+   * (direct call, unit test) needs it.
+   */
+  private static void markCurrentTransactionRollbackOnly() {
+    try {
+      TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+    } catch (NoTransactionException e) {
+      logger.debug("No proxied transaction to mark rollback-only after lost CAS race");
     }
   }
 

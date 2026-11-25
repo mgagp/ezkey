@@ -12,6 +12,8 @@ from textual.screen import ModalScreen
 from textual.widgets import Static, Button, Label
 from textual.containers import Vertical, Horizontal
 import logging
+
+from ..config_persist import save_config
 from datetime import datetime, timezone
 
 log = logging.getLogger(__name__)
@@ -249,13 +251,9 @@ class QuickReAuthScreen(ModalScreen):
           self.config.set_token_expires_at(expires_at)
           log.debug(f"Saved token expiration: {expires_at}")
 
-      from pathlib import Path
-      local_config_path = Path.cwd() / "ezkey.json"
-      if local_config_path.exists():
-        self.config.save(global_config=False)
-      else:
-        # Create local config for TUI instance isolation
-        self.config.save(global_config=False)
+      # Local config for TUI instance isolation. A refused save (symlinked
+      # ezkey.json) is notified; the renewed token stays in memory.
+      save_config(self.app, self.config, global_config=False)
 
       # Update API client
       self.api_client.bearer_token = token

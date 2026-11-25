@@ -13,9 +13,21 @@ import click
 
 from .config import ConfigManager
 from .commands import admin, auth, configure, database, db, openapi, crypto, device
+from .utils.secure_file import SecureFileSymlinkError
 
 
-@click.group(invoke_without_command=True)
+class EzkeyGroup(click.Group):
+    """Root group: turn a refused config save into a clear error, not a traceback."""
+
+    def invoke(self, ctx):
+        try:
+            return super().invoke(ctx)
+        except SecureFileSymlinkError as exc:
+            # Fail-closed: nothing was written; exit 1 with the operator message.
+            raise click.ClickException(str(exc)) from None
+
+
+@click.group(cls=EzkeyGroup, invoke_without_command=True)
 @click.option('--admin-url', help='Admin API URL')
 @click.option('--auth-url', help='Auth API URL')
 @click.option('--crypto-url', help='Crypto API URL')
