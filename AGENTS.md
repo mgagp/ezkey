@@ -123,7 +123,7 @@ sections the work needs.
 | Strategic positioning, public copy | [`PROJECT_POSITIONING.md`](docs/PROJECT_POSITIONING.md) |
 | Public alpha label, what is deployed | [`VERSIONING_AND_DEPLOY_TRACEABILITY.md`](docs/VERSIONING_AND_DEPLOY_TRACEABILITY.md), [`DEPLOYED.md`](docs/lightsail/community/DEPLOYED.md) |
 | Test hosts, stack ports, ngrok | [`LOCAL_STACK_PORTS.md`](docs/LOCAL_STACK_PORTS.md) (Rootbeer runs one fixed-port stack; one ngrok session at a time) |
-| Named reviewers and operators | [`team-roles.md`](product-docs/global/team-roles.md) |
+| Verification functions (reviews, walk, decisions) | [`team-roles.md`](product-docs/global/team-roles.md) |
 | Publishing the methodology product | [`product-docs/GOVERNANCE.md`](product-docs/GOVERNANCE.md) § Methodology publication boundary |
 
 ## Skills (hygiene lanes and recurring procedures)

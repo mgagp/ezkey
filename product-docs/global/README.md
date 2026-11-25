@@ -15,7 +15,7 @@ This folder holds the product-wide living truth for Ezkey. It is the canonical e
 | [`design-principles.md`](design-principles.md) | Cross-product design principles. |
 | [`normative-posture.md`](normative-posture.md) | Operational discipline as a quality, not a certification project. |
 | [`lifecycle-model.md`](lifecycle-model.md) | Entity relationships and global lifecycle rules. |
-| [`team-roles.md`](team-roles.md) | Named team role one-liners (human or agent); owner decides merges. |
+| [`team-roles.md`](team-roles.md) | Verification functions (and the former persona names older records use); owner decides merges. |
 | [`test-strategy.md`](test-strategy.md) | Global test strategy, taxonomy codes, QA Sphere nomenclature. |
 | [`spec-test-traceability.md`](spec-test-traceability.md) | Global spec-test traceability matrix. |
 | [`vision/`](vision/README.md) | Product orientation notes and evolving direction. |

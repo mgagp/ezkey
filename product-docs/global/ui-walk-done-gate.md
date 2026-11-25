@@ -2,7 +2,7 @@
 
 ## Purpose
 
-One contract for “UI slice is complete”: **free entry** (Marc may open with Julie, Patrick, or K), **unique exit** (a filled Walk Gate + Isabelle verdict).
+One contract for “UI slice is complete”: **free entry** (any issue, review or session may start it), **unique exit** (a filled interface gate + a scripted walk verdict that Marc confirms).
 
 Applies to **any human UI surface** touched by the slice: Admin UI, demo apps, tester pages, and mobile copy — not Admin UI alone.
 
@@ -14,17 +14,27 @@ Nobody (human or bot) declares a human-UI chantier **complete** without:
 
 1. A single **walkable SHA / PR** (not a chain of “almost” trailers).
 2. A filled [`ui-walk-gate.template.md`](../templates/ui-walk-gate.template.md) block.
-3. Isabelle **PASS** on that checklist with proofs — or an explicit **FAIL documented** baseline.
+3. A walk **PASS** on that checklist with proofs — or an explicit **FAIL documented** baseline.
 
 ## Who does what
 
-| Role | Responsibility |
-|------|----------------|
-| **Intention owner** (often Julie, sometimes K) | Fill the Walk Gate before coding is called “ready to walk”. |
-| **Patrick** | Craft/API placement. May signal “walk gate missing”; does not invent product done or call Isabelle without a gate. |
-| **Alex** | Product copy / naming locks when asked — ideally before first implementation. |
-| **Isabelle** | Refuse a green walk if the gate is missing; PASS only with per-row proof. |
-| **K** | When Marc routes via K: fill or demand the gate, then dispatch. Not a mandatory bottleneck. |
+Functions are defined in [`team-roles.md`](team-roles.md).
+
+| Function | Responsibility |
+|----------|----------------|
+| **Interface gate** (written before) | The session that frames the slice fills the checklist before the PR is called “ready to walk”. |
+| **Engineering review** | Craft and API placement. May signal “gate missing”; does not declare product done without one. |
+| **Product decision** | Copy and naming locks, decided by Marc, ideally before the first implementation. |
+| **Scripted walk** (executed after) | No green walk without a gate; PASS only with per-row proof. Marc confirms the verdict. |
+
+## Sizing the gate
+
+Keep the gate proportional to the change (Marc, 2026-11-24):
+
+- **Copy on one screen** (help text, label, placeholder, no layout or flow change): a checklist of
+  three to five rows in the PR description, plus a walk spec. No `WALK-*` record file.
+- **A flow, a screen's composition, or a new entry mode**: a `WALK-*` record under
+  `backlog/walk-gates/` from the template, indexed below.
 
 ## Reproducible walks (Admin UI)
 
@@ -40,18 +50,18 @@ device-backed suite.
 
 Symptoms: runtime smoke, then honesty FAIL baseline, then unified PASS — three bars on one thread; artificial #566→#569→walk sequencing; late product/API locks.
 
-Root cause: **done moved**. Not “Isabelle too light” once checklist 1–6 was fixed on one SHA.
+Root cause: **done moved**. Not “the walk was too light” once checklist 1–6 was fixed on one SHA.
 
 Standing rules:
 
 1. One brief page: audience, non-goals, **done = SHA + numbered checklist + merge**.
-2. Grill Alex (copy) + Patrick (API placement) **before** first Cloud Agent when honesty/API surface is involved.
+2. Settle the product decision (copy) and the engineering review (API placement) **before** the first implementation when honesty/API surface is involved.
 3. One walkable PR (or stack announced as one), one CA owner, one walk, one close.
-4. Intention docs carry Isabelle criteria, not only the “why”.
+4. Intention docs carry the walk criteria, not only the “why”.
 
 ## Related
 
-- Role one-liners: [`team-roles.md`](team-roles.md)
+- Verification functions: [`team-roles.md`](team-roles.md)
 - Template: [`../templates/ui-walk-gate.template.md`](../templates/ui-walk-gate.template.md)
 - Example unified delivery: GitHub PR #570
 - Integrity IA pack: [`admin-ui-audit-integrity-hard-split-intention.md`](admin-ui-audit-integrity-hard-split-intention.md)

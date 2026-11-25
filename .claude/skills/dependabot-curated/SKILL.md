@@ -105,7 +105,7 @@ release train. **Orval** is **not** a blanket T4 — classify with the **Orval r
 below; only O3 (and uncleared O2) stay on the prudent HITL path.
 
 **Crypto-adjacent libs** (e.g. `js-sha256`, keystore / crypto / proof-token surfaces): **never
-autonomous on a major**. Route to the security owner (Christophe). Standing rule: *if it ain't
+autonomous on a major**. Route to a security review. Standing rule: *if it ain't
 broken, don't fix it*.
 
 **Ecosystem gates (unchanged HITL / defer):** Jest 30 / ESLint 10 on mobile (RN presets),
@@ -539,8 +539,8 @@ Platform, runtime, and base-image **line** changes (endoflife.date support line 
 are **not** routine Dependabot lots. They live in
 [`product-docs/global/hygiene/major-upgrades/`](../../../product-docs/global/hygiene/major-upgrades/)
 (`registry.yaml` + lane README). On the **Monday full** pass in January / April / July / October,
-include a short register walk (Fred prepares; Christophe opinion on `security: true`; Patrick on
-build/mobile plans; Marc decides).
+include a short register walk (hygiene pass prepares; security review on `security: true`;
+engineering review on build/mobile plans; Marc decides).
 
 - **Light path:** semver-minor line bump (Dependabot PR or a normal PR when Dependabot cannot
   open it) → update the registry in the same PR + family test-plan floor in the PR body.

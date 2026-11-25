@@ -13,7 +13,7 @@ ablation note for what used to be here.
   `../global/hygiene/critical-review/`.
 - [cold-agent-plan-review.prompt.md](cold-agent-plan-review.prompt.md) — Autonomous-execution
   hardening angle (included by reference from critical-review).
-- [ui-walk-gate.template.md](ui-walk-gate.template.md) — Admin UI walk/done gate checklist for Isabelle (and intention owners).
+- [ui-walk-gate.template.md](ui-walk-gate.template.md) — Admin UI walk/done gate checklist (interface gate, executed by the scripted walk).
 
 ## Using a template
 
