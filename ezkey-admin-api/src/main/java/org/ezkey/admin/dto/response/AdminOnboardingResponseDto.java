@@ -68,4 +68,26 @@ public record AdminOnboardingResponseDto(
                     + " Present only with the proof token and when ezkey.qr.auth-base-url is"
                     + " configured; never contains the challenge code (#1494)",
             nullable = true)
-        String enrollmentCode) {}
+        String enrollmentCode) {
+
+  /**
+   * Same layout as the default record {@code toString()}, with secret values masked (#756).
+   *
+   * @return string representation without secret values
+   */
+  @Override
+  public String toString() {
+    return "AdminOnboardingResponseDto["
+        + "enrollmentId="
+        + enrollmentId
+        + ", enrollmentProofToken="
+        + (enrollmentProofToken != null ? "[PROTECTED]" : "null")
+        + ", enrollmentChallenge="
+        + (enrollmentChallenge != null ? "[PROTECTED]" : "null")
+        + ", recoveryCodes="
+        + (recoveryCodes != null ? "[PROTECTED]" : "null")
+        + ", enrollmentCode="
+        + (enrollmentCode != null ? "[PROTECTED]" : "null")
+        + ']';
+  }
+}

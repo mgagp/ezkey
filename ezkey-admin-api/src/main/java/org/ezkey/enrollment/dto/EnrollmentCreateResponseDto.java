@@ -55,4 +55,22 @@ public record EnrollmentCreateResponseDto(
     @Schema(
             description =
                 "Invitation expiry (UTC) for the pending enrollment phase, when set on the server")
-        OffsetDateTime expiresAt) {}
+        OffsetDateTime expiresAt) {
+
+  /**
+   * Same layout as the default record {@code toString()}, with secret values masked (#756).
+   *
+   * @return string representation without secret values
+   */
+  @Override
+  public String toString() {
+    return "EnrollmentCreateResponseDto["
+        + "enrollmentId="
+        + enrollmentId
+        + ", enrollmentChallenge="
+        + (enrollmentChallenge != null ? "[PROTECTED]" : "null")
+        + ", expiresAt="
+        + expiresAt
+        + ']';
+  }
+}

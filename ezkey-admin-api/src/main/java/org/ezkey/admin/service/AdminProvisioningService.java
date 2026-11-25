@@ -146,9 +146,53 @@ public class AdminProvisioningService {
       java.util.List<String> recoveryCodes,
       AdminOnboardingMode onboardingMode,
       String activationCode,
-      OffsetDateTime activationCodeExpiresAt) {}
+      OffsetDateTime activationCodeExpiresAt) {
 
-  private record ActivationCodeResult(String activationCode, OffsetDateTime expiresAt) {}
+    /**
+     * Same layout as the default record {@code toString()}, with secret values masked (#756).
+     *
+     * @return string representation without secret values
+     */
+    @Override
+    public String toString() {
+      return "ProvisioningResult["
+          + "admin="
+          + admin
+          + ", enrollment="
+          + enrollment
+          + ", enrollmentProofToken="
+          + (enrollmentProofToken != null ? "[PROTECTED]" : "null")
+          + ", enrollmentChallenge="
+          + (enrollmentChallenge != null ? "[PROTECTED]" : "null")
+          + ", recoveryCodes="
+          + (recoveryCodes != null ? "[PROTECTED]" : "null")
+          + ", onboardingMode="
+          + onboardingMode
+          + ", activationCode="
+          + (activationCode != null ? "[PROTECTED]" : "null")
+          + ", activationCodeExpiresAt="
+          + activationCodeExpiresAt
+          + ']';
+    }
+  }
+
+  private record ActivationCodeResult(String activationCode, OffsetDateTime expiresAt) {
+
+    /**
+     * Same layout as the default record {@code toString()}, with secret values masked (#756).
+     *
+     * @return string representation without secret values
+     */
+    @Override
+    public String toString() {
+      return "ActivationCodeResult["
+          + "activationCode="
+          + (activationCode != null ? "[PROTECTED]" : "null")
+          + ", expiresAt="
+          + expiresAt
+          + ']';
+    }
+  }
 
   /**
    * Creates a new tenant.
@@ -731,7 +775,29 @@ public class AdminProvisioningService {
       String activationCode,
       OffsetDateTime activationCodeExpiresAt,
       boolean invalidatedPreviousTokens,
-      int deactivatedActiveTokenCount) {}
+      int deactivatedActiveTokenCount) {
+
+    /**
+     * Same layout as the default record {@code toString()}, with secret values masked (#756).
+     *
+     * @return string representation without secret values
+     */
+    @Override
+    public String toString() {
+      return "ActivationCodeReissueResult["
+          + "admin="
+          + admin
+          + ", activationCode="
+          + (activationCode != null ? "[PROTECTED]" : "null")
+          + ", activationCodeExpiresAt="
+          + activationCodeExpiresAt
+          + ", invalidatedPreviousTokens="
+          + invalidatedPreviousTokens
+          + ", deactivatedActiveTokenCount="
+          + deactivatedActiveTokenCount
+          + ']';
+    }
+  }
 
   /**
    * Re-issues a one-time activation code for a pending administrator whose first enrollment does
@@ -1220,6 +1286,29 @@ public class AdminProvisioningService {
       return (enrollmentProofToken != null && !enrollmentProofToken.isEmpty())
           || enrollmentChallenge != null;
     }
+
+    /**
+     * Same layout as the default record {@code toString()}, with secret values masked (#756).
+     *
+     * @return string representation without secret values
+     */
+    @Override
+    public String toString() {
+      return "OnboardingCredentialsResult["
+          + "enrollmentId="
+          + enrollmentId
+          + ", enrollmentProofToken="
+          + (enrollmentProofToken != null ? "[PROTECTED]" : "null")
+          + ", enrollmentChallenge="
+          + (enrollmentChallenge != null ? "[PROTECTED]" : "null")
+          + ", recoveryCodes="
+          + (recoveryCodes != null ? "[PROTECTED]" : "null")
+          + ", enrollmentStatus="
+          + enrollmentStatus
+          + ", adminTenantId="
+          + adminTenantId
+          + ']';
+    }
   }
 
   /**
@@ -1234,7 +1323,27 @@ public class AdminProvisioningService {
       EzkeyAdmin admin,
       java.util.List<String> recoveryCodes,
       int previousCodesCount,
-      boolean previousSetExhausted) {}
+      boolean previousSetExhausted) {
+
+    /**
+     * Same layout as the default record {@code toString()}, with secret values masked (#756).
+     *
+     * @return string representation without secret values
+     */
+    @Override
+    public String toString() {
+      return "RecoveryCodesRegenerationResult["
+          + "admin="
+          + admin
+          + ", recoveryCodes="
+          + (recoveryCodes != null ? "[PROTECTED]" : "null")
+          + ", previousCodesCount="
+          + previousCodesCount
+          + ", previousSetExhausted="
+          + previousSetExhausted
+          + ']';
+    }
+  }
 
   /**
    * Issues the first recovery-code set for an administrator that has never logged in.

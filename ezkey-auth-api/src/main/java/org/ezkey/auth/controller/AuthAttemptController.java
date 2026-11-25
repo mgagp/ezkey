@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.ezkey.audit.constants.AuthAttemptAuditConstants;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
@@ -26,6 +27,7 @@ import org.ezkey.auth.config.TrustedProxyProperties;
 import org.ezkey.auth.util.AuditHelper;
 import org.ezkey.authattempt.domain.AuthAttemptPendingResponse;
 import org.ezkey.authattempt.domain.AuthAttemptRespondResponse;
+import org.ezkey.authattempt.domain.AuthenticationResult;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.authattempt.dto.AuthAttemptPendingRequestDto;
@@ -349,7 +351,6 @@ public class AuthAttemptController {
     String userAgent = AuditHelper.extractUserAgent(httpRequest);
 
     Integer respondTenantId = resolveTenantIdForAudit(request.authAttemptId());
-    boolean accepted = Boolean.TRUE.equals(request.authAttemptAccepted());
 
     try {
       ClientContext clientContext = new ClientContext(clientIp, userAgent);
@@ -357,13 +358,13 @@ public class AuthAttemptController {
           authAttemptService.respond(
               authAttemptMapper.toAuthAttemptRespondRequest(request), clientContext);
 
-      String action = accepted ? "auth_attempt_approved" : "auth_attempt_denied";
+      RespondAuditOutcome outcome = RespondAuditOutcome.of(response.getResult());
 
       auditLogService.log(
           AuditLog.builder()
               .eventType(EventType.AUTH_ATTEMPT_RESPOND)
-              .eventAction(action)
-              .eventStatus(EventStatus.SUCCESS)
+              .eventAction(outcome.action())
+              .eventStatus(outcome.status())
               .apiName(ApiName.AUTH_API)
               .ipAddress(clientIp)
               .userAgent(userAgent)
@@ -372,7 +373,7 @@ public class AuthAttemptController {
               .enrollmentId(resolveEnrollmentIdFromAuthAttempt(request.authAttemptId()))
               .integrationId(resolveIntegrationIdFromAuthAttempt(request.authAttemptId()))
               .tenantId(respondTenantId)
-              .eventDetails("User " + (accepted ? "approved" : "denied") + " authentication")
+              .eventDetails(outcome.details())
               .build());
 
       return ResponseEntity.ok(authAttemptMapper.toAuthAttemptRespondResponseDto(response));
@@ -394,6 +395,50 @@ public class AuthAttemptController {
               .build());
 
       throw e;
+    }
+  }
+
+  /**
+   * Audit action, status and fixed detail for a processed respond, derived from the result the
+   * server computed, not from the decision the device sent (#1314). A wrong or missing challenge
+   * code on accept yields FAILED and is audited as {@code auth_attempt_challenge_failed} / FAILURE.
+   * Details are fixed strings: the code entered on the device is never written to the audit row.
+   *
+   * @param action audit event action
+   * @param status audit event status
+   * @param details fixed audit event details
+   */
+  private record RespondAuditOutcome(String action, EventStatus status, String details) {
+
+    private static RespondAuditOutcome of(AuthenticationResult result) {
+      if (result == null) {
+        return unexpected("none");
+      }
+      return switch (result) {
+        case APPROVED ->
+            new RespondAuditOutcome(
+                AuthAttemptAuditConstants.AUTH_ATTEMPT_APPROVED,
+                EventStatus.SUCCESS,
+                "User approved authentication");
+        case DENIED ->
+            new RespondAuditOutcome(
+                AuthAttemptAuditConstants.AUTH_ATTEMPT_DENIED,
+                EventStatus.SUCCESS,
+                "User denied authentication");
+        case FAILED ->
+            new RespondAuditOutcome(
+                AuthAttemptAuditConstants.AUTH_ATTEMPT_CHALLENGE_FAILED,
+                EventStatus.FAILURE,
+                "Challenge response missing or did not match");
+        case EXPIRED -> unexpected("EXPIRED");
+      };
+    }
+
+    private static RespondAuditOutcome unexpected(String result) {
+      return new RespondAuditOutcome(
+          AuthAttemptAuditConstants.AUTH_ATTEMPT_RESPOND_UNEXPECTED_RESULT,
+          EventStatus.FAILURE,
+          "Unexpected respond result: " + result);
     }
   }
 

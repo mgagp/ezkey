@@ -156,7 +156,7 @@ class ApiKeyCreateResponseDtoTest {
         .contains("ApiKeyCreateResponseDto")
         .contains("apiKeyId=" + TEST_API_KEY_ID)
         .contains("integrationKey='" + TEST_INTEGRATION_KEY + "'")
-        .contains("secretKey='***MASKED***'")
+        .contains("secretKey=[PROTECTED]")
         .contains("description='" + TEST_DESCRIPTION + "'")
         .doesNotContain(TEST_SECRET_KEY);
   }
@@ -180,7 +180,7 @@ class ApiKeyCreateResponseDtoTest {
     String toString = dto.toString();
 
     // Assert
-    assertThat(toString).contains("***MASKED***").doesNotContain(TEST_SECRET_KEY);
+    assertThat(toString).contains("[PROTECTED]").doesNotContain(TEST_SECRET_KEY);
   }
 
   @Test

@@ -52,6 +52,8 @@ Canon: [`ezkey_mobile/docs/MOBILE_POSITIONING.md`](../../../../ezkey_mobile/docs
 ## Current shipped baseline (do not regress)
 
 - Generator: `org.ezkey.admin.util.AdminEnrollmentDisplayNames`
+- Length: capped at 64 characters (`enrollment_name VARCHAR(64)`, while first and last names accept
+  100 each); the person part is shortened and the `(username)` suffix is kept whole (#1520).
 - Callers: `AdminBootstrapService`, `AdminProvisioningService`
 - Mobile display: `ezkey_mobile/app/utils/enrollmentDisplay.ts`
 

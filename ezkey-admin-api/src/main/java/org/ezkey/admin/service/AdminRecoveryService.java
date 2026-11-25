@@ -472,5 +472,20 @@ public class AdminRecoveryService {
     public List<String> getHashedCodes() {
       return hashedCodes;
     }
+
+    /**
+     * Masks both lists (#756): plain codes are secrets, and their hashes are verifiers that must
+     * not reach a log either.
+     *
+     * @return string representation without code values
+     */
+    @Override
+    public String toString() {
+      return "RecoveryCodesResult{plainCodes="
+          + (plainCodes != null ? "[PROTECTED]" : "null")
+          + ", hashedCodes="
+          + (hashedCodes != null ? "[PROTECTED]" : "null")
+          + '}';
+    }
   }
 }
