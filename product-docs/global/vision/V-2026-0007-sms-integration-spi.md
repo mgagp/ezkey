@@ -13,7 +13,9 @@
   R1. Fully operational without SMS.
 - **Potential impact:** `admin-api` (outbound job + config), `admin-ui`, peripheral repos
   (`I-2026-0020`, `I-2026-0024`), `docs`, `V-2026-0010` elaboration.
-- **Next step:** SPI contract sketch + `I-2026-0024`; reference adapter repo.
+- **Next step:** none. Parked 2026-11-25 with a detailed design and reopen signals:
+  [`TB-2026-11-24-sms-challenge-connector`](../backlog/TB-2026-11-24-sms-challenge-connector.md). The single adapter URL
+  (D5-7) is outdated: it would become one connector per channel.
 - **Captured by:** Marc
 
 ## Related artifacts

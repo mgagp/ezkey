@@ -63,7 +63,7 @@ remains orthogonal to the closed September operability program. Wave B closeout:
 | `I-2026-0020` | Integration ecosystem shell catalog & publish workflow | `captured` | `P2` | `docs`, GitHub ecosystem, `product-docs (traceability)` | `2026-05-11` |
 | `I-2026-0022` | Admin API scheduled jobs catalog (living document) | `incubating` | `P2` | `admin-api`, `docs` | `2026-05-24` |
 | `I-2026-0023` | Email channel R1: optional operator-triggered delivery | `incubating` | `P2` | `admin-api`, `admin-ui`, `infra`, `docs` | `2026-11-04` |
-| `I-2026-0024` | SMS channel R1: HTTP adapter SPI + optional operator send | `incubating` | `P2` | `admin-api`, `admin-ui`, `infra`, `docs` | `2026-11-04` |
+| `I-2026-0024` | SMS channel R1: HTTP adapter SPI + optional operator send | `parked` | `P3` | `admin-api`, `admin-ui`, `infra`, `docs` | `2026-11-25` |
 | `I-2026-0025` | Auth API protocol capability versioning | `incubating` | `P2` | `auth-api`, `mobile`, `admin-api`, `docs` | `2026-05-24` |
 | `I-2026-0027` | iOS app implementation — fresh native rebuild | `ready` | `P1` | `mobile` | `2026-05-24` |
 | `I-2026-05-23-exp1-anonymous-evaluator-onboarding` | EXP1 anonymous evaluator onboarding (retired 2026-11-18, #1365) | `archived` | `P2` | `admin-api`, `admin-ui`, `ezkey-org`, `infra (community)`, `docs` | `2026-05-23` |
@@ -109,6 +109,7 @@ remains orthogonal to the closed September operability program. Wave B closeout:
 
 | ID | Title | Status | Related idea |
 |----|-------|--------|--------------|
+| `TB-2026-11-24-sms-challenge-connector` | Send the enrollment challenge by SMS (parked 2026-11-25) | `archived` | `I-2026-0024` |
 | `TB-2026-11-06-connector-delivery-contract-v0` | Connector delivery contract v0 and directory sketch (`#1206` step 2) | `promoted` | `V-2026-11-04-connector-spi` |
 | `TB-2026-08-29-admin-api-remove-m2m-hatch` | Remove Admin API API-key M2M hatch | `done` | `I-2026-08-29-admin-api-remove-m2m-hatch` |
 | `TB-2026-08-28-admin-first-keyset-bootstrap` | Admin-first keyset bootstrap | `implemented` | `I-2026-07-17-keyset-blob-admin-first-bootstrap` |
