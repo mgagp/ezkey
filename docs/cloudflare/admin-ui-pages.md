@@ -131,6 +131,8 @@ That controls the **browser ↔ Cloudflare** leg. Modern browsers and mobile sta
 
 ## 5. Edge security headers (Transform Rules)
 
+**Current state and target (2026-11-26):** on `admin-ui.ezkey.online` these headers come from one zone Transform Rule, which `admin-ui-ezkey-online.pages.dev` does not get. The target is a `_headers` file in the build, owned by the repo: see [edge-posture.md](edge-posture.md) § Header ownership.
+
 Pages does not apply [`ezkey-admin-ui/docker/Caddyfile`](../../ezkey-admin-ui/docker/Caddyfile) automatically. Mirror the **baseline** for HTML responses using **Cloudflare Transform Rules** (or equivalent) on the Admin UI hostname.
 
 **Suggested headers** (align with Caddy; adjust if product policy changes):

@@ -23,7 +23,9 @@
 	# API: minimal response headers (JSON; CSP not required for fetch parsing)
 	handle /api/* {
 		reverse_proxy host.docker.internal:9080
+		# defer: replace the API's own values instead of adding a second copy.
 		header {
+			defer
 			X-Content-Type-Options "nosniff"
 			X-Frame-Options "DENY"
 			Referrer-Policy "strict-origin-when-cross-origin"
