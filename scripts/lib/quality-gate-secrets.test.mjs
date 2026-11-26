@@ -173,6 +173,25 @@ describe('provisioning display-name prefixes → AMBER (run-7 class)', () => {
     }
   });
 
+  it('scores Pending administrator activated username shape AMBER (negative)', () => {
+    const pending = 'e2e-1313-code-1790000000000';
+    const line =
+      `✅ Pending administrator activated: ${pending} (adminId: 7, enrollmentId: 11, tenantId: 4)`;
+    const r = detectSecrets(line);
+    assert.equal(r.kinds.includes('opaque-username'), true, `kinds=${r.kinds}`);
+    assert.equal(r.kinds.includes('opaque-token'), false, `kinds=${r.kinds}`);
+    assert.equal(r.severity, 'AMBER', line);
+  });
+
+  it('keeps opaque secret on Pending administrator activated RED (positive)', () => {
+    const tok = 'a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8s9T0';
+    const line = `✅ Pending administrator activated: ${tok} (adminId: 7, enrollmentId: 11, tenantId: 4)`;
+    const r = detectSecrets(line);
+    assert.equal(r.kinds.includes('opaque-token'), true, `kinds=${r.kinds}`);
+    assert.equal(r.kinds.includes('opaque-username'), false, `kinds=${r.kinds}`);
+    assert.equal(r.severity, 'RED', line);
+  });
+
   it('scores Churn Tenant / Tenant A / Integration A1 16-hex suffix AMBER (negative)', () => {
     const lines = [
       `Creating tenant: Churn Tenant ${SUFFIX} (creator: 108)`,

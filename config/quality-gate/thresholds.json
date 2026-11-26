@@ -13,6 +13,14 @@
       "pattern": "^Error\\d+",
       "justification": "JavaMelody synthetic Error404/Error5xx buckets always report 100% error rate; exclude from httpErrorPct scoring."
     },
+    "httpErrorPctExpectedErrors": [
+      {
+        "pattern": "^POST /api/v1/auth-attempts/[^/]+/cancel$",
+        "maxErrors": 15,
+        "perHits": 16,
+        "justification": "ApiKeySecurityTest (#1448) intentionally drives concurrent cancel races where 409 is the documented contract. Cap expected 409s at 15/16 hits for this endpoint."
+      }
+    ],
     "topSqlMeanMs": { "amber": 20, "red": 100 },
     "topSqlMaxMs": { "amber": 100, "red": 1000 },
     "systemErrorHits": { "amber": 100, "red": 400 },

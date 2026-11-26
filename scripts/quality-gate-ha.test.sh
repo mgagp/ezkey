@@ -29,8 +29,23 @@ set -euo pipefail
 STATE="${FAKE_DOCKER_STATE:?}"
 cmd="${1:-}"; shift || true
 case "$cmd" in
+  ps)
+    # docker ps -a --filter name=ezkey --format '{{.Names}}'
+    if [[ "${1:-}" == "-a" ]]; then shift; fi
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --filter) shift 2 ;;
+        --format) shift 2 ;;
+        *) shift ;;
+      esac
+    done
+    for f in "$STATE"/*.status; do
+      [[ -e "$f" ]] || continue
+      basename "$f" .status
+    done
+    ;;
   inspect)
-    # docker inspect -f '{{.State.Status}}' NAME
+    # docker inspect -f '{{.State.Status}}' NAME, or docker inspect NAME (JSON)
     fmt=""; name=""
     while [[ $# -gt 0 ]]; do
       case "$1" in
@@ -41,12 +56,17 @@ case "$cmd" in
     status="$(cat "$STATE/$name.status" 2>/dev/null || echo missing)"
     health="$(cat "$STATE/$name.health" 2>/dev/null || echo none)"
     restarts="$(cat "$STATE/$name.restarts" 2>/dev/null || echo 0)"
-    case "$fmt" in
-      *RestartCount*) echo "$restarts" ;;
-      *Health*) echo "$health" ;;
-      *State.Status*|*.Status*) echo "$status" ;;
-      *) echo "?" ;;
-    esac
+    if [[ -z "$fmt" ]]; then
+      printf '[{"State":{"Status":"%s","Health":{"Status":"%s"},"OOMKilled":false,"ExitCode":0},"RestartCount":%s}]\n' \
+        "$status" "$health" "$restarts"
+    else
+      case "$fmt" in
+        *RestartCount*) echo "$restarts" ;;
+        *Health*) echo "$health" ;;
+        *State.Status*|*.Status*) echo "$status" ;;
+        *) echo "?" ;;
+      esac
+    fi
     ;;
   start)
     name="$1"
@@ -1124,6 +1144,103 @@ C1_GUARD_RUN="$(sed -n 's/.*run dir: //p' "$C1_GUARD_OUT.log" | head -1)"
   && echo "ok - forced guard fail logged in c1-rate-limit phase" && pass=$((pass+1)) \
   || { echo "not ok - forced guard fail logged in c1-rate-limit phase"; fail=$((fail+1)); \
        [[ -n "${C1_GUARD_RUN:-}" ]] && cat "$C1_GUARD_RUN/phases/c1-rate-limit.log" 2>/dev/null || true; }
+
+# 14) JavaMelody expected-error cap for integration cancel:
+# <=15/16 stays GREEN; over-cap stays RED (no endpoint exclusion).
+JM_THR="$TMP/jm-thresholds.json"
+cat >"$JM_THR" <<'EOF'
+{
+  "javamelody": {
+    "maxAgeSeconds": 600,
+    "topHttpMeanMs": { "amber": 200, "red": 1000 },
+    "topHttpMaxMs": { "amber": 5000, "red": 30000 },
+    "httpErrorPct": { "amber": 5.0, "red": 15.0, "minHits": 20 },
+    "httpErrorPctExclusions": {
+      "pattern": "^Error\\d+",
+      "justification": "test fixture"
+    },
+    "httpErrorPctExpectedErrors": [
+      {
+        "pattern": "^POST /api/v1/auth-attempts/[^/]+/cancel$",
+        "maxErrors": 15,
+        "perHits": 16,
+        "justification": "test fixture"
+      }
+    ]
+  },
+  "containers": {}
+}
+EOF
+JM_FIXTURE="$TMP/jm-fixture"
+mkdir -p "$JM_FIXTURE/raw"
+printf '{"capturedAt":"%s"}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >"$JM_FIXTURE/raw/snapshot-meta.json"
+
+mk_jm_fixture() {
+  local error_pct="$1"
+  cat >"$JM_FIXTURE/javamelody.curated.json" <<EOF
+{
+  "ranked": {
+    "admin-api": { "http": [], "sql": [] },
+    "auth-api": { "http": [], "sql": [] },
+    "integration-api": {
+      "http": [
+        {
+          "name": "POST /api/v1/auth-attempts/8f4e3f63-2b44-441f-a2ae-f56f68c8092b/cancel",
+          "hits": 64,
+          "mean": 12,
+          "maximum": 33,
+          "errorRatePct": ${error_pct}
+        }
+      ],
+      "sql": []
+    }
+  },
+  "perApp": {
+    "admin-api": { "errorHits": 0, "lastValue": { "waitingConnections": 0 } },
+    "auth-api": { "errorHits": 0, "lastValue": { "waitingConnections": 0 } },
+    "integration-api": { "errorHits": 0, "lastValue": { "waitingConnections": 0 } }
+  }
+}
+EOF
+}
+
+read_http_error_verdict() {
+  node -e 'const fs=require("fs"); const j=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); const c=(j.checks||[]).find((x)=>x.id==="jm.integration-api.httpErrorPct"); console.log(c?c.verdict:"MISSING");' "$1"
+}
+
+JM_OK_OUT="$TMP/jm-cap-ok"
+mk_jm_fixture 93.75
+set +e
+node "$ROOT/scripts/stack-health-check.mjs" \
+  --output-dir "$JM_OK_OUT" \
+  --jm-dir "$JM_FIXTURE" \
+  --jm-ok 1 \
+  --thresholds "$JM_THR" \
+  --allowlist "$ROOT/config/quality-gate/log-allowlist.txt" \
+  >"$TMP/jm-cap-ok.log" 2>&1
+jm_ok_ec=$?
+set -e
+[[ "$jm_ok_ec" -eq 0 || "$jm_ok_ec" -eq 1 ]] \
+  && echo "ok - stack-health-check completed for cap-at-limit fixture" && pass=$((pass+1)) \
+  || { echo "not ok - stack-health-check completed for cap-at-limit fixture (ec=$jm_ok_ec)"; fail=$((fail+1)); cat "$TMP/jm-cap-ok.log" || true; }
+jm_ok_verdict="$(read_http_error_verdict "$JM_OK_OUT/health.json")"
+assert_eq "$jm_ok_verdict" "GREEN" "15/16 cancel error rate scores GREEN on jm.integration-api.httpErrorPct"
+
+JM_OVER_OUT="$TMP/jm-cap-over"
+mk_jm_fixture 100
+set +e
+node "$ROOT/scripts/stack-health-check.mjs" \
+  --output-dir "$JM_OVER_OUT" \
+  --jm-dir "$JM_FIXTURE" \
+  --jm-ok 1 \
+  --thresholds "$JM_THR" \
+  --allowlist "$ROOT/config/quality-gate/log-allowlist.txt" \
+  >"$TMP/jm-cap-over.log" 2>&1
+jm_over_ec=$?
+set -e
+assert_eq "$jm_over_ec" "1" "over-cap cancel error rate still yields RED"
+jm_over_verdict="$(read_http_error_verdict "$JM_OVER_OUT/health.json")"
+assert_eq "$jm_over_verdict" "RED" "over-cap cancel error rate scores RED on jm.integration-api.httpErrorPct"
 
 echo "passes=$pass fails=$fail"
 [[ "$fail" -eq 0 ]]
