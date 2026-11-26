@@ -210,7 +210,9 @@ class TinkKeyManagerAdminFirstBootstrapTest {
   private static EncryptedBlob encryptedBlobWithId(byte[] masterKey) throws Exception {
     AeadConfig.register();
     Aead masterAead = new AesGcmJce(masterKey);
-    KeysetHandle handle = KeysetHandle.generateNew(KeyTemplates.get("AES256_GCM"));
+    KeysetHandle handle =
+        KeysetHandle.generateNew(
+            KeyTemplates.get("AES256_GCM").toParameters(), RegistryConfiguration.get());
     String encrypted =
         TinkJsonProtoKeysetFormat.serializeEncryptedKeyset(
             handle, masterAead, new byte[0], RegistryConfiguration.get());
