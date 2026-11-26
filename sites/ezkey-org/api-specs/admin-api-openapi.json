@@ -1772,7 +1772,7 @@
             }
           },
           "409": {
-            "description": "The batch is COMPLETED (nothing to resume) or IN_PROGRESS (already running)",
+            "description": "The batch is COMPLETED (nothing to resume) or IN_PROGRESS (a stored IN_PROGRESS is an orphan from a stopped run, not a live batch; FAILED is the resumable state)",
             "content": {
               "*/*": {
                 "schema": {
