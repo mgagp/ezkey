@@ -246,6 +246,7 @@ Alerts API 403. See [`2026-11-16-pass-1.md`](2026-11-16-pass-1.md).
 
 Routine peel still skips any PR labeled `deferred:rn-upgrade`. To park *future* RN-coupled mobile
 deps until a line bump: comment + `gh pr edit <n> --add-label deferred:rn-upgrade`.
+Dependabot now ignores semver-major `@react-native-community/cli*` in `/ezkey_mobile` until RN 0.89 GA because CLI 21 targets RN `^0.89` (reference `#1415`).
 
 **Process rule:** when Dependabot closes a deferred lot (supersede / recreate) but human
 validation remains, open a tracking **issue** (like `#627`) so residual work stays visible — open
