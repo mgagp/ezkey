@@ -31,6 +31,7 @@ import com.google.crypto.tink.TinkJsonProtoKeysetFormat;
 import com.google.crypto.tink.aead.AeadConfig;
 import com.google.crypto.tink.subtle.AesGcmJce;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -381,7 +382,8 @@ class KeysetStorageCharacterizationTest {
       when(repository.saveAndFlush(any(KeysetBlob.class)))
           .thenThrow(new DataAccessResourceFailureException("simulated rotation save failure"));
 
-      assertThrows(IllegalStateException.class, manager::rotateKey);
+      // A storage outage is a persist failure (IOException), not a retryable CAS conflict (#1506).
+      assertThrows(IOException.class, manager::rotateKey);
 
       assertEquals(
           before,

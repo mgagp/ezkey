@@ -289,13 +289,18 @@ public class EncryptionKeyController {
         responseCode = "409",
         description =
             "A PENDING encryption key already exists, key rotation is inactive on this instance,"
-                + " or the keyset was modified concurrently (CAS loss — retry is safe)",
+                + " or the keyset was modified concurrently (CAS loss — retry is safe). A keyset"
+                + " storage failure is a 500, not a 409",
         content =
             @io.swagger.v3.oas.annotations.media.Content(
                 schema =
                     @io.swagger.v3.oas.annotations.media.Schema(
                         implementation = org.springframework.http.ProblemDetail.class))),
-    @ApiResponse(responseCode = "500", description = "Key rotation failed")
+    @ApiResponse(
+        responseCode = "500",
+        description =
+            "Key rotation failed, including a keyset storage failure (audited as"
+                + " REENCRYPTION_FAILED; do not retry until storage is healthy)")
   })
   @PostMapping("/rotate")
   public ResponseEntity<KeyRotationResponse> rotateKey(
@@ -350,6 +355,8 @@ public class EncryptionKeyController {
       // HA multi-admin race: loser must surface as 409 via ValidationExceptionHandler
       // (IllegalStateException → state-conflict). No REENCRYPTION_FAILED/ERROR audit — ordinary
       // lost race, not an operational failure (#961 Lot 3). No fitting low-severity EventType.
+      // TinkKeyManager raises this only for an optimistic-lock loss; a real persist failure
+      // arrives as IOException and takes the 500 + audit branch below (#1506).
       logger.warn(
           "Manual key rotation lost keyset CAS race (adminId={}): {}", adminId, e.getMessage());
       throw new KeysetCasConflictException(

@@ -13,6 +13,7 @@ package org.ezkey.security;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -23,6 +24,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import java.io.IOException;
 import java.time.OffsetDateTime;
 import java.util.List;
 import org.ezkey.audit.domain.EventStatus;
@@ -61,10 +63,10 @@ import org.springframework.transaction.support.TransactionTemplate;
  * Unit and log-capture tests for the lost keyset CAS race in {@link
  * KeyRotationService#checkAndRotate()} and {@link KeyRotationService#checkAndPromotePendingKeys()}
  * (#1018). A lost CAS is a WARN without stack trace and no audit event; any other {@link
- * IllegalStateException}, including a persistence outage that {@code TinkKeyManager} also wraps as
- * a CAS failure, keeps the ERROR log and the {@code REENCRYPTION_FAILED} audit event. The
- * transactional case checks that the lost race rolls the job back quietly instead of failing the
- * commit with {@code UnexpectedRollbackException}.
+ * IllegalStateException}, and a persistence outage (an {@code IOException} from {@code
+ * TinkKeyManager} since #1506), keeps the ERROR log and an ERROR audit event. The transactional
+ * cases check that the job rolls back quietly instead of failing the commit with {@code
+ * UnexpectedRollbackException}.
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("KeyRotationService scheduled lost CAS race")
@@ -193,7 +195,8 @@ class KeyRotationServiceScheduledCasConflictTest {
   }
 
   @Test
-  @DisplayName("checkAndRotate: CAS wrapper around a persistence outage keeps ERROR and audit")
+  @DisplayName(
+      "checkAndRotate: guard — a CAS wrapper around a non-race cause keeps ERROR and audit")
   void checkAndRotate_casWrappedOutage_errorAndAudit() throws Exception {
     givenRotationDue();
     when(keyManagementOperations.addKeyWithoutPromotion())
@@ -238,6 +241,84 @@ class KeyRotationServiceScheduledCasConflictTest {
     assertEquals(1, txManager.rollbacks, "the lost race must roll back the job transaction");
     verify(auditLogService, never()).log(any());
     assertTrue(events(Level.ERROR).isEmpty(), "a lost CAS must not log at ERROR");
+  }
+
+  /**
+   * Like TinkKeyManager on a storage outage since #1506: the participating saveAndFlush fails (the
+   * outer transaction becomes rollback-only), then the failure surfaces as IOException.
+   */
+  private static org.mockito.stubbing.Answer<Long> persistOutage(
+      PlatformTransactionManager txManager) {
+    return _ -> {
+      try {
+        new TransactionTemplate(txManager)
+            .executeWithoutResult(_ -> {
+              throw new DataAccessResourceFailureException("connection refused");
+            });
+      } catch (DataAccessResourceFailureException e) {
+        throw new IOException(
+            "The encryption keyset could not be saved; the keyset was not changed", e);
+      }
+      return 0L;
+    };
+  }
+
+  @Test
+  @DisplayName(
+      "#1506 checkAndPromotePendingKeys in a transaction: persist outage logs ERROR, audits,"
+          + " rolls back quietly")
+  void checkAndPromotePendingKeys_persistOutageInTransaction_errorAuditAndQuietRollback()
+      throws Exception {
+    EncryptionKey pending =
+        new EncryptionKey(
+            PENDING_KEY_ID, KeyStatus.PENDING, "AES256_GCM", OffsetDateTime.now(), "TEST");
+    when(keyManagementOperations.isInitialized()).thenReturn(true);
+    when(keyRepository.findPendingKeysReadyForPromotion(any())).thenReturn(List.of(pending));
+    RecordingTransactionManager txManager = new RecordingTransactionManager();
+    when(keyManagementOperations.promoteToPrimary(PENDING_KEY_ID))
+        .thenAnswer(persistOutage(txManager));
+
+    KeyRotationService proxied = transactionalProxy(txManager);
+
+    assertDoesNotThrow(
+        proxied::checkAndPromotePendingKeys,
+        "a persist outage must not escape the scheduler or raise UnexpectedRollback");
+    assertEquals(0, txManager.commits, "a failed promotion must not commit");
+    assertEquals(1, txManager.rollbacks, "a failed promotion must roll back the job transaction");
+    ArgumentCaptor<AuditLog> audit = ArgumentCaptor.forClass(AuditLog.class);
+    verify(auditLogService).log(audit.capture());
+    assertEquals(EventType.KEY_PROMOTED_PRIMARY, audit.getValue().getEventType());
+    assertEquals(EventStatus.ERROR, audit.getValue().getEventStatus());
+    assertTrue(
+        events(Level.ERROR).stream()
+            .anyMatch(e -> e.getFormattedMessage().contains("Failed to check/promote pending")),
+        "the scheduled job must log the failure at ERROR");
+    assertTrue(
+        events(Level.WARN).stream()
+            .noneMatch(e -> e.getFormattedMessage().contains("lost keyset CAS race")),
+        "a persist outage must not be reported as a lost race");
+  }
+
+  @Test
+  @DisplayName(
+      "#1506 introduceNewKey in a transaction: persist outage rolls back and surfaces the"
+          + " IOException, not UnexpectedRollbackException")
+  void introduceNewKey_persistOutageInTransaction_throwsIoExceptionAndRollsBack() throws Exception {
+    when(keyRepository.existsPendingKey()).thenReturn(false);
+    when(keyRepository.findByKeyStatus(KeyStatus.PRIMARY)).thenReturn(List.of());
+    RecordingTransactionManager txManager = new RecordingTransactionManager();
+    when(keyManagementOperations.addKeyWithoutPromotion()).thenAnswer(persistOutage(txManager));
+
+    KeyRotationService proxied = transactionalProxy(txManager);
+
+    IOException thrown =
+        assertThrows(IOException.class, () -> proxied.introduceNewKey("ADMIN_MANUAL"));
+    assertEquals(
+        "The encryption keyset could not be saved; the keyset was not changed",
+        thrown.getMessage(),
+        "the operator message must reach the controller unchanged");
+    assertEquals(0, txManager.commits, "a failed rotation must not commit");
+    assertEquals(1, txManager.rollbacks, "a failed rotation must roll back");
   }
 
   private KeyRotationService transactionalProxy(PlatformTransactionManager txManager) {

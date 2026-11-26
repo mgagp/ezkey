@@ -124,10 +124,14 @@ INTRODUCED → ENABLED → PRIMARY → ENABLED → DISABLED
      stack trace, next to `TinkKeyManager`'s CAS WARN; promotion retries on the next tick, rotation
      on the next scheduled run (daily by default). No `REENCRYPTION_FAILED` audit event and no
      dedicated audit type: the lost attempt is only in the application log, accepted because it
-     has no consequence (#1018). A persistence failure that `TinkKeyManager` also wraps as
-     `KeysetCasConflictException` (database outage, missing master AEAD) keeps its ERROR log (plus
-     `REENCRYPTION_FAILED` for the rotation job), and a failed blob reload after a lost race logs
-     an ERROR from `TinkKeyManager`
+     has no consequence (#1018). A failed blob reload after a lost race logs an ERROR from
+     `TinkKeyManager`
+   - Any other persist failure (database outage, missing master AEAD, null save) is not a race:
+     `TinkKeyManager` logs it at ERROR, discards staging and reloads the same way, then throws
+     `IOException`, never `KeysetCasConflictException`. `POST /rotate` answers 500 with a
+     `REENCRYPTION_FAILED` / `ERROR` audit row (not 409 "Retry is safe"); the scheduled jobs keep
+     their ERROR log and audit row, and promotion rolls its tick back quietly instead of letting
+     the exception escape the scheduler (#1506)
 
 5. **Database metadata synchronization** (same outer transaction as the blob flush when using
    `KeyRotationService.introduceNewKey` / promote paths)

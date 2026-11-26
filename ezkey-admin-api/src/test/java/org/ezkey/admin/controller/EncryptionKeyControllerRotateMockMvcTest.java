@@ -23,6 +23,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.io.IOException;
 import java.util.List;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.audit.domain.EventStatus;
@@ -46,6 +47,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -121,7 +124,8 @@ class EncryptionKeyControllerRotateMockMvcTest {
             new KeysetCasConflictException(
                 "Keyset mutation CAS failed (updatedBy=KEY_ADDED_PENDING); staging discarded and"
                     + " blob reloaded",
-                new IllegalStateException("StaleObjectStateException: kid=42 version=3")));
+                new OptimisticLockingFailureException(
+                    "StaleObjectStateException: kid=42 version=3")));
 
     MvcResult result =
         mockMvc
@@ -190,6 +194,39 @@ class EncryptionKeyControllerRotateMockMvcTest {
                 .value("Key rotation failed: non-writer keyset state invariant broken"));
 
     assertExactlyOneReencryptionFailedErrorAudit("characterization non-cas ise");
+  }
+
+  @Test
+  @DisplayName(
+      "#1506: keyset persist failure (IOException from TinkKeyManager) → HTTP 500 and one"
+          + " REENCRYPTION_FAILED/ERROR audit, never the 409 retry-is-safe answer")
+  void rotate_whenKeysetPersistFails_returns500NotRetryableConflict() throws Exception {
+    when(rotationService.introduceNewKey("ADMIN_MANUAL"))
+        .thenThrow(
+            new IOException(
+                "The encryption keyset could not be saved; the keyset was not changed",
+                new DataAccessResourceFailureException("simulated database outage")));
+
+    MvcResult result =
+        mockMvc
+            .perform(
+                post(ROTATE_PATH)
+                    .principal(globalAdminAuth)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .queryParam("reason", "storage outage during rotation"))
+            .andExpect(status().isInternalServerError())
+            .andExpect(jsonPath("$.newPrimaryKeyId").value(org.hamcrest.Matchers.nullValue()))
+            .andExpect(
+                jsonPath("$.message")
+                    .value(
+                        "Key rotation failed: The encryption keyset could not be saved; the"
+                            + " keyset was not changed"))
+            .andReturn();
+
+    assertFalse(
+        result.getResponse().getContentAsString().contains("Retry is safe"),
+        "a real persist failure must not tell the operator to retry");
+    assertExactlyOneReencryptionFailedErrorAudit("storage outage during rotation");
   }
 
   private void assertExactlyOneReencryptionFailedErrorAudit(String expectedReason) {

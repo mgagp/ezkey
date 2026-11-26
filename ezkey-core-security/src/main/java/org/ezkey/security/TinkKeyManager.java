@@ -1004,8 +1004,11 @@ public class TinkKeyManager implements KeyManagementOperations {
    * @param stagingHandle candidate keyset (not yet live)
    * @param updatedBy audit label for the blob row
    * @throws GeneralSecurityException if serialization fails
-   * @throws IOException if persistence fails
-   * @throws IllegalStateException on CAS loss after reload (fail closed)
+   * @throws IOException if persistence fails for any reason other than a lost CAS race (database
+   *     outage, missing master AEAD, repository contract violation); logged at ERROR so the
+   *     operator sees a failure, not a retryable conflict (#1506)
+   * @throws KeysetCasConflictException only when the cause is an {@link
+   *     OptimisticLockingFailureException} (a concurrent writer won; retry is safe)
    */
   private void casInstallStagingHandle(KeysetHandle stagingHandle, String updatedBy)
       throws GeneralSecurityException, IOException {
@@ -1022,14 +1025,24 @@ public class TinkKeyManager implements KeyManagementOperations {
           stagingHandle, flushedVersion, previousLive, expectedVersion, updatedBy);
     } catch (DataAccessException | IllegalStateException e) {
       // Invariant 3 / Q4: discard staging, reload blob, fail closed — no orphan primary.
-      // OptimisticLockingFailureException is a DataAccessException subclass.
-      // Ordinary concurrent loser under Hibernate @Version — WARN, not ERROR (#961 Lot 3).
-      logger.warn(
-          "CAS failed for keyset mutation ({}). Discarding staging handle and reloading blob."
-              + " Expected version was {}. Error: {}",
-          updatedBy,
-          expectedVersion,
-          e.getMessage());
+      // Only a real optimistic-lock loss is a benign race (WARN, #961 Lot 3); any other failure
+      // (database outage, missing master AEAD, null save) is an operational error (#1506).
+      boolean lostCasRace = e instanceof OptimisticLockingFailureException;
+      if (lostCasRace) {
+        logger.warn(
+            "CAS failed for keyset mutation ({}). Discarding staging handle and reloading blob."
+                + " Expected version was {}. Error: {}",
+            updatedBy,
+            expectedVersion,
+            e.getMessage());
+      } else {
+        logger.error(
+            "Keyset persist failed for mutation ({}). Discarding staging handle and reloading"
+                + " blob. Expected version was {}. Error: {}",
+            updatedBy,
+            expectedVersion,
+            e.getMessage());
+      }
       try {
         if (!loadKeysetFromDatabaseUnlocked()) {
           logger.error(
@@ -1047,6 +1060,14 @@ public class TinkKeyManager implements KeyManagementOperations {
             reloadError.getMessage());
         this.keysetHandle = previousLive;
         this.databaseKeysetVersion = expectedVersion;
+      }
+      if (!lostCasRace) {
+        // IOException (not IllegalStateException) so no caller falls into the generic
+        // IllegalStateException → 409 mapping; POST /rotate answers 500 with an audit row.
+        // Operator-facing wording (the Admin API echoes it in the 500 body); updatedBy and the
+        // cause stay in the ERROR log above.
+        throw new IOException(
+            "The encryption keyset could not be saved; the keyset was not changed", e);
       }
       throw new KeysetCasConflictException(
           "Keyset mutation CAS failed (updatedBy="
