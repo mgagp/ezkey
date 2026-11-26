@@ -1717,7 +1717,7 @@
           "Encryption Keys"
         ],
         "summary": "Resume re-encryption batch",
-        "description": "Resumes processing of a failed or paused re-encryption batch. Global Admin only.",
+        "description": "Resumes processing of a FAILED, PENDING or PAUSED re-encryption batch (the retry budget is not checked: this is an explicit operator action). Global Admin only.",
         "operationId": "resumeBatch",
         "parameters": [
           {
@@ -1767,6 +1767,16 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/BatchResumeResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The batch is COMPLETED (nothing to resume) or IN_PROGRESS (already running)",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
