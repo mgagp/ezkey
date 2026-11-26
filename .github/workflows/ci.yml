@@ -131,6 +131,7 @@ jobs:
             mobile:
               - 'ezkey_mobile/**'
               - '.github/workflows/ezkey-mobile-unit-tests.yml'
+              - '.github/actions/android-ndk/**'
             # iOS native surface only (macOS runner); JS-only changes do not need it.
             mobile-ios:
               - 'ezkey_mobile/ios/**'

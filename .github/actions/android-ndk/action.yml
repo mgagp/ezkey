@@ -1,0 +1,74 @@
+# Install the Android NDK pinned in ezkey_mobile/android/build.gradle (ndkVersion), from the
+# Actions cache when warm, otherwise with sdkmanager and a bounded retry (#1403).
+#
+# Without it, Gradle downloads the NDK on every run; that download timed out or failed with
+# "Error reading Zip content" often enough to cost manual re-runs.
+#
+# Run after android-actions/setup-android (needs ANDROID_HOME and sdkmanager on PATH).
+# The cache is saved right after a successful install, so a later failure in the job still
+# leaves it warm. Caches saved on main are readable by every PR; a PR's own save stays in it.
+name: Android NDK (cached)
+description: Restore or install the NDK version pinned in ezkey_mobile/android/build.gradle.
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve NDK version and path
+      id: ndk
+      shell: bash
+      run: |
+        version="$(sed -n 's/^[[:space:]]*ndkVersion[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' ezkey_mobile/android/build.gradle | head -n1)"
+        if [ -z "$version" ]; then
+          echo "::error::ndkVersion not found in ezkey_mobile/android/build.gradle"
+          exit 1
+        fi
+        sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+        if [ -z "$sdk" ]; then
+          echo "::error::ANDROID_HOME is not set; run android-actions/setup-android first"
+          exit 1
+        fi
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+        echo "dir=$sdk/ndk/$version" >> "$GITHUB_OUTPUT"
+
+    - name: Restore NDK cache
+      id: restore
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      with:
+        path: ${{ steps.ndk.outputs.dir }}
+        key: ${{ runner.os }}-android-ndk-${{ steps.ndk.outputs.version }}
+
+    - name: Install NDK with retry
+      if: steps.restore.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        NDK_VERSION: ${{ steps.ndk.outputs.version }}
+        NDK_DIR: ${{ steps.ndk.outputs.dir }}
+      run: |
+        # Three attempts of at most 5 minutes each (a warm-runner install takes ~20 s): the worst
+        # case (~16 min) stays well inside the 30-minute android-jvm-unit-tests timeout.
+        sdk="$(dirname "$(dirname "${NDK_DIR}")")"
+        log="${RUNNER_TEMP}/sdkmanager-ndk.log"
+        for attempt in 1 2 3; do
+          echo "Installing ndk;${NDK_VERSION} (attempt ${attempt}/3)"
+          if timeout 300 sdkmanager --install "ndk;${NDK_VERSION}" > "$log" 2>&1 \
+            && grep -q "^Pkg.Revision *= *${NDK_VERSION}$" "${NDK_DIR}/source.properties" 2>/dev/null; then
+            echo "NDK ${NDK_VERSION} installed in ${NDK_DIR}"
+            exit 0
+          fi
+          echo "::warning::NDK install attempt ${attempt} failed; removing partial files"
+          tail -n 20 "$log" || true
+          # Drop the partial NDK and sdkmanager's download staging so the next attempt starts clean.
+          rm -rf "${NDK_DIR}" "${sdk}/.temp" "${sdk}/.downloadIntermediates"
+          [ "$attempt" -lt 3 ] && sleep $((attempt * 20))
+        done
+        echo "::error::NDK ${NDK_VERSION} install failed after 3 attempts"
+        exit 1
+
+    - name: Save NDK cache
+      if: steps.restore.outputs.cache-hit != 'true'
+      # A parallel job may have saved the same key first; that is not a failure.
+      continue-on-error: true
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      with:
+        path: ${{ steps.ndk.outputs.dir }}
+        key: ${{ steps.restore.outputs.cache-primary-key }}
