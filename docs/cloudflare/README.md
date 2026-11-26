@@ -11,6 +11,7 @@ This directory holds **workflow notes, scope, and time-horizon planning** for us
 
 | Topic | Document |
 |-------|----------|
+| **Edge posture: header ownership per hostname, free-plan inventory, tokens, read-only review** | **[edge-posture.md](edge-posture.md)** |
 | Proxies, client IP (`CF-Connecting-IP`), rate limiting context | [OPERATIONAL.md](../OPERATIONAL.md) |
 | Admin UI CSP, split UI/API deployment, mirroring headers at the edge | [admin-ui-security.md](../admin-ui-security.md) |
 | Admin UI on Cloudflare Pages (build, CORS on API, Wrangler, edge headers) | [admin-ui-pages.md](admin-ui-pages.md) |
@@ -32,6 +33,7 @@ Wrangler deploy scripts source a gitignored **`.env`** at the **repository root*
 | [cleanup-pages-deployments.sh](../../scripts/cloudflare/cleanup-pages-deployments.sh) | **Age-aware** cleanup of Pages **preview** deployments (default dry-run, >24h, both `ezkey-org` and `methodology-ezkey-org`). Use `--profile prudent` for 7d, `--apply` to delete, `--env production` for production history (with safeguards). |
 | [cleanup-ezkey-org-previews.sh](../../scripts/cloudflare/cleanup-ezkey-org-previews.sh) | Legacy: list/delete **all** preview deployments for `ezkey-org` (no age filter). Prefer `cleanup-pages-deployments.sh`. |
 | [cleanup-methodology-previews.sh](../../scripts/cloudflare/cleanup-methodology-previews.sh) | Legacy: same as above for `methodology-ezkey-org`. Prefer `cleanup-pages-deployments.sh`. |
+| [audit-readonly.sh](../../scripts/cloudflare/audit-readonly.sh) | Read-only review of both zones and the live headers against [edge-posture.md](edge-posture.md) (PASS / DRIFT / INFO / SKIP). GET only, `CLOUDFLARE_AUDIT_TOKEN`; `--headers-only` needs no token. |
 | [upload-auth-api-schema.sh](../../scripts/cloudflare/upload-auth-api-schema.sh) | List, upload, or delete Auth API schemas on `ezkey.online` (`--list` / `--upload` / `--delete <id>`). Requires `CLOUDFLARE_API_SHIELD_TOKEN`. Defaults: community artifact, schema `ezkey-auth-api-community`. Does not use Wrangler or the Pages token. |
 | [upload-auth-api-schema-community.sh](../../scripts/cloudflare/upload-auth-api-schema-community.sh) | Thin alias of `upload-auth-api-schema.sh` (same community defaults). Upload does not change mitigation; zone posture on `ezkey.online` is **Block**. |
 | [upload-integration-api-schema.sh](../../scripts/cloudflare/upload-integration-api-schema.sh) | List, upload, or delete Integration API schemas on `ezkey.online` (`--list` / `--upload` / `--delete <id>`). Same shield token. Refuses to delete the Auth schema. |
