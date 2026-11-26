@@ -10,8 +10,14 @@
 
 package org.ezkey.security;
 
+import static org.ezkey.util.ScheduledJobTransactions.markCurrentTransactionRollbackOnly;
+import static org.ezkey.util.ScheduledJobTransactions.markRollbackOnlyIfAlreadyDoomed;
+
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -30,6 +36,7 @@ import org.ezkey.security.exception.KeysetCasConflictException;
 import org.ezkey.security.exception.PendingEncryptionKeyExistsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.Order;
@@ -38,10 +45,10 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.NoTransactionException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.interceptor.TransactionAspectSupport;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
@@ -81,6 +88,16 @@ public class KeyRotationService {
 
   private static final Logger logger = LoggerFactory.getLogger(KeyRotationService.class);
 
+  /**
+   * Waits between failed promotion ticks during a keyset storage outage (#1536): the first failure
+   * retries on the next regular tick, the second waits 1 minute, every later one 5 minutes. Reset
+   * by the first tick that completes without error. Per-node, in-memory state (a restart or the
+   * other HA node may try once sooner; accepted, adopters run one node or a two-node HA pair).
+   */
+  private static final Duration[] PROMOTION_FAILURE_BACKOFF = {
+    Duration.ZERO, Duration.ofMinutes(1), Duration.ofMinutes(5)
+  };
+
   private final KeyManagementOperations keyManagementOperations;
   private final EncryptionKeyRepository keyRepository;
   private final TinkProperties properties;
@@ -88,7 +105,26 @@ public class KeyRotationService {
   private final EncryptionKeyMigrationScopeService migrationScopeService;
   private final KeyUsageVerificationService keyUsageVerificationService;
   private final TransactionTemplate startupSyncTransaction;
+  private final Clock clock;
 
+  /** Consecutive failed promotion ticks on this node; written by the scheduler thread only. */
+  private volatile int consecutivePromotionFailures;
+
+  /** Earliest start of the next promotion attempt after a failure; {@code null} when healthy. */
+  private volatile Instant nextPromotionAttemptAt;
+
+  /**
+   * Creates the service with the system UTC clock.
+   *
+   * @param keyManagementOperations Tink keyset operations
+   * @param keyRepository key metadata repository
+   * @param properties encryption and rotation settings
+   * @param auditLogService audit writer
+   * @param migrationScopeService re-encryption scope baseline on demotion
+   * @param keyUsageVerificationService key usage checks before cleanup
+   * @param transactionManager transaction manager for the startup sync
+   */
+  @Autowired
   public KeyRotationService(
       KeyManagementOperations keyManagementOperations,
       EncryptionKeyRepository keyRepository,
@@ -97,6 +133,28 @@ public class KeyRotationService {
       EncryptionKeyMigrationScopeService migrationScopeService,
       KeyUsageVerificationService keyUsageVerificationService,
       PlatformTransactionManager transactionManager) {
+    this(
+        keyManagementOperations,
+        keyRepository,
+        properties,
+        auditLogService,
+        migrationScopeService,
+        keyUsageVerificationService,
+        transactionManager,
+        Clock.systemUTC());
+  }
+
+  /** Test constructor: same as the Spring one with a chosen clock for the promotion backoff. */
+  KeyRotationService(
+      KeyManagementOperations keyManagementOperations,
+      EncryptionKeyRepository keyRepository,
+      TinkProperties properties,
+      AuditLogService auditLogService,
+      EncryptionKeyMigrationScopeService migrationScopeService,
+      KeyUsageVerificationService keyUsageVerificationService,
+      PlatformTransactionManager transactionManager,
+      Clock clock) {
+    this.clock = clock;
     this.keyManagementOperations = keyManagementOperations;
     this.keyRepository = keyRepository;
     this.properties = properties;
@@ -244,18 +302,22 @@ public class KeyRotationService {
       return; // Not initialized
     }
 
+    Instant tickStart = clock.instant();
+    Instant retryAt = nextPromotionAttemptAt;
+    if (retryAt != null && tickStart.isBefore(retryAt)) {
+      logger.debug("Pending key promotion in failure backoff until {}", retryAt);
+      return;
+    }
+
     try {
       List<EncryptionKey> pendingKeys =
           keyRepository.findPendingKeysReadyForPromotion(OffsetDateTime.now());
-
-      if (pendingKeys.isEmpty()) {
-        return; // No pending keys ready
-      }
 
       // Should only be one, but handle multiple defensively
       for (EncryptionKey pendingKey : pendingKeys) {
         promotePendingToPrimary(pendingKey);
       }
+      clearPromotionBackoffAfterCommit();
     } catch (KeysetCasConflictException e) {
       if (isLostCasRace(e)) {
         // HA: another node changed the keyset first; benign, retried on the next tick (#1018).
@@ -265,13 +327,66 @@ public class KeyRotationService {
                 + " next tick: {}",
             e.getMessage());
       } else {
-        logger.error("Failed to check/promote pending keys: {}", e.getMessage());
-        logger.debug("Pending key promotion error", e);
+        recordPromotionFailure(tickStart, e);
       }
     } catch (DataAccessException | IllegalStateException e) {
-      logger.error("Failed to check/promote pending keys: {}", e.getMessage());
-      logger.debug("Pending key promotion error", e);
+      recordPromotionFailure(tickStart, e);
     }
+  }
+
+  /**
+   * Logs a failed promotion tick at ERROR and schedules the next attempt (#1536). The audit row,
+   * when there is one, was written by {@link #promotePendingToPrimary(EncryptionKey)}; the backoff
+   * bounds how many such rows and ERROR lines one outage produces (about 300 a day instead of
+   * 17,000).
+   */
+  private void recordPromotionFailure(Instant tickStart, RuntimeException e) {
+    // Any of these failures may come from a repository call that already doomed the job
+    // transaction; roll back quietly instead of an UnexpectedRollbackException (#1537).
+    markCurrentTransactionRollbackOnly();
+    int failures = consecutivePromotionFailures + 1;
+    consecutivePromotionFailures = failures;
+    Duration wait =
+        PROMOTION_FAILURE_BACKOFF[Math.min(failures, PROMOTION_FAILURE_BACKOFF.length) - 1];
+    nextPromotionAttemptAt = tickStart.plus(wait);
+    logger.error(
+        "Failed to check/promote pending keys (consecutive failure {}; next attempt {}): {}",
+        failures,
+        wait.isZero() ? "on the next tick" : "in " + wait.toMinutes() + " min",
+        e.getMessage());
+    logger.debug("Pending key promotion error", e);
+  }
+
+  /**
+   * Ends a promotion backoff once the tick's transaction has committed (#1536), so a failure at
+   * commit time does not report a recovery. Immediate outside a synchronized transaction.
+   */
+  private void clearPromotionBackoffAfterCommit() {
+    if (consecutivePromotionFailures == 0) {
+      return;
+    }
+    if (TransactionSynchronizationManager.isSynchronizationActive()) {
+      TransactionSynchronizationManager.registerSynchronization(
+          new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+              clearPromotionBackoff();
+            }
+          });
+    } else {
+      clearPromotionBackoff();
+    }
+  }
+
+  private void clearPromotionBackoff() {
+    int failures = consecutivePromotionFailures;
+    if (failures > 0) {
+      logger.info(
+          "Pending key promotion check succeeded after {} consecutive failure(s); backoff cleared",
+          failures);
+    }
+    consecutivePromotionFailures = 0;
+    nextPromotionAttemptAt = null;
   }
 
   /**
@@ -444,7 +559,7 @@ public class KeyRotationService {
 
       if (isRotationDue()) {
         logger.info("✅ Rotation is due, performing key rotation...");
-        introduceNewKey("SCHEDULED_JOB");
+        introduceScheduledKey();
         cleanupOldKeys();
       } else {
         logger.debug("Rotation not due yet, skipping");
@@ -468,7 +583,33 @@ public class KeyRotationService {
         | IOException
         | DataAccessException
         | IllegalStateException e) {
+      // A cleanup failure from a repository call has already doomed the transaction: roll back
+      // quietly (#1537). Any other cleanup failure still commits the new key, as before.
+      markRollbackOnlyIfAlreadyDoomed();
       recordScheduledRotationFailure(e);
+    }
+  }
+
+  /**
+   * Introduces the scheduled key; on failure, marks the job transaction rollback-only before
+   * rethrowing (#1537). A repository failure inside {@code introduceNewKey} has already marked the
+   * outer transaction rollback-only; {@link #checkAndRotate()} catches and returns, so without the
+   * local flag the commit would throw {@code UnexpectedRollbackException} (a second, misleading
+   * ERROR from the scheduler). Any introduction failure rolls the run back, like {@code POST
+   * /rotate} ({@code rollbackFor = Exception.class}). A {@link #cleanupOldKeys()} failure after a
+   * successful introduction keeps the new key unless a repository call already doomed the
+   * transaction (then the rollback is now quiet). {@link PendingEncryptionKeyExistsException} is a
+   * skip, not a failure, and is left alone.
+   */
+  private void introduceScheduledKey() throws GeneralSecurityException, IOException {
+    try {
+      introduceNewKey("SCHEDULED_JOB");
+    } catch (GeneralSecurityException
+        | IOException
+        | DataAccessException
+        | IllegalStateException e) {
+      markCurrentTransactionRollbackOnly();
+      throw e;
     }
   }
 
@@ -497,22 +638,6 @@ public class KeyRotationService {
    */
   private static boolean isLostCasRace(KeysetCasConflictException e) {
     return e.getCause() instanceof OptimisticLockingFailureException;
-  }
-
-  /**
-   * Rolls back the scheduled job's transaction quietly after a lost CAS race. A Hibernate
-   * {@code @Version} conflict raised through the repository proxy already marks the outer
-   * transaction rollback-only; returning normally would then fail the commit with {@code
-   * UnexpectedRollbackException} (an ERROR with stack trace from the scheduler). A local
-   * rollback-only flag makes the commit a silent rollback. Nothing outside a proxied transaction
-   * (direct call, unit test) needs it.
-   */
-  private static void markCurrentTransactionRollbackOnly() {
-    try {
-      TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
-    } catch (NoTransactionException e) {
-      logger.debug("No proxied transaction to mark rollback-only after lost CAS race");
-    }
   }
 
   /**

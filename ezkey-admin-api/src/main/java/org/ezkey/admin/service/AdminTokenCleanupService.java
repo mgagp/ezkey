@@ -10,6 +10,8 @@
 
 package org.ezkey.admin.service;
 
+import static org.ezkey.util.ScheduledJobTransactions.markRollbackOnlyIfAlreadyDoomed;
+
 import java.time.OffsetDateTime;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.ezkey.admin.config.AdminTokenCleanupProperties;
@@ -117,6 +119,10 @@ public class AdminTokenCleanupService {
       }
 
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
+      // A failed repository call has already doomed the job transaction: roll back quietly instead
+      // of a second ERROR (UnexpectedRollbackException) from the scheduler (#1537). Other failures
+      // keep committing what the run did.
+      markRollbackOnlyIfAlreadyDoomed();
       logger.error("❌ Error during token cleanup: {}", e.getMessage(), e);
     }
   }

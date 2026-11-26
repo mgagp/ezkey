@@ -168,6 +168,13 @@ Configure alerts for:
 - Missing audit logs
 - Keyset blob persist failure (a lost CAS race alone is a WARN, not an alert; see step 4)
 
+During a keyset storage outage the pending-key promotion job backs off on each node: the first
+failure retries on the next tick (every 5 s by default), the second after 1 minute, then every 5 minutes until a tick
+succeeds (one INFO line marks the recovery). Expect one `KEY_PROMOTED_PRIMARY` / `ERROR` audit row
+and one ERROR line per attempt, about 300 a day per node instead of about 17,000 (#1536). The state
+is in memory per node: a restart, or the other node of a two-node HA pair, may try sooner. A failed
+scheduled rotation logs one ERROR and one `REENCRYPTION_FAILED` row and rolls back quietly (#1537).
+
 ### Manual Key Rotation
 
 #### Prerequisites

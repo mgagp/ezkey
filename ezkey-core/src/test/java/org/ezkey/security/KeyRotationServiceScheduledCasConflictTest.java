@@ -16,7 +16,11 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -25,7 +29,12 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import java.io.IOException;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.List;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
@@ -66,7 +75,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  * IllegalStateException}, and a persistence outage (an {@code IOException} from {@code
  * TinkKeyManager} since #1506), keeps the ERROR log and an ERROR audit event. The transactional
  * cases check that the job rolls back quietly instead of failing the commit with {@code
- * UnexpectedRollbackException}.
+ * UnexpectedRollbackException}. Also covers the promotion backoff during a keyset storage outage
+ * (#1536) and the rollback-only mark on a failed scheduled introduction (#1537).
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("KeyRotationService scheduled lost CAS race")
@@ -82,6 +92,8 @@ class KeyRotationServiceScheduledCasConflictTest {
   @Mock private KeyUsageVerificationService keyUsageVerificationService;
   @Mock private PlatformTransactionManager transactionManager;
 
+  private final TinkProperties properties = new TinkProperties();
+  private final MutableClock clock = new MutableClock(Instant.parse("2026-11-26T12:00:00Z"));
   private KeyRotationService service;
   private ListAppender<ILoggingEvent> logAppender;
   private Logger serviceLogger;
@@ -92,11 +104,12 @@ class KeyRotationServiceScheduledCasConflictTest {
         new KeyRotationService(
             keyManagementOperations,
             keyRepository,
-            new TinkProperties(),
+            properties,
             auditLogService,
             migrationScopeService,
             keyUsageVerificationService,
-            transactionManager);
+            transactionManager,
+            clock);
     serviceLogger = (Logger) LoggerFactory.getLogger(KeyRotationService.class);
     logAppender = new ListAppender<>();
     logAppender.start();
@@ -319,6 +332,214 @@ class KeyRotationServiceScheduledCasConflictTest {
         "the operator message must reach the controller unchanged");
     assertEquals(0, txManager.commits, "a failed rotation must not commit");
     assertEquals(1, txManager.rollbacks, "a failed rotation must roll back");
+  }
+
+  @Test
+  @DisplayName(
+      "#1536 checkAndPromotePendingKeys: repeated persist failures back off next tick, 1 min, 5"
+          + " min; a clean tick resets")
+  void checkAndPromotePendingKeys_repeatedPersistFailures_backOffThenReset() throws Exception {
+    EncryptionKey pending =
+        new EncryptionKey(
+            PENDING_KEY_ID, KeyStatus.PENDING, "AES256_GCM", OffsetDateTime.now(), "TEST");
+    when(keyManagementOperations.isInitialized()).thenReturn(true);
+    when(keyRepository.findPendingKeysReadyForPromotion(any())).thenReturn(List.of(pending));
+    when(keyManagementOperations.promoteToPrimary(PENDING_KEY_ID))
+        .thenThrow(new IOException("keyset could not be saved"));
+
+    // Failure 1, then the next regular tick retries (5 s): failure 2, backoff 1 min.
+    tickAfter(Duration.ZERO);
+    tickAfter(Duration.ofSeconds(5));
+    assertAttempts(2);
+    // Inside the 1 min window: skipped.
+    tickAfter(Duration.ofSeconds(5));
+    tickAfter(Duration.ofSeconds(50));
+    assertAttempts(2);
+    // 1 min after failure 2: failure 3, backoff 5 min.
+    tickAfter(Duration.ofSeconds(5));
+    assertAttempts(3);
+    tickAfter(Duration.ofMinutes(4));
+    assertAttempts(3);
+    // 5 min after failure 3: failure 4, still 5 min (the cap).
+    tickAfter(Duration.ofMinutes(1));
+    assertAttempts(4);
+    tickAfter(Duration.ofMinutes(4).plusSeconds(55));
+    assertAttempts(4);
+
+    // One audit row and one ERROR line per real attempt, none for skipped ticks.
+    verify(auditLogService, times(4)).log(any());
+    List<ILoggingEvent> errors =
+        events(Level.ERROR).stream()
+            .filter(e -> e.getFormattedMessage().contains("Failed to check/promote pending"))
+            .toList();
+    assertEquals(4, errors.size(), "one scheduler ERROR per real attempt");
+    assertTrue(errors.get(0).getFormattedMessage().contains("next attempt on the next tick"));
+    assertTrue(errors.get(1).getFormattedMessage().contains("next attempt in 1 min"));
+    assertTrue(errors.get(3).getFormattedMessage().contains("next attempt in 5 min"));
+
+    // Storage back: the next due attempt promotes and clears the backoff.
+    doReturn(PRIMARY_KEY_ID).when(keyManagementOperations).promoteToPrimary(PENDING_KEY_ID);
+    tickAfter(Duration.ofSeconds(5));
+    assertAttempts(5);
+    assertTrue(
+        events(Level.INFO).stream()
+            .anyMatch(e -> e.getFormattedMessage().contains("after 4 consecutive failure(s)")),
+        "recovery must be visible once at INFO");
+
+    // A new failure after the reset starts the sequence again: the next tick retries.
+    doThrow(new IOException("keyset could not be saved"))
+        .when(keyManagementOperations)
+        .promoteToPrimary(PENDING_KEY_ID);
+    tickAfter(Duration.ofSeconds(5));
+    tickAfter(Duration.ofSeconds(5));
+    assertAttempts(7);
+  }
+
+  @Test
+  @DisplayName("#1536 a lost CAS race neither starts nor resets the promotion backoff")
+  void checkAndPromotePendingKeys_lostCas_doesNotBackOff() throws Exception {
+    EncryptionKey pending =
+        new EncryptionKey(
+            PENDING_KEY_ID, KeyStatus.PENDING, "AES256_GCM", OffsetDateTime.now(), "TEST");
+    when(keyManagementOperations.isInitialized()).thenReturn(true);
+    when(keyRepository.findPendingKeysReadyForPromotion(any())).thenReturn(List.of(pending));
+    when(keyManagementOperations.promoteToPrimary(PENDING_KEY_ID)).thenThrow(lostRace());
+
+    for (int i = 0; i < 4; i++) {
+      tickAfter(Duration.ofSeconds(5));
+    }
+
+    assertAttempts(4);
+  }
+
+  @Test
+  @DisplayName(
+      "#1537 checkAndRotate in a transaction: persist outage logs one ERROR, audits, rolls back"
+          + " quietly")
+  void checkAndRotate_persistOutageInTransaction_errorAuditAndQuietRollback() throws Exception {
+    givenRotationDue();
+    RecordingTransactionManager txManager = new RecordingTransactionManager();
+    when(keyManagementOperations.addKeyWithoutPromotion()).thenAnswer(persistOutage(txManager));
+
+    KeyRotationService proxied = transactionalProxy(txManager);
+
+    assertDoesNotThrow(proxied::checkAndRotate, "commit must not raise UnexpectedRollback");
+    assertEquals(0, txManager.commits, "a failed rotation must not commit");
+    assertEquals(1, txManager.rollbacks, "a failed rotation must roll back the job transaction");
+    ArgumentCaptor<AuditLog> audit = ArgumentCaptor.forClass(AuditLog.class);
+    verify(auditLogService).log(audit.capture());
+    assertEquals(EventType.REENCRYPTION_FAILED, audit.getValue().getEventType());
+    assertEquals(EventStatus.ERROR, audit.getValue().getEventStatus());
+    assertEquals(1, events(Level.ERROR).size(), "one ERROR for one failed run");
+  }
+
+  @Test
+  @DisplayName(
+      "#1537 checkAndRotate in a transaction: a cleanup failure after a successful introduction"
+          + " still commits the new key")
+  void checkAndRotate_cleanupFailureAfterIntroduction_commits() throws Exception {
+    givenRotationDue();
+    RecordingTransactionManager txManager = new RecordingTransactionManager();
+    when(keyManagementOperations.addKeyWithoutPromotion()).thenReturn(PENDING_KEY_ID);
+    when(keyRepository.findKeysEligibleForDisable(any()))
+        .thenThrow(new IllegalStateException("cleanup check failed"));
+
+    KeyRotationService proxied = transactionalProxy(txManager);
+
+    assertDoesNotThrow(proxied::checkAndRotate);
+    assertEquals(1, txManager.commits, "a cleanup failure must not roll the new key back");
+    assertEquals(0, txManager.rollbacks);
+    ArgumentCaptor<AuditLog> audit = ArgumentCaptor.forClass(AuditLog.class);
+    verify(auditLogService, atLeastOnce()).log(audit.capture());
+    assertTrue(
+        audit.getAllValues().stream()
+            .anyMatch(a -> a.getEventType() == EventType.REENCRYPTION_FAILED),
+        "the cleanup failure keeps its ERROR audit row");
+  }
+
+  @Test
+  @DisplayName(
+      "#1537 checkAndRotate in a transaction: a repository failure in cleanup rolls back quietly")
+  void checkAndRotate_cleanupRepositoryFailure_rollsBackQuietly() throws Exception {
+    givenRotationDue();
+    RecordingTransactionManager txManager = new RecordingTransactionManager();
+    when(keyManagementOperations.addKeyWithoutPromotion()).thenReturn(PENDING_KEY_ID);
+    when(keyRepository.findKeysEligibleForDisable(any()))
+        .thenAnswer(_ -> {
+          // Like a query through the repository proxy: the participant dooms the transaction.
+          new TransactionTemplate(txManager)
+              .executeWithoutResult(_ -> {
+                throw new DataAccessResourceFailureException("connection refused");
+              });
+          return List.of();
+        });
+
+    KeyRotationService proxied = transactionalProxy(txManager);
+
+    assertDoesNotThrow(proxied::checkAndRotate, "commit must not raise UnexpectedRollback");
+    assertEquals(0, txManager.commits);
+    assertEquals(1, txManager.rollbacks);
+  }
+
+  @Test
+  @DisplayName(
+      "#1536 checkAndPromotePendingKeys in a transaction: a failed find rolls back quietly and"
+          + " starts the backoff")
+  void checkAndPromotePendingKeys_findFailureInTransaction_quietRollback() throws Exception {
+    when(keyManagementOperations.isInitialized()).thenReturn(true);
+    RecordingTransactionManager txManager = new RecordingTransactionManager();
+    when(keyRepository.findPendingKeysReadyForPromotion(any()))
+        .thenAnswer(_ -> {
+          new TransactionTemplate(txManager)
+              .executeWithoutResult(_ -> {
+                throw new DataAccessResourceFailureException("connection refused");
+              });
+          return List.of();
+        });
+
+    KeyRotationService proxied = transactionalProxy(txManager);
+
+    assertDoesNotThrow(proxied::checkAndPromotePendingKeys);
+    assertEquals(0, txManager.commits);
+    assertEquals(1, txManager.rollbacks);
+    assertEquals(1, events(Level.ERROR).size(), "one ERROR for one failed tick");
+  }
+
+  private void tickAfter(Duration elapsed) {
+    clock.advance(elapsed);
+    assertDoesNotThrow(() -> service.checkAndPromotePendingKeys());
+  }
+
+  private void assertAttempts(int expected) throws Exception {
+    verify(keyManagementOperations, times(expected)).promoteToPrimary(PENDING_KEY_ID);
+  }
+
+  /** Clock the backoff test moves by hand. */
+  private static final class MutableClock extends Clock {
+    private Instant now;
+
+    MutableClock(Instant start) {
+      this.now = start;
+    }
+
+    void advance(Duration d) {
+      now = now.plus(d);
+    }
+
+    @Override
+    public ZoneId getZone() {
+      return ZoneOffset.UTC;
+    }
+
+    @Override
+    public Clock withZone(ZoneId zone) {
+      return this;
+    }
+
+    @Override
+    public Instant instant() {
+      return now;
+    }
   }
 
   private KeyRotationService transactionalProxy(PlatformTransactionManager txManager) {

@@ -10,6 +10,8 @@
 
 package org.ezkey.audit.integrity;
 
+import static org.ezkey.util.ScheduledJobTransactions.markRollbackOnlyIfAlreadyDoomed;
+
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
@@ -178,6 +180,10 @@ public class AuditChainScheduler {
       jobLastRunService.recordSuccess(
           ScheduledJobKey.AUDIT_CHAIN_CHECKPOINT, "Lookback " + lookbackMinutes + " min");
     } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
+      // A failed repository call has already doomed the job transaction: roll back quietly instead
+      // of a second ERROR (UnexpectedRollbackException) from the scheduler (#1537). Other failures
+      // keep committing what the run did.
+      markRollbackOnlyIfAlreadyDoomed();
       logger.error("Failed to create audit chain checkpoints: {}", e.getMessage(), e);
     }
   }
