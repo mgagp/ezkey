@@ -28,7 +28,9 @@ obsolete headers (`X-XSS-Protection`, `Expect-CT`) on top of what the repo decla
 
 Zone HSTS today: **ezkey.org** enabled with max-age 0 (target: 31536000, no `includeSubDomains`, no
 preload; recorded in [`ezkey-org-site.md`](ezkey-org-site.md), #1453). **ezkey.online** max-age
-7776000 with `includeSubDomains` **and preload**: decision pending (lot A).
+7776000 with `includeSubDomains` and preload. **Decision (Marc, 2026-11-26, #1553):** keep
+`includeSubDomains` (every ezkey.online hostname is HTTPS behind Cloudflare), drop preload (hard to
+undo, no submission to the preload list planned); max-age unchanged.
 
 ## Free plan inventory
 
@@ -39,8 +41,8 @@ Status: **Used**, **Not yet** (worth doing, open lot), **No** (decided against, 
 |---|---|---|---|
 | Proxied DNS, Universal SSL, SSL mode Full (strict) | Used | Used | Origin CA on Caddy for ezkey.online. |
 | Always Use HTTPS, HTTP/3, ECH; 0-RTT off | Used | Used | 0-RTT stays off (replay risk on auth POSTs). |
-| Minimum TLS at the edge | 1.3 | 1.2 | **Decide** (lot A): 1.3 on ezkey.online matches Caddy (1.3 only). |
-| HSTS (zone) | Drift (max-age 0) | Used (preload) | Lot A. |
+| Minimum TLS at the edge | 1.3 | 1.2 → **1.3** | **Decision (Marc, 2026-11-26, #1553):** 1.3 on both zones, matching Caddy (1.3 only); lot A applies it. |
+| HSTS (zone) | Drift (max-age 0) | Drift (preload to drop) | Lot A. |
 | DNSSEC | Not yet | Used | Lot D (needs the DS record at the registrar). |
 | DDoS L7, Managed Free Ruleset, normalization | Used | Used | Always on. |
 | Custom WAF rules (5 on Free) | 1 (country block KP, RU, SA) | 0 | Lot B: rules for the API hosts on ezkey.online. |

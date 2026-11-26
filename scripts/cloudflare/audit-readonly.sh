@@ -172,14 +172,17 @@ zone_check() { # zone
     s() { jq -r --arg k "$1" '.result[] | select(.id==$k) | .value | tostring' "$body"; }
     if [[ "$(s ssl)" == strict ]]; then report PASS "$zone SSL mode" strict; else report DRIFT "$zone SSL mode" "want strict, got $(s ssl)"; fi
     if [[ "$(s always_use_https)" == on ]]; then report PASS "$zone Always Use HTTPS" on; else report DRIFT "$zone Always Use HTTPS" "$(s always_use_https)"; fi
-    report INFO "$zone min TLS (edge)" "$(s min_tls_version)"
+    if [[ "$(s min_tls_version)" == 1.3 ]]; then report PASS "$zone min TLS (edge)" 1.3
+    else report DRIFT "$zone min TLS (edge)" "want 1.3, got $(s min_tls_version)"; fi
     hsts="$(jq -c '.result[] | select(.id=="security_header") | .value.strict_transport_security' "$body")"
     if [[ "$zone" == ezkey.org ]]; then
       if jq -e '.enabled and .max_age==31536000 and (.include_subdomains|not) and (.preload|not)' <<<"$hsts" >/dev/null; then
         report PASS "$zone zone HSTS" "$hsts"
       else report DRIFT "$zone zone HSTS" "want 1y, no subdomains, no preload; got $hsts"; fi
     else
-      report INFO "$zone zone HSTS" "$hsts"
+      if jq -e '.enabled and .max_age>=7776000 and .include_subdomains and (.preload|not)' <<<"$hsts" >/dev/null; then
+        report PASS "$zone zone HSTS" "$hsts"
+      else report DRIFT "$zone zone HSTS" "want >=90d, includeSubDomains, no preload; got $hsts"; fi
     fi
   else report SKIP "$zone settings" "HTTP $st"; fi
 
