@@ -38,6 +38,7 @@ import org.ezkey.util.LogSanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 
 /**
  * HTTP filter for applying rate limiting to admin authentication endpoints.
@@ -295,7 +296,7 @@ public class AdminRateLimitFilter implements Filter {
           "passwordless-wait/cancel body exceeds {} bytes from IP {}",
           MAX_WAIT_BODY_BYTES,
           clientIdForLog);
-      res.setStatus(HttpStatus.PAYLOAD_TOO_LARGE.value());
+      res.setStatus(HttpStatusCode.valueOf(413).value());
       return;
     }
 

@@ -364,7 +364,7 @@ class EnrollmentQrDeliveryServiceTest {
   void logsStayClean() {
     Logger logger = (Logger) LoggerFactory.getLogger(EnrollmentQrDeliveryService.class);
     ch.qos.logback.classic.Level previous = logger.getLevel();
-    logger.setLevel(ch.qos.logback.classic.Level.ALL);
+    logger.setLevel(ch.qos.logback.classic.Level.TRACE);
     ListAppender<ILoggingEvent> appender = new ListAppender<>();
     appender.start();
     logger.addAppender(appender);
