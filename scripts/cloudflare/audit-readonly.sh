@@ -154,7 +154,7 @@ fi
 cf_get() {
   local body="$OUT/api/$2.json"
   printf 'header = "Authorization: Bearer %s"\n' "$CLOUDFLARE_AUDIT_TOKEN" |
-    curl -sS -K - -X GET -o "$body" -w '%{http_code}' --max-time 30 "$CF_API$1" 2>/dev/null || echo 000
+    curl -sS -K - -X GET -o "$body" -w '%{http_code}' --max-time 30 "$CF_API$1" 2>/dev/null || true
 }
 
 echo
@@ -211,7 +211,8 @@ zone_check() { # zone
     else report INFO "$zone API Shield default mitigation" "$mit"; fi
   else report SKIP "$zone API Shield" "HTTP $st"; fi
   st="$(cf_get "/zones/$id/api_gateway/user_schemas" "schemas-$zone")"
-  [[ "$st" == 200 ]] && report INFO "$zone API Shield schemas" "$(jq -r '[.result[]?.name] | join(", ")' "$OUT/api/schemas-$zone.json")"
+  if [[ "$st" == 200 ]]; then report INFO "$zone API Shield schemas" "$(jq -r '[.result[]?.name] | join(", ")' "$OUT/api/schemas-$zone.json")"
+  else report SKIP "$zone API Shield schemas" "HTTP $st"; fi
 }
 
 for z in "${ZONES[@]}"; do zone_check "$z"; done

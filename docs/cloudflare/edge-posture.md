@@ -11,7 +11,7 @@ The origin IPv4 is never written here (see [`community-host.md`](../lightsail/co
 
 ## Header ownership
 
-**Rule (Marc, 2026-11-26):** one owner per header and per hostname. The repo owns application
+**Rule (Marc, 2026-11-26, #1553):** one owner per header and per hostname. The repo owns application
 headers (Pages `_headers`, or Caddy for the APIs). The zone owns only HSTS, because the zone
 setting replaces any origin or `_headers` value anyway. The managed transform **Add security
 headers** stays off: it adds `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy: same-origin` and two
@@ -102,7 +102,7 @@ target goes into the script (`expect_header` or the zone checks) in the same PR.
   with `curl`, so it does not depend on a CLI.
 - **`cf`**, Cloudflare's new CLI generated from the API schema: open beta since 2026-09-28. It does
   not cover Pages direct upload. Wrangler stays maintained for 18 months after the beta ends.
-- **Decision (2026-11-26):** no migration now. Re-evaluate at `cf` general availability: the impact
+- **Decision (2026-11-26, #1553):** no migration now. Re-evaluate at `cf` general availability: the impact
   is limited to the Wrangler calls in `scripts/cloudflare/deploy-*.sh` and `cleanup-*`, and to the
   Pages → Workers static assets question that `cf` raises.
 
