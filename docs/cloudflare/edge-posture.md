@@ -49,7 +49,7 @@ Status: **Used**, **Not yet** (worth doing, open lot), **No** (decided against, 
 | API Shield schema validation | exp1 leftovers (mitigation none) | Used (2 schemas, **block**) | [`auth-api-schema-validation.md`](auth-api-schema-validation.md), [`integration-api-schema-validation.md`](integration-api-schema-validation.md). |
 | Transform Rules (response headers) | 0 | 1 (Admin UI) | Lot A moves the Admin UI headers into the repo. |
 | Managed transforms | Add security headers **on** (drift), remove X-Powered-By on | all off | Lot A turns Add security headers off. |
-| Redirect rules | `www` → apex | `www.ezkey.online` → `https://ezkey.org` | Used. |
+| Redirect rules | `www` → apex | `www` → `https://ezkey.org` | Used. |
 | Origin lockdown: Lightsail firewall limited to Cloudflare IPv4 | — | Used | Verified 2026-11-26: the origin does not answer a direct connection. |
 | Authenticated Origin Pulls (zone-level, free) | Off | Off | Lot C: second layer behind the firewall. |
 | Page Shield (script monitor) | Off | Off | Not yet; low value while the Admin UI loads same-origin scripts only. |
