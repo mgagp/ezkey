@@ -7,7 +7,8 @@
 #   - Docker Engine + Compose plugin      (runs the ezkey-tests/clean-start stack)
 #   - fuse-overlayfs                      (Docker storage driver that works when
 #                                          the VM root is itself an overlay mount)
-#   - Temurin JDK 25 + Maven              (Java reactor build; project requires 25)
+#   - Temurin JDK 25                      (Java reactor build; project requires 25)
+#   - Apache Maven 3.9.11, pinned         (gate needs >= 3.9; apt ships 3.8.7)
 #   - Admin UI Node dependencies          (Vite dev server)
 #
 # Per-boot runtime concerns (starting dockerd, bringing up the stack) live in
@@ -30,7 +31,7 @@ sudo apt-get install "${APT_OPTS[@]}" \
   docker.io docker-compose-v2 fuse-overlayfs \
   wget ca-certificates gnupg
 
-echo "[install] Temurin JDK 25 + Maven (Adoptium apt repo)"
+echo "[install] Temurin JDK 25 (Adoptium apt repo)"
 sudo install -d -m 0755 /etc/apt/keyrings
 if [ ! -f /etc/apt/keyrings/adoptium.gpg ]; then
   wget -qO- https://packages.adoptium.net/artifactory/api/gpg/key/public \
@@ -40,7 +41,41 @@ fi
 echo "deb [signed-by=/etc/apt/keyrings/adoptium.gpg] https://packages.adoptium.net/artifactory/deb ${VERSION_CODENAME} main" \
   | sudo tee /etc/apt/sources.list.d/adoptium.list >/dev/null
 sudo apt-get update -qq
-sudo apt-get install "${APT_OPTS[@]}" temurin-25-jdk maven
+sudo apt-get install "${APT_OPTS[@]}" temurin-25-jdk
+
+# Maven: the distro package is 3.8.7, but flatten-maven-plugin and SpotBugs need
+# Maven >= 3.9 (docs/DEVELOPMENT.md). Pin an Apache binary, verify its sha512,
+# and put it ahead of /usr/bin on PATH. Bump version and checksum together; the
+# checksum is the one published next to the archive on archive.apache.org.
+MAVEN_VERSION=3.9.11
+MAVEN_SHA512=bcfe4fe305c962ace56ac7b5fc7a08b87d5abd8b7e89027ab251069faebee516b0ded8961445d6d91ec1985dfe30f8153268843c89aa392733d1a3ec956c9978
+MAVEN_HOME="/opt/apache-maven-${MAVEN_VERSION}"
+echo "[install] Apache Maven ${MAVEN_VERSION} (pinned, sha512-verified)"
+if [ ! -x "$MAVEN_HOME/bin/mvn" ]; then
+  MAVEN_TGZ="$(mktemp --suffix=.tar.gz)"
+  MAVEN_URLS=(
+    "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/${MAVEN_VERSION}/apache-maven-${MAVEN_VERSION}-bin.tar.gz"
+    "https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz"
+  )
+  MAVEN_OK=0
+  for url in "${MAVEN_URLS[@]}"; do
+    if wget -q --tries=3 --waitretry=5 -O "$MAVEN_TGZ" "$url" \
+      && echo "${MAVEN_SHA512}  ${MAVEN_TGZ}" | sha512sum -c --quiet -; then
+      MAVEN_OK=1
+      break
+    fi
+    echo "[install] WARN: Maven download or checksum failed from $url"
+  done
+  if [ "$MAVEN_OK" -ne 1 ]; then
+    rm -f "$MAVEN_TGZ"
+    echo "[install] ERROR: could not fetch a verified Apache Maven ${MAVEN_VERSION}" >&2
+    exit 1
+  fi
+  sudo tar -xzf "$MAVEN_TGZ" -C /opt
+  rm -f "$MAVEN_TGZ"
+fi
+# /usr/local/bin precedes /usr/bin, so this wins over any distro mvn.
+sudo ln -sfn "$MAVEN_HOME/bin/mvn" /usr/local/bin/mvn
 
 JAVA25="/usr/lib/jvm/temurin-25-jdk-amd64"
 echo "[install] make JDK 25 the default java/javac"
