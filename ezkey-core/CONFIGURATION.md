@@ -104,7 +104,9 @@ Admin-only materialization of the blob and of `ezkey_encryption_key` metadata:
 is the sole runtime source of truth across Admin/Auth/Integration (and lab crypto-api). On introduce,
 a new key stays `PENDING` for `rotation.sync-window-seconds` before promotion to `PRIMARY`, giving
 instances time to reload the updated keyset (async check ≤ 5 s in ADR-0008 / ADR-0016) while encrypt
-still uses the previous primary; Tink can decrypt with older ENABLED keys throughout. The shared
+still uses the previous primary. The check runs only on an encrypt or decrypt call: a node with no
+crypto traffic reloads on its next call, and that call still uses the keyset it had (#1551).
+Re-encryption reloads synchronously before it names a batch's target key (#1431); Tink can decrypt with older ENABLED keys throughout. The shared
 `encryption-secrets` volume holds **`master.key` and `audit-hmac.key` only** — not keyset-file
 authority.
 
@@ -173,7 +175,7 @@ and primary-key status may remain visible and is treated as non-secret operation
 | `ezkey.encryption.reencryption.batch-size` | `int` | `500` | optionnel | Records per batch. |
 | `ezkey.encryption.reencryption.throttle-ms` | `int` | `100` | optionnel | Delay in milliseconds between batches (prevents DB overload). |
 | `ezkey.encryption.reencryption.max-batches-per-run` | `int` | `100` | optionnel | Maximum batches processed per scheduled execution. |
-| `ezkey.encryption.reencryption.max-duration-minutes` | `int` | `60` | optionnel | Maximum wall-clock duration per execution in minutes. |
+| `ezkey.encryption.reencryption.max-duration-minutes` | `int` | `60` | optionnel | Maximum wall-clock duration per execution in minutes. At most 180 when re-encryption is enabled: startup fails above it (scheduler lock `PT4H` minus one hour, #1431). |
 | `ezkey.encryption.reencryption.auto-retry-failed` | `boolean` | `true` | optionnel | Automatically retry failed batches. |
 | `ezkey.encryption.reencryption.parallel-batch-workers` | `int` | `1` (Java) / Admin config **`4`** | optionnel | Parallel workers for distinct batches. Pair with `auth-attempt-shard-count` (`workers >= shards`). Enrollment is table-mutex serialized; auth-attempt shards run concurrently when sharding is on. |
 | `ezkey.encryption.reencryption.parallel-batch-queue-capacity` | `int` | `100` | optionnel | Queue capacity for the parallel executor (back-pressure). |

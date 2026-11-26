@@ -105,11 +105,24 @@ public class ReencryptionBatchCreationService {
     String column = target.column();
     List<ReencryptionBatch> created = new ArrayList<>();
 
-    List<ReencryptionBatch> anyActive =
-        batchRepository.findAnyActiveBatchesByTargetAndOldKey(table, column, oldKey.getKeyId());
-    if (!anyActive.isEmpty()) {
+    if (oldKey.getKeyId().equals(primaryKey.getKeyId())) {
+      // #1431: a node whose keyset is behind a peer's promotion still names the old key as
+      // primary. A batch from that key to itself skips every row as "already migrated" and
+      // completes with nothing done. Create nothing; the next run, on a fresh keyset, does.
+      logger.warn(
+          "Skipping re-encryption batch creation for {}.{}: old key {} is the keyset PRIMARY"
+              + " (keyset not yet synchronized with the promoted key)",
+          table,
+          column,
+          oldKey.getKeyId());
+      return created;
+    }
+
+    List<ReencryptionBatch> unfinished =
+        batchRepository.findNotCompletedBatchesByTargetAndOldKey(table, column, oldKey.getKeyId());
+    if (!unfinished.isEmpty()) {
       logger.debug(
-          "Active batch already exists for {}.{} with old key {}",
+          "Unfinished batch already exists for {}.{} with old key {}",
           table,
           column,
           oldKey.getKeyId());
@@ -253,11 +266,19 @@ public class ReencryptionBatchCreationService {
             .build());
   }
 
+  /**
+   * Resolves the keyset PRIMARY key, after reloading the keyset when a peer published a newer
+   * version (#1431: an idle node would otherwise name a demoted key as the batch target).
+   *
+   * @return the PRIMARY key row, or {@code null} when the keyset is not initialized or its primary
+   *     has no database row
+   */
   public EncryptionKey getPrimaryKeyFromKeyset() {
     if (!keyManagementOperations.isInitialized()) {
       logger.warn("Tink keyset not initialized, cannot determine PRIMARY key");
       return null;
     }
+    refreshKeysetIfStale();
 
     long primaryKeyId = keyManagementOperations.getCurrentPrimaryKeyId();
 
@@ -304,6 +325,14 @@ public class ReencryptionBatchCreationService {
     }
 
     return primaryKey;
+  }
+
+  /**
+   * Reloads the keyset when a peer published a newer version (#1431). Called before batches run so
+   * an idle node does not start re-encrypting with a demoted primary.
+   */
+  public void refreshKeysetIfStale() {
+    keyManagementOperations.refreshKeysetIfStale();
   }
 
   /**

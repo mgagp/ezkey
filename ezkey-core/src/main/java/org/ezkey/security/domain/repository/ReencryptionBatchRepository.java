@@ -123,22 +123,25 @@ public interface ReencryptionBatchRepository
       @Param("shardCount") Integer shardCount);
 
   /**
-   * Find any active batch (PENDING or IN_PROGRESS) for a target and old key, regardless of shard
+   * Find every batch that is not {@code COMPLETED} for a target and old key, regardless of shard
    * columns.
    *
    * <p>Used as a creation guard so an effective shard count that differs from a previous attempt
-   * cannot insert a second active set for the same migration target.
+   * cannot insert a second set for the same migration target. {@code FAILED} counts as unfinished
+   * (#1431): it is resumed, not duplicated, and one at max retries blocks new batches until an
+   * operator resumes it (fail-closed, same rule as key retirement in {@code
+   * KeyUsageVerificationService}).
    *
    * @param targetTable the target table name
    * @param targetColumn the target column name
    * @param oldKeyId the old encryption key ID
-   * @return list of active batches for the specified target and old key
+   * @return list of unfinished batches for the specified target and old key
    */
   @Query(
       "SELECT b FROM ReencryptionBatch b WHERE b.targetTable = :targetTable "
           + "AND b.targetColumn = :targetColumn AND b.oldKey.keyId = :oldKeyId "
-          + "AND b.status IN ('PENDING', 'IN_PROGRESS')")
-  List<ReencryptionBatch> findAnyActiveBatchesByTargetAndOldKey(
+          + "AND b.status <> 'COMPLETED'")
+  List<ReencryptionBatch> findNotCompletedBatchesByTargetAndOldKey(
       @Param("targetTable") String targetTable,
       @Param("targetColumn") String targetColumn,
       @Param("oldKeyId") Long oldKeyId);

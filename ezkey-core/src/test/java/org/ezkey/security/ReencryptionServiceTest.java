@@ -128,6 +128,12 @@ class ReencryptionServiceTest {
   @BeforeEach
   void setUp() {
     lenient().when(meterRegistryProvider.getIfAvailable()).thenReturn(null);
+    lenient()
+        .when(encryptionOperations.isEncrypted(anyString()))
+        .thenAnswer(inv -> ((String) inv.getArgument(0)).startsWith("ENC:"));
+    lenient()
+        .when(encryptionOperations.parseKeyIdFromPrefix(anyString()))
+        .thenAnswer(inv -> testPrefixKeyId(inv.getArgument(0)));
 
     recordCipher = new ReencryptionRecordCipher(encryptionOperations);
     targetQueryService =
@@ -377,6 +383,61 @@ class ReencryptionServiceTest {
     // Note: save() is no longer called here, records are batch saved in processBatch()
   }
 
+  @Test
+  @DisplayName(
+      "reencryptRecord() - #1431: key-id column follows the written prefix after a rotation")
+  void reencryptRecord_keyIdFollowsWrittenPrefixWhenPrimaryRotatedMidBatch() {
+    // The batch targets newKey (2222222222) but the primary rotated to 3333333333 meanwhile.
+    Enrollment enrollment = createMockEnrollment(123, "ENC:1111111111:encrypted-data");
+    when(encryptionOperations.decrypt("ENC:1111111111:encrypted-data")).thenReturn("pt");
+    when(encryptionOperations.encrypt("pt")).thenReturn("ENC:3333333333:reencrypted-data");
+
+    ReencryptionRecordCipher.ReencryptResult result = invokeReencryptRecord(batch, enrollment);
+
+    assertTrue(result.reencrypted());
+    assertEquals(3333333333L, enrollment.getIntegrationPrivateKeyEncryptionKeyId());
+  }
+
+  @Test
+  @DisplayName(
+      "reencryptRecord() - #1431: a row whose key-id column lies is corrected, not re-encrypted")
+  void reencryptRecord_alignsKeyIdColumnWithPrefix() {
+    // Left by an earlier batch: ciphertext under 3333333333, key-id column still the old key.
+    Enrollment enrollment = createMockEnrollment(123, "ENC:3333333333:data");
+    enrollment.setEncryptionKeyId("integration_private_key", oldKey.getKeyId());
+
+    assertTrue(recordCipher.needsKeyIdAlignment(batch, enrollment));
+    ReencryptionRecordCipher.ReencryptResult result = invokeReencryptRecord(batch, enrollment);
+
+    assertFalse(result.reencrypted());
+    assertTrue(result.keyIdAligned());
+    assertEquals(3333333333L, enrollment.getIntegrationPrivateKeyEncryptionKeyId());
+    verify(encryptionOperations, never()).decrypt(anyString());
+    verify(encryptionOperations, never()).encrypt(anyString());
+  }
+
+  @Test
+  @DisplayName("reencryptRecord() - a consistent row on another key needs nothing")
+  void reencryptRecord_consistentRowOnOtherKeyIsUnchanged() {
+    Enrollment enrollment = createMockEnrollment(123, "ENC:3333333333:data");
+
+    assertFalse(recordCipher.needsKeyIdAlignment(batch, enrollment));
+    ReencryptionRecordCipher.ReencryptResult result = invokeReencryptRecord(batch, enrollment);
+
+    assertFalse(result.changed());
+  }
+
+  @Test
+  @DisplayName("reencryptRecord() - #1431: writing the old key again fails the row (stale keyset)")
+  void reencryptRecord_failsWhenCiphertextLandsOnOldKey() {
+    Enrollment enrollment = createMockEnrollment(123, "ENC:1111111111:encrypted-data");
+    when(encryptionOperations.decrypt("ENC:1111111111:encrypted-data")).thenReturn("pt");
+    when(encryptionOperations.encrypt("pt")).thenReturn("ENC:1111111111:same-key-again");
+
+    assertThrows(IllegalStateException.class, () -> invokeReencryptRecord(batch, enrollment));
+    assertEquals(1111111111L, enrollment.getIntegrationPrivateKeyEncryptionKeyId());
+  }
+
   // ===== PRIORITY 1: processBatch() Tests =====
 
   @Test
@@ -394,7 +455,8 @@ class ReencryptionServiceTest {
   }
 
   @Test
-  @DisplayName("processBatch() - Should transition PENDING to IN_PROGRESS")
+  @DisplayName(
+      "processBatch() - PENDING starts, then a stall ends FAILED Stalled, never IN_PROGRESS")
   void processBatch_ShouldTransitionPendingToInProgress() {
     // Arrange
     batch.setStatus(BatchStatus.PENDING);
@@ -411,8 +473,10 @@ class ReencryptionServiceTest {
     // Act
     service.processBatch(batch);
 
-    // Assert
-    assertEquals(BatchStatus.IN_PROGRESS, batch.getStatus());
+    // Assert (#1431: committing IN_PROGRESS here would leave an orphan no path resumes)
+    assertEquals(BatchStatus.FAILED, batch.getStatus());
+    assertEquals("Stalled", batch.getErrorMessage());
+    assertEquals(1, batch.getRetryCount());
     assertNotNull(batch.getStartedAt());
     verify(batchRepository, atLeast(1)).save(batch);
   }
@@ -842,6 +906,8 @@ class ReencryptionServiceTest {
     enrollment.setEnrollmentId(enrollmentId);
     if (encryptedValue != null) {
       enrollment.setEncryptedField("integration_private_key", encryptedValue);
+      // As stored: the key-id column follows the prefix (EncryptionEntityListener, I-2026-0029).
+      enrollment.setEncryptionKeyId("integration_private_key", testPrefixKeyId(encryptedValue));
     }
     return enrollment;
   }
@@ -851,8 +917,16 @@ class ReencryptionServiceTest {
     authAttempt.setAuthAttemptId(authAttemptId);
     if (encryptedValue != null) {
       authAttempt.setEncryptedField("auth_attempt_proof_token", encryptedValue);
+      authAttempt.setEncryptionKeyId("auth_attempt_proof_token", testPrefixKeyId(encryptedValue));
     }
     return authAttempt;
+  }
+
+  private static Long testPrefixKeyId(String value) {
+    if (value == null || !value.startsWith("ENC:")) {
+      return null;
+    }
+    return Long.parseUnsignedLong(value.split(":", 3)[1]);
   }
 
   private ReencryptionBatch createBatch(String table, String column) {
@@ -909,7 +983,8 @@ class ReencryptionServiceTest {
     when(keyRepository.findById(9999999999L)).thenReturn(java.util.Optional.of(primaryKey));
 
     // Mock: No active batches exist for any old key (any shard slot)
-    when(batchRepository.findAnyActiveBatchesByTargetAndOldKey(anyString(), anyString(), anyLong()))
+    when(batchRepository.findNotCompletedBatchesByTargetAndOldKey(
+            anyString(), anyString(), anyLong()))
         .thenReturn(List.of());
 
     // Mock key management to return PRIMARY key ID
@@ -1008,7 +1083,8 @@ class ReencryptionServiceTest {
     when(keyRepository.findEnabledKeys()).thenReturn(new java.util.ArrayList<>(List.of(oldKey1)));
     when(keyRepository.findById(9999999999L)).thenReturn(java.util.Optional.of(primaryKey));
 
-    when(batchRepository.findAnyActiveBatchesByTargetAndOldKey(anyString(), anyString(), anyLong()))
+    when(batchRepository.findNotCompletedBatchesByTargetAndOldKey(
+            anyString(), anyString(), anyLong()))
         .thenReturn(List.of());
 
     when(keyManagementOperations.isInitialized()).thenReturn(true);
@@ -1123,5 +1199,23 @@ class ReencryptionServiceTest {
     verify(mockBatchProcessing).markBatchFailed(eq(batch), eq("IllegalStateException"));
     verify(mockBatchProcessing, never())
         .markBatchFailed(any(), argThat(msg -> msg != null && msg.contains("UPDATE")));
+  }
+
+  @Test
+  @DisplayName("#1431: startup refuses a run duration that could outlast the scheduler lock")
+  void requireRunFitsSchedulerLock_refusesDurationBeyondLock() {
+    TinkProperties.Reencryption r = new TinkProperties().getReencryption();
+    r.setEnabled(true);
+    r.setMaxDurationMinutes(180);
+    ReencryptionService.requireRunFitsSchedulerLock(r);
+
+    r.setMaxDurationMinutes(181);
+    IllegalStateException ex =
+        assertThrows(
+            IllegalStateException.class, () -> ReencryptionService.requireRunFitsSchedulerLock(r));
+    assertTrue(ex.getMessage().contains("max-duration-minutes=181"));
+
+    r.setEnabled(false);
+    ReencryptionService.requireRunFitsSchedulerLock(r);
   }
 }

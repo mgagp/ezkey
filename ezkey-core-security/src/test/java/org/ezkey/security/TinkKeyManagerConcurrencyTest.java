@@ -138,6 +138,39 @@ class TinkKeyManagerConcurrencyTest {
   }
 
   @Test
+  @DisplayName("refreshKeysetIfStale reloads a peer's newer keyset on the caller thread (#1431)")
+  void refreshKeysetIfStale_whenDatabaseVersionIncreases_reloadsBeforeReturning(
+      @TempDir Path tempDir) throws Exception {
+    Path masterKeyPath = tempDir.resolve("master.key");
+    Path keysetPath = tempDir.resolve("keyset.json.encrypted");
+    writeMasterKey(masterKeyPath);
+
+    AtomicReference<KeysetBlob> storedBlob = new AtomicReference<>();
+    KeysetBlobRepository repository = versionedRepository(storedBlob);
+
+    TinkKeyManager manager =
+        initializeManager(
+            masterKeyPath, keysetPath, TinkProperties.Keyset.StorageMode.DATABASE, repository);
+    long primaryAtStartup = manager.getCurrentPrimaryKeyId();
+    manager.saveKeysetToDatabase("TEST_INIT");
+    KeysetBlob stalePrimaryBlob = copyBlob(storedBlob.get());
+    long rotatedPrimary = manager.rotateKey();
+    KeysetBlob rotatedBlob = copyBlob(storedBlob.get());
+
+    // This node still serves the old primary; a peer has since published the rotated keyset.
+    storedBlob.set(stalePrimaryBlob);
+    manager.loadKeysetFromDatabase();
+    storedBlob.set(rotatedBlob);
+    manager.setDatabaseKeysetVersionForTests(stalePrimaryBlob.getVersion());
+    assertEquals(primaryAtStartup, manager.getCurrentPrimaryKeyId());
+
+    manager.refreshKeysetIfStale();
+
+    assertEquals(rotatedPrimary, manager.getCurrentPrimaryKeyId());
+    manager.shutdownKeysetCheckExecutor();
+  }
+
+  @Test
   @DisplayName("addKeyWithoutPromotion allows concurrent getAeadPrimitive readers")
   void addKeyWithoutPromotion_whileConcurrentReaders_allSucceed(@TempDir Path tempDir)
       throws Exception {

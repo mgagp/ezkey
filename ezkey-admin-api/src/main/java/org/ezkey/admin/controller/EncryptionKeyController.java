@@ -483,7 +483,12 @@ public class EncryptionKeyController {
   }
 
   /**
-   * Resume a failed or paused re-encryption batch.
+   * Resume a failed, pending or paused re-encryption batch.
+   *
+   * <p>{@code COMPLETED} and {@code IN_PROGRESS} are refused with 409 (#1431): a completed batch
+   * has nothing to resume, and a live batch never commits {@code IN_PROGRESS} (one transaction per
+   * batch), so a stored {@code IN_PROGRESS} is an orphan from before #1431 (Flyway V32 heals it to
+   * {@code FAILED}). A running batch still reads {@code PENDING}; claiming it atomically is #1550.
    *
    * @param batchId the batch ID
    * @param auth the authenticated Global Admin
@@ -493,7 +498,8 @@ public class EncryptionKeyController {
   @Operation(
       summary = "Resume re-encryption batch",
       description =
-          "Resumes processing of a failed or paused re-encryption batch. Global Admin only.")
+          "Resumes processing of a FAILED, PENDING or PAUSED re-encryption batch (the retry"
+              + " budget is not checked: this is an explicit operator action). Global Admin only.")
   @ApiResponses({
     @ApiResponse(
         responseCode = "202",
@@ -501,6 +507,16 @@ public class EncryptionKeyController {
     @ApiResponse(responseCode = "401", description = "Not authenticated"),
     @ApiResponse(responseCode = "403", description = "Forbidden (not a Global Admin)"),
     @ApiResponse(responseCode = "404", description = "Batch not found"),
+    @ApiResponse(
+        responseCode = "409",
+        description =
+            "The batch is COMPLETED (nothing to resume) or IN_PROGRESS (a stored IN_PROGRESS is"
+                + " an orphan from a stopped run, not a live batch; FAILED is the resumable state)",
+        content =
+            @io.swagger.v3.oas.annotations.media.Content(
+                schema =
+                    @io.swagger.v3.oas.annotations.media.Schema(
+                        implementation = org.springframework.http.ProblemDetail.class))),
     @ApiResponse(responseCode = "500", description = "Failed to enqueue batch resume")
   })
   @PostMapping("/reencryption-batches/{batchId}/resume")
@@ -511,6 +527,18 @@ public class EncryptionKeyController {
     return batchRepository
         .findById(batchId)
         .map(batch -> {
+          BatchStatus status = batch.getStatus();
+          if (status == BatchStatus.COMPLETED || status == BatchStatus.IN_PROGRESS) {
+            // #1431: 409 via ValidationExceptionHandler (state-conflict).
+            throw new IllegalStateException(
+                "Re-encryption batch "
+                    + batchId
+                    + " is "
+                    + status
+                    + (status == BatchStatus.COMPLETED
+                        ? "; there is nothing to resume"
+                        : "; a stored IN_PROGRESS is an orphan, not a live batch"));
+          }
           try {
             reencryptionService.enqueueBatchProcessing(List.of(batch));
             auditLogService.log(
@@ -531,6 +559,8 @@ public class EncryptionKeyController {
             throw e;
           } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
             logger.error("Failed to enqueue resume for batch {}", batchId, e);
+            // #785: classified reason only, in the audit row and in the response.
+            String reason = e.getClass().getSimpleName();
             auditLogService.log(
                 AuditHelper.createAdminAudit(
                         context,
@@ -538,16 +568,15 @@ public class EncryptionKeyController {
                         AdminAuditConstants.ENCRYPTION_BATCH_RESUME)
                     .eventStatus(EventStatus.ERROR)
                     .adminId(adminId)
-                    .errorMessage(e.getMessage())
+                    .errorMessage(reason)
                     .eventDetails(
                         AuditDetailsBuilder.builder()
                             .custom("batch_id", batchId)
-                            .errorSummary("Failed to resume batch: " + e.getMessage())
+                            .errorSummary("Failed to resume batch: " + reason)
                             .toJson())
                     .build());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(
-                    new BatchResumeResponse(batchId, "Failed to resume batch: " + e.getMessage()));
+                .body(new BatchResumeResponse(batchId, "Failed to resume batch: " + reason));
           }
         })
         .orElse(ResponseEntity.notFound().build());
