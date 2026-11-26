@@ -25,7 +25,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -131,9 +130,9 @@ public class MockDeliveryController {
     String invalid = validate(job);
     if (invalid != null) {
       logger.info("Delivery {}: refused, {}", sendId, invalid);
-      HttpStatusCode status =
+      HttpStatus status =
           "payload-too-large".equals(invalid)
-              ? HttpStatusCode.valueOf(413)
+              ? HttpStatus.CONTENT_TOO_LARGE
               : "invalid-request".equals(invalid)
                   ? HttpStatus.BAD_REQUEST
                   : HttpStatus.UNPROCESSABLE_CONTENT;
@@ -266,7 +265,7 @@ public class MockDeliveryController {
   }
 
   private static ResponseEntity<Map<String, Object>> error(
-      HttpStatusCode status, String code, String sendId) {
+      HttpStatus status, String code, String sendId) {
     Map<String, Object> body = new LinkedHashMap<>();
     body.put("code", code);
     if (sendId != null) {

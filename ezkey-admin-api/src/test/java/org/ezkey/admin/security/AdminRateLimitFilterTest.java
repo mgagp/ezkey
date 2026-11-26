@@ -224,7 +224,7 @@ class AdminRateLimitFilterTest {
     String huge = "x".repeat(AdminRateLimitFilter.MAX_WAIT_BODY_BYTES + 1);
     MockHttpServletResponse response =
         filterWait("203.0.113.220", "{\"authAttemptId\":1,\"waiterSecret\":\"" + huge + "\"}");
-    assertThat(response.getStatus()).isEqualTo(413);
+    assertThat(response.getStatus()).isEqualTo(HttpStatus.CONTENT_TOO_LARGE.value());
   }
 
   @Test

@@ -34,7 +34,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mail.MailAuthenticationException;
 import org.springframework.mail.MailException;
@@ -305,9 +304,9 @@ public class SmtpDeliveryController {
 
   private ResponseEntity<Map<String, Object>> refuse(String sendId, String code) {
     logger.info("Delivery {}: refused, {}", sendId, code);
-    HttpStatusCode status =
+    HttpStatus status =
         switch (code) {
-          case "payload-too-large" -> HttpStatusCode.valueOf(413);
+          case "payload-too-large" -> HttpStatus.CONTENT_TOO_LARGE;
           case "invalid-request" -> HttpStatus.BAD_REQUEST;
           case "provider-timeout" -> HttpStatus.GATEWAY_TIMEOUT;
           default -> HttpStatus.UNPROCESSABLE_CONTENT;
@@ -347,7 +346,7 @@ public class SmtpDeliveryController {
   }
 
   private static ResponseEntity<Map<String, Object>> error(
-      HttpStatusCode status, String code, String sendId) {
+      HttpStatus status, String code, String sendId) {
     Map<String, Object> body = new LinkedHashMap<>();
     body.put("code", code);
     if (sendId != null) {
