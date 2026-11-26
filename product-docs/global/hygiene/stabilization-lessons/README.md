@@ -36,7 +36,7 @@ Each lesson states a rule, the evidence behind it, and a check you can run. Cand
 **6. A lock must outlive the commit.** Open the transaction inside the lock, never around it.
 - Evidence: `@Transactional` around `executeWithLock` released the lock before the commit, and the next holder failed on `ezkey_admin_username_key`. `LockingTaskExecutor` now owns the transaction.
 
-**7. Catching a database error inside a transaction does not recover it.** Spring has marked the transaction rollback-only, and PostgreSQL rejects further statements. Recover outside, in a separate transaction. H2 can hide this, so prove recovery paths on PostgreSQL.
+**7. Catching a database error inside a transaction does not recover it.** Spring has marked the transaction rollback-only, and PostgreSQL rejects further statements. Recover outside, in a separate transaction. H2 can hide this, so prove recovery paths on PostgreSQL. A scheduled `@Transactional` job that catches, logs and returns must also mark its own transaction rollback-only (`ScheduledJobTransactions.markCurrentTransactionRollbackOnly()`), or the commit fails with a second, misleading `UnexpectedRollbackException` ERROR (#1537).
 - Evidence: the `catch` in `initializeKeysetSync` said "Don't throw", yet `UnexpectedRollbackException` ended startup.
 - Check: look for `catch` of `DataAccessException`, `DataIntegrityViolationException` or `PersistenceException` inside `@Transactional` methods.
 
