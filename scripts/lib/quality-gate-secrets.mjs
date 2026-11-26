@@ -131,8 +131,9 @@ export function isKeysetBackupFilename(match, after) {
  * Admin / provisioning username label glue. Exact prefixes (case-insensitive):
  * `for admin: `, `by admin: `, `tenant admin: `, `successful for: `,
  * `Tenant admin created: `, `Tenant created: `, `Creating tenant: `,
- * `Admin: `, space form `Admin ` (e.g. "Admin <name> attempted…"), and
- * space form `pending admin ` (activation-code reissue, no colon).
+ * `Admin: `, `Pending administrator activated: `, space form `Admin `
+ * (e.g. "Admin <name> attempted…"), and space form `pending admin `
+ * (activation-code reissue, no colon).
  *
  * @param {string} before
  * @returns {boolean}
@@ -140,7 +141,7 @@ export function isKeysetBackupFilename(match, after) {
 export function isAdminUsernameOpaqueContext(before) {
   const b = String(before || '');
   if (
-    /(?:for admin|by admin|tenant admin|successful for|Tenant admin created|Tenant created|Creating tenant|Admin):\s*$/i.test(
+    /(?:for admin|by admin|tenant admin|successful for|Tenant admin created|Tenant created|Creating tenant|Admin|Pending administrator activated):\s*$/i.test(
       b,
     )
   ) {

@@ -1148,3 +1148,29 @@ describe('weekly 2026-11-19 opaque-token false positives', () => {
     }
   });
 });
+
+describe('weekly 2026-11-26 pending administrator activation username glue', () => {
+  const ACTIVATED = 'e2e-1368-1790000000000';
+  const OPAQUE = 'a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8s9T0';
+
+  it('scores activation username AMBER for the known test-admin shape (negative)', () => {
+    const line =
+      `✅ Pending administrator activated: ${ACTIVATED} (adminId: 42, enrollmentId: 7, otherActivationCodesRevoked: 1)`;
+    const r = detectSecrets(line);
+    assert.equal(r.kinds.includes('opaque-username'), true, `kinds=${r.kinds}`);
+    assert.equal(r.kinds.includes('opaque-token'), false, `kinds=${r.kinds}`);
+    assert.equal(r.severity, 'AMBER', `kinds=${r.kinds}`);
+    assert.match(sanitize(line), /Pending administrator activated: <USER>/);
+    assert.equal(sanitize(line).includes(ACTIVATED), false, line);
+  });
+
+  it('keeps a realistic secret RED in the same activation log context (positive)', () => {
+    const line =
+      `✅ Pending administrator activated: ${OPAQUE} (adminId: 42, enrollmentId: 7, otherActivationCodesRevoked: 1)`;
+    const r = detectSecrets(line);
+    assert.equal(r.severity, 'RED', `kinds=${r.kinds}`);
+    assert.equal(r.kinds.includes('opaque-token'), true, `kinds=${r.kinds}`);
+    assert.equal(r.kinds.includes('opaque-username'), false, `kinds=${r.kinds}`);
+    assert.equal(sanitize(line).includes(OPAQUE), false, line);
+  });
+});
