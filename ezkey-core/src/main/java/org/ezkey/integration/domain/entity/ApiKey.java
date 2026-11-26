@@ -560,6 +560,14 @@ public class ApiKey implements Reencryptable {
   }
 
   @Override
+  public Long getEncryptionKeyId(String columnName) {
+    if ("secret_key_hash".equals(columnName)) {
+      return secretKeyHashEncryptionKeyId;
+    }
+    throw new IllegalArgumentException("Unknown encrypted field: " + columnName);
+  }
+
+  @Override
   public Long getEntityId() {
     return apiKeyId != null ? Long.valueOf(apiKeyId) : null;
   }

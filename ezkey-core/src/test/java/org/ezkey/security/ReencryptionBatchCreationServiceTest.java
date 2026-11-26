@@ -67,7 +67,7 @@ class ReencryptionBatchCreationServiceTest {
     primaryKey =
         new EncryptionKey(200L, KeyStatus.PRIMARY, "AES256_GCM", OffsetDateTime.now(), "TEST");
 
-    when(batchRepository.findAnyActiveBatchesByTargetAndOldKey(any(), any(), any()))
+    when(batchRepository.findNotCompletedBatchesByTargetAndOldKey(any(), any(), any()))
         .thenReturn(List.of());
     when(batchRepository.save(any(ReencryptionBatch.class)))
         .thenAnswer(invocation -> {
@@ -178,7 +178,7 @@ class ReencryptionBatchCreationServiceTest {
   void createBatchesForTarget_skipsWhenAnyActiveBatchExists() {
     String table = ReencryptionBatchCreationService.EZKEY_AUTH_ATTEMPT_TABLE;
     String column = "auth_attempt_proof_token";
-    when(batchRepository.findAnyActiveBatchesByTargetAndOldKey(table, column, oldKey.getKeyId()))
+    when(batchRepository.findNotCompletedBatchesByTargetAndOldKey(table, column, oldKey.getKeyId()))
         .thenReturn(List.of(new ReencryptionBatch()));
 
     List<ReencryptionBatch> created =

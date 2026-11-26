@@ -173,7 +173,7 @@ and primary-key status may remain visible and is treated as non-secret operation
 | `ezkey.encryption.reencryption.batch-size` | `int` | `500` | optionnel | Records per batch. |
 | `ezkey.encryption.reencryption.throttle-ms` | `int` | `100` | optionnel | Delay in milliseconds between batches (prevents DB overload). |
 | `ezkey.encryption.reencryption.max-batches-per-run` | `int` | `100` | optionnel | Maximum batches processed per scheduled execution. |
-| `ezkey.encryption.reencryption.max-duration-minutes` | `int` | `60` | optionnel | Maximum wall-clock duration per execution in minutes. |
+| `ezkey.encryption.reencryption.max-duration-minutes` | `int` | `60` | optionnel | Maximum wall-clock duration per execution in minutes. At most 180 when re-encryption is enabled: startup fails above it (scheduler lock `PT4H` minus one hour, #1431). |
 | `ezkey.encryption.reencryption.auto-retry-failed` | `boolean` | `true` | optionnel | Automatically retry failed batches. |
 | `ezkey.encryption.reencryption.parallel-batch-workers` | `int` | `1` (Java) / Admin config **`4`** | optionnel | Parallel workers for distinct batches. Pair with `auth-attempt-shard-count` (`workers >= shards`). Enrollment is table-mutex serialized; auth-attempt shards run concurrently when sharding is on. |
 | `ezkey.encryption.reencryption.parallel-batch-queue-capacity` | `int` | `100` | optionnel | Queue capacity for the parallel executor (back-pressure). |

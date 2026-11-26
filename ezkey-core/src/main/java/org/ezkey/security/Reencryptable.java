@@ -88,6 +88,19 @@ public interface Reencryptable {
   void setEncryptionKeyId(String columnName, Long keyId);
 
   /**
+   * Gets the indexed {@code *_encryption_key_id} companion column for an encrypted field, by
+   * database column name of the ciphertext column.
+   *
+   * <p>Re-encryption compares it with the key named by the ciphertext prefix and corrects it when
+   * they disagree (#1431).
+   *
+   * @param columnName database column name of the ciphertext (e.g., "integration_private_key")
+   * @return the stored key id, or {@code null} when not set
+   * @throws IllegalArgumentException if column name is not supported
+   */
+  Long getEncryptionKeyId(String columnName);
+
+  /**
    * Gets the entity ID for progress tracking during batch re-encryption.
    *
    * @return entity ID (as Long for consistency)

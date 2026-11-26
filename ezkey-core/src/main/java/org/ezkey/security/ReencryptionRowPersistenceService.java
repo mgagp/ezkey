@@ -45,8 +45,16 @@ public class ReencryptionRowPersistenceService {
     this.recordCipher = recordCipher;
   }
 
+  /**
+   * Re-encrypts one enrollment row under a write lock, or corrects its key-id column, and saves it.
+   *
+   * @param batch the batch being processed
+   * @param enrollmentId the row id
+   * @return what changed; callers count only {@code reencrypted()} as done (#1431)
+   */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
-  public void persistEnrollmentReencryption(ReencryptionBatch batch, Integer enrollmentId) {
+  public ReencryptionRecordCipher.ReencryptResult persistEnrollmentReencryption(
+      ReencryptionBatch batch, Integer enrollmentId) {
     Enrollment e =
         enrollmentRepository
             .findByIdForReencryptionUpdate(enrollmentId)
@@ -54,15 +62,25 @@ public class ReencryptionRowPersistenceService {
                 new IllegalStateException(
                     "Enrollment not found for re-encryption persistence: " + enrollmentId));
     ReencryptionRecordCipher.ReencryptResult result = recordCipher.reencryptRecord(batch, e);
-    if (!result.reencrypted()) {
-      return;
+    if (!result.changed()) {
+      return result;
     }
     enrollmentRepository.save(e);
     entityManager.flush();
+    return result;
   }
 
+  /**
+   * Re-encrypts one auth attempt row under a write lock, or corrects its key-id column, and saves
+   * it.
+   *
+   * @param batch the batch being processed
+   * @param authAttemptId the row id
+   * @return what changed; callers count only {@code reencrypted()} as done (#1431)
+   */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
-  public void persistAuthAttemptReencryption(ReencryptionBatch batch, Integer authAttemptId) {
+  public ReencryptionRecordCipher.ReencryptResult persistAuthAttemptReencryption(
+      ReencryptionBatch batch, Integer authAttemptId) {
     AuthAttempt a =
         authAttemptRepository
             .findByIdForReencryptionUpdate(authAttemptId)
@@ -70,15 +88,24 @@ public class ReencryptionRowPersistenceService {
                 new IllegalStateException(
                     "AuthAttempt not found for re-encryption persistence: " + authAttemptId));
     ReencryptionRecordCipher.ReencryptResult result = recordCipher.reencryptRecord(batch, a);
-    if (!result.reencrypted()) {
-      return;
+    if (!result.changed()) {
+      return result;
     }
     authAttemptRepository.save(a);
     entityManager.flush();
+    return result;
   }
 
+  /**
+   * Re-encrypts one API key row under a write lock, or corrects its key-id column, and saves it.
+   *
+   * @param batch the batch being processed
+   * @param apiKeyId the row id
+   * @return what changed; callers count only {@code reencrypted()} as done (#1431)
+   */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
-  public void persistApiKeyReencryption(ReencryptionBatch batch, Integer apiKeyId) {
+  public ReencryptionRecordCipher.ReencryptResult persistApiKeyReencryption(
+      ReencryptionBatch batch, Integer apiKeyId) {
     ApiKey apiKey =
         apiKeyRepository
             .findByIdForReencryptionUpdate(apiKeyId)
@@ -86,10 +113,11 @@ public class ReencryptionRowPersistenceService {
                 new IllegalStateException(
                     "ApiKey not found for re-encryption persistence: " + apiKeyId));
     ReencryptionRecordCipher.ReencryptResult result = recordCipher.reencryptRecord(batch, apiKey);
-    if (!result.reencrypted()) {
-      return;
+    if (!result.changed()) {
+      return result;
     }
     apiKeyRepository.save(apiKey);
     entityManager.flush();
+    return result;
   }
 }

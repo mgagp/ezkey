@@ -711,6 +711,15 @@ public class Enrollment implements Reencryptable {
   }
 
   @Override
+  public Long getEncryptionKeyId(String columnName) {
+    return switch (columnName) {
+      case "integration_private_key" -> integrationPrivateKeyEncryptionKeyId;
+      case "enrollment_proof_token" -> enrollmentProofTokenEncryptionKeyId;
+      default -> throw new IllegalArgumentException("Unknown encrypted field: " + columnName);
+    };
+  }
+
+  @Override
   public Long getEntityId() {
     return enrollmentId != null ? Long.valueOf(enrollmentId) : null;
   }

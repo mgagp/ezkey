@@ -128,6 +128,10 @@ public class ReencryptionBatchParallelRunner {
   /** Processes batches one at a time on the calling thread. */
   private void runSequential(List<ReencryptionBatch> batches, BatchFailureCallback onFailure) {
     for (ReencryptionBatch batch : batches) {
+      if (Thread.currentThread().isInterrupted()) {
+        logger.info("Re-encryption run interrupted (shutdown); remaining batches stay queued");
+        return;
+      }
       try {
         batchProcessingService.processBatchInternal(batch);
       } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch

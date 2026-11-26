@@ -105,11 +105,11 @@ public class ReencryptionBatchCreationService {
     String column = target.column();
     List<ReencryptionBatch> created = new ArrayList<>();
 
-    List<ReencryptionBatch> anyActive =
-        batchRepository.findAnyActiveBatchesByTargetAndOldKey(table, column, oldKey.getKeyId());
-    if (!anyActive.isEmpty()) {
+    List<ReencryptionBatch> unfinished =
+        batchRepository.findNotCompletedBatchesByTargetAndOldKey(table, column, oldKey.getKeyId());
+    if (!unfinished.isEmpty()) {
       logger.debug(
-          "Active batch already exists for {}.{} with old key {}",
+          "Unfinished batch already exists for {}.{} with old key {}",
           table,
           column,
           oldKey.getKeyId());

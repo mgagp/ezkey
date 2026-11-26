@@ -13,11 +13,15 @@ package org.ezkey.admin.controller;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -359,5 +363,45 @@ class EncryptionKeyControllerTest {
     assertEquals(7, logged.getAdminId());
     assertEquals("203.0.113.50", logged.getIpAddress());
     assertEquals("sec018-test-agent", logged.getUserAgent());
+  }
+
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.EnumSource(
+      value = ReencryptionBatch.BatchStatus.class,
+      names = {"COMPLETED", "IN_PROGRESS"})
+  @DisplayName("resumeBatch refuses COMPLETED and IN_PROGRESS with a state conflict (#1431)")
+  void resumeBatchRefusesCompletedAndInProgress(ReencryptionBatch.BatchStatus status) {
+    batch1.setStatus(status);
+    when(batchRepository.findById(1)).thenReturn(java.util.Optional.of(batch1));
+
+    IllegalStateException ex =
+        assertThrows(
+            IllegalStateException.class,
+            () -> controller.resumeBatch(1, globalAdminAuth, httpRequest));
+
+    assertTrue(ex.getMessage().contains(status.name()));
+    verify(reencryptionService, never()).enqueueBatchProcessing(any());
+    verifyNoInteractions(auditLogService);
+  }
+
+  @Test
+  @DisplayName(
+      "resumeBatch enqueue failure: audit and body carry the classified reason only (#785)")
+  void resumeBatchFailureUsesClassifiedReason() {
+    batch1.setStatus(ReencryptionBatch.BatchStatus.FAILED);
+    when(batchRepository.findById(1)).thenReturn(java.util.Optional.of(batch1));
+    org.mockito.Mockito.doThrow(new RuntimeException("UPDATE ezkey_x SET secret='leak'"))
+        .when(reencryptionService)
+        .enqueueBatchProcessing(any());
+
+    ResponseEntity<EncryptionKeyController.BatchResumeResponse> response =
+        controller.resumeBatch(1, globalAdminAuth, httpRequest);
+
+    assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+    assertEquals("Failed to resume batch: RuntimeException", response.getBody().message());
+    ArgumentCaptor<AuditLog> captor = ArgumentCaptor.forClass(AuditLog.class);
+    verify(auditLogService).log(captor.capture());
+    assertEquals("RuntimeException", captor.getValue().getErrorMessage());
+    assertTrue(!captor.getValue().getEventDetails().contains("leak"));
   }
 }

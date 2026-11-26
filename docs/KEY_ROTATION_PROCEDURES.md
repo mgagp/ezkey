@@ -447,7 +447,7 @@ landed) is a thin operator tool only — never a silent file cache.
 2. **Resolve Root Cause**
    - Database connectivity issues → Fix connection
    - Decryption errors → Verify old key is still enabled
-   - Timeout → Increase `max-duration-minutes`
+   - Timeout → Increase `max-duration-minutes` (at most 180, #1431)
 
 3. **Resume Batch**
    ```bash

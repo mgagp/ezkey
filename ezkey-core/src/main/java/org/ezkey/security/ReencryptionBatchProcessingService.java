@@ -46,6 +46,12 @@ public class ReencryptionBatchProcessingService {
   private static final Logger logger =
       LoggerFactory.getLogger(ReencryptionBatchProcessingService.class);
 
+  /** Classified reason: the run was interrupted (shutdown) with old-key rows left (#1431). */
+  static final String FAILURE_INTERRUPTED = "Interrupted";
+
+  /** Classified reason: no more rows to fetch but old-key rows remain below the cursor (#1431). */
+  static final String FAILURE_STALLED = "Stalled";
+
   private final ReencryptionBatchRepository batchRepository;
   private final EncryptionKeyRepository keyRepository;
   private final TinkProperties properties;
@@ -107,6 +113,8 @@ public class ReencryptionBatchProcessingService {
     Long lastRecordId = batch.getLastRecordId();
 
     OffsetDateTime batchStartTime = OffsetDateTime.now();
+    int keyIdAligned = 0;
+    boolean interrupted = false;
 
     while (recordsDone + recordsFailed + recordsSkipped < batch.getRecordsTotal()) {
       int sliceSize = resolveEffectiveBatchSize(lastRecordId);
@@ -124,7 +132,8 @@ public class ReencryptionBatchProcessingService {
         try {
           lastRecordId = record.getEntityId();
 
-          if (!recordCipher.isCandidateForReencryption(batch, record)) {
+          if (!recordCipher.isCandidateForReencryption(batch, record)
+              && !recordCipher.needsKeyIdAlignment(batch, record)) {
             recordsSkipped++;
             continue;
           }
@@ -151,9 +160,15 @@ public class ReencryptionBatchProcessingService {
 
       for (Integer enrollmentId : pendingEnrollmentIds) {
         try {
-          rowPersistence.persistEnrollmentReencryption(batch, enrollmentId);
-          recordsDone++;
-          recordRowMetric(batch);
+          ReencryptionRecordCipher.ReencryptResult result =
+              rowPersistence.persistEnrollmentReencryption(batch, enrollmentId);
+          if (result.reencrypted()) {
+            recordsDone++;
+            recordRowMetric(batch);
+          } else {
+            recordsSkipped++;
+            keyIdAligned += result.keyIdAligned() ? 1 : 0;
+          }
         } catch (Exception ex) { // CHECKSTYLE IGNORE IllegalCatch
           logger.warn(
               "Failed to persist re-encrypted enrollment {} in batch {}: {}",
@@ -165,9 +180,15 @@ public class ReencryptionBatchProcessingService {
       }
       for (Integer authAttemptId : pendingAuthAttemptIds) {
         try {
-          rowPersistence.persistAuthAttemptReencryption(batch, authAttemptId);
-          recordsDone++;
-          recordRowMetric(batch);
+          ReencryptionRecordCipher.ReencryptResult result =
+              rowPersistence.persistAuthAttemptReencryption(batch, authAttemptId);
+          if (result.reencrypted()) {
+            recordsDone++;
+            recordRowMetric(batch);
+          } else {
+            recordsSkipped++;
+            keyIdAligned += result.keyIdAligned() ? 1 : 0;
+          }
         } catch (Exception ex) { // CHECKSTYLE IGNORE IllegalCatch
           logger.warn(
               "Failed to persist re-encrypted auth attempt {} in batch {}: {}",
@@ -179,9 +200,15 @@ public class ReencryptionBatchProcessingService {
       }
       for (Integer apiKeyId : pendingApiKeyIds) {
         try {
-          rowPersistence.persistApiKeyReencryption(batch, apiKeyId);
-          recordsDone++;
-          recordRowMetric(batch);
+          ReencryptionRecordCipher.ReencryptResult result =
+              rowPersistence.persistApiKeyReencryption(batch, apiKeyId);
+          if (result.reencrypted()) {
+            recordsDone++;
+            recordRowMetric(batch);
+          } else {
+            recordsSkipped++;
+            keyIdAligned += result.keyIdAligned() ? 1 : 0;
+          }
         } catch (Exception ex) { // CHECKSTYLE IGNORE IllegalCatch
           logger.warn(
               "Failed to persist re-encrypted API key {} in batch {}: {}",
@@ -201,6 +228,7 @@ public class ReencryptionBatchProcessingService {
         Thread.sleep(properties.getReencryption().getThrottleMs());
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
+        interrupted = true;
         break;
       }
     }
@@ -228,15 +256,29 @@ public class ReencryptionBatchProcessingService {
         batch.setLastBatchAt(OffsetDateTime.now());
         batchRepository.save(batch);
       } else {
+        // #1431: never commit IN_PROGRESS here. Under the single-transaction model a committed
+        // IN_PROGRESS row is an orphan no automatic path picks up. FAILED (classified reason) is
+        // resumed by the scheduler while retries remain and stays visible to operators after.
+        String reason = interrupted ? FAILURE_INTERRUPTED : FAILURE_STALLED;
         logger.warn(
-            "Re-encryption batch {} may be stalled: fetch returned no rows but {} row(s) still"
-                + " encrypted with old key (accounted {} of {})",
+            "Re-encryption batch {} stopped early ({}): {} row(s) still encrypted with old key"
+                + " (accounted {} of {}); marking FAILED",
             batch.getBatchId(),
+            reason,
             stillWithOldKey,
             accounted,
             batch.getRecordsTotal());
+        batch.updateProgress(recordsDone, recordsFailed, recordsSkipped);
+        // An interrupted run (shutdown) is not the batch's fault: it does not use up a retry.
+        applyFailure(batch, reason, !interrupted);
+        batchRepository.save(batch);
+        logKeyIdAlignment(batch, keyIdAligned);
+        recordBatchTimer(batch, System.nanoTime() - t0);
+        return;
       }
     }
+
+    logKeyIdAlignment(batch, keyIdAligned);
 
     if (recordsDone + recordsFailed + recordsSkipped >= batch.getRecordsTotal()) {
       batch.setStatus(BatchStatus.COMPLETED);
@@ -297,12 +339,22 @@ public class ReencryptionBatchProcessingService {
 
   void markBatchFailed(ReencryptionBatch batch, String errorMessage) {
     ReencryptionBatch managed = batchRepository.findById(batch.getBatchId()).orElse(batch);
+    applyFailure(managed, errorMessage, true);
+    batchRepository.save(managed);
+  }
+
+  /**
+   * Sets FAILED with a classified reason (never a raw exception message, #785), counts the failure
+   * and (when {@code countRetry}) the retry, and records the failure metric and audit event.
+   */
+  private void applyFailure(ReencryptionBatch managed, String errorMessage, boolean countRetry) {
     managed.setStatus(BatchStatus.FAILED);
     managed.setErrorMessage(errorMessage);
     managed.setErrorCount(managed.getErrorCount() + 1);
-    managed.setRetryCount(managed.getRetryCount() + 1);
+    if (countRetry) {
+      managed.setRetryCount(managed.getRetryCount() + 1);
+    }
     managed.setCompletedAt(OffsetDateTime.now());
-    batchRepository.save(managed);
 
     meterRegistry.ifPresent(registry ->
         registry
@@ -329,6 +381,16 @@ public class ReencryptionBatchProcessingService {
                     .toJson())
             .errorMessage(errorMessage)
             .build());
+  }
+
+  private void logKeyIdAlignment(ReencryptionBatch batch, int keyIdAligned) {
+    if (keyIdAligned > 0) {
+      logger.info(
+          "Re-encryption batch {}: corrected the key-id column of {} row(s) already encrypted under"
+              + " another key (counted as skipped)",
+          batch.getBatchId(),
+          keyIdAligned);
+    }
   }
 
   private void updateKeyStatistics(ReencryptionBatch batch, int recordsReencrypted) {

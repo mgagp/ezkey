@@ -51,6 +51,41 @@ public class ReencryptionService {
 
   private static final Logger logger = LoggerFactory.getLogger(ReencryptionService.class);
 
+  /**
+   * ShedLock hold limit for the scheduled run. It must outlast a whole run, or the other node of a
+   * two-node HA pair starts the same batches while this one still works on them (#1431).
+   */
+  static final String SCHEDULER_LOCK_AT_MOST_FOR = "PT4H";
+
+  /**
+   * Largest accepted {@code max-duration-minutes}: the lock minus one hour for the batch that is
+   * still running when the duration cap is reached (the cap is only checked between batches).
+   */
+  static final int MAX_DURATION_MINUTES_LIMIT =
+      (int) java.time.Duration.parse(SCHEDULER_LOCK_AT_MOST_FOR).toMinutes() - 60;
+
+  /**
+   * Fails startup when the configured run duration could outlast the scheduler lock (#1431).
+   * Fail-closed on purpose: a silent overlap in HA would run the same batches on both nodes.
+   *
+   * @param reencryption re-encryption settings
+   * @throws IllegalStateException when re-encryption is enabled and {@code max-duration-minutes}
+   *     exceeds {@link #MAX_DURATION_MINUTES_LIMIT}
+   */
+  public static void requireRunFitsSchedulerLock(TinkProperties.Reencryption reencryption) {
+    if (reencryption.isEnabled()
+        && reencryption.getMaxDurationMinutes() > MAX_DURATION_MINUTES_LIMIT) {
+      throw new IllegalStateException(
+          "ezkey.encryption.reencryption.max-duration-minutes="
+              + reencryption.getMaxDurationMinutes()
+              + " exceeds "
+              + MAX_DURATION_MINUTES_LIMIT
+              + ": the scheduled run could outlast its cluster lock ("
+              + SCHEDULER_LOCK_AT_MOST_FOR
+              + ") and run the same batches on two nodes");
+    }
+  }
+
   private final EncryptionOperations encryptionOperations;
   private final EncryptionKeyRepository keyRepository;
   private final ReencryptionBatchRepository batchRepository;
@@ -99,7 +134,7 @@ public class ReencryptionService {
   }
 
   @Scheduled(cron = "${ezkey.encryption.reencryption.schedule:0 0 3 * * ?}")
-  @SchedulerLock(name = "REENCRYPTION", lockAtMostFor = "PT2H")
+  @SchedulerLock(name = "REENCRYPTION", lockAtMostFor = SCHEDULER_LOCK_AT_MOST_FOR)
   public void processReencryptionBatches() {
     if (!properties.getReencryption().isEnabled()) {
       logger.debug("Re-encryption is disabled via configuration");
@@ -129,6 +164,11 @@ public class ReencryptionService {
         for (ReencryptionBatch batch : batchesToProcess) {
           if (batchesProcessed >= maxBatches) {
             logger.info("Reached max batches per run limit: {}", maxBatches);
+            break;
+          }
+
+          if (Thread.currentThread().isInterrupted()) {
+            logger.info("Re-encryption run interrupted (shutdown); remaining batches stay queued");
             break;
           }
 
@@ -243,7 +283,7 @@ public class ReencryptionService {
 
   /**
    * Enqueues re-encryption for one old key: creates target batches, then schedules processing on
-   * the batch executor (non-blocking for HTTP callers).
+   * the batch executor (non-blocking for HTTP callers). Also resumes that key's FAILED batches.
    *
    * @param keyId old key identifier (must not be PRIMARY)
    * @return enqueue summary with batch ids submitted for processing
@@ -278,6 +318,16 @@ public class ReencryptionService {
     for (ReencryptionBatchCreationService.Target target : targets) {
       created.addAll(
           batchCreationService.createBatchesForTarget(oldKey, primaryKey, target, "ADMIN_MANUAL"));
+    }
+
+    // #1431: FAILED batches now block creation for their (target, old key), so an explicit
+    // per-key request resumes them instead of creating duplicates (retry budget not checked: the
+    // operator asked for this key).
+    for (ReencryptionBatch failed :
+        batchRepository.findByOldKey_KeyIdAndStatus(keyId, BatchStatus.FAILED)) {
+      if (created.stream().noneMatch(b -> b.getBatchId().equals(failed.getBatchId()))) {
+        created.add(failed);
+      }
     }
 
     submitBatchesForBackgroundProcessing(created);
