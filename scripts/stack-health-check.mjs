@@ -362,6 +362,7 @@ function scoreJavaMelody(jm, thr, checks) {
   } catch (e) {
     throw new Error(`Invalid httpErrorPctExclusions.pattern in thresholds: ${e.message}`);
   }
+  const expectedErrorCaps = compileExpectedHttpErrorCaps(thr.httpErrorPctExpectedErrors);
   const minHits = thr.httpErrorPct?.minHits ?? 20;
 
   for (const app of APPS) {
@@ -376,7 +377,12 @@ function scoreJavaMelody(jm, thr, checks) {
     const topHttpMax = maxOf(http, 'maximum');
     const topHttpErrRow = httpForErr.reduce(
       (best, row) =>
-        Number(row.errorRatePct || 0) > Number(best.errorRatePct || 0) ? row : best,
+        effectiveHttpErrorPct(row, expectedErrorCaps) > Number(best.errorRatePct || 0)
+          ? {
+              ...row,
+              errorRatePct: effectiveHttpErrorPct(row, expectedErrorCaps),
+            }
+          : best,
       { errorRatePct: 0, hits: 0 },
     );
     const topHttpErr =
@@ -430,6 +436,50 @@ function scoreJavaMelody(jm, thr, checks) {
     };
   }
   return { perApp, note: 'crypto-api is not in the JavaMelody collector application list' };
+}
+
+function compileExpectedHttpErrorCaps(raw) {
+  if (!raw) return [];
+  if (!Array.isArray(raw)) {
+    throw new Error('Invalid httpErrorPctExpectedErrors in thresholds: must be an array');
+  }
+  return raw.map((entry, idx) => {
+    const where = `httpErrorPctExpectedErrors[${idx}]`;
+    const pattern = String(entry?.pattern || '').trim();
+    const maxErrors = Number(entry?.maxErrors);
+    const perHits = Number(entry?.perHits);
+    if (!pattern) {
+      throw new Error(`Invalid ${where}.pattern in thresholds: must be non-empty`);
+    }
+    if (!Number.isFinite(maxErrors) || maxErrors < 0) {
+      throw new Error(`Invalid ${where}.maxErrors in thresholds: must be >= 0`);
+    }
+    if (!Number.isFinite(perHits) || perHits <= 0) {
+      throw new Error(`Invalid ${where}.perHits in thresholds: must be > 0`);
+    }
+    let regex;
+    try {
+      regex = new RegExp(pattern, 'i');
+    } catch (e) {
+      throw new Error(`Invalid ${where}.pattern in thresholds: ${e.message}`);
+    }
+    return {
+      regex,
+      capPct: (maxErrors / perHits) * 100,
+    };
+  });
+}
+
+function effectiveHttpErrorPct(row, expectedErrorCaps) {
+  const raw = Number(row?.errorRatePct || 0);
+  if (!Number.isFinite(raw) || raw <= 0) return 0;
+  const name = String(row?.name || '');
+  for (const cap of expectedErrorCaps || []) {
+    if (cap.regex.test(name) && raw <= cap.capPct) {
+      return 0;
+    }
+  }
+  return raw;
 }
 
 function scoreContainers(logScan, thr, allowlistEntries, checks) {
