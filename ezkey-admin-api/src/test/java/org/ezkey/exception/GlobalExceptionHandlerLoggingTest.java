@@ -17,6 +17,8 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import java.io.IOException;
+import java.util.function.Function;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -24,6 +26,8 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.servlet.NoHandlerFoundException;
@@ -111,6 +115,45 @@ class GlobalExceptionHandlerLoggingTest {
     assertThat(joined).doesNotContain("\u001B");
     assertThat(joined).doesNotContain("\ninjected");
     assertThat(joined).contains("GE__T /missing__injected_[31m");
+  }
+
+  @Test
+  @DisplayName("unexpected runtime 500 is logged at ERROR with its cause and a sanitized path")
+  void runtimeExceptionLoggedAtErrorWithCause() {
+    // RuntimeException is the handler Spring picks for DataAccessException and friends (#1267).
+    assertUnexpectedErrorLogged(
+        request -> handler.handleRuntimeException(new IllegalStateException("boom"), request));
+  }
+
+  @Test
+  @DisplayName("unexpected checked 500 is logged at ERROR with its cause and a sanitized path")
+  void checkedExceptionLoggedAtErrorWithCause() {
+    assertUnexpectedErrorLogged(
+        request -> handler.handleGenericException(new IOException("boom"), request));
+  }
+
+  private void assertUnexpectedErrorLogged(
+      Function<ServletWebRequest, ResponseEntity<ProblemDetail>> call) {
+    MockHttpServletRequest httpRequest = new MockHttpServletRequest();
+    httpRequest.setRequestURI("/api/v1/admin/integrity/async-jobs\r\ninjected");
+    ServletWebRequest request = new ServletWebRequest(httpRequest);
+
+    var response = call.apply(request);
+
+    assertThat(response.getStatusCode().value()).isEqualTo(500);
+    assertThat(response.getBody()).isNotNull();
+    assertThat(response.getBody().getDetail()).doesNotContain("boom");
+    ILoggingEvent event =
+        logAppender.list.stream()
+            .filter(e -> e.getLevel() == Level.ERROR)
+            .findFirst()
+            .orElseThrow();
+    assertThat(event.getFormattedMessage())
+        .contains("Unhandled exception on /api/v1/admin/integrity/async-jobs__injected")
+        .doesNotContain("\r")
+        .doesNotContain("\ninjected");
+    assertThat(event.getThrowableProxy()).isNotNull();
+    assertThat(event.getThrowableProxy().getMessage()).isEqualTo("boom");
   }
 
   private String joinedMessages() {

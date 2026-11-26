@@ -272,11 +272,12 @@ class IntegrityAsyncJobServiceTest {
   void start_uniqueViolation_mapsToBusy() {
     when(jobRepository.findBySlotKeyAndStatus(
             IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING))
-        .thenReturn(Optional.empty())
-        .thenReturn(Optional.of(runningJob()));
+        .thenReturn(Optional.empty());
     when(jobRepository.findLatestActiveOperatorJob()).thenReturn(Optional.empty());
     when(heavyCryptoGate.isBusy()).thenReturn(false);
     when(jobRepository.saveAndFlush(any())).thenThrow(new DataIntegrityViolationException("uq"));
+    // The winner is read outside the aborted transaction (#1267).
+    when(stateService.findRunningInNewTransaction()).thenReturn(Optional.of(runningJob()));
 
     IntegrityAsyncJobStartRequest request =
         new IntegrityAsyncJobStartRequest(

@@ -29,7 +29,6 @@ import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.service.AuditLogService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -104,48 +103,40 @@ public class AlertService {
 
     OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
 
-    Optional<Alert> existing =
-        alertRepository.findByDedupeKeyAndStatus(dedupeKey, AlertStatus.OPEN);
-    if (existing.isPresent()) {
-      Alert alert = existing.get();
-      alert.setLastSeenAt(now);
-      alert.setOccurrenceCount(alert.getOccurrenceCount() + 1);
-      if (payload != null) {
-        alert.setPayload(payload);
+    // Two passes cover the narrow case where the OPEN row that beat our insert is resolved before
+    // we read it back: the second insert then succeeds.
+    for (int pass = 0; pass < 2; pass++) {
+      Optional<Alert> existing =
+          alertRepository.findByDedupeKeyAndStatus(dedupeKey, AlertStatus.OPEN);
+      if (existing.isPresent()) {
+        return touch(existing.get(), now, payload);
       }
-      return alertRepository.save(alert);
+      // No catch-and-reread: a unique violation would abort the transaction on PostgreSQL
+      // (#1267). ON CONFLICT settles a concurrent first raise in SQL instead.
+      Optional<Long> insertedId =
+          alertRepository.insertOpenIfAbsent(
+              alertType.name(), severity.name(), dedupeKey, payload, now);
+      if (insertedId.isPresent()) {
+        Alert saved = alertRepository.findById(insertedId.get()).orElseThrow();
+        announceRaised(saved);
+        return saved;
+      }
+      logger.debug("Concurrent raise detected for dedupeKey={}, touching the open row", dedupeKey);
     }
+    throw new IllegalStateException(
+        "Alert dedupe key kept changing between insert and read: " + dedupeKey);
+  }
 
-    Alert alert = new Alert();
-    alert.setAlertType(alertType);
-    alert.setSeverity(severity);
-    alert.setStatus(AlertStatus.OPEN);
-    alert.setDedupeKey(dedupeKey);
-    alert.setPayload(payload);
-    alert.setOccurrenceCount(1);
-    alert.setCreatedAt(now);
+  private Alert touch(Alert alert, OffsetDateTime now, String payload) {
     alert.setLastSeenAt(now);
-
-    Alert saved;
-    try {
-      saved = alertRepository.saveAndFlush(alert);
-    } catch (DataIntegrityViolationException e) {
-      // Race: a concurrent producer inserted the OPEN row between our check and insert. The
-      // partial unique index on (dedupe_key) WHERE status = 'OPEN' guarantees we can recover by
-      // touching the now-present row.
-      logger.debug("Concurrent insert detected for dedupeKey={}, falling back to touch", dedupeKey);
-      Alert concurrent =
-          alertRepository
-              .findByDedupeKeyAndStatus(dedupeKey, AlertStatus.OPEN)
-              .orElseThrow(() -> e);
-      concurrent.setLastSeenAt(now);
-      concurrent.setOccurrenceCount(concurrent.getOccurrenceCount() + 1);
-      if (payload != null) {
-        concurrent.setPayload(payload);
-      }
-      return alertRepository.save(concurrent);
+    alert.setOccurrenceCount(alert.getOccurrenceCount() + 1);
+    if (payload != null) {
+      alert.setPayload(payload);
     }
+    return alertRepository.save(alert);
+  }
 
+  private void announceRaised(Alert saved) {
     emitAuditEntry(EventType.ALERT_RAISED, saved, null, null);
     logger.info(
         "Alert raised: id={} type={} severity={} dedupeKey={}",
@@ -153,7 +144,6 @@ public class AlertService {
         saved.getAlertType(),
         saved.getSeverity(),
         saved.getDedupeKey());
-    return saved;
   }
 
   /**

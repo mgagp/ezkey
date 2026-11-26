@@ -236,12 +236,10 @@ public class IntegrityAsyncJobService {
     try {
       jobRepository.saveAndFlush(job);
     } catch (DataIntegrityViolationException ex) {
+      // Another Start won the RUNNING slot. PostgreSQL has aborted this transaction, so the
+      // winner is read in a fresh one (#1267, ADR-0020). Any other violation propagates.
       stateService.expireStaleRunningIfNeeded();
-      IntegrityAsyncJob current =
-          jobRepository
-              .findBySlotKeyAndStatus(
-                  IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING)
-              .orElseThrow(() -> ex);
+      IntegrityAsyncJob current = stateService.findRunningInNewTransaction().orElseThrow(() -> ex);
       throw new IntegrityAsyncJobBusyException(
           current, "Integrity async slot busy: " + resumeLine(current));
     }
