@@ -10,14 +10,17 @@ package org.ezkey.security;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.config.TinkProperties;
 import org.ezkey.security.domain.entity.EncryptionKey;
@@ -29,8 +32,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 
-@DisplayName("ReencryptionBatchCreationService effective auth-attempt sharding")
+@DisplayName("ReencryptionBatchCreationService sharding and key guards")
 class ReencryptionBatchCreationServiceTest {
 
   private KeyManagementOperations keyManagementOperations;
@@ -217,5 +221,35 @@ class ReencryptionBatchCreationServiceTest {
         .allMatch(b -> Integer.valueOf(4).equals(b.getShardCount()))
         .extracting(ReencryptionBatch::getShardIndex)
         .containsExactlyInAnyOrder(0, 1, 2, 3);
+  }
+
+  @Test
+  @DisplayName(
+      "No batch from a key to itself when a stale keyset names the old key PRIMARY (#1431)")
+  void createBatchesForTarget_oldKeyIsKeysetPrimary_createsNothing() {
+    List<ReencryptionBatch> created =
+        service.createBatchesForTarget(
+            oldKey,
+            oldKey,
+            new ReencryptionBatchCreationService.Target("ezkey_api_key", "secret_key_hash"),
+            "TEST");
+
+    assertThat(created).isEmpty();
+    verify(batchRepository, never()).save(any(ReencryptionBatch.class));
+    verifyNoInteractions(targetQueryService);
+  }
+
+  @Test
+  @DisplayName("PRIMARY is read after a keyset refresh so an idle node sees a peer's promotion")
+  void getPrimaryKeyFromKeyset_refreshesKeysetBeforeReadingPrimary() {
+    when(keyManagementOperations.isInitialized()).thenReturn(true);
+    when(keyManagementOperations.getCurrentPrimaryKeyId()).thenReturn(primaryKey.getKeyId());
+    when(keyRepository.findById(primaryKey.getKeyId())).thenReturn(Optional.of(primaryKey));
+
+    assertThat(service.getPrimaryKeyFromKeyset()).isSameAs(primaryKey);
+
+    InOrder order = inOrder(keyManagementOperations);
+    order.verify(keyManagementOperations).refreshKeysetIfStale();
+    order.verify(keyManagementOperations).getCurrentPrimaryKeyId();
   }
 }

@@ -104,7 +104,9 @@ Admin-only materialization of the blob and of `ezkey_encryption_key` metadata:
 is the sole runtime source of truth across Admin/Auth/Integration (and lab crypto-api). On introduce,
 a new key stays `PENDING` for `rotation.sync-window-seconds` before promotion to `PRIMARY`, giving
 instances time to reload the updated keyset (async check ≤ 5 s in ADR-0008 / ADR-0016) while encrypt
-still uses the previous primary; Tink can decrypt with older ENABLED keys throughout. The shared
+still uses the previous primary. The check runs only on an encrypt or decrypt call: a node with no
+crypto traffic reloads on its next call, and that call still uses the keyset it had (#1551).
+Re-encryption reloads synchronously before it names a batch's target key (#1431); Tink can decrypt with older ENABLED keys throughout. The shared
 `encryption-secrets` volume holds **`master.key` and `audit-hmac.key` only** — not keyset-file
 authority.
 
