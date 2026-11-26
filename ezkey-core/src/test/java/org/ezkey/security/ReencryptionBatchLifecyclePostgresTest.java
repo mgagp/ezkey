@@ -203,7 +203,11 @@ class ReencryptionBatchLifecyclePostgresTest {
     assertThat(row.get("status")).isEqualTo("FAILED");
     assertThat(row.get("error_message")).isEqualTo("Stalled");
     assertThat(row.get("retry_count")).isEqualTo(1);
-    assertThat(row.get("records_skipped")).isEqualTo(1);
+    // Cursor and counters restart on what is left: the rows left behind sit below the cursor, a
+    // resume from it would stall again, and kept counters would count rescanned rows twice.
+    assertThat(row.get("last_record_id")).isNull();
+    assertThat(row.get("records_skipped")).isEqualTo(0);
+    assertThat(row.get("records_total")).isEqualTo(2);
   }
 
   @Test
@@ -227,6 +231,7 @@ class ReencryptionBatchLifecyclePostgresTest {
     assertThat(row.get("status")).isEqualTo("FAILED");
     assertThat(row.get("error_message")).isEqualTo("Interrupted");
     assertThat(row.get("retry_count")).isEqualTo(0);
+    assertThat(row.get("last_record_id")).isEqualTo(1L);
   }
 
   @Test
@@ -272,11 +277,13 @@ class ReencryptionBatchLifecyclePostgresTest {
   }
 
   @Test
-  @DisplayName("V32 heals committed IN_PROGRESS rows to FAILED Orphaned, retries untouched")
+  @DisplayName("V32 heals committed IN_PROGRESS rows to FAILED Orphaned, retries and cursor reset")
   void v32HealsOrphans() throws Exception {
     ReencryptionBatch orphan = newBatch(3);
     orphan.setStatus(BatchStatus.IN_PROGRESS);
-    orphan.setRetryCount(1);
+    orphan.setRetryCount(3);
+    orphan.setLastRecordId(42L);
+    orphan.updateProgress(1, 0, 1);
     orphan = batchRepository.save(orphan);
     ReencryptionBatch pending = batchRepository.save(newBatch(3));
 
@@ -288,7 +295,10 @@ class ReencryptionBatchLifecyclePostgresTest {
     Map<String, Object> healed = rowOf(orphan.getBatchId());
     assertThat(healed.get("status")).isEqualTo("FAILED");
     assertThat(healed.get("error_message")).isEqualTo("Orphaned");
-    assertThat(healed.get("retry_count")).isEqualTo(1);
+    assertThat(healed.get("retry_count")).isEqualTo(0);
+    assertThat(healed.get("last_record_id")).isNull();
+    assertThat(healed.get("records_done")).isEqualTo(0);
+    assertThat(healed.get("records_skipped")).isEqualTo(0);
     assertThat(healed.get("completed_at")).isNotNull();
     assertThat(statusOf(pending.getBatchId())).isEqualTo("PENDING");
   }

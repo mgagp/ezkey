@@ -133,6 +133,12 @@ public class ReencryptionRecordCipher {
     if (writtenKeyId == null) {
       throw new IllegalStateException("Re-encrypted value has no key id prefix (fail-closed)");
     }
+    if (writtenKeyId.equals(batch.getOldKey().getKeyId())) {
+      // A node whose keyset still names the old key as primary: nothing would migrate, yet the row
+      // would count as done. Fail the row so the batch cannot report a false success (#1431).
+      throw new IllegalStateException(
+          "Re-encryption wrote the old key again; keyset primary not current (fail-closed)");
+    }
 
     record.setEncryptedField(column, reencrypted);
     record.setEncryptionKeyId(column, writtenKeyId);

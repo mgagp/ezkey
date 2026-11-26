@@ -42,5 +42,5 @@ settings {
 }
 
 docs {
-  Accepts resume for a FAILED, PENDING or PAUSED re-encryption batch (202 Accepted); the retry budget is not checked. A COMPLETED or IN_PROGRESS batch is refused with 409 (RFC 9457 state-conflict, #1431). Use the batchId from the list re-encryption batches response; progress appears in the batches table when the batch ends (one transaction per batch).
+  Accepts resume for a FAILED, PENDING or PAUSED re-encryption batch (202 Accepted); the retry budget is not checked. A COMPLETED or IN_PROGRESS batch is refused with 409 (RFC 9457 state-conflict, #1431); a stored IN_PROGRESS is an orphan from a stopped run, never a live batch (a running batch reads PENDING, see #1550). Use the batchId from the list re-encryption batches response; progress appears in the batches table when the batch ends (one transaction per batch).
 }

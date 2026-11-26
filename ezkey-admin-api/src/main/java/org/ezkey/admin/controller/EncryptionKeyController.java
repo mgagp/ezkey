@@ -486,7 +486,9 @@ public class EncryptionKeyController {
    * Resume a failed, pending or paused re-encryption batch.
    *
    * <p>{@code COMPLETED} and {@code IN_PROGRESS} are refused with 409 (#1431): a completed batch
-   * has nothing to resume, and resuming an in-progress batch would run it twice.
+   * has nothing to resume, and a live batch never commits {@code IN_PROGRESS} (one transaction per
+   * batch), so a stored {@code IN_PROGRESS} is an orphan from before #1431 (Flyway V32 heals it to
+   * {@code FAILED}). A running batch still reads {@code PENDING}; claiming it atomically is #1550.
    *
    * @param batchId the batch ID
    * @param auth the authenticated Global Admin
@@ -507,7 +509,9 @@ public class EncryptionKeyController {
     @ApiResponse(responseCode = "404", description = "Batch not found"),
     @ApiResponse(
         responseCode = "409",
-        description = "The batch is COMPLETED (nothing to resume) or IN_PROGRESS (already running)",
+        description =
+            "The batch is COMPLETED (nothing to resume) or IN_PROGRESS (a stored IN_PROGRESS is"
+                + " an orphan from a stopped run, not a live batch; FAILED is the resumable state)",
         content =
             @io.swagger.v3.oas.annotations.media.Content(
                 schema =
@@ -533,7 +537,7 @@ public class EncryptionKeyController {
                     + status
                     + (status == BatchStatus.COMPLETED
                         ? "; there is nothing to resume"
-                        : "; it is already running"));
+                        : "; a stored IN_PROGRESS is an orphan, not a live batch"));
           }
           try {
             reencryptionService.enqueueBatchProcessing(List.of(batch));

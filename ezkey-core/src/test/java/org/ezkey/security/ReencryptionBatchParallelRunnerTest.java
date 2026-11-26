@@ -105,4 +105,32 @@ class ReencryptionBatchParallelRunnerTest {
     // One execute() call per batch: each competes independently for a pool thread.
     verify(executor, times(3)).execute(any());
   }
+
+  @Test
+  @DisplayName(
+      "#1431: an interrupt while waiting leaves the batches alone (no FAILED, no retry used)")
+  void runBatches_interruptWhileWaiting_doesNotMarkBatchesFailed() {
+    ThreadPoolTaskExecutor executor = mock(ThreadPoolTaskExecutor.class);
+    java.util.concurrent.Future<?> pending = new java.util.concurrent.CompletableFuture<>();
+    org.mockito.Mockito.doReturn(pending).when(executor).submit(any(Runnable.class));
+    TinkProperties properties = new TinkProperties();
+    properties.getReencryption().setParallelBatchWorkers(2);
+    ReencryptionBatchParallelRunner runner =
+        new ReencryptionBatchParallelRunner(
+            executor, mock(ReencryptionBatchProcessingService.class), properties);
+    java.util.concurrent.atomic.AtomicInteger failures =
+        new java.util.concurrent.atomic.AtomicInteger();
+
+    Thread.currentThread().interrupt();
+    try {
+      runner.runBatches(
+          List.of(new ReencryptionBatch(), new ReencryptionBatch()),
+          (_, _) -> failures.incrementAndGet());
+      assertEquals(true, Thread.currentThread().isInterrupted());
+    } finally {
+      Thread.interrupted();
+    }
+
+    assertEquals(0, failures.get());
+  }
 }

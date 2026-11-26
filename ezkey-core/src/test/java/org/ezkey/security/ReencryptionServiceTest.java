@@ -427,6 +427,17 @@ class ReencryptionServiceTest {
     assertFalse(result.changed());
   }
 
+  @Test
+  @DisplayName("reencryptRecord() - #1431: writing the old key again fails the row (stale keyset)")
+  void reencryptRecord_failsWhenCiphertextLandsOnOldKey() {
+    Enrollment enrollment = createMockEnrollment(123, "ENC:1111111111:encrypted-data");
+    when(encryptionOperations.decrypt("ENC:1111111111:encrypted-data")).thenReturn("pt");
+    when(encryptionOperations.encrypt("pt")).thenReturn("ENC:1111111111:same-key-again");
+
+    assertThrows(IllegalStateException.class, () -> invokeReencryptRecord(batch, enrollment));
+    assertEquals(1111111111L, enrollment.getIntegrationPrivateKeyEncryptionKeyId());
+  }
+
   // ===== PRIORITY 1: processBatch() Tests =====
 
   @Test

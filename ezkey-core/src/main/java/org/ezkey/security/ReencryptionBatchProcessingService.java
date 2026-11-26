@@ -269,6 +269,16 @@ public class ReencryptionBatchProcessingService {
             accounted,
             batch.getRecordsTotal());
         batch.updateProgress(recordsDone, recordsFailed, recordsSkipped);
+        if (!interrupted) {
+          // The rows left on the old key sit below the cursor: a resume from it would fetch
+          // nothing and stall again. Restart the batch on what is left: fetch filters on the old
+          // key's key-id column, so a rescan only touches rows still to migrate. Credit the rows
+          // migrated so far first, then reset the counters so the rescan cannot count rows twice.
+          updateKeyStatistics(batch, recordsDone);
+          batch.setLastRecordId(null);
+          batch.setRecordsTotal(stillWithOldKey);
+          batch.updateProgress(0, 0, 0);
+        }
         // An interrupted run (shutdown) is not the batch's fault: it does not use up a retry.
         applyFailure(batch, reason, !interrupted);
         batchRepository.save(batch);

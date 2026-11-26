@@ -59,7 +59,9 @@ public class ReencryptionService {
 
   /**
    * Largest accepted {@code max-duration-minutes}: the lock minus one hour for the batch that is
-   * still running when the duration cap is reached (the cap is only checked between batches).
+   * still running when the duration cap is reached (the cap is only checked between batches, and
+   * only in sequential mode: with {@code parallel-batch-workers > 1} a run is bounded by {@code
+   * max-batches-per-run} instead, see {@code docs/REENCRYPTION_OPERATIONS.md}).
    */
   static final int MAX_DURATION_MINUTES_LIMIT =
       (int) java.time.Duration.parse(SCHEDULER_LOCK_AT_MOST_FOR).toMinutes() - 60;
