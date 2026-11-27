@@ -435,7 +435,9 @@ class TinkKeyManagerConcurrencyTest {
   private static long writeLegacyEncryptedKeyset(Path keysetPath, byte[] masterKey)
       throws Exception {
     Aead masterAead = new AesGcmJce(masterKey);
-    KeysetHandle legacyHandle = KeysetHandle.generateNew(KeyTemplates.get("AES256_GCM"));
+    KeysetHandle legacyHandle =
+        KeysetHandle.generateNew(
+            KeyTemplates.get("AES256_GCM").toParameters(), RegistryConfiguration.get());
     try (var outputStream = Files.newOutputStream(keysetPath)) {
       legacyHandle.write(JsonKeysetWriter.withOutputStream(outputStream), masterAead);
     }
@@ -446,7 +448,9 @@ class TinkKeyManagerConcurrencyTest {
   private static LegacyDatabaseKeyset legacyEncryptedDatabaseKeyset(byte[] masterKey)
       throws Exception {
     Aead masterAead = new AesGcmJce(masterKey);
-    KeysetHandle legacyHandle = KeysetHandle.generateNew(KeyTemplates.get("AES256_GCM"));
+    KeysetHandle legacyHandle =
+        KeysetHandle.generateNew(
+            KeyTemplates.get("AES256_GCM").toParameters(), RegistryConfiguration.get());
     byte[] keysetJson;
     try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
       CleartextKeysetHandle.write(legacyHandle, JsonKeysetWriter.withOutputStream(outputStream));

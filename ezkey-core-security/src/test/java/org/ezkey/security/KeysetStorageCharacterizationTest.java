@@ -497,7 +497,9 @@ class KeysetStorageCharacterizationTest {
       throws Exception {
     AeadConfig.register();
     Aead masterAead = new AesGcmJce(masterKey);
-    KeysetHandle handle = KeysetHandle.generateNew(KeyTemplates.get("AES256_GCM"));
+    KeysetHandle handle =
+        KeysetHandle.generateNew(
+            KeyTemplates.get("AES256_GCM").toParameters(), RegistryConfiguration.get());
     String encrypted =
         TinkJsonProtoKeysetFormat.serializeEncryptedKeyset(
             handle, masterAead, new byte[0], RegistryConfiguration.get());
@@ -510,7 +512,9 @@ class KeysetStorageCharacterizationTest {
   private static LegacyDatabaseKeyset legacyEncryptedDatabaseKeyset(byte[] masterKey)
       throws Exception {
     Aead masterAead = new AesGcmJce(masterKey);
-    KeysetHandle legacyHandle = KeysetHandle.generateNew(KeyTemplates.get("AES256_GCM"));
+    KeysetHandle legacyHandle =
+        KeysetHandle.generateNew(
+            KeyTemplates.get("AES256_GCM").toParameters(), RegistryConfiguration.get());
     byte[] keysetJson;
     try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
       CleartextKeysetHandle.write(legacyHandle, JsonKeysetWriter.withOutputStream(outputStream));

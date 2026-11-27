@@ -750,7 +750,8 @@ public class TinkKeyManager implements KeyManagementOperations {
   private KeysetHandle generateKeyset() throws GeneralSecurityException {
     logger.info("🆕 Generating new keyset...");
     var template = getKeyTemplate();
-    KeysetHandle newKeyset = KeysetHandle.generateNew(template);
+    KeysetHandle newKeyset =
+        KeysetHandle.generateNew(template.toParameters(), RegistryConfiguration.get());
     logger.info(
         "✅ New keyset generated (primary kid: {})",
         Long.toUnsignedString(getUnsignedPrimaryKeyId(newKeyset)));

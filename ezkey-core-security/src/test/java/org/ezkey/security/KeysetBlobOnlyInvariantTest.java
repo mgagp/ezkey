@@ -307,7 +307,9 @@ class KeysetBlobOnlyInvariantTest {
 
       // Ciphertext produced by a foreign keyset (kid absent from the loaded blob).
       AeadConfig.register();
-      KeysetHandle foreignHandle = KeysetHandle.generateNew(KeyTemplates.get("AES256_GCM"));
+      KeysetHandle foreignHandle =
+          KeysetHandle.generateNew(
+              KeyTemplates.get("AES256_GCM").toParameters(), RegistryConfiguration.get());
       Aead foreignAead = foreignHandle.getPrimitive(RegistryConfiguration.get(), Aead.class);
       long foreignKid = Integer.toUnsignedLong(foreignHandle.getPrimary().getId());
       byte[] foreignCiphertext =
@@ -542,15 +544,23 @@ class KeysetBlobOnlyInvariantTest {
       // Build a peer blob that contains an extra pending key, then promote that kid.
       AeadConfig.register();
       Aead masterAead = new AesGcmJce(masterKey);
-      KeysetHandle base = KeysetHandle.generateNew(KeyTemplates.get("AES256_GCM"));
+      KeysetHandle base =
+          KeysetHandle.generateNew(
+              KeyTemplates.get("AES256_GCM").toParameters(), RegistryConfiguration.get());
       var managerTink = KeysetManager.withKeysetHandle(base).add(KeyTemplates.get("AES256_GCM"));
       KeysetHandle withPending = managerTink.getKeysetHandle();
-      long pendingKid =
-          withPending.getKeysetInfo().getKeyInfoList().stream()
-              .mapToLong(k -> Integer.toUnsignedLong(k.getKeyId()))
-              .filter(id -> id != Integer.toUnsignedLong(withPending.getPrimary().getId()))
-              .findFirst()
-              .orElseThrow();
+      long detectedPendingKid = -1L;
+      for (int i = 0; i < withPending.size(); i++) {
+        long candidate = Integer.toUnsignedLong(withPending.getAt(i).getId());
+        if (candidate != Integer.toUnsignedLong(withPending.getPrimary().getId())) {
+          detectedPendingKid = candidate;
+          break;
+        }
+      }
+      if (detectedPendingKid < 0) {
+        throw new IllegalStateException("Failed to find pending key id");
+      }
+      final long pendingKid = detectedPendingKid;
       String encrypted =
           TinkJsonProtoKeysetFormat.serializeEncryptedKeyset(
               withPending, masterAead, new byte[0], RegistryConfiguration.get());
@@ -1019,7 +1029,9 @@ class KeysetBlobOnlyInvariantTest {
       throws Exception {
     AeadConfig.register();
     Aead masterAead = new AesGcmJce(masterKey);
-    KeysetHandle handle = KeysetHandle.generateNew(KeyTemplates.get("AES256_GCM"));
+    KeysetHandle handle =
+        KeysetHandle.generateNew(
+            KeyTemplates.get("AES256_GCM").toParameters(), RegistryConfiguration.get());
     String encrypted =
         TinkJsonProtoKeysetFormat.serializeEncryptedKeyset(
             handle, masterAead, new byte[0], RegistryConfiguration.get());
@@ -1031,7 +1043,9 @@ class KeysetBlobOnlyInvariantTest {
   private static PeerBlob peerNativeBlob(byte[] masterKey, String updatedBy) throws Exception {
     AeadConfig.register();
     Aead masterAead = new AesGcmJce(masterKey);
-    KeysetHandle handle = KeysetHandle.generateNew(KeyTemplates.get("AES256_GCM"));
+    KeysetHandle handle =
+        KeysetHandle.generateNew(
+            KeyTemplates.get("AES256_GCM").toParameters(), RegistryConfiguration.get());
     String encrypted =
         TinkJsonProtoKeysetFormat.serializeEncryptedKeyset(
             handle, masterAead, new byte[0], RegistryConfiguration.get());
@@ -1044,7 +1058,9 @@ class KeysetBlobOnlyInvariantTest {
   private static LegacyDatabaseKeyset legacyEncryptedDatabaseKeyset(byte[] masterKey)
       throws Exception {
     Aead masterAead = new AesGcmJce(masterKey);
-    KeysetHandle legacyHandle = KeysetHandle.generateNew(KeyTemplates.get("AES256_GCM"));
+    KeysetHandle legacyHandle =
+        KeysetHandle.generateNew(
+            KeyTemplates.get("AES256_GCM").toParameters(), RegistryConfiguration.get());
     byte[] keysetJson;
     try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
       CleartextKeysetHandle.write(legacyHandle, JsonKeysetWriter.withOutputStream(outputStream));
