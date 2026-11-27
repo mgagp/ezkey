@@ -132,7 +132,7 @@ public class MockDeliveryController {
       logger.info("Delivery {}: refused, {}", sendId, invalid);
       HttpStatus status =
           "payload-too-large".equals(invalid)
-              ? HttpStatus.PAYLOAD_TOO_LARGE
+              ? HttpStatus.CONTENT_TOO_LARGE
               : "invalid-request".equals(invalid)
                   ? HttpStatus.BAD_REQUEST
                   : HttpStatus.UNPROCESSABLE_CONTENT;

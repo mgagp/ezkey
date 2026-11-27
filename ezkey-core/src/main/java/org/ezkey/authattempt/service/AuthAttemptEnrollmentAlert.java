@@ -25,11 +25,12 @@ import org.springframework.transaction.support.TransactionTemplate;
 /**
  * Raises the shared enrollment alert after the status change has committed.
  *
- * <p>The alert must not run inside the transaction that writes {@code INVALID} or {@code REJECTED}.
- * A concurrent insert can hit {@code uq_alert_dedupe_key_open} and abort that Postgres transaction;
- * the status change would roll back, the attempt would stay {@code READ}, and respond would return
- * 500. {@code afterCommit} has no transaction left to join, so the raise runs in a new one. The
- * raise is fail-open: a failure is logged and does not propagate to the caller.
+ * <p>The alert must not run inside the transaction that writes {@code INVALID} or {@code REJECTED}:
+ * any alert failure there would roll back the status change, leave the attempt {@code READ}, and
+ * make respond return 500. (The concurrent first raise on {@code uq_alert_dedupe_key_open} that
+ * first motivated this no longer errors: {@code raiseOrTouch} settles it with {@code ON CONFLICT},
+ * #1267, ADR-0020.) {@code afterCommit} has no transaction left to join, so the raise runs in a new
+ * one. The raise is fail-open: a failure is logged and does not propagate to the caller.
  *
  * @since 2026
  */

@@ -8,6 +8,7 @@
 package org.ezkey.security.config;
 
 import org.ezkey.config.TinkProperties;
+import org.ezkey.security.ReencryptionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
@@ -27,6 +28,7 @@ public class ReencryptionExecutorConfiguration {
   @Bean(name = "reencryptionBatchExecutor")
   public ThreadPoolTaskExecutor reencryptionBatchExecutor(TinkProperties properties) {
     TinkProperties.Reencryption reencryption = properties.getReencryption();
+    ReencryptionService.requireRunFitsSchedulerLock(reencryption);
     int workers = Math.max(1, reencryption.getParallelBatchWorkers());
     int shardCount = Math.max(1, reencryption.getAuthAttemptShardCount());
     if (shardCount > 1 && workers < shardCount) {

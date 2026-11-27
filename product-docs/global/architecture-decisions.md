@@ -36,6 +36,7 @@ Each decision is recorded with enough context to be understood years later: why 
 | [ADR-0017](#adr-0017-product-versioning-one-semver-for-the-monorepo) | Product versioning — one SemVer for the monorepo | accepted | 2026-11-04 |
 | [ADR-0018](#adr-0018--connector-spi-for-external-services) | Connector SPI for external services | accepted | 2026-11-05 |
 | [ADR-0019](#adr-0019--enrollment-invitation-is-the-proof-token) | Enrollment invitation is the proof token | accepted | 2026-11-08 |
+| [ADR-0020](#adr-0020--database-errors-reach-the-api-through-three-paths-not-a-code-table) | Database errors reach the API through three paths, not a code table | accepted | 2026-11-26 |
 
 ## ADR-0001 — Backend-first cryptographic protocol
 
@@ -1373,3 +1374,79 @@ issue, not this change.
 - ADR-0007 (proof tokens stored as hashes).
 - `docs/SECURITY_POSTURE.md` (sequential ids are not a secret once known).
 - `I-2026-11-03-enrollment-invitation-links` (links use this invitation, without `enrollmentId`).
+
+## ADR-0020 — Database errors reach the API through three paths, not a code table
+
+### Metadata
+
+- **ID:** ADR-0020.
+- **Date:** 2026-11-26.
+- **Status:** accepted by Marc in #1267 (this change).
+- **Scope:** global (all Spring services on PostgreSQL: Admin, Auth, Integration APIs, core).
+- **Owners:** Platform architecture.
+
+### Context
+
+#1267 reproduced on PostgreSQL two recoveries that could not work. `AlertService.raiseOrTouch`
+and `IntegrityAsyncJobService.start` caught a unique violation, then read the winning row in the
+same transaction. PostgreSQL had already aborted that transaction, so the read failed: a first
+alert raised twice at once crashed the second producer, and a second concurrent Start of an
+Integrity job returned an unlogged 500 instead of the intended 409 busy. H2 and mocks hid both.
+
+The question behind it: how should PostgreSQL errors become functional responses? A table that
+maps each SQLSTATE or constraint name to a business code is the usual first idea. It has to be
+kept in step with every migration, and it mostly duplicates what Spring already does.
+
+### Decision
+
+A database error takes one of three paths.
+
+1. **An expected race is settled in SQL.** When a concurrent insert is a normal outcome and the
+   caller must go on (get-or-create, raise-or-touch), write it as `INSERT … ON CONFLICT … DO
+   NOTHING` (or `DO UPDATE`) and branch on the result. The transaction stays healthy.
+2. **A refusal is a business exception.** When the race only means "no" (slot busy, name taken),
+   let the violation end the transaction and throw the business exception the API already maps
+   (for example `IntegrityAsyncJobBusyException` → 409). Any read needed for the message runs in
+   a fresh transaction (`REQUIRES_NEW` on a separate bean), never in the failed one. Recognise
+   the case from Spring's translated exception type, and from the constraint name only when one
+   table has several unique constraints.
+3. **Everything else goes to the global handlers.** Spring already translates SQLSTATEs into
+   `DataAccessException` types (`DataIntegrityViolationException`, `DuplicateKeyException`,
+   optimistic-lock failures). The existing handlers map those few types; anything unexpected is
+   a 500 with a generic body and an ERROR log carrying the cause.
+
+Never catch a `DataAccessException` and keep using the same transaction. Apply this rule to new
+code and to each case observed in the field, one at a time. Existing code is not swept.
+
+### Alternatives Considered
+
+- **SQLSTATE or constraint-name → business-code table.** Rejected: every migration must update
+  it, and Spring's exception translation already covers the generic part.
+- **Catch, then re-read in the same transaction.** Rejected: works on H2, fails on PostgreSQL.
+- **Retry the whole transaction on any integrity error.** Rejected: hides real bugs and
+  multiplies side effects such as audit entries.
+
+### Consequences
+
+- **Positive.** No mapping to maintain. Races resolve without errors where they are expected;
+  refusals keep their typed 409; unknown failures are visible in the logs.
+- **Negative.** `ON CONFLICT` is PostgreSQL SQL in a native query. Tests for these paths must
+  run on PostgreSQL (Testcontainers tier, `docs/DEVELOPMENT.md` § CI), not H2.
+- **Neutral.** The Admin API keeps its existing `DataIntegrityViolationException` → 400
+  `data-constraint-violation` safety net. Where a duplicate is an expected outcome, path 2 gives
+  the 409.
+
+### Validation
+
+- `AlertServiceConcurrentRaisePostgresTest` and
+  `IntegrityAsyncJobPostgresTest#start_losingInsertRace_refusedAsBusy` hold a competing insert
+  open on a second connection, let the service block on the unique index, then commit. Both were
+  red before the fix for the reason above.
+- `GlobalExceptionHandlerLoggingTest` proves both Admin API 500 handlers (`RuntimeException`, which
+  catches `DataAccessException`, and `Exception`) log at ERROR with the cause.
+
+### Related Decisions
+
+- ADR-0003 (RFC 9457 error contract).
+- [Stabilization lesson 7](hygiene/stabilization-lessons/README.md#design) (a caught database error
+  does not recover the transaction).

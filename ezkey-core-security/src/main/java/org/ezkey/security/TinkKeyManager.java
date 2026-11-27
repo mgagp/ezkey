@@ -620,6 +620,27 @@ public class TinkKeyManager implements KeyManagementOperations {
     return false;
   }
 
+  /**
+   * Runs the keyset version check synchronously on the caller thread (#1431).
+   *
+   * <p>The routine check only runs, asynchronously, on an encrypt or decrypt call ({@link
+   * #getAeadPrimitive()}), so a node with no crypto traffic keeps a stale primary after a peer
+   * promoted a new key. Re-encryption reads the primary to name a batch's target key, so it
+   * refreshes first. Costs one version query when the keyset is current.
+   */
+  @Override
+  public void refreshKeysetIfStale() {
+    if (!isInitialized() || CHECKING_DATABASE.get()) {
+      return;
+    }
+    CHECKING_DATABASE.set(true);
+    try {
+      checkAndReloadKeysetIfNeeded();
+    } finally {
+      CHECKING_DATABASE.set(false);
+    }
+  }
+
   public long getCurrentPrimaryKeyId() {
     keysetLock.readLock().lock();
     try {
@@ -729,7 +750,8 @@ public class TinkKeyManager implements KeyManagementOperations {
   private KeysetHandle generateKeyset() throws GeneralSecurityException {
     logger.info("🆕 Generating new keyset...");
     var template = getKeyTemplate();
-    KeysetHandle newKeyset = KeysetHandle.generateNew(template);
+    KeysetHandle newKeyset =
+        KeysetHandle.generateNew(template.toParameters(), RegistryConfiguration.get());
     logger.info(
         "✅ New keyset generated (primary kid: {})",
         Long.toUnsignedString(getUnsignedPrimaryKeyId(newKeyset)));

@@ -295,7 +295,7 @@ public class AdminRateLimitFilter implements Filter {
           "passwordless-wait/cancel body exceeds {} bytes from IP {}",
           MAX_WAIT_BODY_BYTES,
           clientIdForLog);
-      res.setStatus(HttpStatus.PAYLOAD_TOO_LARGE.value());
+      res.setStatus(HttpStatus.CONTENT_TOO_LARGE.value());
       return;
     }
 

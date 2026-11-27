@@ -140,6 +140,9 @@ updates:
       # TypeScript 7 has its own gate (Marc 2026-10-30) — no Dependabot major PRs.
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
+      # Hold RN CLI 21+ until the RN 0.89 migration block lands (see #1415).
+      - dependency-name: "@react-native-community/cli*"
+        update-types: ["version-update:semver-major"]
       # ESLint 10 breaks eslint-plugin-eslint-comments (context.getSourceCode removed);
       # wait for @eslint-community migration (Marc 2026-10-30, was #1007).
       - dependency-name: "eslint"

@@ -306,7 +306,7 @@ public class SmtpDeliveryController {
     logger.info("Delivery {}: refused, {}", sendId, code);
     HttpStatus status =
         switch (code) {
-          case "payload-too-large" -> HttpStatus.PAYLOAD_TOO_LARGE;
+          case "payload-too-large" -> HttpStatus.CONTENT_TOO_LARGE;
           case "invalid-request" -> HttpStatus.BAD_REQUEST;
           case "provider-timeout" -> HttpStatus.GATEWAY_TIMEOUT;
           default -> HttpStatus.UNPROCESSABLE_CONTENT;

@@ -58,6 +58,10 @@ Values for every analysis and design ([`design-principles.md`](product-docs/glob
   to admin lifecycle or activation paths extend `bruno/` (and the Admin UI flow) in the same change.
 - **Logging:** a caller-controlled value goes through `org.ezkey.util.LogSanitizer.sanitizeForLog`;
   secrets are never logged at any level; prove it on runtime output (log-capture test).
+- **Database errors:** an expected race is settled in SQL (`ON CONFLICT`), a refusal is a business
+  exception, the rest goes to the global handlers; never keep using a transaction after catching a
+  `DataAccessException`. Apply to new code and to each newly observed case, no sweep
+  ([ADR-0020](product-docs/global/architecture-decisions.md#adr-0020--database-errors-reach-the-api-through-three-paths-not-a-code-table), #1267).
 - **Configuration:** a new or changed `@ConfigurationProperties` updates the module's
   `CONFIGURATION.md` (and [`docs/configuration/README.md`](docs/configuration/README.md) for a new
   prefix).

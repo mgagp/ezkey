@@ -222,12 +222,7 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(RuntimeException.class)
   public ResponseEntity<ProblemDetail> handleRuntimeException(
       RuntimeException ex, WebRequest request) {
-    return problemResponse(
-        HttpStatus.INTERNAL_SERVER_ERROR,
-        AdminApiProblemCatalog.TYPE_INTERNAL_ERROR,
-        AdminApiProblemCatalog.TITLE_INTERNAL_ERROR,
-        AdminApiProblemCatalog.DETAIL_UNEXPECTED,
-        request);
+    return unexpectedError(ex, request);
   }
 
   /**
@@ -239,6 +234,16 @@ public class GlobalExceptionHandler {
    */
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ProblemDetail> handleGenericException(Exception ex, WebRequest request) {
+    return unexpectedError(ex, request);
+  }
+
+  /**
+   * Builds the generic 500 and logs its cause. The body stays generic; the ERROR log is the
+   * operator's only trace of an unexpected failure (ADR-0020, #1267). Same posture as the Auth and
+   * Integration API handlers.
+   */
+  private static ResponseEntity<ProblemDetail> unexpectedError(Exception ex, WebRequest request) {
+    LOG.error("Unhandled exception on {}", LogSanitizer.sanitizeForLog(pathFrom(request)), ex);
     return problemResponse(
         HttpStatus.INTERNAL_SERVER_ERROR,
         AdminApiProblemCatalog.TYPE_INTERNAL_ERROR,

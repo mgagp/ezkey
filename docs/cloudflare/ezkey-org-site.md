@@ -22,6 +22,8 @@ What can linger is only the **default `*.pages.dev` subdomain** Cloudflare attac
 
 ### HSTS on ezkey.org is a zone setting
 
+Header ownership and the current state live in [edge-posture.md](edge-posture.md); confirmed by the read-only review of 2026-11-26 (zone HSTS enabled with max-age 0, managed transform *Add security headers* on).
+
 Observed 2026-11-23: `https://ezkey.org/logo.svg` (and `www.ezkey.org`, `methodology.ezkey.org`) respond with `Strict-Transport-Security: max-age=0`. The same Pages project on `https://ezkey-teaser.pages.dev/` does **not** send that header. `max-age=0` is what Cloudflare emits when **SSL/TLS → Edge Certificates → HTTP Strict Transport Security (HSTS)** is enabled with **Max Age Header = 0 (Disable)**. That zone setting replaces an origin or `_headers` HSTS value on hostnames in the zone, so changing `_headers` alone does not change what `ezkey.org` sends.
 
 Recommended dashboard value when an operator is ready to turn HSTS on (do not enable `includeSubDomains` or `preload` in the same step; other services live on `ezkey.org` subdomains):

@@ -333,7 +333,7 @@ public class DemoDeviceEnrollmentWriter {
       throw new java.io.IOException(
           "Could not read " + filePath + " from the demo-device container");
     }
-    return objectMapper.readTree(content).path("integrationPublicKey").asText(null);
+    return objectMapper.readTree(content).path("integrationPublicKey").asString(null);
   }
 
   /**

@@ -78,7 +78,10 @@ auth-api.ezkey.online {
 		header_up -Forwarded
 		header_up -X-Real-IP
 	}
+	# defer: replace the upstream values instead of adding a second copy (Spring Security
+	# sends X-Frame-Options and X-Content-Type-Options too). Owner: docs/cloudflare/edge-posture.md.
 	header {
+		defer
 		X-Content-Type-Options "nosniff"
 		X-Frame-Options "DENY"
 		Referrer-Policy "strict-origin-when-cross-origin"
@@ -119,7 +122,10 @@ admin-api.ezkey.online {
 		header_up -Forwarded
 		header_up -X-Real-IP
 	}
+	# defer: replace the upstream values instead of adding a second copy (Spring Security
+	# sends X-Frame-Options and X-Content-Type-Options too). Owner: docs/cloudflare/edge-posture.md.
 	header {
+		defer
 		X-Content-Type-Options "nosniff"
 		X-Frame-Options "DENY"
 		Referrer-Policy "strict-origin-when-cross-origin"
@@ -138,7 +144,10 @@ integration-api.ezkey.online {
 		header_up -Forwarded
 		header_up -X-Real-IP
 	}
+	# defer: replace the upstream values instead of adding a second copy (Spring Security
+	# sends X-Frame-Options and X-Content-Type-Options too). Owner: docs/cloudflare/edge-posture.md.
 	header {
+		defer
 		X-Content-Type-Options "nosniff"
 		X-Frame-Options "DENY"
 		Referrer-Policy "strict-origin-when-cross-origin"

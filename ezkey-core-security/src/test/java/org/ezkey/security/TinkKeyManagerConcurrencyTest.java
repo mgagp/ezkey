@@ -138,6 +138,39 @@ class TinkKeyManagerConcurrencyTest {
   }
 
   @Test
+  @DisplayName("refreshKeysetIfStale reloads a peer's newer keyset on the caller thread (#1431)")
+  void refreshKeysetIfStale_whenDatabaseVersionIncreases_reloadsBeforeReturning(
+      @TempDir Path tempDir) throws Exception {
+    Path masterKeyPath = tempDir.resolve("master.key");
+    Path keysetPath = tempDir.resolve("keyset.json.encrypted");
+    writeMasterKey(masterKeyPath);
+
+    AtomicReference<KeysetBlob> storedBlob = new AtomicReference<>();
+    KeysetBlobRepository repository = versionedRepository(storedBlob);
+
+    TinkKeyManager manager =
+        initializeManager(
+            masterKeyPath, keysetPath, TinkProperties.Keyset.StorageMode.DATABASE, repository);
+    long primaryAtStartup = manager.getCurrentPrimaryKeyId();
+    manager.saveKeysetToDatabase("TEST_INIT");
+    KeysetBlob stalePrimaryBlob = copyBlob(storedBlob.get());
+    long rotatedPrimary = manager.rotateKey();
+    KeysetBlob rotatedBlob = copyBlob(storedBlob.get());
+
+    // This node still serves the old primary; a peer has since published the rotated keyset.
+    storedBlob.set(stalePrimaryBlob);
+    manager.loadKeysetFromDatabase();
+    storedBlob.set(rotatedBlob);
+    manager.setDatabaseKeysetVersionForTests(stalePrimaryBlob.getVersion());
+    assertEquals(primaryAtStartup, manager.getCurrentPrimaryKeyId());
+
+    manager.refreshKeysetIfStale();
+
+    assertEquals(rotatedPrimary, manager.getCurrentPrimaryKeyId());
+    manager.shutdownKeysetCheckExecutor();
+  }
+
+  @Test
   @DisplayName("addKeyWithoutPromotion allows concurrent getAeadPrimitive readers")
   void addKeyWithoutPromotion_whileConcurrentReaders_allSucceed(@TempDir Path tempDir)
       throws Exception {
@@ -402,7 +435,9 @@ class TinkKeyManagerConcurrencyTest {
   private static long writeLegacyEncryptedKeyset(Path keysetPath, byte[] masterKey)
       throws Exception {
     Aead masterAead = new AesGcmJce(masterKey);
-    KeysetHandle legacyHandle = KeysetHandle.generateNew(KeyTemplates.get("AES256_GCM"));
+    KeysetHandle legacyHandle =
+        KeysetHandle.generateNew(
+            KeyTemplates.get("AES256_GCM").toParameters(), RegistryConfiguration.get());
     try (var outputStream = Files.newOutputStream(keysetPath)) {
       legacyHandle.write(JsonKeysetWriter.withOutputStream(outputStream), masterAead);
     }
@@ -413,7 +448,9 @@ class TinkKeyManagerConcurrencyTest {
   private static LegacyDatabaseKeyset legacyEncryptedDatabaseKeyset(byte[] masterKey)
       throws Exception {
     Aead masterAead = new AesGcmJce(masterKey);
-    KeysetHandle legacyHandle = KeysetHandle.generateNew(KeyTemplates.get("AES256_GCM"));
+    KeysetHandle legacyHandle =
+        KeysetHandle.generateNew(
+            KeyTemplates.get("AES256_GCM").toParameters(), RegistryConfiguration.get());
     byte[] keysetJson;
     try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
       CleartextKeysetHandle.write(legacyHandle, JsonKeysetWriter.withOutputStream(outputStream));

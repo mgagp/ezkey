@@ -481,6 +481,14 @@ public class AuthAttempt implements Reencryptable {
   }
 
   @Override
+  public Long getEncryptionKeyId(String columnName) {
+    if ("auth_attempt_proof_token".equals(columnName)) {
+      return authAttemptProofTokenEncryptionKeyId;
+    }
+    throw new IllegalArgumentException("Unknown encrypted field: " + columnName);
+  }
+
+  @Override
   public Long getEntityId() {
     return authAttemptId != null ? Long.valueOf(authAttemptId) : null;
   }

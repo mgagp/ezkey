@@ -17,11 +17,16 @@ import static org.mockito.Mockito.when;
 
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.time.Duration;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import javax.sql.DataSource;
 import org.ezkey.audit.exception.IntegrityAsyncJobBusyException;
 import org.ezkey.audit.integrity.AuditChainVerificationService;
@@ -215,6 +220,67 @@ class IntegrityAsyncJobPostgresTest {
     assertThat(abandoned.jobId()).isEqualTo(expiredOperator.getJobId());
     assertThat(abandoned.trigger()).isEqualTo(IntegrityAsyncJobTrigger.MANUAL);
     assertThat(jobRepository.findById(nightly.getJobId()).orElseThrow().getAbandonedAt()).isNull();
+  }
+
+  @Test
+  @DisplayName("#1267: Start losing the insert race on the RUNNING slot is refused as busy")
+  void start_losingInsertRace_refusedAsBusy() throws Exception {
+    UUID winnerId = UUID.randomUUID();
+    try (Connection winner = dataSource.getConnection()) {
+      winner.setAutoCommit(false);
+      try (PreparedStatement insert =
+          winner.prepareStatement(
+              """
+              INSERT INTO ezkey_integrity_async_job (
+                job_id, slot_key, job_type, status, "trigger", started_by_admin_id,
+                started_by_username, started_at, heartbeat_at)
+              VALUES (?, 'GLOBAL', 'VERIFY_CHAIN_RANGE', 'RUNNING', 'MANUAL', 2,
+                'admin.winner', NOW(), NOW())
+              """)) {
+        insert.setObject(1, winnerId);
+        insert.executeUpdate();
+      }
+
+      OffsetDateTime to = OffsetDateTime.now(ZoneOffset.UTC);
+      CompletableFuture<?> loser =
+          CompletableFuture.runAsync(() ->
+              jobService.start(
+                  new org.ezkey.audit.dto.IntegrityAsyncJobStartRequest(
+                      IntegrityAsyncJobType.VERIFY_CHAIN_RANGE, to.minusHours(1), to, null),
+                  1,
+                  "admin.loser"));
+
+      awaitBlockedOnLock();
+      winner.commit();
+
+      assertThatThrownBy(() -> loser.get(30, TimeUnit.SECONDS))
+          .isInstanceOf(ExecutionException.class)
+          .cause()
+          .isInstanceOf(IntegrityAsyncJobBusyException.class)
+          .satisfies(ex ->
+              assertThat(((IntegrityAsyncJobBusyException) ex).getCurrentJob().getJobId())
+                  .isEqualTo(winnerId));
+    }
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM ezkey_integrity_async_job WHERE status = 'RUNNING'",
+                Integer.class))
+        .isEqualTo(1);
+  }
+
+  private void awaitBlockedOnLock() throws InterruptedException {
+    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20);
+    while (System.nanoTime() < deadline) {
+      Integer waiting =
+          jdbc.queryForObject(
+              "SELECT count(*) FROM pg_stat_activity WHERE wait_event_type = 'Lock'",
+              Integer.class);
+      if (waiting != null && waiting > 0) {
+        return;
+      }
+      Thread.sleep(50);
+    }
+    throw new AssertionError("Start insert never blocked on the RUNNING slot index");
   }
 
   @Test

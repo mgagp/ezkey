@@ -146,6 +146,21 @@ public class IntegrityAsyncJobStateService {
   }
 
   /**
+   * Reads the RUNNING job in its own transaction.
+   *
+   * <p>Used after Start loses the insert race on {@code uq_integrity_async_job_one_running}: the
+   * unique violation has aborted the caller's transaction on PostgreSQL, so the read must not run
+   * there (#1267, ADR-0020).
+   *
+   * @return the RUNNING job when present
+   */
+  @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+  public Optional<IntegrityAsyncJob> findRunningInNewTransaction() {
+    return jobRepository.findBySlotKeyAndStatus(
+        IntegrityAsyncJob.GLOBAL_SLOT_KEY, IntegrityAsyncJobStatus.RUNNING);
+  }
+
+  /**
    * Expires RUNNING jobs whose heartbeat is older than TTL.
    *
    * @return true when a job was expired

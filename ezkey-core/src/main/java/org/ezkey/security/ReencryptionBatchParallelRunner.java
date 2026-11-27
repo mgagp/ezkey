@@ -112,9 +112,13 @@ public class ReencryptionBatchParallelRunner {
       try {
         futures.get(i).get();
       } catch (InterruptedException e) {
+        // #1431: shutdown. Stop waiting and leave the batches alone: workers may still finish
+        // them, and marking them FAILED here would use up retries on every restart.
         Thread.currentThread().interrupt();
-        onFailure.onFailure(
-            batches.get(i), new IllegalStateException("Interrupted waiting for batch", e));
+        logger.info(
+            "Interrupted while waiting for re-encryption batches; {} batch(es) left as they are",
+            futures.size() - i);
+        return;
       } catch (ExecutionException e) {
         Throwable cause = e.getCause() != null ? e.getCause() : e;
         Exception ex = cause instanceof Exception ? (Exception) cause : new RuntimeException(cause);
@@ -128,6 +132,10 @@ public class ReencryptionBatchParallelRunner {
   /** Processes batches one at a time on the calling thread. */
   private void runSequential(List<ReencryptionBatch> batches, BatchFailureCallback onFailure) {
     for (ReencryptionBatch batch : batches) {
+      if (Thread.currentThread().isInterrupted()) {
+        logger.info("Re-encryption run interrupted (shutdown); remaining batches stay queued");
+        return;
+      }
       try {
         batchProcessingService.processBatchInternal(batch);
       } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch

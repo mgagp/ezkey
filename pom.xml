@@ -64,7 +64,7 @@
 		-->
 		<revision>0.2.0</revision>
 		<changelist>-SNAPSHOT</changelist>
-		<flatten-maven-plugin.version>1.9.0</flatten-maven-plugin.version>
+		<flatten-maven-plugin.version>1.10.0</flatten-maven-plugin.version>
 		<java.version>25</java.version>
 		<maven.compiler.source>25</maven.compiler.source>
 		<maven.compiler.target>25</maven.compiler.target>
@@ -85,13 +85,13 @@
 		<!-- Nested Spotless pin; Dependabot typically misses the plugin XML. Pulse in dependabot-curated. -->
 		<!-- 2.0.0 (2026-10-30): new layout engine; cleanup pass on by default (Spotless 3.10.4 supports <cleanup>). -->
 		<google-java-format.version>2.0.0</google-java-format.version>
-		<bucket4j.version>8.22.0</bucket4j.version>
+		<bucket4j.version>8.23.0</bucket4j.version>
 		<caffeine.version>3.3.1</caffeine.version>
 		<tink.version>1.24.0</tink.version>
 		<shedlock.version>7.11.0</shedlock.version>
 		<javamelody.version>2.9.0</javamelody.version>
 		<ipaddress.version>5.6.2</ipaddress.version>
-		<license-maven-plugin.version>2.9.0</license-maven-plugin.version>
+		<license-maven-plugin.version>2.10.0</license-maven-plugin.version>
 		<!-- Skip copying root THIRD-PARTY.txt into META-INF/licenses/ unless a shipped
 		     server/backend module opts in (see ezkey-admin-api and siblings). -->
 		<ezkey.skip.third-party.licenses.copy>true</ezkey.skip.third-party.licenses.copy>

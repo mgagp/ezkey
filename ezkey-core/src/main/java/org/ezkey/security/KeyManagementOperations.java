@@ -29,6 +29,17 @@ public interface KeyManagementOperations {
   long getCurrentPrimaryKeyId();
 
   /**
+   * Reloads the active keyset now when the shared store holds a newer version.
+   *
+   * <p>The routine version check runs only on an encrypt or decrypt call, so an idle node can keep
+   * a stale primary after a peer promoted a new key. Re-encryption calls this before it reads the
+   * primary (#1431). The default does nothing (no shared store).
+   */
+  default void refreshKeysetIfStale() {
+    // No shared keyset store: nothing to reload.
+  }
+
+  /**
    * Rotates the active keyset and promotes the new key immediately.
    *
    * @return the new primary key id

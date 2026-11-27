@@ -54,7 +54,7 @@ for the ciphertext prefix format this column is derived from.
 | `POST /api/v1/encryption-keys/reencrypt/trigger` | Yes (same helper), then processes | Yes (`processBatch` per batch) | Pending + resumable batches after creation |
 | `POST /api/v1/encryption-keys/{keyId}/reencrypt` | Yes, then processes | Yes | One old key only |
 | `GET /api/v1/encryption-keys/reencryption-batches` | — | — | Lists batch rows (monitoring); paginated with optional filters |
-| `POST /api/v1/encryption-keys/reencryption-batches/{batchId}/resume` | — | Yes (that batch) | One batch |
+| `POST /api/v1/encryption-keys/reencryption-batches/{batchId}/resume` | — | Yes (that batch) | One batch; `FAILED`, `PENDING` or `PAUSED` only, **409** for `COMPLETED` / `IN_PROGRESS` (#1431); retry budget not checked |
 
 ---
 
@@ -70,6 +70,18 @@ Therefore, **batches created in step 2 are not necessarily processed in the same
 
 **Processing boundary:** Each `processBatch` run executes in its **own transaction** (new persistence context per batch). That limits stale JPA state when **Trigger full** or the scheduler processes many batches back-to-back, and reduces optimistic-lock conflicts with concurrent writers updating the same rows (e.g. enrollments under load).
 
+**Consequences of the single batch transaction (#1431):**
+
+- Each row is migrated in its **own short transaction** (row lock + prefix re-check), so migrated rows stay migrated whatever happens to the batch.
+- The batch row's status and counters commit **only when the batch ends**. While a batch runs, other readers (Admin UI, key-usage verification) still see `PENDING` and the previous counters. A committed `IN_PROGRESS` therefore never belongs to a live batch.
+- **Hard crash** (kill, OOM, node loss): the batch transaction rolls back and the batch returns to its last committed status (`PENDING`, or `FAILED` for a resume). The next run re-fetches from the last committed cursor and skips rows already migrated.
+- **Early stop** with old-key rows left (interrupt at shutdown, or nothing left to fetch while rows remain below the cursor): the batch ends **`FAILED`** with a classified reason, `Interrupted` (does not use up a retry; resumes from its cursor) or `Stalled` (uses one; rows migrated so far are credited to the key, then cursor and counters restart on the rows still on the old key). An interrupt while the scheduler waits for parallel batches leaves them as they are. Before #1431 this path committed `IN_PROGRESS`, which no automatic path picks up; Flyway V32 moved such rows to `FAILED` with reason `Orphaned`, retries, cursor and counters reset.
+- **Batch target key:** batch creation reloads the keyset first when a peer published a newer version. The routine version check only runs on an encrypt or decrypt call, so an idle node used to keep the demoted key as its primary after a peer promoted the new one, and created batches from the old key to itself that skipped every row and completed with nothing migrated (found in the HA campaign, #1431). A batch whose old key is the keyset primary is never created.
+- **Key-id column:** a re-encrypted row gets the key id of the ciphertext actually written (current primary), not `batch.newKey`, because the primary can rotate mid-batch. A row whose key-id column disagrees with its prefix (left by a rotation during a batch before #1431) is corrected by the next batch for that key and counted as skipped.
+- **Creation guard:** any batch that is not `COMPLETED` (including `FAILED`) blocks a new batch for the same (target, old key). A `FAILED` batch is resumed, never duplicated; at max retries it blocks new batches **and** key retirement (fail-closed) until an operator resumes it. Per-key re-encrypt also resumes that key's `FAILED` batches.
+- **Scheduler lock:** ShedLock holds the `REENCRYPTION` lock at most `PT4H`; startup fails when `max-duration-minutes` exceeds 180 (lock minus one hour for the batch still running at the cap), so a run within the cap does not outlast the lock. It is not an absolute bound: one batch longer than an hour, or a parallel run interrupted at shutdown (the lock is released while workers finish), can still overlap the other HA node; rows stay correct (row lock + re-check), batch counters are last-writer-wins. The duration cap applies to sequential runs (`parallel-batch-workers=1`); a parallel run submits up to `max-batches-per-run` batches and waits for them, so keep that product well under four hours on large tables. Only the scheduled path takes this lock: a manual trigger or resume on the other node can still run beside it (data stays correct, counters may not). A node that dies during a scheduled run (hard kill, or a stop that outlasts the container's grace period, 10 s by default with Docker) leaves the lock held until it expires: scheduled runs pause on **every** node for up to four hours. The batches it was running roll back to `PENDING`; `POST .../reencrypt/trigger` enqueues them at once (it does not take the lock). Claiming a batch atomically is follow-up work (#1550).
+- `PAUSED` is **reserved**: no code writes it. It is still accepted by filters, resume and the UI.
+
 `POST .../reencrypt/create-batches` only performs batch **creation** — useful to prepare work for the next scheduler tick or to inspect the queue without immediate load.
 
 ---
@@ -82,7 +94,9 @@ Therefore, **batches created in step 2 are not necessarily processed in the same
 | Need migration immediately (incident, test) | `reencrypt/trigger` or per-key `/{keyId}/reencrypt`. |
 | Prepare work without processing | `reencrypt/create-batches`. |
 | One old key only | `POST .../{keyId}/reencrypt`. |
-| Batch stuck or failed | Inspect row; `POST .../reencryption-batches/{batchId}/resume`. |
+| Batch `FAILED` (reason `Stalled`, `Interrupted`, `Orphaned` or an exception class name) | Inspect row and logs; `POST .../reencryption-batches/{batchId}/resume` (Admin UI **Resume**). Retries left: the scheduler resumes it on its own. |
+| Batch `FAILED` at max retries; key stays "in use" | Fix the cause (logs: `stopped early`, row-level `Failed to persist`), then **Resume**. Nothing is retried automatically. |
+| Check for rows whose key-id column disagrees with the ciphertext | `SELECT count(*) FROM ezkey_api_key WHERE secret_key_hash LIKE 'ENC:%' AND split_part(secret_key_hash, ':', 2) <> secret_key_hash_encryption_key_id::text;` (same pattern for the enrollment and auth-attempt columns). Non-zero before the next batch for that key is expected after a rotation during a batch before #1431; the batch corrects them. |
 
 ---
 
@@ -90,7 +104,7 @@ Therefore, **batches created in step 2 are not necessarily processed in the same
 
 - **Tracked** column — indexed key-id counts (§1.2) on the same targets as batches: **`PRIMARY`** = current ciphertext volume on that key (sanity check / trend); **`ENABLED`** = migration backlog. Em dash for `PENDING` / `DISABLED`. **Migration baseline** and **re-encrypted cumulative** counts appear in key detail (`recordsEncrypted` / `recordsReencrypted` semantics).
 - **Re-encrypt** (per ENABLED key in the table) — maps to `POST .../{keyId}/reencrypt`.
-- **Re-encryption Batches** section — **Create Batches** → `create-batches`; **Trigger Full Re-encryption** → `reencrypt/trigger`; row **Resume** → `resume` for `PENDING` or `FAILED` batches.
+- **Re-encryption Batches** section — **Create Batches** → `create-batches`; **Trigger Full Re-encryption** → `reencrypt/trigger`; row **Resume** → `resume` for `PENDING`, `FAILED` or `PAUSED` batches. A running batch still shows `PENDING` (single batch transaction, §3), so **Resume** on it starts a second run: rows stay correct (row lock + re-check), counters may be off.
 - **Shard numbering (display only)** — `ReencryptionBatch.shardIndex` is **0-based** in the database and API (`mod(auth_attempt_id, shard_count) = shard_index`, so the first shard is `shard_index = 0`). The Admin UI renders shard indices **1-based** (`shardIndex + 1`) in both the batches table and the batch detail dialog, so a 4-shard set reads `1/4, 2/4, 3/4, 4/4` instead of `0/4, 1/4, 2/4, 3/4`. This is a presentation choice only — no backend or API change.
 - **Re-encryption wall time (estimate), key detail** — For a **`DRAINED`** key, `EncryptionKeyResponse.reencryptionWallClockSeconds` is a retrospective estimate of how long the full migration off that old key took, computed by **merging each `COMPLETED` batch's actual `[startedAt, completedAt]` time window**: overlapping (or back-to-back) windows collapse into one span; windows separated by a gap are summed. Computed in `KeyUsageVerificationService#computeWallClockSeconds`; `null` when the key is not drained or no batch has both `startedAt` and `completedAt`. Displayed in the key detail dialog alongside algorithm, introduced date, and cumulative re-encrypted count.
   - This intentionally does **not** assume sharded batches always ran fully in parallel — grouping by `target_table` + `target_column` + `new_key_id` and taking a naive `max` (an earlier version of this estimate) silently under-reports the real wall time whenever worker-pool contention leaves one shard queued behind its siblings (see §9 fix below). Merging actual time windows reports the true elapsed span regardless of how much concurrency the pool actually achieved.
@@ -146,7 +160,10 @@ flowchart LR
   processing --> done
   processing --> failed
   failed --> resume
+  failed --> scheduler
 ```
+
+`IN_PROGRESS` exists only inside the batch transaction (§3); a committed `IN_PROGRESS` is an orphan from before #1431 and resume refuses it with 409. `FAILED` goes back to the scheduler while `retry_count < max_retries`.
 
 **Legend:** **create-batches** only enqueues. **Trigger full**, **scheduler**, and **resume** drive `processBatch`. **Per-key re-encrypt** creates and processes batches for one old key.
 
@@ -161,7 +178,7 @@ Values below marked **Admin config** come from `ezkey-admin-api/config/applicati
 | `batch-size` | `500` (Admin config) / `500` (Java) | Max rows per fetch slice (`LIMIT`). Larger slices reduce loop iterations and throttle overhead; each slice loads that many entities into the persistence context before processing. |
 | `throttle-ms` | `10` (Admin config) | Pause after each slice to limit DB load. Use `0` only for short, controlled throughput experiments. |
 | `max-batches-per-run` | `100` (Admin config) | Scheduler: maximum batches processed in one scheduled run. With sharding, keep this high enough to cover shard fan-out in one tick (4–8 shards × few old keys is still well under 100). |
-| `max-duration-minutes` | `180` (Admin config) | Scheduler: wall-clock cap per run so large queues are not stopped after a few minutes. |
+| `max-duration-minutes` | `180` (Admin config) | Scheduler: wall-clock cap per run so large queues are not stopped after a few minutes. At most **180**: startup fails above it, so a run cannot outlast its `PT4H` cluster lock (#1431). |
 | `parallel-batch-workers` | `4` (Admin config) / `1` (Java) | Thread pool size for parallel submission. **Enrollment:** mutex is **per table** (both encrypted columns on the same row). **Auth attempt without sharding:** same — **per table** (one encrypted column: `auth_attempt_proof_token`). **Auth attempt with sharding** (`auth-attempt-shard-count` &gt; 1): mutex is **per `(table, column, shard_index)`**, so different shards of the same column can run in parallel. Set `parallel-batch-workers` **≥** `auth-attempt-shard-count` so shard batches are not stuck behind a narrow pool. `1` keeps fully sequential behaviour. |
 | `parallel-batch-queue-capacity` | `100` | Bounded queue for the dedicated re-encryption executor when `parallel-batch-workers` &gt; 1. May need a higher value when many shard batches are queued. |
 | `auth-attempt-shard-count` | `4` (Admin config) / `1` (Java) | `1` = disabled (single batch per auth-attempt column). Values **4 / 8 / 16** are the **configured ceiling**. At batch creation, the service uses an **effective** shard count `N = min(configured, totalRecords)` and creates one batch per **non-empty** residue class `mod(auth_attempt_id, N) = shard_index`. If at most one residue class has rows, it falls back to a **single non-sharded** batch so operators do not see incomplete labels such as `2/4` after a tiny clean-start backlog. **Enrollment** is never sharded. Admin Docker defaults pair **4 workers with 4 shards**. |

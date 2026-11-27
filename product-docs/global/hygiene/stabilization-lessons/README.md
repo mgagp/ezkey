@@ -36,9 +36,10 @@ Each lesson states a rule, the evidence behind it, and a check you can run. Cand
 **6. A lock must outlive the commit.** Open the transaction inside the lock, never around it.
 - Evidence: `@Transactional` around `executeWithLock` released the lock before the commit, and the next holder failed on `ezkey_admin_username_key`. `LockingTaskExecutor` now owns the transaction.
 
-**7. Catching a database error inside a transaction does not recover it.** Spring has marked the transaction rollback-only, and PostgreSQL rejects further statements. Recover outside, in a separate transaction. H2 can hide this, so prove recovery paths on PostgreSQL.
+**7. Catching a database error inside a transaction does not recover it.** Spring has marked the transaction rollback-only, and PostgreSQL rejects further statements. Recover outside, in a separate transaction. H2 can hide this, so prove recovery paths on PostgreSQL. A scheduled `@Transactional` job that catches, logs and returns must also mark its own transaction rollback-only (`ScheduledJobTransactions.markCurrentTransactionRollbackOnly()`), or the commit fails with a second, misleading `UnexpectedRollbackException` ERROR (#1537).
 - Evidence: the `catch` in `initializeKeysetSync` said "Don't throw", yet `UnexpectedRollbackException` ended startup.
 - Check: look for `catch` of `DataAccessException`, `DataIntegrityViolationException` or `PersistenceException` inside `@Transactional` methods.
+- Evidence: #1267 reproduced the same defect in `AlertService.raiseOrTouch` and `IntegrityAsyncJobService.start` (catch, then re-read in the aborted transaction). The rule for new code and newly observed cases is [ADR-0020](../../architecture-decisions.md#adr-0020--database-errors-reach-the-api-through-three-paths-not-a-code-table): settle expected races with `ON CONFLICT`, read for a refusal message in a fresh transaction, leave the rest to the global handlers.
 
 **8. Name what happens on failure, and check that it is true.** See design principle §17. A comment claiming fail-open while the behaviour is fail-closed is a defect.
 

@@ -12,11 +12,13 @@ package org.ezkey.alert.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.ezkey.alert.domain.AlertResolutionReason;
 import org.ezkey.alert.domain.AlertSeverity;
@@ -64,12 +66,21 @@ class AlertServiceTest {
   void raiseOrTouch_whenNoOpenRow_insertsAndEmitsRaisedAudit() {
     when(alertRepository.findByDedupeKeyAndStatus("AUDIT_CHAIN_GAP_PENDING:42", AlertStatus.OPEN))
         .thenReturn(Optional.empty());
-    when(alertRepository.saveAndFlush(any(Alert.class)))
-        .thenAnswer(invocation -> {
-          Alert saved = invocation.getArgument(0);
-          saved.setAlertId(101L);
-          return saved;
-        });
+    when(alertRepository.insertOpenIfAbsent(
+            eq("AUDIT_CHAIN_GAP_PENDING"),
+            eq("WARNING"),
+            eq("AUDIT_CHAIN_GAP_PENDING:42"),
+            eq("{\"anchorCheckpointId\":42}"),
+            any(OffsetDateTime.class)))
+        .thenReturn(Optional.of(101L));
+    Alert inserted = new Alert();
+    inserted.setAlertId(101L);
+    inserted.setAlertType(AlertType.AUDIT_CHAIN_GAP_PENDING);
+    inserted.setSeverity(AlertSeverity.WARNING);
+    inserted.setStatus(AlertStatus.OPEN);
+    inserted.setDedupeKey("AUDIT_CHAIN_GAP_PENDING:42");
+    inserted.setOccurrenceCount(1);
+    when(alertRepository.findById(101L)).thenReturn(Optional.of(inserted));
 
     Alert result =
         alertService.raiseOrTouch(
@@ -112,7 +123,8 @@ class AlertServiceTest {
     assertThat(result.getAlertId()).isEqualTo(7L);
     assertThat(result.getOccurrenceCount()).isEqualTo(4);
     assertThat(result.getLastSeenAt()).isNotNull();
-    verify(alertRepository, never()).saveAndFlush(any(Alert.class));
+    verify(alertRepository, never())
+        .insertOpenIfAbsent(any(), any(), any(), any(), any(OffsetDateTime.class));
     verify(auditLogService, never()).log(any(AuditLog.class));
   }
 
