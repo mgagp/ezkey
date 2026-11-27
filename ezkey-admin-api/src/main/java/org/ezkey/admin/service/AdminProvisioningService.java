@@ -93,7 +93,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AdminProvisioningService {
 
   private static final Logger logger = LoggerFactory.getLogger(AdminProvisioningService.class);
-  // Keep at 7 days per product-docs/global/vision/V-2026-09-26-evaluator-bootstrap-admin-session.md.
+  // Keep 7 days per product-docs/global/vision/V-2026-09-26-evaluator-bootstrap-admin-session.md.
   private static final long ACTIVATION_CODE_TTL_DAYS = 7;
 
   private final TenantRepository tenantRepository;
