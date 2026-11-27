@@ -12,6 +12,7 @@ import java.util.regex.Pattern;
 /** Utility methods for canonical phone number normalization and masking. */
 public final class PhoneNumberUtils {
 
+  // Mirror of the V2/V5 Flyway E.164 CHECK constraints.
   private static final Pattern E164_PATTERN = Pattern.compile("^\\+[1-9][0-9]{7,14}$");
 
   private PhoneNumberUtils() {
