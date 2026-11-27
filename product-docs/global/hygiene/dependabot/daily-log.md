@@ -325,3 +325,17 @@ Weekday light pass (Hygiene pass), 09:15 ET. Queue: 2 Dependabot PRs open. Concu
 - Unblocked: auto-merge had been armed since 20:05 ET the day before with CI green, but the PR stayed `blocked` because it was 5 commits behind `main`. This pass ran update-branch, CI reran green, and auto-merge fired.
 - Validation: full CI on the updated head `b4538be8` (mobile js-validate, android-jvm-unit-tests, android-16kb-alignment, ios-xctest, ci-gate) green. No phone smoke (tracked, not blocking, #627 pattern).
 - Held: #1415 mobile-rn-core (`deferred:rn-upgrade`, skipped by the light pass).
+
+## 2026-11-27
+
+Weekday light pass (Hygiene pass), 09:23 ET. Queue at start: 4 Dependabot PRs; Dependabot's daily run then closed #1540 (superseded by #1560) and opened #1558, #1559, #1560. Concurrency check: last merge on `main` before the pass was #1557 at 08:19 ET; no other agent on these PRs. GitHub write: connector as mgagp.
+
+- Merged (squash):
+  - #1558 `typescript-eslint` 8.74.0 (admin-ui-typescript, T2 tooling) `fa8d9935`. CI green on `11fa3489`.
+  - #1541 `@tanstack/react-query` 5.108.4 + `i18next` 27.2.5 (mobile-minor-patch, T1) `2b41edcb`, by the repository auto-merge at 09:45 ET. First CI run had `mobile / android-16kb-alignment` red on a Maven Central HTTP 429 (kotlin jvm gradle plugin 2.2.0 jar), unrelated to the bump; this pass ran update-branch, CI reran green on `d07548a6`, auto-merge fired.
+- Held:
+  - #1513 `orval` 8.49.0 mobile: `api:drift` red. The committed client changes in every generated file: `getHeaders` widens header values to `string | number | boolean | bigint | readonly string[]` and coerces non-object values with `String(value)`. Header-merge behaviour change in generated code → O2/O3, not light-pass scope. Monday full / Marc.
+  - #1560 admin-ui-minor-patch (`@hookform/resolvers` 7.0.9, `@tanstack/react-query` 5.108.4, `i18next` 27.2.7, `lucide-react` 1.79.0, `orval` 8.49.0): Admin UI Orval needs the local codegen diff (`src/generated/` gitignored); the mobile diff above suggests it is non-empty. Monday full.
+  - #1559 ShedLock 7.12.0 (maven-minor-patch, T3): `licenses-drift` red (`THIRD-PARTY.txt` needs `mvn -Plicenses generate-resources`); `generate` red on `spring-boot-dependencies:pom:4.2.0` not resolvable. Needs a companion commit; Monday full.
+  - #1544 `conscrypt-android` 2.10.0 (android-gradle-minor-patch): crypto/TLS provider with a security fix (GHSA-h3wp-2gww-26c4) → hard escalator, HITL with Security review; also `android-jvm-unit-tests` red on a stale `licenses/android-libraries.json`.
+- Validation: PR CI only. No `./scripts/build.sh` closeout in this pass (T2 Admin UI tooling only on the Java side: N/A); no phone smoke for #1541 (tracked, not blocking, #627 pattern).
