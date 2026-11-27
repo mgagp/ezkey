@@ -61,6 +61,7 @@ public class MockDeliveryController {
   private static final Pattern EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s]+$");
   private static final Pattern UUID_FORMAT =
       Pattern.compile("^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$");
+  // Must equal the delivery contract; see #1206.
   private static final int QR_MAX_LENGTH = 87_384;
   private static final byte[] PNG_SIGNATURE = {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'};
 
