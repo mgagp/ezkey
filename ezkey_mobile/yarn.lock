@@ -2347,27 +2347,27 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@orval/angular@npm:8.48.0":
-  version: 8.48.0
-  resolution: "@orval/angular@npm:8.48.0"
+"@orval/angular@npm:8.49.0":
+  version: 8.49.0
+  resolution: "@orval/angular@npm:8.49.0"
   dependencies:
-    "@orval/core": "npm:8.48.0"
-  checksum: 10c0/85002f7447371ec3d5381232a6f213b2497cd893a4238a121aaba88cf3d3e4a5aa3a8a119d035559f9dcf3ce9e9c0f0dff11f58bfe2c4dc4f124d4920a52e9cd
+    "@orval/core": "npm:8.49.0"
+  checksum: 10c0/0f2f4334e3bd6ffe7e8c1fcca7e2c8c382729ef9215eb21b53a6d5b6b36ac931d7d1d14c59012cf6c306a7f10ae8897f10f6c6bec07df8a67cdecdfe11c2fc75
   languageName: node
   linkType: hard
 
-"@orval/axios@npm:8.48.0":
-  version: 8.48.0
-  resolution: "@orval/axios@npm:8.48.0"
+"@orval/axios@npm:8.49.0":
+  version: 8.49.0
+  resolution: "@orval/axios@npm:8.49.0"
   dependencies:
-    "@orval/core": "npm:8.48.0"
-  checksum: 10c0/44f5d097b6fce802b20f3aac790d5fe2f78520be8acafeb259a4244651f36b5154ac135559afdbf92f743c1c916019410aae369c1cd6672a9982cdfc3dc76b11
+    "@orval/core": "npm:8.49.0"
+  checksum: 10c0/b527a4470ce01654a2aff77c17cad2ce3c3e509c06425034bf53e28dd397a818ea18faef9904800ed21fc1bc07a9be442b28fc4b449bb6674eea80e287ab4681
   languageName: node
   linkType: hard
 
-"@orval/core@npm:8.48.0":
-  version: 8.48.0
-  resolution: "@orval/core@npm:8.48.0"
+"@orval/core@npm:8.49.0":
+  version: 8.49.0
+  resolution: "@orval/core@npm:8.49.0"
   dependencies:
     "@scalar/openapi-types": "npm:0.9.8"
     acorn: "npm:^8.15.0"
@@ -2385,65 +2385,65 @@ __metadata:
       optional: true
     "@modelcontextprotocol/server":
       optional: true
-  checksum: 10c0/c71e2a7e74268245c98e2be2fb5ea90c2d12961198aec82d3b98035baa13530b54f8051aff60dff307405ec51248ec5979aa0122ab285a427a2c76808eb16181
+  checksum: 10c0/1c3dbf75f43c137d7c07042ebd0c05cc278aa92e937ae647f95b345fe65e1f53a0be47743e558680adfb47b9a98a495a726898e0cff4ddecbbbdfb4b3234e6d6
   languageName: node
   linkType: hard
 
-"@orval/effect@npm:8.48.0":
-  version: 8.48.0
-  resolution: "@orval/effect@npm:8.48.0"
+"@orval/effect@npm:8.49.0":
+  version: 8.49.0
+  resolution: "@orval/effect@npm:8.49.0"
   dependencies:
-    "@orval/core": "npm:8.48.0"
+    "@orval/core": "npm:8.49.0"
   peerDependencies:
     effect: ">=3"
   peerDependenciesMeta:
     effect:
       optional: true
-  checksum: 10c0/143c357b8328e8df2e8e00b7914e57cfc7c0d9217f27d4cf4c839c832184cb4abbef1f5558bc48e61f3bdccf55d7c8cb84044e81258ff5ed82c862fadf1371c9
+  checksum: 10c0/2ef88dffa995d70663ad3dffbe1d4f4bfb9b6e9942581c5d79cc93e96b605e545549843f6d7ff967e1012ba755da247eb92aabea116b36dff4cefcd54eafcc80
   languageName: node
   linkType: hard
 
-"@orval/fetch@npm:8.48.0":
-  version: 8.48.0
-  resolution: "@orval/fetch@npm:8.48.0"
+"@orval/fetch@npm:8.49.0":
+  version: 8.49.0
+  resolution: "@orval/fetch@npm:8.49.0"
   dependencies:
-    "@orval/core": "npm:8.48.0"
-  checksum: 10c0/5ef9684df98f139239c98b1a7fd1b58c389122f69d44e92e4e35242c9185ce24ecd7a4cba56ff9a947f8278231ab3a56751f0ca697760e480adca3906105399f
+    "@orval/core": "npm:8.49.0"
+  checksum: 10c0/2d6f6a37d4fd97f6c46efa0b5e84dc9318e936307e3b633ca28a9381ef0359983e64112213ea62ce17e36531e36d20212c7c9a52df160585c42235a6828d7619
   languageName: node
   linkType: hard
 
-"@orval/hono@npm:8.48.0":
-  version: 8.48.0
-  resolution: "@orval/hono@npm:8.48.0"
+"@orval/hono@npm:8.49.0":
+  version: 8.49.0
+  resolution: "@orval/hono@npm:8.49.0"
   dependencies:
-    "@orval/core": "npm:8.48.0"
-    "@orval/zod": "npm:8.48.0"
-    typescript: "npm:6.0.3"
-  checksum: 10c0/0a22edf489a3d7013779bb337781f6b49e657325b2a163d13af19d007ca63de9386e09a8a3437656e6e85ce3da54056ddbf1bc4e96d1f0f6ca212a9458e4a96b
+    "@orval/core": "npm:8.49.0"
+    "@orval/zod": "npm:8.49.0"
+    oxc-parser: "npm:^0.159.0"
+  checksum: 10c0/e4396e10e2e73028393cb935f90d9634fab979a0c3a08937bc7ac7489c6d17e6e9b16cd25c53d8ee1e3469b44595ccb41a78bb6df031cec030a8a6da4cb05de8
   languageName: node
   linkType: hard
 
-"@orval/mcp@npm:8.48.0":
-  version: 8.48.0
-  resolution: "@orval/mcp@npm:8.48.0"
+"@orval/mcp@npm:8.49.0":
+  version: 8.49.0
+  resolution: "@orval/mcp@npm:8.49.0"
   dependencies:
-    "@orval/core": "npm:8.48.0"
-    "@orval/fetch": "npm:8.48.0"
-    "@orval/zod": "npm:8.48.0"
+    "@orval/core": "npm:8.49.0"
+    "@orval/fetch": "npm:8.49.0"
+    "@orval/zod": "npm:8.49.0"
   peerDependencies:
     "@modelcontextprotocol/server": ">=2"
   peerDependenciesMeta:
     "@modelcontextprotocol/server":
       optional: true
-  checksum: 10c0/cdb8756a27a02e47695f0323e94954993254b6da19df02c5c87e8bb2c024f1c848177368aee6409a51d93d40ac9d6440be673020683b4023e003528d14c8bccf
+  checksum: 10c0/657163beac89997ddc48adbc1036c04dc3ed2b1305ceeac5f8ff5c5bf715fed2422cf00d3c64ba3da2d07146acd1b4cd9a51639182fcb54e15524c4a08159557
   languageName: node
   linkType: hard
 
-"@orval/mock@npm:8.48.0":
-  version: 8.48.0
-  resolution: "@orval/mock@npm:8.48.0"
+"@orval/mock@npm:8.49.0":
+  version: 8.49.0
+  resolution: "@orval/mock@npm:8.49.0"
   dependencies:
-    "@orval/core": "npm:8.48.0"
+    "@orval/core": "npm:8.49.0"
   peerDependencies:
     "@faker-js/faker": ">=8"
     msw: ">=2"
@@ -2452,39 +2452,42 @@ __metadata:
       optional: true
     msw:
       optional: true
-  checksum: 10c0/1757b8ca92a34e22bc2f5d71269f03ab99a2efca47f99e5c2ce73fe87c5a858c81659901ec0ae003886da1c8cb727fa50dd6589f3d046e3cc5d2e8af0ac86b31
+  checksum: 10c0/18f88bcf594167ed115cbb9aad5c80d6b8ee4eeb0cbac484f616514840368fc8c69d968c4a9e12172f104f07c127bb62cc7ee74ee0db13bc2cd1e5afb9c65fbe
   languageName: node
   linkType: hard
 
-"@orval/pinia-colada@npm:8.48.0":
-  version: 8.48.0
-  resolution: "@orval/pinia-colada@npm:8.48.0"
+"@orval/pinia-colada@npm:8.49.0":
+  version: 8.49.0
+  resolution: "@orval/pinia-colada@npm:8.49.0"
   dependencies:
-    "@orval/axios": "npm:8.48.0"
-    "@orval/core": "npm:8.48.0"
-    "@orval/fetch": "npm:8.48.0"
+    "@orval/axios": "npm:8.49.0"
+    "@orval/core": "npm:8.49.0"
+    "@orval/fetch": "npm:8.49.0"
   peerDependencies:
     "@pinia/colada": ^1.4.4
   peerDependenciesMeta:
     "@pinia/colada":
       optional: true
-  checksum: 10c0/4621c5fd80d6c3432b95a7f1a0736cd92fb90b605e835a8b3106c3edf1a85f3d2cfc45e94cb398f7b9ccd7882ace15629d3a195fe2c0b06320614f3114008a1b
+  checksum: 10c0/8b5990b97676ccfe1ebdf682070adc159e1f3bc87f10a144a124d85b13abb8954f41446f6c4b1fb913f8a6309e938ec5272c8e79dc89e9b114fef5f9f9559c2b
   languageName: node
   linkType: hard
 
-"@orval/query@npm:8.48.0":
-  version: 8.48.0
-  resolution: "@orval/query@npm:8.48.0"
+"@orval/query@npm:8.49.0":
+  version: 8.49.0
+  resolution: "@orval/query@npm:8.49.0"
   dependencies:
-    "@orval/core": "npm:8.48.0"
-    "@orval/fetch": "npm:8.48.0"
+    "@orval/core": "npm:8.49.0"
+    "@orval/fetch": "npm:8.49.0"
   peerDependencies:
+    "@tanstack/angular-query": ">=5"
     "@tanstack/angular-query-experimental": ">=5"
     "@tanstack/react-query": ">=4"
     "@tanstack/solid-query": ">=4"
     "@tanstack/svelte-query": ">=4"
     "@tanstack/vue-query": ">=4"
   peerDependenciesMeta:
+    "@tanstack/angular-query":
+      optional: true
     "@tanstack/angular-query-experimental":
       optional: true
     "@tanstack/react-query":
@@ -2495,62 +2498,203 @@ __metadata:
       optional: true
     "@tanstack/vue-query":
       optional: true
-  checksum: 10c0/65f5c5e0200acf5d3d694a2ab0fc4ad965c797be492419b530f60b5c8eb802c950ac372bfad0b11579df982e3bafd6d26746b291e1214adab673f83c5062059a
+  checksum: 10c0/3b016b55a13b4a86314b6ae7885cda10f1957e79c1b51265e27c70c22b7eae2ec0e637b0693f384887074e5f97d2cb78ec30f25a83c885eafdb11c905dba6036
   languageName: node
   linkType: hard
 
-"@orval/solid-start@npm:8.48.0":
-  version: 8.48.0
-  resolution: "@orval/solid-start@npm:8.48.0"
+"@orval/solid-start@npm:8.49.0":
+  version: 8.49.0
+  resolution: "@orval/solid-start@npm:8.49.0"
   dependencies:
-    "@orval/core": "npm:8.48.0"
-  checksum: 10c0/87a94502d9a4bc56668fe5af5fcc1e8c8c233a8fadba1712afe6088b787eadce740ac5ac5625f16d1a219eb1b0adae8a048ac80e27e7ebdce7287fb3be2988a2
+    "@orval/core": "npm:8.49.0"
+  checksum: 10c0/91f959a45966c38e2c175cf4fd2d538944aa92b63d484cbe6372f51ed8eb5a598fe14c214b47bb1f00aa996fb14ef7c44cab32e80b06ba30d7bc9f34ee5e1e86
   languageName: node
   linkType: hard
 
-"@orval/swr@npm:8.48.0":
-  version: 8.48.0
-  resolution: "@orval/swr@npm:8.48.0"
+"@orval/swr@npm:8.49.0":
+  version: 8.49.0
+  resolution: "@orval/swr@npm:8.49.0"
   dependencies:
-    "@orval/core": "npm:8.48.0"
-    "@orval/fetch": "npm:8.48.0"
+    "@orval/core": "npm:8.49.0"
+    "@orval/fetch": "npm:8.49.0"
   peerDependencies:
     swr: ">=2"
   peerDependenciesMeta:
     swr:
       optional: true
-  checksum: 10c0/54e937027c7b934a5ffb07dd344e56650532f239c3348d4f8086394ea6fc647c81c177f269ea346a914845614d8d75a1eded87c5cd881c2b9bbf105a088c1daf
+  checksum: 10c0/32e3fe639dd2a85a78db4b4d3d88c469f98b0bd96c9349d5a07469708522098be5c897cbd9a8fad21c89e6c5f21426639e56fb5387d9837882e9ae34cfc2b275
   languageName: node
   linkType: hard
 
-"@orval/valibot@npm:8.48.0":
-  version: 8.48.0
-  resolution: "@orval/valibot@npm:8.48.0"
+"@orval/valibot@npm:8.49.0":
+  version: 8.49.0
+  resolution: "@orval/valibot@npm:8.49.0"
   dependencies:
-    "@orval/core": "npm:8.48.0"
+    "@orval/core": "npm:8.49.0"
   peerDependencies:
     valibot: ">=1"
   peerDependenciesMeta:
     valibot:
       optional: true
-  checksum: 10c0/158b86bc4038d7e2fbedc1a324b60e21dbf25a92f238c1348c1479c9d2c1e4c9f7e48c0616af25008d8350f19730283f57f7d773926bbf52a10fc8b1ce4b14e7
+  checksum: 10c0/ff4c7296759b4381603641111cf256a5ae52b4c4dd0b2e0812891781e4c42380c63c2fb218c2487c847036b21b298e02421be97d96ee17a238d3c327ad3f9e14
   languageName: node
   linkType: hard
 
-"@orval/zod@npm:8.48.0":
-  version: 8.48.0
-  resolution: "@orval/zod@npm:8.48.0"
+"@orval/zod@npm:8.49.0":
+  version: 8.49.0
+  resolution: "@orval/zod@npm:8.49.0"
   dependencies:
-    "@orval/core": "npm:8.48.0"
+    "@orval/core": "npm:8.49.0"
+    acorn: "npm:^8.15.0"
+    eslint-scope: "npm:^9.1.2"
     globals: "npm:^17.0.0"
     jsesc: "npm:^3.0.0"
-    typescript: "npm:6.0.3"
   peerDependencies:
     zod: ">=3"
   peerDependenciesMeta:
     zod:
       optional: true
-  checksum: 10c0/cd32f2e2283281d06fa973ba8818f7cca97328bb1eae3e61c3682d4467ce2314696763d93eba9631345fed519ff74f72d5080094721be04605b99bec81482bcd
+  checksum: 10c0/4e5ec7ee6f359a242599a1989117314289a257c5c85bb6d97294211652beafea4f7b70a453546e21070c6bb375551f1dfff4ed4881eafb21aaba66e445c3da52
+  languageName: node
+  linkType: hard
+
+"@oxc-parser/binding-android-arm-eabi@npm:0.159.0":
+  version: 0.159.0
+  resolution: "@oxc-parser/binding-android-arm-eabi@npm:0.159.0"
+  conditions: os=android & cpu=arm
+  languageName: node
+  linkType: hard
+
+"@oxc-parser/binding-android-arm64@npm:0.159.0":
+  version: 0.159.0
+  resolution: "@oxc-parser/binding-android-arm64@npm:0.159.0"
+  conditions: os=android & cpu=arm64
+  languageName: node
+  linkType: hard
+
+"@oxc-parser/binding-darwin-arm64@npm:0.159.0":
+  version: 0.159.0
+  resolution: "@oxc-parser/binding-darwin-arm64@npm:0.159.0"
+  conditions: os=darwin & cpu=arm64
+  languageName: node
+  linkType: hard
+
+"@oxc-parser/binding-darwin-x64@npm:0.159.0":
+  version: 0.159.0
+  resolution: "@oxc-parser/binding-darwin-x64@npm:0.159.0"
+  conditions: os=darwin & cpu=x64
+  languageName: node
+  linkType: hard
+
+"@oxc-parser/binding-freebsd-x64@npm:0.159.0":
+  version: 0.159.0
+  resolution: "@oxc-parser/binding-freebsd-x64@npm:0.159.0"
+  conditions: os=freebsd & cpu=x64
+  languageName: node
+  linkType: hard
+
+"@oxc-parser/binding-linux-arm-gnueabihf@npm:0.159.0":
+  version: 0.159.0
+  resolution: "@oxc-parser/binding-linux-arm-gnueabihf@npm:0.159.0"
+  conditions: os=linux & cpu=arm
+  languageName: node
+  linkType: hard
+
+"@oxc-parser/binding-linux-arm-musleabihf@npm:0.159.0":
+  version: 0.159.0
+  resolution: "@oxc-parser/binding-linux-arm-musleabihf@npm:0.159.0"
+  conditions: os=linux & cpu=arm
+  languageName: node
+  linkType: hard
+
+"@oxc-parser/binding-linux-arm64-gnu@npm:0.159.0":
+  version: 0.159.0
+  resolution: "@oxc-parser/binding-linux-arm64-gnu@npm:0.159.0"
+  conditions: os=linux & cpu=arm64 & libc=glibc
+  languageName: node
+  linkType: hard
+
+"@oxc-parser/binding-linux-arm64-musl@npm:0.159.0":
+  version: 0.159.0
+  resolution: "@oxc-parser/binding-linux-arm64-musl@npm:0.159.0"
+  conditions: os=linux & cpu=arm64 & libc=musl
+  languageName: node
+  linkType: hard
+
+"@oxc-parser/binding-linux-ppc64-gnu@npm:0.159.0":
+  version: 0.159.0
+  resolution: "@oxc-parser/binding-linux-ppc64-gnu@npm:0.159.0"
+  conditions: os=linux & cpu=ppc64 & libc=glibc
+  languageName: node
+  linkType: hard
+
+"@oxc-parser/binding-linux-riscv64-gnu@npm:0.159.0":
+  version: 0.159.0
+  resolution: "@oxc-parser/binding-linux-riscv64-gnu@npm:0.159.0"
+  conditions: os=linux & cpu=riscv64 & libc=glibc
+  languageName: node
+  linkType: hard
+
+"@oxc-parser/binding-linux-riscv64-musl@npm:0.159.0":
+  version: 0.159.0
+  resolution: "@oxc-parser/binding-linux-riscv64-musl@npm:0.159.0"
+  conditions: os=linux & cpu=riscv64 & libc=musl
+  languageName: node
+  linkType: hard
+
+"@oxc-parser/binding-linux-s390x-gnu@npm:0.159.0":
+  version: 0.159.0
+  resolution: "@oxc-parser/binding-linux-s390x-gnu@npm:0.159.0"
+  conditions: os=linux & cpu=s390x & libc=glibc
+  languageName: node
+  linkType: hard
+
+"@oxc-parser/binding-linux-x64-gnu@npm:0.159.0":
+  version: 0.159.0
+  resolution: "@oxc-parser/binding-linux-x64-gnu@npm:0.159.0"
+  conditions: os=linux & cpu=x64 & libc=glibc
+  languageName: node
+  linkType: hard
+
+"@oxc-parser/binding-linux-x64-musl@npm:0.159.0":
+  version: 0.159.0
+  resolution: "@oxc-parser/binding-linux-x64-musl@npm:0.159.0"
+  conditions: os=linux & cpu=x64 & libc=musl
+  languageName: node
+  linkType: hard
+
+"@oxc-parser/binding-openharmony-arm64@npm:0.159.0":
+  version: 0.159.0
+  resolution: "@oxc-parser/binding-openharmony-arm64@npm:0.159.0"
+  conditions: os=openharmony & cpu=arm64
+  languageName: node
+  linkType: hard
+
+"@oxc-parser/binding-win32-arm64-msvc@npm:0.159.0":
+  version: 0.159.0
+  resolution: "@oxc-parser/binding-win32-arm64-msvc@npm:0.159.0"
+  conditions: os=win32 & cpu=arm64
+  languageName: node
+  linkType: hard
+
+"@oxc-parser/binding-win32-ia32-msvc@npm:0.159.0":
+  version: 0.159.0
+  resolution: "@oxc-parser/binding-win32-ia32-msvc@npm:0.159.0"
+  conditions: os=win32 & cpu=ia32
+  languageName: node
+  linkType: hard
+
+"@oxc-parser/binding-win32-x64-msvc@npm:0.159.0":
+  version: 0.159.0
+  resolution: "@oxc-parser/binding-win32-x64-msvc@npm:0.159.0"
+  conditions: os=win32 & cpu=x64
+  languageName: node
+  linkType: hard
+
+"@oxc-project/types@npm:^0.159.0":
+  version: 0.159.0
+  resolution: "@oxc-project/types@npm:0.159.0"
+  checksum: 10c0/5f32b97ccdb8fdb169ed68bd71c95d3f78088ed81f1abb770ea71b6cc29ef7fce74e064b360ce29337a317ab3bba8f0ddc0cc3cd96544b8d0795d6481b0ce898
   languageName: node
   linkType: hard
 
@@ -3734,10 +3878,24 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/esrecurse@npm:^4.3.1":
+  version: 4.3.1
+  resolution: "@types/esrecurse@npm:4.3.1"
+  checksum: 10c0/90dad74d5da3ad27606d8e8e757322f33171cfeaa15ad558b615cf71bb2a516492d18f55f4816384685a3eb2412142e732bbae9a4a7cd2cf3deb7572aa4ebe03
+  languageName: node
+  linkType: hard
+
 "@types/estree@npm:^1.0.6":
   version: 1.0.9
   resolution: "@types/estree@npm:1.0.9"
   checksum: 10c0/3ad3286ca2988cd550dafb8f2ad599c8474868e954fa601a36655bdfefd8039f7c714b8c1c7f2ae219ffbd58bd4660e66fa7479a0120fc02d4777057d4865387
+  languageName: node
+  linkType: hard
+
+"@types/estree@npm:^1.0.8":
+  version: 1.0.10
+  resolution: "@types/estree@npm:1.0.10"
+  checksum: 10c0/d258926dac68425e77e43fd64045123b77f998ab2cf0bd0cc5a6ff016c365e60ed26f42adac64551906c1beab3bea08d60d113f905829ac60cfd6409db4761e9
   languageName: node
   linkType: hard
 
@@ -6258,6 +6416,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"eslint-scope@npm:^9.1.2":
+  version: 9.1.2
+  resolution: "eslint-scope@npm:9.1.2"
+  dependencies:
+    "@types/esrecurse": "npm:^4.3.1"
+    "@types/estree": "npm:^1.0.8"
+    esrecurse: "npm:^4.3.0"
+    estraverse: "npm:^5.2.0"
+  checksum: 10c0/9fb8bca5a73e5741efb6cec84467027b6cb6f4203ff9b43a938e272c5cd30800bde46a5c20dfd1609f840225f0b62b7673be391b20acadf8658ca9fa4729b3dd
+  languageName: node
+  linkType: hard
+
 "eslint-visitor-keys@npm:^2.1.0":
   version: 2.1.0
   resolution: "eslint-visitor-keys@npm:2.1.0"
@@ -6500,7 +6670,7 @@ __metadata:
     jest: "npm:30.5.2"
     js-sha256: "npm:1.1.0"
     lint-staged: "npm:17.6.2"
-    orval: "npm:8.48.0"
+    orval: "npm:8.49.0"
     prettier: "npm:3.10.1"
     react: "npm:19.3.1"
     react-i18next: "npm:18.0.3"
@@ -9580,25 +9750,25 @@ __metadata:
   languageName: node
   linkType: hard
 
-"orval@npm:8.48.0":
-  version: 8.48.0
-  resolution: "orval@npm:8.48.0"
+"orval@npm:8.49.0":
+  version: 8.49.0
+  resolution: "orval@npm:8.49.0"
   dependencies:
     "@commander-js/extra-typings": "npm:^15.0.0"
-    "@orval/angular": "npm:8.48.0"
-    "@orval/axios": "npm:8.48.0"
-    "@orval/core": "npm:8.48.0"
-    "@orval/effect": "npm:8.48.0"
-    "@orval/fetch": "npm:8.48.0"
-    "@orval/hono": "npm:8.48.0"
-    "@orval/mcp": "npm:8.48.0"
-    "@orval/mock": "npm:8.48.0"
-    "@orval/pinia-colada": "npm:8.48.0"
-    "@orval/query": "npm:8.48.0"
-    "@orval/solid-start": "npm:8.48.0"
-    "@orval/swr": "npm:8.48.0"
-    "@orval/valibot": "npm:8.48.0"
-    "@orval/zod": "npm:8.48.0"
+    "@orval/angular": "npm:8.49.0"
+    "@orval/axios": "npm:8.49.0"
+    "@orval/core": "npm:8.49.0"
+    "@orval/effect": "npm:8.49.0"
+    "@orval/fetch": "npm:8.49.0"
+    "@orval/hono": "npm:8.49.0"
+    "@orval/mcp": "npm:8.49.0"
+    "@orval/mock": "npm:8.49.0"
+    "@orval/pinia-colada": "npm:8.49.0"
+    "@orval/query": "npm:8.49.0"
+    "@orval/solid-start": "npm:8.49.0"
+    "@orval/swr": "npm:8.49.0"
+    "@orval/valibot": "npm:8.49.0"
+    "@orval/zod": "npm:8.49.0"
     "@scalar/json-magic": "npm:^0.16.1"
     "@scalar/openapi-parser": "npm:^0.29.15"
     "@scalar/openapi-types": "npm:0.9.8"
@@ -9623,7 +9793,7 @@ __metadata:
       optional: true
   bin:
     orval: dist/bin/orval.mjs
-  checksum: 10c0/90255b89d9303b3e1b3088d5eda53449b22e6b98283b78fbbefa8c3ca332de05705aad8d81fae04d5be915d88b9e92242187eaa82ebb1dd9a5f28419484927b4
+  checksum: 10c0/bb94481fc161534243e32736305751dc1a8e90e5ceff06195737afde6eed12ad37a724608b3057336841e4bfd28b0ff089c7f869f1d5e45ac7719fa569a8a9e7
   languageName: node
   linkType: hard
 
@@ -9635,6 +9805,73 @@ __metadata:
     object-keys: "npm:^1.1.1"
     safe-push-apply: "npm:^1.0.0"
   checksum: 10c0/6dfeb3455bff92ec3f16a982d4e3e65676345f6902d9f5ded1d8265a6318d0200ce461956d6d1c70053c7fe9f9fe65e552faac03f8140d37ef0fdd108e67013a
+  languageName: node
+  linkType: hard
+
+"oxc-parser@npm:^0.159.0":
+  version: 0.159.0
+  resolution: "oxc-parser@npm:0.159.0"
+  dependencies:
+    "@oxc-parser/binding-android-arm-eabi": "npm:0.159.0"
+    "@oxc-parser/binding-android-arm64": "npm:0.159.0"
+    "@oxc-parser/binding-darwin-arm64": "npm:0.159.0"
+    "@oxc-parser/binding-darwin-x64": "npm:0.159.0"
+    "@oxc-parser/binding-freebsd-x64": "npm:0.159.0"
+    "@oxc-parser/binding-linux-arm-gnueabihf": "npm:0.159.0"
+    "@oxc-parser/binding-linux-arm-musleabihf": "npm:0.159.0"
+    "@oxc-parser/binding-linux-arm64-gnu": "npm:0.159.0"
+    "@oxc-parser/binding-linux-arm64-musl": "npm:0.159.0"
+    "@oxc-parser/binding-linux-ppc64-gnu": "npm:0.159.0"
+    "@oxc-parser/binding-linux-riscv64-gnu": "npm:0.159.0"
+    "@oxc-parser/binding-linux-riscv64-musl": "npm:0.159.0"
+    "@oxc-parser/binding-linux-s390x-gnu": "npm:0.159.0"
+    "@oxc-parser/binding-linux-x64-gnu": "npm:0.159.0"
+    "@oxc-parser/binding-linux-x64-musl": "npm:0.159.0"
+    "@oxc-parser/binding-openharmony-arm64": "npm:0.159.0"
+    "@oxc-parser/binding-win32-arm64-msvc": "npm:0.159.0"
+    "@oxc-parser/binding-win32-ia32-msvc": "npm:0.159.0"
+    "@oxc-parser/binding-win32-x64-msvc": "npm:0.159.0"
+    "@oxc-project/types": "npm:^0.159.0"
+  dependenciesMeta:
+    "@oxc-parser/binding-android-arm-eabi":
+      optional: true
+    "@oxc-parser/binding-android-arm64":
+      optional: true
+    "@oxc-parser/binding-darwin-arm64":
+      optional: true
+    "@oxc-parser/binding-darwin-x64":
+      optional: true
+    "@oxc-parser/binding-freebsd-x64":
+      optional: true
+    "@oxc-parser/binding-linux-arm-gnueabihf":
+      optional: true
+    "@oxc-parser/binding-linux-arm-musleabihf":
+      optional: true
+    "@oxc-parser/binding-linux-arm64-gnu":
+      optional: true
+    "@oxc-parser/binding-linux-arm64-musl":
+      optional: true
+    "@oxc-parser/binding-linux-ppc64-gnu":
+      optional: true
+    "@oxc-parser/binding-linux-riscv64-gnu":
+      optional: true
+    "@oxc-parser/binding-linux-riscv64-musl":
+      optional: true
+    "@oxc-parser/binding-linux-s390x-gnu":
+      optional: true
+    "@oxc-parser/binding-linux-x64-gnu":
+      optional: true
+    "@oxc-parser/binding-linux-x64-musl":
+      optional: true
+    "@oxc-parser/binding-openharmony-arm64":
+      optional: true
+    "@oxc-parser/binding-win32-arm64-msvc":
+      optional: true
+    "@oxc-parser/binding-win32-ia32-msvc":
+      optional: true
+    "@oxc-parser/binding-win32-x64-msvc":
+      optional: true
+  checksum: 10c0/13fed53266c4f2657282acac2e4554cb7a3626e91392d7626160c8779796da025b68fc1aa06c4a0c41857df4d8b2260a772785d962046d3f6042812da5ad22b5
   languageName: node
   linkType: hard
 
